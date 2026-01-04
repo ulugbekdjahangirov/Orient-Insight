@@ -1,0 +1,45 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+
+const authRoutes = require('./routes/auth.routes');
+const bookingRoutes = require('./routes/booking.routes');
+const guideRoutes = require('./routes/guide.routes');
+const tourTypeRoutes = require('./routes/tourType.routes');
+const importRoutes = require('./routes/import.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/guides', guideRoutes);
+app.use('/api/tour-types', tourTypeRoutes);
+app.use('/api/import', importRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Orient Insight API is running' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    error: 'Внутренняя ошибка сервера',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Orient Insight сервер запущен на порту ${PORT}`);
+});

@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Пользователи системы
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("MANAGER") // ADMIN, MANAGER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings  Booking[] @relation("CreatedBy")
+  assigned  Booking[] @relation("AssignedTo")
+}
+
+// Типы туров (ER, CO, KAS, ZA и т.д.)
+model TourType {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique // ER, CO, KAS, ZA
+  name        String    // Полное название
+  description String?
+  color       String    @default("#3B82F6") // Цвет для UI
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  bookings    Booking[]
+}
+
+// Гиды / Рейселейтеры
+model Guide {
+  id          Int       @id @default(autoincrement())
+
+  // Основная информация (видна всем)
+  name        String    @unique  // Отображаемое имя (для совместимости)
+  firstName   String?            // Имя
+  lastName    String?            // Фамилия
+  dateOfBirth DateTime?          // Дата рождения
+  phone       String?
+  email       String?
+
+  // Паспортные данные (только для админа, зашифровано)
+  passportNumber     String?     // Номер паспорта
+  passportIssueDate  DateTime?   // Дата выдачи
+  passportExpiryDate DateTime?   // Срок действия
+  passportIssuedBy   String?     // Кем выдан
+
+  // Банковские данные (только для админа, зашифровано)
+  bankAccountNumber  String?     // Номер счёта
+  bankCardNumber     String?     // Номер карты
+  bankName           String?     // Название банка
+
+  // Адрес
+  address     String?
+
+  // Примечания
+  notes       String?
+
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt @default(now())
+
+  bookings    Booking[]
+  guidePayments GuidePayment[]
+}
+
+// Выплаты гидам (для будущего модуля бухгалтерии)
+model GuidePayment {
+  id          Int       @id @default(autoincrement())
+  guideId     Int
+  guide       Guide     @relation(fields: [guideId], references: [id])
+  bookingId   Int?
+  amount      Float
+  currency    String    @default("UZS")
+  paymentDate DateTime
+  paymentType String    @default("SALARY") // SALARY, BONUS, ADVANCE
+  notes       String?
+  createdAt   DateTime  @default(now())
+}
+
+// Основная таблица бронирований
+model Booking {
+  id              Int       @id @default(autoincrement())
+  bookingNumber   String    @unique // ER-01, CO-05, KAS-12
+  tourTypeId      Int
+  tourType        TourType  @relation(fields: [tourTypeId], references: [id])
+
+  // Даты
+  departureDate   DateTime  // Depature / Ankunft
+  arrivalDate     DateTime  // Ankunft (прибытие)
+  endDate         DateTime  // Abflug (вылет/окончание)
+
+  // Участники
+  pax             Int       @default(0) // Общее количество
+  paxUzbekistan   Int?      // Участники в Узбекистане
+  paxTurkmenistan Int?      // Участники в Туркменистане
+
+  // Гид
+  guideId         Int?
+  guide           Guide?    @relation(fields: [guideId], references: [id])
+
+  // Транспорт
+  trainTickets    String?   // ЖД Билеты
+  avia            String?   // Авиабилеты
+
+  // Номера в отелях
+  roomsDbl        Int       @default(0) // Double rooms
+  roomsTwn        Int       @default(0) // Twin rooms
+  roomsSngl       Int       @default(0) // Single rooms
+  roomsTotal      Int       @default(0) // Всего номеров
+
+  // Дополнительные даты для ZA туров
+  dateOlot        DateTime? // Olot
+  dateJartepa     DateTime? // Jartepa
+  dateOybek       DateTime? // Oybek
+  dateChernyaevka DateTime? // Chernyaevka
+
+  // Статус и примечания
+  status          String    @default("PENDING") // PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+  notes           String?
+
+  // Метаданные
+  createdById     Int?
+  createdBy       User?     @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId    Int?
+  assignedTo      User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([departureDate])
+  @@index([status])
+  @@index([tourTypeId])
+}
+
+// Будущий модуль: Заявки
+model Request {
+  id            Int      @id @default(autoincrement())
+  requestNumber String   @unique
+  clientName    String
+  clientPhone   String?
+  clientEmail   String?
+  tourTypeId    Int?
+  preferredDate DateTime?
+  pax           Int      @default(1)
+  status        String   @default("NEW") // NEW, PROCESSING, CONVERTED, DECLINED
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Будущий модуль: Счета
+model Invoice {
+  id            Int       @id @default(autoincrement())
+  invoiceNumber String    @unique
+  bookingId     Int?
+  clientName    String
+  amount        Float
+  currency      String    @default("USD")
+  status        String    @default("DRAFT") // DRAFT, SENT, PAID, OVERDUE, CANCELLED
+  dueDate       DateTime?
+  issuedAt      DateTime  @default(now())
+  paidAt        DateTime?
+  notes         String?
+
+  payments      Payment[]
+}
+
+// Будущий модуль: Платежи
+model Payment {
+  id            Int      @id @default(autoincrement())
+  invoiceId     Int
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  amount        Float
+  paymentMethod String?
+  reference     String?
+  paidAt        DateTime @default(now())
+  notes         String?
+}
