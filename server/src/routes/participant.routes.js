@@ -91,6 +91,37 @@ function parseDate(dateValue) {
 // PARTICIPANTS CRUD
 // ============================================
 
+// Helper: Sort participants by accommodation (Uzbekistan first, then Turkmenistan), then by name
+function sortParticipantsByAccommodation(participants) {
+  const accommodationOrder = {
+    'Uzbekistan': 1,
+    'Turkmenistan': 2,
+    'Kyrgyzstan': 3,
+    'Tajikistan': 4,
+    'Kazakhstan': 5,
+    'Not assigned': 99
+  };
+
+  return participants.sort((a, b) => {
+    // First sort by accommodation
+    const orderA = accommodationOrder[a.accommodation] || 99;
+    const orderB = accommodationOrder[b.accommodation] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+
+    // Then by group leader (leaders first)
+    if (a.isGroupLeader !== b.isGroupLeader) {
+      return a.isGroupLeader ? -1 : 1;
+    }
+
+    // Then by lastName
+    const lastNameCompare = (a.lastName || '').localeCompare(b.lastName || '');
+    if (lastNameCompare !== 0) return lastNameCompare;
+
+    // Then by firstName
+    return (a.firstName || '').localeCompare(b.firstName || '');
+  });
+}
+
 // GET /api/bookings/:bookingId/participants - Get all participants for booking
 router.get('/:bookingId/participants', authenticate, async (req, res) => {
   try {
@@ -109,15 +140,13 @@ router.get('/:bookingId/participants', authenticate, async (req, res) => {
             }
           }
         }
-      },
-      orderBy: [
-        { isGroupLeader: 'desc' },
-        { lastName: 'asc' },
-        { firstName: 'asc' }
-      ]
+      }
     });
 
-    res.json({ participants });
+    // Sort by accommodation (Uzbekistan first, Turkmenistan second), then by name
+    const sortedParticipants = sortParticipantsByAccommodation(participants);
+
+    res.json({ participants: sortedParticipants });
   } catch (error) {
     console.error('Error fetching participants:', error);
     res.status(500).json({ error: 'Ошибка загрузки участников' });
@@ -829,18 +858,19 @@ router.post('/:bookingId/participants/import', authenticate, async (req, res) =>
     // Update booking pax count
     await updateBookingPaxCount(bookingIdInt);
 
-    // Return updated participants list
+    // Return updated participants list (sorted by accommodation)
     const updatedParticipants = await prisma.tourParticipant.findMany({
       where: { bookingId: bookingIdInt },
-      include: { roomAssignments: true },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
+      include: { roomAssignments: true }
     });
+
+    const sortedParticipants = sortParticipantsByAccommodation(updatedParticipants);
 
     res.status(201).json({
       count: created.count,
       deleted: deleteResult.count,
       message: `Заменено: удалено ${deleteResult.count}, импортировано ${created.count} участников`,
-      participants: updatedParticipants
+      participants: sortedParticipants
     });
   } catch (error) {
     console.error('Error importing participants:', error);
