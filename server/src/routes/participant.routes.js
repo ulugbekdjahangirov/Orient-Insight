@@ -753,64 +753,27 @@ router.post('/:bookingId/participants/import/preview', authenticate, (req, res, 
       return res.status(400).json({ error: 'Не найдены данные участников' });
     }
 
-    // Check for duplicates within all files (ignore "Not provided" passports)
-    const passportSet = new Set();
-    const duplicatesInFiles = [];
-
-    for (const p of allParticipants) {
-      if (p.passportNumber && p.passportNumber !== NOT_PROVIDED) {
-        if (passportSet.has(p.passportNumber)) {
-          duplicatesInFiles.push(p.passportNumber);
-          p.isDuplicateInFiles = true;
-        } else {
-          passportSet.add(p.passportNumber);
-        }
-      }
-    }
-
-    // Check for duplicates in database (ignore "Not provided" passports)
-    const existingParticipants = await prisma.tourParticipant.findMany({
-      where: { bookingId: parseInt(bookingId) },
-      select: { passportNumber: true }
+    // Get count of existing participants (for info only - will be replaced)
+    const existingCount = await prisma.tourParticipant.count({
+      where: { bookingId: parseInt(bookingId) }
     });
 
-    const existingPassports = new Set(
-      existingParticipants
-        .map(p => p.passportNumber)
-        .filter(p => p && p !== NOT_PROVIDED)
-    );
-
-    // Mark duplicates - "Not provided" passports are never considered duplicates
-    const previewData = allParticipants.map((p, idx) => {
-      const passport = p.passportNumber;
-      const isRealPassport = passport && passport !== NOT_PROVIDED;
-      const isDuplicateInDb = isRealPassport && existingPassports.has(passport);
-      const isDuplicateInFiles = p.isDuplicateInFiles || false;
-      const isDuplicate = isDuplicateInDb || isDuplicateInFiles;
-
-      return {
-        ...p,
-        id: idx + 1,
-        isDuplicate,
-        isDuplicateInDb,
-        isDuplicateInFiles,
-        selected: !isDuplicate
-      };
-    });
-
-    const duplicateCount = previewData.filter(p => p.isDuplicate).length;
-    const duplicateInDbCount = previewData.filter(p => p.isDuplicateInDb).length;
-    const duplicateInFilesCount = previewData.filter(p => p.isDuplicateInFiles && !p.isDuplicateInDb).length;
+    // FULL REPLACE MODE: No duplicate validation needed
+    // All participants will be imported, replacing existing data
+    const previewData = allParticipants.map((p, idx) => ({
+      ...p,
+      id: idx + 1,
+      selected: true  // All selected by default in replace mode
+    }));
 
     res.json({
       participants: previewData,
       total: previewData.length,
-      duplicates: duplicateCount,
-      duplicatesInDb: duplicateInDbCount,
-      duplicatesInFiles: duplicateInFilesCount,
-      toImport: previewData.length - duplicateCount,
+      existingCount,  // How many will be deleted
+      toImport: previewData.length,
       files: filesSummary,
-      fileCount: files.length
+      fileCount: files.length,
+      mode: 'replace'  // Indicate this is replace mode
     });
   } catch (error) {
     console.error('Error previewing import:', error);
@@ -818,8 +781,8 @@ router.post('/:bookingId/participants/import/preview', authenticate, (req, res, 
   }
 });
 
-// POST /api/bookings/:bookingId/participants/import - Import participants (from preview data)
-// Excel is the main data source - all rows are imported, missing fields use "Not provided"
+// POST /api/bookings/:bookingId/participants/import - Import participants (FULL REPLACE mode)
+// Deletes all existing participants and replaces with new data from Excel
 router.post('/:bookingId/participants/import', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -830,38 +793,25 @@ router.post('/:bookingId/participants/import', authenticate, async (req, res) =>
     }
 
     const NOT_PROVIDED = 'Not provided';
+    const bookingIdInt = parseInt(bookingId);
 
-    // Get existing passport numbers to skip duplicates silently
-    // "Not provided" passports are never considered duplicates
-    const existingParticipants = await prisma.tourParticipant.findMany({
-      where: { bookingId: parseInt(bookingId) },
-      select: { passportNumber: true }
-    });
-
-    const existingPassports = new Set(
-      existingParticipants
-        .map(p => p.passportNumber)
-        .filter(p => p && p !== NOT_PROVIDED)
-    );
-
-    // Filter only by selection and real duplicates
-    const toCreate = participants.filter(p => {
-      // Skip if marked as not selected
-      if (p.selected === false) return false;
-      // Skip duplicates by passport (but not "Not provided" ones)
-      const passport = p.passportNumber;
-      if (passport && passport !== NOT_PROVIDED && existingPassports.has(passport)) return false;
-      // Import all rows - even if names are "Not provided"
-      return true;
-    });
+    // Filter only selected participants
+    const toCreate = participants.filter(p => p.selected !== false);
 
     if (toCreate.length === 0) {
-      return res.status(400).json({ error: 'Нет участников для импорта (все дубликаты или не выбраны)' });
+      return res.status(400).json({ error: 'Нет участников для импорта (ни один не выбран)' });
     }
 
+    // FULL REPLACE MODE: Delete all existing participants for this booking first
+    // This also cascades to delete their room assignments
+    const deleteResult = await prisma.tourParticipant.deleteMany({
+      where: { bookingId: bookingIdInt }
+    });
+
+    // Insert all new participants from Excel
     const created = await prisma.tourParticipant.createMany({
       data: toCreate.map(p => ({
-        bookingId: parseInt(bookingId),
+        bookingId: bookingIdInt,
         firstName: p.firstName?.toString().trim() || NOT_PROVIDED,
         lastName: p.lastName?.toString().trim() || NOT_PROVIDED,
         fullName: `${p.lastName || NOT_PROVIDED}, ${p.firstName || NOT_PROVIDED}`.trim(),
@@ -870,27 +820,26 @@ router.post('/:bookingId/participants/import', authenticate, async (req, res) =>
         dateOfBirth: p.dateOfBirth ? new Date(p.dateOfBirth) : null,
         passportExpiryDate: p.passportExpiryDate ? new Date(p.passportExpiryDate) : null,
         roomPreference: p.roomPreference || NOT_PROVIDED,
+        accommodation: p.tripType || 'Not assigned',
         isGroupLeader: p.isGroupLeader || false,
         notes: p.notes || null
       }))
     });
 
     // Update booking pax count
-    await updateBookingPaxCount(parseInt(bookingId));
-
-    const skipped = participants.length - toCreate.length;
+    await updateBookingPaxCount(bookingIdInt);
 
     // Return updated participants list
     const updatedParticipants = await prisma.tourParticipant.findMany({
-      where: { bookingId: parseInt(bookingId) },
+      where: { bookingId: bookingIdInt },
       include: { roomAssignments: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
     });
 
     res.status(201).json({
       count: created.count,
-      skipped,
-      message: `Импортировано ${created.count} участников${skipped > 0 ? `, пропущено ${skipped} дубликатов` : ''}`,
+      deleted: deleteResult.count,
+      message: `Заменено: удалено ${deleteResult.count}, импортировано ${created.count} участников`,
       participants: updatedParticipants
     });
   } catch (error) {
