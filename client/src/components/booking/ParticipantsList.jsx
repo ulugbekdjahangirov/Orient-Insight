@@ -152,19 +152,19 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
     }
   };
 
-  // Import handlers
+  // Import handlers - supports multiple files
   const handleFileSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     setImporting(true);
     try {
-      const response = await participantsApi.importPreview(bookingId, file);
+      const response = await participantsApi.importPreview(bookingId, files);
       setImportPreview(response.data);
       setImportData(response.data.participants.map(p => ({ ...p })));
       setImportModalOpen(true);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка чтения файла');
+      toast.error(error.response?.data?.error || 'Ошибка чтения файлов');
     } finally {
       setImporting(false);
       e.target.value = '';
@@ -289,7 +289,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
             </div>
           )}
 
-          {/* Import button */}
+          {/* Import button - supports multiple files */}
           <label className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer text-sm">
             <Upload className="w-4 h-4" />
             {importing ? 'Загрузка...' : 'Импорт'}
@@ -299,6 +299,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
               onChange={handleFileSelect}
               className="hidden"
               disabled={importing}
+              multiple
             />
           </label>
 
@@ -561,16 +562,30 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
       {/* Import Preview Modal */}
       {importModalOpen && importPreview && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Предпросмотр импорта ({importPreview.fileType})
+                  Предпросмотр импорта {importPreview.fileCount > 1 ? `(${importPreview.fileCount} файлов)` : ''}
                 </h2>
                 <p className="text-sm text-gray-500">
                   Найдено: {importPreview.total} | К импорту: {importData.filter(p => p.selected).length} |
-                  Дубликаты: {importPreview.duplicates}
+                  Дубликаты в БД: {importPreview.duplicatesInDb || 0} |
+                  Дубликаты в файлах: {importPreview.duplicatesInFiles || 0}
                 </p>
+                {/* File summary */}
+                {importPreview.files && importPreview.files.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {importPreview.files.map((f, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+                        <FileSpreadsheet className="w-3 h-3" />
+                        {f.filename.length > 30 ? f.filename.substring(0, 30) + '...' : f.filename}
+                        <span className="text-blue-500">({f.count} чел.)</span>
+                        {f.tripType && <span className="font-medium">→ {f.tripType}</span>}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <button onClick={() => setImportModalOpen(false)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
@@ -596,12 +611,13 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                     <th className="py-2 pr-2">Дата рожд.</th>
                     <th className="py-2 pr-2">Срок пасп.</th>
                     <th className="py-2 pr-2">Номер</th>
+                    <th className="py-2 pr-2">Размещение</th>
                     <th className="py-2">Статус</th>
                   </tr>
                 </thead>
                 <tbody>
                   {importData.map((p) => (
-                    <tr key={p.id} className={`border-b border-gray-100 ${p.isDuplicate ? 'bg-red-50' : ''}`}>
+                    <tr key={p.id} className={`border-b border-gray-100 ${p.isDuplicate ? 'bg-red-50' : p.isDuplicateInFiles ? 'bg-yellow-50' : ''}`}>
                       <td className="py-2 pr-2">
                         <input
                           type="checkbox"
@@ -674,11 +690,28 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                           ))}
                         </select>
                       </td>
+                      <td className="py-2 pr-2">
+                        <span className={`px-2 py-0.5 rounded text-xs ${
+                          p.tripType === 'Turkmenistan' ? 'bg-purple-100 text-purple-700' :
+                          p.tripType === 'Uzbekistan' ? 'bg-green-100 text-green-700' :
+                          p.tripType === 'Kyrgyzstan' ? 'bg-blue-100 text-blue-700' :
+                          p.tripType === 'Tajikistan' ? 'bg-orange-100 text-orange-700' :
+                          p.tripType === 'Kazakhstan' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {p.tripType || '-'}
+                        </span>
+                      </td>
                       <td className="py-2">
-                        {p.isDuplicate ? (
+                        {p.isDuplicateInDb ? (
                           <span className="inline-flex items-center gap-1 text-xs text-red-600">
                             <AlertCircle className="w-3 h-3" />
-                            Дубликат
+                            В БД
+                          </span>
+                        ) : p.isDuplicateInFiles ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-yellow-600">
+                            <AlertCircle className="w-3 h-3" />
+                            Повтор
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs text-green-600">

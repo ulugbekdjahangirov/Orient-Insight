@@ -16,10 +16,10 @@ try {
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Multer for Excel/PDF file upload (in memory)
+// Multer for Excel/PDF file upload (in memory) - supports multiple files
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per file
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -34,6 +34,9 @@ const upload = multer({
     }
   }
 });
+
+// Multiple files upload (up to 10 files)
+const uploadMultiple = upload.array('files', 10);
 
 // ============================================
 // DATE PARSING HELPER
@@ -268,59 +271,263 @@ router.post('/:bookingId/participants/bulk', authenticate, async (req, res) => {
 // IMPORT PREVIEW & EXECUTE
 // ============================================
 
+// Helper: Detect trip type (Размещение) from filename or Excel content
+function detectTripType(filename, rawData) {
+  // Check filename first
+  const lowerFilename = (filename || '').toLowerCase();
+
+  // Check for "mit Verlängerung" (extension) patterns
+  if (lowerFilename.includes('verlängerung') || lowerFilename.includes('verlangerung')) {
+    if (lowerFilename.includes('turkmenistan')) {
+      return 'Turkmenistan';
+    }
+    if (lowerFilename.includes('kirgistan') || lowerFilename.includes('kyrgyzstan')) {
+      return 'Kyrgyzstan';
+    }
+    if (lowerFilename.includes('tadschikistan') || lowerFilename.includes('tajikistan')) {
+      return 'Tajikistan';
+    }
+    if (lowerFilename.includes('kasachstan') || lowerFilename.includes('kazakhstan')) {
+      return 'Kazakhstan';
+    }
+    // Default extension destination
+    return 'Extension';
+  }
+
+  // Check Excel content (row 2 typically contains "Reise: ...")
+  if (rawData && rawData[1] && rawData[1][0]) {
+    const reiseRow = rawData[1][0].toString().toLowerCase();
+
+    if (reiseRow.includes('verlängerung') || reiseRow.includes('verlangerung')) {
+      if (reiseRow.includes('turkmenistan')) return 'Turkmenistan';
+      if (reiseRow.includes('kirgistan') || reiseRow.includes('kyrgyzstan')) return 'Kyrgyzstan';
+      if (reiseRow.includes('tadschikistan') || reiseRow.includes('tajikistan')) return 'Tajikistan';
+      if (reiseRow.includes('kasachstan') || reiseRow.includes('kazakhstan')) return 'Kazakhstan';
+      return 'Extension';
+    }
+  }
+
+  // Default: determine from base destination
+  if (lowerFilename.includes('usbekistan') || lowerFilename.includes('uzbekistan')) {
+    return 'Uzbekistan';
+  }
+  if (lowerFilename.includes('turkmenistan')) {
+    return 'Turkmenistan';
+  }
+  if (lowerFilename.includes('kirgistan') || lowerFilename.includes('kyrgyzstan')) {
+    return 'Kyrgyzstan';
+  }
+  if (lowerFilename.includes('tadschikistan') || lowerFilename.includes('tajikistan')) {
+    return 'Tajikistan';
+  }
+  if (lowerFilename.includes('kasachstan') || lowerFilename.includes('kazakhstan')) {
+    return 'Kazakhstan';
+  }
+
+  // Check Excel content for destination
+  if (rawData && rawData[1] && rawData[1][0]) {
+    const reiseRow = rawData[1][0].toString().toLowerCase();
+    if (reiseRow.includes('usbekistan') || reiseRow.includes('uzbekistan')) return 'Uzbekistan';
+    if (reiseRow.includes('turkmenistan')) return 'Turkmenistan';
+    if (reiseRow.includes('kirgistan') || reiseRow.includes('kyrgyzstan')) return 'Kyrgyzstan';
+    if (reiseRow.includes('tadschikistan') || reiseRow.includes('tajikistan')) return 'Tajikistan';
+    if (reiseRow.includes('kasachstan') || reiseRow.includes('kazakhstan')) return 'Kazakhstan';
+  }
+
+  return 'Uzbekistan'; // Default
+}
+
 // Helper: Parse Excel file and extract participants
+// Supports Agenturdaten format: first 4 rows are metadata, row 5 is header, data starts at row 6
 // Missing fields are set to "Not provided" - import never stops due to missing data
-function parseExcelFile(buffer) {
+function parseExcelFile(buffer, filename = '') {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   const sheetName = workbook.SheetNames[0];
-  const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+  // Read raw data as array of arrays to handle row skipping
+  const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
 
   const NOT_PROVIDED = 'Not provided';
 
-  return data.map((row, index) => {
-    const firstName = row['FirstName'] || row['Имя'] || row['First Name'] || row['First name'] || '';
-    const lastName = row['LastName'] || row['Фамилия'] || row['Last Name'] || row['Last name'] || row['Name'] || '';
+  // Detect trip type from filename or Excel content
+  const tripType = detectTripType(filename, rawData);
 
-    // Try to extract full name if individual names not found
-    let fName = firstName.toString().trim();
-    let lName = lastName.toString().trim();
+  // Detect if this is Agenturdaten format (check if first row starts with "Agenturdaten" or has metadata)
+  const isAgenturdatenFormat = rawData.length > 6 && (
+    (rawData[0] && rawData[0][0] && rawData[0][0].toString().toLowerCase().includes('agenturdaten')) ||
+    (rawData[1] && rawData[1][0] && rawData[1][0].toString().toLowerCase().includes('reise'))
+  );
 
-    if (!fName && !lName) {
-      const fullName = row['FullName'] || row['Full Name'] || row['Полное имя'] || '';
-      if (fullName) {
-        const parts = fullName.toString().split(/[,\s]+/);
-        if (parts.length >= 2) {
-          lName = parts[0];
-          fName = parts.slice(1).join(' ');
-        } else if (parts.length === 1) {
-          lName = parts[0];
-        }
+  let headerRowIndex = 0;
+  let dataStartIndex = 1;
+
+  if (isAgenturdatenFormat) {
+    // Agenturdaten format: skip first 4 rows, row 5 (index 4) is header, data starts at row 6 (index 5)
+    // Note: Row 5 in Excel = index 4 (0-based), but headers are at index 5 based on actual file structure
+    // Let's find the actual header row by looking for "ID" or "Name" column
+    for (let i = 3; i < Math.min(10, rawData.length); i++) {
+      const row = rawData[i];
+      if (row && row.some(cell => {
+        const val = (cell || '').toString().toLowerCase();
+        return val === 'id' || val === 'name' || val === 'pass-no';
+      })) {
+        headerRowIndex = i;
+        dataStartIndex = i + 1;
+        break;
+      }
+    }
+    // Fallback to default if not found
+    if (headerRowIndex === 0) {
+      headerRowIndex = 5;
+      dataStartIndex = 6;
+    }
+  }
+
+  // Get headers (normalize to lowercase for matching)
+  const headers = rawData[headerRowIndex] || [];
+  const headerMap = {};
+  headers.forEach((h, idx) => {
+    if (h) {
+      headerMap[h.toString().toLowerCase().trim()] = idx;
+    }
+  });
+
+  // Helper to get cell value by header name
+  const getCell = (row, ...possibleHeaders) => {
+    for (const header of possibleHeaders) {
+      const idx = headerMap[header.toLowerCase()];
+      if (idx !== undefined && row[idx] !== undefined && row[idx] !== '') {
+        return row[idx];
+      }
+    }
+    return null;
+  };
+
+  // Parse name from "Mr./Mrs. LastName, FirstName" or "LastName, FirstName" format
+  const parseName = (nameStr) => {
+    if (!nameStr) return { firstName: NOT_PROVIDED, lastName: NOT_PROVIDED, gender: null };
+
+    const name = nameStr.toString().trim();
+    let gender = null;
+    let cleanName = name;
+
+    // Extract gender from title
+    if (name.toLowerCase().startsWith('mr.') || name.toLowerCase().startsWith('mr ')) {
+      gender = 'M';
+      cleanName = name.replace(/^mr\.?\s*/i, '').trim();
+    } else if (name.toLowerCase().startsWith('mrs.') || name.toLowerCase().startsWith('mrs ')) {
+      gender = 'F';
+      cleanName = name.replace(/^mrs\.?\s*/i, '').trim();
+    } else if (name.toLowerCase().startsWith('ms.') || name.toLowerCase().startsWith('ms ')) {
+      gender = 'F';
+      cleanName = name.replace(/^ms\.?\s*/i, '').trim();
+    }
+
+    // Split by comma: "LastName, FirstName"
+    if (cleanName.includes(',')) {
+      const parts = cleanName.split(',').map(p => p.trim());
+      return {
+        lastName: parts[0] || NOT_PROVIDED,
+        firstName: parts.slice(1).join(' ').trim() || NOT_PROVIDED,
+        gender
+      };
+    }
+
+    // If no comma, try space split (FirstName LastName)
+    const parts = cleanName.split(/\s+/);
+    if (parts.length >= 2) {
+      return {
+        firstName: parts[0] || NOT_PROVIDED,
+        lastName: parts.slice(1).join(' ') || NOT_PROVIDED,
+        gender
+      };
+    }
+
+    return { firstName: NOT_PROVIDED, lastName: cleanName || NOT_PROVIDED, gender };
+  };
+
+  // Map room type codes (EZ = SNGL, DZ = DBL)
+  const mapRoomType = (rm) => {
+    if (!rm) return NOT_PROVIDED;
+    const code = rm.toString().toUpperCase().trim();
+    const roomMap = {
+      'EZ': 'SNGL',      // Einzelzimmer → Single
+      'DZ': 'DBL',       // Doppelzimmer → Double
+      'DRZ': 'DBL',      // Dreibettzimmer → Double (treat as double)
+      'DOUBLE': 'DBL',
+      'SINGLE': 'SNGL',
+      'TWIN': 'TWN',
+      'DBL': 'DBL',
+      'SGL': 'SNGL',
+      'SNGL': 'SNGL',
+      'TWN': 'TWN'
+    };
+    return roomMap[code] || code;
+  };
+
+  const participants = [];
+
+  // Process data rows
+  for (let i = dataStartIndex; i < rawData.length; i++) {
+    const row = rawData[i];
+
+    // Skip empty rows (check if row has any meaningful data)
+    const hasData = row.some(cell => cell !== null && cell !== undefined && cell !== '');
+    if (!hasData) continue;
+
+    // Get name and parse it
+    const nameValue = getCell(row, 'Name', 'FullName', 'Full Name', 'Имя');
+    const { firstName, lastName, gender: titleGender } = parseName(nameValue);
+
+    // Skip row if no name at all (likely empty/separator row)
+    if (firstName === NOT_PROVIDED && lastName === NOT_PROVIDED) continue;
+
+    // Get other fields
+    const passport = getCell(row, 'Pass-No', 'Passport', 'PassportNumber', 'Passport Number', 'Паспорт');
+    const dob = getCell(row, 'DoB', 'DateOfBirth', 'Date of Birth', 'DOB', 'Birth Date', 'Дата рождения');
+    const passportExpiry = getCell(row, 'DoE', 'PassportExpiry', 'Passport Expiry', 'Expiry Date', 'Expiry', 'Срок паспорта');
+    const roomPref = getCell(row, 'Rm', 'Room', 'RoomPreference', 'Room Type', 'Номер');
+    const nationality = getCell(row, 'Nat', 'Nationality', 'Гражданство');
+    const vegetarian = getCell(row, 'Veg.', 'Veg', 'Vegetarian');
+    const remarks = getCell(row, 'Remarks', 'Notes', 'Примечания', 'Comm.');
+
+    // Determine gender (from title or explicit column)
+    let gender = titleGender;
+    if (!gender) {
+      const genderCell = getCell(row, 'Gender', 'Пол', 'Sex');
+      if (genderCell) {
+        const g = genderCell.toString().toLowerCase();
+        if (g === 'm' || g === 'male' || g === 'муж') gender = 'M';
+        else if (g === 'f' || g === 'female' || g === 'жен') gender = 'F';
       }
     }
 
-    // If no name found at all, use "Not provided" but still import the row
-    if (!fName) fName = NOT_PROVIDED;
-    if (!lName) lName = NOT_PROVIDED;
+    // Build notes from vegetarian and remarks
+    let notes = [];
+    if (vegetarian && vegetarian.toString().toLowerCase() === 'yes') {
+      notes.push('Vegetarian');
+    }
+    if (remarks) {
+      notes.push(remarks.toString());
+    }
 
-    const gender = row['Gender'] || row['Пол'] || row['Sex'] || '';
-    const passport = row['Passport'] || row['Паспорт'] || row['PassportNumber'] || row['Passport Number'] || '';
-    const dob = row['DateOfBirth'] || row['Дата рождения'] || row['Date of Birth'] || row['DOB'] || row['Birth Date'] || null;
-    const passportExpiry = row['PassportExpiry'] || row['Срок паспорта'] || row['Passport Expiry'] || row['Expiry Date'] || row['Expiry'] || null;
-    const roomPref = row['RoomPreference'] || row['Room'] || row['Номер'] || row['Room Type'] || '';
-
-    return {
-      rowIndex: index + 1,
-      firstName: fName,
-      lastName: lName,
-      gender: gender ? gender.toString().trim() : NOT_PROVIDED,
+    participants.push({
+      rowIndex: i + 1,
+      firstName,
+      lastName,
+      gender: gender || NOT_PROVIDED,
       passportNumber: passport ? passport.toString().trim() : NOT_PROVIDED,
       dateOfBirth: parseDate(dob),
       passportExpiryDate: parseDate(passportExpiry),
-      roomPreference: roomPref ? roomPref.toString().trim() : NOT_PROVIDED,
-      isGroupLeader: row['Leader'] === true || row['Leader'] === 'Yes' || row['Лидер'] === 'Да',
-      notes: row['Notes'] || row['Примечания'] || null
-    };
-  });
+      roomPreference: mapRoomType(roomPref),
+      nationality: nationality ? nationality.toString().trim() : null,
+      tripType, // Размещение - determined from filename/content
+      isGroupLeader: false,
+      notes: notes.length > 0 ? notes.join('; ') : null
+    });
+  }
+
+  return { participants, tripType, filename };
 }
 
 // Helper: Parse PDF file and extract participants (structured tables)
@@ -480,41 +687,81 @@ async function parsePdfFile(buffer) {
   });
 }
 
-// POST /api/bookings/:bookingId/participants/import/preview - Preview import data
-router.post('/:bookingId/participants/import/preview', authenticate, upload.single('file'), async (req, res) => {
+// POST /api/bookings/:bookingId/participants/import/preview - Preview import data (supports multiple files)
+router.post('/:bookingId/participants/import/preview', authenticate, (req, res, next) => {
+  // Use uploadMultiple middleware, fallback to single file
+  uploadMultiple(req, res, (err) => {
+    if (err) {
+      // Try single file upload as fallback
+      upload.single('file')(req, res, next);
+    } else {
+      next();
+    }
+  });
+}, async (req, res) => {
   try {
     const { bookingId } = req.params;
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'Файл не загружен' });
-    }
+    // Handle both single file (req.file) and multiple files (req.files)
+    const files = req.files || (req.file ? [req.file] : []);
 
-    const isPdf = req.file.originalname.toLowerCase().endsWith('.pdf') || req.file.mimetype === 'application/pdf';
-
-    let participants;
-    if (isPdf) {
-      if (!PDFParser) {
-        return res.status(400).json({ error: 'PDF импорт недоступен' });
-      }
-      participants = await parsePdfFile(req.file.buffer);
-    } else {
-      participants = parseExcelFile(req.file.buffer);
-    }
-
-    if (participants.length === 0) {
-      return res.status(400).json({ error: 'Не найдены данные участников' });
+    if (files.length === 0) {
+      return res.status(400).json({ error: 'Файлы не загружены' });
     }
 
     const NOT_PROVIDED = 'Not provided';
+    let allParticipants = [];
+    const filesSummary = [];
 
-    // Check for duplicates within the file (ignore "Not provided" passports)
+    // Process each file
+    for (const file of files) {
+      const isPdf = file.originalname.toLowerCase().endsWith('.pdf') || file.mimetype === 'application/pdf';
+
+      let result;
+      if (isPdf) {
+        if (!PDFParser) {
+          filesSummary.push({
+            filename: file.originalname,
+            error: 'PDF импорт недоступен',
+            count: 0
+          });
+          continue;
+        }
+        const pdfParticipants = await parsePdfFile(file.buffer);
+        result = { participants: pdfParticipants, tripType: 'Unknown', filename: file.originalname };
+      } else {
+        result = parseExcelFile(file.buffer, file.originalname);
+      }
+
+      // Add source file info to each participant
+      const participantsWithSource = result.participants.map(p => ({
+        ...p,
+        sourceFile: file.originalname,
+        tripType: p.tripType || result.tripType
+      }));
+
+      allParticipants = allParticipants.concat(participantsWithSource);
+
+      filesSummary.push({
+        filename: file.originalname,
+        tripType: result.tripType,
+        count: result.participants.length
+      });
+    }
+
+    if (allParticipants.length === 0) {
+      return res.status(400).json({ error: 'Не найдены данные участников' });
+    }
+
+    // Check for duplicates within all files (ignore "Not provided" passports)
     const passportSet = new Set();
-    const duplicatesInFile = [];
+    const duplicatesInFiles = [];
 
-    for (const p of participants) {
+    for (const p of allParticipants) {
       if (p.passportNumber && p.passportNumber !== NOT_PROVIDED) {
         if (passportSet.has(p.passportNumber)) {
-          duplicatesInFile.push(p.passportNumber);
+          duplicatesInFiles.push(p.passportNumber);
+          p.isDuplicateInFiles = true;
         } else {
           passportSet.add(p.passportNumber);
         }
@@ -534,26 +781,36 @@ router.post('/:bookingId/participants/import/preview', authenticate, upload.sing
     );
 
     // Mark duplicates - "Not provided" passports are never considered duplicates
-    const previewData = participants.map((p, idx) => {
+    const previewData = allParticipants.map((p, idx) => {
       const passport = p.passportNumber;
       const isRealPassport = passport && passport !== NOT_PROVIDED;
-      const isDuplicate = isRealPassport && existingPassports.has(passport);
+      const isDuplicateInDb = isRealPassport && existingPassports.has(passport);
+      const isDuplicateInFiles = p.isDuplicateInFiles || false;
+      const isDuplicate = isDuplicateInDb || isDuplicateInFiles;
+
       return {
         ...p,
         id: idx + 1,
         isDuplicate,
+        isDuplicateInDb,
+        isDuplicateInFiles,
         selected: !isDuplicate
       };
     });
 
     const duplicateCount = previewData.filter(p => p.isDuplicate).length;
+    const duplicateInDbCount = previewData.filter(p => p.isDuplicateInDb).length;
+    const duplicateInFilesCount = previewData.filter(p => p.isDuplicateInFiles && !p.isDuplicateInDb).length;
 
     res.json({
       participants: previewData,
       total: previewData.length,
       duplicates: duplicateCount,
+      duplicatesInDb: duplicateInDbCount,
+      duplicatesInFiles: duplicateInFilesCount,
       toImport: previewData.length - duplicateCount,
-      fileType: isPdf ? 'PDF' : 'Excel'
+      files: filesSummary,
+      fileCount: files.length
     });
   } catch (error) {
     console.error('Error previewing import:', error);

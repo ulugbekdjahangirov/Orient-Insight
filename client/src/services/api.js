@@ -56,10 +56,14 @@ export const participantsApi = {
   update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/participants/${id}`, data),
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/participants/${id}`),
   bulkCreate: (bookingId, participants) => api.post(`/bookings/${bookingId}/participants/bulk`, { participants }),
-  // Import with preview
-  importPreview: (bookingId, file) => {
+  // Import with preview (supports multiple files)
+  importPreview: (bookingId, files) => {
     const formData = new FormData();
-    formData.append('file', file);
+    // Support both single file and array of files
+    const fileArray = Array.isArray(files) ? files : [files];
+    fileArray.forEach(file => {
+      formData.append('files', file);
+    });
     return api.post(`/bookings/${bookingId}/participants/import/preview`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
