@@ -25,7 +25,22 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Prisma
 prisma/*.db
 prisma/*.db-journal
+
+# Temporary/test files
+*.pdf
+*.xlsx
+~$*
+screenshot.png
+take-screenshot.ps1
+
+# Claude Code local settings
+.claude/
+
+# Uploads
+uploads/
+server/uploads/

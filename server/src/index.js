@@ -9,6 +9,9 @@ const guideRoutes = require('./routes/guide.routes');
 const tourTypeRoutes = require('./routes/tourType.routes');
 const importRoutes = require('./routes/import.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const hotelRoutes = require('./routes/hotel.routes');
+const cityRoutes = require('./routes/city.routes');
+const participantRoutes = require('./routes/participant.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -16,7 +19,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -25,6 +28,9 @@ app.use('/api/guides', guideRoutes);
 app.use('/api/tour-types', tourTypeRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/hotels', hotelRoutes);
+app.use('/api/cities', cityRoutes);
+app.use('/api/bookings', participantRoutes); // Participant routes under /api/bookings/:bookingId/...
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -43,3 +49,4 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Orient Insight сервер запущен на порту ${PORT}`);
 });
+

@@ -334,7 +334,7 @@ export default function Bookings() {
                   <tr key={booking.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <Link
-                        to={`/bookings/${booking.id}`}
+                        to={`/bookings/${booking.id}?edit=true`}
                         className="font-medium text-primary-600 hover:text-primary-700"
                       >
                         {booking.bookingNumber}

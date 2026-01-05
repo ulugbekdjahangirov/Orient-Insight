@@ -102,6 +102,7 @@ model Booking {
   pax             Int       @default(0) // Общее количество
   paxUzbekistan   Int?      // Участники в Узбекистане
   paxTurkmenistan Int?      // Участники в Туркменистане
+  country         String?   // Страна группы (Germany, France, etc.)
 
   // Гид
   guideId         Int?
@@ -111,11 +112,20 @@ model Booking {
   trainTickets    String?   // ЖД Билеты
   avia            String?   // Авиабилеты
 
-  // Номера в отелях
+  // Номера в отелях (legacy - простые подсчёты)
   roomsDbl        Int       @default(0) // Double rooms
   roomsTwn        Int       @default(0) // Twin rooms
   roomsSngl       Int       @default(0) // Single rooms
   roomsTotal      Int       @default(0) // Всего номеров
+
+  // Размещение в отелях (детальное) - legacy
+  bookingRooms    BookingRoom[]
+
+  // Размещение (новая структура)
+  accommodations  Accommodation[]
+
+  // Участники тура (индивидуальные гости)
+  participants    TourParticipant[]
 
   // Дополнительные даты для ZA туров
   dateOlot        DateTime? // Olot
@@ -184,4 +194,262 @@ model Payment {
   reference     String?
   paidAt        DateTime @default(now())
   notes         String?
+}
+
+// ============================================
+// Модуль: Отели
+// ============================================
+
+// Города
+model City {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique  // Ташкент, Самарканд, Бухара
+  nameEn    String?           // English name
+  country   String   @default("Uzbekistan")
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  hotels         Hotel[]
+}
+
+// Отели
+model Hotel {
+  id          Int       @id @default(autoincrement())
+  name        String                   // Название отеля
+  cityId      Int
+  city        City      @relation(fields: [cityId], references: [id])
+  address     String?                  // Адрес
+  phone       String?                  // Телефон
+  email       String?                  // Email
+  website     String?                  // Вебсайт
+  stars       Int?                     // Звёздность (1-5)
+  description String?                  // Описание
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  roomTypes      RoomType[]
+  bookingRooms   BookingRoom[]
+  accommodations Accommodation[]
+  images         HotelImage[]
+
+  @@unique([name, cityId])
+  @@index([cityId])
+}
+
+// Изображения отелей
+model HotelImage {
+  id          Int      @id @default(autoincrement())
+  hotelId     Int
+  hotel       Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  filename    String                   // Имя файла на диске
+  originalName String                  // Оригинальное имя файла
+  url         String                   // URL для доступа
+  caption     String?                  // Подпись к фото
+  sortOrder   Int      @default(0)     // Порядок сортировки
+  isMain      Boolean  @default(false) // Главное фото
+  createdAt   DateTime @default(now())
+
+  @@index([hotelId])
+}
+
+// Типы номеров
+model RoomType {
+  id            Int      @id @default(autoincrement())
+  hotelId       Int
+  hotel         Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name          String                  // DBL, TWN, SNGL, Suite
+  displayName   String?                 // Полное название: "Double Room", "Twin Room"
+  roomCount     Int      @default(0)    // Количество номеров
+  pricePerNight Float    @default(0)    // Базовая цена за ночь (default)
+  currency      String   @default("USD")
+  description   String?                 // Описание номера
+  amenities     String?                 // Удобства (JSON или текст)
+  maxGuests     Int      @default(2)    // Макс. гостей
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookingRooms       BookingRoom[]
+  accommodationRooms AccommodationRoom[]
+  accommodations     Accommodation[]
+  seasonalPrices     RoomSeasonalPrice[]
+
+  @@unique([hotelId, name])
+  @@index([hotelId])
+}
+
+// Сезонные цены на номера
+model RoomSeasonalPrice {
+  id            Int      @id @default(autoincrement())
+  roomTypeId    Int
+  roomType      RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  name          String                  // "Лето", "Зима", "Высокий сезон"
+  startDate     DateTime                // Начало сезона (месяц-день)
+  endDate       DateTime                // Конец сезона (месяц-день)
+  pricePerNight Float                   // Цена за этот сезон
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([roomTypeId])
+}
+
+// Размещение в отелях для бронирований
+model BookingRoom {
+  id            Int       @id @default(autoincrement())
+  bookingId     Int
+  booking       Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotelId       Int
+  hotel         Hotel     @relation(fields: [hotelId], references: [id])
+  roomTypeId    Int
+  roomType      RoomType  @relation(fields: [roomTypeId], references: [id])
+  checkInDate   DateTime                 // Дата заезда
+  checkOutDate  DateTime                 // Дата выезда
+  quantity      Int       @default(1)    // Количество номеров
+  pricePerNight Float     @default(0)    // Цена за ночь
+  totalPrice    Float     @default(0)    // Итоговая цена
+  notes         String?                  // Примечания
+  createdAt     DateTime  @default(now())
+
+  // Назначения участников в этот номер
+  participantAssignments ParticipantRoomAssignment[]
+
+  @@index([bookingId])
+  @@index([hotelId])
+  @@index([roomTypeId])
+  @@index([checkInDate])
+  @@index([checkOutDate])
+}
+
+// ============================================
+// Модуль: Размещение (Accommodation)
+// ============================================
+
+// Глобальный справочник типов размещения (DBL, TWN, SNGL, TRPL, EXTRA)
+model AccommodationRoomType {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique        // DBL, TWN, SNGL, TRPL, EXTRA
+  name          String                   // Double, Twin, Single, Triple, Extra Bed
+  description   String?                  // Описание
+  maxGuests     Int       @default(2)    // Макс. гостей
+  sortOrder     Int       @default(0)    // Порядок сортировки
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  accommodations Accommodation[]
+  accommodationRooms AccommodationRoom[]
+}
+
+// Размещение в отеле (один отель + один тип номера)
+model Accommodation {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotelId         Int
+  hotel           Hotel     @relation(fields: [hotelId], references: [id])
+  roomTypeCode    String?                 // Код типа размещения (DBL, TWN, SNGL, etc.)
+  accommodationRoomType AccommodationRoomType? @relation(fields: [roomTypeCode], references: [code])
+  checkInDate     DateTime
+  checkOutDate    DateTime
+  nights          Int       @default(0)  // Рассчитывается на бэкенде
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Legacy: для обратной совместимости
+  roomTypeId    Int?
+  roomType      RoomType? @relation(fields: [roomTypeId], references: [id])
+  rooms         AccommodationRoom[]
+
+  @@index([bookingId])
+  @@index([hotelId])
+  @@index([roomTypeCode])
+  @@index([checkInDate])
+}
+
+// Отдельный тип номера в размещении
+model AccommodationRoom {
+  id              Int           @id @default(autoincrement())
+  accommodationId Int
+  accommodation   Accommodation @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
+  roomTypeCode    String        @default("DBL") // Код типа размещения (DBL, TWN, SNGL, etc.)
+  accommodationRoomType AccommodationRoomType? @relation(fields: [roomTypeCode], references: [code])
+  roomsCount      Int           @default(1)    // Количество номеров этого типа
+  guestsPerRoom   Int           @default(2)    // Гостей в номере
+  pricePerNight   Float         @default(0)    // Цена за ночь
+  totalCost       Float         @default(0)    // Общая стоимость (рассчитывается на бэкенде)
+  createdAt       DateTime      @default(now())
+
+  // Legacy поля для обратной совместимости
+  roomTypeId      Int?
+  roomType        RoomType?     @relation(fields: [roomTypeId], references: [id])
+
+  @@index([accommodationId])
+  @@index([roomTypeCode])
+}
+
+// ============================================
+// Модуль: Участники тура (Rooming List)
+// ============================================
+
+// Участники тура (индивидуальные гости)
+model TourParticipant {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Персональные данные
+  firstName           String                   // Имя
+  lastName            String                   // Фамилия
+  fullName            String?                  // Полное имя (для отображения)
+  gender              String?                  // M/F
+  passportNumber      String?                  // Номер паспорта (опционально)
+  dateOfBirth         DateTime?               // Дата рождения
+  passportExpiryDate  DateTime?               // Срок действия паспорта
+
+  // Размещение (страна тура)
+  accommodation   String?   @default("Not assigned") // Uzbekistan, Turkmenistan, Not assigned
+
+  // Предпочтения по размещению
+  roomPreference  String?                  // DBL, TWN, SNGL
+  roommateId      Int?                     // ID сожителя (для пар)
+
+  // Статус
+  isGroupLeader   Boolean   @default(false) // Лидер группы
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Назначения в номера
+  roomAssignments ParticipantRoomAssignment[]
+
+  @@index([bookingId])
+  @@index([lastName])
+}
+
+// Назначение участника в номер
+model ParticipantRoomAssignment {
+  id              Int       @id @default(autoincrement())
+  participantId   Int
+  participant     TourParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  bookingRoomId   Int
+  bookingRoom     BookingRoom @relation(fields: [bookingRoomId], references: [id], onDelete: Cascade)
+
+  // Индивидуальные даты (для продлённого проживания)
+  checkInDate     DateTime?                // NULL = использовать даты из BookingRoom
+  checkOutDate    DateTime?                // NULL = использовать даты из BookingRoom
+
+  // Для дополнительных ночей
+  extraNights     Int       @default(0)    // Дополнительные ночи
+  extraCost       Float     @default(0)    // Доп. стоимость
+
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  @@unique([participantId, bookingRoomId])  // Один участник - одно назначение на номер
+  @@index([participantId])
+  @@index([bookingRoomId])
 }

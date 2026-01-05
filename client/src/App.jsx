@@ -7,6 +7,7 @@ import Bookings from './pages/Bookings';
 import BookingDetail from './pages/BookingDetail';
 import Guides from './pages/Guides';
 import TourTypes from './pages/TourTypes';
+import Hotels from './pages/Hotels';
 import Import from './pages/Import';
 import Users from './pages/Users';
 
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="bookings/:id" element={<BookingDetail />} />
         <Route path="guides" element={<Guides />} />
         <Route path="tour-types" element={<TourTypes />} />
+        <Route path="hotels" element={<Hotels />} />
         <Route
           path="import"
           element={

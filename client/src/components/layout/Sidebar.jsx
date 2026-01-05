@@ -9,7 +9,8 @@ import {
   UserCog,
   ChevronLeft,
   ChevronRight,
-  Compass
+  Compass,
+  Building2
 } from 'lucide-react';
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { path: '/bookings', icon: CalendarDays, label: 'Бронирования' },
   { path: '/guides', icon: Users, label: 'Гиды' },
   { path: '/tour-types', icon: MapPin, label: 'Типы туров' },
+  { path: '/hotels', icon: Building2, label: 'Отели' },
 ];
 
 const adminItems = [
