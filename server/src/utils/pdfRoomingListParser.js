@@ -114,52 +114,46 @@ function cleanName(name) {
 }
 
 /**
- * Extract international flights (routes involving IST, TAS)
+ * Extract international flights (routes involving IST or European airports)
  */
 function extractInternationalFlights(text) {
   const flights = [];
 
-  // Look for flight patterns in the text
-  // Pattern: TK XXXX, date, route like FRA - IST, IST - TAS, TAS - IST, IST - FRA
-  const flightPatterns = [
-    // TK flights with route
-    /TK\s*(\d{3,4})\s+(?:\w+[.,]?\s+)?(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi,
-    // HY flights (international)
-    /HY\s*(\d{2,4})\s+(?:\w+[.,]?\s+)?(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi
-  ];
+  // Flight pattern: AIRLINE CODE + DATE + ROUTE + TIMES
+  const flightPattern = /(?:TK|HY)\s*(\d{2,4})\s+(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
 
-  const internationalAirports = ['FRA', 'HAM', 'BER', 'MUC', 'STR', 'NUE', 'IST', 'TAS', 'ASB'];
+  // European/International airports (not in Uzbekistan)
+  const internationalAirports = ['FRA', 'HAM', 'BER', 'MUC', 'STR', 'NUE', 'IST', 'ASB'];
+  // Uzbekistan domestic airports
   const uzbekAirports = ['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG'];
 
-  for (const pattern of flightPatterns) {
-    let match;
-    pattern.lastIndex = 0;
-    while ((match = pattern.exec(text)) !== null) {
-      const [, flightNum, dateStr, dep, arr, depTime, arrTime] = match;
+  let match;
+  while ((match = flightPattern.exec(text)) !== null) {
+    const [fullMatch, flightNum, dateStr, dep, arr, depTime, arrTime] = match;
+    const airline = fullMatch.trim().startsWith('HY') ? 'HY' : 'TK';
 
-      // Check if it's international (involves IST or connects to/from Europe)
-      const isInternational =
-        dep === 'IST' || arr === 'IST' ||
-        (internationalAirports.includes(dep) && !uzbekAirports.slice(1).includes(dep)) ||
-        (internationalAirports.includes(arr) && !uzbekAirports.slice(1).includes(arr));
+    // International = involves IST, European airports, or ASB (Ashgabat)
+    // NOT domestic = both airports are within Uzbekistan
+    const depIsUzbek = uzbekAirports.includes(dep);
+    const arrIsUzbek = uzbekAirports.includes(arr);
+    const isInternational = internationalAirports.includes(dep) || internationalAirports.includes(arr) ||
+                           !(depIsUzbek && arrIsUzbek);
 
-      if (isInternational) {
-        const airline = match[0].startsWith('HY') ? 'HY' : 'TK';
-        const existing = flights.find(f =>
-          f.flightNumber === `${airline} ${flightNum}` && f.departure === dep && f.arrival === arr
-        );
+    if (isInternational) {
+      const existing = flights.find(f =>
+        f.flightNumber === `${airline} ${flightNum}` && f.departure === dep && f.arrival === arr
+      );
 
-        if (!existing) {
-          flights.push({
-            flightNumber: `${airline} ${flightNum}`,
-            departure: dep,
-            arrival: arr,
-            date: parseFlightDate(dateStr),
-            departureTime: depTime,
-            arrivalTime: arrTime,
-            type: 'INTERNATIONAL'
-          });
-        }
+      if (!existing) {
+        flights.push({
+          flightNumber: `${airline} ${flightNum}`,
+          departure: dep,
+          arrival: arr,
+          date: parseFlightDate(dateStr),
+          departureTime: depTime,
+          arrivalTime: arrTime,
+          type: 'INTERNATIONAL'
+        });
       }
     }
   }
@@ -180,39 +174,37 @@ function extractInternationalFlights(text) {
 function extractDomesticFlights(text) {
   const flights = [];
 
+  // Uzbekistan domestic airports
   const uzbekAirports = ['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG'];
 
-  // HY domestic flight pattern
-  const flightPattern = /HY\s*(\d{2,4})\s+(?:\w+[.,]?\s+)?(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
+  // Flight pattern: AIRLINE CODE + DATE + ROUTE + TIMES
+  const flightPattern = /(?:TK|HY)\s*(\d{2,4})\s+(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
 
   let match;
   while ((match = flightPattern.exec(text)) !== null) {
-    const [, flightNum, dateStr, dep, arr, depTime, arrTime] = match;
+    const [fullMatch, flightNum, dateStr, dep, arr, depTime, arrTime] = match;
+    const airline = fullMatch.trim().startsWith('HY') ? 'HY' : 'TK';
 
-    // Check if both airports are in Uzbekistan
-    if (uzbekAirports.includes(dep) && uzbekAirports.includes(arr) && dep !== 'TAS' && arr !== 'TAS' ? false :
-        (uzbekAirports.includes(dep) && uzbekAirports.includes(arr))) {
-      // It's domestic if both are UZ airports and at least one is not TAS (internal transfer)
-      // or one is UGC/SKD/BHK etc connecting to TAS
-      const isDomestic = uzbekAirports.includes(dep) && uzbekAirports.includes(arr) &&
-                        (dep !== 'IST' && arr !== 'IST');
+    // Domestic = both airports are within Uzbekistan
+    const depIsUzbek = uzbekAirports.includes(dep);
+    const arrIsUzbek = uzbekAirports.includes(arr);
+    const isDomestic = depIsUzbek && arrIsUzbek;
 
-      if (isDomestic) {
-        const existing = flights.find(f =>
-          f.flightNumber === `HY ${flightNum}` && f.departure === dep && f.arrival === arr
-        );
+    if (isDomestic) {
+      const existing = flights.find(f =>
+        f.flightNumber === `${airline} ${flightNum}` && f.departure === dep && f.arrival === arr
+      );
 
-        if (!existing) {
-          flights.push({
-            flightNumber: `HY ${flightNum}`,
-            departure: dep,
-            arrival: arr,
-            date: parseFlightDate(dateStr),
-            departureTime: depTime,
-            arrivalTime: arrTime,
-            type: 'DOMESTIC'
-          });
-        }
+      if (!existing) {
+        flights.push({
+          flightNumber: `${airline} ${flightNum}`,
+          departure: dep,
+          arrival: arr,
+          date: parseFlightDate(dateStr),
+          departureTime: depTime,
+          arrivalTime: arrTime,
+          type: 'DOMESTIC'
+        });
       }
     }
   }

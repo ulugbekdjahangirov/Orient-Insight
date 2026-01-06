@@ -1981,9 +1981,9 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       }
     }
 
-    // Parse flights from structured table data (screenshot format)
-    // Look for patterns like: TK 1664 Fr, 03OKT HAM - IST 18:40 - 23:00
-    const flightTablePattern = /(TK|HY)\s*(\d{2,4})\s+\w+[,.]?\s*(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
+    // Parse flights from structured table data
+    // Patterns: "TK 1884 15FEB IST - TAS 23:55 - 06:15" or "TK 1664 Fr, 03OKT HAM - IST 18:40 - 23:00"
+    const flightTablePattern = /(TK|HY)\s*(\d{2,4})\s+(?:\w+[,.]?\s*)?(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
     let flightTableMatch;
     while ((flightTableMatch = flightTablePattern.exec(text)) !== null) {
       const [, airline, num, dateStr, dep, arr, depTime, arrTime] = flightTableMatch;
@@ -2017,10 +2017,13 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       }
 
       const targetArray = isInternational ? flights.international : flights.domestic;
-      const exists = targetArray.find(f =>
+      const existingIndex = targetArray.findIndex(f =>
         f.flightNumber === flightInfo.flightNumber && f.departure === dep && f.arrival === arr
       );
-      if (!exists) {
+      if (existingIndex >= 0) {
+        // Update existing flight with date/time info
+        targetArray[existingIndex] = { ...targetArray[existingIndex], ...flightInfo };
+      } else {
         targetArray.push(flightInfo);
       }
     }
