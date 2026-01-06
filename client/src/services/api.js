@@ -49,14 +49,14 @@ export const bookingsApi = {
   getAccommodationRoomTypes: () => api.get('/bookings/accommodation-room-types')
 };
 
-// API для участников тура
-export const participantsApi = {
-  getAll: (bookingId) => api.get(`/bookings/${bookingId}/participants`),
-  create: (bookingId, data) => api.post(`/bookings/${bookingId}/participants`, data),
-  update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/participants/${id}`, data),
-  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/participants/${id}`),
-  bulkCreate: (bookingId, participants) => api.post(`/bookings/${bookingId}/participants/bulk`, { participants }),
-  // Import with preview (supports multiple files)
+// API for tourists (also used by Rooming List module)
+export const touristsApi = {
+  getAll: (bookingId) => api.get(`/bookings/${bookingId}/tourists`),
+  create: (bookingId, data) => api.post(`/bookings/${bookingId}/tourists`, data),
+  update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/tourists/${id}`, data),
+  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/tourists/${id}`),
+  bulkCreate: (bookingId, tourists) => api.post(`/bookings/${bookingId}/tourists/bulk`, { tourists }),
+  // Import with preview (supports multiple Excel + PDF files)
   importPreview: (bookingId, files) => {
     const formData = new FormData();
     // Support both single file and array of files
@@ -64,18 +64,37 @@ export const participantsApi = {
     fileArray.forEach(file => {
       formData.append('files', file);
     });
-    return api.post(`/bookings/${bookingId}/participants/import/preview`, formData, {
+    return api.post(`/bookings/${bookingId}/tourists/import/preview`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  import: (bookingId, participants) => api.post(`/bookings/${bookingId}/participants/import`, { participants }),
+  import: (bookingId, tourists) => api.post(`/bookings/${bookingId}/tourists/import`, { tourists }),
   // Export
-  exportExcel: (bookingId) => api.get(`/bookings/${bookingId}/participants/export/excel`, { responseType: 'blob' }),
-  exportPdf: (bookingId) => api.get(`/bookings/${bookingId}/participants/export/pdf`, { responseType: 'blob' }),
+  exportExcel: (bookingId) => api.get(`/bookings/${bookingId}/tourists/export/excel`, { responseType: 'blob' }),
+  exportPdf: (bookingId) => api.get(`/bookings/${bookingId}/tourists/export/pdf`, { responseType: 'blob' }),
   // Room Assignments
   createAssignment: (bookingId, data) => api.post(`/bookings/${bookingId}/room-assignments`, data),
   updateAssignment: (bookingId, id, data) => api.put(`/bookings/${bookingId}/room-assignments/${id}`, data),
-  deleteAssignment: (bookingId, id) => api.delete(`/bookings/${bookingId}/room-assignments/${id}`)
+  deleteAssignment: (bookingId, id) => api.delete(`/bookings/${bookingId}/room-assignments/${id}`),
+  // Rooming List PDF Import (replaces all tourists and flights)
+  importRoomingListPdf: (bookingId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/bookings/${bookingId}/rooming-list/import-pdf`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
+};
+
+// Backward compatibility alias
+export const participantsApi = touristsApi;
+
+// API for flights
+export const flightsApi = {
+  getAll: (bookingId) => api.get(`/bookings/${bookingId}/flights`),
+  create: (bookingId, data) => api.post(`/bookings/${bookingId}/flights`, data),
+  update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/flights/${id}`, data),
+  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/flights/${id}`)
 };
 
 // API для гидов

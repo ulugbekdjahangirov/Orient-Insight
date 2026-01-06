@@ -11,7 +11,7 @@ const importRoutes = require('./routes/import.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const hotelRoutes = require('./routes/hotel.routes');
 const cityRoutes = require('./routes/city.routes');
-const participantRoutes = require('./routes/participant.routes');
+const touristRoutes = require('./routes/tourist.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -30,7 +30,7 @@ app.use('/api/import', importRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/cities', cityRoutes);
-app.use('/api/bookings', participantRoutes); // Participant routes under /api/bookings/:bookingId/...
+app.use('/api/bookings', touristRoutes); // Tourist routes under /api/bookings/:bookingId/...
 
 // Health check
 app.get('/api/health', (req, res) => {

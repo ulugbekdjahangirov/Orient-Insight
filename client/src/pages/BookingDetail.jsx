@@ -21,12 +21,14 @@ import {
   Bed,
   DollarSign,
   FileText,
-  ClipboardList
+  ClipboardList,
+  List
 } from 'lucide-react';
 
 // Import booking components
-import ParticipantsList from '../components/booking/ParticipantsList';
+import TouristsList from '../components/booking/TouristsList';
 import RoomingList from '../components/booking/RoomingList';
+import RoomingListModule from '../components/booking/RoomingListModule';
 import HotelRequestPreview from '../components/booking/HotelRequestPreview';
 import CostSummary from '../components/booking/CostSummary';
 import HotelAccommodationForm from '../components/booking/HotelAccommodationForm';
@@ -527,8 +529,9 @@ export default function BookingDetail() {
             {[
               { id: 'info', label: 'Информация', icon: MapPin },
               { id: 'rooms', label: 'Размещение', icon: Building2 },
-              { id: 'participants', label: 'Участники', icon: Users },
-              { id: 'rooming', label: 'Rooming List', icon: ClipboardList },
+              { id: 'tourists', label: 'Tourists', icon: Users },
+              { id: 'rooming-list', label: 'Rooming List', icon: List },
+              { id: 'rooming', label: 'Назначения', icon: ClipboardList },
               { id: 'documents', label: 'Документы', icon: FileText },
               { id: 'costs', label: 'Стоимость', icon: DollarSign }
             ].map((tab) => (
@@ -550,9 +553,15 @@ export default function BookingDetail() {
       )}
 
       {/* Tab Content */}
-      {!isNew && activeTab === 'participants' && (
+      {!isNew && activeTab === 'tourists' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <ParticipantsList bookingId={parseInt(id)} onUpdate={loadData} />
+          <TouristsList bookingId={parseInt(id)} onUpdate={loadData} />
+        </div>
+      )}
+
+      {!isNew && activeTab === 'rooming-list' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <RoomingListModule bookingId={parseInt(id)} onUpdate={loadData} />
         </div>
       )}
 
@@ -949,11 +958,11 @@ export default function BookingDetail() {
         {/* Sidebar - show for Info tab or new booking */}
         {(isNew || activeTab === 'info') && (
         <div className="space-y-6">
-          {/* Participants */}
+          {/* Tourists */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Users className="w-5 h-5 text-gray-400" />
-              Участники
+              Tourists
             </h2>
 
             <div className="space-y-4">

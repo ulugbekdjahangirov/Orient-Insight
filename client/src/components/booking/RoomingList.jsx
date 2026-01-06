@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { bookingsApi, participantsApi } from '../../services/api';
+import { bookingsApi, touristsApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
   Building2, MapPin, Calendar, Bed, Users, Plus, Edit,
@@ -68,8 +68,8 @@ export default function RoomingList({ bookingId, bookingRooms = [], participants
     }
 
     try {
-      await participantsApi.createAssignment(bookingId, {
-        participantId: parseInt(assignForm.participantId),
+      await touristsApi.createAssignment(bookingId, {
+        touristId: parseInt(assignForm.participantId),
         bookingRoomId: selectedRoom.id,
         checkInDate: assignForm.checkInDate || null,
         checkOutDate: assignForm.checkOutDate || null,
@@ -89,7 +89,7 @@ export default function RoomingList({ bookingId, bookingRooms = [], participants
     if (!confirm('Удалить назначение?')) return;
 
     try {
-      await participantsApi.deleteAssignment(bookingId, assignmentId);
+      await touristsApi.deleteAssignment(bookingId, assignmentId);
       toast.success('Назначение удалено');
       loadRoomingList();
       onUpdate?.();

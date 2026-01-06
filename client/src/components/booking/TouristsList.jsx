@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { participantsApi } from '../../services/api';
+import { touristsApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
   Plus, Edit, Trash2, Upload, Users, Crown, User,
@@ -7,22 +7,25 @@ import {
   AlertCircle, Check, ChevronDown
 } from 'lucide-react';
 
-export default function ParticipantsList({ bookingId, onUpdate }) {
-  const [participants, setParticipants] = useState([]);
+export default function TouristsList({ bookingId, onUpdate }) {
+  const [tourists, setTourists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingParticipant, setEditingParticipant] = useState(null);
+  const [editingTourist, setEditingTourist] = useState(null);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     gender: '',
+    country: '',
     passportNumber: '',
     dateOfBirth: '',
     passportExpiryDate: '',
     roomPreference: '',
+    accommodation: '',
+    remarks: '',
     isGroupLeader: false,
     notes: ''
   });
@@ -37,16 +40,16 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   useEffect(() => {
-    loadParticipants();
+    loadTourists();
   }, [bookingId]);
 
-  const loadParticipants = async () => {
+  const loadTourists = async () => {
     try {
       setLoading(true);
-      const response = await participantsApi.getAll(bookingId);
-      setParticipants(response.data.participants || []);
+      const response = await touristsApi.getAll(bookingId);
+      setTourists(response.data.tourists || []);
     } catch (error) {
-      toast.error('Ошибка загрузки участников');
+      toast.error('Error loading tourists');
     } finally {
       setLoading(false);
     }
@@ -80,30 +83,36 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
     return date < sixMonths && date >= new Date();
   };
 
-  const openModal = (participant = null) => {
-    if (participant) {
-      setEditingParticipant(participant);
+  const openModal = (tourist = null) => {
+    if (tourist) {
+      setEditingTourist(tourist);
       setForm({
-        firstName: participant.firstName || '',
-        lastName: participant.lastName || '',
-        gender: participant.gender || '',
-        passportNumber: participant.passportNumber || '',
-        dateOfBirth: formatDate(participant.dateOfBirth),
-        passportExpiryDate: formatDate(participant.passportExpiryDate),
-        roomPreference: participant.roomPreference || '',
-        isGroupLeader: participant.isGroupLeader || false,
-        notes: participant.notes || ''
+        firstName: tourist.firstName || '',
+        lastName: tourist.lastName || '',
+        gender: tourist.gender || '',
+        country: tourist.country || '',
+        passportNumber: tourist.passportNumber || '',
+        dateOfBirth: formatDate(tourist.dateOfBirth),
+        passportExpiryDate: formatDate(tourist.passportExpiryDate),
+        roomPreference: tourist.roomPreference || '',
+        accommodation: tourist.accommodation || '',
+        remarks: tourist.remarks || '',
+        isGroupLeader: tourist.isGroupLeader || false,
+        notes: tourist.notes || ''
       });
     } else {
-      setEditingParticipant(null);
+      setEditingTourist(null);
       setForm({
         firstName: '',
         lastName: '',
         gender: '',
+        country: '',
         passportNumber: '',
         dateOfBirth: '',
         passportExpiryDate: '',
         roomPreference: '',
+        accommodation: '',
+        remarks: '',
         isGroupLeader: false,
         notes: ''
       });
@@ -111,9 +120,9 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
     setModalOpen(true);
   };
 
-  const saveParticipant = async () => {
+  const saveTourist = async () => {
     if (!form.firstName.trim() || !form.lastName.trim()) {
-      toast.error('Введите имя и фамилию');
+      toast.error('Enter first and last name');
       return;
     }
 
@@ -124,47 +133,47 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
         passportExpiryDate: form.passportExpiryDate || null
       };
 
-      if (editingParticipant) {
-        await participantsApi.update(bookingId, editingParticipant.id, data);
-        toast.success('Участник обновлён');
+      if (editingTourist) {
+        await touristsApi.update(bookingId, editingTourist.id, data);
+        toast.success('Tourist updated');
       } else {
-        await participantsApi.create(bookingId, data);
-        toast.success('Участник добавлен');
+        await touristsApi.create(bookingId, data);
+        toast.success('Tourist added');
       }
       setModalOpen(false);
-      loadParticipants();
+      loadTourists();
       onUpdate?.();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка сохранения');
+      toast.error(error.response?.data?.error || 'Error saving');
     }
   };
 
-  const deleteParticipant = async (participant) => {
-    if (!confirm(`Удалить участника "${participant.fullName || participant.lastName}"?`)) return;
+  const deleteTourist = async (tourist) => {
+    if (!confirm(`Delete tourist "${tourist.fullName || tourist.lastName}"?`)) return;
 
     try {
-      await participantsApi.delete(bookingId, participant.id);
-      toast.success('Участник удалён');
-      loadParticipants();
+      await touristsApi.delete(bookingId, tourist.id);
+      toast.success('Tourist deleted');
+      loadTourists();
       onUpdate?.();
     } catch (error) {
-      toast.error('Ошибка удаления');
+      toast.error('Error deleting');
     }
   };
 
-  // Import handlers - supports multiple files
+  // Import handlers - supports multiple Excel + PDF files
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setImporting(true);
     try {
-      const response = await participantsApi.importPreview(bookingId, files);
+      const response = await touristsApi.importPreview(bookingId, files);
       setImportPreview(response.data);
-      setImportData(response.data.participants.map(p => ({ ...p })));
+      setImportData(response.data.tourists.map(p => ({ ...p })));
       setImportModalOpen(true);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка чтения файлов');
+      toast.error(error.response?.data?.error || 'Error reading files');
     } finally {
       setImporting(false);
       e.target.value = '';
@@ -186,21 +195,21 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
   const executeImport = async () => {
     const selected = importData.filter(p => p.selected);
     if (selected.length === 0) {
-      toast.error('Выберите хотя бы одного участника');
+      toast.error('Select at least one tourist');
       return;
     }
 
     setImporting(true);
     try {
-      const response = await participantsApi.import(bookingId, selected);
+      const response = await touristsApi.import(bookingId, selected);
       toast.success(response.data.message);
       setImportModalOpen(false);
       setImportPreview(null);
       setImportData([]);
-      loadParticipants();
+      loadTourists();
       onUpdate?.();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка импорта');
+      toast.error(error.response?.data?.error || 'Import error');
     } finally {
       setImporting(false);
     }
@@ -211,29 +220,31 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
     setExportMenuOpen(false);
     try {
       const blob = format === 'excel'
-        ? await participantsApi.exportExcel(bookingId)
-        : await participantsApi.exportPdf(bookingId);
+        ? await touristsApi.exportExcel(bookingId)
+        : await touristsApi.exportPdf(bookingId);
 
       const url = window.URL.createObjectURL(new Blob([blob.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `participants.${format === 'excel' ? 'xlsx' : 'pdf'}`);
+      link.setAttribute('download', `tourists.${format === 'excel' ? 'xlsx' : 'pdf'}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      toast.error('Ошибка экспорта');
+      toast.error('Export error');
     }
   };
 
-  // Filter participants
-  const filteredParticipants = participants.filter(p => {
+  // Filter tourists
+  const filteredTourists = tourists.filter(p => {
     const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
     return fullName.includes(searchQuery.toLowerCase());
   });
 
   const roomPreferenceOptions = ['DBL', 'TWN', 'SNGL', 'TRPL', 'Suite'];
+  const countryOptions = ['Germany', 'Austria', 'Switzerland', 'France', 'Netherlands', 'Belgium', 'Italy', 'Spain', 'United Kingdom', 'United States'];
+  const accommodationOptions = ['Uzbekistan', 'Turkmenistan', 'Kyrgyzstan', 'Tajikistan', 'Kazakhstan'];
 
   if (loading) {
     return (
@@ -250,19 +261,19 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
         <div className="flex items-center gap-3">
           <Users className="w-5 h-5 text-primary-600" />
           <h3 className="text-lg font-semibold text-gray-900">
-            Участники тура ({participants.length})
+            Tourists ({tourists.length})
           </h3>
         </div>
         <div className="flex items-center gap-2">
           {/* Export dropdown */}
-          {participants.length > 0 && (
+          {tourists.length > 0 && (
             <div className="relative">
               <button
                 onClick={() => setExportMenuOpen(!exportMenuOpen)}
                 className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
               >
                 <Download className="w-4 h-4" />
-                Экспорт
+                Export
                 <ChevronDown className="w-3 h-3" />
               </button>
               {exportMenuOpen && (
@@ -289,10 +300,10 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
             </div>
           )}
 
-          {/* Import button - supports multiple files */}
+          {/* Import button - supports multiple Excel + PDF files */}
           <label className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer text-sm">
             <Upload className="w-4 h-4" />
-            {importing ? 'Загрузка...' : 'Импорт'}
+            {importing ? 'Loading...' : 'Import'}
             <input
               type="file"
               accept=".xlsx,.xls,.csv,.pdf"
@@ -309,18 +320,18 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
             className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
           >
             <Plus className="w-4 h-4" />
-            Добавить
+            Add
           </button>
         </div>
       </div>
 
       {/* Search */}
-      {participants.length > 5 && (
+      {tourists.length > 5 && (
         <div className="relative max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Поиск по имени..."
+            placeholder="Search by name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
@@ -329,46 +340,53 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
       )}
 
       {/* Table */}
-      {filteredParticipants.length > 0 ? (
+      {filteredTourists.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="py-2 pr-4">Имя</th>
-                <th className="py-2 pr-4">Пол</th>
-                <th className="py-2 pr-4">Паспорт</th>
-                <th className="py-2 pr-4">Дата рожд.</th>
-                <th className="py-2 pr-4">Срок пасп.</th>
-                <th className="py-2 pr-4">Номер</th>
-                <th className="py-2 pr-4">Размещение</th>
-                <th className="py-2 text-right">Действия</th>
+              <tr className="border-b border-gray-200 text-left text-gray-500 text-xs">
+                <th className="py-2 pr-2 w-8">No</th>
+                <th className="py-2 pr-2">Name</th>
+                <th className="py-2 pr-2">Gender</th>
+                <th className="py-2 pr-2">Nationality</th>
+                <th className="py-2 pr-2">Passport</th>
+                <th className="py-2 pr-2">Birth</th>
+                <th className="py-2 pr-2">Pass. exp.</th>
+                <th className="py-2 pr-2">Room</th>
+                <th className="py-2 pr-2">Placement</th>
+                <th className="py-2 pr-2">Remarks</th>
+                <th className="py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredParticipants.map((p, index) => (
-                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-2">
+              {filteredTourists.map((p, index) => (
+                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
+                  <td className="py-2 pr-2 text-gray-400">{index + 1}</td>
+                  <td className="py-2 pr-2">
+                    <div className="flex items-center gap-1">
                       {p.isGroupLeader ? (
-                        <Crown className="w-4 h-4 text-yellow-500" title="Лидер группы" />
+                        <Crown className="w-3 h-3 text-yellow-500" title="Group leader" />
                       ) : (
-                        <User className="w-4 h-4 text-gray-400" />
+                        <User className="w-3 h-3 text-gray-400" />
                       )}
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-gray-900 whitespace-nowrap">
                         {p.fullName || `${p.lastName}, ${p.firstName}`}
                       </span>
                     </div>
                   </td>
-                  <td className="py-2 pr-4 text-gray-500">
-                    {p.gender === 'M' ? 'Муж.' : p.gender === 'F' ? 'Жен.' : '-'}
+                  <td className="py-2 pr-2 text-gray-500">
+                    {p.gender === 'M' ? 'M' : p.gender === 'F' ? 'F' : '-'}
                   </td>
-                  <td className="py-2 pr-4 text-gray-500">
+                  <td className="py-2 pr-2 text-gray-500">
+                    {p.country && p.country !== 'Not provided' ? p.country : '-'}
+                  </td>
+                  <td className="py-2 pr-2 text-gray-500">
                     {p.passportNumber || '-'}
                   </td>
-                  <td className="py-2 pr-4 text-gray-500">
+                  <td className="py-2 pr-2 text-gray-500 whitespace-nowrap">
                     {formatDisplayDate(p.dateOfBirth)}
                   </td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-2 whitespace-nowrap">
                     <span className={
                       isPassportExpired(p.passportExpiryDate)
                         ? 'text-red-600 font-medium'
@@ -379,16 +397,16 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                       {formatDisplayDate(p.passportExpiryDate)}
                     </span>
                   </td>
-                  <td className="py-2 pr-4">
-                    {p.roomPreference && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                  <td className="py-2 pr-2">
+                    {p.roomPreference ? (
+                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
                         {p.roomPreference}
                       </span>
-                    )}
+                    ) : '-'}
                   </td>
-                  <td className="py-2 pr-4">
+                  <td className="py-2 pr-2">
                     {p.accommodation && p.accommodation !== 'Not assigned' ? (
-                      <span className={`px-2 py-0.5 rounded text-xs ${
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${
                         p.accommodation === 'Turkmenistan' ? 'bg-purple-100 text-purple-700' :
                         p.accommodation === 'Uzbekistan' ? 'bg-green-100 text-green-700' :
                         p.accommodation === 'Kyrgyzstan' ? 'bg-blue-100 text-blue-700' :
@@ -398,9 +416,10 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                       }`}>
                         {p.accommodation}
                       </span>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
+                    ) : '-'}
+                  </td>
+                  <td className="py-2 pr-2 text-gray-500 max-w-[150px] truncate" title={p.remarks || ''}>
+                    {p.remarks || '-'}
                   </td>
                   <td className="py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -411,7 +430,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteParticipant(p)}
+                        onClick={() => deleteTourist(p)}
                         className="p-1 text-gray-400 hover:text-red-600 rounded"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -425,7 +444,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
         </div>
       ) : (
         <div className="text-center py-8 text-gray-500">
-          {searchQuery ? 'Участники не найдены' : 'Нет участников. Добавьте или импортируйте из Excel/PDF.'}
+          {searchQuery ? 'No tourists found' : 'No tourists. Add or import from Excel/PDF.'}
         </div>
       )}
 
@@ -435,7 +454,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
-                {editingParticipant ? 'Редактировать участника' : 'Новый участник'}
+                {editingTourist ? 'Edit Tourist' : 'New Tourist'}
               </h2>
               <button onClick={() => setModalOpen(false)} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
@@ -445,7 +464,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Имя *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
                   <input
                     type="text"
                     value={form.firstName}
@@ -455,7 +474,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Фамилия *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
                   <input
                     type="text"
                     value={form.lastName}
@@ -468,26 +487,55 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Пол</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
                   <select
                     value={form.gender}
                     onChange={(e) => setForm({ ...form, gender: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="">Не указан</option>
-                    <option value="M">Мужской</option>
-                    <option value="F">Женский</option>
+                    <option value="">Not specified</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Тип номера</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+                  <select
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Not specified</option>
+                    {countryOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Room Type</label>
                   <select
                     value={form.roomPreference}
                     onChange={(e) => setForm({ ...form, roomPreference: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   >
-                    <option value="">Не указан</option>
+                    <option value="">Not specified</option>
                     {roomPreferenceOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Placement</label>
+                  <select
+                    value={form.accommodation}
+                    onChange={(e) => setForm({ ...form, accommodation: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Not specified</option>
+                    {accommodationOptions.map(opt => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
@@ -495,7 +543,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Номер паспорта</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Passport Number</label>
                 <input
                   type="text"
                   value={form.passportNumber}
@@ -507,7 +555,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Дата рождения</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                   <input
                     type="date"
                     value={form.dateOfBirth}
@@ -516,7 +564,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Срок паспорта</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Passport Expiry</label>
                   <input
                     type="date"
                     value={form.passportExpiryDate}
@@ -527,12 +575,24 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Примечания</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+                <textarea
+                  value={form.remarks}
+                  onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  rows={2}
+                  placeholder="Additional notes about tourist"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
                 <textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   rows={2}
+                  placeholder="Internal notes (not exported)"
                 />
               </div>
 
@@ -543,7 +603,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                   onChange={(e) => setForm({ ...form, isGroupLeader: e.target.checked })}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
-                <span className="text-sm text-gray-700">Лидер группы</span>
+                <span className="text-sm text-gray-700">Group Leader</span>
               </label>
             </div>
 
@@ -552,14 +612,14 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                 onClick={() => setModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
-                Отмена
+                Cancel
               </button>
               <button
-                onClick={saveParticipant}
+                onClick={saveTourist}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
               >
                 <Save className="w-4 h-4" />
-                Сохранить
+                Save
               </button>
             </div>
           </div>
@@ -573,17 +633,22 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Импорт участников {importPreview.fileCount > 1 ? `(${importPreview.fileCount} файлов)` : ''}
+                  Import Tourists {importPreview.fileCount > 1 ? `(${importPreview.fileCount} files)` : ''}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  К импорту: {importData.filter(p => p.selected).length} участников
+                  To import: {importData.filter(p => p.selected).length} tourists
+                  {importPreview.mergedCount > 0 && (
+                    <span className="ml-2 text-blue-600">
+                      ({importPreview.mergedCount} merged from Excel + PDF)
+                    </span>
+                  )}
                 </p>
                 {/* Warning about replace mode */}
                 {importPreview.existingCount > 0 && (
                   <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg">
                     <AlertCircle className="w-4 h-4 text-orange-500 flex-shrink-0" />
                     <span className="text-sm text-orange-700">
-                      <strong>Режим замены:</strong> {importPreview.existingCount} существующих участников будут удалены и заменены новыми данными
+                      <strong>Replace mode:</strong> {importPreview.existingCount} existing tourists will be deleted and replaced
                     </span>
                   </div>
                 )}
@@ -591,11 +656,14 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                 {importPreview.files && importPreview.files.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {importPreview.files.map((f, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                        <FileSpreadsheet className="w-3 h-3" />
+                      <span key={idx} className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                        f.type === 'pdf' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'
+                      }`}>
+                        {f.type === 'pdf' ? <FileText className="w-3 h-3" /> : <FileSpreadsheet className="w-3 h-3" />}
                         {f.filename.length > 30 ? f.filename.substring(0, 30) + '...' : f.filename}
-                        <span className="text-blue-500">({f.count} чел.)</span>
-                        {f.tripType && <span className="font-medium">→ {f.tripType}</span>}
+                        <span className="opacity-70">({f.count})</span>
+                        {f.purpose && <span className="font-medium">- {f.purpose}</span>}
+                        {f.tripType && <span className="font-medium">- {f.tripType}</span>}
                       </span>
                     ))}
                   </div>
@@ -609,8 +677,8 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
             <div className="flex-1 overflow-auto p-4">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-white">
-                  <tr className="border-b border-gray-200 text-left text-gray-500">
-                    <th className="py-2 pr-2 w-10">
+                  <tr className="border-b border-gray-200 text-left text-gray-500 text-xs">
+                    <th className="py-2 pr-1 w-8">
                       <input
                         type="checkbox"
                         checked={importData.every(p => p.selected)}
@@ -618,21 +686,23 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                         className="rounded border-gray-300"
                       />
                     </th>
-                    <th className="py-2 pr-2">Имя</th>
-                    <th className="py-2 pr-2">Фамилия</th>
-                    <th className="py-2 pr-2">Пол</th>
-                    <th className="py-2 pr-2">Паспорт</th>
-                    <th className="py-2 pr-2">Дата рожд.</th>
-                    <th className="py-2 pr-2">Срок пасп.</th>
-                    <th className="py-2 pr-2">Номер</th>
-                    <th className="py-2 pr-2">Размещение</th>
-                    <th className="py-2">Статус</th>
+                    <th className="py-2 pr-1">First Name</th>
+                    <th className="py-2 pr-1">Last Name</th>
+                    <th className="py-2 pr-1">Gender</th>
+                    <th className="py-2 pr-1">Nationality</th>
+                    <th className="py-2 pr-1">Passport</th>
+                    <th className="py-2 pr-1">Birth</th>
+                    <th className="py-2 pr-1">Pass. exp.</th>
+                    <th className="py-2 pr-1">Room</th>
+                    <th className="py-2 pr-1">Placement</th>
+                    <th className="py-2 pr-1">Remarks</th>
+                    <th className="py-2">Source</th>
                   </tr>
                 </thead>
                 <tbody>
                   {importData.map((p) => (
-                    <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-2 pr-2">
+                    <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
+                      <td className="py-1 pr-1">
                         <input
                           type="checkbox"
                           checked={p.selected}
@@ -640,62 +710,74 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                           className="rounded border-gray-300"
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-1 pr-1">
                         <input
                           type="text"
                           value={p.firstName || ''}
                           onChange={(e) => updateImportCell(p.id, 'firstName', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-1 pr-1">
                         <input
                           type="text"
                           value={p.lastName || ''}
                           onChange={(e) => updateImportCell(p.id, 'lastName', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-1 pr-1">
                         <select
                           value={p.gender || ''}
                           onChange={(e) => updateImportCell(p.id, 'gender', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
                         >
                           <option value="">-</option>
-                          <option value="M">М</option>
-                          <option value="F">Ж</option>
+                          <option value="M">M</option>
+                          <option value="F">F</option>
                         </select>
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-1 pr-1">
+                        <select
+                          value={p.country || ''}
+                          onChange={(e) => updateImportCell(p.id, 'country', e.target.value)}
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
+                        >
+                          <option value="">-</option>
+                          {countryOptions.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-1 pr-1">
                         <input
                           type="text"
                           value={p.passportNumber || ''}
                           onChange={(e) => updateImportCell(p.id, 'passportNumber', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-1 pr-1">
                         <input
                           type="date"
                           value={formatDate(p.dateOfBirth)}
                           onChange={(e) => updateImportCell(p.id, 'dateOfBirth', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-1 pr-1">
                         <input
                           type="date"
                           value={formatDate(p.passportExpiryDate)}
                           onChange={(e) => updateImportCell(p.id, 'passportExpiryDate', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      <td className="py-1 pr-1">
                         <select
                           value={p.roomPreference || ''}
                           onChange={(e) => updateImportCell(p.id, 'roomPreference', e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-200 rounded text-sm"
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
                         >
                           <option value="">-</option>
                           {roomPreferenceOptions.map(opt => (
@@ -703,8 +785,8 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                           ))}
                         </select>
                       </td>
-                      <td className="py-2 pr-2">
-                        <span className={`px-2 py-0.5 rounded text-xs ${
+                      <td className="py-1 pr-1">
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${
                           p.tripType === 'Turkmenistan' ? 'bg-purple-100 text-purple-700' :
                           p.tripType === 'Uzbekistan' ? 'bg-green-100 text-green-700' :
                           p.tripType === 'Kyrgyzstan' ? 'bg-blue-100 text-blue-700' :
@@ -715,10 +797,24 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                           {p.tripType || '-'}
                         </span>
                       </td>
-                      <td className="py-2">
-                        <span className="inline-flex items-center gap-1 text-xs text-green-600">
-                          <Check className="w-3 h-3" />
-                          OK
+                      <td className="py-1 pr-1">
+                        <input
+                          type="text"
+                          value={p.remarks || ''}
+                          onChange={(e) => updateImportCell(p.id, 'remarks', e.target.value)}
+                          className="w-full px-1 py-0.5 border border-gray-200 rounded text-xs"
+                          placeholder="-"
+                        />
+                      </td>
+                      <td className="py-1">
+                        <span className={`inline-flex items-center gap-1 text-xs ${
+                          p.source === 'merged' ? 'text-blue-600' :
+                          p.source === 'pdf-only' ? 'text-purple-600' :
+                          'text-green-600'
+                        }`}>
+                          {p.source === 'merged' ? 'Merged' :
+                           p.source === 'pdf-only' ? 'PDF' :
+                           p.source === 'excel' ? 'Excel' : 'OK'}
                         </span>
                       </td>
                     </tr>
@@ -729,14 +825,14 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
 
             <div className="flex items-center justify-between p-4 border-t border-gray-200">
               <p className="text-sm text-gray-500">
-                Выбрано для импорта: {importData.filter(p => p.selected).length} из {importData.length}
+                Selected for import: {importData.filter(p => p.selected).length} of {importData.length}
               </p>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setImportModalOpen(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  Отмена
+                  Cancel
                 </button>
                 <button
                   onClick={executeImport}
@@ -744,7 +840,7 @@ export default function ParticipantsList({ bookingId, onUpdate }) {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                 >
                   <Upload className="w-4 h-4" />
-                  {importing ? 'Импорт...' : 'Импортировать'}
+                  {importing ? 'Importing...' : 'Import'}
                 </button>
               </div>
             </div>

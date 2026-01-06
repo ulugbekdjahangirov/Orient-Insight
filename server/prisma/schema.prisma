@@ -124,8 +124,14 @@ model Booking {
   // Размещение (новая структура)
   accommodations  Accommodation[]
 
-  // Участники тура (индивидуальные гости)
-  participants    TourParticipant[]
+  // Туристы (индивидуальные гости)
+  tourists        Tourist[]
+
+  // Rooming List записи
+  roomingListEntries RoomingListEntry[]
+
+  // Рейсы
+  flights         Flight[]
 
   // Дополнительные даты для ZA туров
   dateOlot        DateTime? // Olot
@@ -313,8 +319,8 @@ model BookingRoom {
   notes         String?                  // Примечания
   createdAt     DateTime  @default(now())
 
-  // Назначения участников в этот номер
-  participantAssignments ParticipantRoomAssignment[]
+  // Назначения туристов в этот номер
+  touristAssignments TouristRoomAssignment[]
 
   @@index([bookingId])
   @@index([hotelId])
@@ -391,11 +397,11 @@ model AccommodationRoom {
 }
 
 // ============================================
-// Модуль: Участники тура (Rooming List)
+// Модуль: Туристы (Tourists)
 // ============================================
 
-// Участники тура (индивидуальные гости)
-model TourParticipant {
+// Туристы (индивидуальные гости)
+model Tourist {
   id              Int       @id @default(autoincrement())
   bookingId       Int
   booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
@@ -408,33 +414,36 @@ model TourParticipant {
   passportNumber      String?                  // Номер паспорта (опционально)
   dateOfBirth         DateTime?               // Дата рождения
   passportExpiryDate  DateTime?               // Срок действия паспорта
+  country             String?   @default("Not provided") // Страна (Germany, Austria, etc.)
 
   // Размещение (страна тура)
   accommodation   String?   @default("Not assigned") // Uzbekistan, Turkmenistan, Not assigned
 
   // Предпочтения по размещению
   roomPreference  String?                  // DBL, TWN, SNGL
+  roomNumber      String?                  // Room grouping identifier (e.g., DBL-1, TWN-2, SNGL-3)
   roommateId      Int?                     // ID сожителя (для пар)
 
   // Статус
   isGroupLeader   Boolean   @default(false) // Лидер группы
   notes           String?
+  remarks         String?              // Примечания
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   // Назначения в номера
-  roomAssignments ParticipantRoomAssignment[]
+  roomAssignments TouristRoomAssignment[]
 
   @@index([bookingId])
   @@index([lastName])
 }
 
-// Назначение участника в номер
-model ParticipantRoomAssignment {
+// Назначение туриста в номер
+model TouristRoomAssignment {
   id              Int       @id @default(autoincrement())
-  participantId   Int
-  participant     TourParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  touristId       Int
+  tourist         Tourist   @relation(fields: [touristId], references: [id], onDelete: Cascade)
   bookingRoomId   Int
   bookingRoom     BookingRoom @relation(fields: [bookingRoomId], references: [id], onDelete: Cascade)
 
@@ -449,7 +458,80 @@ model ParticipantRoomAssignment {
   notes           String?
   createdAt       DateTime  @default(now())
 
-  @@unique([participantId, bookingRoomId])  // Один участник - одно назначение на номер
-  @@index([participantId])
+  @@unique([touristId, bookingRoomId])  // Один турист - одно назначение на номер
+  @@index([touristId])
   @@index([bookingRoomId])
+}
+
+// ============================================
+// Модуль: Рейсы (Flights)
+// ============================================
+
+// Информация о рейсах для бронирования
+model Flight {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Тип рейса
+  type            String    @default("INTERNATIONAL") // INTERNATIONAL, DOMESTIC
+
+  // Информация о рейсе
+  flightNumber    String?                  // Номер рейса (например, HY101)
+  airline         String?                  // Авиакомпания
+  departure       String                   // Город вылета
+  arrival         String                   // Город прибытия
+
+  // Дата и время
+  date            DateTime?                // Дата рейса
+  departureTime   String?                  // Время вылета (HH:MM)
+  arrivalTime     String?                  // Время прибытия (HH:MM)
+
+  // Дополнительная информация
+  notes           String?
+  sortOrder       Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([type])
+}
+
+// ============================================
+// Модуль: Rooming List (Лист размещения)
+// ============================================
+
+// Запись Rooming List (независимая от участников)
+model RoomingListEntry {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Персональные данные
+  firstName       String                   // Имя
+  lastName        String                   // Фамилия
+  gender          String?                  // M/F (опционально)
+  country         String?                  // Страна (Germany, Austria, etc.)
+  dateOfBirth     DateTime?               // Дата рождения
+
+  // Размещение
+  roomType        String    @default("DBL") // DBL, TWN, SNGL, TRPL, Suite
+  placement       String    @default("Uzbekistan") // Uzbekistan, Turkmenistan, etc.
+  roomPairId      Int?                     // ID пары для объединения в комнату (DBL/TWN)
+
+  // Дополнительная информация
+  isVegetarian    Boolean   @default(false) // Вегетарианец
+  remarks         String?
+
+  // Порядок сортировки (для сохранения оригинального порядка из PDF)
+  sortOrder       Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([roomType])
+  @@index([placement])
+  @@index([roomPairId])
 }
