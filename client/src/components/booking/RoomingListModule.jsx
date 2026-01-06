@@ -491,109 +491,79 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         link.remove();
         window.URL.revokeObjectURL(url);
       } else if (format === 'pdf') {
-        // Generate PDF using browser print
+        // Generate PDF - fits on single A4 page
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
           toast.error('Please allow popups to export PDF');
           return;
         }
 
-        const flightsHtml = (flightList, title) => {
-          if (flightList.length === 0) return `<p style="color:#666;font-style:italic;">No ${title.toLowerCase()}</p>`;
-          return flightList.map(f => {
-            const depCity = airportNames[f.departure] || f.departure;
-            const arrCity = airportNames[f.arrival] || f.arrival;
-            return `<div style="display:inline-block;border:1px solid #ddd;border-radius:8px;padding:12px;margin:4px;min-width:200px;">
-              <div style="font-weight:bold;color:#333;">${f.flightNumber || 'Flight'}</div>
-              <div style="font-size:18px;margin:8px 0;">
-                <strong>${f.departure}</strong> → <strong>${f.arrival}</strong>
-              </div>
-              <div style="font-size:12px;color:#666;">${depCity} → ${arrCity}</div>
-              <div style="font-size:12px;color:#666;margin-top:4px;">
-                ${formatDisplayDate(f.date)} ${f.departureTime ? `| ${f.departureTime} - ${f.arrivalTime || ''}` : ''}
-              </div>
-            </div>`;
-          }).join('');
+        // Calculate dynamic font size based on number of tourists
+        const totalTourists = filteredTourists.length;
+        const totalFlights = internationalFlights.length + domesticFlights.length;
+
+        // Base font size, reduced for larger lists
+        let baseFontSize = 11;
+        let rowPadding = 4;
+        if (totalTourists > 20) {
+          baseFontSize = 9;
+          rowPadding = 2;
+        } else if (totalTourists > 15) {
+          baseFontSize = 10;
+          rowPadding = 3;
+        }
+
+        // Compact flight display
+        const flightsCompact = (flightList, label) => {
+          if (flightList.length === 0) return '';
+          return `<div style="margin-bottom:4px;"><strong style="font-size:${baseFontSize}px;">${label}:</strong> ` +
+            flightList.map(f => {
+              const dateStr = f.date ? formatDisplayDate(f.date) : '';
+              const timeStr = f.departureTime ? ` ${f.departureTime}-${f.arrivalTime || ''}` : '';
+              return `<span style="font-size:${baseFontSize - 1}px;margin-right:8px;">${f.flightNumber} ${f.departure}→${f.arrival} ${dateStr}${timeStr}</span>`;
+            }).join(' | ') + '</div>';
         };
 
-        // Generate tourists HTML grouped by country, then by room type
-        const roomTypesForPdf = ['DBL', 'TWN', 'SNGL', 'other'];
-        const roomLabelsForPdf = {
-          DBL: { label: 'DOUBLE', color: '#dbeafe', textColor: '#1d4ed8' },
-          TWN: { label: 'TWIN', color: '#dcfce7', textColor: '#15803d' },
-          SNGL: { label: 'SINGLE', color: '#f3e8ff', textColor: '#7c3aed' },
-          other: { label: 'NOT ASSIGNED', color: '#f3f4f6', textColor: '#6b7280' }
-        };
+        // Build single unified table with all tourists
+        let tableRows = '';
+        let rowNum = 1;
 
-        const countryInfoForPdf = {
-          uzbekistan: { label: 'UZBEKISTAN', color: '#0284c7', icon: '🇺🇿' },
-          turkmenistan: { label: 'TURKMENISTAN', color: '#ea580c', icon: '🇹🇲' }
-        };
+        // Process each country
+        const processCountry = (countryLabel, countryIcon, touristsList, byRoomType) => {
+          if (touristsList.length === 0) return '';
 
-        let globalPdfIdx = 1;
-        let touristsSectionsHtml = '';
+          let html = `<tr style="background:#f0f0f0;">
+            <td colspan="4" style="padding:${rowPadding + 2}px ${rowPadding}px;font-weight:bold;font-size:${baseFontSize}px;">
+              ${countryIcon} ${countryLabel} (${touristsList.length})
+            </td>
+          </tr>`;
 
-        // Generate HTML for each country section
-        const generateCountrySectionHtml = (countryKey, countryTouristsList, byRoomType) => {
-          if (countryTouristsList.length === 0) return '';
+          ['DBL', 'TWN', 'SNGL', 'other'].forEach(roomType => {
+            const group = byRoomType[roomType];
+            if (group.length === 0) return;
 
-          const cInfo = countryInfoForPdf[countryKey];
-          let html = `
-            <div style="margin-top:32px;">
-              <div style="background:${cInfo.color};color:white;padding:12px 16px;border-radius:8px;margin-bottom:16px;">
-                <span style="font-size:20px;margin-right:8px;">${cInfo.icon}</span>
-                <strong style="font-size:18px;">${cInfo.label}</strong>
-                <span style="margin-left:12px;opacity:0.9;">(${countryTouristsList.length} ${countryTouristsList.length === 1 ? 'person' : 'persons'})</span>
-              </div>
-          `;
+            const roomLabels = { DBL: 'DBL', TWN: 'TWN', SNGL: 'SNGL', other: 'N/A' };
 
-          roomTypesForPdf.forEach(roomType => {
-            const touristsInGroup = byRoomType[roomType];
-            if (touristsInGroup.length === 0) return;
+            group.forEach((t) => {
+              const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+              const roomDisplay = t.roomPreference || roomLabels[roomType];
+              const roomNum = t.roomNumber ? ` #${t.roomNumber.split('-')[1] || t.roomNumber}` : '';
+              const remarks = t.remarks && t.remarks !== '-' ? t.remarks : '';
 
-            const { label, color, textColor } = roomLabelsForPdf[roomType];
-
-            html += `
-              <div style="margin-top:16px;margin-left:16px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-                <div style="background:${color};color:${textColor};padding:10px 16px;border-bottom:1px solid #e5e7eb;">
-                  <strong>${label}</strong>
-                  <span style="margin-left:8px;opacity:0.8;">(${touristsInGroup.length} ${touristsInGroup.length === 1 ? 'person' : 'persons'})</span>
-                </div>
-                <table style="width:100%;border-collapse:collapse;">
-                  <thead>
-                    <tr>
-                      <th style="background:#f9fafb;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;color:#666;width:40px;">No</th>
-                      <th style="background:#f9fafb;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;color:#666;">Name</th>
-                      <th style="background:#f9fafb;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;color:#666;width:100px;">Room</th>
-                      <th style="background:#f9fafb;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;color:#666;">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${touristsInGroup.map((t) => {
-                      const name = t.fullName || `${t.lastName}, ${t.firstName}`;
-                      const roomNum = t.roomNumber ? `#${t.roomNumber.split('-')[1] || t.roomNumber}` : '';
-                      return `<tr>
-                        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${globalPdfIdx++}</td>
-                        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${name}</td>
-                        <td style="padding:6px 8px;border-bottom:1px solid #eee;">
-                          <span style="background:${color};color:${textColor};padding:2px 6px;border-radius:4px;font-size:11px;">${t.roomPreference || roomType}</span>
-                          ${roomNum ? `<span style="color:#9ca3af;font-size:10px;margin-left:4px;">${roomNum}</span>` : ''}
-                        </td>
-                        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${t.remarks && t.remarks !== '-' ? t.remarks : '-'}</td>
-                      </tr>`;
-                    }).join('')}
-                  </tbody>
-                </table>
-              </div>
-            `;
+              html += `<tr>
+                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;text-align:center;width:30px;font-size:${baseFontSize - 1}px;">${rowNum++}</td>
+                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;font-size:${baseFontSize}px;">${name}</td>
+                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;width:70px;font-size:${baseFontSize - 1}px;">${roomDisplay}${roomNum}</td>
+                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;font-size:${baseFontSize - 1}px;color:#666;">${remarks}</td>
+              </tr>`;
+            });
           });
 
-          html += '</div>';
           return html;
         };
 
-        touristsSectionsHtml += generateCountrySectionHtml('uzbekistan', uzbekistanTourists, uzbekistanByRoomType);
-        touristsSectionsHtml += generateCountrySectionHtml('turkmenistan', turkmenistanTourists, turkmenistanByRoomType);
+        tableRows += processCountry('UZBEKISTAN', '🇺🇿', uzbekistanTourists, uzbekistanByRoomType);
+        tableRows += processCountry('TURKMENISTAN', '🇹🇲', turkmenistanTourists, turkmenistanByRoomType);
 
         printWindow.document.write(`
           <!DOCTYPE html>
@@ -601,29 +571,132 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           <head>
             <title>Rooming List</title>
             <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              h1 { color: #333; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
-              h2 { color: #666; margin-top: 24px; }
+              @page {
+                size: A4 portrait;
+                margin: 10mm;
+              }
+              * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+              }
+              html, body {
+                width: 210mm;
+                height: 297mm;
+                font-family: Arial, sans-serif;
+                font-size: ${baseFontSize}px;
+                overflow: hidden;
+              }
+              .container {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                padding: 5mm;
+              }
+              .header {
+                text-align: center;
+                padding-bottom: 3mm;
+                border-bottom: 1px solid #333;
+                margin-bottom: 3mm;
+                flex-shrink: 0;
+              }
+              .header h1 {
+                font-size: ${baseFontSize + 6}px;
+                margin: 0;
+              }
+              .flights {
+                margin-bottom: 3mm;
+                flex-shrink: 0;
+              }
+              .table-container {
+                flex: 1;
+                overflow: hidden;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+              }
+              th {
+                background: #333;
+                color: white;
+                padding: ${rowPadding + 1}px ${rowPadding}px;
+                text-align: left;
+                font-size: ${baseFontSize - 1}px;
+                font-weight: bold;
+              }
+              .footer {
+                text-align: right;
+                font-size: ${baseFontSize - 2}px;
+                color: #999;
+                padding-top: 2mm;
+                flex-shrink: 0;
+              }
               @media print {
-                body { padding: 0; }
-                button { display: none; }
+                html, body {
+                  width: 210mm;
+                  height: 297mm;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                }
+                .no-print { display: none; }
+              }
+              @media screen {
+                body {
+                  background: #f0f0f0;
+                  display: flex;
+                  justify-content: center;
+                  padding: 20px;
+                  height: auto;
+                  overflow: auto;
+                }
+                .container {
+                  background: white;
+                  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+                  height: auto;
+                  min-height: 297mm;
+                }
               }
             </style>
           </head>
           <body>
-            <h1>Rooming List</h1>
+            <div class="container">
+              <div class="header">
+                <h1>ROOMING LIST</h1>
+              </div>
 
-            <h2>International Flights (${internationalFlights.length})</h2>
-            <div>${flightsHtml(internationalFlights, 'International Flights')}</div>
+              <div class="flights">
+                ${flightsCompact(internationalFlights, 'International')}
+                ${flightsCompact(domesticFlights, 'Domestic')}
+              </div>
 
-            <h2>Domestic Flights (${domesticFlights.length})</h2>
-            <div>${flightsHtml(domesticFlights, 'Domestic Flights')}</div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width:30px;">№</th>
+                      <th>Name</th>
+                      <th style="width:70px;">Room</th>
+                      <th style="width:120px;">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${tableRows}
+                  </tbody>
+                </table>
+              </div>
 
-            <h2>Tourists (${filteredTourists.length})</h2>
-            ${touristsSectionsHtml}
+              <div class="footer">
+                Total: ${filteredTourists.length} persons | Generated: ${new Date().toLocaleDateString()}
+              </div>
+            </div>
 
-            <p style="margin-top:24px;color:#999;font-size:12px;">Generated: ${new Date().toLocaleString()}</p>
-            <button onclick="window.print()" style="margin-top:16px;padding:8px 16px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;">Print / Save as PDF</button>
+            <div class="no-print" style="position:fixed;bottom:20px;right:20px;">
+              <button onclick="window.print()" style="padding:10px 20px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
+                Print / Save as PDF
+              </button>
+            </div>
           </body>
           </html>
         `);
