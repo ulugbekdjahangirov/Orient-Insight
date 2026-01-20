@@ -5,6 +5,85 @@ const { authenticate } = require('../middleware/auth.middleware');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Helper function to calculate room counts from tourists
+// If roomNumber is set, count unique rooms. Otherwise, count by roomPreference.
+function calculateRoomCountsFromTourists(tourists) {
+  if (!tourists || tourists.length === 0) {
+    return { roomsDbl: 0, roomsTwn: 0, roomsSngl: 0, roomsTotal: 0 };
+  }
+
+  // Check if any tourist has roomNumber set (not null and not "null" string)
+  const hasRoomNumbers = tourists.some(t => t.roomNumber && t.roomNumber !== 'null');
+
+  if (hasRoomNumbers) {
+    // Count unique room numbers
+    const uniqueRooms = {
+      DBL: new Set(),
+      TWN: new Set(),
+      SNGL: new Set()
+    };
+
+    tourists.forEach(tourist => {
+      if (tourist.roomNumber && tourist.roomNumber !== 'null') {
+        const room = tourist.roomNumber.toUpperCase();
+        if (room.startsWith('DBL')) {
+          uniqueRooms.DBL.add(room);
+        } else if (room.startsWith('SNGL') || room.startsWith('SGL')) {
+          uniqueRooms.SNGL.add(room);
+        } else if (room.startsWith('TWN')) {
+          uniqueRooms.TWN.add(room);
+        }
+      }
+    });
+
+    return {
+      roomsDbl: uniqueRooms.DBL.size,
+      roomsTwn: uniqueRooms.TWN.size,
+      roomsSngl: uniqueRooms.SNGL.size,
+      roomsTotal: uniqueRooms.DBL.size + uniqueRooms.TWN.size + uniqueRooms.SNGL.size
+    };
+  } else {
+    // Fallback: count by roomPreference (old method)
+    let dblCount = 0;
+    let twnCount = 0;
+    let snglCount = 0;
+
+    tourists.forEach(tourist => {
+      const roomPref = (tourist.roomPreference || '').toUpperCase().trim();
+
+      // DZ or DBL = Double room
+      if (roomPref === 'DZ' || roomPref === 'DBL' || roomPref.includes('DBL') || roomPref.includes('DOUBLE')) {
+        dblCount++;
+      }
+      // EZ or SNGL = Single room
+      else if (roomPref === 'EZ' || roomPref === 'SNGL' || roomPref === 'SGL' || roomPref.includes('SNGL') || roomPref.includes('SINGLE')) {
+        snglCount++;
+      }
+      // TWN = Twin room
+      else if (roomPref === 'TWN' || roomPref.includes('TWN') || roomPref.includes('TWIN')) {
+        twnCount++;
+      }
+    });
+
+    // Calculate actual room numbers
+    // If there's an odd number of DZ (single DZ without pair), count it as 0.5 TWN
+    let roomsDbl, roomsTwn;
+    if (dblCount % 2 === 1) {
+      // Odd number of DZ: one person alone, rest in pairs
+      roomsDbl = Math.floor(dblCount / 2); // Full DBL rooms for pairs
+      roomsTwn = Math.ceil(twnCount / 2) + 0.5; // Regular TWN rooms + 0.5 for single DZ
+    } else {
+      // Even number of DZ: all in pairs
+      roomsDbl = dblCount / 2;
+      roomsTwn = Math.ceil(twnCount / 2);
+    }
+    const roomsSngl = snglCount;
+    const roomsTotal = roomsDbl + roomsTwn + roomsSngl;
+
+    return { roomsDbl, roomsTwn, roomsSngl, roomsTotal };
+  }
+}
+
 // GET /api/bookings - Получить список бронирований с фильтрами
 router.get('/', authenticate, async (req, res) => {
   try {
@@ -30,7 +109,11 @@ router.get('/', authenticate, async (req, res) => {
 
     // Фильтр по гиду
     if (guideId) {
-      where.guideId = parseInt(guideId);
+      if (guideId === 'unassigned') {
+        where.guideId = null;
+      } else {
+        where.guideId = parseInt(guideId);
+      }
     }
 
     // Фильтр по статусу
@@ -62,7 +145,8 @@ router.get('/', authenticate, async (req, res) => {
         include: {
           tourType: { select: { id: true, code: true, name: true, color: true } },
           guide: { select: { id: true, name: true } },
-          createdBy: { select: { id: true, name: true } }
+          createdBy: { select: { id: true, name: true } },
+          tourists: { select: { id: true, roomNumber: true, roomPreference: true, accommodation: true } }
         },
         orderBy: { [sortBy]: sortOrder },
         skip,
@@ -71,8 +155,18 @@ router.get('/', authenticate, async (req, res) => {
       prisma.booking.count({ where })
     ]);
 
+    // Return bookings with room counts (already in database)
+    const bookingsWithCalculatedRooms = bookings.map(booking => {
+      const { tourists, ...bookingData } = booking;
+
+      return {
+        ...bookingData,
+        _touristsCount: tourists ? tourists.length : 0
+      };
+    });
+
     res.json({
-      bookings,
+      bookings: bookingsWithCalculatedRooms,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -172,6 +266,19 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Бронирование с таким номером уже существует' });
     }
 
+    // Auto-calculate total PAX from Uzbekistan + Turkmenistan
+    const uzbek = paxUzbekistan ? parseInt(paxUzbekistan) : 0;
+    const turkmen = paxTurkmenistan ? parseInt(paxTurkmenistan) : 0;
+    const calculatedPax = uzbek + turkmen;
+
+    // Auto-set status based on PAX count
+    let autoStatus = 'PENDING';
+    if (calculatedPax >= 6) {
+      autoStatus = 'CONFIRMED';
+    } else if (calculatedPax === 4 || calculatedPax === 5) {
+      autoStatus = 'IN_PROGRESS';
+    }
+
     const booking = await prisma.booking.create({
       data: {
         bookingNumber,
@@ -179,9 +286,9 @@ router.post('/', authenticate, async (req, res) => {
         departureDate: new Date(departureDate),
         arrivalDate: arrivalDate ? new Date(arrivalDate) : new Date(departureDate),
         endDate: endDate ? new Date(endDate) : new Date(departureDate),
-        pax: parseInt(pax) || 0,
-        paxUzbekistan: paxUzbekistan ? parseInt(paxUzbekistan) : null,
-        paxTurkmenistan: paxTurkmenistan ? parseInt(paxTurkmenistan) : null,
+        pax: calculatedPax,
+        paxUzbekistan: uzbek || null,
+        paxTurkmenistan: turkmen || null,
         guideId: guideId ? parseInt(guideId) : null,
         trainTickets,
         avia,
@@ -193,7 +300,7 @@ router.post('/', authenticate, async (req, res) => {
         dateJartepa: dateJartepa ? new Date(dateJartepa) : null,
         dateOybek: dateOybek ? new Date(dateOybek) : null,
         dateChernyaevka: dateChernyaevka ? new Date(dateChernyaevka) : null,
-        status: status || 'PENDING',
+        status: status || autoStatus,
         notes,
         createdById: req.user.id
       },
@@ -248,9 +355,33 @@ router.put('/:id', authenticate, async (req, res) => {
     if (departureDate) updateData.departureDate = new Date(departureDate);
     if (arrivalDate) updateData.arrivalDate = new Date(arrivalDate);
     if (endDate) updateData.endDate = new Date(endDate);
-    if (pax !== undefined) updateData.pax = parseInt(pax);
+
+    // Handle Uzbekistan and Turkmenistan PAX
     if (paxUzbekistan !== undefined) updateData.paxUzbekistan = paxUzbekistan ? parseInt(paxUzbekistan) : null;
     if (paxTurkmenistan !== undefined) updateData.paxTurkmenistan = paxTurkmenistan ? parseInt(paxTurkmenistan) : null;
+
+    // Auto-calculate total PAX from Uzbekistan + Turkmenistan
+    const uzbek = updateData.paxUzbekistan !== undefined ? updateData.paxUzbekistan : (paxUzbekistan !== undefined ? parseInt(paxUzbekistan) || 0 : 0);
+    const turkmen = updateData.paxTurkmenistan !== undefined ? updateData.paxTurkmenistan : (paxTurkmenistan !== undefined ? parseInt(paxTurkmenistan) || 0 : 0);
+
+    // Get current booking to calculate accurate total
+    const currentBooking = await prisma.booking.findUnique({ where: { id: parseInt(id) } });
+    const currentUzbek = updateData.paxUzbekistan !== undefined ? (updateData.paxUzbekistan || 0) : (currentBooking?.paxUzbekistan || 0);
+    const currentTurkmen = updateData.paxTurkmenistan !== undefined ? (updateData.paxTurkmenistan || 0) : (currentBooking?.paxTurkmenistan || 0);
+
+    updateData.pax = currentUzbek + currentTurkmen;
+
+    // Auto-set status based on PAX count (only if status not explicitly provided)
+    if (status === undefined) {
+      const calculatedPax = updateData.pax;
+      if (calculatedPax >= 6) {
+        updateData.status = 'CONFIRMED';
+      } else if (calculatedPax === 4 || calculatedPax === 5) {
+        updateData.status = 'IN_PROGRESS';
+      } else {
+        updateData.status = 'PENDING';
+      }
+    }
     if (guideId !== undefined) updateData.guideId = guideId ? parseInt(guideId) : null;
     if (trainTickets !== undefined) updateData.trainTickets = trainTickets;
     if (avia !== undefined) updateData.avia = avia;
@@ -294,6 +425,38 @@ router.delete('/:id', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Delete booking error:', error);
     res.status(500).json({ error: 'Ошибка удаления бронирования' });
+  }
+});
+
+// POST /api/bookings/update-all-statuses - Update all bookings' statuses based on PAX
+router.post('/update-all-statuses', authenticate, async (req, res) => {
+  try {
+    const allBookings = await prisma.booking.findMany({
+      select: { id: true, pax: true }
+    });
+
+    let updated = 0;
+    for (const booking of allBookings) {
+      const pax = booking.pax || 0;
+      let status = 'PENDING';
+
+      if (pax >= 6) {
+        status = 'CONFIRMED';
+      } else if (pax === 4 || pax === 5) {
+        status = 'IN_PROGRESS';
+      }
+
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { status }
+      });
+      updated++;
+    }
+
+    res.json({ message: `Обновлено ${updated} бронирований` });
+  } catch (error) {
+    console.error('Update all statuses error:', error);
+    res.status(500).json({ error: 'Ошибка обновления статусов' });
   }
 });
 
@@ -591,7 +754,7 @@ router.delete('/:id/rooms/:roomId', authenticate, async (req, res) => {
 // ============================================
 
 // Словарь допустимых типов размещения (для валидации)
-const VALID_ROOM_TYPE_CODES = ['SNGL', 'DBL', 'TWN', 'TRPL', 'QDPL', 'SUITE', 'EXTRA'];
+const VALID_ROOM_TYPE_CODES = ['SNGL', 'DBL', 'TWN', 'TRPL', 'QDPL', 'SUITE', 'EXTRA', 'PAX'];
 
 // Функция расчёта итогов для размещения
 function calculateAccommodationTotals(rooms, nights) {
@@ -617,7 +780,10 @@ router.get('/:id/accommodations', authenticate, async (req, res) => {
       where: { bookingId: parseInt(id) },
       include: {
         hotel: {
-          include: { city: true }
+          include: {
+            city: true,
+            roomTypes: true  // Include room types to get currency info
+          }
         },
         roomType: true,
         accommodationRoomType: true,
@@ -931,12 +1097,298 @@ router.delete('/:id/accommodations/:accId', authenticate, async (req, res) => {
   try {
     const { accId } = req.params;
 
+    // Check if accommodation exists first
+    const existing = await prisma.accommodation.findUnique({
+      where: { id: parseInt(accId) }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Размещение не найдено' });
+    }
+
     await prisma.accommodation.delete({ where: { id: parseInt(accId) } });
 
     res.json({ message: 'Размещение удалено' });
   } catch (error) {
     console.error('Delete accommodation error:', error);
+
+    // Handle P2025 error (record not found)
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Размещение не найдено' });
+    }
+
     res.status(500).json({ error: 'Ошибка удаления размещения' });
+  }
+});
+
+// GET /api/bookings/:id/debug-rooms - Debug room preferences for a booking
+router.get('/:id/debug-rooms', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        tourists: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            roomPreference: true
+          }
+        }
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Count room preferences
+    let dblCount = 0;
+    let twnCount = 0;
+    let snglCount = 0;
+    let otherCount = 0;
+
+    const roomDetails = booking.tourists.map(tourist => {
+      const roomPref = (tourist.roomPreference || '').toUpperCase().trim();
+      let category = 'OTHER';
+
+      // DZ or DBL = Double room (accept both original and mapped codes)
+      if (roomPref === 'DZ' || roomPref === 'DBL' || roomPref.includes('DBL') || roomPref.includes('DOUBLE')) {
+        dblCount++;
+        category = 'DBL';
+      }
+      // EZ or SNGL = Single room (accept both original and mapped codes)
+      else if (roomPref === 'EZ' || roomPref === 'SNGL' || roomPref === 'SGL' || roomPref.includes('SNGL') || roomPref.includes('SINGLE')) {
+        snglCount++;
+        category = 'SNGL';
+      }
+      // TWN = Twin room
+      else if (roomPref === 'TWN' || roomPref.includes('TWN') || roomPref.includes('TWIN')) {
+        twnCount++;
+        category = 'TWN';
+      } else {
+        otherCount++;
+      }
+
+      return {
+        id: tourist.id,
+        name: `${tourist.firstName} ${tourist.lastName}`,
+        roomPreference: tourist.roomPreference,
+        category
+      };
+    });
+
+    res.json({
+      bookingId: booking.id,
+      bookingNumber: booking.bookingNumber,
+      totalTourists: booking.tourists.length,
+      counts: {
+        dblCount,
+        twnCount,
+        snglCount,
+        otherCount
+      },
+      calculatedRooms: {
+        roomsDbl: Math.ceil(dblCount / 2),
+        roomsTwn: Math.ceil(twnCount / 2),
+        roomsSngl: snglCount
+      },
+      currentBookingRooms: {
+        roomsDbl: booking.roomsDbl,
+        roomsTwn: booking.roomsTwn,
+        roomsSngl: booking.roomsSngl
+      },
+      tourists: roomDetails
+    });
+  } catch (error) {
+    console.error('Debug rooms error:', error);
+    res.status(500).json({ error: 'Error debugging rooms' });
+  }
+});
+
+// POST /api/bookings/recalculate-rooms - Recalculate room counts for all bookings (for testing)
+router.post('/recalculate-rooms', authenticate, async (req, res) => {
+  try {
+    const bookings = await prisma.booking.findMany({
+      include: {
+        tourists: {
+          select: { id: true, roomPreference: true }
+        }
+      }
+    });
+
+    let updated = 0;
+    const results = [];
+
+    for (const booking of bookings) {
+      // Calculate room counts based on roomPreference
+      let dblCount = 0;
+      let twnCount = 0;
+      let snglCount = 0;
+
+      booking.tourists.forEach(tourist => {
+        const roomPref = (tourist.roomPreference || '').toUpperCase().trim();
+
+        // DZ or DBL = Double room (accept both original and mapped codes)
+        if (roomPref === 'DZ' || roomPref === 'DBL' || roomPref.includes('DBL') || roomPref.includes('DOUBLE')) {
+          dblCount++;
+        }
+        // EZ or SNGL = Single room (accept both original and mapped codes)
+        else if (roomPref === 'EZ' || roomPref === 'SNGL' || roomPref === 'SGL' || roomPref.includes('SNGL') || roomPref.includes('SINGLE')) {
+          snglCount++;
+        }
+        // TWN = Twin room
+        else if (roomPref === 'TWN' || roomPref.includes('TWN') || roomPref.includes('TWIN')) {
+          twnCount++;
+        }
+      });
+
+      const roomsDbl = Math.ceil(dblCount / 2);
+      const roomsTwn = Math.ceil(twnCount / 2);
+      const roomsSngl = snglCount;
+
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          roomsDbl,
+          roomsTwn,
+          roomsSngl
+        }
+      });
+
+      updated++;
+      results.push({
+        bookingNumber: booking.bookingNumber,
+        tourists: booking.tourists.length,
+        dblCount,
+        twnCount,
+        snglCount,
+        roomsDbl,
+        roomsTwn,
+        roomsSngl
+      });
+    }
+
+    res.json({
+      message: `Recalculated room counts for ${updated} bookings`,
+      results
+    });
+  } catch (error) {
+    console.error('Recalculate rooms error:', error);
+    res.status(500).json({ error: 'Error recalculating room counts' });
+  }
+});
+
+// GET /api/bookings/debug/count-by-type - Debug endpoint to show booking counts by tour type
+router.get('/debug/count-by-type', authenticate, async (req, res) => {
+  try {
+    const allBookings = await prisma.booking.findMany({
+      include: {
+        tourType: true
+      },
+      orderBy: { bookingNumber: 'asc' }
+    });
+
+    const byType = {};
+    const details = {};
+    const statusCounts = {
+      CONFIRMED: 0,
+      IN_PROGRESS: 0,
+      PENDING: 0,
+      CANCELLED: 0,
+      COMPLETED: 0
+    };
+
+    // Helper to calculate status based on PAX, departure date, and end date
+    const calculateStatus = (pax, departureDate, endDate) => {
+      const paxCount = parseInt(pax) || 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Check if tour has ended
+      if (endDate) {
+        const tourEndDate = new Date(endDate);
+        tourEndDate.setHours(0, 0, 0, 0);
+        if (tourEndDate < today) {
+          return 'COMPLETED';
+        }
+      }
+
+      if (departureDate) {
+        const daysUntilDeparture = Math.ceil((new Date(departureDate) - today) / (1000 * 60 * 60 * 24));
+
+        if (daysUntilDeparture < 30 && paxCount < 4) {
+          return 'CANCELLED';
+        }
+      }
+
+      if (paxCount >= 6) {
+        return 'CONFIRMED';
+      } else if (paxCount === 4 || paxCount === 5) {
+        return 'IN_PROGRESS';
+      } else {
+        return 'PENDING';
+      }
+    };
+
+    allBookings.forEach(booking => {
+      const code = booking.tourType?.code || 'UNKNOWN';
+      if (!byType[code]) {
+        byType[code] = 0;
+        details[code] = [];
+      }
+      byType[code]++;
+
+      const calculatedStatus = calculateStatus(booking.pax, booking.departureDate, booking.endDate);
+      statusCounts[calculatedStatus]++;
+
+      details[code].push({
+        id: booking.id,
+        bookingNumber: booking.bookingNumber,
+        departureDate: booking.departureDate,
+        endDate: booking.endDate,
+        pax: booking.pax,
+        status: calculatedStatus
+      });
+    });
+
+    const total = allBookings.length;
+
+    console.log(`\n📊 BOOKING COUNT DEBUG:`);
+    console.log(`   Total: ${total}`);
+    console.log(`   Подтверждено (CONFIRMED): ${statusCounts.CONFIRMED}`);
+    console.log(`   В процессе (IN_PROGRESS): ${statusCounts.IN_PROGRESS}`);
+    console.log(`   Ожидает (PENDING): ${statusCounts.PENDING}`);
+    console.log(`   Отменено (CANCELLED): ${statusCounts.CANCELLED}`);
+    console.log(`   Завершено (COMPLETED): ${statusCounts.COMPLETED}`);
+    Object.keys(byType).sort().forEach(code => {
+      console.log(`   ${code}: ${byType[code]}`);
+    });
+
+    res.json({
+      total,
+      byType,
+      details,
+      statusCounts,
+      expected: {
+        ER: 22,
+        CO: 13,
+        KAS: 12,
+        ZA: 8,
+        total: 55
+      },
+      difference: {
+        ER: 22 - (byType.ER || 0),
+        CO: 13 - (byType.CO || 0),
+        KAS: 12 - (byType.KAS || 0),
+        ZA: 8 - (byType.ZA || 0),
+        total: 55 - total
+      }
+    });
+  } catch (error) {
+    console.error('Debug count error:', error);
+    res.status(500).json({ error: 'Error counting bookings' });
   }
 });
 

@@ -125,4 +125,100 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// Модуль: Программа тура (Itinerary)
+// ============================================
+
+// GET /api/tour-types/:id/itinerary - Получить программу тура
+router.get('/:id/itinerary', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const itinerary = await prisma.tourItinerary.findMany({
+      where: { tourTypeId: parseInt(id) },
+      orderBy: [{ dayNumber: 'asc' }, { sortOrder: 'asc' }]
+    });
+
+    res.json({ itinerary });
+  } catch (error) {
+    console.error('Get itinerary error:', error);
+    res.status(500).json({ error: 'Ошибка получения программы тура' });
+  }
+});
+
+// POST /api/tour-types/:id/itinerary - Добавить день в программу
+router.post('/:id/itinerary', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { dayNumber, title, description, activities, meals, accommodation } = req.body;
+
+    if (!dayNumber || !title) {
+      return res.status(400).json({ error: 'Номер дня и заголовок обязательны' });
+    }
+
+    // Note: Day number duplicates are allowed for split groups (e.g., Uzbekistan vs Turkmenistan)
+    // Use title to distinguish (e.g., "Day 13: Khiva-Tashkent" vs "Day 13: Khiva-Shavat (Turkmenistan)")
+
+    const itineraryItem = await prisma.tourItinerary.create({
+      data: {
+        tourTypeId: parseInt(id),
+        dayNumber: parseInt(dayNumber),
+        title,
+        description,
+        activities,
+        meals,
+        accommodation,
+        sortOrder: parseInt(dayNumber)
+      }
+    });
+
+    res.status(201).json({ itineraryItem });
+  } catch (error) {
+    console.error('Create itinerary error:', error);
+    res.status(500).json({ error: 'Ошибка создания дня программы' });
+  }
+});
+
+// PUT /api/tour-types/:id/itinerary/:itemId - Обновить день программы
+router.put('/:id/itinerary/:itemId', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { dayNumber, title, description, activities, meals, accommodation } = req.body;
+
+    const updateData = {};
+    if (dayNumber !== undefined) updateData.dayNumber = parseInt(dayNumber);
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (activities !== undefined) updateData.activities = activities;
+    if (meals !== undefined) updateData.meals = meals;
+    if (accommodation !== undefined) updateData.accommodation = accommodation;
+
+    const itineraryItem = await prisma.tourItinerary.update({
+      where: { id: parseInt(itemId) },
+      data: updateData
+    });
+
+    res.json({ itineraryItem });
+  } catch (error) {
+    console.error('Update itinerary error:', error);
+    res.status(500).json({ error: 'Ошибка обновления дня программы' });
+  }
+});
+
+// DELETE /api/tour-types/:id/itinerary/:itemId - Удалить день программы
+router.delete('/:id/itinerary/:itemId', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    await prisma.tourItinerary.delete({
+      where: { id: parseInt(itemId) }
+    });
+
+    res.json({ message: 'День программы удалён' });
+  } catch (error) {
+    console.error('Delete itinerary error:', error);
+    res.status(500).json({ error: 'Ошибка удаления дня программы' });
+  }
+});
+
 module.exports = router;

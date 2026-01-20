@@ -300,13 +300,13 @@ export default function TouristsList({ bookingId, onUpdate }) {
             </div>
           )}
 
-          {/* Import button - supports multiple Excel + PDF files */}
+          {/* Import button - supports multiple Excel files only */}
           <label className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer text-sm">
             <Upload className="w-4 h-4" />
-            {importing ? 'Loading...' : 'Import'}
+            {importing ? 'Loading...' : 'Import Excel'}
             <input
               type="file"
-              accept=".xlsx,.xls,.csv,.pdf"
+              accept=".xlsx,.xls,.csv"
               onChange={handleFileSelect}
               className="hidden"
               disabled={importing}
@@ -339,112 +339,115 @@ export default function TouristsList({ bookingId, onUpdate }) {
         </div>
       )}
 
-      {/* Table */}
+      {/* Card-style List */}
       {filteredTourists.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500 text-xs">
-                <th className="py-2 pr-2 w-8">No</th>
-                <th className="py-2 pr-2">Name</th>
-                <th className="py-2 pr-2">Gender</th>
-                <th className="py-2 pr-2">Nationality</th>
-                <th className="py-2 pr-2">Passport</th>
-                <th className="py-2 pr-2">Birth</th>
-                <th className="py-2 pr-2">Pass. exp.</th>
-                <th className="py-2 pr-2">Room</th>
-                <th className="py-2 pr-2">Placement</th>
-                <th className="py-2 pr-2">Remarks</th>
-                <th className="py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTourists.map((p, index) => (
-                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
-                  <td className="py-2 pr-2 text-gray-400">{index + 1}</td>
-                  <td className="py-2 pr-2">
-                    <div className="flex items-center gap-1">
-                      {p.isGroupLeader ? (
-                        <Crown className="w-3 h-3 text-yellow-500" title="Group leader" />
-                      ) : (
-                        <User className="w-3 h-3 text-gray-400" />
-                      )}
-                      <span className="font-medium text-gray-900 whitespace-nowrap">
-                        {p.fullName || `${p.lastName}, ${p.firstName}`}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-2 pr-2 text-gray-500">
-                    {p.gender === 'M' ? 'M' : p.gender === 'F' ? 'F' : '-'}
-                  </td>
-                  <td className="py-2 pr-2 text-gray-500">
-                    {p.country && p.country !== 'Not provided' ? p.country : '-'}
-                  </td>
-                  <td className="py-2 pr-2 text-gray-500">
-                    {p.passportNumber || '-'}
-                  </td>
-                  <td className="py-2 pr-2 text-gray-500 whitespace-nowrap">
-                    {formatDisplayDate(p.dateOfBirth)}
-                  </td>
-                  <td className="py-2 pr-2 whitespace-nowrap">
-                    <span className={
-                      isPassportExpired(p.passportExpiryDate)
-                        ? 'text-red-600 font-medium'
-                        : isPassportExpiringSoon(p.passportExpiryDate)
-                        ? 'text-orange-500'
-                        : 'text-gray-500'
-                    }>
-                      {formatDisplayDate(p.passportExpiryDate)}
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-2xl border-2 border-gray-300 p-5 shadow-lg hidden md:block">
+            <div className="grid grid-cols-12 gap-3 items-center text-xs font-bold text-gray-600 uppercase">
+              <div className="col-span-1">No</div>
+              <div className="col-span-3">Name</div>
+              <div className="col-span-1">Gender</div>
+              <div className="col-span-2">Nationality</div>
+              <div className="col-span-2">Passport</div>
+              <div className="col-span-1">Birth</div>
+              <div className="col-span-1">Pass. Exp.</div>
+              <div className="col-span-1 text-right">Actions</div>
+            </div>
+          </div>
+
+          {/* Tourist Cards */}
+          {filteredTourists.map((p, index) => (
+            <div
+              key={p.id}
+              className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300 p-4"
+            >
+              <div className="grid grid-cols-12 gap-3 items-center text-sm">
+                {/* Number */}
+                <div className="col-span-1">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 flex items-center justify-center shadow-sm">
+                    <span className="text-base font-bold text-gray-700">{index + 1}</span>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div className="col-span-3">
+                  <div className="flex items-center gap-3">
+                    {p.isGroupLeader ? (
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-200 border-2 border-yellow-300 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Crown className="w-5 h-5 text-yellow-600" title="Group leader" />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <User className="w-5 h-5 text-blue-700" />
+                      </div>
+                    )}
+                    <span className="font-semibold text-gray-900 text-sm">
+                      {p.fullName || `${p.lastName}, ${p.firstName}`}
                     </span>
-                  </td>
-                  <td className="py-2 pr-2">
-                    {p.roomPreference ? (
-                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
-                        {p.roomPreference}
-                      </span>
-                    ) : '-'}
-                  </td>
-                  <td className="py-2 pr-2">
-                    {p.accommodation && p.accommodation !== 'Not assigned' ? (
-                      <span className={`px-1.5 py-0.5 rounded text-xs ${
-                        p.accommodation === 'Turkmenistan' ? 'bg-purple-100 text-purple-700' :
-                        p.accommodation === 'Uzbekistan' ? 'bg-green-100 text-green-700' :
-                        p.accommodation === 'Kyrgyzstan' ? 'bg-blue-100 text-blue-700' :
-                        p.accommodation === 'Tajikistan' ? 'bg-orange-100 text-orange-700' :
-                        p.accommodation === 'Kazakhstan' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {p.accommodation}
-                      </span>
-                    ) : '-'}
-                  </td>
-                  <td className="py-2 pr-2 text-gray-500 max-w-[150px] truncate" title={p.remarks || ''}>
-                    {p.remarks || '-'}
-                  </td>
-                  <td className="py-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openModal(p)}
-                        className="p-1 text-gray-400 hover:text-primary-600 rounded"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteTourist(p)}
-                        className="p-1 text-gray-400 hover:text-red-600 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+
+                {/* Gender */}
+                <div className="col-span-1 text-gray-600">
+                  {p.gender === 'M' ? 'M' : p.gender === 'F' ? 'F' : '-'}
+                </div>
+
+                {/* Nationality */}
+                <div className="col-span-2 text-gray-600 text-sm">
+                  {p.country && p.country !== 'Not provided' ? p.country : '-'}
+                </div>
+
+                {/* Passport */}
+                <div className="col-span-2 text-gray-600 text-sm">
+                  {p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}
+                </div>
+
+                {/* Birth */}
+                <div className="col-span-1 text-gray-600 text-xs">
+                  {formatDisplayDate(p.dateOfBirth)}
+                </div>
+
+                {/* Passport Expiry */}
+                <div className="col-span-1 text-xs">
+                  <span className={
+                    isPassportExpired(p.passportExpiryDate)
+                      ? 'text-red-600 font-semibold'
+                      : isPassportExpiringSoon(p.passportExpiryDate)
+                      ? 'text-orange-500 font-medium'
+                      : 'text-gray-600'
+                  }>
+                    {formatDisplayDate(p.passportExpiryDate)}
+                  </span>
+                </div>
+
+                {/* Actions */}
+                <div className="col-span-1">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => openModal(p)}
+                      className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl hover:scale-110 transition-all duration-200"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteTourist(p)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl hover:scale-110 transition-all duration-200"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-gray-500">
-          {searchQuery ? 'No tourists found' : 'No tourists. Add or import from Excel/PDF.'}
+        <div className="text-center py-12 bg-gradient-to-b from-gray-50 to-white rounded-xl border-2 border-dashed border-gray-200">
+          <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-500">
+            {searchQuery ? 'No tourists found' : 'No tourists. Add or import from Excel/PDF.'}
+          </p>
         </div>
       )}
 

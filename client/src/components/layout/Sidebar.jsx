@@ -10,11 +10,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
-  Building2
+  Building2,
+  Bell
 } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Панель управления' },
+  { path: '/updates', icon: Bell, label: 'Updates' },
   { path: '/bookings', icon: CalendarDays, label: 'Бронирования' },
   { path: '/guides', icon: Users, label: 'Гиды' },
   { path: '/tour-types', icon: MapPin, label: 'Типы туров' },

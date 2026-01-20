@@ -46,7 +46,15 @@ export const bookingsApi = {
   updateAccommodation: (bookingId, accId, data) => api.put(`/bookings/${bookingId}/accommodations/${accId}`, data),
   deleteAccommodation: (bookingId, accId) => api.delete(`/bookings/${bookingId}/accommodations/${accId}`),
   // Справочник типов размещения
-  getAccommodationRoomTypes: () => api.get('/bookings/accommodation-room-types')
+  getAccommodationRoomTypes: () => api.get('/bookings/accommodation-room-types'),
+  // Update all bookings' statuses based on PAX
+  updateAllStatuses: () => api.post('/bookings/update-all-statuses'),
+  // Recalculate room counts for all bookings
+  recalculateRooms: () => api.post('/bookings/recalculate-rooms'),
+  // Debug room preferences for a booking
+  debugRooms: (id) => api.get(`/bookings/${id}/debug-rooms`),
+  // Debug count bookings by type
+  debugCountByType: () => api.get('/bookings/debug/count-by-type')
 };
 
 // API for tourists (also used by Rooming List module)
@@ -68,7 +76,7 @@ export const touristsApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  import: (bookingId, tourists) => api.post(`/bookings/${bookingId}/tourists/import`, { tourists }),
+  import: (bookingId, tourists, options = {}) => api.post(`/bookings/${bookingId}/tourists/import`, { tourists, ...options }),
   // Export
   exportExcel: (bookingId) => api.get(`/bookings/${bookingId}/tourists/export/excel`, { responseType: 'blob' }),
   exportPdf: (bookingId) => api.get(`/bookings/${bookingId}/tourists/export/pdf`, { responseType: 'blob' }),
@@ -94,7 +102,10 @@ export const flightsApi = {
   getAll: (bookingId) => api.get(`/bookings/${bookingId}/flights`),
   create: (bookingId, data) => api.post(`/bookings/${bookingId}/flights`, data),
   update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/flights/${id}`, data),
-  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/flights/${id}`)
+  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/flights/${id}`),
+  // Flight sections (raw content from PDF)
+  getSections: (bookingId) => api.get(`/bookings/${bookingId}/flight-sections`),
+  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/flight-sections`)
 };
 
 // API для гидов
@@ -115,7 +126,12 @@ export const tourTypesApi = {
   getById: (id) => api.get(`/tour-types/${id}`),
   create: (data) => api.post('/tour-types', data),
   update: (id, data) => api.put(`/tour-types/${id}`, data),
-  delete: (id) => api.delete(`/tour-types/${id}`)
+  delete: (id) => api.delete(`/tour-types/${id}`),
+  // Itinerary
+  getItinerary: (id) => api.get(`/tour-types/${id}/itinerary`),
+  createItineraryItem: (id, data) => api.post(`/tour-types/${id}/itinerary`, data),
+  updateItineraryItem: (id, itemId, data) => api.put(`/tour-types/${id}/itinerary/${itemId}`, data),
+  deleteItineraryItem: (id, itemId) => api.delete(`/tour-types/${id}/itinerary/${itemId}`)
 };
 
 // API для импорта

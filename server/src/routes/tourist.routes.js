@@ -13,6 +13,9 @@ try {
   console.warn('pdf-parse not available');
 }
 
+// Import PDF rooming list parser utility
+const { parseRoomingListPdf: utilParseRoomingListPdf, getAirportName } = require('../utils/pdfRoomingListParser');
+
 // Try to load pdf2json (optional dependency for PDF parsing)
 let PDFParser;
 try {
@@ -153,6 +156,14 @@ router.get('/:bookingId/tourists', authenticate, async (req, res) => {
 
     // Sort by accommodation (Uzbekistan first, Turkmenistan second), then by name
     const sortedTourists = sortTouristsByAccommodation(tourists);
+
+    // Debug: Log tourists with remarks
+    console.log(`📤 Returning ${sortedTourists.length} tourists for booking ${bookingId}`);
+    sortedTourists.forEach(t => {
+      if (t.remarks && t.remarks !== '-') {
+        console.log(`   📝 ${t.fullName}: remarks = "${t.remarks}"`);
+      }
+    });
 
     res.json({ tourists: sortedTourists });
   } catch (error) {
@@ -295,6 +306,7 @@ router.post('/:bookingId/tourists/bulk', authenticate, async (req, res) => {
         dateOfBirth: p.dateOfBirth ? new Date(p.dateOfBirth) : null,
         passportExpiryDate: p.passportExpiryDate ? new Date(p.passportExpiryDate) : null,
         roomPreference: p.roomPreference,
+        roomNumber: p.roomNumber || null,
         isGroupLeader: p.isGroupLeader || false,
         notes: p.notes,
         country: p.country || 'Not provided',
@@ -348,9 +360,9 @@ function detectTripType(filename, rawData) {
 }
 
 // Helper: Parse Excel file and extract tourists
-// Supports Agenturdaten format: first 4 rows are metadata, row 5 is header, data starts at row 6
+// Supports Agenturdagen format: first 4 rows are metadata, row 5 is header, data starts at row 6
 // Missing fields are set to "Not provided" - import never stops due to missing data
-function parseExcelFile(buffer, filename = '') {
+function parseExcelFile(buffer, filename = '', booking = null) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   const sheetName = workbook.SheetNames[0];
 
@@ -456,14 +468,39 @@ function parseExcelFile(buffer, filename = '') {
     return { firstName: NOT_PROVIDED, lastName: cleanName || NOT_PROVIDED, gender };
   };
 
-  // Map room type codes (EZ = SNGL, DZ = DBL)
+  // Map room type codes (EZ = SNGL, DZ = DBL) and extract room number if present
   const mapRoomType = (rm) => {
-    if (!rm) return NOT_PROVIDED;
+    if (!rm) return { preference: NOT_PROVIDED, number: null };
     const code = rm.toString().toUpperCase().trim();
+
+    // Check if it contains a room number (e.g., "DBL-1", "DZ-1", "EZ-2")
+    const roomNumberMatch = code.match(/^([A-Z]+)[-\s]*(\d+)$/);
+    if (roomNumberMatch) {
+      const roomType = roomNumberMatch[1];
+      const roomNum = roomNumberMatch[2];
+
+      const roomMap = {
+        'EZ': 'SNGL',
+        'DZ': 'DBL',
+        'DRZ': 'DBL',
+        'DOUBLE': 'DBL',
+        'SINGLE': 'SNGL',
+        'TWIN': 'TWN',
+        'DBL': 'DBL',
+        'SGL': 'SNGL',
+        'SNGL': 'SNGL',
+        'TWN': 'TWN'
+      };
+
+      const mappedType = roomMap[roomType] || roomType;
+      return { preference: mappedType, number: `${mappedType}-${roomNum}` };
+    }
+
+    // No room number, just type
     const roomMap = {
-      'EZ': 'SNGL',      // Einzelzimmer -> Single
-      'DZ': 'DBL',       // Doppelzimmer -> Double
-      'DRZ': 'DBL',      // Dreibettzimmer -> Double (treat as double)
+      'EZ': 'SNGL',
+      'DZ': 'DBL',
+      'DRZ': 'DBL',
       'DOUBLE': 'DBL',
       'SINGLE': 'SNGL',
       'TWIN': 'TWN',
@@ -472,7 +509,7 @@ function parseExcelFile(buffer, filename = '') {
       'SNGL': 'SNGL',
       'TWN': 'TWN'
     };
-    return roomMap[code] || code;
+    return { preference: roomMap[code] || code, number: null };
   };
 
   // Map nationality codes to country names
@@ -554,14 +591,45 @@ function parseExcelFile(buffer, filename = '') {
       }
     }
 
-    // Build notes from vegetarian info (internal notes, not exported)
-    let notes = [];
-    if (vegetarian && vegetarian.toString().toLowerCase() === 'yes') {
-      notes.push('Vegetarian');
+    // Build remarks from vegetarian info and birthday
+    const remarksParts = [];
+
+    // Add vegetarian to remarks
+    const vegValue = vegetarian ? vegetarian.toString().toLowerCase() : '';
+    if (vegValue === 'yes' || vegValue === 'ja' || vegValue === 'x') {
+      remarksParts.push('Vegetarian');
     }
 
-    // Remarks is a separate field now (exported)
-    const remarks = remarksCell ? remarksCell.toString().trim() : null;
+    // Check if birthday during tour
+    if (booking && dob) {
+      const dobDate = parseDate(dob);
+      if (dobDate && booking.departureDate && booking.endDate) {
+        const birthMonth = dobDate.getMonth();
+        const birthDay = dobDate.getDate();
+
+        // Create birthday this year (using tour year)
+        const tourYear = new Date(booking.departureDate).getFullYear();
+        const birthdayThisYear = new Date(tourYear, birthMonth, birthDay);
+
+        // Check if birthday is during tour
+        const tourStart = new Date(booking.departureDate);
+        const tourEnd = new Date(booking.endDate);
+
+        if (birthdayThisYear >= tourStart && birthdayThisYear <= tourEnd) {
+          remarksParts.push('Geburtstag');
+        }
+      }
+    }
+
+    // Add existing remarks if any
+    if (remarksCell && remarksCell.toString().trim()) {
+      remarksParts.push(remarksCell.toString().trim());
+    }
+
+    const remarks = remarksParts.length > 0 ? remarksParts.join(', ') : null;
+
+    // Notes field can be empty now (or keep for internal use)
+    const notes = [];
 
     // Determine placement
     let placement = tripType;
@@ -574,6 +642,7 @@ function parseExcelFile(buffer, filename = '') {
       else if (pVal.includes('kazakhstan')) placement = 'Kazakhstan';
     }
 
+    const roomInfo = mapRoomType(roomPref);
     tourists.push({
       rowIndex: i + 1,
       firstName,
@@ -582,7 +651,8 @@ function parseExcelFile(buffer, filename = '') {
       passportNumber: passport ? passport.toString().trim() : NOT_PROVIDED,
       dateOfBirth: parseDate(dob),
       passportExpiryDate: parseDate(passportExpiry),
-      roomPreference: mapRoomType(roomPref),
+      roomPreference: roomInfo.preference,
+      roomNumber: roomInfo.number,
       country: mapNationality(nationality),
       tripType: placement,
       remarks: remarks,
@@ -836,6 +906,16 @@ router.post('/:bookingId/tourists/import/preview', authenticate, (req, res, next
       return res.status(400).json({ error: 'No files uploaded' });
     }
 
+    // Fetch booking data to check birthday during tour
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      select: {
+        id: true,
+        departureDate: true,
+        endDate: true
+      }
+    });
+
     const NOT_PROVIDED = 'Not provided';
     let allExcelTourists = [];
     let allPdfEntries = [];
@@ -875,7 +955,7 @@ router.post('/:bookingId/tourists/import/preview', authenticate, (req, res, next
         }
       } else {
         // Excel/CSV files - extract core tourist data
-        const result = parseExcelFile(file.buffer, file.originalname);
+        const result = parseExcelFile(file.buffer, file.originalname, booking);
         allExcelTourists = allExcelTourists.concat(result.tourists);
         filesSummary.push({
           filename: file.originalname,
@@ -939,7 +1019,11 @@ router.post('/:bookingId/tourists/import/preview', authenticate, (req, res, next
 router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { tourists } = req.body;
+    const { tourists, createOnly } = req.body;
+
+    console.log(`\n🔵 [BACKEND] Import API called for booking ${bookingId}`);
+    console.log(`📥 Received ${tourists?.length || 0} tourists`);
+    console.log(`⚙️ Mode: ${createOnly ? 'CREATE ONLY (from Updates module)' : 'MERGE (from Tourists module)'}`);
 
     if (!Array.isArray(tourists) || tourists.length === 0) {
       return res.status(400).json({ error: 'Tourist list is empty' });
@@ -951,35 +1035,113 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
     // Filter only selected tourists
     const toCreate = tourists.filter(p => p.selected !== false);
 
+    console.log(`✅ After filtering selected: ${toCreate.length} tourists`);
+    console.log(`📋 List of tourists to create:`);
+    toCreate.forEach((t, i) => {
+      console.log(`  ${i + 1}. ${t.fullName} - tripType: "${t.tripType}"`);
+    });
+
     if (toCreate.length === 0) {
       return res.status(400).json({ error: 'No tourists selected for import' });
     }
 
-    // FULL REPLACE MODE: Delete all existing tourists for this booking first
-    // This also cascades to delete their room assignments
-    const deleteResult = await prisma.tourist.deleteMany({
+    // MERGE MODE: Update existing tourists or create new ones
+    // This preserves room assignments set by Rooming List PDF import
+    const existingTourists = await prisma.tourist.findMany({
       where: { bookingId: bookingIdInt }
     });
 
-    // Insert all new tourists
-    const created = await prisma.tourist.createMany({
-      data: toCreate.map(p => ({
-        bookingId: bookingIdInt,
-        firstName: p.firstName?.toString().trim() || NOT_PROVIDED,
-        lastName: p.lastName?.toString().trim() || NOT_PROVIDED,
-        fullName: `${p.lastName || NOT_PROVIDED}, ${p.firstName || NOT_PROVIDED}`.trim(),
-        gender: p.gender || NOT_PROVIDED,
-        passportNumber: p.passportNumber || NOT_PROVIDED,
-        dateOfBirth: p.dateOfBirth ? new Date(p.dateOfBirth) : null,
-        passportExpiryDate: p.passportExpiryDate ? new Date(p.passportExpiryDate) : null,
-        roomPreference: p.roomPreference || NOT_PROVIDED,
-        accommodation: p.tripType || 'Not assigned',
-        country: p.country || NOT_PROVIDED,
-        isGroupLeader: p.isGroupLeader || false,
-        notes: p.notes || null,
-        remarks: p.remarks || null
-      }))
+    console.log(`📋 Found ${existingTourists.length} existing tourists in database`);
+
+    // Helper function to match tourists by name
+    const findExistingTourist = (excelTourist) => {
+      const excelFirstName = (excelTourist.firstName || '').toLowerCase().trim();
+      const excelLastName = (excelTourist.lastName || '').toLowerCase().trim();
+
+      return existingTourists.find(existing => {
+        const existingFirstName = (existing.firstName || '').toLowerCase().trim();
+        const existingLastName = (existing.lastName || '').toLowerCase().trim();
+
+        // Match by last name and first name
+        return existingLastName === excelLastName && existingFirstName === excelFirstName;
+      });
+    };
+
+    const touristsToCreate = [];
+    const touristsToUpdate = [];
+
+    toCreate.forEach(excelTourist => {
+      const existing = findExistingTourist(excelTourist);
+
+      if (existing) {
+        if (createOnly) {
+          // CREATE ONLY mode (from Updates module): Skip existing tourists
+          console.log(`   ⏭️ Skipping existing tourist: ${existing.fullName}`);
+        } else {
+          // MERGE mode (from Tourists module): Update only personal data (passport, birth date, nationality)
+          // DO NOT update room info (roomPreference, roomNumber, accommodation) - preserve from PDF import
+          touristsToUpdate.push({
+            id: existing.id,
+            gender: excelTourist.gender || existing.gender,
+            passportNumber: excelTourist.passportNumber || existing.passportNumber,
+            dateOfBirth: excelTourist.dateOfBirth ? new Date(excelTourist.dateOfBirth) : existing.dateOfBirth,
+            passportExpiryDate: excelTourist.passportExpiryDate ? new Date(excelTourist.passportExpiryDate) : existing.passportExpiryDate,
+            country: excelTourist.country || existing.country,
+            isGroupLeader: excelTourist.isGroupLeader || existing.isGroupLeader,
+            notes: excelTourist.notes || existing.notes
+          });
+          console.log(`   🔄 Updating personal data: ${existing.fullName}`);
+        }
+      } else {
+        // Create new tourist
+        touristsToCreate.push({
+          bookingId: bookingIdInt,
+          firstName: excelTourist.firstName?.toString().trim() || NOT_PROVIDED,
+          lastName: excelTourist.lastName?.toString().trim() || NOT_PROVIDED,
+          fullName: `${excelTourist.lastName || NOT_PROVIDED}, ${excelTourist.firstName || NOT_PROVIDED}`.trim(),
+          gender: excelTourist.gender || NOT_PROVIDED,
+          passportNumber: excelTourist.passportNumber || NOT_PROVIDED,
+          dateOfBirth: excelTourist.dateOfBirth ? new Date(excelTourist.dateOfBirth) : null,
+          passportExpiryDate: excelTourist.passportExpiryDate ? new Date(excelTourist.passportExpiryDate) : null,
+          roomPreference: excelTourist.roomPreference || NOT_PROVIDED,
+          roomNumber: excelTourist.roomNumber || null,
+          accommodation: excelTourist.tripType || 'Not assigned',
+          country: excelTourist.country || NOT_PROVIDED,
+          isGroupLeader: excelTourist.isGroupLeader || false,
+          notes: excelTourist.notes || null,
+          remarks: null  // Excel import should not set remarks
+        });
+        console.log(`   ➕ Creating new tourist: ${excelTourist.firstName} ${excelTourist.lastName}`);
+      }
     });
+
+    // Update existing tourists
+    for (const update of touristsToUpdate) {
+      await prisma.tourist.update({
+        where: { id: update.id },
+        data: {
+          gender: update.gender,
+          passportNumber: update.passportNumber,
+          dateOfBirth: update.dateOfBirth,
+          passportExpiryDate: update.passportExpiryDate,
+          country: update.country,
+          isGroupLeader: update.isGroupLeader,
+          notes: update.notes
+        }
+      });
+    }
+
+    // Create new tourists
+    let createdCount = 0;
+    if (touristsToCreate.length > 0) {
+      const created = await prisma.tourist.createMany({
+        data: touristsToCreate
+      });
+      createdCount = created.count;
+    }
+
+    const skippedCount = toCreate.length - touristsToUpdate.length - touristsToCreate.length;
+    console.log(`✅ Updated ${touristsToUpdate.length} tourists, created ${createdCount} new tourists${skippedCount > 0 ? `, skipped ${skippedCount} existing` : ''}`);
 
     // Update booking pax count
     await updateBookingPaxCount(bookingIdInt);
@@ -992,10 +1154,16 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
 
     const sortedTourists = sortTouristsByAccommodation(updatedTourists);
 
+    const totalProcessed = touristsToUpdate.length + createdCount;
+
     res.status(201).json({
-      count: created.count,
-      deleted: deleteResult.count,
-      message: `Replaced: deleted ${deleteResult.count}, imported ${created.count} tourists`,
+      count: totalProcessed,
+      updated: touristsToUpdate.length,
+      created: createdCount,
+      skipped: skippedCount,
+      message: createOnly
+        ? `Created ${createdCount} new tourists${skippedCount > 0 ? `, skipped ${skippedCount} existing` : ''}`
+        : `Processed ${totalProcessed} tourists (${touristsToUpdate.length} updated, ${createdCount} created)`,
       tourists: sortedTourists
     });
   } catch (error) {
@@ -1806,6 +1974,51 @@ router.delete('/:bookingId/flights/:id', authenticate, async (req, res) => {
 });
 
 // ============================================
+// FLIGHT SECTIONS (Raw content from PDF)
+// ============================================
+
+// GET /api/bookings/:bookingId/flight-sections - Get raw flight sections
+router.get('/:bookingId/flight-sections', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const sections = await prisma.flightSection.findMany({
+      where: { bookingId: parseInt(bookingId) },
+      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }]
+    });
+
+    // Separate by type
+    const international = sections.filter(s => s.type === 'INTERNATIONAL');
+    const domestic = sections.filter(s => s.type === 'DOMESTIC');
+
+    res.json({
+      flightSections: sections,
+      international: international.length > 0 ? international[0] : null,
+      domestic: domestic.length > 0 ? domestic[0] : null
+    });
+  } catch (error) {
+    console.error('Error loading flight sections:', error);
+    res.status(500).json({ error: 'Error loading flight sections' });
+  }
+});
+
+// DELETE /api/bookings/:bookingId/flight-sections - Delete all flight sections
+router.delete('/:bookingId/flight-sections', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    await prisma.flightSection.deleteMany({
+      where: { bookingId: parseInt(bookingId) }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting flight sections:', error);
+    res.status(500).json({ error: 'Error deleting flight sections' });
+  }
+});
+
+// ============================================
 // ROOMING LIST PDF IMPORT
 // ============================================
 
@@ -1833,7 +2046,15 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
     const flights = { international: [], domestic: [] };
     let currentRoomType = null;
     let currentTourType = 'Uzbekistan';
-    let globalRemark = '';
+
+    // Tour dates from PDF
+    let tourStartDate = null;
+    let tourEndDate = null;
+
+    // Additional information from PDF (global)
+    let vegetariansList = []; // Array of vegetarian names
+    let birthdaysMap = new Map(); // Map of name -> birthday date
+    let globalRemark = ''; // General remark for all tourists
 
     // Room grouping counters for DBL and TWN
     let roomCounters = { DBL: 0, TWN: 0, SNGL: 0 };
@@ -1846,16 +2067,30 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
     // Detect tour sections
     let inTurkmenistanSection = false;
 
+    // Section flags for parsing additional information
+    let inBirthdaysSection = false;
+    let inRemarkSection = false;
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const lowerLine = line.toLowerCase();
 
-      // Detect Turkmenistan section
-      if (lowerLine.includes('turkmenistan') && lowerLine.includes('tour:')) {
-        inTurkmenistanSection = true;
-        currentTourType = 'Uzbekistan mit Turkmenistan';
-        // Reset room counters for new tour section
-        roomCounters = { DBL: 0, TWN: 0, SNGL: 0 };
+      // Detect tour sections (IMPORTANT: Order matters - check Turkmenistan first!)
+      if (lowerLine.includes('tour:')) {
+        // Check for "Tour: Usbekistan mit Verlängerung Turkmenistan"
+        if (lowerLine.includes('turkmenistan') || lowerLine.includes('turkmen')) {
+          inTurkmenistanSection = true;
+          currentTourType = 'Turkmenistan';
+          console.log(`📍 Detected Turkmenistan section: ${line}`);
+        }
+        // Check for "Tour: Usbekistan" (without Turkmenistan)
+        else if (lowerLine.includes('usbekistan') || lowerLine.includes('uzbekistan')) {
+          inTurkmenistanSection = false;
+          currentTourType = 'Uzbekistan';
+          console.log(`📍 Detected Uzbekistan section: ${line}`);
+        }
+        // DON'T reset room counters - continue numbering across both sections
+        // This ensures Uzbekistan gets DBL-1, DBL-2... and Turkmenistan gets DBL-3, DBL-4...
         currentRoomPersonCount = 0;
       }
 
@@ -1864,40 +2099,167 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       if (line === 'DOUBLE' || lowerLine === 'double') {
         currentRoomType = 'DBL';
         currentRoomPersonCount = 0; // Reset person count for new section
+        inBirthdaysSection = false; // Exit additional info sections
+        inRemarkSection = false;
         continue;
       }
       if (line === 'TWIN' || lowerLine === 'twin') {
         currentRoomType = 'TWN';
         currentRoomPersonCount = 0; // Reset person count for new section
+        inBirthdaysSection = false; // Exit additional info sections
+        inRemarkSection = false;
         continue;
       }
       if (line === 'SINGLE' || lowerLine === 'single') {
         currentRoomType = 'SNGL';
         currentRoomPersonCount = 0; // Reset person count for new section
+        inBirthdaysSection = false; // Exit additional info sections
+        inRemarkSection = false;
         continue;
+      }
+
+      // Extract tour dates: "Date: 03.10.2025 – 16.10.2025"
+      if (lowerLine.includes('date:')) {
+        const dateMatch = line.match(/Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/i);
+        if (dateMatch && !tourStartDate) { // Only capture first occurrence (Uzbekistan dates)
+          tourStartDate = dateMatch[1]; // 03.10.2025
+          tourEndDate = dateMatch[2];   // 16.10.2025
+          console.log(`Extracted tour dates from PDF: ${tourStartDate} - ${tourEndDate}`);
+        }
+        continue;
+      }
+
+      // Extract additional information (support both "Vegetarian:" and "Vegetarians:")
+      if (lowerLine.startsWith('vegetarian:') || lowerLine.startsWith('vegetarians:')) {
+        inBirthdaysSection = false;
+        inRemarkSection = false;
+        const colonIndex = line.indexOf(':');
+        const value = line.substring(colonIndex + 1).trim();
+        if (value && value !== '//' && value !== '-') {
+          // Parse vegetarian names: "Mr. Maier, Heinz Peter // Mrs. Maier, Andrea // Mrs. Maier, Nadja Daniela"
+          // Split by "//" first, then clean up each name
+          vegetariansList = value.split('//').map(name => name.trim()).filter(n => n);
+          console.log(`📋 Vegetarians found (inline): ${vegetariansList.join(' | ')}`);
+        } else {
+          // Next lines might contain vegetarian names with bullet points
+          // Look ahead for bullet-pointed names
+          let j = i + 1;
+          while (j < lines.length) {
+            const nextLine = lines[j].trim();
+            const nextLower = nextLine.toLowerCase();
+
+            // Stop if we hit another section
+            if (nextLower.startsWith('birthdays:') || nextLower.startsWith('remark:') ||
+                nextLower === 'double' || nextLower === 'twin' || nextLower === 'single') {
+              break;
+            }
+
+            // Skip empty lines and //
+            if (!nextLine || nextLine === '//' || nextLine === '-') {
+              j++;
+              continue;
+            }
+
+            // Parse bullet-pointed names: "• Mr. Rotter, Roman Martin"
+            let vegName = nextLine;
+            // Remove bullet point if present
+            vegName = vegName.replace(/^[•·●○◦▪▫■□]\s*/, '').trim();
+
+            // Check if it's a name (starts with Mr./Mrs./Ms.)
+            if (vegName.match(/^(Mr\.|Mrs\.|Ms\.)\s+/i)) {
+              vegetariansList.push(vegName);
+              console.log(`📋 Vegetarian found (bullet): ${vegName}`);
+              i = j; // Skip this line in main loop
+            } else {
+              break; // Not a name, stop looking
+            }
+
+            j++;
+          }
+        }
+        continue;
+      }
+
+      if (lowerLine.startsWith('birthdays:')) {
+        inBirthdaysSection = true;
+        inRemarkSection = false;
+        const value = line.substring(10).trim();
+        // Check if there's content on the same line
+        if (value && value !== '//' && value !== '-') {
+          // Parse birthdays on same line: "05.10.2025 Mr. Smith, John // 12.10.2025 Mrs. Johnson, Mary"
+          const birthdayEntries = value.split('//').map(entry => entry.trim());
+          birthdayEntries.forEach(entry => {
+            // Extract date and name: "05.10.2025 Mr. Smith, John"
+            const match = entry.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
+            if (match) {
+              const [, date, name] = match;
+              birthdaysMap.set(name.trim(), date);
+              console.log(`🎂 Birthday found: ${name.trim()} - ${date}`);
+            }
+          });
+        }
+        continue;
+      }
+
+      if (lowerLine.startsWith('remark:')) {
+        inBirthdaysSection = false;
+        inRemarkSection = true;
+        const value = line.substring(7).trim();
+        if (value && value !== '//' && value !== '-') {
+          globalRemark = value;
+          console.log(`📝 Global Remark: ${globalRemark}`);
+        }
+        continue;
+      }
+
+      // If we're in birthdays section, parse birthday entries
+      if (inBirthdaysSection) {
+        // Check for section end markers
+        if (lowerLine.startsWith('remark:') || lowerLine === 'double' || lowerLine === 'twin' || lowerLine === 'single') {
+          inBirthdaysSection = false;
+        } else {
+          // Parse birthday line: "Mrs. Diermeier, Melanie Katrin                18.10.1980"
+          // OR: "Mrs. Diermeier, Melanie Katrin 18.10.1980"
+          // Match: name + spaces/tabs + date (DD.MM.YYYY)
+          const birthdayMatch = line.match(/^((?:Mr\.|Mrs\.|Ms\.)\s+.+?)\s+(\d{2}\.\d{2}\.\d{4})$/);
+          if (birthdayMatch) {
+            const [, name, date] = birthdayMatch;
+            birthdaysMap.set(name.trim(), date);
+            console.log(`🎂 Birthday found: ${name.trim()} - ${date}`);
+            continue; // Don't parse this as a tourist
+          }
+        }
+      }
+
+      // If we're in remark section, collect multi-line remarks
+      if (inRemarkSection) {
+        // Check for section end markers
+        if (lowerLine.startsWith('vegetarians:') || lowerLine.startsWith('birthdays:') ||
+            lowerLine === 'double' || lowerLine === 'twin' || lowerLine === 'single' ||
+            lowerLine.startsWith('total') || lowerLine.includes('additional information')) {
+          inRemarkSection = false;
+        } else {
+          // Append to global remark
+          if (line && line !== '//' && line !== '-') {
+            globalRemark += (globalRemark ? '\n' : '') + line;
+            console.log(`📝 Remark line: ${line}`);
+            continue; // Don't parse this as a tourist
+          }
+        }
       }
 
       // Skip section markers and metadata
       if (lowerLine.includes('final rooming list') ||
           lowerLine.includes('tour:') ||
-          lowerLine.includes('date:') ||
           lowerLine.includes('total') ||
           lowerLine.includes('additional information') ||
-          lowerLine.includes('vegetarians:') ||
-          lowerLine.includes('birthdays:') ||
           lowerLine.startsWith('*pax') ||
           lowerLine.startsWith('___') ||
           line === '//' ||
           line === '-') {
-        continue;
-      }
-
-      // Extract remark
-      if (lowerLine.startsWith('remark:')) {
-        const remarkValue = line.substring(7).trim();
-        if (remarkValue && remarkValue !== '//') {
-          globalRemark = remarkValue;
-        }
+        // Exit additional info sections when encountering these markers
+        inBirthdaysSection = false;
+        inRemarkSection = false;
         continue;
       }
 
@@ -1914,6 +2276,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         } else {
           lastName = nameMatch[2];
         }
+        console.log(`   👤 Parsed: "${fullName}" → lastName="${lastName}", firstName="${firstName}"`);
 
         // Room grouping logic:
         // - DBL: 2 people share one room
@@ -1935,6 +2298,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
           roomNumber = `SNGL-${roomCounters.SNGL}`;
         }
 
+        // Just store basic tourist info, we'll add additional info later
         tourists.push({
           fullName,
           firstName,
@@ -1943,7 +2307,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
           roomType: currentRoomType,
           roomNumber: roomNumber, // Room grouping identifier
           tourType: currentTourType,
-          remarks: globalRemark || '-'
+          remarks: '-' // Will be updated later
         });
         continue;
       }
@@ -1981,32 +2345,53 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       }
     }
 
-    // Parse flights from structured table data
-    // Patterns: "TK 1884 15FEB IST - TAS 23:55 - 06:15" or "TK 1664 Fr, 03OKT HAM - IST 18:40 - 23:00"
-    const flightTablePattern = /(TK|HY)\s*(\d{2,4})\s+(?:\w+[,.]?\s*)?(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
-    let flightTableMatch;
-    while ((flightTableMatch = flightTablePattern.exec(text)) !== null) {
-      const [, airline, num, dateStr, dep, arr, depTime, arrTime] = flightTableMatch;
+    // Parse flights from structured table data with multiple flexible patterns
+    const uzbekAirports = ['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG'];
+    const monthMap = {
+      'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
+      'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
+      'SEP': '09', 'OKT': '10', 'OCT': '10', 'NOV': '11',
+      'DEC': '12', 'DEZ': '12'
+    };
 
-      const uzbekAirports = ['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG'];
-      const isInternational = dep === 'IST' || arr === 'IST' ||
-        (!uzbekAirports.includes(dep) || !uzbekAirports.includes(arr));
+    const addFlightInfo = (flightInfo) => {
+      const dep = flightInfo.departure;
+      const arr = flightInfo.arrival;
 
+      // FILTER: International flights = ONLY IST ↔ TAS routes (per requirements)
+      const isIstTas = (dep === 'IST' && arr === 'TAS') || (dep === 'TAS' && arr === 'IST');
+      // FILTER: Domestic flights = only within Uzbekistan
+      const isDomestic = uzbekAirports.includes(dep) && uzbekAirports.includes(arr);
+
+      // Skip flights that don't match our filter criteria
+      if (!isIstTas && !isDomestic) {
+        return; // Skip non-IST-TAS international and non-Uzbekistan domestic flights
+      }
+
+      flightInfo.type = isIstTas ? 'INTERNATIONAL' : 'DOMESTIC';
+
+      const targetArray = isIstTas ? flights.international : flights.domestic;
+      const existingIndex = targetArray.findIndex(f =>
+        f.flightNumber === flightInfo.flightNumber && f.departure === dep && f.arrival === arr
+      );
+      if (existingIndex >= 0) {
+        targetArray[existingIndex] = { ...targetArray[existingIndex], ...flightInfo };
+      } else {
+        targetArray.push(flightInfo);
+      }
+    };
+
+    // Pattern 1: "TK 1884 15FEB IST - TAS 23:55 - 06:15" or "TK 1664 Fr, 03OKT HAM - IST 18:40 - 23:00"
+    const pattern1 = /(TK|HY)\s*(\d{2,4})\s+(?:\w+[,.]?\s*)?(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
+    let match1;
+    while ((match1 = pattern1.exec(text)) !== null) {
+      const [, airline, num, dateStr, dep, arr, depTime, arrTime] = match1;
       const flightInfo = {
         flightNumber: `${airline.toUpperCase()} ${num}`,
         departure: dep,
         arrival: arr,
         departureTime: depTime,
-        arrivalTime: arrTime,
-        type: isInternational ? 'INTERNATIONAL' : 'DOMESTIC'
-      };
-
-      // Parse date
-      const monthMap = {
-        'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
-        'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
-        'SEP': '09', 'OKT': '10', 'OCT': '10', 'NOV': '11',
-        'DEC': '12', 'DEZ': '12'
+        arrivalTime: arrTime
       };
       const dateMatch = dateStr.match(/(\d{2})([A-Z]{3})/i);
       if (dateMatch) {
@@ -2015,51 +2400,402 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         const year = new Date().getFullYear();
         flightInfo.date = `${year}-${month}-${day}`;
       }
+      addFlightInfo(flightInfo);
+    }
 
-      const targetArray = isInternational ? flights.international : flights.domestic;
-      const existingIndex = targetArray.findIndex(f =>
-        f.flightNumber === flightInfo.flightNumber && f.departure === dep && f.arrival === arr
-      );
-      if (existingIndex >= 0) {
-        // Update existing flight with date/time info
-        targetArray[existingIndex] = { ...targetArray[existingIndex], ...flightInfo };
-      } else {
-        targetArray.push(flightInfo);
+    // Pattern 2: "TK 1884 03.10.2025 FRA - IST 11:00 - 16:30" (German date format)
+    const pattern2 = /(TK|HY)\s*(\d{2,4})\s+(\d{2})[.\/](\d{2})[.\/]?(\d{2,4})?\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
+    let match2;
+    while ((match2 = pattern2.exec(text)) !== null) {
+      const [, airline, num, day, month, yearPart, dep, arr, depTime, arrTime] = match2;
+      const year = yearPart ? (yearPart.length === 2 ? '20' + yearPart : yearPart) : new Date().getFullYear().toString();
+      addFlightInfo({
+        flightNumber: `${airline.toUpperCase()} ${num}`,
+        departure: dep,
+        arrival: arr,
+        departureTime: depTime,
+        arrivalTime: arrTime,
+        date: `${year}-${month}-${day}`
+      });
+    }
+
+    // Pattern 3: "TK 1884 FRA-IST 11:00-16:30" (no date, route with hyphen)
+    const pattern3 = /(TK|HY)\s*(\d{2,4})\s+([A-Z]{3})[-–]([A-Z]{3})\s+(\d{2}:\d{2})[-–](\d{2}:\d{2})/gi;
+    let match3;
+    while ((match3 = pattern3.exec(text)) !== null) {
+      const [, airline, num, dep, arr, depTime, arrTime] = match3;
+      addFlightInfo({
+        flightNumber: `${airline.toUpperCase()} ${num}`,
+        departure: dep,
+        arrival: arr,
+        departureTime: depTime,
+        arrivalTime: arrTime
+      });
+    }
+
+    // Pattern 4: "TK 1884 FRA IST" (basic route without times) - only if no other matches found
+    if (flights.international.length === 0 && flights.domestic.length === 0) {
+      const pattern4 = /(TK|HY)\s*(\d{2,4})\s+([A-Z]{3})\s+[-–]?\s*([A-Z]{3})/gi;
+      let match4;
+      while ((match4 = pattern4.exec(text)) !== null) {
+        const [, airline, num, dep, arr] = match4;
+        if (dep !== arr) { // Avoid matching non-route patterns
+          addFlightInfo({
+            flightNumber: `${airline.toUpperCase()} ${num}`,
+            departure: dep,
+            arrival: arr
+          });
+        }
       }
     }
+
+    // Pattern 5: Look for flight tables by searching for lines with airport codes
+    // Matches: "FRA - IST", "TAS-SKD", etc. and associates with nearby flight numbers
+    const airportPairs = text.match(/([A-Z]{3})\s*[-–]\s*([A-Z]{3})/g) || [];
+    const flightNumbers = text.match(/(TK|HY)\s*(\d{2,4})/gi) || [];
+
+    // If we found flight numbers but no structured flights, try to pair them
+    if (flights.international.length === 0 && flights.domestic.length === 0 && flightNumbers.length > 0) {
+      for (const fnMatch of flightNumbers) {
+        const [, airline, num] = fnMatch.match(/(TK|HY)\s*(\d{2,4})/i) || [];
+        if (!airline || !num) continue;
+
+        // Find the nearest airport pair in the text
+        const fnIndex = text.indexOf(fnMatch);
+        let nearestPair = null;
+        let nearestDist = Infinity;
+
+        for (const pair of airportPairs) {
+          const pairIndex = text.indexOf(pair);
+          const dist = Math.abs(fnIndex - pairIndex);
+          if (dist < nearestDist && dist < 200) { // Within 200 chars
+            nearestDist = dist;
+            nearestPair = pair;
+          }
+        }
+
+        if (nearestPair) {
+          const [dep, arr] = nearestPair.split(/\s*[-–]\s*/);
+          if (dep && arr && dep !== arr) {
+            addFlightInfo({
+              flightNumber: `${airline.toUpperCase()} ${num}`,
+              departure: dep,
+              arrival: arr
+            });
+          }
+        }
+      }
+    }
+
+    console.log(`PDF Import - Found flights: ${flights.international.length} international, ${flights.domestic.length} domestic`);
+    console.log(`📋 Found ${vegetariansList.length} vegetarians, ${birthdaysMap.size} birthdays${globalRemark ? ', 1 global remark' : ''}`);
 
     if (tourists.length === 0) {
       return res.status(400).json({ error: 'No tourists found in PDF. Make sure PDF contains rooming list with Mr./Mrs. names.' });
     }
 
-    // Delete existing tourists and flights for this booking
+    // Helper function to parse individual remarks for a tourist
+    const parseIndividualRemarks = (remarkText, tourist) => {
+      const remarks = [];
+      const lines = remarkText.split('\n');
+
+      const lastNameLower = tourist.lastName.toLowerCase();
+      const firstNameLower = tourist.firstName.toLowerCase();
+      const lastNameFirstWord = lastNameLower.split(' ')[0]; // Define at function scope
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line || line === '//') continue;
+
+        const lowerLine = line.toLowerCase();
+
+        // Check if this line mentions the tourist (check first word of last name for "Dr. Baetgen" cases)
+        const mentionsTourist = lowerLine.includes(lastNameFirstWord);
+
+        if (mentionsTourist) {
+          console.log(`   🔍 Found mention of ${tourist.fullName} in line: "${line}"`);
+
+          // Check next line(s) for important information only
+          let j = i + 1;
+          while (j < lines.length) {
+            const nextLine = lines[j].trim();
+            const nextLowerLine = nextLine.toLowerCase();
+
+            // Stop if we encounter another tourist name or section marker
+            if (nextLine.match(/^(Mr\.|Mrs\.|Ms\.|SINGLE|TWIN|DOUBLE|Traveltogether)/i)) {
+              break;
+            }
+
+            // Extract earlier flight and arrival info
+            if (nextLowerLine.includes('earlier flight') || nextLowerLine.includes('arrival on')) {
+              const flightMatch = nextLine.match(/earlier flight on (\d{2}\.\d{2})/i);
+              const arrivalMatch = nextLine.match(/arrival on (\d{2}\.\d{2})/i);
+
+              if (flightMatch && arrivalMatch) {
+                remarks.push(`Flight: ${flightMatch[1]}, Arrival: ${arrivalMatch[1]}`);
+              } else if (arrivalMatch) {
+                remarks.push(`Early arrival: ${arrivalMatch[1]}`);
+              }
+
+              // Extra nights request
+              if (nextLowerLine.includes('extra night') || nextLowerLine.includes('book extra')) {
+                remarks.push('Book extra nights');
+              }
+            }
+
+            // Extract departure date
+            if (nextLowerLine.includes('departure on') || nextLowerLine.includes('later departure')) {
+              const dateMatch = nextLine.match(/(?:departure on|later departure.*?)(\d{2}\.\d{2})/i);
+              if (dateMatch) {
+                remarks.push(`Late departure: ${dateMatch[1]}`);
+              }
+            }
+
+            // Extract extra transfer request
+            if (nextLowerLine.includes('extra transfer') || nextLowerLine.includes('need transfer')) {
+              remarks.push('Extra transfer needed');
+            }
+
+            j++;
+            if (j - i > 3) break; // Don't look more than 3 lines ahead
+          }
+        }
+      }
+
+      return remarks;
+    };
+
+    // Helper function to parse DD.MM date string into Date object for current tour year
+    const parseDateInTourYear = (dateStr, tourYear) => {
+      if (!dateStr) return null;
+      const match = dateStr.match(/(\d{2})\.(\d{2})/);
+      if (!match) return null;
+
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1; // JS months are 0-indexed
+
+      return new Date(tourYear, month, day);
+    };
+
+    // Get tour year from tour start date
+    const tourYear = tourStartDate ? parseInt(tourStartDate.split('.')[2], 10) : new Date().getFullYear();
+
+    // Now match tourists with additional information (vegetarians, birthdays, remarks)
+    console.log('🔄 Matching tourists with additional information...');
+    tourists.forEach(tourist => {
+      const additionalInfo = [];
+
+      // Initialize individual dates (will be set if found in remarks)
+      tourist.checkInDate = null;
+      tourist.checkOutDate = null;
+
+      // Check if this tourist is vegetarian
+      const matchedVeg = vegetariansList.find(vegName => {
+        const vegLower = vegName.toLowerCase();
+        const lastNameLower = tourist.lastName.toLowerCase();
+        const firstNameLower = tourist.firstName.toLowerCase();
+        return vegLower.includes(lastNameLower) && vegLower.includes(firstNameLower);
+      });
+      if (matchedVeg) {
+        additionalInfo.push('Vegetarian');
+        console.log(`   ✅ ${tourist.fullName} is vegetarian (matched: "${matchedVeg}")`);
+      }
+
+      // Check if this tourist has a birthday
+      let birthdayDate = null;
+      for (const [name, date] of birthdaysMap.entries()) {
+        const nameLower = name.toLowerCase();
+        const lastNameLower = tourist.lastName.toLowerCase();
+        const firstNameLower = tourist.firstName.toLowerCase();
+        if (nameLower.includes(lastNameLower) && nameLower.includes(firstNameLower)) {
+          birthdayDate = date;
+          console.log(`   🎂 ${tourist.fullName} has birthday: ${date} (matched: "${name}")`);
+          break;
+        }
+      }
+      if (birthdayDate) {
+        additionalInfo.push(`Birthday: ${birthdayDate}`);
+      }
+
+      // Parse individual remarks from global remark
+      if (globalRemark) {
+        const individualRemarks = parseIndividualRemarks(globalRemark, tourist);
+        if (individualRemarks.length > 0) {
+          console.log(`   📝 ${tourist.fullName} remarks: ${individualRemarks.join(', ')}`);
+          additionalInfo.push(...individualRemarks);
+
+          // Extract individual arrival/departure dates from remarks
+          individualRemarks.forEach(remark => {
+            // Check for arrival date: "Flight: 09.10, Arrival: 10.10" or "Early arrival: 10.10"
+            const arrivalMatch = remark.match(/Arrival:\s*(\d{2}\.\d{2})/i) || remark.match(/Early arrival:\s*(\d{2}\.\d{2})/i);
+            if (arrivalMatch) {
+              const arrivalDate = parseDateInTourYear(arrivalMatch[1], tourYear);
+              if (arrivalDate) {
+                tourist.checkInDate = arrivalDate;
+                console.log(`   📅 ${tourist.fullName} custom arrival: ${arrivalMatch[1]}`);
+              }
+            }
+
+            // Check for departure date: "Late departure: 25.10"
+            const departureMatch = remark.match(/Late departure:\s*(\d{2}\.\d{2})/i);
+            if (departureMatch) {
+              const departureDate = parseDateInTourYear(departureMatch[1], tourYear);
+              if (departureDate) {
+                tourist.checkOutDate = departureDate;
+                console.log(`   📅 ${tourist.fullName} custom departure: ${departureMatch[1]}`);
+              }
+            }
+          });
+        }
+      }
+
+      // Update tourist remarks
+      tourist.remarks = additionalInfo.length > 0 ? additionalInfo.join('\n') : '-';
+    });
+
+    // ✅ UPDATE MODE: Only update room assignments, preserve existing tourist data
+    console.log(`🔄 Fetching existing tourists for booking ${bookingId}...`);
+
+    // Get existing tourists from database
+    const existingTourists = await prisma.tourist.findMany({
+      where: { bookingId: bookingIdInt }
+    });
+
+    console.log(`📋 Found ${existingTourists.length} existing tourists in database`);
+    console.log(`📋 Found ${tourists.length} tourists in PDF`);
+
+    // Helper function to normalize name for matching
+    const normalizeName = (name) => {
+      return name.toLowerCase().trim()
+        .replace(/\s+/g, ' ')
+        .replace(/mrs\.|mr\.|dr\./gi, '')
+        .trim();
+    };
+
+    let updatedCount = 0;
+    let createdCount = 0;
+
+    // Process each tourist from PDF
+    for (const pdfTourist of tourists) {
+      const pdfFullName = normalizeName(pdfTourist.fullName || `${pdfTourist.lastName}, ${pdfTourist.firstName}`);
+
+      // Try to find matching existing tourist by name
+      const matchedTourist = existingTourists.find(existing => {
+        const existingFullName = normalizeName(existing.fullName || `${existing.lastName}, ${existing.firstName}`);
+        return existingFullName === pdfFullName;
+      });
+
+      if (matchedTourist) {
+        // Update existing tourist - only room-related fields and remarks
+        console.log(`   🔄 Updating room assignment for: ${matchedTourist.fullName}`);
+
+        // Prepare update data - merge PDF remarks with existing remarks
+        const updateData = {
+          roomPreference: pdfTourist.roomType || matchedTourist.roomPreference,
+          roomNumber: pdfTourist.roomNumber || matchedTourist.roomNumber,
+          accommodation: pdfTourist.tourType || matchedTourist.accommodation
+        };
+
+        // Update individual dates if found in PDF
+        if (pdfTourist.checkInDate) {
+          updateData.checkInDate = pdfTourist.checkInDate;
+        }
+        if (pdfTourist.checkOutDate) {
+          updateData.checkOutDate = pdfTourist.checkOutDate;
+        }
+
+        // Merge remarks: keep existing remarks if PDF doesn't have new ones, or append PDF remarks
+        if (pdfTourist.remarks && pdfTourist.remarks !== '-') {
+          // If existing tourist has remarks that aren't default
+          if (matchedTourist.remarks && matchedTourist.remarks !== '-' && matchedTourist.remarks !== 'Not provided') {
+            // Check if PDF remarks are different from existing ones
+            if (!matchedTourist.remarks.includes(pdfTourist.remarks)) {
+              updateData.remarks = `${matchedTourist.remarks}\n${pdfTourist.remarks}`;
+            } else {
+              updateData.remarks = matchedTourist.remarks; // Keep existing
+            }
+          } else {
+            updateData.remarks = pdfTourist.remarks;
+          }
+        }
+        // If no new remarks from PDF, keep existing remarks
+        // (don't include remarks in updateData, so it won't be changed)
+
+        await prisma.tourist.update({
+          where: { id: matchedTourist.id },
+          data: updateData
+        });
+
+        updatedCount++;
+      } else {
+        // Create new tourist (this should be rare for rooming list imports)
+        console.log(`   ➕ Creating new tourist: ${pdfTourist.fullName}`);
+
+        await prisma.tourist.create({
+          data: {
+            bookingId: bookingIdInt,
+            firstName: pdfTourist.firstName || 'Not provided',
+            lastName: pdfTourist.lastName || 'Not provided',
+            fullName: pdfTourist.fullName || `${pdfTourist.lastName}, ${pdfTourist.firstName}`,
+            gender: pdfTourist.gender || 'Not provided',
+            roomPreference: pdfTourist.roomType,
+            roomNumber: pdfTourist.roomNumber,
+            accommodation: pdfTourist.tourType,
+            remarks: pdfTourist.remarks || '-',
+            country: 'Not provided',
+            passportNumber: 'Not provided',
+            checkInDate: pdfTourist.checkInDate || null,
+            checkOutDate: pdfTourist.checkOutDate || null
+          }
+        });
+
+        createdCount++;
+      }
+    }
+
+    console.log(`✅ Updated ${updatedCount} tourists, created ${createdCount} new tourists`);
+
+    // Delete and recreate flights and flight sections (this is okay since they come from PDF)
     await prisma.$transaction([
-      prisma.tourist.deleteMany({ where: { bookingId: bookingIdInt } }),
-      prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } })
+      prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } }),
+      prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
     ]);
 
-    // Create tourists - sorted by tour type (Uzbekistan first)
-    const sortedTourists = [...tourists].sort((a, b) => {
-      if (a.tourType === 'Uzbekistan' && b.tourType !== 'Uzbekistan') return -1;
-      if (a.tourType !== 'Uzbekistan' && b.tourType === 'Uzbekistan') return 1;
-      return (a.lastName || '').localeCompare(b.lastName || '');
+    // Verify remarks were saved by fetching back from DB
+    const verifyTourists = await prisma.tourist.findMany({
+      where: { bookingId: bookingIdInt }
+    });
+    console.log('🔍 Verifying saved tourists with remarks:');
+    verifyTourists.forEach(t => {
+      if (t.remarks && t.remarks !== '-') {
+        console.log(`   ✓ ${t.fullName}: ${t.remarks}`);
+      }
     });
 
-    const createdTourists = await prisma.tourist.createMany({
-      data: sortedTourists.map(t => ({
-        bookingId: bookingIdInt,
-        firstName: t.firstName || 'Not provided',
-        lastName: t.lastName || 'Not provided',
-        fullName: t.fullName || `${t.lastName}, ${t.firstName}`,
-        gender: t.gender || 'Not provided',
-        roomPreference: t.roomType,
-        roomNumber: t.roomNumber,
-        accommodation: t.tourType,
-        remarks: t.remarks || '-',
-        country: 'Not provided',
-        passportNumber: 'Not provided'
-      }))
-    });
+    // Update booking with extracted tour dates
+    if (tourStartDate && tourEndDate) {
+      try {
+        // Convert DD.MM.YYYY to Date object
+        const [startDay, startMonth, startYear] = tourStartDate.split('.');
+        const [endDay, endMonth, endYear] = tourEndDate.split('.');
+
+        const departureDate = new Date(`${startYear}-${startMonth}-${startDay}`);
+        const endDate = new Date(`${endYear}-${endMonth}-${endDay}`);
+
+        await prisma.booking.update({
+          where: { id: bookingIdInt },
+          data: {
+            departureDate,
+            endDate
+          }
+        });
+
+        console.log(`✓ Updated booking with tour dates: ${tourStartDate} to ${tourEndDate}`);
+      } catch (dateError) {
+        console.error('Error updating booking dates:', dateError);
+        // Continue with import even if date update fails
+      }
+    }
 
     // Create flights
     const allFlights = [
@@ -2083,6 +2819,42 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       });
     }
 
+    // Extract and save raw flight sections for display
+    const flightSections = [];
+
+    // Extract raw International Flights section (IST ↔ TAS only)
+    const internationalRawContent = extractRawFlightSection(text, 'INTERNATIONAL', uzbekAirports);
+    if (internationalRawContent || flights.international.length > 0) {
+      flightSections.push({
+        bookingId: bookingIdInt,
+        type: 'INTERNATIONAL',
+        rawContent: internationalRawContent || formatFlightListAsRaw(flights.international),
+        sourceFileName: req.file.originalname || 'imported.pdf',
+        sortOrder: 1
+      });
+    }
+
+    // Extract raw Domestic Flights section (Uzbekistan internal only)
+    const domesticRawContent = extractRawFlightSection(text, 'DOMESTIC', uzbekAirports);
+    if (domesticRawContent || flights.domestic.length > 0) {
+      flightSections.push({
+        bookingId: bookingIdInt,
+        type: 'DOMESTIC',
+        rawContent: domesticRawContent || formatFlightListAsRaw(flights.domestic),
+        sourceFileName: req.file.originalname || 'imported.pdf',
+        sortOrder: 2
+      });
+    }
+
+    // Save flight sections
+    if (flightSections.length > 0) {
+      await prisma.flightSection.createMany({
+        data: flightSections
+      });
+    }
+
+    console.log(`PDF Import - Saved ${flightSections.length} flight sections`);
+
     // Update booking pax count
     await updateBookingPaxCount(bookingIdInt);
 
@@ -2097,13 +2869,17 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }]
     });
 
+    const totalTouristsProcessed = updatedCount + createdCount;
+
     res.json({
       success: true,
-      message: `Imported ${createdTourists.count} tourists and ${allFlights.length} flights from PDF`,
+      message: `Updated ${updatedCount} tourists, created ${createdCount} new tourists from PDF`,
       tourists: updatedTourists,
       flights: updatedFlights,
       summary: {
-        touristsImported: createdTourists.count,
+        touristsImported: totalTouristsProcessed,
+        touristsUpdated: updatedCount,
+        touristsCreated: createdCount,
         internationalFlights: flights.international.length,
         domesticFlights: flights.domestic.length,
         uzbekistanCount: tourists.filter(t => t.tourType === 'Uzbekistan').length,
@@ -2125,10 +2901,207 @@ async function updateBookingPaxCount(bookingId) {
     where: { bookingId }
   });
 
+  // Get all tourists to calculate room counts
+  const tourists = await prisma.tourist.findMany({
+    where: { bookingId },
+    select: { id: true, roomPreference: true, roomNumber: true }
+  });
+
+  // Check if any tourist has roomNumber set (not null and not "null" string)
+  const hasRoomNumbers = tourists.some(t => t.roomNumber && t.roomNumber !== 'null');
+
+  let roomsDbl, roomsTwn, roomsSngl;
+
+  if (hasRoomNumbers) {
+    // Count unique room numbers
+    const uniqueRooms = {
+      DBL: new Set(),
+      TWN: new Set(),
+      SNGL: new Set()
+    };
+
+    tourists.forEach(tourist => {
+      if (tourist.roomNumber && tourist.roomNumber !== 'null') {
+        const room = tourist.roomNumber.toUpperCase();
+        if (room.startsWith('DBL')) {
+          uniqueRooms.DBL.add(room);
+        } else if (room.startsWith('SNGL') || room.startsWith('SGL')) {
+          uniqueRooms.SNGL.add(room);
+        } else if (room.startsWith('TWN')) {
+          uniqueRooms.TWN.add(room);
+        }
+      }
+    });
+
+    roomsDbl = uniqueRooms.DBL.size;
+    roomsTwn = uniqueRooms.TWN.size;
+    roomsSngl = uniqueRooms.SNGL.size;
+  } else {
+    // Fallback: count by roomPreference
+    let dblCount = 0;
+    let twnCount = 0;
+    let snglCount = 0;
+
+    tourists.forEach(tourist => {
+      const roomPref = (tourist.roomPreference || '').toUpperCase().trim();
+
+      // DZ or DBL = Double room
+      if (roomPref === 'DZ' || roomPref === 'DBL' || roomPref.includes('DBL') || roomPref.includes('DOUBLE')) {
+        dblCount++;
+      }
+      // EZ or SNGL = Single room
+      else if (roomPref === 'EZ' || roomPref === 'SNGL' || roomPref === 'SGL' || roomPref.includes('SNGL') || roomPref.includes('SINGLE')) {
+        snglCount++;
+      }
+      // TWN = Twin room
+      else if (roomPref === 'TWN' || roomPref.includes('TWN') || roomPref.includes('TWIN')) {
+        twnCount++;
+      }
+    });
+
+    // Calculate actual room numbers
+    // If there's an odd number of DZ (single DZ without pair), count it as 0.5 TWN
+    console.log(`📊 Room calculation: dblCount=${dblCount}, twnCount=${twnCount}, snglCount=${snglCount}`);
+
+    if (dblCount % 2 === 1) {
+      // Odd number of DZ: one person alone, rest in pairs
+      roomsDbl = Math.floor(dblCount / 2); // Full DBL rooms for pairs
+      roomsTwn = Math.ceil(twnCount / 2) + 0.5; // Regular TWN rooms + 0.5 for single DZ
+      console.log(`✅ ODD DZ count: roomsDbl=${roomsDbl}, roomsTwn=${roomsTwn} (includes 0.5 for single DZ)`);
+    } else {
+      // Even number of DZ: all in pairs
+      roomsDbl = dblCount / 2;
+      roomsTwn = Math.ceil(twnCount / 2);
+      console.log(`✅ EVEN DZ count: roomsDbl=${roomsDbl}, roomsTwn=${roomsTwn}`);
+    }
+    roomsSngl = snglCount;
+    console.log(`📌 Final rooms: DBL=${roomsDbl}, TWN=${roomsTwn}, SNGL=${roomsSngl}`);
+  }
+
+  // Auto-set status based on PAX count
+  let status = 'PENDING';
+  if (count >= 6) {
+    status = 'CONFIRMED';
+  } else if (count === 4 || count === 5) {
+    status = 'IN_PROGRESS';
+  }
+
   await prisma.booking.update({
     where: { id: bookingId },
-    data: { pax: count }
+    data: {
+      pax: count,
+      status: status,
+      roomsDbl: roomsDbl,
+      roomsTwn: roomsTwn,
+      roomsSngl: roomsSngl
+    }
   });
+}
+
+/**
+ * Extract raw flight section content from PDF text
+ * @param {string} text - Full PDF text
+ * @param {string} type - 'INTERNATIONAL' or 'DOMESTIC'
+ * @param {string[]} uzbekAirports - List of Uzbekistan airport codes
+ * @returns {string|null} Raw content or null
+ */
+function extractRawFlightSection(text, type, uzbekAirports) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const relevantLines = [];
+
+  // Headers that indicate flight sections
+  const internationalHeaders = [
+    /international\s*fl[iüu]gh?te?s?/i,
+    /internationale?\s*fl[üu]ge/i,
+    /IST\s*[-–→]\s*TAS|TAS\s*[-–→]\s*IST/i
+  ];
+  const domesticHeaders = [
+    /domestic\s*fl[iüu]gh?te?s?/i,
+    /inlands?fl[üu]ge/i,
+    /interne?\s*fl[üu]ge/i
+  ];
+
+  let inTargetSection = false;
+  let sectionDepth = 0;
+
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+
+    // Check section headers
+    const isIntlHeader = internationalHeaders.some(p => p.test(line));
+    const isDomHeader = domesticHeaders.some(p => p.test(line));
+
+    if (type === 'INTERNATIONAL' && isIntlHeader) {
+      inTargetSection = true;
+      relevantLines.push(line);
+      continue;
+    } else if (type === 'DOMESTIC' && isDomHeader) {
+      inTargetSection = true;
+      relevantLines.push(line);
+      continue;
+    }
+
+    // Exit section on next major header
+    if (inTargetSection && (
+      /^(?:DOUBLE|TWIN|SINGLE|TOTAL|PAX|Additional|Remark:|Name|Tour:)/i.test(line) ||
+      (type === 'INTERNATIONAL' && isDomHeader) ||
+      (type === 'DOMESTIC' && isIntlHeader)
+    )) {
+      inTargetSection = false;
+    }
+
+    // Collect lines in target section
+    if (inTargetSection) {
+      relevantLines.push(line);
+      continue;
+    }
+
+    // Also detect flight lines by pattern
+    const flightPattern = /(TK|HY)\s*(\d{2,4}).*?([A-Z]{3})\s*[-–→]\s*([A-Z]{3})/i;
+    const flightMatch = line.match(flightPattern);
+    if (flightMatch) {
+      const dep = flightMatch[3];
+      const arr = flightMatch[4];
+
+      if (type === 'INTERNATIONAL') {
+        // Only IST ↔ TAS
+        if ((dep === 'IST' && arr === 'TAS') || (dep === 'TAS' && arr === 'IST')) {
+          relevantLines.push(line);
+        }
+      } else if (type === 'DOMESTIC') {
+        // Only within Uzbekistan
+        if (uzbekAirports.includes(dep) && uzbekAirports.includes(arr)) {
+          relevantLines.push(line);
+        }
+      }
+    }
+  }
+
+  // Return unique lines
+  const uniqueLines = [...new Set(relevantLines)];
+  return uniqueLines.length > 0 ? uniqueLines.join('\n') : null;
+}
+
+/**
+ * Format structured flight list as raw text for display
+ * @param {object[]} flights - Array of flight objects
+ * @returns {string} Formatted text
+ */
+function formatFlightListAsRaw(flights) {
+  if (!flights || flights.length === 0) return '';
+
+  return flights.map(f => {
+    const parts = [f.flightNumber || ''];
+    if (f.date) {
+      const d = new Date(f.date);
+      parts.push(d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+    }
+    parts.push(`${f.departure} → ${f.arrival}`);
+    if (f.departureTime) {
+      parts.push(`${f.departureTime}${f.arrivalTime ? ' - ' + f.arrivalTime : ''}`);
+    }
+    return parts.filter(p => p).join('  ');
+  }).join('\n');
 }
 
 module.exports = router;

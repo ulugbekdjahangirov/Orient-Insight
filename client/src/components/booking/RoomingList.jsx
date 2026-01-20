@@ -63,7 +63,7 @@ export default function RoomingList({ bookingId, bookingRooms = [], participants
 
   const saveAssignment = async () => {
     if (!assignForm.participantId) {
-      toast.error('Выберите участника');
+      toast.error('Выберите туриста');
       return;
     }
 
@@ -76,7 +76,7 @@ export default function RoomingList({ bookingId, bookingRooms = [], participants
         extraNights: parseInt(assignForm.extraNights) || 0,
         notes: assignForm.notes
       });
-      toast.success('Участник назначен');
+      toast.success('Турист назначен');
       setAssignModalOpen(false);
       loadRoomingList();
       onUpdate?.();
@@ -283,13 +283,13 @@ export default function RoomingList({ bookingId, bookingRooms = [], participants
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Участник *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Турист *</label>
                 <select
                   value={assignForm.participantId}
                   onChange={(e) => setAssignForm({ ...assignForm, participantId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Выберите участника</option>
+                  <option value="">Выберите туриста</option>
                   {unassignedParticipants?.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.fullName || `${p.lastName}, ${p.firstName}`}

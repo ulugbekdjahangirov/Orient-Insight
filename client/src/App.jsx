@@ -3,6 +3,7 @@ import { useAuth } from './store/AuthContext';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Updates from './pages/Updates';
 import Bookings from './pages/Bookings';
 import BookingDetail from './pages/BookingDetail';
 import Guides from './pages/Guides';
@@ -45,6 +46,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="updates" element={<Updates />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="bookings/:id" element={<BookingDetail />} />
         <Route path="guides" element={<Guides />} />

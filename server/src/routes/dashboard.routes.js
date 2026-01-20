@@ -9,32 +9,96 @@ const prisma = new PrismaClient();
 router.get('/stats', authenticate, async (req, res) => {
   try {
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    // Общая статистика
+    // Helper to calculate status based on PAX, departure date, and end date
+    const calculateStatus = (pax, departureDate, endDate) => {
+      const paxCount = parseInt(pax) || 0;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Check if tour has ended
+      if (endDate) {
+        const tourEndDate = new Date(endDate);
+        tourEndDate.setHours(0, 0, 0, 0);
+        if (tourEndDate < today) {
+          return 'COMPLETED';
+        }
+      }
+
+      if (departureDate) {
+        const daysUntilDeparture = Math.ceil((new Date(departureDate) - today) / (1000 * 60 * 60 * 24));
+
+        if (daysUntilDeparture < 30 && paxCount < 4) {
+          return 'CANCELLED';
+        }
+      }
+
+      if (paxCount >= 6) {
+        return 'CONFIRMED';
+      } else if (paxCount === 4 || paxCount === 5) {
+        return 'IN_PROGRESS';
+      } else {
+        return 'PENDING';
+      }
+    };
+
+    // Получаем все бронирования для расчета статусов
+    const allBookings = await prisma.booking.findMany({
+      select: {
+        id: true,
+        pax: true,
+        departureDate: true,
+        endDate: true,
+        tourTypeId: true
+      }
+    });
+
+    // Рассчитываем статусы динамически
+    const statusCounts = {
+      CONFIRMED: 0,
+      IN_PROGRESS: 0,
+      PENDING: 0,
+      CANCELLED: 0,
+      COMPLETED: 0
+    };
+
+    const statusPaxSums = {
+      CONFIRMED: 0,
+      IN_PROGRESS: 0,
+      PENDING: 0,
+      CANCELLED: 0,
+      COMPLETED: 0
+    };
+
+    allBookings.forEach(booking => {
+      const calculatedStatus = calculateStatus(booking.pax, booking.departureDate, booking.endDate);
+      statusCounts[calculatedStatus]++;
+      statusPaxSums[calculatedStatus] += booking.pax;
+    });
+
+    // Формируем массив для графика (как groupBy возвращает)
+    const bookingsByStatus = Object.keys(statusCounts)
+      .filter(status => statusCounts[status] > 0)
+      .map(status => ({
+        status,
+        _count: { status: statusCounts[status] },
+        _sum: { pax: statusPaxSums[status] }
+      }));
+
+    // Остальная статистика
     const [
-      totalBookings,
       totalPax,
-      bookingsByStatus,
       bookingsByTourType,
       thisMonthBookings,
       upcomingBookings,
       guidesCount,
       tourTypesCount
     ] = await Promise.all([
-      // Всего бронирований
-      prisma.booking.count(),
-
-      // Всего участников
+      // Всего туристов
       prisma.booking.aggregate({ _sum: { pax: true } }),
-
-      // По статусам
-      prisma.booking.groupBy({
-        by: ['status'],
-        _count: { status: true },
-        _sum: { pax: true }
-      }),
 
       // По типам туров
       prisma.booking.groupBy({
@@ -53,13 +117,11 @@ router.get('/stats', authenticate, async (req, res) => {
         }
       }),
 
-      // Предстоящие бронирования
-      prisma.booking.count({
-        where: {
-          departureDate: { gte: now },
-          status: { not: 'CANCELLED' }
-        }
-      }),
+      // Предстоящие бронирования (не завершенные и не отмененные)
+      allBookings.filter(b => {
+        const status = calculateStatus(b.pax, b.departureDate, b.endDate);
+        return status !== 'CANCELLED' && status !== 'COMPLETED' && new Date(b.departureDate) >= now;
+      }).length,
 
       // Количество гидов
       prisma.guide.count({ where: { isActive: true } }),
@@ -81,7 +143,7 @@ router.get('/stats', authenticate, async (req, res) => {
 
     res.json({
       overview: {
-        totalBookings,
+        totalBookings: allBookings.length,
         totalPax: totalPax._sum.pax || 0,
         thisMonthBookings,
         upcomingBookings,
@@ -102,11 +164,12 @@ router.get('/upcoming', authenticate, async (req, res) => {
   try {
     const { limit = 10 } = req.query;
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
 
+    // Fetch all upcoming bookings (status will be calculated on frontend)
     const bookings = await prisma.booking.findMany({
       where: {
-        departureDate: { gte: now },
-        status: { not: 'CANCELLED' }
+        departureDate: { gte: now }
       },
       include: {
         tourType: { select: { code: true, name: true, color: true } },

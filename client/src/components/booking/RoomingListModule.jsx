@@ -1,33 +1,15 @@
 import { useState, useEffect } from 'react';
-import { touristsApi, flightsApi } from '../../services/api';
+import { touristsApi, bookingsApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
-  Edit, Upload, Users, User, Plane, FileText,
+  Edit, Upload, Users, User, FileText,
   X, Save, Search, Download, ChevronDown, Check, Plus, Trash2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-// Airport code to city name mapping
-const airportNames = {
-  'TAS': 'Tashkent',
-  'SKD': 'Samarkand',
-  'UGC': 'Urgench',
-  'BHK': 'Bukhara',
-  'NCU': 'Nukus',
-  'NVI': 'Navoi',
-  'IST': 'Istanbul',
-  'FRA': 'Frankfurt',
-  'HAM': 'Hamburg',
-  'BER': 'Berlin',
-  'MUC': 'Munich',
-  'STR': 'Stuttgart',
-  'NUE': 'Nuremberg',
-  'ASB': 'Ashgabat'
-};
-
 export default function RoomingListModule({ bookingId, onUpdate }) {
   const [tourists, setTourists] = useState([]);
-  const [flights, setFlights] = useState([]);
+  const [booking, setBooking] = useState(null); // Booking details for ЗАЯВКА header
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -40,20 +22,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const [form, setForm] = useState({
     roomPreference: '',
     remarks: ''
-  });
-
-  // Flight modal state
-  const [flightModalOpen, setFlightModalOpen] = useState(false);
-  const [editingFlight, setEditingFlight] = useState(null);
-  const [flightForm, setFlightForm] = useState({
-    type: 'INTERNATIONAL',
-    flightNumber: '',
-    departure: '',
-    arrival: '',
-    date: '',
-    departureTime: '',
-    arrivalTime: '',
-    notes: ''
   });
 
   // Inline edit states
@@ -72,13 +40,25 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [touristsRes, flightsRes] = await Promise.all([
+      const [touristsRes, bookingRes] = await Promise.all([
         touristsApi.getAll(bookingId),
-        flightsApi.getAll(bookingId)
+        bookingsApi.getById(bookingId)
       ]);
+      console.log('🔍 Booking Response:', bookingRes);
+      console.log('🔍 Booking Object:', bookingRes?.data?.booking);
+      console.log('🔍 Departure Date:', bookingRes?.data?.booking?.departureDate);
+      console.log('🔍 End Date:', bookingRes?.data?.booking?.endDate);
+      console.log('🔍 Tourists:', touristsRes.data.tourists);
+      // Log remarks for debugging
+      touristsRes.data.tourists?.forEach(t => {
+        if (t.remarks && t.remarks !== '-') {
+          console.log(`📝 ${t.fullName}: ${t.remarks}`);
+        }
+      });
       setTourists(touristsRes.data.tourists || []);
-      setFlights(flightsRes.data.flights || []);
+      setBooking(bookingRes?.data?.booking || null);
     } catch (error) {
+      console.error('❌ Error loading data:', error);
       toast.error('Error loading data');
     } finally {
       setLoading(false);
@@ -156,6 +136,25 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const uzbekistanTourists = filteredTourists.filter(t => !isTurkmenistan(t));
   const turkmenistanTourists = filteredTourists.filter(t => isTurkmenistan(t));
 
+  // Sort uzbekistan tourists by room number (to keep room pairs together)
+  uzbekistanTourists.sort((a, b) => {
+    const roomA = a.roomNumber || '';
+    const roomB = b.roomNumber || '';
+    if (roomA !== roomB) return roomA.localeCompare(roomB);
+    return (a.lastName || '').localeCompare(b.lastName || '');
+  });
+
+  // Sort turkmenistan tourists by room number
+  turkmenistanTourists.sort((a, b) => {
+    const roomA = a.roomNumber || '';
+    const roomB = b.roomNumber || '';
+    if (roomA !== roomB) return roomA.localeCompare(roomB);
+    return (a.lastName || '').localeCompare(b.lastName || '');
+  });
+
+  // Combine: Uzbekistan first, then Turkmenistan
+  const sortedTourists = [...uzbekistanTourists, ...turkmenistanTourists];
+
   // Group each country's tourists by room type
   const uzbekistanByRoomType = groupTouristsByRoomType(uzbekistanTourists);
   const turkmenistanByRoomType = groupTouristsByRoomType(turkmenistanTourists);
@@ -212,76 +211,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     }
   };
 
-  // ============================================
-  // FLIGHT HANDLERS
-  // ============================================
-
-  const internationalFlights = flights.filter(f => f.type === 'INTERNATIONAL');
-  const domesticFlights = flights.filter(f => f.type === 'DOMESTIC');
-
-  const openFlightModal = (flight = null, type = 'INTERNATIONAL') => {
-    if (flight) {
-      setEditingFlight(flight);
-      setFlightForm({
-        type: flight.type,
-        flightNumber: flight.flightNumber || '',
-        departure: flight.departure || '',
-        arrival: flight.arrival || '',
-        date: formatDate(flight.date),
-        departureTime: flight.departureTime || '',
-        arrivalTime: flight.arrivalTime || '',
-        notes: flight.notes || ''
-      });
-    } else {
-      setEditingFlight(null);
-      setFlightForm({
-        type,
-        flightNumber: '',
-        departure: '',
-        arrival: '',
-        date: '',
-        departureTime: '',
-        arrivalTime: '',
-        notes: ''
-      });
-    }
-    setFlightModalOpen(true);
-  };
-
-  const saveFlight = async () => {
-    if (!flightForm.departure.trim() || !flightForm.arrival.trim()) {
-      toast.error('Enter departure and arrival');
-      return;
-    }
-
-    try {
-      if (editingFlight) {
-        await flightsApi.update(bookingId, editingFlight.id, flightForm);
-        toast.success('Flight updated');
-      } else {
-        await flightsApi.create(bookingId, flightForm);
-        toast.success('Flight added');
-      }
-      setFlightModalOpen(false);
-      loadData();
-      onUpdate?.();
-    } catch (error) {
-      toast.error('Error saving flight');
-    }
-  };
-
-  const deleteFlight = async (flight) => {
-    if (!confirm(`Delete flight ${flight.flightNumber || flight.departure + ' - ' + flight.arrival}?`)) return;
-
-    try {
-      await flightsApi.delete(bookingId, flight.id);
-      toast.success('Flight deleted');
-      loadData();
-      onUpdate?.();
-    } catch (error) {
-      toast.error('Error deleting flight');
-    }
-  };
 
   // ============================================
   // PDF IMPORT HANDLER
@@ -303,11 +232,13 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
       if (response.data.success) {
         const { summary } = response.data;
-        toast.success(
-          `Imported ${summary.touristsImported} tourists (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM) and ${summary.internationalFlights + summary.domesticFlights} flights`
-        );
-        setTourists(response.data.tourists || []);
-        setFlights(response.data.flights || []);
+        const msg = summary.touristsUpdated > 0 && summary.touristsCreated > 0
+          ? `Updated ${summary.touristsUpdated} tourists, created ${summary.touristsCreated} new (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`
+          : summary.touristsUpdated > 0
+          ? `Updated ${summary.touristsUpdated} tourists (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`
+          : `Created ${summary.touristsCreated} tourists (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`;
+        toast.success(msg);
+        await loadData();
         onUpdate?.();
       } else {
         toast.error(response.data.error || 'Import failed');
@@ -389,312 +320,437 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     setExportMenuOpen(false);
     try {
       if (format === 'excel') {
-        const wsData = [
-          ['ROOMING LIST'],
-          [],
-          ['INTERNATIONAL FLIGHTS']
-        ];
-
-        if (internationalFlights.length > 0) {
-          internationalFlights.forEach(f => {
-            const depCity = airportNames[f.departure] || f.departure;
-            const arrCity = airportNames[f.arrival] || f.arrival;
-            wsData.push([
-              f.flightNumber || '-',
-              `${depCity} (${f.departure}) → ${arrCity} (${f.arrival})`,
-              formatDisplayDate(f.date),
-              f.departureTime ? `${f.departureTime} - ${f.arrivalTime || ''}` : '-'
-            ]);
-          });
-        } else {
-          wsData.push(['No international flights']);
-        }
-
-        wsData.push([]);
-        wsData.push(['DOMESTIC FLIGHTS']);
-
-        if (domesticFlights.length > 0) {
-          domesticFlights.forEach(f => {
-            const depCity = airportNames[f.departure] || f.departure;
-            const arrCity = airportNames[f.arrival] || f.arrival;
-            wsData.push([
-              f.flightNumber || '-',
-              `${depCity} (${f.departure}) → ${arrCity} (${f.arrival})`,
-              formatDisplayDate(f.date),
-              f.departureTime ? `${f.departureTime} - ${f.arrivalTime || ''}` : '-'
-            ]);
-          });
-        } else {
-          wsData.push(['No domestic flights']);
-        }
-
-        // Export tourists grouped by country, then by room type
-        let globalIdx = 1;
-        const roomTypes = ['DBL', 'TWN', 'SNGL', 'other'];
-        const roomLabels = { DBL: 'DOUBLE', TWN: 'TWIN', SNGL: 'SINGLE', other: 'NOT ASSIGNED' };
-
-        // Uzbekistan section
-        if (uzbekistanTourists.length > 0) {
-          wsData.push([]);
-          wsData.push(['UZBEKISTAN (' + uzbekistanTourists.length + ' persons)']);
-
-          roomTypes.forEach(roomType => {
-            const touristsInGroup = uzbekistanByRoomType[roomType];
-            if (touristsInGroup.length === 0) return;
-
-            wsData.push([]);
-            wsData.push([`  ${roomLabels[roomType]} (${touristsInGroup.length} persons)`]);
-            wsData.push(['No', 'Name', 'Room', 'Room #', 'Remarks']);
-
-            touristsInGroup.forEach((t) => {
-              const name = t.fullName || `${t.lastName}, ${t.firstName}`;
-              const roomNum = t.roomNumber ? t.roomNumber.split('-')[1] || t.roomNumber : '-';
-              wsData.push([globalIdx++, name, t.roomPreference || roomType, roomNum, t.remarks || '-']);
-            });
-          });
-        }
-
-        // Turkmenistan section
-        if (turkmenistanTourists.length > 0) {
-          wsData.push([]);
-          wsData.push(['TURKMENISTAN (' + turkmenistanTourists.length + ' persons)']);
-
-          roomTypes.forEach(roomType => {
-            const touristsInGroup = turkmenistanByRoomType[roomType];
-            if (touristsInGroup.length === 0) return;
-
-            wsData.push([]);
-            wsData.push([`  ${roomLabels[roomType]} (${touristsInGroup.length} persons)`]);
-            wsData.push(['No', 'Name', 'Room', 'Room #', 'Remarks']);
-
-            touristsInGroup.forEach((t) => {
-              const name = t.fullName || `${t.lastName}, ${t.firstName}`;
-              const roomNum = t.roomNumber ? t.roomNumber.split('-')[1] || t.roomNumber : '-';
-              wsData.push([globalIdx++, name, t.roomPreference || roomType, roomNum, t.remarks || '-']);
-            });
-          });
-        }
-
         const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.aoa_to_sheet(wsData);
-        worksheet['!cols'] = [{ width: 8 }, { width: 35 }, { width: 10 }, { width: 10 }, { width: 40 }];
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Rooming List');
+
+        // Group tourists by hotel
+        const touristsByHotel = {};
+        filteredTourists.forEach(t => {
+          const hotel = t.hotelName || 'Не указан отель';
+          if (!touristsByHotel[hotel]) {
+            touristsByHotel[hotel] = [];
+          }
+          touristsByHotel[hotel].push(t);
+        });
+
+        // Create a sheet for each hotel (ЗАЯВКА format)
+        Object.entries(touristsByHotel).forEach(([hotelName, hotelTourists]) => {
+          const wsData = [];
+
+          // Header - Orient Insight company info
+          wsData.push(['']);
+          wsData.push(['', '', '', 'ORIENT INSIGHT']);
+          wsData.push(['', '', '', 'Travel & Tourism']);
+          wsData.push(['', '', '', 'Республика Узбекистан,']);
+          wsData.push(['', '', '', 'г.Самарканд, Шота Руставели, дом 45']);
+          wsData.push(['', '', '', 'Тел/fax.: +998 933484208, +998 97 9282814']);
+          wsData.push(['', '', '', 'E-Mail: orientinsightreisen@gmail.com']);
+          wsData.push(['', '', '', 'Website: orient-insight.uz']);
+          wsData.push(['']);
+
+          // Date
+          wsData.push(['Дата:', formatDisplayDate(new Date())]);
+          wsData.push(['']);
+
+          // Recipient
+          wsData.push(['', '', `Директору гостиницы`]);
+          wsData.push(['', '', hotelName]);
+          wsData.push(['']);
+
+          // Title
+          wsData.push(['', '', 'ЗАЯВКА']);
+          wsData.push(['']);
+
+          // Opening text
+          wsData.push(['ООО "ORIENT INSIGHT" приветствует Вас, и просит забронировать места']);
+          wsData.push(['c учётом нижеследующих деталей.']);
+          wsData.push(['']);
+
+          // Group info table
+          const roomTypeCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+          hotelTourists.forEach(t => {
+            const rt = t.roomPreference?.toUpperCase();
+            if (rt === 'DBL' || rt === 'DOUBLE') roomTypeCounts.DBL++;
+            else if (rt === 'TWN' || rt === 'TWIN') roomTypeCounts.TWN++;
+            else if (rt === 'SNGL' || rt === 'SINGLE') roomTypeCounts.SNGL++;
+          });
+
+          const checkInDate = hotelTourists[0]?.checkInDate ? formatDisplayDate(hotelTourists[0].checkInDate) : booking?.arrivalDate ? formatDisplayDate(booking.arrivalDate) : '';
+          const checkOutDate = hotelTourists[0]?.checkOutDate ? formatDisplayDate(hotelTourists[0].checkOutDate) : booking?.endDate ? formatDisplayDate(booking.endDate) : '';
+
+          wsData.push(['№', 'Группа', 'Страна', 'PAX', 'Первый заезд', 'Первый выезд', 'DBL', 'TWN', 'SNGL', 'Тип номера']);
+          wsData.push([
+            '1',
+            booking?.bookingNumber || 'N/A',
+            booking?.country || 'Германия',
+            hotelTourists.length,
+            checkInDate,
+            checkOutDate,
+            Math.ceil(roomTypeCounts.DBL / 2) || '',
+            Math.ceil(roomTypeCounts.TWN / 2) || '',
+            roomTypeCounts.SNGL || '',
+            'стандарт'
+          ]);
+          wsData.push(['']);
+
+          // Rooming List Table
+          wsData.push(['', '', 'ROOMING LISTE']);
+          wsData.push(['']);
+          wsData.push(['№', 'ФИО', 'Дата заезда', 'дата выезда', 'Категория номера', 'Дополнительная информация']);
+
+          hotelTourists.forEach((t, idx) => {
+            const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+            const checkIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : checkInDate;
+            const checkOut = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : checkOutDate;
+            const roomCat = t.roomPreference || '-';
+            const remarks = t.remarks && t.remarks !== '-' ? t.remarks : '';
+
+            wsData.push([idx + 1, name, checkIn, checkOut, roomCat, remarks]);
+          });
+
+          wsData.push(['']);
+          wsData.push(['']);
+          wsData.push(['Оплату гости произведут на месте.']);
+          wsData.push(['']);
+          wsData.push(['']);
+          wsData.push(['Директор ООО «ORIENT INSIGHT»', '', '', 'Одилова М.У.']);
+
+          // Create worksheet
+          const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+          worksheet['!cols'] = [
+            { width: 6 },  // №
+            { width: 30 }, // ФИО
+            { width: 15 }, // Дата заезда
+            { width: 15 }, // дата выезда
+            { width: 16 }, // Категория номера
+            { width: 40 }  // Дополнительная информация
+          ];
+
+          // Add sheet with hotel name (sanitize for Excel sheet name)
+          const sheetName = hotelName.substring(0, 31).replace(/[:\\\/\?\*\[\]]/g, '');
+          XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        });
+
+        // If no hotels found, create single sheet with all tourists
+        if (Object.keys(touristsByHotel).length === 0 || !tourists.some(t => t.hotelName)) {
+          // Fallback: old format (rooming list without hotel grouping)
+          const wsData = [
+            ['ROOMING LIST'],
+            [],
+            ['No hotel assignments found. Please import rooming list with hotel data.'],
+            [],
+            ['№', 'Name', 'Room', 'Additional Information']
+          ];
+
+          filteredTourists.forEach((t, idx) => {
+            const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+            wsData.push([idx + 1, name, t.roomPreference || '-', t.remarks || '-']);
+          });
+
+          const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+          worksheet['!cols'] = [{ width: 6 }, { width: 35 }, { width: 12 }, { width: 40 }];
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Rooming List');
+        }
 
         const buffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'rooming-list.xlsx');
+        link.setAttribute('download', `zayvka-${booking?.bookingNumber || 'export'}.xlsx`);
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
       } else if (format === 'pdf') {
-        // Generate PDF - fits on single A4 page
+        // Generate professional ЗАЯВКА PDF
+        // First, load logo and convert to base64
+        let logoDataUrl = '';
+        try {
+          const response = await fetch('/logo.png');
+          const blob = await response.blob();
+          logoDataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        } catch (error) {
+          console.warn('Could not load logo:', error);
+        }
+
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
           toast.error('Please allow popups to export PDF');
           return;
         }
 
-        // Calculate dynamic font size based on number of tourists
-        const totalTourists = filteredTourists.length;
-        const totalFlights = internationalFlights.length + domesticFlights.length;
+        // Get booking details
+        const bookingNumber = booking?.bookingNumber || 'N/A';
+        const tourType = booking?.tourType?.name || '';
+        const country = 'Германия'; // Can be made dynamic
+        const totalPax = filteredTourists.length;
 
-        // Base font size, reduced for larger lists
-        let baseFontSize = 11;
-        let rowPadding = 4;
-        if (totalTourists > 20) {
-          baseFontSize = 9;
-          rowPadding = 2;
-        } else if (totalTourists > 15) {
-          baseFontSize = 10;
-          rowPadding = 3;
-        }
+        // Calculate arrival/departure dates from booking
+        const arrivalDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+        const departureDate = booking?.endDate ? formatDisplayDate(booking.endDate) : '';
 
-        // Compact flight display
-        const flightsCompact = (flightList, label) => {
-          if (flightList.length === 0) return '';
-          return `<div style="margin-bottom:4px;"><strong style="font-size:${baseFontSize}px;">${label}:</strong> ` +
-            flightList.map(f => {
-              const dateStr = f.date ? formatDisplayDate(f.date) : '';
-              const timeStr = f.departureTime ? ` ${f.departureTime}-${f.arrivalTime || ''}` : '';
-              return `<span style="font-size:${baseFontSize - 1}px;margin-right:8px;">${f.flightNumber} ${f.departure}→${f.arrival} ${dateStr}${timeStr}</span>`;
-            }).join(' | ') + '</div>';
-        };
+        // Calculate room counts
+        const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+        filteredTourists.forEach(t => {
+          const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+          const roomType = assignedRoomType || t.roomPreference;
+          if (roomType === 'DBL' || roomType === 'DOUBLE' || roomType === 'DZ') roomCounts.DBL++;
+          if (roomType === 'TWN' || roomType === 'TWIN') roomCounts.TWN++;
+          if (roomType === 'SNGL' || roomType === 'SINGLE' || roomType === 'EZ') roomCounts.SNGL++;
+        });
 
-        // Build single unified table with all tourists
-        let tableRows = '';
-        let rowNum = 1;
+        // Convert to actual room counts (2 people = 1 DBL room)
+        const dblRooms = Math.ceil(roomCounts.DBL / 2);
+        const twnRooms = Math.ceil(roomCounts.TWN / 2);
+        const snglRooms = roomCounts.SNGL;
 
-        // Process each country
-        const processCountry = (countryLabel, countryIcon, touristsList, byRoomType) => {
-          if (touristsList.length === 0) return '';
+        // Get hotel name from first tourist's assignment or use default
+        const hotelName = filteredTourists[0]?.roomAssignments?.[0]?.bookingRoom?.hotel?.name ||
+                         'Hotel Name';
 
-          let html = `<tr style="background:#f0f0f0;">
-            <td colspan="4" style="padding:${rowPadding + 2}px ${rowPadding}px;font-weight:bold;font-size:${baseFontSize}px;">
-              ${countryIcon} ${countryLabel} (${touristsList.length})
-            </td>
-          </tr>`;
+        const currentDate = formatDisplayDate(new Date().toISOString());
 
-          ['DBL', 'TWN', 'SNGL', 'other'].forEach(roomType => {
-            const group = byRoomType[roomType];
-            if (group.length === 0) return;
+        // Build tourist rows for ROOMING LISTE table - simple sequential list
+        let touristRows = '';
+        filteredTourists.forEach((t, idx) => {
+          const name = t.fullName || `${t.lastName}, ${t.firstName}`;
 
-            const roomLabels = { DBL: 'DBL', TWN: 'TWN', SNGL: 'SNGL', other: 'N/A' };
+          // Get room category - try different sources
+          const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+          let roomCategory = assignedRoomType || t.roomPreference || '';
 
-            group.forEach((t) => {
-              const name = t.fullName || `${t.lastName}, ${t.firstName}`;
-              const roomDisplay = t.roomPreference || roomLabels[roomType];
-              const roomNum = t.roomNumber ? ` #${t.roomNumber.split('-')[1] || t.roomNumber}` : '';
-              const remarks = t.remarks && t.remarks !== '-' ? t.remarks : '';
+          // Normalize room category names
+          if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
+          if (roomCategory === 'TWIN') roomCategory = 'TWN';
+          if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
 
-              html += `<tr>
-                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;text-align:center;width:30px;font-size:${baseFontSize - 1}px;">${rowNum++}</td>
-                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;font-size:${baseFontSize}px;">${name}</td>
-                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;width:70px;font-size:${baseFontSize - 1}px;">${roomDisplay}${roomNum}</td>
-                <td style="padding:${rowPadding}px;border-bottom:1px solid #ddd;font-size:${baseFontSize - 1}px;color:#666;">${remarks}</td>
-              </tr>`;
-            });
-          });
+          const remarks = t.remarks && t.remarks !== '-' ? t.remarks : '';
 
-          return html;
-        };
+          // Use custom dates if available, otherwise use booking dates
+          const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
+          const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
 
-        tableRows += processCountry('UZBEKISTAN', '🇺🇿', uzbekistanTourists, uzbekistanByRoomType);
-        tableRows += processCountry('TURKMENISTAN', '🇹🇲', turkmenistanTourists, turkmenistanByRoomType);
+          // Yellow background if has custom dates
+          const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+
+          touristRows += `
+            <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
+              <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
+              <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
+            </tr>
+          `;
+        });
 
         printWindow.document.write(`
           <!DOCTYPE html>
           <html>
           <head>
-            <title>Rooming List</title>
+            <title>ЗАЯВКА - ${bookingNumber}</title>
+            <meta charset="UTF-8">
             <style>
-              @page {
-                size: A4 portrait;
-                margin: 10mm;
+              @page { size: A4 portrait; margin: 12mm; }
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: 'Times New Roman', Times, serif;
+                font-size: 9pt;
+                line-height: 1.2;
+                color: #000;
               }
-              * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-              }
-              html, body {
-                width: 210mm;
-                height: 297mm;
-                font-family: Arial, sans-serif;
-                font-size: ${baseFontSize}px;
-                overflow: hidden;
-              }
-              .container {
+              .header-table {
                 width: 100%;
-                height: 100%;
-                display: flex;
-                flex-direction: column;
-                padding: 5mm;
+                border: none;
+                border-collapse: collapse;
+                margin-bottom: 15px;
               }
-              .header {
+              .header-table td {
+                border: none;
+                padding: 8px;
+                font-size: 7.5pt;
+              }
+              .logo-cell {
                 text-align: center;
-                padding-bottom: 3mm;
-                border-bottom: 1px solid #333;
-                margin-bottom: 3mm;
-                flex-shrink: 0;
+                vertical-align: middle;
               }
-              .header h1 {
-                font-size: ${baseFontSize + 6}px;
-                margin: 0;
+              .company-name {
+                font-size: 16pt;
+                font-weight: bold;
+                color: #d4842f;
+                margin-top: 3px;
               }
-              .flights {
-                margin-bottom: 3mm;
-                flex-shrink: 0;
+              .company-subtitle {
+                font-size: 7pt;
+                color: #666;
               }
-              .table-container {
-                flex: 1;
-                overflow: hidden;
+              .zayvka-title {
+                text-align: center;
+                font-size: 13pt;
+                font-weight: bold;
+                margin: 8px 0;
               }
-              table {
+              .intro-text {
+                text-align: justify;
+                margin: 6px 0;
+                font-size: 9pt;
+              }
+              .summary-table {
                 width: 100%;
                 border-collapse: collapse;
-                table-layout: fixed;
+                margin: 8px 0;
               }
-              th {
-                background: #333;
-                color: white;
-                padding: ${rowPadding + 1}px ${rowPadding}px;
-                text-align: left;
-                font-size: ${baseFontSize - 1}px;
+              .summary-table th,
+              .summary-table td {
+                border: 1px solid #000;
+                padding: 3px;
+                text-align: center;
+                font-size: 8pt;
+              }
+              .summary-table th {
+                background: #f0f0f0;
                 font-weight: bold;
               }
-              .footer {
-                text-align: right;
-                font-size: ${baseFontSize - 2}px;
-                color: #999;
-                padding-top: 2mm;
-                flex-shrink: 0;
+              .rooming-title {
+                text-align: center;
+                font-size: 12pt;
+                font-weight: bold;
+                margin: 10px 0 6px 0;
+              }
+              .rooming-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 8px;
+              }
+              .rooming-table th,
+              .rooming-table td {
+                border: 1px solid #000;
+                padding: 3px;
+                font-size: 8pt;
+              }
+              .rooming-table th {
+                background: #f0f0f0;
+                font-weight: bold;
+                text-align: center;
+              }
+              .footer-text {
+                margin: 8px 0;
+                font-size: 8.5pt;
+              }
+              .signature-table {
+                width: 100%;
+                margin-top: 15px;
+              }
+              .signature-table td {
+                padding: 3px;
+                font-size: 8.5pt;
               }
               @media print {
-                html, body {
-                  width: 210mm;
-                  height: 297mm;
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
-                }
-                .no-print { display: none; }
-              }
-              @media screen {
-                body {
-                  background: #f0f0f0;
-                  display: flex;
-                  justify-content: center;
-                  padding: 20px;
-                  height: auto;
-                  overflow: auto;
-                }
-                .container {
-                  background: white;
-                  box-shadow: 0 0 10px rgba(0,0,0,0.2);
-                  height: auto;
-                  min-height: 297mm;
-                }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .no-print { display: none !important; }
               }
             </style>
           </head>
           <body>
-            <div class="container">
-              <div class="header">
-                <h1>ROOMING LIST</h1>
-              </div>
+            <!-- Header with company info -->
+            <table class="header-table">
+              <tr>
+                <td class="logo-cell" style="width:100%;text-align:center">
+                  ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Orient Insight" style="width:150px;height:auto;margin-bottom:8px" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>'}
+                  <div style="font-size:9pt;margin-top:5px">
+                    <strong>Республика Узбекистан,</strong><br>
+                    г.Самарканд, Шота Руставели, дом 45<br>
+                    Тел/fax.: +998 933484208, +998 97 9282814<br>
+                    E-Mail: <a href="mailto:orientinsightreisen@gmail.com">orientinsightreisen@gmail.com</a><br>
+                    Website: <a href="http://orient-insight.uz">orient-insight.uz</a>
+                  </div>
+                </td>
+              </tr>
+            </table>
 
-              <div class="flights">
-                ${flightsCompact(internationalFlights, 'International')}
-                ${flightsCompact(domesticFlights, 'Domestic')}
-              </div>
+            <!-- ЗАЯВКА Title -->
+            <div class="zayvka-title">ЗАЯВКА</div>
 
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="width:30px;">№</th>
-                      <th>Name</th>
-                      <th style="width:70px;">Room</th>
-                      <th style="width:120px;">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${tableRows}
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="footer">
-                Total: ${filteredTourists.length} persons | Generated: ${new Date().toLocaleDateString()}
-              </div>
+            <!-- Introduction Text -->
+            <div class="intro-text">
+              ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.
             </div>
 
+            <!-- Summary Table -->
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Группа</th>
+                  <th>Страна</th>
+                  <th>PAX</th>
+                  <th>Первый<br>заезд</th>
+                  <th>Первый<br>выезд</th>
+                  <th>DBL</th>
+                  <th>TWN</th>
+                  <th>SNGL</th>
+                  <th>Тип номера</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>${bookingNumber}</td>
+                  <td>${country}</td>
+                  <td>${totalPax}</td>
+                  <td>${arrivalDate}</td>
+                  <td>${departureDate}</td>
+                  <td>${dblRooms}</td>
+                  <td>${twnRooms}</td>
+                  <td>${snglRooms}</td>
+                  <td>стандарт</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- ROOMING LISTE Title -->
+            <div class="rooming-title">ROOMING LISTE</div>
+
+            <!-- Rooming Table -->
+            <table class="rooming-table">
+              <thead>
+                <tr>
+                  <th style="width:30px">№</th>
+                  <th style="width:35%">ФИО</th>
+                  <th style="width:15%">Дата заезда</th>
+                  <th style="width:15%">дата выезда</th>
+                  <th style="width:12%">Категория<br>номера</th>
+                  <th>Дополнительная<br>информация</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${touristRows}
+              </tbody>
+            </table>
+
+            <!-- Footer Text -->
+            <div class="footer-text">
+              <p style="margin-bottom:10px">Оплату гости произведут на месте.</p>
+            </div>
+
+            <!-- Signature -->
+            <table class="signature-table">
+              <tr>
+                <td style="width:60%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+                <td style="width:20%;border-bottom:1px solid #000;text-align:center"></td>
+                <td style="width:20%;text-align:center"><strong>Одилова М.У.</strong></td>
+              </tr>
+            </table>
+
+            <!-- Print Button -->
             <div class="no-print" style="position:fixed;bottom:20px;right:20px;">
-              <button onclick="window.print()" style="padding:10px 20px;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">
-                Print / Save as PDF
+              <button onclick="window.print()" style="padding:12px 24px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+                🖨️ Print / Save as PDF
               </button>
             </div>
           </body>
@@ -717,97 +773,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     );
   }
 
-  // Flight Card Component - Modern design with gradient left border
-  const FlightCard = ({ flight }) => {
-    const depCity = airportNames[flight.departure] || flight.departure;
-    const arrCity = airportNames[flight.arrival] || flight.arrival;
-    const isInternational = flight.type === 'INTERNATIONAL';
-
-    return (
-      <div className={`bg-white rounded-xl border-l-4 ${
-        isInternational ? 'border-l-indigo-500' : 'border-l-teal-500'
-      } border border-gray-200 p-4 relative group shadow-sm hover:shadow-md transition-shadow`}>
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
-          <button
-            onClick={() => openFlightModal(flight)}
-            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded-lg"
-          >
-            <Edit className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => deleteFlight(flight)}
-            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        <div className="flex items-center gap-2 mb-2">
-          <Plane className={`w-4 h-4 ${isInternational ? 'text-indigo-500' : 'text-teal-500'}`} />
-          <span className="text-sm font-semibold text-gray-600">{flight.flightNumber || 'Flight'}</span>
-        </div>
-        <div className="flex items-center gap-2 text-xl font-bold text-gray-900 mb-1">
-          <span>{flight.departure}</span>
-          <span className="text-gray-300">→</span>
-          <span>{flight.arrival}</span>
-        </div>
-        <div className="text-sm text-gray-500 mb-2">
-          {depCity} → {arrCity}
-        </div>
-        <div className="flex items-center gap-3 text-sm text-gray-500 pt-2 border-t border-gray-100">
-          <span className="font-medium">{flight.date ? formatDisplayDate(flight.date) : 'Date TBD'}</span>
-          {flight.departureTime && (
-            <span className="px-2 py-0.5 bg-gray-100 rounded-md text-xs font-medium">
-              {flight.departureTime} - {flight.arrivalTime || '?'}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Flight Section Component
-  const FlightSection = ({ title, flightsList, type }) => {
-    const isInternational = type === 'INTERNATIONAL';
-    return (
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isInternational ? 'bg-indigo-100' : 'bg-teal-100'}`}>
-              <Plane className={`w-5 h-5 ${isInternational ? 'text-indigo-600' : 'text-teal-600'}`} />
-            </div>
-            <div>
-              <h4 className="text-lg font-bold text-gray-800">{title}</h4>
-              <p className="text-sm text-gray-500">{flightsList.length} {flightsList.length === 1 ? 'flight' : 'flights'}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => openFlightModal(null, type)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              isInternational
-                ? 'text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
-                : 'text-teal-600 hover:bg-teal-50 border border-teal-200'
-            }`}
-          >
-            <Plus className="w-4 h-4" />
-            Add Flight
-          </button>
-        </div>
-
-        {flightsList.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {flightsList.map(flight => (
-              <FlightCard key={flight.id} flight={flight} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-            <Plane className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">No {title.toLowerCase()} added yet</p>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-8">
@@ -817,9 +782,96 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           <div className="p-3 bg-primary-100 rounded-xl">
             <Users className="w-6 h-6 text-primary-600" />
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Rooming List</h3>
-            <p className="text-sm text-gray-500">{tourists.length} {tourists.length === 1 ? 'tourist' : 'tourists'} registered</p>
+          <div className="flex-1">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Rooming List</h3>
+
+            {/* Enhanced Summary Statistics Panel */}
+            <div className="flex items-stretch gap-4 flex-wrap">
+              {/* Total Guests Card */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm">
+                  <Users className="w-6 h-6 text-primary-600" />
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
+                  <div className="text-2xl font-bold text-gray-900">{tourists.length}</div>
+                  <div className="text-xs text-gray-600">{tourists.length === 1 ? 'guest' : 'guests'}</div>
+                </div>
+              </div>
+
+              {/* Room Type Breakdown Cards */}
+              {(() => {
+                const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+                const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+
+                tourists.forEach(t => {
+                  const roomType = (t.roomPreference || '').toUpperCase();
+                  const roomNum = t.roomNumber;
+
+                  if ((roomType === 'DBL' || roomType === 'DOUBLE') && roomNum && !seenRooms.DBL.has(roomNum)) {
+                    roomCounts.DBL++;
+                    seenRooms.DBL.add(roomNum);
+                  } else if (roomType === 'TWN' && roomNum && !seenRooms.TWN.has(roomNum)) {
+                    roomCounts.TWN++;
+                    seenRooms.TWN.add(roomNum);
+                  } else if ((roomType === 'SNGL' || roomType === 'SINGLE') && roomNum && !seenRooms.SNGL.has(roomNum)) {
+                    roomCounts.SNGL++;
+                    seenRooms.SNGL.add(roomNum);
+                  }
+                });
+
+                const roomTypes = [
+                  { key: 'DBL', label: 'Double', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-500', icon: '👫' },
+                  { key: 'TWN', label: 'Twin', count: roomCounts.TWN, gradient: 'from-emerald-50 to-emerald-100', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-500', icon: '🛏️' },
+                  { key: 'SNGL', label: 'Single', count: roomCounts.SNGL, gradient: 'from-violet-50 to-violet-100', border: 'border-violet-200', text: 'text-violet-700', badge: 'bg-violet-500', icon: '👤' }
+                ];
+
+                return roomTypes.map(room => {
+                  if (room.count === 0) return null;
+
+                  return (
+                    <div key={room.key} className={`flex items-center gap-3 px-4 py-3 bg-gradient-to-br ${room.gradient} border-2 ${room.border} rounded-xl shadow-sm hover:shadow-md transition-all`}>
+                      <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm`}>
+                        <span className="text-2xl">{room.icon}</span>
+                      </div>
+                      <div>
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full ${room.badge} text-white text-xs font-bold uppercase tracking-wider mb-1`}>
+                          {room.key}
+                        </div>
+                        <div className="text-2xl font-bold text-gray-900">{room.count}</div>
+                        <div className="text-xs text-gray-600">{room.count === 1 ? 'room' : 'rooms'}</div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+
+              {/* Uzbekistan/Turkmenistan Split Card */}
+              {(() => {
+                const uzbekCount = uzbekistanTourists.length;
+                const turkmCount = turkmenistanTourists.length;
+
+                if (uzbekCount > 0 && turkmCount > 0) {
+                  return (
+                    <div className="flex items-center gap-4 px-4 py-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-sm">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
+                          <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Uzbekistan</span>
+                          <span className="text-lg font-bold text-gray-900">{uzbekCount}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
+                          <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Turkmenistan</span>
+                          <span className="text-lg font-bold text-gray-900">{turkmCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -881,255 +933,238 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         </div>
       </div>
 
-      {/* Flight Sections */}
-      <div>
-        <FlightSection
-          title="International Flights"
-          flightsList={internationalFlights}
-          type="INTERNATIONAL"
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
         />
-        <FlightSection
-          title="Domestic Flights"
-          flightsList={domesticFlights}
-          type="DOMESTIC"
-        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Search */}
-      {tourists.length > 5 && (
-        <div className="relative max-w-sm">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search tourists by name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50 focus:bg-white transition-colors shadow-sm"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Tourists Table: Grouped by Country (Uzbekistan first, then Turkmenistan), then by Room Type */}
+      {/* Card-style List */}
       {filteredTourists.length > 0 ? (
-        <div className="space-y-8">
-          {/* Render country sections */}
-          {[
-            { key: 'uzbekistan', tourists: uzbekistanTourists, byRoomType: uzbekistanByRoomType },
-            { key: 'turkmenistan', tourists: turkmenistanTourists, byRoomType: turkmenistanByRoomType }
-          ].map(({ key: countryKey, tourists: countryTourists, byRoomType }) => {
-            if (countryTourists.length === 0) return null;
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-2xl border-2 border-gray-300 p-5 shadow-lg">
+            <div className="grid grid-cols-12 gap-4 items-center">
+              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">No</div>
+              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Name</div>
+              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Tour Start</div>
+              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Tour End</div>
+              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Room Type</div>
+              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Placement</div>
+              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Additional Information</div>
+              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider text-right">Actions</div>
+            </div>
+          </div>
 
-            const cInfo = countryInfo[countryKey];
-            let countryGlobalIndex = 0;
+          {/* Tourist Cards */}
+          {(() => {
+            const renderedIds = new Set();
+            const cards = [];
 
-            return (
-              <div key={countryKey} className="space-y-4">
-                {/* Country Header */}
-                <div className={`${cInfo.color} px-6 py-4 rounded-xl`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className="text-3xl drop-shadow-sm">{cInfo.icon}</span>
-                      <div>
-                        <h3 className="font-bold text-2xl tracking-wide">{cInfo.label}</h3>
-                        <p className="text-sm opacity-80 mt-0.5">Tour Group</p>
+            sortedTourists.forEach((tourist, index) => {
+              // Skip if already rendered as part of a pair
+              if (renderedIds.has(tourist.id)) return;
+
+              const roomType = (tourist.roomPreference || '').toUpperCase();
+              const isDBL = roomType === 'DBL' || roomType === 'DOUBLE';
+              const isTWN = roomType === 'TWN' || roomType === 'TWIN';
+              const isSNGL = roomType === 'SNGL' || roomType === 'SINGLE';
+
+              const roomBadgeColor = isDBL
+                ? 'bg-blue-500 text-white'
+                : isTWN
+                ? 'bg-green-500 text-white'
+                : isSNGL
+                ? 'bg-purple-500 text-white'
+                : 'bg-gray-400 text-white';
+
+              const placement = tourist.accommodation || '';
+
+              // Check if this is part of a room pair (TWN/DBL)
+              const isRoomPair = (isTWN || isDBL) && tourist.roomNumber;
+
+              // Find roommate
+              const roommate = isRoomPair ? sortedTourists.find(t =>
+                t.roomNumber === tourist.roomNumber && t.id !== tourist.id
+              ) : null;
+
+              // Visual grouping for room pairs
+              let roomPairClasses = 'border-gray-200';
+              if (roommate) {
+                const roomPairIndex = parseInt(tourist.roomNumber?.match(/\d+/)?.[0] || 0);
+                const borderColor = roomPairIndex % 2 === 0 ? 'border-blue-500' : 'border-green-500';
+                const bgColor = roomPairIndex % 2 === 0 ? 'bg-blue-50/50' : 'bg-green-50/50';
+                roomPairClasses = `${borderColor} ${bgColor}`;
+
+                // Mark roommate as rendered
+                renderedIds.add(roommate.id);
+              }
+
+              // Mark current tourist as rendered
+              renderedIds.add(tourist.id);
+
+              // Render function for a single tourist row
+              const renderTouristRow = (t, idx) => {
+                const tPlacement = t.accommodation || '';
+
+                // Check if tourist has custom arrival/departure dates
+                const hasCustomDates = t.checkInDate || t.checkOutDate;
+                const customCheckIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
+                const customCheckOut = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
+
+                // Use custom dates if available, otherwise use booking dates
+                const displayCheckIn = customCheckIn || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
+                const displayCheckOut = customCheckOut || (booking?.endDate ? formatDisplayDate(booking.endDate) : '-');
+
+                // Yellow background if has custom dates
+                const rowBgClass = hasCustomDates ? 'bg-yellow-50 border-2 border-yellow-300' : '';
+
+                return (
+                  <div key={t.id} className={`grid grid-cols-12 gap-4 items-center rounded-xl p-2 ${rowBgClass}`}>
+                    {/* Number */}
+                    <div className="col-span-1">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 flex items-center justify-center shadow-sm">
+                        <span className="text-base font-bold text-gray-700">{idx + 1}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-                        <span className="text-2xl font-bold">{countryTourists.length}</span>
-                        <span className="text-sm ml-1 opacity-90">{countryTourists.length === 1 ? 'person' : 'persons'}</span>
+
+                    {/* Name */}
+                    <div className="col-span-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <User className="w-6 h-6 text-blue-700" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-gray-900 text-base leading-tight">
+                            {t.fullName || `${t.lastName}, ${t.firstName}`}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tour Dates */}
+                    <div className="col-span-2">
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${customCheckIn ? 'bg-yellow-100 border border-yellow-400' : 'bg-blue-50 border border-blue-200'}`}>
+                        <span className={`text-xs font-medium ${customCheckIn ? 'text-yellow-900' : 'text-blue-600'}`}>
+                          {displayCheckIn}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${customCheckOut ? 'bg-yellow-100 border border-yellow-400' : 'bg-red-50 border border-red-200'}`}>
+                        <span className={`text-xs font-medium ${customCheckOut ? 'text-yellow-900' : 'text-red-600'}`}>
+                          {displayCheckOut}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Room Type */}
+                    <div className="col-span-1">
+                      <span className={`inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm ${roomBadgeColor}`}>
+                        {t.roomPreference || '-'}
+                      </span>
+                    </div>
+
+                    {/* Placement */}
+                    <div className="col-span-1">
+                      {tPlacement.toLowerCase().includes('turkmen') || tPlacement.toLowerCase().includes('туркмен') ? (
+                        <span className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-200 w-full">
+                          Turkmenistan
+                        </span>
+                      ) : tPlacement.toLowerCase().includes('uzbek') || tPlacement.toLowerCase().includes('узбек') ? (
+                        <span className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md shadow-green-200 w-full">
+                          Uzbekistan
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 text-center">-</span>
+                      )}
+                    </div>
+
+                    {/* Additional Information */}
+                    <div className="col-span-2">
+                      {t.remarks && t.remarks !== '-' ? (
+                        <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl px-4 py-3 shadow-sm">
+                          {t.remarks.split('\n').map((line, i) => (
+                            <div key={i} className="text-xs leading-relaxed font-medium">{line}</div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-1">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openModal(t)}
+                          className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-xl transition-all hover:scale-110 shadow-sm hover:shadow-md"
+                          title="Edit"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Delete this tourist?')) {
+                              try {
+                                await touristsApi.delete(bookingId, t.id);
+                                toast.success('Deleted');
+                                loadData();
+                                onUpdate?.();
+                              } catch (error) {
+                                toast.error('Error deleting');
+                              }
+                            }
+                          }}
+                          className="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-xl transition-all hover:scale-110 shadow-sm hover:shadow-md"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
                   </div>
-                </div>
+                );
+              };
 
-                {/* Room type sections within country */}
-                <div className="space-y-4 pl-2">
-                  {['DBL', 'TWN', 'SNGL', 'other'].map(roomType => {
-                    const touristsInGroup = byRoomType[roomType];
-                    if (touristsInGroup.length === 0) return null;
+              cards.push(
 
-                    const info = roomTypeInfo[roomType];
-                    const startIndex = countryGlobalIndex;
-                    countryGlobalIndex += touristsInGroup.length;
-
-                    return (
-                      <div key={roomType} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        {/* Room Type Section Header */}
-                        <div className={`px-4 py-3 ${info.headerBg} text-white`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl">{info.icon}</span>
-                              <span className="font-bold text-lg">{info.label}</span>
-                              <span className="px-2 py-0.5 bg-white/20 rounded-full text-sm">
-                                {touristsInGroup.length} {touristsInGroup.length === 1 ? 'person' : 'persons'}
-                              </span>
-                            </div>
-                            <span className="text-sm opacity-90">{info.description}</span>
-                          </div>
-                        </div>
-
-                        {/* Tourists Table for this Room Type */}
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-gray-200 text-left text-xs uppercase bg-gray-50/80">
-                                <th className="py-3 px-4 w-12 font-semibold text-gray-500">No</th>
-                                <th className="py-3 px-4 font-semibold text-gray-500">Guest Name</th>
-                                <th className="py-3 px-4 w-32 font-semibold text-gray-500">Room Type</th>
-                                <th className="py-3 px-4 font-semibold text-gray-500">Remarks / Notes</th>
-                                <th className="py-3 px-4 text-right w-20 font-semibold text-gray-500">Edit</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {touristsInGroup.map((p, index) => {
-                                // Check if this tourist shares a room with the previous one (for DBL/TWN)
-                                const prevTourist = index > 0 ? touristsInGroup[index - 1] : null;
-                                const nextTourist = index < touristsInGroup.length - 1 ? touristsInGroup[index + 1] : null;
-                                const isRoomPair = prevTourist && p.roomNumber && p.roomNumber === prevTourist.roomNumber;
-                                const isFirstInPair = nextTourist && p.roomNumber && p.roomNumber === nextTourist.roomNumber && !isRoomPair;
-                                const roomNum = p.roomNumber ? p.roomNumber.split('-')[1] || p.roomNumber : '';
-
-                                return (
-                                  <tr
-                                    key={p.id}
-                                    className={`border-b border-gray-100 hover:bg-gray-50/80 transition-colors
-                                      ${isFirstInPair ? 'bg-gradient-to-r from-gray-50/80 to-transparent border-b-0' : ''}
-                                      ${isRoomPair ? 'bg-gradient-to-r from-gray-50/80 to-transparent' : ''}`}
-                                  >
-                                    <td className="py-3 px-4 relative">
-                                      {/* Room pair connector line */}
-                                      {(isFirstInPair || isRoomPair) && (roomType === 'DBL' || roomType === 'TWN') && (
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                                          roomType === 'DBL' ? 'bg-blue-400' : 'bg-emerald-400'
-                                        } ${isFirstInPair ? 'rounded-t-full top-1/2' : ''} ${isRoomPair ? 'rounded-b-full bottom-1/2' : ''}`} />
-                                      )}
-                                      <span className="text-gray-400 font-medium">{startIndex + index + 1}</span>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                          isFirstInPair || isRoomPair ? 'bg-gray-100' : 'bg-gray-50'
-                                        }`}>
-                                          <User className="w-4 h-4 text-gray-500" />
-                                        </div>
-                                        <div>
-                                          <span className="font-medium text-gray-900">
-                                            {p.fullName || `${p.lastName}, ${p.firstName}`}
-                                          </span>
-                                          {(isFirstInPair || isRoomPair) && roomNum && (
-                                            <span className="ml-2 text-xs text-gray-400">Room #{roomNum}</span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      {editingRoomId === p.id ? (
-                                        <div className="flex items-center gap-1">
-                                          <select
-                                            value={roomValue}
-                                            onChange={(e) => setRoomValue(e.target.value)}
-                                            className="text-sm border border-gray-300 rounded px-2 py-1"
-                                            autoFocus
-                                          >
-                                            <option value="">-</option>
-                                            {roomOptions.map(opt => (
-                                              <option key={opt} value={opt}>{opt}</option>
-                                            ))}
-                                          </select>
-                                          <button
-                                            onClick={() => saveRoom(p.id)}
-                                            className="p-1 text-green-600 hover:bg-green-50 rounded"
-                                          >
-                                            <Check className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => setEditingRoomId(null)}
-                                            className="p-1 text-gray-400 hover:bg-gray-100 rounded"
-                                          >
-                                            <X className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <button
-                                          onClick={() => startEditRoom(p)}
-                                          className="px-2 py-1 rounded-lg hover:bg-gray-100 flex items-center gap-2 group"
-                                        >
-                                          <span className={`px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm ${info.badgeColor}`}>
-                                            {p.roomPreference || roomType}
-                                          </span>
-                                          {roomNum && (roomType === 'DBL' || roomType === 'TWN') && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-md text-xs font-medium text-gray-600 group-hover:bg-gray-200">
-                                              <span className="text-gray-400">#</span>{roomNum}
-                                            </span>
-                                          )}
-                                        </button>
-                                      )}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      {editingRemarksId === p.id ? (
-                                        <div className="flex items-center gap-1">
-                                          <input
-                                            type="text"
-                                            value={remarksValue}
-                                            onChange={(e) => setRemarksValue(e.target.value)}
-                                            className="flex-1 text-sm border border-gray-300 rounded px-2 py-1"
-                                            placeholder="Remarks..."
-                                            autoFocus
-                                          />
-                                          <button
-                                            onClick={() => saveRemarks(p.id)}
-                                            className="p-1 text-green-600 hover:bg-green-50 rounded"
-                                          >
-                                            <Check className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => setEditingRemarksId(null)}
-                                            className="p-1 text-gray-400 hover:bg-gray-100 rounded"
-                                          >
-                                            <X className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <button
-                                          onClick={() => startEditRemarks(p)}
-                                          className="text-left w-full px-2 py-1 rounded hover:bg-gray-100 text-gray-600 truncate max-w-xs"
-                                          title={p.remarks || ''}
-                                        >
-                                          {p.remarks && p.remarks !== '-' ? p.remarks : <span className="text-gray-400">-</span>}
-                                        </button>
-                                      )}
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                      <button
-                                        onClick={() => openModal(p)}
-                                        className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded"
-                                        title="Edit"
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
+                <div
+                  key={`card-${tourist.id}`}
+                  className={`bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300 p-6 ${roomPairClasses}`}
+                >
+                  {roommate ? (
+                    // Room pair - 2 tourists in one card
+                    <div className="space-y-4">
+                      {renderTouristRow(tourist, index)}
+                      <div className="border-t-2 border-dashed border-gray-300 pt-4">
+                        {renderTouristRow(roommate, sortedTourists.indexOf(roommate))}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ) : (
+                    // Single tourist
+                    renderTouristRow(tourist, index)
+                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            });
+
+            return cards;
+          })()}
         </div>
       ) : (
         <div className="text-center py-16 bg-gradient-to-b from-gray-50 to-white rounded-2xl border-2 border-dashed border-gray-200">
@@ -1198,7 +1233,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Remarks</label>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Additional Information</label>
                 <textarea
                   value={form.remarks}
                   onChange={(e) => setForm({ ...form, remarks: e.target.value })}
@@ -1228,146 +1263,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         </div>
       )}
 
-      {/* Flight Modal */}
-      {flightModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className={`px-5 py-4 ${flightForm.type === 'INTERNATIONAL' ? 'bg-gradient-to-r from-indigo-600 to-indigo-700' : 'bg-gradient-to-r from-teal-600 to-teal-700'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Plane className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">
-                      {editingFlight ? 'Edit Flight' : 'Add Flight'}
-                    </h2>
-                    <p className="text-sm text-white/70">{flightForm.type === 'INTERNATIONAL' ? 'International' : 'Domestic'} flight</p>
-                  </div>
-                </div>
-                <button onClick={() => setFlightModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-                  <X className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Flight Type</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFlightForm({ ...flightForm, type: 'INTERNATIONAL' })}
-                    className={`px-4 py-3 rounded-xl border-2 font-medium transition-all ${
-                      flightForm.type === 'INTERNATIONAL'
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    International
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFlightForm({ ...flightForm, type: 'DOMESTIC' })}
-                    className={`px-4 py-3 rounded-xl border-2 font-medium transition-all ${
-                      flightForm.type === 'DOMESTIC'
-                        ? 'border-teal-500 bg-teal-50 text-teal-700'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    Domestic
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Flight Number</label>
-                <input
-                  type="text"
-                  value={flightForm.flightNumber}
-                  onChange={(e) => setFlightForm({ ...flightForm, flightNumber: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="TK 1234 / HY 54"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Departure *</label>
-                  <input
-                    type="text"
-                    value={flightForm.departure}
-                    onChange={(e) => setFlightForm({ ...flightForm, departure: e.target.value.toUpperCase() })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-lg"
-                    placeholder="IST"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Arrival *</label>
-                  <input
-                    type="text"
-                    value={flightForm.arrival}
-                    onChange={(e) => setFlightForm({ ...flightForm, arrival: e.target.value.toUpperCase() })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-lg"
-                    placeholder="TAS"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Date</label>
-                <input
-                  type="date"
-                  value={flightForm.date}
-                  onChange={(e) => setFlightForm({ ...flightForm, date: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Departure Time</label>
-                  <input
-                    type="time"
-                    value={flightForm.departureTime}
-                    onChange={(e) => setFlightForm({ ...flightForm, departureTime: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Arrival Time</label>
-                  <input
-                    type="time"
-                    value={flightForm.arrivalTime}
-                    onChange={(e) => setFlightForm({ ...flightForm, arrivalTime: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 p-5 bg-gray-50 border-t border-gray-100">
-              <button
-                onClick={() => setFlightModalOpen(false)}
-                className="px-5 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-100 font-medium text-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveFlight}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium shadow-md transition-all ${
-                  flightForm.type === 'INTERNATIONAL'
-                    ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800'
-                    : 'bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800'
-                }`}
-              >
-                <Save className="w-4 h-4" />
-                Save Flight
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

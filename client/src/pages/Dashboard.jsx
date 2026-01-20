@@ -33,11 +33,51 @@ const statusLabels = {
 };
 
 const statusColors = {
-  PENDING: '#F59E0B',
-  CONFIRMED: '#3B82F6',
-  IN_PROGRESS: '#8B5CF6',
-  COMPLETED: '#10B981',
-  CANCELLED: '#EF4444'
+  PENDING: '#F59E0B',      // Желтый (Ожидает)
+  CONFIRMED: '#10B981',    // Зеленый (Подтверждено)
+  IN_PROGRESS: '#8B5CF6',  // Фиолетовый (В процессе)
+  COMPLETED: '#3B82F6',    // Синий (Завершено)
+  CANCELLED: '#EF4444'     // Красный (Отменено)
+};
+
+const statusClasses = {
+  PENDING: 'bg-yellow-100 text-yellow-800',
+  CONFIRMED: 'bg-green-100 text-green-800',
+  IN_PROGRESS: 'bg-purple-100 text-purple-800',
+  COMPLETED: 'bg-blue-100 text-blue-800',
+  CANCELLED: 'bg-red-100 text-red-800'
+};
+
+// Helper to calculate status based on PAX, departure date, and end date
+const calculateStatus = (pax, departureDate, endDate) => {
+  const paxCount = parseInt(pax) || 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Check if tour has ended
+  if (endDate) {
+    const tourEndDate = new Date(endDate);
+    tourEndDate.setHours(0, 0, 0, 0);
+    if (tourEndDate < today) {
+      return 'COMPLETED';
+    }
+  }
+
+  if (departureDate) {
+    const daysUntilDeparture = Math.ceil((new Date(departureDate) - today) / (1000 * 60 * 60 * 24));
+
+    if (daysUntilDeparture < 30 && paxCount < 4) {
+      return 'CANCELLED';
+    }
+  }
+
+  if (paxCount >= 6) {
+    return 'CONFIRMED';
+  } else if (paxCount === 4 || paxCount === 5) {
+    return 'IN_PROGRESS';
+  } else {
+    return 'PENDING';
+  }
 };
 
 export default function Dashboard() {
@@ -107,7 +147,7 @@ export default function Dashboard() {
         />
         <StatCard
           icon={Users}
-          label="Всего участников"
+          label="Всего туристов"
           value={stats?.overview.totalPax || 0}
           color="green"
         />
@@ -140,7 +180,7 @@ export default function Dashboard() {
                 <YAxis axisLine={false} tickLine={false} />
                 <Tooltip />
                 <Bar dataKey="bookings" name="Бронирования" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="pax" name="Участники" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="pax" name="Туристы" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -198,7 +238,10 @@ export default function Dashboard() {
 
         {upcoming.length > 0 ? (
           <div className="divide-y divide-gray-200">
-            {upcoming.map((booking) => (
+            {upcoming.map((booking) => {
+              const status = calculateStatus(booking.pax, booking.departureDate, booking.endDate);
+
+              return (
               <Link
                 key={booking.id}
                 to={`/bookings/${booking.id}`}
@@ -219,20 +262,24 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <Users className="w-4 h-4" />
-                    <span>{booking.pax} чел.</span>
-                  </div>
+                <div className="flex items-center gap-4 text-sm">
                   <div className="flex items-center gap-1 text-gray-500">
                     <Clock className="w-4 h-4" />
                     <span>
                       {format(new Date(booking.departureDate), 'd MMM yyyy', { locale: ru })}
                     </span>
                   </div>
+                  <div className="flex items-center gap-1 text-gray-500">
+                    <Users className="w-4 h-4" />
+                    <span>{booking.pax} чел.</span>
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClasses[status]}`}>
+                    {statusLabels[status]}
+                  </span>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-8 text-center text-gray-500">

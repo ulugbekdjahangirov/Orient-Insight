@@ -33,6 +33,28 @@ model TourType {
   createdAt   DateTime  @default(now())
 
   bookings    Booking[]
+  itinerary   TourItinerary[]
+}
+
+// Программа тура (день за днем)
+model TourItinerary {
+  id          Int       @id @default(autoincrement())
+  tourTypeId  Int
+  tourType    TourType  @relation(fields: [tourTypeId], references: [id], onDelete: Cascade)
+
+  dayNumber   Int                      // Номер дня (1, 2, 3...)
+  title       String                   // Заголовок дня (например: "День 1: Прибытие в Ташкент")
+  description String?                  // Описание программы дня
+  activities  String?                  // Активности дня (может быть JSON или текст)
+  meals       String?                  // Питание (Завтрак, Обед, Ужин)
+  accommodation String?                // Размещение (название отеля)
+
+  sortOrder   Int       @default(0)    // Порядок сортировки
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tourTypeId])
+  @@index([dayNumber])
 }
 
 // Гиды / Рейселейтеры
@@ -98,10 +120,10 @@ model Booking {
   arrivalDate     DateTime  // Ankunft (прибытие)
   endDate         DateTime  // Abflug (вылет/окончание)
 
-  // Участники
+  // Туристы
   pax             Int       @default(0) // Общее количество
-  paxUzbekistan   Int?      // Участники в Узбекистане
-  paxTurkmenistan Int?      // Участники в Туркменистане
+  paxUzbekistan   Int?      // Туристы в Узбекистане
+  paxTurkmenistan Int?      // Туристы в Туркменистане
   country         String?   // Страна группы (Germany, France, etc.)
 
   // Гид
@@ -113,10 +135,10 @@ model Booking {
   avia            String?   // Авиабилеты
 
   // Номера в отелях (legacy - простые подсчёты)
-  roomsDbl        Int       @default(0) // Double rooms
-  roomsTwn        Int       @default(0) // Twin rooms
-  roomsSngl       Int       @default(0) // Single rooms
-  roomsTotal      Int       @default(0) // Всего номеров
+  roomsDbl        Float     @default(0) // Double rooms
+  roomsTwn        Float     @default(0) // Twin rooms
+  roomsSngl       Float     @default(0) // Single rooms
+  roomsTotal      Float     @default(0) // Всего номеров
 
   // Размещение в отелях (детальное) - legacy
   bookingRooms    BookingRoom[]
@@ -132,6 +154,9 @@ model Booking {
 
   // Рейсы
   flights         Flight[]
+
+  // Raw flight sections from PDF
+  flightSections  FlightSection[]
 
   // Дополнительные даты для ZA туров
   dateOlot        DateTime? // Olot
@@ -229,8 +254,9 @@ model Hotel {
   phone       String?                  // Телефон
   email       String?                  // Email
   website     String?                  // Вебсайт
-  stars       Int?                     // Звёздность (1-5)
+  stars       String?                  // Звёздность (1-5, Guesthouse, Yurta)
   description String?                  // Описание
+  totalRooms  Int       @default(0)    // Общее количество номеров в отеле (для расчёта турсбора)
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -273,6 +299,14 @@ model RoomType {
   description   String?                 // Описание номера
   amenities     String?                 // Удобства (JSON или текст)
   maxGuests     Int      @default(2)    // Макс. гостей
+
+  // НДС (12%)
+  vatIncluded   Boolean  @default(false) // Включен ли НДС 12% в цену
+
+  // Туристический сбор (только для отелей в Узбекистане)
+  touristTaxEnabled Boolean @default(false)  // Включен ли турсбор для этого типа номера
+  brvValue          Float?  @default(0)      // БРВ - Базовая расчётная величина (в сумах UZS)
+
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -282,8 +316,8 @@ model RoomType {
   accommodations     Accommodation[]
   seasonalPrices     RoomSeasonalPrice[]
 
-  @@unique([hotelId, name])
   @@index([hotelId])
+  @@index([hotelId, name])
 }
 
 // Сезонные цены на номера
@@ -419,6 +453,11 @@ model Tourist {
   // Размещение (страна тура)
   accommodation   String?   @default("Not assigned") // Uzbekistan, Turkmenistan, Not assigned
 
+  // Размещение в отеле
+  hotelName       String?                  // Название отеля (для заявок)
+  checkInDate     DateTime?                // Дата заезда (индивидуальная)
+  checkOutDate    DateTime?                // Дата выезда (индивидуальная)
+
   // Предпочтения по размещению
   roomPreference  String?                  // DBL, TWN, SNGL
   roomNumber      String?                  // Room grouping identifier (e.g., DBL-1, TWN-2, SNGL-3)
@@ -499,10 +538,42 @@ model Flight {
 }
 
 // ============================================
+// Модуль: Flight Sections (Raw content from PDF)
+// ============================================
+
+// Raw flight section content extracted from PDF
+model FlightSection {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Type: INTERNATIONAL or DOMESTIC
+  type            String    @default("INTERNATIONAL")
+
+  // Raw text content extracted from PDF
+  rawContent      String?                  // Raw text block from PDF
+
+  // Image content (base64 encoded) for image-based flight info
+  imageData       String?                  // Base64 encoded image data
+  imageMimeType   String?                  // image/png, image/jpeg, etc.
+
+  // Metadata
+  sourceFileName  String?                  // Original PDF filename
+  pageNumber      Int?                     // Page number in PDF where found
+
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([type])
+}
+
+// ============================================
 // Модуль: Rooming List (Лист размещения)
 // ============================================
 
-// Запись Rooming List (независимая от участников)
+// Запись Rooming List (независимая от туристов)
 model RoomingListEntry {
   id              Int       @id @default(autoincrement())
   bookingId       Int

@@ -46,8 +46,8 @@ export default function CostSummary({ bookingId, booking }) {
 
       // By Participant
       if (costData?.byParticipant?.length > 0) {
-        lines.push(['ПО УЧАСТНИКАМ']);
-        lines.push(['Участник', 'Ночей', 'Стоимость']);
+        lines.push(['ПО ТУРИСТАМ']);
+        lines.push(['Турист', 'Ночей', 'Стоимость']);
         costData.byParticipant.forEach(p => {
           lines.push([p.name, p.totalNights, p.totalCost]);
         });
@@ -117,7 +117,7 @@ export default function CostSummary({ bookingId, booking }) {
               }`}
             >
               <Users className="w-4 h-4 inline mr-1" />
-              По участникам
+              По туристам
             </button>
           </div>
           <button
@@ -221,14 +221,14 @@ export default function CostSummary({ bookingId, booking }) {
       {viewMode === 'participant' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h4 className="font-semibold text-gray-900">Стоимость по участникам</h4>
+            <h4 className="font-semibold text-gray-900">Стоимость по туристам</h4>
           </div>
           {byParticipant?.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-gray-500 bg-gray-50">
-                    <th className="py-3 px-4">Участник</th>
+                    <th className="py-3 px-4">Турист</th>
                     <th className="py-3 px-4 text-center">Ночей</th>
                     <th className="py-3 px-4 text-right">Стоимость</th>
                   </tr>
@@ -262,7 +262,7 @@ export default function CostSummary({ bookingId, booking }) {
                 <tfoot>
                   <tr className="bg-gray-50 font-semibold">
                     <td className="py-3 px-4 text-gray-700">
-                      ИТОГО ({byParticipant.length} участников)
+                      ИТОГО ({byParticipant.length} туристов)
                     </td>
                     <td className="py-3 px-4 text-center text-primary-600">
                       {byParticipant.reduce((sum, p) => sum + p.totalNights, 0)}
@@ -277,8 +277,8 @@ export default function CostSummary({ bookingId, booking }) {
           ) : (
             <div className="py-8 text-center text-gray-500">
               <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              <p>Нет назначенных участников</p>
-              <p className="text-sm mt-1">Добавьте участников и назначьте их в номера</p>
+              <p>Нет назначенных туристов</p>
+              <p className="text-sm mt-1">Добавьте туристов и назначьте их в номера</p>
             </div>
           )}
         </div>

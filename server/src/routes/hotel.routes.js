@@ -140,7 +140,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // POST /api/hotels - Create hotel
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { name, cityId, address, phone, email, website, stars, description } = req.body;
+    const { name, cityId, address, phone, email, website, stars, description, totalRooms } = req.body;
 
     // Validation
     if (!name || !cityId) {
@@ -180,8 +180,9 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         phone,
         email,
         website,
-        stars: stars ? parseInt(stars) : null,
-        description
+        stars: stars || null,
+        description,
+        totalRooms: totalRooms ? parseInt(totalRooms) : 0
       },
       include: {
         city: true,
@@ -200,7 +201,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 router.put('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, cityId, address, phone, email, website, stars, description, isActive } = req.body;
+    const { name, cityId, address, phone, email, website, stars, description, isActive, totalRooms } = req.body;
 
     // Validation
     if (name && (name.length < 2 || name.length > 100)) {
@@ -218,9 +219,10 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email;
     if (website !== undefined) updateData.website = website;
-    if (stars !== undefined) updateData.stars = stars ? parseInt(stars) : null;
+    if (stars !== undefined) updateData.stars = stars || null;
     if (description !== undefined) updateData.description = description;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
+    if (totalRooms !== undefined) updateData.totalRooms = totalRooms ? parseInt(totalRooms) : 0;
 
     const hotel = await prisma.hotel.update({
       where: { id: parseInt(id) },
@@ -299,7 +301,7 @@ router.get('/:hotelId/room-types', authenticate, async (req, res) => {
 router.post('/:hotelId/room-types', authenticate, requireAdmin, async (req, res) => {
   try {
     const { hotelId } = req.params;
-    const { name, displayName, roomCount, pricePerNight, currency, description, amenities, maxGuests } = req.body;
+    const { name, displayName, roomCount, pricePerNight, currency, description, amenities, maxGuests, vatIncluded, touristTaxEnabled, brvValue } = req.body;
 
     // Validation
     if (!name) {
@@ -324,11 +326,12 @@ router.post('/:hotelId/room-types', authenticate, requireAdmin, async (req, res)
       return res.status(404).json({ error: 'Отель не найден' });
     }
 
-    // Check for duplicate room type in hotel
+    // Check for duplicate room type in hotel (only active ones)
     const existing = await prisma.roomType.findFirst({
       where: {
         hotelId: parseInt(hotelId),
-        name: { equals: name }
+        name: { equals: name },
+        isActive: true
       }
     });
     if (existing) {
@@ -345,7 +348,10 @@ router.post('/:hotelId/room-types', authenticate, requireAdmin, async (req, res)
         currency: currency || 'USD',
         description,
         amenities,
-        maxGuests: maxGuests || 2
+        maxGuests: maxGuests || 2,
+        vatIncluded: vatIncluded || false,
+        touristTaxEnabled: touristTaxEnabled || false,
+        brvValue: brvValue || 0
       }
     });
 
@@ -360,7 +366,7 @@ router.post('/:hotelId/room-types', authenticate, requireAdmin, async (req, res)
 router.put('/:hotelId/room-types/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, displayName, roomCount, pricePerNight, currency, description, amenities, maxGuests, isActive } = req.body;
+    const { name, displayName, roomCount, pricePerNight, currency, description, amenities, maxGuests, isActive, vatIncluded, touristTaxEnabled, brvValue } = req.body;
 
     // Validation
     if (roomCount !== undefined && roomCount < 0) {
@@ -381,6 +387,9 @@ router.put('/:hotelId/room-types/:id', authenticate, requireAdmin, async (req, r
     if (amenities !== undefined) updateData.amenities = amenities;
     if (maxGuests !== undefined) updateData.maxGuests = maxGuests;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
+    if (typeof vatIncluded === 'boolean') updateData.vatIncluded = vatIncluded;
+    if (typeof touristTaxEnabled === 'boolean') updateData.touristTaxEnabled = touristTaxEnabled;
+    if (brvValue !== undefined) updateData.brvValue = brvValue;
 
     const roomType = await prisma.roomType.update({
       where: { id: parseInt(id) },
@@ -402,6 +411,26 @@ router.delete('/:hotelId/room-types/:id', authenticate, requireAdmin, async (req
   try {
     const { id } = req.params;
 
+    // Check if room type is used in bookings or accommodations
+    const [bookingRoomsCount, accommodationRoomsCount, accommodationsCount, seasonalPricesCount] = await Promise.all([
+      prisma.bookingRoom.count({ where: { roomTypeId: parseInt(id) } }),
+      prisma.accommodationRoom.count({ where: { roomTypeId: parseInt(id) } }),
+      prisma.accommodation.count({ where: { roomTypeId: parseInt(id) } }),
+      prisma.roomSeasonalPrice.count({ where: { roomTypeId: parseInt(id) } })
+    ]);
+
+    const totalUsage = bookingRoomsCount + accommodationRoomsCount + accommodationsCount + seasonalPricesCount;
+
+    if (totalUsage > 0) {
+      // If used, deactivate instead of delete
+      await prisma.roomType.update({
+        where: { id: parseInt(id) },
+        data: { isActive: false }
+      });
+      return res.json({ message: 'Тип номера деактивирован (используется в бронированиях)' });
+    }
+
+    // If not used, delete completely
     await prisma.roomType.delete({ where: { id: parseInt(id) } });
     res.json({ message: 'Тип номера удалён' });
   } catch (error) {
