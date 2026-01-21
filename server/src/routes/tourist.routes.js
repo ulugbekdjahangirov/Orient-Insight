@@ -4,6 +4,9 @@ const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
+const puppeteer = require('puppeteer');
+const fs = require('fs');
+const path = require('path');
 
 // Load pdf-parse v1 for rooming list PDF import
 let pdfParse;
@@ -225,7 +228,9 @@ router.post('/:bookingId/tourists', authenticate, async (req, res) => {
 router.put('/:bookingId/tourists/:id', authenticate, async (req, res) => {
   try {
     const { bookingId, id } = req.params;
-    const { firstName, lastName, gender, passportNumber, dateOfBirth, passportExpiryDate, roomPreference, roommateId, isGroupLeader, notes, country, accommodation, remarks } = req.body;
+    const { firstName, lastName, gender, passportNumber, dateOfBirth, passportExpiryDate, roomPreference, roommateId, isGroupLeader, notes, country, accommodation, remarks, checkInDate, checkOutDate } = req.body;
+
+    console.log(`🔄 Updating tourist ${id}: checkInDate=${checkInDate}, checkOutDate=${checkOutDate}`);
 
     const tourist = await prisma.tourist.update({
       where: { id: parseInt(id) },
@@ -237,6 +242,8 @@ router.put('/:bookingId/tourists/:id', authenticate, async (req, res) => {
         passportNumber,
         dateOfBirth: dateOfBirth !== undefined ? (dateOfBirth ? new Date(dateOfBirth) : null) : undefined,
         passportExpiryDate: passportExpiryDate !== undefined ? (passportExpiryDate ? new Date(passportExpiryDate) : null) : undefined,
+        checkInDate: checkInDate !== undefined ? (checkInDate ? new Date(checkInDate) : null) : undefined,
+        checkOutDate: checkOutDate !== undefined ? (checkOutDate ? new Date(checkOutDate) : null) : undefined,
         roomPreference,
         roommateId,
         isGroupLeader,
@@ -311,7 +318,10 @@ router.post('/:bookingId/tourists/bulk', authenticate, async (req, res) => {
         notes: p.notes,
         country: p.country || 'Not provided',
         accommodation: p.accommodation || 'Not assigned',
-        remarks: p.remarks || null
+        remarks: p.remarks || null,
+        // Individual hotel check-in/out dates (for calculating extra nights)
+        checkInDate: p.checkInDate ? new Date(p.checkInDate) : null,
+        checkOutDate: p.checkOutDate ? new Date(p.checkOutDate) : null
       }))
     });
 
@@ -2266,7 +2276,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       // Parse tourist names (Mr./Mrs./Ms. patterns)
       const nameMatch = line.match(/^(Mr\.|Mrs\.|Ms\.)\s+(.+)$/i);
       if (nameMatch && currentRoomType) {
-        const fullName = `${nameMatch[1]} ${nameMatch[2]}`.trim();
+        let fullName = `${nameMatch[1]} ${nameMatch[2]}`.trim();
         const nameParts = nameMatch[2].split(',').map(p => p.trim());
 
         let lastName = '', firstName = '';
@@ -2276,6 +2286,39 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         } else {
           lastName = nameMatch[2];
         }
+
+        // 🔍 Check if name ends with asterisk (*) - means "half double room, no roommate found"
+        const hasAsterisk = firstName.endsWith('*') || lastName.endsWith('*') || fullName.endsWith('*');
+
+        if (hasAsterisk) {
+          // Remove asterisk from names
+          firstName = firstName.replace(/\*$/, '').trim();
+          lastName = lastName.replace(/\*$/, '').trim();
+          fullName = fullName.replace(/\*$/, '').trim();
+
+          console.log(`   ⚠️ Asterisk detected: "${fullName}" - half double room, no roommate found`);
+
+          // Find the existing tourist with the same name (normalized)
+          const normalizeName = (name) => name.toLowerCase().replace(/[*\s]/g, '');
+          const normalizedSearchName = normalizeName(fullName);
+
+          const existingTourist = tourists.find(t =>
+            normalizeName(t.fullName) === normalizedSearchName
+          );
+
+          if (existingTourist) {
+            // Update existing tourist to SNGL room instead of adding duplicate
+            existingTourist.roomType = 'SNGL';
+            roomCounters.SNGL++;
+            existingTourist.roomNumber = `SNGL-${roomCounters.SNGL}`;
+            existingTourist.remarks = 'Half double room booked, no roommate found → single room';
+            console.log(`   ✅ Updated existing tourist "${existingTourist.fullName}" to SNGL room`);
+            continue; // Skip adding duplicate
+          } else {
+            console.log(`   ⚠️ Warning: No matching tourist found for "${fullName}", will create as new`);
+          }
+        }
+
         console.log(`   👤 Parsed: "${fullName}" → lastName="${lastName}", firstName="${firstName}"`);
 
         // Room grouping logic:
@@ -2580,6 +2623,12 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
     // Get tour year from tour start date
     const tourYear = tourStartDate ? parseInt(tourStartDate.split('.')[2], 10) : new Date().getFullYear();
 
+    // Fetch first accommodation to use its checkout date for tourists with early arrival
+    const firstAccommodation = await prisma.accommodation.findFirst({
+      where: { bookingId: bookingIdInt },
+      orderBy: { checkInDate: 'asc' }
+    });
+
     // Now match tourists with additional information (vegetarians, birthdays, remarks)
     console.log('🔄 Matching tourists with additional information...');
     tourists.forEach(tourist => {
@@ -2626,13 +2675,16 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
 
           // Extract individual arrival/departure dates from remarks
           individualRemarks.forEach(remark => {
+            console.log(`   🔍 Checking remark: "${remark}"`);
+
             // Check for arrival date: "Flight: 09.10, Arrival: 10.10" or "Early arrival: 10.10"
             const arrivalMatch = remark.match(/Arrival:\s*(\d{2}\.\d{2})/i) || remark.match(/Early arrival:\s*(\d{2}\.\d{2})/i);
             if (arrivalMatch) {
+              console.log(`   ✓ Arrival match found: ${arrivalMatch[1]}`);
               const arrivalDate = parseDateInTourYear(arrivalMatch[1], tourYear);
               if (arrivalDate) {
                 tourist.checkInDate = arrivalDate;
-                console.log(`   📅 ${tourist.fullName} custom arrival: ${arrivalMatch[1]}`);
+                console.log(`   📅 ${tourist.fullName} custom arrival: ${arrivalMatch[1]} → ${arrivalDate}`);
               }
             }
 
@@ -2649,88 +2701,90 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         }
       }
 
+      // If tourist has custom check-in but no custom check-out, use first accommodation's checkout date
+      if (tourist.checkInDate && !tourist.checkOutDate) {
+        if (firstAccommodation && firstAccommodation.checkOutDate) {
+          tourist.checkOutDate = firstAccommodation.checkOutDate;
+          const checkoutDate = new Date(firstAccommodation.checkOutDate);
+          const formattedDate = `${String(checkoutDate.getDate()).padStart(2, '0')}.${String(checkoutDate.getMonth() + 1).padStart(2, '0')}.${checkoutDate.getFullYear()}`;
+          console.log(`   📅 ${tourist.fullName} using first accommodation checkout date: ${formattedDate}`);
+        } else if (tourEndDate) {
+          // Fallback to tour end date if no accommodation found
+          const tourEnd = parseDateInTourYear(tourEndDate.split('.')[0] + '.' + tourEndDate.split('.')[1], tourYear);
+          if (tourEnd) {
+            tourist.checkOutDate = tourEnd;
+            console.log(`   📅 ${tourist.fullName} using tour end date for checkout: ${tourEndDate}`);
+          }
+        }
+      }
+
       // Update tourist remarks
       tourist.remarks = additionalInfo.length > 0 ? additionalInfo.join('\n') : '-';
     });
 
-    // ✅ UPDATE MODE: Only update room assignments, preserve existing tourist data
-    console.log(`🔄 Fetching existing tourists for booking ${bookingId}...`);
+    // 🔄 UPDATE MODE: Only update room assignments, preserve personal data (passport, nationality, etc.)
+    console.log(`🔍 Fetching existing tourists for booking ${bookingId}...`);
 
-    // Get existing tourists from database
     const existingTourists = await prisma.tourist.findMany({
       where: { bookingId: bookingIdInt }
     });
 
     console.log(`📋 Found ${existingTourists.length} existing tourists in database`);
-    console.log(`📋 Found ${tourists.length} tourists in PDF`);
 
-    // Helper function to normalize name for matching
+    // Helper function to normalize names for matching
     const normalizeName = (name) => {
-      return name.toLowerCase().trim()
-        .replace(/\s+/g, ' ')
-        .replace(/mrs\.|mr\.|dr\./gi, '')
+      if (!name) return '';
+      return name
+        .toLowerCase()
+        .replace(/^(mr\.|mrs\.|ms\.|dr\.)\s*/i, '') // Remove titles
+        .replace(/\s+/g, ' ') // Normalize spaces
+        .replace(/[*]/g, '') // Remove asterisks
         .trim();
     };
 
     let updatedCount = 0;
     let createdCount = 0;
 
-    // Process each tourist from PDF
-    for (const pdfTourist of tourists) {
-      const pdfFullName = normalizeName(pdfTourist.fullName || `${pdfTourist.lastName}, ${pdfTourist.firstName}`);
+    // Delete only flights and sections (NOT tourists) - we'll update tourists instead
+    console.log('🗑️  Deleting old flight data...');
+    await prisma.$transaction([
+      prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } }),
+      prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
+    ]);
+    console.log('✓ Old flight data deleted');
 
-      // Try to find matching existing tourist by name
-      const matchedTourist = existingTourists.find(existing => {
-        const existingFullName = normalizeName(existing.fullName || `${existing.lastName}, ${existing.firstName}`);
-        return existingFullName === pdfFullName;
+    // Process each tourist from PDF - UPDATE mode (preserve passport, nationality, DOB, etc.)
+    for (const pdfTourist of tourists) {
+      console.log(`   🔍 Processing ${pdfTourist.fullName}: checkInDate=${pdfTourist.checkInDate}, checkOutDate=${pdfTourist.checkOutDate}`);
+
+      // Try to find existing tourist by name
+      const normalizedPdfFirstName = normalizeName(pdfTourist.firstName);
+      const normalizedPdfLastName = normalizeName(pdfTourist.lastName);
+
+      const existingTourist = existingTourists.find(t => {
+        const normalizedFirstName = normalizeName(t.firstName);
+        const normalizedLastName = normalizeName(t.lastName);
+        return normalizedFirstName === normalizedPdfFirstName && normalizedLastName === normalizedPdfLastName;
       });
 
-      if (matchedTourist) {
-        // Update existing tourist - only room-related fields and remarks
-        console.log(`   🔄 Updating room assignment for: ${matchedTourist.fullName}`);
-
-        // Prepare update data - merge PDF remarks with existing remarks
-        const updateData = {
-          roomPreference: pdfTourist.roomType || matchedTourist.roomPreference,
-          roomNumber: pdfTourist.roomNumber || matchedTourist.roomNumber,
-          accommodation: pdfTourist.tourType || matchedTourist.accommodation
-        };
-
-        // Update individual dates if found in PDF
-        if (pdfTourist.checkInDate) {
-          updateData.checkInDate = pdfTourist.checkInDate;
-        }
-        if (pdfTourist.checkOutDate) {
-          updateData.checkOutDate = pdfTourist.checkOutDate;
-        }
-
-        // Merge remarks: keep existing remarks if PDF doesn't have new ones, or append PDF remarks
-        if (pdfTourist.remarks && pdfTourist.remarks !== '-') {
-          // If existing tourist has remarks that aren't default
-          if (matchedTourist.remarks && matchedTourist.remarks !== '-' && matchedTourist.remarks !== 'Not provided') {
-            // Check if PDF remarks are different from existing ones
-            if (!matchedTourist.remarks.includes(pdfTourist.remarks)) {
-              updateData.remarks = `${matchedTourist.remarks}\n${pdfTourist.remarks}`;
-            } else {
-              updateData.remarks = matchedTourist.remarks; // Keep existing
-            }
-          } else {
-            updateData.remarks = pdfTourist.remarks;
-          }
-        }
-        // If no new remarks from PDF, keep existing remarks
-        // (don't include remarks in updateData, so it won't be changed)
-
+      if (existingTourist) {
+        // UPDATE: Only update rooming info, preserve personal data
         await prisma.tourist.update({
-          where: { id: matchedTourist.id },
-          data: updateData
+          where: { id: existingTourist.id },
+          data: {
+            roomPreference: pdfTourist.roomType,
+            roomNumber: pdfTourist.roomNumber,
+            accommodation: pdfTourist.tourType,
+            remarks: pdfTourist.remarks || '-',
+            checkInDate: pdfTourist.checkInDate ? new Date(pdfTourist.checkInDate) : null,
+            checkOutDate: pdfTourist.checkOutDate ? new Date(pdfTourist.checkOutDate) : null
+            // DO NOT update: firstName, lastName, fullName, gender, country, passportNumber, dateOfBirth, passportExpiryDate
+          }
         });
-
+        console.log(`   ✏️  Updated existing tourist: ${pdfTourist.fullName}`);
         updatedCount++;
       } else {
-        // Create new tourist (this should be rare for rooming list imports)
-        console.log(`   ➕ Creating new tourist: ${pdfTourist.fullName}`);
-
+        // CREATE: New tourist not found in database
         await prisma.tourist.create({
           data: {
             bookingId: bookingIdInt,
@@ -2744,33 +2798,16 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
             remarks: pdfTourist.remarks || '-',
             country: 'Not provided',
             passportNumber: 'Not provided',
-            checkInDate: pdfTourist.checkInDate || null,
-            checkOutDate: pdfTourist.checkOutDate || null
+            checkInDate: pdfTourist.checkInDate ? new Date(pdfTourist.checkInDate) : null,
+            checkOutDate: pdfTourist.checkOutDate ? new Date(pdfTourist.checkOutDate) : null
           }
         });
-
+        console.log(`   ➕ Created new tourist: ${pdfTourist.fullName}`);
         createdCount++;
       }
     }
 
     console.log(`✅ Updated ${updatedCount} tourists, created ${createdCount} new tourists`);
-
-    // Delete and recreate flights and flight sections (this is okay since they come from PDF)
-    await prisma.$transaction([
-      prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } }),
-      prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
-    ]);
-
-    // Verify remarks were saved by fetching back from DB
-    const verifyTourists = await prisma.tourist.findMany({
-      where: { bookingId: bookingIdInt }
-    });
-    console.log('🔍 Verifying saved tourists with remarks:');
-    verifyTourists.forEach(t => {
-      if (t.remarks && t.remarks !== '-') {
-        console.log(`   ✓ ${t.fullName}: ${t.remarks}`);
-      }
-    });
 
     // Update booking with extracted tour dates
     if (tourStartDate && tourEndDate) {
@@ -2873,7 +2910,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
 
     res.json({
       success: true,
-      message: `Updated ${updatedCount} tourists, created ${createdCount} new tourists from PDF`,
+      message: `✅ Updated ${updatedCount} tourists, created ${createdCount} new tourists from PDF`,
       tourists: updatedTourists,
       flights: updatedFlights,
       summary: {
@@ -3103,5 +3140,958 @@ function formatFlightListAsRaw(flights) {
     return parts.filter(p => p).join('  ');
   }).join('\n');
 }
+
+// ============================================
+// PDF PREVIEW (HTML for printing)
+// ============================================
+
+console.log('🔧 Registering PDF preview route: /:bookingId/rooming-list-preview');
+
+// Remove authenticate middleware for preview - no auth required for PDF view
+router.get('/:bookingId/rooming-list-preview', async (req, res) => {
+  console.log('📄 PDF Preview Request - BookingId:', req.params.bookingId);
+  try {
+    const { bookingId } = req.params;
+    const bookingIdInt = parseInt(bookingId);
+    console.log('✅ Generating preview for booking:', bookingIdInt);
+
+    // Fetch booking with all necessary data
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingIdInt },
+      include: {
+        tourType: true,
+        guide: true
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Fetch tourists
+    const touristsRaw = await prisma.tourist.findMany({
+      where: { bookingId: bookingIdInt },
+      include: {
+        roomAssignments: {
+          include: {
+            bookingRoom: {
+              include: {
+                hotel: true,
+                roomType: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: [{ lastName: 'asc' }]
+    });
+
+    // Sort tourists: Uzbekistan first, then Turkmenistan
+    const tourists = touristsRaw.sort((a, b) => {
+      const aAccommodation = (a.accommodation || '').toLowerCase();
+      const bAccommodation = (b.accommodation || '').toLowerCase();
+
+      const aIsUzbekistan = aAccommodation.includes('uzbek') || aAccommodation.includes('узбек');
+      const bIsUzbekistan = bAccommodation.includes('uzbek') || bAccommodation.includes('узбек');
+      const aIsTurkmenistan = aAccommodation.includes('turkmen') || aAccommodation.includes('туркмен');
+      const bIsTurkmenistan = bAccommodation.includes('turkmen') || bAccommodation.includes('туркмен');
+
+      // UZ first (return -1), then TM (return 1)
+      if (aIsUzbekistan && !bIsUzbekistan) return -1;
+      if (!aIsUzbekistan && bIsUzbekistan) return 1;
+      if (aIsTurkmenistan && !bIsTurkmenistan) return 1;
+      if (!aIsTurkmenistan && bIsTurkmenistan) return -1;
+
+      // If same type, sort by lastName
+      return (a.lastName || '').localeCompare(b.lastName || '');
+    });
+
+    // Helper function to format dates
+    const formatDisplayDate = (dateStr) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+
+    const bookingNumber = booking.bookingNumber || 'N/A';
+    const country = 'Германия'; // Default country
+    const arrivalDate = formatDisplayDate(booking.departureDate);
+    const departureDate = formatDisplayDate(booking.endDate);
+    const currentDate = formatDisplayDate(new Date().toISOString());
+    const totalPax = tourists.length;
+
+    // Calculate room counts
+    const dblRooms = tourists.filter(t => ['DBL', 'DOUBLE', 'DZ'].includes(t.roomPreference)).length / 2;
+    const twnRooms = tourists.filter(t => ['TWN', 'TWIN'].includes(t.roomPreference)).length / 2;
+    const snglRooms = tourists.filter(t => ['SNGL', 'SINGLE', 'EZ'].includes(t.roomPreference)).length;
+
+    const hotelName = 'Hotel Name'; // You can get this from accommodations if available
+
+    // Load logo as base64
+    const logoPath = path.join(__dirname, '../../uploads/logo.png');
+    let logoDataUrl = '';
+    try {
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoDataUrl = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      }
+    } catch (err) {
+      console.warn('Could not load logo:', err);
+    }
+
+    // Build tourist rows HTML
+    let touristRows = '';
+    tourists.forEach((t, idx) => {
+      const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+      let roomCategory = t.roomPreference || '';
+      if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
+      if (roomCategory === 'TWIN') roomCategory = 'TWN';
+      if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
+
+      // Determine placement (Uzbekistan or Turkmenistan)
+      const placement = t.accommodation || '';
+      const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
+      const placementText = isTurkmenistan ? 'TM' : placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') ? 'UZ' : '-';
+
+      // Get remarks only from roomAssignments.notes and custom dates
+      const remarksLines = [];
+
+      // Add custom check-in date if exists
+      if (t.checkInDate) {
+        remarksLines.push(`Заезд: ${formatDisplayDate(t.checkInDate)}`);
+      }
+
+      // Add room assignment notes (from Rooming list tab)
+      if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
+        remarksLines.push(t.roomAssignments[0].notes);
+      }
+
+      const remarks = remarksLines.filter(Boolean).join('\n');
+      const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
+      const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
+      const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+
+      touristRows += `
+        <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
+          <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
+          <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
+        </tr>
+      `;
+    });
+
+    // Build HTML template
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 15mm 12mm 15mm 12mm;
+          }
+          @page {
+            /* Remove browser headers and footers */
+            margin-top: 0;
+            margin-bottom: 0;
+          }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 9pt;
+            line-height: 1.2;
+            color: #000;
+          }
+          .action-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #2c3e50;
+            padding: 12px 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+          }
+          .action-bar button {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .btn-print {
+            background: #3498db;
+            color: white;
+          }
+          .btn-print:hover {
+            background: #2980b9;
+          }
+          .btn-close {
+            background: #95a5a6;
+            color: white;
+          }
+          .btn-close:hover {
+            background: #7f8c8d;
+          }
+          .content-wrapper {
+            margin-top: 60px;
+          }
+          @media print {
+            .action-bar {
+              display: none !important;
+            }
+            .content-wrapper {
+              margin-top: 0 !important;
+            }
+            /* Force background colors to print */
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+          }
+          .header-table {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+          }
+          .header-table td {
+            border: none;
+            padding: 8px;
+            font-size: 7.5pt;
+          }
+          .logo-cell {
+            text-align: center;
+            vertical-align: middle;
+          }
+          .date-hotel-row {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 5px 0;
+          }
+          .date-hotel-row td {
+            border: none;
+            padding: 5px;
+            font-size: 9pt;
+            color: #333;
+            vertical-align: top;
+          }
+          .date-cell {
+            text-align: left;
+            width: 50%;
+          }
+          .hotel-cell {
+            text-align: right;
+            width: 50%;
+          }
+          .zayvka-title {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            margin: 8px 0;
+          }
+          .intro-text {
+            text-align: justify;
+            margin: 6px 0;
+            font-size: 9pt;
+          }
+          .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+          }
+          .summary-table th,
+          .summary-table td {
+            border: 1px solid #000;
+            padding: 3px;
+            text-align: center;
+            font-size: 8pt;
+          }
+          .summary-table th {
+            background: #f0f0f0;
+            font-weight: bold;
+          }
+          .rooming-title {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin: 10px 0 6px 0;
+          }
+          .rooming-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+          }
+          .rooming-table th,
+          .rooming-table td {
+            border: 1px solid #000;
+            padding: 3px;
+            font-size: 8pt;
+          }
+          .rooming-table th {
+            background: #f0f0f0;
+            font-weight: bold;
+            text-align: center;
+          }
+          .footer-text {
+            margin: 8px 0;
+            font-size: 8.5pt;
+          }
+          .signature-table {
+            width: 100%;
+            margin-top: 15px;
+          }
+          .signature-table td {
+            padding: 3px;
+            font-size: 8.5pt;
+          }
+        </style>
+      </head>
+      <body>
+        <!-- Action Bar (hidden when printing) -->
+        <div class="action-bar">
+          <button class="btn-print" onclick="window.print()">🖨️ Печать / Сохранить как PDF</button>
+          <button class="btn-close" onclick="window.close()">✕ Закрыть</button>
+          <div style="position: absolute; right: 20px; color: white; font-size: 11px; opacity: 0.9;">
+            💡 В диалоге печати отключите "Верхние и нижние колонтитулы"
+          </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content-wrapper">
+        <!-- Header with company info -->
+        <table class="header-table">
+          <tr>
+            <td class="logo-cell" style="width:100%;text-align:center">
+              ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Orient Insight" style="width:150px;height:auto;margin-bottom:8px" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>'}
+              <div style="font-size:9pt;margin-top:5px">
+                <strong>Республика Узбекистан,</strong><br>
+                г.Самарканд, Шота Руставели, дом 45<br>
+                Тел/fax.: +998 933484208, +998 97 9282814<br>
+                E-Mail: orientinsightreisen@gmail.com<br>
+                Website: orient-insight.uz
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Date and Hotel Info -->
+        <table class="date-hotel-row">
+          <tr>
+            <td class="date-cell">
+              <strong>Дата:</strong> ${currentDate}
+            </td>
+            <td class="hotel-cell">
+              <strong>Директору гостиницы</strong><br>
+              <strong>${hotelName}</strong>
+            </td>
+          </tr>
+        </table>
+
+        <!-- ЗАЯВКА Title with Booking Number -->
+        <div class="zayvka-title">ЗАЯВКА ${bookingNumber}</div>
+
+        <!-- Introduction Text -->
+        <div class="intro-text">
+          ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.
+        </div>
+
+        <!-- Summary Table -->
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Группа</th>
+              <th>Страна</th>
+              <th>PAX</th>
+              <th>Первый<br>заезд</th>
+              <th>Первый<br>выезд</th>
+              <th>DBL</th>
+              <th>TWN</th>
+              <th>SNGL</th>
+              <th>Тип номера</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>${bookingNumber}</td>
+              <td>${country}</td>
+              <td>${totalPax}</td>
+              <td>${arrivalDate}</td>
+              <td>${departureDate}</td>
+              <td>${Math.floor(dblRooms)}</td>
+              <td>${Math.floor(twnRooms)}</td>
+              <td>${snglRooms}</td>
+              <td>стандарт</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ROOMING LISTE Title -->
+        <div class="rooming-title">ROOMING LISTE</div>
+
+        <!-- Rooming Table -->
+        <table class="rooming-table">
+          <thead>
+            <tr>
+              <th style="width:30px">№</th>
+              <th style="width:30%">ФИО</th>
+              <th style="width:12%">Дата заезда</th>
+              <th style="width:12%">дата выезда</th>
+              <th style="width:10%">Категория<br>номера</th>
+              <th style="width:8%">Размещение</th>
+              <th>Дополнительная<br>информация</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${touristRows}
+          </tbody>
+        </table>
+
+        <!-- Footer Text -->
+        <div class="footer-text">Оплату гости производят на месте.</div>
+
+        <!-- Signature Table -->
+        <table class="signature-table">
+          <tr>
+            <td style="width:40%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+            <td style="width:40%;text-align:center">_________________________</td>
+            <td style="width:20%;text-align:center"><strong>Одилова М.У.</strong></td>
+          </tr>
+        </table>
+        </div><!-- End content-wrapper -->
+      </body>
+      </html>
+    `;
+
+    // Send HTML for browser preview and printing
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(htmlContent);
+
+  } catch (error) {
+    console.error('PDF preview error:', error);
+    res.status(500).json({ error: 'Failed to generate preview: ' + error.message });
+  }
+});
+
+// ============================================
+// HOTEL REQUEST PREVIEW (for specific hotel/accommodation)
+// ============================================
+
+console.log('🔧 Registering hotel request preview route: /:bookingId/hotel-request-preview/:accommodationId');
+
+// Remove authenticate middleware for preview - no auth required for PDF view
+router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res) => {
+  console.log('📄 Hotel Request Preview - BookingId:', req.params.bookingId, 'AccommodationId:', req.params.accommodationId);
+  try {
+    const { bookingId, accommodationId } = req.params;
+    const bookingIdInt = parseInt(bookingId);
+    const accommodationIdInt = parseInt(accommodationId);
+    console.log('✅ Generating hotel request for booking:', bookingIdInt, 'accommodation:', accommodationIdInt);
+
+    // Fetch booking with all necessary data
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingIdInt },
+      include: {
+        tourType: true,
+        guide: true
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Fetch specific accommodation with hotel and room details
+    const accommodation = await prisma.accommodation.findUnique({
+      where: { id: accommodationIdInt },
+      include: {
+        hotel: {
+          include: {
+            city: true
+          }
+        },
+        rooms: true
+      }
+    });
+
+    if (!accommodation) {
+      return res.status(404).json({ error: 'Accommodation not found' });
+    }
+
+    // Fetch all tourists for this booking
+    const allTourists = await prisma.tourist.findMany({
+      where: { bookingId: bookingIdInt },
+      include: {
+        roomAssignments: {
+          include: {
+            bookingRoom: {
+              include: {
+                hotel: true,
+                roomType: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: [{ lastName: 'asc' }]
+    });
+
+    // Filter tourists whose dates overlap with this accommodation's dates
+    // A tourist overlaps if their checkIn/checkOut dates fall within the accommodation dates
+    const touristsFiltered = allTourists.filter(t => {
+      // If tourist has no specific dates, include them (they follow booking dates)
+      if (!t.checkInDate && !t.checkOutDate) {
+        return true;
+      }
+
+      // Check if tourist's dates overlap with accommodation dates
+      const touristCheckIn = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+      const touristCheckOut = t.checkOutDate ? new Date(t.checkOutDate) : new Date(booking.endDate);
+      const accCheckIn = new Date(accommodation.checkInDate);
+      const accCheckOut = new Date(accommodation.checkOutDate);
+
+      // Overlap logic: tourist checkout > acc checkin AND tourist checkin < acc checkout
+      return touristCheckOut > accCheckIn && touristCheckIn < accCheckOut;
+    });
+
+    // Sort tourists: Uzbekistan first, then Turkmenistan
+    const tourists = touristsFiltered.sort((a, b) => {
+      const aAccommodation = (a.accommodation || '').toLowerCase();
+      const bAccommodation = (b.accommodation || '').toLowerCase();
+
+      const aIsUzbekistan = aAccommodation.includes('uzbek') || aAccommodation.includes('узбек');
+      const bIsUzbekistan = bAccommodation.includes('uzbek') || bAccommodation.includes('узбек');
+      const aIsTurkmenistan = aAccommodation.includes('turkmen') || aAccommodation.includes('туркмен');
+      const bIsTurkmenistan = bAccommodation.includes('turkmen') || bAccommodation.includes('туркмен');
+
+      // UZ first (return -1), then TM (return 1)
+      if (aIsUzbekistan && !bIsUzbekistan) return -1;
+      if (!aIsUzbekistan && bIsUzbekistan) return 1;
+      if (aIsTurkmenistan && !bIsTurkmenistan) return 1;
+      if (!aIsTurkmenistan && bIsTurkmenistan) return -1;
+
+      // If same type, sort by lastName
+      return (a.lastName || '').localeCompare(b.lastName || '');
+    });
+
+    // Helper function to format dates
+    const formatDisplayDate = (dateStr) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+
+    const bookingNumber = booking.bookingNumber || 'N/A';
+    const country = 'Германия'; // Default country
+    const arrivalDate = formatDisplayDate(accommodation.checkInDate);
+    const departureDate = formatDisplayDate(accommodation.checkOutDate);
+    const currentDate = formatDisplayDate(new Date().toISOString());
+    const totalPax = tourists.length;
+
+    // Calculate room counts from accommodation.rooms
+    let dblRooms = 0;
+    let twnRooms = 0;
+    let snglRooms = 0;
+
+    if (accommodation.rooms && accommodation.rooms.length > 0) {
+      accommodation.rooms.forEach(room => {
+        const code = room.roomTypeCode?.toUpperCase();
+        if (code === 'DBL' || code === 'DOUBLE' || code === 'DZ') {
+          dblRooms += room.roomsCount || 0;
+        } else if (code === 'TWN' || code === 'TWIN') {
+          twnRooms += room.roomsCount || 0;
+        } else if (code === 'SNGL' || code === 'SINGLE' || code === 'EZ') {
+          snglRooms += room.roomsCount || 0;
+        }
+      });
+    } else {
+      // Fallback: calculate from tourists
+      dblRooms = tourists.filter(t => ['DBL', 'DOUBLE', 'DZ'].includes(t.roomPreference)).length / 2;
+      twnRooms = tourists.filter(t => ['TWN', 'TWIN'].includes(t.roomPreference)).length / 2;
+      snglRooms = tourists.filter(t => ['SNGL', 'SINGLE', 'EZ'].includes(t.roomPreference)).length;
+    }
+
+    const hotelName = accommodation.hotel?.name || 'Hotel Name';
+
+    // Load logo as base64
+    const logoPath = path.join(__dirname, '../../uploads/logo.png');
+    let logoDataUrl = '';
+    try {
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoDataUrl = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      }
+    } catch (err) {
+      console.warn('Could not load logo:', err);
+    }
+
+    // Build tourist rows HTML
+    let touristRows = '';
+    tourists.forEach((t, idx) => {
+      const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+      let roomCategory = t.roomPreference || '';
+      if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
+      if (roomCategory === 'TWIN') roomCategory = 'TWN';
+      if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
+
+      // Determine placement (Uzbekistan or Turkmenistan)
+      const placement = t.accommodation || '';
+      const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
+      const placementText = isTurkmenistan ? 'TM' : placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') ? 'UZ' : '-';
+
+      // Get remarks only from roomAssignments.notes and custom dates
+      const remarksLines = [];
+
+      // Add custom check-in date if exists
+      if (t.checkInDate) {
+        remarksLines.push(`Заезд: ${formatDisplayDate(t.checkInDate)}`);
+      }
+
+      // Add room assignment notes (from Rooming list tab)
+      if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
+        remarksLines.push(t.roomAssignments[0].notes);
+      }
+
+      const remarks = remarksLines.filter(Boolean).join('\n');
+      const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
+      const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
+      const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+
+      touristRows += `
+        <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
+          <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
+          <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
+        </tr>
+      `;
+    });
+
+    // Build HTML template
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 15mm 12mm 15mm 12mm;
+          }
+          @page {
+            /* Remove browser headers and footers */
+            margin-top: 0;
+            margin-bottom: 0;
+          }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 9pt;
+            line-height: 1.2;
+            color: #000;
+          }
+          .action-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #2c3e50;
+            padding: 12px 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+          }
+          .action-bar button {
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .btn-print {
+            background: #3498db;
+            color: white;
+          }
+          .btn-print:hover {
+            background: #2980b9;
+          }
+          .btn-close {
+            background: #95a5a6;
+            color: white;
+          }
+          .btn-close:hover {
+            background: #7f8c8d;
+          }
+          .content-wrapper {
+            margin-top: 60px;
+          }
+          @media print {
+            .action-bar {
+              display: none !important;
+            }
+            .content-wrapper {
+              margin-top: 0 !important;
+            }
+            /* Force background colors to print */
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+          }
+          .header-table {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+          }
+          .date-hotel-row {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+          }
+          .date-hotel-row td {
+            vertical-align: top;
+            padding: 3px;
+          }
+          .date-cell {
+            width: 50%;
+            text-align: left;
+          }
+          .hotel-cell {
+            width: 50%;
+            text-align: right;
+          }
+          .zayvka-title {
+            text-align: center;
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 15px 0;
+            text-decoration: underline;
+          }
+          .intro-text {
+            margin-bottom: 15px;
+            text-align: justify;
+          }
+          .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+          }
+          .summary-table th, .summary-table td {
+            border: 1px solid #000;
+            padding: 4px;
+            text-align: center;
+            font-size: 8pt;
+          }
+          .summary-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+          }
+          .rooming-title {
+            text-align: center;
+            font-size: 12pt;
+            font-weight: bold;
+            margin: 15px 0 10px 0;
+            text-decoration: underline;
+          }
+          .rooming-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+          }
+          .rooming-table th, .rooming-table td {
+            border: 1px solid #000;
+            padding: 3px;
+            font-size: 8pt;
+          }
+          .rooming-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            text-align: center;
+          }
+          .footer-text {
+            margin: 15px 0;
+            font-style: italic;
+          }
+          .signature-table {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+            margin-top: 30px;
+          }
+          .signature-table td {
+            padding: 5px;
+          }
+          .print-notice {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #856404;
+          }
+          @media print {
+            .print-notice { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <!-- Action Bar -->
+        <div class="action-bar">
+          <button class="btn-print" onclick="window.print()">🖨️ Печать / Сохранить как PDF</button>
+          <button class="btn-close" onclick="window.close()">✕ Закрыть</button>
+        </div>
+
+        <!-- Print Notice -->
+        <div class="content-wrapper">
+        <div class="print-notice">
+          💡 В диалоге печати отключите "Верхние и нижние колонтитулы"
+        </div>
+
+        <!-- Main Content -->
+        <!-- Header with company info -->
+        <table class="header-table">
+          <tr>
+            <td class="logo-cell" style="width:100%;text-align:center">
+              ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Orient Insight" style="width:150px;height:auto;margin-bottom:8px" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>'}
+              <div style="font-size:9pt;margin-top:5px">
+                <strong>Республика Узбекистан,</strong><br>
+                г.Самарканд, Шота Руставели, дом 45<br>
+                Тел/fax.: +998 933484208, +998 97 9282814<br>
+                E-Mail: orientinsightreisen@gmail.com<br>
+                Website: orient-insight.uz
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Date and Hotel Info -->
+        <table class="date-hotel-row">
+          <tr>
+            <td class="date-cell">
+              <strong>Дата:</strong> ${currentDate}
+            </td>
+            <td class="hotel-cell">
+              <strong>Директору гостиницы</strong><br>
+              <strong>${hotelName}</strong>
+            </td>
+          </tr>
+        </table>
+
+        <!-- ЗАЯВКА Title with Booking Number -->
+        <div class="zayvka-title">ЗАЯВКА ${bookingNumber}</div>
+
+        <!-- Introduction Text -->
+        <div class="intro-text">
+          ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.
+        </div>
+
+        <!-- Summary Table -->
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Группа</th>
+              <th>Страна</th>
+              <th>PAX</th>
+              <th>Первый<br>заезд</th>
+              <th>Первый<br>выезд</th>
+              <th>DBL</th>
+              <th>TWN</th>
+              <th>SNGL</th>
+              <th>Тип номера</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>${bookingNumber}</td>
+              <td>${country}</td>
+              <td>${totalPax}</td>
+              <td>${arrivalDate}</td>
+              <td>${departureDate}</td>
+              <td>${Math.floor(dblRooms)}</td>
+              <td>${Math.floor(twnRooms)}</td>
+              <td>${snglRooms}</td>
+              <td>стандарт</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ROOMING LISTE Title -->
+        <div class="rooming-title">ROOMING LISTE</div>
+
+        <!-- Rooming Table -->
+        <table class="rooming-table">
+          <thead>
+            <tr>
+              <th style="width:30px">№</th>
+              <th style="width:30%">ФИО</th>
+              <th style="width:12%">Дата заезда</th>
+              <th style="width:12%">дата выезда</th>
+              <th style="width:10%">Категория<br>номера</th>
+              <th style="width:8%">Размещение</th>
+              <th>Дополнительная<br>информация</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${touristRows}
+          </tbody>
+        </table>
+
+        <!-- Footer Text -->
+        <div class="footer-text">Оплату гости производят на месте.</div>
+
+        <!-- Signature Table -->
+        <table class="signature-table">
+          <tr>
+            <td style="width:40%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+            <td style="width:40%;text-align:center">_________________________</td>
+            <td style="width:20%;text-align:center"><strong>Одилова М.У.</strong></td>
+          </tr>
+        </table>
+        </div><!-- End content-wrapper -->
+      </body>
+      </html>
+    `;
+
+    // Send HTML for browser preview and printing
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(htmlContent);
+
+  } catch (error) {
+    console.error('Hotel request preview error:', error);
+    res.status(500).json({ error: 'Failed to generate preview: ' + error.message });
+  }
+});
 
 module.exports = router;

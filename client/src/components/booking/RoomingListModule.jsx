@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { touristsApi, bookingsApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
   Edit, Upload, Users, User, FileText,
-  X, Save, Search, Download, ChevronDown, Check, Plus, Trash2
+  X, Save, Search, Download, ChevronDown, Check, Plus, Trash2, Building2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import html2pdf from 'html2pdf.js';
 
 export default function RoomingListModule({ bookingId, onUpdate }) {
   const [tourists, setTourists] = useState([]);
   const [booking, setBooking] = useState(null); // Booking details for ЗАЯВКА header
+  const [accommodations, setAccommodations] = useState([]); // Hotel accommodations
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -40,15 +42,17 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [touristsRes, bookingRes] = await Promise.all([
+      const [touristsRes, bookingRes, accommodationsRes] = await Promise.all([
         touristsApi.getAll(bookingId),
-        bookingsApi.getById(bookingId)
+        bookingsApi.getById(bookingId),
+        bookingsApi.getAccommodations(bookingId)
       ]);
       console.log('🔍 Booking Response:', bookingRes);
       console.log('🔍 Booking Object:', bookingRes?.data?.booking);
       console.log('🔍 Departure Date:', bookingRes?.data?.booking?.departureDate);
       console.log('🔍 End Date:', bookingRes?.data?.booking?.endDate);
       console.log('🔍 Tourists:', touristsRes.data.tourists);
+      console.log('🏨 Accommodations:', accommodationsRes.data);
       // Log remarks for debugging
       touristsRes.data.tourists?.forEach(t => {
         if (t.remarks && t.remarks !== '-') {
@@ -57,6 +61,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       });
       setTourists(touristsRes.data.tourists || []);
       setBooking(bookingRes?.data?.booking || null);
+      setAccommodations(accommodationsRes.data || []);
     } catch (error) {
       console.error('❌ Error loading data:', error);
       toast.error('Error loading data');
@@ -135,6 +140,47 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   // Separate Uzbekistan and Turkmenistan tourists
   const uzbekistanTourists = filteredTourists.filter(t => !isTurkmenistan(t));
   const turkmenistanTourists = filteredTourists.filter(t => isTurkmenistan(t));
+
+  // Group tourists by hotel (match by dates and accommodation)
+  const touristsByHotel = useMemo(() => {
+    const groups = {};
+
+    filteredTourists.forEach(tourist => {
+      let hotelName = 'Не указан отель';
+
+      // Get tourist's check-in and check-out dates
+      const touristCheckIn = tourist.checkInDate ? new Date(tourist.checkInDate) : null;
+      const touristCheckOut = tourist.checkOutDate ? new Date(tourist.checkOutDate) : null;
+
+      // If tourist has custom dates, try to match with accommodation
+      if (touristCheckIn && touristCheckOut && accommodations.length > 0) {
+        // Find matching accommodation by dates
+        const matchingAccommodation = accommodations.find(acc => {
+          const accCheckIn = new Date(acc.checkInDate);
+          const accCheckOut = new Date(acc.checkOutDate);
+
+          // Check if tourist dates overlap with accommodation dates
+          return touristCheckIn >= accCheckIn && touristCheckOut <= accCheckOut;
+        });
+
+        if (matchingAccommodation && matchingAccommodation.hotel?.name) {
+          hotelName = matchingAccommodation.hotel.name;
+        }
+      } else if (accommodations.length === 1) {
+        // If only one accommodation, assign all tourists to it
+        hotelName = accommodations[0].hotel?.name || 'Не указан отель';
+      }
+
+      if (!groups[hotelName]) {
+        groups[hotelName] = [];
+      }
+      groups[hotelName].push(tourist);
+    });
+
+    console.log('🏨 Tourists grouped by hotel:', groups);
+    console.log('🏨 Accommodations:', accommodations);
+    return groups;
+  }, [filteredTourists, accommodations]);
 
   // Sort uzbekistan tourists by room number (to keep room pairs together)
   uzbekistanTourists.sort((a, b) => {
@@ -258,25 +304,29 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
   const openModal = (tourist) => {
     setEditingTourist(tourist);
+    const remarkValue = tourist.remarks && tourist.remarks !== '-' ? tourist.remarks : '';
     setForm({
       roomPreference: tourist.roomPreference || '',
-      remarks: tourist.remarks || ''
+      remarks: remarkValue
     });
     setModalOpen(true);
   };
 
   const saveRoomAndRemarks = async () => {
     try {
-      await touristsApi.update(bookingId, editingTourist.id, {
-        roomPreference: form.roomPreference,
-        remarks: form.remarks
+      console.log('Saving tourist:', editingTourist.id, 'with data:', form);
+      const response = await touristsApi.update(bookingId, editingTourist.id, {
+        roomPreference: form.roomPreference || null,
+        remarks: form.remarks || null
       });
-      toast.success('Updated');
+      console.log('Save response:', response);
+      toast.success('Updated successfully');
       setModalOpen(false);
       loadData();
       onUpdate?.();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Error saving');
+      console.error('Error saving tourist:', error);
+      toast.error(error.response?.data?.error || 'Error saving changes');
     }
   };
 
@@ -462,26 +512,15 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         link.remove();
         window.URL.revokeObjectURL(url);
       } else if (format === 'pdf') {
-        // Generate professional ЗАЯВКА PDF
-        // First, load logo and convert to base64
-        let logoDataUrl = '';
-        try {
-          const response = await fetch('/logo.png');
-          const blob = await response.blob();
-          logoDataUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-        } catch (error) {
-          console.warn('Could not load logo:', error);
-        }
-
-        const printWindow = window.open('', '_blank');
+        // Open server-generated PDF preview in new tab
+        const previewUrl = `/api/bookings/${bookingId}/rooming-list-preview`;
+        const printWindow = window.open(previewUrl, '_blank');
         if (!printWindow) {
           toast.error('Please allow popups to export PDF');
           return;
         }
+        toast.success('PDF preview opened in new tab');
+        return;
 
         // Get booking details
         const bookingNumber = booking?.bookingNumber || 'N/A';
@@ -528,11 +567,38 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           if (roomCategory === 'TWIN') roomCategory = 'TWN';
           if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
 
-          const remarks = t.remarks && t.remarks !== '-' ? t.remarks : '';
+          // Determine placement (Uzbekistan or Turkmenistan)
+          const placement = t.accommodation || '';
+          const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
+          const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек');
+          const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
+
+          // Get remarks only from roomAssignments.notes (Rooming List tab)
+          const remarksLines = [];
+          if (t.checkInDate) {
+            remarksLines.push(`Заезд: ${formatDisplayDate(t.checkInDate)}`);
+          }
+          const roomNotes = t.roomAssignments?.[0]?.notes || '';
+          if (roomNotes) {
+            remarksLines.push(roomNotes);
+          }
+          const remarks = remarksLines.filter(Boolean).join('\n');
 
           // Use custom dates if available, otherwise use booking dates
           const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
           const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
+
+          // Extract flight date from remarks
+          let displayFlightDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+          if (t.remarks) {
+            const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
+            if (flightMatch) {
+              const day = flightMatch[1];
+              const month = flightMatch[2];
+              const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+              displayFlightDate = `${day}.${month}.${year}`;
+            }
+          }
 
           // Yellow background if has custom dates
           const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
@@ -541,9 +607,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
               <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
               <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayFlightDate}</td>
               <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
               <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
               <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
               <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
             </tr>
           `;
@@ -721,10 +789,12 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               <thead>
                 <tr>
                   <th style="width:30px">№</th>
-                  <th style="width:35%">ФИО</th>
-                  <th style="width:15%">Дата заезда</th>
-                  <th style="width:15%">дата выезда</th>
-                  <th style="width:12%">Категория<br>номера</th>
+                  <th style="width:25%">ФИО</th>
+                  <th style="width:10%">Дата<br>вылета</th>
+                  <th style="width:10%">Дата<br>заезда</th>
+                  <th style="width:10%">Дата<br>выезда</th>
+                  <th style="width:8%">Категория<br>номера</th>
+                  <th style="width:7%">Размещение</th>
                   <th>Дополнительная<br>информация</th>
                 </tr>
               </thead>
@@ -760,6 +830,358 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       }
     } catch (error) {
       toast.error('Export error');
+    }
+  };
+
+  // Export PDF for a specific hotel
+  const handleHotelPdfExport = async (hotelName, hotelTourists) => {
+    try {
+      console.log('🚀 Starting PDF export for hotel:', hotelName);
+      console.log('📊 Tourist count:', hotelTourists.length);
+
+      // Find accommodation ID for this hotel
+      const accommodation = accommodations?.find(acc => acc.hotel?.name === hotelName);
+      if (!accommodation) {
+        toast.error('Accommodation not found for this hotel');
+        return;
+      }
+
+      // Open server-generated PDF preview in new tab
+      const previewUrl = `/api/bookings/${bookingId}/hotel-request-preview/${accommodation.id}`;
+      const printWindow = window.open(previewUrl, '_blank');
+      if (!printWindow) {
+        toast.error('Please allow popups to export PDF');
+        return;
+      }
+      toast.success('PDF preview opened in new tab');
+      return;
+
+      // Load logo
+      let logoDataUrl = '';
+      try {
+        const response = await fetch('/logo.png');
+        const blob = await response.blob();
+        logoDataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        console.log('✅ Logo loaded successfully');
+      } catch (error) {
+        console.warn('⚠️ Could not load logo:', error);
+      }
+
+      // Get booking details
+      const bookingNumber = booking?.bookingNumber || 'N/A';
+      const tourType = booking?.tourType?.name || '';
+      const country = 'Германия';
+      const totalPax = hotelTourists.length;
+
+      // Calculate arrival/departure dates from booking
+      const arrivalDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+      const departureDate = booking?.endDate ? formatDisplayDate(booking.endDate) : '';
+
+      // Calculate room counts
+      const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+      hotelTourists.forEach(t => {
+        const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+        const roomType = assignedRoomType || t.roomPreference;
+        if (roomType === 'DBL' || roomType === 'DOUBLE' || roomType === 'DZ') roomCounts.DBL++;
+        if (roomType === 'TWN' || roomType === 'TWIN') roomCounts.TWN++;
+        if (roomType === 'SNGL' || roomType === 'SINGLE' || roomType === 'EZ') roomCounts.SNGL++;
+      });
+
+      // Convert to actual room counts (2 people = 1 DBL room)
+      const dblRooms = Math.ceil(roomCounts.DBL / 2);
+      const twnRooms = Math.ceil(roomCounts.TWN / 2);
+      const snglRooms = roomCounts.SNGL;
+
+      const currentDate = formatDisplayDate(new Date().toISOString());
+
+      // Build tourist rows for ROOMING LISTE table
+      let touristRows = '';
+      hotelTourists.forEach((t, idx) => {
+        const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+
+        // Get room category
+        const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+        let roomCategory = assignedRoomType || t.roomPreference || '';
+
+        // Normalize room category names
+        if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
+        if (roomCategory === 'TWIN') roomCategory = 'TWN';
+        if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
+
+        // Determine placement (Uzbekistan or Turkmenistan)
+        const placement = t.accommodation || '';
+        const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
+        const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек');
+        const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
+
+        // Get notes from roomAssignments (Rooming List tab's Примечание column)
+        const remarks = t.roomAssignments?.[0]?.notes || '';
+
+        // Use custom dates if available, otherwise use booking dates
+        const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
+        const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
+
+        // Extract flight date from remarks
+        let displayFlightDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+        if (t.remarks) {
+          const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
+          if (flightMatch) {
+            const day = flightMatch[1];
+            const month = flightMatch[2];
+            const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+            displayFlightDate = `${day}.${month}.${year}`;
+          }
+        }
+
+        // Yellow background if has custom dates
+        const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+
+        touristRows += `
+          <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayFlightDate}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
+          </tr>
+        `;
+      });
+
+      // Create a temporary container for the PDF content
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '210mm'; // A4 width
+
+      tempDiv.innerHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 9pt;
+              line-height: 1.2;
+              color: #000;
+              padding: 12mm;
+            }
+            .header-table {
+              width: 100%;
+              border: none;
+              border-collapse: collapse;
+              margin-bottom: 15px;
+            }
+            .header-table td {
+              border: none;
+              padding: 8px;
+              font-size: 7.5pt;
+            }
+            .logo-cell {
+              text-align: center;
+              vertical-align: middle;
+            }
+            .zayvka-title {
+              text-align: center;
+              font-size: 13pt;
+              font-weight: bold;
+              margin: 8px 0;
+            }
+            .intro-text {
+              text-align: justify;
+              margin: 6px 0;
+              font-size: 9pt;
+            }
+            .summary-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 8px 0;
+            }
+            .summary-table th,
+            .summary-table td {
+              border: 1px solid #000;
+              padding: 3px;
+              text-align: center;
+              font-size: 8pt;
+            }
+            .summary-table th {
+              background: #f0f0f0;
+              font-weight: bold;
+            }
+            .rooming-title {
+              text-align: center;
+              font-size: 12pt;
+              font-weight: bold;
+              margin: 10px 0 6px 0;
+            }
+            .rooming-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 8px;
+            }
+            .rooming-table th,
+            .rooming-table td {
+              border: 1px solid #000;
+              padding: 3px;
+              font-size: 8pt;
+            }
+            .rooming-table th {
+              background: #f0f0f0;
+              font-weight: bold;
+              text-align: center;
+            }
+            .footer-text {
+              margin: 8px 0;
+              font-size: 8.5pt;
+            }
+            .signature-table {
+              width: 100%;
+              margin-top: 15px;
+            }
+            .signature-table td {
+              padding: 3px;
+              font-size: 8.5pt;
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Header with company info -->
+          <table class="header-table">
+            <tr>
+              <td class="logo-cell" style="width:100%;text-align:center">
+                ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Orient Insight" style="width:150px;height:auto;margin-bottom:8px" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>'}
+                <div style="font-size:9pt;margin-top:5px">
+                  <strong>Республика Узбекистан,</strong><br>
+                  г.Самарканд, Шота Руставели, дом 45<br>
+                  Тел/fax.: +998 933484208, +998 97 9282814<br>
+                  E-Mail: orientinsightreisen@gmail.com<br>
+                  Website: orient-insight.uz
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="text-align:right;margin-bottom:10px;font-size:9pt">
+            <strong>Директору гостиницы</strong><br>
+            <strong style="font-size:11pt">${hotelName}</strong>
+          </div>
+
+          <!-- ЗАЯВКА Title -->
+          <div class="zayvka-title">ЗАЯВКА</div>
+
+          <!-- Introduction Text -->
+          <div class="intro-text">
+            ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.
+          </div>
+
+          <!-- Summary Table -->
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>№</th>
+                <th>Группа</th>
+                <th>Страна</th>
+                <th>PAX</th>
+                <th>Первый<br>заезд</th>
+                <th>Первый<br>выезд</th>
+                <th>DBL</th>
+                <th>TWN</th>
+                <th>SNGL</th>
+                <th>Тип номера</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>${bookingNumber}</td>
+                <td>${country}</td>
+                <td>${totalPax}</td>
+                <td>${arrivalDate}</td>
+                <td>${departureDate}</td>
+                <td>${dblRooms}</td>
+                <td>${twnRooms}</td>
+                <td>${snglRooms}</td>
+                <td>стандарт</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- ROOMING LISTE Title -->
+          <div class="rooming-title">ROOMING LISTE</div>
+
+          <!-- Rooming Table -->
+          <table class="rooming-table">
+            <thead>
+              <tr>
+                <th style="width:30px">№</th>
+                <th style="width:25%">ФИО</th>
+                <th style="width:10%">Дата<br>вылета</th>
+                <th style="width:10%">Дата<br>заезда</th>
+                <th style="width:10%">Дата<br>выезда</th>
+                <th style="width:8%">Категория<br>номера</th>
+                <th style="width:7%">Размещение</th>
+                <th>Дополнительная<br>информация</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${touristRows}
+            </tbody>
+          </table>
+
+          <!-- Footer Text -->
+          <div class="footer-text">
+            <p style="margin-bottom:10px">Оплату гости произведут на месте.</p>
+          </div>
+
+          <!-- Signature -->
+          <table class="signature-table">
+            <tr>
+              <td style="width:60%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+              <td style="width:20%;border-bottom:1px solid #000;text-align:center"></td>
+              <td style="width:20%;text-align:center"><strong>Одилова М.У.</strong></td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+
+      document.body.appendChild(tempDiv);
+      console.log('📝 Temporary div created and added to DOM');
+
+      // Configure pdf options
+      const opt = {
+        margin: 0,
+        filename: `ZAYVKA-${bookingNumber}-${hotelName}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      console.log('⚙️ PDF options configured:', opt);
+      console.log('🔄 Starting PDF generation...');
+
+      // Generate and download PDF
+      await html2pdf().set(opt).from(tempDiv).save();
+
+      console.log('✅ PDF generation complete');
+
+      // Remove temporary div
+      document.body.removeChild(tempDiv);
+      console.log('🧹 Temporary div removed');
+
+      toast.success('PDF downloaded successfully!', { id: 'pdf-gen' });
+    } catch (error) {
+      console.error('❌ PDF Export error:', error);
+      console.error('Error stack:', error.stack);
+      toast.error('Error exporting PDF: ' + error.message, { id: 'pdf-gen' });
     }
   };
 
@@ -953,29 +1375,108 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         )}
       </div>
 
-      {/* Card-style List */}
+      {/* Hotel-Grouped Tourist List */}
       {filteredTourists.length > 0 ? (
-        <div className="space-y-4">
-          {/* Header */}
-          <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-2xl border-2 border-gray-300 p-5 shadow-lg">
-            <div className="grid grid-cols-12 gap-4 items-center">
-              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">No</div>
-              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Name</div>
-              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Tour Start</div>
-              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Tour End</div>
-              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Room Type</div>
-              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Placement</div>
-              <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Additional Information</div>
-              <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider text-right">Actions</div>
-            </div>
-          </div>
+        <div className="space-y-8">
+          {Object.entries(touristsByHotel).map(([hotelName, hotelTourists]) => (
+            <div key={hotelName} className="bg-white rounded-2xl border-2 border-gray-300 shadow-lg overflow-hidden">
+              {/* Hotel Header with Export Button */}
+              <div className="bg-gradient-to-r from-blue-500 to-primary-600 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{hotelName}</h3>
+                    <p className="text-sm text-white/80">{hotelTourists.length} {hotelTourists.length === 1 ? 'guest' : 'guests'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleHotelPdfExport(hotelName, hotelTourists)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-xl hover:bg-gray-50 font-medium shadow-lg transition-all hover:scale-105"
+                  title="Export PDF for this hotel"
+                >
+                  <FileText className="w-4 h-4" />
+                  Export PDF
+                </button>
+              </div>
 
-          {/* Tourist Cards */}
-          {(() => {
-            const renderedIds = new Set();
-            const cards = [];
+              {/* Room Statistics for this hotel */}
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center gap-4 flex-wrap">
+                  {(() => {
+                    const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+                    const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
 
-            sortedTourists.forEach((tourist, index) => {
+                    hotelTourists.forEach(t => {
+                      const roomType = (t.roomPreference || '').toUpperCase();
+                      const roomNum = t.roomNumber;
+
+                      if ((roomType === 'DBL' || roomType === 'DOUBLE') && roomNum && !seenRooms.DBL.has(roomNum)) {
+                        roomCounts.DBL++;
+                        seenRooms.DBL.add(roomNum);
+                      } else if (roomType === 'TWN' && roomNum && !seenRooms.TWN.has(roomNum)) {
+                        roomCounts.TWN++;
+                        seenRooms.TWN.add(roomNum);
+                      } else if ((roomType === 'SNGL' || roomType === 'SINGLE') && roomNum && !seenRooms.SNGL.has(roomNum)) {
+                        roomCounts.SNGL++;
+                        seenRooms.SNGL.add(roomNum);
+                      }
+                    });
+
+                    const roomTypes = [
+                      { key: 'DBL', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', badge: 'bg-blue-500', icon: '👫' },
+                      { key: 'TWN', count: roomCounts.TWN, gradient: 'from-emerald-50 to-emerald-100', border: 'border-emerald-200', badge: 'bg-emerald-500', icon: '🛏️' },
+                      { key: 'SNGL', count: roomCounts.SNGL, gradient: 'from-violet-50 to-violet-100', border: 'border-violet-200', badge: 'bg-violet-500', icon: '👤' }
+                    ];
+
+                    return roomTypes.map(room => {
+                      if (room.count === 0) return null;
+
+                      return (
+                        <div key={room.key} className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-br ${room.gradient} border ${room.border} rounded-lg shadow-sm`}>
+                          <span className="text-lg">{room.icon}</span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${room.badge} text-white text-xs font-bold uppercase`}>
+                            {room.key}
+                          </span>
+                          <span className="text-lg font-bold text-gray-900">{room.count}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {/* Table Header */}
+              <div className="px-6 py-3 bg-gray-100 border-b border-gray-200">
+                <div className="grid grid-cols-12 gap-4 items-center">
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">No</div>
+                  <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Name</div>
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Start Date</div>
+                  <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Arrival</div>
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">End Date</div>
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Room Type</div>
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Placement</div>
+                  <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Additional Information</div>
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider text-right">Actions</div>
+                </div>
+              </div>
+
+              {/* Tourist Cards for this hotel */}
+              <div className="px-6 py-4 space-y-2">
+                {(() => {
+                  const renderedIds = new Set();
+                  const cards = [];
+
+                  // Sort hotel tourists by room number
+                  const sortedHotelTourists = [...hotelTourists].sort((a, b) => {
+                    const roomA = a.roomNumber || '';
+                    const roomB = b.roomNumber || '';
+                    if (roomA !== roomB) return roomA.localeCompare(roomB);
+                    return (a.lastName || '').localeCompare(b.lastName || '');
+                  });
+
+                  sortedHotelTourists.forEach((tourist, index) => {
               // Skip if already rendered as part of a pair
               if (renderedIds.has(tourist.id)) return;
 
@@ -998,7 +1499,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               const isRoomPair = (isTWN || isDBL) && tourist.roomNumber;
 
               // Find roommate
-              const roommate = isRoomPair ? sortedTourists.find(t =>
+              const roommate = isRoomPair ? sortedHotelTourists.find(t =>
                 t.roomNumber === tourist.roomNumber && t.id !== tourist.id
               ) : null;
 
@@ -1026,9 +1527,25 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 const customCheckIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
                 const customCheckOut = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
 
+                // Extract flight date from remarks: "Flight: 09.10, Arrival: 10.10"
+                let flightDate = null;
+                let displayFlightDate = null;
+                if (t.remarks) {
+                  const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
+                  if (flightMatch) {
+                    const day = flightMatch[1];
+                    const month = flightMatch[2];
+                    // Use booking year for context
+                    const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+                    displayFlightDate = `${day}.${month}.${year}`;
+                    flightDate = true; // Flag to show yellow background
+                  }
+                }
+
                 // Use custom dates if available, otherwise use booking dates
                 const displayCheckIn = customCheckIn || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
                 const displayCheckOut = customCheckOut || (booking?.endDate ? formatDisplayDate(booking.endDate) : '-');
+                const displayTourStart = displayFlightDate || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
 
                 // Yellow background if has custom dates
                 const rowBgClass = hasCustomDates ? 'bg-yellow-50 border-2 border-yellow-300' : '';
@@ -1056,18 +1573,29 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       </div>
                     </div>
 
-                    {/* Tour Dates */}
-                    <div className="col-span-2">
-                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${customCheckIn ? 'bg-yellow-100 border border-yellow-400' : 'bg-blue-50 border border-blue-200'}`}>
-                        <span className={`text-xs font-medium ${customCheckIn ? 'text-yellow-900' : 'text-blue-600'}`}>
-                          {displayCheckIn}
+                    {/* Start Date */}
+                    <div className="col-span-1">
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${flightDate ? 'bg-yellow-100 border border-yellow-400' : 'bg-blue-50 border border-blue-200'}`}>
+                        <span className={`text-xs font-medium ${flightDate ? 'text-yellow-900' : 'text-blue-600'}`}>
+                          {displayTourStart}
                         </span>
                       </div>
                     </div>
+
+                    {/* Arrival */}
                     <div className="col-span-2">
-                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${customCheckOut ? 'bg-yellow-100 border border-yellow-400' : 'bg-red-50 border border-red-200'}`}>
-                        <span className={`text-xs font-medium ${customCheckOut ? 'text-yellow-900' : 'text-red-600'}`}>
-                          {displayCheckOut}
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${customCheckIn ? 'bg-yellow-100 border border-yellow-400' : 'bg-green-50 border border-green-200'}`}>
+                        <span className={`text-xs font-medium ${customCheckIn ? 'text-yellow-900' : 'text-green-600'}`}>
+                          {customCheckIn || displayCheckIn}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* End Date */}
+                    <div className="col-span-1">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                        <span className="text-xs font-medium text-red-600">
+                          {booking?.endDate ? formatDisplayDate(booking.endDate) : '-'}
                         </span>
                       </div>
                     </div>
@@ -1096,15 +1624,28 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
                     {/* Additional Information */}
                     <div className="col-span-2">
-                      {t.remarks && t.remarks !== '-' ? (
-                        <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl px-4 py-3 shadow-sm">
-                          {t.remarks.split('\n').map((line, i) => (
-                            <div key={i} className="text-xs leading-relaxed font-medium">{line}</div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
+                      {(() => {
+                        // Build remarks text: only from Rooming List tab notes and custom dates
+                        const remarksLines = [];
+                        if (customCheckIn) {
+                          remarksLines.push(`Заезд: ${customCheckIn}`);
+                        }
+                        // Get notes from roomAssignments (Rooming List tab's Примечание column)
+                        const roomNotes = t.roomAssignments?.[0]?.notes || '';
+                        if (roomNotes) {
+                          remarksLines.push(...roomNotes.split('\n'));
+                        }
+
+                        return remarksLines.length > 0 ? (
+                          <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl px-4 py-3 shadow-sm">
+                            {remarksLines.map((line, i) => (
+                              <div key={i} className="text-xs leading-relaxed font-medium">{line}</div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        );
+                      })()}
                     </div>
 
                     {/* Actions */}
@@ -1152,7 +1693,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                     <div className="space-y-4">
                       {renderTouristRow(tourist, index)}
                       <div className="border-t-2 border-dashed border-gray-300 pt-4">
-                        {renderTouristRow(roommate, sortedTourists.indexOf(roommate))}
+                        {renderTouristRow(roommate, sortedHotelTourists.indexOf(roommate))}
                       </div>
                     </div>
                   ) : (
@@ -1165,6 +1706,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
             return cards;
           })()}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="text-center py-16 bg-gradient-to-b from-gray-50 to-white rounded-2xl border-2 border-dashed border-gray-200">
@@ -1222,7 +1766,10 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Room Type</label>
                 <select
                   value={form.roomPreference}
-                  onChange={(e) => setForm({ ...form, roomPreference: e.target.value })}
+                  onChange={(e) => {
+                    console.log('Room preference changed:', e.target.value);
+                    setForm({ ...form, roomPreference: e.target.value });
+                  }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                 >
                   <option value="">Not specified</option>
@@ -1236,7 +1783,10 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Additional Information</label>
                 <textarea
                   value={form.remarks}
-                  onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+                  onChange={(e) => {
+                    console.log('Remarks changed:', e.target.value);
+                    setForm({ ...form, remarks: e.target.value });
+                  }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   rows={3}
                   placeholder="Additional notes..."
