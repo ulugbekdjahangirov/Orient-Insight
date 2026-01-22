@@ -130,7 +130,7 @@ export default function Dashboard() {
   })) || [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Панель управления</h1>

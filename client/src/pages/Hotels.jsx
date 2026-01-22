@@ -433,7 +433,7 @@ export default function Hotels() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div className="flex items-center justify-between bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl shadow-md border border-gray-200 p-6">
         <div className="flex items-center gap-4">

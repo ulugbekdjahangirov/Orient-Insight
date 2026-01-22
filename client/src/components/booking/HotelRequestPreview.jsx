@@ -26,7 +26,9 @@ export default function HotelRequestPreview({ bookingId, booking, onClose }) {
       // Expand all by default
       const expanded = {};
       response.data.hotelRequests?.forEach(h => {
-        expanded[h.hotel.id] = true;
+        if (h?.hotel?.id) {
+          expanded[h.hotel.id] = true;
+        }
       });
       setExpandedHotels(expanded);
     } catch (error) {
@@ -65,6 +67,12 @@ export default function HotelRequestPreview({ bookingId, booking, onClose }) {
 
   const downloadExcel = async (hotelRequest) => {
     try {
+      // Validate hotelRequest has hotel data
+      if (!hotelRequest?.hotel?.name) {
+        toast.error('Нет данных об отеле');
+        return;
+      }
+
       // Create CSV content for Excel
       const lines = [];
       const bookingNumber = hotelRequest.booking?.bookingNumber || booking?.bookingNumber || `#${bookingId}`;
@@ -157,7 +165,7 @@ export default function HotelRequestPreview({ bookingId, booking, onClose }) {
 
       {/* Hotel Requests List */}
       <div className="space-y-4">
-        {hotelRequests.map(hotelRequest => (
+        {hotelRequests.filter(h => h?.hotel?.id).map(hotelRequest => (
           <div
             key={hotelRequest.hotel.id}
             className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"

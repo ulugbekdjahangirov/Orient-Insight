@@ -23,6 +23,12 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
+// Debug middleware to log all requests to /api/bookings
+app.use('/api/bookings', (req, res, next) => {
+  console.log('🔍 Request to /api/bookings:', req.method, req.path);
+  next();
+});
+app.use('/api/bookings', touristRoutes); // Tourist routes MUST be before bookingRoutes to avoid :id catch-all
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/guides', guideRoutes);
 app.use('/api/tour-types', tourTypeRoutes);
@@ -30,7 +36,6 @@ app.use('/api/import', importRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/cities', cityRoutes);
-app.use('/api/bookings', touristRoutes); // Tourist routes under /api/bookings/:bookingId/...
 
 // Health check
 app.get('/api/health', (req, res) => {

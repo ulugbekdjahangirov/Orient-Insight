@@ -82,7 +82,7 @@ export default function Import() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -121,7 +121,7 @@ export default function Import() {
             </p>
           </label>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 p-4">
             {/* File info */}
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">

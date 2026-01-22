@@ -30,14 +30,38 @@ export default function HotelAccommodationForm({
   const [saving, setSaving] = useState(false);
   const [tourItinerary, setTourItinerary] = useState([]);
   const [showItineraryHotels, setShowItineraryHotels] = useState(false);
+  const [tourists, setTourists] = useState([]);
+  const [roomingList, setRoomingList] = useState([]);
 
-  // Load accommodation room types dictionary and tour itinerary on mount
+  // Load accommodation room types dictionary, tour itinerary, and tourists on mount
   useEffect(() => {
     loadAccommodationRoomTypes();
+    loadTourists();
     if (booking?.tourTypeId) {
       loadTourItinerary();
     }
-  }, [booking?.tourTypeId]);
+  }, [booking?.tourTypeId, bookingId]);
+
+  const loadTourists = async () => {
+    try {
+      const response = await bookingsApi.getTourists(bookingId);
+      const touristsList = response.data.tourists || [];
+      setTourists(touristsList);
+    } catch (error) {
+      console.error('Error loading tourists for accommodation form:', error);
+    }
+  };
+
+  const loadRoomingList = async (accommodationId) => {
+    if (!accommodationId) return;
+    try {
+      const response = await bookingsApi.getRoomingList(bookingId, accommodationId);
+      const roomingData = response.data.roomingList || [];
+      setRoomingList(roomingData);
+    } catch (error) {
+      console.error('Error loading rooming list for accommodation:', error);
+    }
+  };
 
   const loadAccommodationRoomTypes = async () => {
     try {
@@ -79,6 +103,11 @@ export default function HotelAccommodationForm({
       // Load hotel room types for existing accommodation
       if (editingAccommodation.hotelId) {
         loadHotelRoomTypes(editingAccommodation.hotelId);
+      }
+
+      // Load rooming list for this accommodation
+      if (editingAccommodation.id) {
+        loadRoomingList(editingAccommodation.id);
       }
     }
   }, [editingAccommodation]);
@@ -150,8 +179,137 @@ export default function HotelAccommodationForm({
       }
     });
 
-    return { totalRooms, totalGuests, totalCost, isPAX, currency };
-  }, [rooms, nights, accommodationRoomTypes, selectedHotelRoomTypes]);
+    // Calculate extra nights cost for tourists with custom dates
+    // Only for the FIRST accommodation (editing accommodation won't have this check)
+    let extraNightsTotal = 0;
+    let extraNightsDetails = [];
+
+    // Check if this is likely the first accommodation by checking if checkInDate matches booking departure
+    const isLikelyFirstAccommodation = booking?.departureDate &&
+      formData.checkInDate === booking.departureDate.split('T')[0];
+
+    // Calculate extra nights for first accommodation OR when editing any accommodation
+    const shouldCalculateExtraNights = tourists.length > 0 && formData.checkInDate && formData.checkOutDate &&
+      (isLikelyFirstAccommodation || editingAccommodation?.id);
+
+    if (shouldCalculateExtraNights) {
+      const accCheckIn = new Date(formData.checkInDate);
+      accCheckIn.setHours(0, 0, 0, 0);
+      const accCheckOut = new Date(formData.checkOutDate);
+      accCheckOut.setHours(0, 0, 0, 0);
+
+      // If we have rooming list, use it directly; otherwise use tourists with AccommodationRoomingList
+      const dataSource = roomingList.length > 0 ? roomingList : tourists;
+
+      dataSource.forEach(entry => {
+        let tourist, touristCheckInDate, touristCheckOutDate;
+
+        if (roomingList.length > 0) {
+          // Using rooming list data directly (backend returns tourist object with merged dates)
+          tourist = entry;
+          touristCheckInDate = entry.checkInDate;
+          touristCheckOutDate = entry.checkOutDate;
+        } else {
+          // Using tourists with AccommodationRoomingList
+          tourist = entry;
+
+          if (tourist.accommodationRoomingList && tourist.accommodationRoomingList.length > 0) {
+            // If editing, find entry for this specific accommodation
+            if (editingAccommodation?.id) {
+              const roomingEntry = tourist.accommodationRoomingList.find(
+                e => e.accommodationId === editingAccommodation.id
+              );
+              if (roomingEntry) {
+                touristCheckInDate = roomingEntry.checkInDate;
+                touristCheckOutDate = roomingEntry.checkOutDate;
+              }
+            } else {
+              // Creating new accommodation: use any rooming list entry (assume first accommodation)
+              const roomingEntry = tourist.accommodationRoomingList[0];
+              if (roomingEntry) {
+                touristCheckInDate = roomingEntry.checkInDate;
+                touristCheckOutDate = roomingEntry.checkOutDate;
+              }
+            }
+          }
+
+          // Fallback to global dates (though these should be null now)
+          if (!touristCheckInDate && !touristCheckOutDate) {
+            touristCheckInDate = tourist.checkInDate;
+            touristCheckOutDate = tourist.checkOutDate;
+          }
+        }
+
+        // Skip if no custom dates
+        if (!touristCheckInDate || !touristCheckOutDate) {
+          return;
+        }
+
+        const touristCheckIn = new Date(touristCheckInDate);
+        touristCheckIn.setHours(0, 0, 0, 0);
+        const touristCheckOut = new Date(touristCheckOutDate);
+        touristCheckOut.setHours(0, 0, 0, 0);
+
+        // Check if dates overlap
+        const datesOverlap = touristCheckIn <= accCheckOut && touristCheckOut >= accCheckIn;
+        if (!datesOverlap) {
+          return;
+        }
+
+        // Calculate extra nights before check-in
+        let extraNightsBefore = 0;
+        if (touristCheckIn < accCheckIn) {
+          extraNightsBefore = Math.round((accCheckIn - touristCheckIn) / (1000 * 60 * 60 * 24));
+        }
+
+        // Calculate extra nights after check-out
+        let extraNightsAfter = 0;
+        if (touristCheckOut > accCheckOut) {
+          extraNightsAfter = Math.round((touristCheckOut - accCheckOut) / (1000 * 60 * 60 * 24));
+        }
+
+        const totalExtraNights = extraNightsBefore + extraNightsAfter;
+
+        if (totalExtraNights > 0) {
+          // Find matching room price for tourist's preference
+          const touristRoomType = tourist.roomPreference?.toUpperCase();
+          const matchingRoom = rooms.find(r =>
+            r.roomTypeCode?.toUpperCase() === touristRoomType ||
+            (touristRoomType === 'SNGL' && r.roomTypeCode === 'SINGLE') ||
+            (touristRoomType === 'DBL' && r.roomTypeCode === 'DOUBLE') ||
+            (touristRoomType === 'EZ' && r.roomTypeCode === 'SNGL') ||
+            (touristRoomType === 'DZ' && (r.roomTypeCode === 'DBL' || r.roomTypeCode === 'TWN'))
+          );
+
+          if (matchingRoom) {
+            const pricePerNight = parseFloat(matchingRoom.pricePerNight) || 0;
+            const extraCost = totalExtraNights * pricePerNight;
+            totalCost += extraCost;
+            extraNightsTotal += extraCost;
+            extraNightsDetails.push({
+              touristName: tourist.fullName,
+              nights: totalExtraNights,
+              pricePerNight,
+              totalCost: extraCost,
+              roomType: touristRoomType
+            });
+          } else {
+            // Add to details even if no match found, with 0 price and warning
+            extraNightsDetails.push({
+              touristName: tourist.fullName,
+              nights: totalExtraNights,
+              pricePerNight: 0,
+              totalCost: 0,
+              roomType: touristRoomType,
+              noMatch: true
+            });
+          }
+        }
+      });
+    }
+
+    return { totalRooms, totalGuests, totalCost, isPAX, currency, extraNightsTotal, extraNightsDetails };
+  }, [rooms, nights, accommodationRoomTypes, selectedHotelRoomTypes, tourists, roomingList, formData.checkInDate, formData.checkOutDate, editingAccommodation]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -671,6 +829,69 @@ export default function HotelAccommodationForm({
                 </div>
               </div>
             </div>
+
+            {/* Extra Nights Details */}
+            {totals.extraNightsDetails?.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-300">
+                <div className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <span className="text-blue-600">📊</span>
+                  Детальный расчёт:
+                </div>
+
+                {/* Base Calculation */}
+                <div className="bg-blue-50 rounded-lg p-3 mb-3">
+                  <div className="text-xs font-medium text-blue-900 mb-2">Базовый расчёт (группа):</div>
+                  <div className="space-y-1">
+                    {rooms.map((room, idx) => {
+                      const roomCount = parseInt(room.roomsCount) || 0;
+                      const maxGuests = getMaxGuestsForRoomType(room.roomTypeCode);
+                      const roomCost = roomCount * (parseFloat(room.pricePerNight) || 0) * nights;
+                      if (roomCount === 0) return null;
+
+                      return (
+                        <div key={idx} className="flex justify-between items-center text-xs text-blue-800">
+                          <span>{room.roomTypeCode}: {roomCount} ном. × {maxGuests} чел. × {nights} ноч.</span>
+                          <span className="font-semibold">
+                            {totals.currency === 'UZS' ? roomCost.toLocaleString() : roomCost.toFixed(2)} {totals.currency === 'USD' ? '$' : totals.currency === 'EUR' ? '€' : 'UZS'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Extra Nights */}
+                <div className="bg-amber-50 rounded-lg p-3">
+                  <div className="text-xs font-medium text-amber-900 mb-2">Дополнительные ночи (индивидуальные даты):</div>
+                  {totals.extraNightsDetails.map((detail, idx) => (
+                    <div key={idx} className="mb-2 last:mb-0">
+                      <div className="flex justify-between items-start text-xs">
+                        <span className="font-medium text-amber-800">{detail.touristName}</span>
+                        <span className="text-amber-900 font-semibold">
+                          {detail.nights} ноч. × {detail.pricePerNight.toLocaleString()} = {detail.totalCost.toLocaleString()} {totals.currency === 'USD' ? '$' : totals.currency === 'EUR' ? '€' : 'UZS'}
+                        </span>
+                      </div>
+                      {detail.noMatch && (
+                        <div className="text-xs text-red-500 italic mt-1">
+                          ⚠️ Не найден тип номера: {detail.roomType} - укажите цену вручную
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {totals.extraNightsTotal > 0 && (
+                  <div className="flex justify-between items-center text-sm font-bold text-orange-600 mt-2 pt-2 border-t border-orange-200">
+                    <span>Итого доп. ночи:</span>
+                    <span>
+                      {totals.currency === 'UZS'
+                        ? totals.extraNightsTotal.toLocaleString()
+                        : totals.extraNightsTotal.toFixed(2)
+                      } {totals.currency === 'USD' ? '$' : totals.currency === 'EUR' ? '€' : 'UZS'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

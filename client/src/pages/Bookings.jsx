@@ -68,7 +68,7 @@ const getStatusByPax = (pax, departureDate, endDate) => {
 export default function Bookings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
   const [loading, setLoading] = useState(true);
   const [tourTypes, setTourTypes] = useState([]);
   const [guides, setGuides] = useState([]);
@@ -181,7 +181,7 @@ export default function Bookings() {
   const hasActiveFilters = Object.values(filters).some(v => v);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl shadow-md border border-gray-200 p-6">
         <div>
@@ -341,6 +341,31 @@ export default function Bookings() {
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Pagination Top */}
+        {pagination.pages > 1 && !loading && bookings.length > 0 && (
+          <div className="px-6 py-4 border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-700">
+              Страница <span className="text-primary-600">{pagination.page}</span> из <span className="text-primary-600">{pagination.pages}</span>
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => changePage(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="p-2 rounded-xl bg-white border-2 border-gray-300 hover:bg-primary-50 hover:border-primary-500 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => changePage(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="p-2 rounded-xl bg-white border-2 border-gray-300 hover:bg-primary-50 hover:border-primary-500 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -422,7 +447,7 @@ export default function Bookings() {
                     {/* НОМЕР */}
                     <td className="px-4 py-4">
                       <span className="font-bold text-gray-900 text-base">
-                        {index + 1}
+                        {(pagination.page - 1) * pagination.limit + index + 1}
                       </span>
                     </td>
                     {/* ТИП ТУРА */}

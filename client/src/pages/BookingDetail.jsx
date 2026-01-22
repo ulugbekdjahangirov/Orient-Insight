@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi } from '../services/api';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft,
@@ -23,8 +23,12 @@ import {
   FileText,
   ClipboardList,
   List,
-  Wand2
+  Wand2,
+  FileDown,
+  ChevronDown,
+  Car
 } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 // Import booking components
 import TouristsList from '../components/booking/TouristsList';
@@ -167,6 +171,17 @@ export default function BookingDetail() {
   const [accommodations, setAccommodations] = useState([]);
   const [roomsTotalAmount, setRoomsTotalAmount] = useState(0);
   const [tourists, setTourists] = useState([]);
+  const [expandedHotels, setExpandedHotels] = useState({});
+  const [editingTouristId, setEditingTouristId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    checkInDate: '',
+    checkOutDate: '',
+    roomPreference: '',
+    accommodation: '',
+    remarks: ''
+  });
+  // Accommodation-specific rooming lists (keyed by accommodationId)
+  const [accommodationRoomingLists, setAccommodationRoomingLists] = useState({});
 
   // Calculate room counts from tourists' roomPreference/roomNumber
   // Room numbers are unique per accommodation group (Uzbekistan vs Turkmenistan)
@@ -260,6 +275,70 @@ export default function BookingDetail() {
     notes: ''
   });
 
+  // Route module state
+  const [activeRouteTab, setActiveRouteTab] = useState('er');
+  const [showProviderModal, setShowProviderModal] = useState(false);
+  const [selectedProviderTab, setSelectedProviderTab] = useState('sevil');
+  const [editingRouteForProvider, setEditingRouteForProvider] = useState(null);
+
+  // Sevil vehicles data with localStorage
+  const [sevilVehicles, setSevilVehicles] = useState(() => {
+    const saved = localStorage.getItem('sevilVehicles');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: 1, name: 'Joylong', seats: '30', person: '', pickupDropoff: '', tagRate: 50, urgenchRate: 110, shovotRate2: 60 },
+      { id: 2, name: 'Coster', seats: '25', person: '', pickupDropoff: '', tagRate: 40, urgenchRate: 120, shovotRate2: '' },
+      { id: 3, name: 'Yutong 33', seats: '45', person: '', pickupDropoff: '', tagRate: 50, urgenchRate: 160, shovotRate2: 120 },
+    ];
+  });
+
+  // Xayrulla vehicles data with localStorage
+  const [xayrullaVehicles, setXayrullaVehicles] = useState(() => {
+    const saved = localStorage.getItem('xayrullaVehicles');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: 1, name: 'Joylong', seats: '30', person: '', vstrecha: '', chimgan: 120, tag: 90 },
+      { id: 2, name: 'Sprinter', seats: '15', person: '', vstrecha: '', chimgan: 150, tag: '' },
+      { id: 3, name: 'Yutong 33', seats: '45', person: '', vstrecha: '', chimgan: 220, tag: 130 },
+    ];
+  });
+
+  // Nosir vehicles data with localStorage
+  const [nosirVehicles, setNosirVehicles] = useState(() => {
+    const saved = localStorage.getItem('nosirVehicles');
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: 1, name: 'PKW', seats: '4', person: '', margilan: '', qoqon: 20, dostlik: 60, toshkent: 170, extra: 60 },
+      { id: 2, name: 'Starex', seats: '7', person: '', margilan: 30, qoqon: 100, dostlik: 100, toshkent: 120, extra: '' },
+      { id: 3, name: 'Staria', seats: '9', person: '', margilan: 40, qoqon: 120, dostlik: 120, toshkent: 140, extra: '' },
+      { id: 4, name: 'Kinglong', seats: '18', person: '', margilan: 50, qoqon: 130, dostlik: 130, toshkent: '', extra: '' },
+      { id: 5, name: 'Sprinter', seats: '15', person: '', margilan: 170, qoqon: 160, dostlik: 160, toshkent: '', extra: '' },
+      { id: 6, name: 'Yutong 33', seats: '45', person: '', margilan: 100, qoqon: 220, dostlik: 220, toshkent: '', extra: '' },
+    ];
+  });
+
+  // Route data - ER
+  const [erRoutes, setErRoutes] = useState([
+    { id: 1, nomer: '', sana: '', shahar: '', route: 'Tashkent Airport PickUp', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
+    { id: 2, nomer: '', sana: '', shahar: '', route: 'Tashkent', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
+    { id: 3, nomer: '', sana: '', shahar: '', route: 'Tashkent-Chimgan-Tashkent', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
+    { id: 4, nomer: '', sana: '', shahar: '', route: 'Transfer zum Bahnhof', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
+    { id: 5, nomer: '', sana: '', shahar: '', route: 'Samarkand', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 6, nomer: '', sana: '', shahar: '', route: 'Samarkand-Asraf', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 7, nomer: '', sana: '', shahar: '', route: 'Asraf-Buchara', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 8, nomer: '', sana: '', shahar: '', route: 'Buchara', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 9, nomer: '', sana: '', shahar: '', route: 'Buchara-Chiwa', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 10, nomer: '', sana: '', shahar: '', route: 'Transfer nach Urgench', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 11, nomer: '', sana: '', shahar: '', route: 'Chiwa-Shovot', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 12, nomer: '', sana: '', shahar: '', route: 'Transfer zum Hotel', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+    { id: 13, nomer: '', sana: '', shahar: '', route: 'Transfer zum Flughafen', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
+  ]);
+
+  // Route sub-tabs configuration (only ER for now)
+  const routeSubTabs = [
+    { id: 'er', name: 'ER', icon: MapPin, color: 'blue' },
+  ];
+
   const [formData, setFormData] = useState({
     bookingNumber: '',
     tourTypeId: '',
@@ -284,6 +363,22 @@ export default function BookingDetail() {
   useEffect(() => {
     loadData();
   }, [id]);
+
+  // Auto-populate route dates based on arrival date
+  useEffect(() => {
+    if (formData.arrivalDate && erRoutes.length > 0) {
+      const arrivalDate = new Date(formData.arrivalDate);
+      const updatedRoutes = erRoutes.map((route, index) => {
+        // Calculate date for this route: arrival date + index days
+        const routeDate = addDays(arrivalDate, index);
+        return {
+          ...route,
+          sana: format(routeDate, 'yyyy-MM-dd')
+        };
+      });
+      setErRoutes(updatedRoutes);
+    }
+  }, [formData.arrivalDate]);
 
   const loadData = async () => {
     try {
@@ -340,6 +435,19 @@ export default function BookingDetail() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load accommodation-specific rooming list
+  const loadAccommodationRoomingList = async (accommodationId) => {
+    try {
+      const response = await bookingsApi.getAccommodationRoomingList(id, accommodationId);
+      setAccommodationRoomingLists(prev => ({
+        ...prev,
+        [accommodationId]: response.data.roomingList || []
+      }));
+    } catch (error) {
+      console.error('Error loading accommodation rooming list:', error);
     }
   };
 
@@ -464,13 +572,40 @@ export default function BookingDetail() {
         return;
       }
 
+      // Merge consecutive stays in the same hotel (e.g., two Malika Khorazm periods)
+      const mergedStays = [];
+      for (let i = 0; i < hotelStays.length; i++) {
+        const stay = hotelStays[i];
+        const prevStay = mergedStays[mergedStays.length - 1];
+
+        // If previous stay is same hotel and days are consecutive or overlapping, merge them
+        if (prevStay && prevStay.hotelName === stay.hotelName && stay.startDay <= prevStay.endDay + 2) {
+          prevStay.endDay = Math.max(prevStay.endDay, stay.endDay);
+        } else {
+          mergedStays.push({ ...stay });
+        }
+      }
+
+      console.log('🔍 DEBUG: Hotel stays after merge:', mergedStays);
+      console.log('🔍 UPDATED CODE v2: Merge logic is now active');
+
       // Step 4: Create accommodations for each hotel stay
       // For split groups, handle last day specially
       const lastDay = Math.max(...itinerary.map(d => d.dayNumber));
 
-      for (let i = 0; i < hotelStays.length; i++) {
-        const stay = hotelStays[i];
-        const isLastStay = (i === hotelStays.length - 1);
+      for (let i = 0; i < mergedStays.length; i++) {
+        const stay = mergedStays[i];
+        const isLastStay = (i === mergedStays.length - 1);
+
+        console.log(`🏨 Processing stay ${i + 1}/${mergedStays.length}: ${stay.hotelName} (days ${stay.startDay}-${stay.endDay}, isLastStay=${isLastStay})`);
+
+        // Skip if this is just the departure day (no overnight stay)
+        // If endDay equals lastDay, it means the itinerary includes the departure day
+        // but there's no actual overnight on that day
+        if (stay.endDay === lastDay && stay.startDay === lastDay) {
+          console.log(`Skipping departure day accommodation: ${stay.hotelName} on day ${lastDay}`);
+          continue;
+        }
 
         // Find hotel in database - try multiple matching strategies
         let hotel = hotels.find(h =>
@@ -497,22 +632,37 @@ export default function BookingDetail() {
         const isKhiva = cityName.includes('хива') || cityName.includes('khiva');
         const isTashkent = cityName.includes('ташкент') || cityName.includes('tashkent');
 
+        console.log(`  → City: ${cityName}, isKhiva=${isKhiva}, isTashkent=${isTashkent}, hasSplit=${hasSplit}`);
+
         // If this is the last stay and group splits
         if (isLastStay && hasSplit) {
-          // Last stay handles BOTH groups separately
+          // Last stay handles group separation
 
-          // 1. Create accommodation for the group that stays in this city
-          if (isKhiva && turkmenistanTourists.length > 0) {
-            // Khiva hotel - for Turkmenistan group only
-            accommodationsToCreate.push({
-              hotel,
-              startDay: stay.startDay,
-              endDay: stay.endDay,
-              tourists: turkmenistanTourists,
-              groupName: 'Turkmenistan'
-            });
+          // If last hotel is Khiva: DON'T create it (TM tourists already in previous Khiva)
+          // Only add Tashkent for UZ tourists
+          if (isKhiva) {
+            // TM tourists already have Malika Khorazm from previous iteration
+            // Only create Tashkent for UZ tourists returning
+            if (uzbekistanTourists.length > 0) {
+              const tashkentHotel = hotels.find(h =>
+                h.name.toLowerCase().includes('arien') ||
+                (h.city?.name?.toLowerCase().includes('ташкент') || h.city?.name?.toLowerCase().includes('tashkent'))
+              );
+              if (tashkentHotel) {
+                accommodationsToCreate.push({
+                  hotel: tashkentHotel,
+                  startDay: lastDay,
+                  endDay: lastDay,
+                  tourists: uzbekistanTourists,
+                  groupName: 'Uzbekistan'
+                });
+              } else {
+                toast.error('Отель в Ташкенте не найден для группы Uzbekistan');
+              }
+            }
+            // Note: No Khiva accommodation created here - TM tourists use previous one
           } else if (isTashkent && uzbekistanTourists.length > 0) {
-            // Tashkent hotel - for Uzbekistan group only
+            // If last hotel is Tashkent: create it for UZ tourists only
             accommodationsToCreate.push({
               hotel,
               startDay: stay.startDay,
@@ -529,43 +679,6 @@ export default function BookingDetail() {
               tourists: [...uzbekistanTourists, ...turkmenistanTourists],
               groupName: 'All'
             });
-          }
-
-          // 2. Add the OTHER group's accommodation on last day
-          if (isKhiva && uzbekistanTourists.length > 0) {
-            // Add Tashkent hotel for Uzbekistan group
-            const tashkentHotel = hotels.find(h =>
-              h.name.toLowerCase().includes('arien') ||
-              (h.city?.name?.toLowerCase().includes('ташкент') || h.city?.name?.toLowerCase().includes('tashkent'))
-            );
-            if (tashkentHotel) {
-              accommodationsToCreate.push({
-                hotel: tashkentHotel,
-                startDay: lastDay,
-                endDay: lastDay,
-                tourists: uzbekistanTourists,
-                groupName: 'Uzbekistan'
-              });
-            } else {
-              toast.error('Отель в Ташкенте не найден для группы Uzbekistan');
-            }
-          } else if (isTashkent && turkmenistanTourists.length > 0) {
-            // Add Khiva hotel for Turkmenistan group
-            const khivaHotel = hotels.find(h =>
-              h.name.toLowerCase().includes('malika') ||
-              (h.city?.name?.toLowerCase().includes('хива') || h.city?.name?.toLowerCase().includes('khiva'))
-            );
-            if (khivaHotel) {
-              accommodationsToCreate.push({
-                hotel: khivaHotel,
-                startDay: lastDay,
-                endDay: lastDay,
-                tourists: turkmenistanTourists,
-                groupName: 'Turkmenistan'
-              });
-            } else {
-              toast.error('Отель в Хиве не найден для группы Turkmenistan');
-            }
           }
         } else {
           // Not last stay, or no split - use all tourists
@@ -596,7 +709,14 @@ export default function BookingDetail() {
         checkInDate.setDate(checkInDate.getDate() + (startDay - 1));
 
         const checkOutDate = new Date(departureDate);
-        checkOutDate.setDate(checkOutDate.getDate() + endDay);
+        checkOutDate.setDate(checkOutDate.getDate() + (endDay - 1) + 1); // endDay is the last night, checkout is next morning
+
+        // Validation: don't create accommodation if checkout is after tour end date
+        const tourEndDate = new Date(booking.endDate);
+        if (checkOutDate > tourEndDate) {
+          console.warn(`Skipping accommodation ${hotel.name}: checkout ${checkOutDate.toISOString().split('T')[0]} is after tour end ${tourEndDate.toISOString().split('T')[0]}`);
+          continue;
+        }
 
         // Calculate rooms based on tourists in this group
         const rooms = [];
@@ -645,30 +765,53 @@ export default function BookingDetail() {
 
           console.log(`🔍 DEBUG: Room counts - DBL=${doubleCount}, TWN=${twinCount}, SNGL=${singleCount}`);
 
-          // DBL rooms (pairs of DOUBLE)
-          if (doubleCount >= 2) {
+          // Helper function to calculate price with tourist tax
+          const calculatePriceWithTax = (roomType, guestsPerRoom) => {
+            if (!roomType) return 0;
+
+            let basePrice = roomType.pricePerNight || 0;
+            const vatAmount = roomType.vatIncluded ? basePrice * 0.12 : 0;
+            let priceWithVat = basePrice + vatAmount;
+
+            // Calculate tourist tax if enabled
+            let touristTax = 0;
+            if (roomType.touristTaxEnabled && roomType.brvValue > 0) {
+              const totalRooms = hotel.totalRooms || 0;
+              let percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
+              let touristTaxUZS = roomType.brvValue * percentage * guestsPerRoom;
+
+              // Convert to room currency
+              if (roomType.currency === 'USD') {
+                touristTax = touristTaxUZS / 12700;
+              } else if (roomType.currency === 'EUR') {
+                touristTax = touristTaxUZS / 13500;
+              } else {
+                touristTax = touristTaxUZS;
+              }
+            }
+
+            return priceWithVat + touristTax;
+          };
+
+          // DBL rooms (pairs of DOUBLE) - round up for odd numbers
+          if (doubleCount > 0) {
             const hotelRoomType = hotel.roomTypes?.find(rt => rt.name === 'DBL');
             rooms.push({
               roomTypeCode: 'DBL',
-              roomsCount: Math.floor(doubleCount / 2),
+              roomsCount: Math.ceil(doubleCount / 2),
               guestsPerRoom: 2,
-              pricePerNight: hotelRoomType?.pricePerNight || 0
+              pricePerNight: calculatePriceWithTax(hotelRoomType, 2)
             });
           }
 
-          // TWN rooms (pairs of TWIN + odd DOUBLE)
-          const twinPairs = Math.floor(twinCount / 2);
-          const oddDouble = doubleCount % 2 === 1 ? 1 : 0;
-          const oddTwin = twinCount % 2 === 1 ? 1 : 0;
-          const totalTwnRooms = twinPairs + (oddDouble > 0 || oddTwin > 0 ? 1 : 0);
-
-          if (totalTwnRooms > 0) {
+          // TWN rooms (pairs of TWIN) - round up for odd numbers
+          if (twinCount > 0) {
             const hotelRoomType = hotel.roomTypes?.find(rt => rt.name === 'TWN');
             rooms.push({
               roomTypeCode: 'TWN',
-              roomsCount: totalTwnRooms,
+              roomsCount: Math.ceil(twinCount / 2),
               guestsPerRoom: 2,
-              pricePerNight: hotelRoomType?.pricePerNight || 0
+              pricePerNight: calculatePriceWithTax(hotelRoomType, 2)
             });
           }
 
@@ -679,7 +822,7 @@ export default function BookingDetail() {
               roomTypeCode: 'SNGL',
               roomsCount: singleCount,
               guestsPerRoom: 1,
-              pricePerNight: hotelRoomType?.pricePerNight || 0
+              pricePerNight: calculatePriceWithTax(hotelRoomType, 1)
             });
           }
         }
@@ -960,10 +1103,10 @@ export default function BookingDetail() {
     try {
       if (editingRoomAlloc) {
         await bookingsApi.updateRoom(id, editingRoomAlloc.id, roomAllocForm);
-        toast.success('Размещение обновлено');
+        toast.success('Accommodation updated');
       } else {
         await bookingsApi.addRoom(id, roomAllocForm);
-        toast.success('Размещение добавлено');
+        toast.success('Accommodation added');
       }
       setRoomModalOpen(false);
       loadData();
@@ -977,10 +1120,316 @@ export default function BookingDetail() {
 
     try {
       await bookingsApi.deleteRoom(id, roomAllocId);
-      toast.success('Размещение удалено');
+      toast.success('Accommodation deleted');
       loadData();
     } catch (error) {
       toast.error('Ошибка удаления');
+    }
+  };
+
+  // Route module helper functions
+  const findBestVehicle = (vehicles, personCount) => {
+    if (!personCount || personCount === '') return null;
+
+    const count = parseInt(personCount);
+    if (isNaN(count)) return null;
+
+    // Filter vehicles that can accommodate the person count
+    const suitableVehicles = vehicles.filter(v => {
+      const seats = parseInt(v.seats);
+      return !isNaN(seats) && seats >= count;
+    });
+
+    if (suitableVehicles.length === 0) return null;
+
+    // Sort by seats (ascending) and return the smallest suitable vehicle
+    suitableVehicles.sort((a, b) => parseInt(a.seats) - parseInt(b.seats));
+    return suitableVehicles[0];
+  };
+
+  const handleOpenProviderModal = (route) => {
+    setEditingRouteForProvider(route);
+    const providerTab = route.choiceTab || 'sevil';
+    setSelectedProviderTab(providerTab);
+    setShowProviderModal(true);
+  };
+
+  const handleSelectProvider = (vehicleData, selectedRate = null) => {
+    // Check if vehicle can accommodate the person count
+    const personCount = editingRouteForProvider?.person;
+    if (personCount && vehicleData.seats) {
+      const count = parseInt(personCount);
+      const seats = parseInt(vehicleData.seats);
+
+      if (!isNaN(count) && !isNaN(seats) && seats < count) {
+        toast.error(`This vehicle (${seats} seats) cannot accommodate ${count} people`);
+        return;
+      }
+    }
+
+    // Update the route with selected provider info (only ER now)
+    const updatedRoutes = erRoutes.map(r =>
+      r.id === editingRouteForProvider.id
+        ? {
+            ...r,
+            choiceTab: selectedProviderTab,
+            transportType: vehicleData.name,
+            choiceRate: selectedRate,
+            price: vehicleData.selectedRate || ''
+          }
+        : r
+    );
+    setErRoutes(updatedRoutes);
+
+    setShowProviderModal(false);
+    toast.success('Transport selected');
+  };
+
+  // Route edit and delete handlers
+  const [editingRoute, setEditingRoute] = useState(null);
+  const [routeForm, setRouteForm] = useState({
+    nomer: '',
+    sana: '',
+    shahar: '',
+    route: '',
+    person: '',
+    transportType: '',
+    choiceTab: '',
+    choiceRate: '',
+    price: ''
+  });
+  const [showRouteModal, setShowRouteModal] = useState(false);
+
+  const handleEditRoute = (route) => {
+    setEditingRoute(route);
+    setRouteForm({
+      nomer: route.nomer || '',
+      sana: route.sana || '',
+      shahar: route.shahar || '',
+      route: route.route,
+      person: route.person,
+      transportType: route.transportType,
+      choiceTab: route.choiceTab,
+      choiceRate: route.choiceRate,
+      price: route.price
+    });
+    setShowRouteModal(true);
+  };
+
+  const handleDeleteRoute = (routeId) => {
+    if (window.confirm('Are you sure you want to delete this route?')) {
+      setErRoutes(erRoutes.filter(r => r.id !== routeId));
+      toast.success('Route deleted');
+    }
+  };
+
+  const handleCityChange = (routeId, newCity) => {
+    setErRoutes(erRoutes.map(r =>
+      r.id === routeId ? { ...r, shahar: newCity } : r
+    ));
+  };
+
+  const handleRouteDateChange = (routeIndex, newDate) => {
+    const updatedRoutes = [...erRoutes];
+    updatedRoutes[routeIndex].sana = newDate;
+
+    // Update all subsequent routes to continue sequentially
+    for (let i = routeIndex + 1; i < updatedRoutes.length; i++) {
+      const previousDate = new Date(updatedRoutes[i - 1].sana);
+      const nextDate = addDays(previousDate, 1);
+      updatedRoutes[i].sana = format(nextDate, 'yyyy-MM-dd');
+    }
+
+    setErRoutes(updatedRoutes);
+  };
+
+  const handleSaveRoute = () => {
+    if (!routeForm.route) {
+      toast.error('Please enter route name');
+      return;
+    }
+
+    if (editingRoute) {
+      // Update existing route
+      setErRoutes(erRoutes.map(r =>
+        r.id === editingRoute.id
+          ? { ...r, ...routeForm }
+          : r
+      ));
+      toast.success('Route updated');
+    } else {
+      // Add new route
+      const newRoute = {
+        id: Math.max(...erRoutes.map(r => r.id), 0) + 1,
+        ...routeForm
+      };
+      setErRoutes([...erRoutes, newRoute]);
+      toast.success('Route added');
+    }
+
+    setShowRouteModal(false);
+    setEditingRoute(null);
+    setRouteForm({
+      nomer: '',
+      sana: '',
+      shahar: '',
+      route: '',
+      person: '',
+      transportType: '',
+      choiceTab: '',
+      choiceRate: '',
+      price: ''
+    });
+  };
+
+  const handleAddRoute = () => {
+    setEditingRoute(null);
+    setRouteForm({
+      nomer: '',
+      sana: '',
+      shahar: '',
+      route: '',
+      person: '',
+      transportType: '',
+      choiceTab: '',
+      choiceRate: '',
+      price: ''
+    });
+    setShowRouteModal(true);
+  };
+
+  // Export PDF ЗАЯВКА for specific accommodation
+  const handleAccommodationPdfExport = async (accommodation) => {
+    try {
+      console.log('🚀 Starting PDF export for accommodation:', accommodation.hotel?.name);
+      toast.loading('Generating PDF...', { id: 'pdf-gen' });
+
+      // Load logo
+      let logoDataUrl = '';
+      try {
+        const response = await fetch('/logo.png');
+        const blob = await response.blob();
+        logoDataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        console.log('✅ Logo loaded');
+      } catch (error) {
+        console.warn('⚠️ Could not load logo:', error);
+      }
+
+      const hotelName = accommodation.hotel?.name || 'Не указан отель';
+      const bookingNumber = booking?.bookingNumber || 'N/A';
+      const country = 'Германия';
+
+      // Get tourists for this accommodation (all tourists for now)
+      const totalPax = tourists.length;
+
+      // Calculate room counts from accommodation rooms
+      let dblRooms = 0, twnRooms = 0, snglRooms = 0;
+      accommodation.rooms?.forEach(room => {
+        const roomType = room.roomTypeCode?.toUpperCase();
+        if (roomType === 'DBL' || roomType === 'DOUBLE') dblRooms += room.roomsCount || 0;
+        if (roomType === 'TWN' || roomType === 'TWIN') twnRooms += room.roomsCount || 0;
+        if (roomType === 'SNGL' || roomType === 'SINGLE') snglRooms += room.roomsCount || 0;
+      });
+
+      // Format dates
+      const formatDisplayDate = (dateStr) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      };
+
+      const arrivalDate = formatDisplayDate(accommodation.checkInDate);
+      const departureDate = formatDisplayDate(accommodation.checkOutDate);
+
+      // Build tourist rows
+      let touristRows = '';
+      tourists.forEach((t, idx) => {
+        const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+        const roomType = t.roomPreference || '';
+        const remarks = t.remarks && t.remarks !== '-' ? t.remarks : '';
+
+        const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
+        const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
+        const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+
+        touristRows += `
+          <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayArrival}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayDeparture}</td>
+            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomType}</td>
+            <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
+          </tr>
+        `;
+      });
+
+      // Create temp div
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '210mm';
+
+      tempDiv.innerHTML = `
+        <html><head><meta charset="UTF-8"><style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.2; color: #000; padding: 12mm; }
+          .header-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 15px; }
+          .header-table td { border: none; padding: 8px; font-size: 7.5pt; }
+          .logo-cell { text-align: center; vertical-align: middle; }
+          .zayvka-title { text-align: center; font-size: 13pt; font-weight: bold; margin: 8px 0; }
+          .intro-text { text-align: justify; margin: 6px 0; font-size: 9pt; }
+          .summary-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+          .summary-table th, .summary-table td { border: 1px solid #000; padding: 3px; text-align: center; font-size: 8pt; }
+          .summary-table th { background: #f0f0f0; font-weight: bold; }
+          .rooming-title { text-align: center; font-size: 12pt; font-weight: bold; margin: 10px 0 6px 0; }
+          .rooming-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          .rooming-table th, .rooming-table td { border: 1px solid #000; padding: 3px; font-size: 8pt; }
+          .rooming-table th { background: #f0f0f0; font-weight: bold; text-align: center; }
+          .footer-text { margin: 8px 0; font-size: 8.5pt; }
+          .signature-table { width: 100%; margin-top: 15px; }
+          .signature-table td { padding: 3px; font-size: 8.5pt; }
+        </style></head><body>
+          <table class="header-table"><tr><td class="logo-cell" style="width:100%;text-align:center">
+            ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Orient Insight" style="width:150px;height:auto;margin-bottom:8px" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>'}
+            <div style="font-size:9pt;margin-top:5px"><strong>Республика Узбекистан,</strong><br>г.Самарканд, Шота Руставели, дом 45<br>Тел/fax.: +998 933484208, +998 97 9282814<br>E-Mail: orientinsightreisen@gmail.com<br>Website: orient-insight.uz</div>
+          </td></tr></table>
+          <div style="text-align:right;margin-bottom:10px;font-size:9pt"><strong>Директору гостиницы</strong><br><strong style="font-size:11pt">${hotelName}</strong></div>
+          <div class="zayvka-title">ЗАЯВКА</div>
+          <div class="intro-text">ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.</div>
+          <table class="summary-table"><thead><tr><th>№</th><th>Группа</th><th>Страна</th><th>PAX</th><th>Первый<br>заезд</th><th>Первый<br>выезд</th><th>DBL</th><th>TWN</th><th>SNGL</th><th>Тип номера</th></tr></thead>
+          <tbody><tr><td>1</td><td>${bookingNumber}</td><td>${country}</td><td>${totalPax}</td><td>${arrivalDate}</td><td>${departureDate}</td><td>${dblRooms}</td><td>${twnRooms}</td><td>${snglRooms}</td><td>стандарт</td></tr></tbody></table>
+          <div class="rooming-title">ROOMING LISTE</div>
+          <table class="rooming-table"><thead><tr><th style="width:30px">№</th><th style="width:35%">ФИО</th><th style="width:15%">Дата заезда</th><th style="width:15%">дата выезда</th><th style="width:12%">Категория<br>номера</th><th>Дополнительная<br>информация</th></tr></thead>
+          <tbody>${touristRows}</tbody></table>
+          <div class="footer-text"><p style="margin-bottom:10px">Оплату гости произведут на месте.</p></div>
+          <table class="signature-table"><tr><td style="width:60%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td><td style="width:20%;border-bottom:1px solid #000;text-align:center"></td><td style="width:20%;text-align:center"><strong>Одилова М.У.</strong></td></tr></table>
+        </body></html>
+      `;
+
+      document.body.appendChild(tempDiv);
+
+      const opt = {
+        margin: 0,
+        filename: `ZAYVKA-${bookingNumber}-${hotelName}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      console.log('🔄 Generating PDF...');
+      await html2pdf().set(opt).from(tempDiv).save();
+
+      document.body.removeChild(tempDiv);
+      console.log('✅ PDF downloaded');
+      toast.success('PDF downloaded successfully!', { id: 'pdf-gen' });
+    } catch (error) {
+      console.error('❌ PDF Export error:', error);
+      toast.error('Error exporting PDF: ' + error.message, { id: 'pdf-gen' });
     }
   };
 
@@ -993,7 +1442,7 @@ export default function BookingDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-none overflow-x-hidden p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -1057,10 +1506,11 @@ export default function BookingDetail() {
           <nav className="flex space-x-2 overflow-x-auto px-2 py-2">
             {[
               { id: 'info', label: 'Информация', icon: MapPin },
-              { id: 'rooms', label: 'Размещение', icon: Building2 },
+              { id: 'rooms', label: 'Rooms', icon: Building2 },
               { id: 'tourists', label: 'Tourists', icon: Users },
               { id: 'rooming-list', label: 'Rooming List', icon: List },
               { id: 'rooming', label: 'Назначения', icon: ClipboardList },
+              { id: 'route', label: 'Route', icon: Car },
               { id: 'documents', label: 'Документы', icon: FileText },
               { id: 'costs', label: 'Стоимость', icon: DollarSign }
             ].map((tab) => (
@@ -1109,6 +1559,540 @@ export default function BookingDetail() {
       {!isNew && activeTab === 'costs' && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <CostSummary bookingId={parseInt(id)} booking={booking} />
+        </div>
+      )}
+
+      {/* Route Tab */}
+      {!isNew && activeTab === 'route' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-2xl shadow-xl p-8 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                    <Car className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold">Route Planning</h2>
+                    <p className="text-blue-100 mt-1">Manage transportation routes for this booking</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleAddRoute}
+                className="flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+              >
+                <Plus className="w-5 h-5" />
+                Add Route
+              </button>
+            </div>
+          </div>
+
+          {/* Route Table Card */}
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 border-b border-gray-200">
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Nomer
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Sana
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Shahar
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Route
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Person
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Provider
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Transport Type
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Option Rate
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {erRoutes.map((route, index) => (
+                    <tr
+                      key={route.id}
+                      className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 border-l-4 border-transparent hover:border-blue-500"
+                    >
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex justify-center">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
+                            <span className="text-sm font-bold text-blue-600">{index + 1}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex justify-center">
+                          <input
+                            type="date"
+                            value={route.sana || ''}
+                            onChange={(e) => handleRouteDateChange(index, e.target.value)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 rounded-lg text-sm font-semibold border-0 focus:ring-2 focus:ring-rose-400 transition-all cursor-pointer hover:shadow-md"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex justify-center">
+                          <select
+                            value={route.shahar || ''}
+                            onChange={(e) => handleCityChange(route.id, e.target.value)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 rounded-lg text-sm font-semibold border-0 focus:ring-2 focus:ring-emerald-400 transition-all cursor-pointer hover:shadow-md"
+                          >
+                            <option value="">Select City</option>
+                            <option value="Tashkent">Tashkent</option>
+                            <option value="Samarkand">Samarkand</option>
+                            <option value="Asraf">Asraf</option>
+                            <option value="Bukhara">Bukhara</option>
+                            <option value="Khiva">Khiva</option>
+                            <option value="Urgench">Urgench</option>
+                            <option value="Fergana">Fergana</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {route.route}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex justify-center">
+                          <span className="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full text-sm font-semibold">
+                            {route.person || '-'}
+                          </span>
+                        </div>
+                      </td>
+                      <td
+                        className="px-6 py-5 whitespace-nowrap cursor-pointer group/provider"
+                        onClick={() => handleOpenProviderModal(route)}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          {route.choiceTab ? (
+                            <span className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all duration-300 ${
+                              route.choiceTab === 'xayrulla'
+                                ? 'bg-gradient-to-r from-cyan-100 to-blue-100 text-cyan-700 group-hover/provider:shadow-lg group-hover/provider:scale-105'
+                                : route.choiceTab === 'sevil'
+                                ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 group-hover/provider:shadow-lg group-hover/provider:scale-105'
+                                : 'bg-gradient-to-r from-teal-100 to-emerald-100 text-teal-700 group-hover/provider:shadow-lg group-hover/provider:scale-105'
+                            }`}>
+                              <span className="capitalize">{route.choiceTab}</span>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </span>
+                          ) : (
+                            <span className="px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm font-medium group-hover/provider:border-blue-400 group-hover/provider:text-blue-600 transition-all">
+                              Click to Select
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-700 text-center">
+                          {route.transportType || <span className="text-gray-400">-</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-700 text-center">
+                          {route.choiceRate || <span className="text-gray-400">-</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex justify-center">
+                          {route.price ? (
+                            <span className="px-3 py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-lg text-sm font-bold">
+                              ${route.price}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <button
+                            onClick={() => handleEditRoute(route)}
+                            className="p-2.5 text-blue-600 hover:text-white hover:bg-blue-600 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-110"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRoute(route.id)}
+                            className="p-2.5 text-red-600 hover:text-white hover:bg-red-600 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-110"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {erRoutes.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-16">
+                        <div className="flex flex-col items-center justify-center text-center">
+                          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mb-4">
+                            <MapPin className="w-10 h-10 text-gray-400" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Routes Yet</h3>
+                          <p className="text-gray-500 mb-6 max-w-sm">
+                            Start planning your transportation by adding your first route
+                          </p>
+                          <button
+                            onClick={handleAddRoute}
+                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+                          >
+                            <Plus className="w-5 h-5" />
+                            Add Your First Route
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Provider Selection Modal */}
+      {showProviderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                  <Car className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Select Transport Provider</h2>
+                  <p className="text-gray-600">Choose provider and vehicle for the route</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProviderModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Person Count Info */}
+            {editingRouteForProvider?.person && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">Person Count:</span> {editingRouteForProvider.person} people
+                  <span className="ml-2 text-blue-600">→ Selecting best vehicle based on capacity</span>
+                </p>
+              </div>
+            )}
+
+            {/* Provider Tabs */}
+            <div className="mb-6">
+              <div className="flex gap-2">
+                {[
+                  { id: 'sevil', name: 'Sevil', color: 'blue' },
+                  { id: 'xayrulla', name: 'Xayrulla', color: 'cyan' },
+                  { id: 'nosir', name: 'Nosir', color: 'teal' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedProviderTab(tab.id)}
+                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all duration-300 ${
+                      selectedProviderTab === tab.id
+                        ? `bg-gradient-to-r from-${tab.color}-500 to-${tab.color}-600 text-white shadow-lg`
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Provider Vehicles Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Vehicle Name
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Seats
+                    </th>
+                    {selectedProviderTab === 'sevil' && (
+                      <>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          TAG Rate
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Urgench Rate
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Shovot Rate
+                        </th>
+                      </>
+                    )}
+                    {selectedProviderTab === 'xayrulla' && (
+                      <>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Chimgan Rate
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Tag Rate
+                        </th>
+                      </>
+                    )}
+                    {selectedProviderTab === 'nosir' && (
+                      <>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Margilan
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Qoqon
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Dostlik
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          Toshkent
+                        </th>
+                      </>
+                    )}
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(() => {
+                    let vehicles = [];
+                    if (selectedProviderTab === 'sevil') vehicles = sevilVehicles;
+                    else if (selectedProviderTab === 'xayrulla') vehicles = xayrullaVehicles;
+                    else if (selectedProviderTab === 'nosir') vehicles = nosirVehicles;
+
+                    const personCount = editingRouteForProvider?.person ? parseInt(editingRouteForProvider.person) : null;
+                    const bestVehicle = findBestVehicle(vehicles, editingRouteForProvider?.person);
+
+                    return vehicles.map((vehicle) => {
+                      const vehicleSeats = parseInt(vehicle.seats);
+                      const canAccommodate = !personCount || isNaN(vehicleSeats) || vehicleSeats >= personCount;
+                      const isBestMatch = bestVehicle && bestVehicle.id === vehicle.id;
+                      const isInsufficient = personCount && !isNaN(vehicleSeats) && vehicleSeats < personCount;
+
+                      return (
+                        <tr
+                          key={vehicle.id}
+                          className={`transition-all duration-200 ${
+                            isBestMatch
+                              ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500'
+                              : isInsufficient
+                              ? 'bg-gray-50 opacity-50'
+                              : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50'
+                          }`}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-medium text-gray-900">
+                                {vehicle.name}
+                              </div>
+                              {isBestMatch && (
+                                <span className="px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">
+                                  Best Match
+                                </span>
+                              )}
+                              {isInsufficient && (
+                                <span className="px-2 py-1 text-xs font-semibold text-red-700 bg-red-100 rounded-full">
+                                  Too Small
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <span className={`px-3 py-1 text-sm font-medium rounded-lg ${
+                              isInsufficient
+                                ? 'bg-red-100 text-red-700'
+                                : isBestMatch
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {vehicle.seats || '-'}
+                            </span>
+                          </td>
+                          {selectedProviderTab === 'sevil' && (
+                            <>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.tagRate }, 'tagRate')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                  }`}
+                                >
+                                  {vehicle.tagRate || '-'}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.urgenchRate }, 'urgenchRate')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                  }`}
+                                >
+                                  {vehicle.urgenchRate || '-'}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.shovotRate2 }, 'shovotRate2')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                  }`}
+                                >
+                                  {vehicle.shovotRate2 || '-'}
+                                </button>
+                              </td>
+                            </>
+                          )}
+                          {selectedProviderTab === 'xayrulla' && (
+                            <>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.chimgan }, 'chimgan')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200'
+                                  }`}
+                                >
+                                  {vehicle.chimgan || '-'}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.tag }, 'tag')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200'
+                                  }`}
+                                >
+                                  {vehicle.tag || '-'}
+                                </button>
+                              </td>
+                            </>
+                          )}
+                          {selectedProviderTab === 'nosir' && (
+                            <>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.margilan }, 'margilan')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                                  }`}
+                                >
+                                  {vehicle.margilan || '-'}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.qoqon }, 'qoqon')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                                  }`}
+                                >
+                                  {vehicle.qoqon || '-'}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.dostlik }, 'dostlik')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                                  }`}
+                                >
+                                  {vehicle.dostlik || '-'}
+                                </button>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleSelectProvider({ ...vehicle, selectedRate: vehicle.toshkent }, 'toshkent')}
+                                  disabled={isInsufficient}
+                                  className={`px-3 py-1 rounded-lg transition-colors text-sm font-medium ${
+                                    isInsufficient
+                                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                      : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                                  }`}
+                                >
+                                  {vehicle.toshkent || '-'}
+                                </button>
+                              </td>
+                            </>
+                          )}
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <button
+                              onClick={() => handleSelectProvider(vehicle, null)}
+                              disabled={isInsufficient}
+                              className={`px-4 py-2 rounded-lg transition-all duration-300 text-sm font-medium ${
+                                isInsufficient
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  : isBestMatch
+                                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800 shadow-lg hover:shadow-xl hover:scale-105'
+                                  : 'bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 shadow-lg hover:shadow-xl hover:scale-105'
+                              }`}
+                            >
+                              Select
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1341,74 +2325,227 @@ export default function BookingDetail() {
 
           {/* Hotel Room Allocations */}
           {!isNew && activeTab === 'rooms' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center shadow-sm">
-                    <Building2 className="w-5 h-5 text-primary-600" />
+            <div className="bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8 px-8 w-full -mx-4" style={{ width: 'calc(100vw - 16rem)', marginLeft: '-1rem' }}>
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-black text-gray-900 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-primary-600 flex items-center justify-center shadow-lg">
+                    <Building2 className="w-6 h-6 text-white" />
                   </div>
-                  Размещение в отелях
+                  Hotel Accommodation
                 </h2>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={autoFillAccommodationsFromItinerary}
                     disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
                     title="Автоматически создать размещения из программы тура"
                   >
-                    <Wand2 className="w-4 h-4" />
+                    <Wand2 className="w-5 h-5" />
                     Из программы тура
                   </button>
                   <button
                     onClick={() => { setEditingAccommodation(null); setAccommodationFormOpen(true); }}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+                    className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-blue-600 to-primary-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold shadow-md"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-5 h-5" />
                     Добавить отель
                   </button>
                 </div>
               </div>
 
+              {/* Statistics Cards */}
+              {(() => {
+                // Calculate statistics from tourists
+                const totalGuests = tourists.length;
+
+                // Count unique rooms by type
+                const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+                const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+                const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
+
+                tourists.forEach(t => {
+                  const roomType = (t.roomPreference || '').toUpperCase();
+                  const roomNum = t.roomNumber;
+
+                  if (roomType === 'DBL' || roomType === 'DOUBLE') {
+                    if (roomNum && !seenRooms.DBL.has(roomNum)) {
+                      roomCounts.DBL++;
+                      seenRooms.DBL.add(roomNum);
+                    } else if (!roomNum) {
+                      touristsWithoutRoom.DBL++;
+                    }
+                  } else if (roomType === 'TWN' || roomType === 'TWIN') {
+                    if (roomNum && !seenRooms.TWN.has(roomNum)) {
+                      roomCounts.TWN++;
+                      seenRooms.TWN.add(roomNum);
+                    } else if (!roomNum) {
+                      touristsWithoutRoom.TWN++;
+                    }
+                  } else if (roomType === 'SNGL' || roomType === 'SINGLE') {
+                    if (roomNum && !seenRooms.SNGL.has(roomNum)) {
+                      roomCounts.SNGL++;
+                      seenRooms.SNGL.add(roomNum);
+                    } else if (!roomNum) {
+                      touristsWithoutRoom.SNGL++;
+                    }
+                  }
+                });
+
+                // Add tourists without room numbers (DBL/TWN: 2 people = 1 room, SNGL: 1 person = 1 room)
+                roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
+                roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
+                roomCounts.SNGL += touristsWithoutRoom.SNGL;
+
+                // Count by placement
+                const uzbekCount = tourists.filter(t => {
+                  const acc = (t.accommodation || '').toLowerCase();
+                  return acc.includes('uzbek') || acc.includes('узбек');
+                }).length;
+
+                const turkmCount = tourists.filter(t => {
+                  const acc = (t.accommodation || '').toLowerCase();
+                  return acc.includes('turkmen') || acc.includes('туркмен');
+                }).length;
+
+                return (
+                  <div className="flex items-stretch gap-4 flex-wrap mb-8">
+                    {/* Total Guests Card */}
+                    <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
+                      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                        <Users className="w-8 h-8 text-primary-600" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-1">Total</div>
+                        <div className="text-4xl font-black text-gray-900 mb-0.5">{totalGuests}</div>
+                        <div className="text-sm text-gray-600 font-medium">guests</div>
+                      </div>
+                    </div>
+
+                    {/* TWN Rooms Card */}
+                    {roomCounts.TWN > 0 && (
+                      <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
+                        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                          <Bed className="w-8 h-8 text-emerald-600" />
+                        </div>
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                            TWN
+                          </div>
+                          <div className="text-4xl font-black text-gray-900 mb-0.5">{roomCounts.TWN}</div>
+                          <div className="text-sm text-gray-600 font-medium">rooms</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SNGL Rooms Card */}
+                    {roomCounts.SNGL > 0 && (
+                      <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
+                        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                          <User className="w-8 h-8 text-violet-600" />
+                        </div>
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                            SNGL
+                          </div>
+                          <div className="text-4xl font-black text-gray-900 mb-0.5">{roomCounts.SNGL}</div>
+                          <div className="text-sm text-gray-600 font-medium">rooms</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Uzbekistan/Turkmenistan Split Card */}
+                    {uzbekCount > 0 && turkmCount > 0 && (
+                      <div className="flex items-center gap-4 px-6 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl shadow-md">
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
+                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Uzbekistan</span>
+                            <span className="text-2xl font-black text-gray-900">{uzbekCount}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
+                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Turkmenistan</span>
+                            <span className="text-2xl font-black text-gray-900">{turkmCount}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Accommodations (Simplified structure) */}
               {accommodations.length > 0 && (
-                <div className="space-y-4">
-                  {accommodations.map((acc) => (
-                    <div key={acc.id} className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 border-gray-200 shadow-md hover:shadow-xl hover:scale-[1.005] transition-all duration-300 p-5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 border-2 border-primary-300 flex items-center justify-center shadow-sm">
-                            <Building2 className="w-6 h-6 text-primary-600" />
+                <div className="space-y-6 w-full">
+                  {accommodations.map((acc, accIndex) => (
+                    <div key={acc.id} className="w-full bg-white rounded-3xl border border-gray-300 shadow-lg hover:shadow-2xl hover:border-primary-300 transition-all duration-300 p-6 relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 via-blue-500 to-purple-500"></div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-primary-600 flex items-center justify-center shadow-lg shrink-0 ring-4 ring-blue-100">
+                            <Building2 className="w-8 h-8 text-white" />
                           </div>
                           <div className="flex-1">
-                            <div className="font-bold text-gray-900 text-base mb-1">{acc.hotel?.name}</div>
-                            <div className="text-sm text-gray-600 flex items-center gap-2 flex-wrap">
-                              <span className="flex items-center gap-1 font-medium">
-                                <MapPin className="w-4 h-4 text-gray-400" />
-                                {acc.hotel?.city?.name}
-                              </span>
-                              <span className="mx-1 text-gray-400">•</span>
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4 text-gray-400" />
-                                {format(new Date(acc.checkInDate), 'dd.MM.yy')} — {format(new Date(acc.checkOutDate), 'dd.MM.yy')}
-                              </span>
-                              <span className="mx-1 text-gray-400">•</span>
-                              <span className="font-medium">{acc.nights} {acc.nights === 1 ? 'ночь' : acc.nights < 5 ? 'ночи' : 'ночей'}</span>
+                            {/* Hotel Name - Large and prominent */}
+                            <div className="font-black text-gray-900 text-3xl mb-3 tracking-tight">{acc.hotel?.name}</div>
+
+                            {/* City - Large with icon */}
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-1.5 rounded-lg bg-primary-100">
+                                <MapPin className="w-5 h-5 text-primary-600" />
+                              </div>
+                              <span className="text-xl font-bold text-gray-700">{acc.hotel?.city?.name}</span>
+                            </div>
+
+                            {/* Dates and Nights - Large badges */}
+                            <div className="flex items-center gap-4 flex-wrap mb-4">
+                              <div className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-2xl shadow-md">
+                                <div className="p-2 rounded-lg bg-blue-500">
+                                  <Calendar className="w-5 h-5 text-white" />
+                                </div>
+                                <span className="text-lg font-bold text-blue-900">
+                                  {format(new Date(acc.checkInDate), 'dd.MM.yy')} — {format(new Date(acc.checkOutDate), 'dd.MM.yy')}
+                                </span>
+                              </div>
+                              <div className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-2xl shadow-md">
+                                <span className="text-3xl font-black text-purple-700">{acc.nights}</span>
+                                <span className="text-lg font-bold text-purple-600">
+                                  {acc.nights === 1 ? 'ночь' : acc.nights < 5 ? 'ночи' : 'ночей'}
+                                </span>
+                              </div>
                             </div>
                             {/* Room Types Display */}
                             {acc.rooms && acc.rooms.length > 0 && (() => {
-                              // Determine hotel's primary currency - if any room type uses UZS, use UZS for all
-                              const hasUZS = acc.hotel?.roomTypes?.some(rt => rt.currency === 'UZS');
-                              const hotelCurrency = hasUZS ? 'UZS' : (acc.hotel?.roomTypes?.[0]?.currency || 'UZS');
-
                               return (
-                                <div className="mt-2 flex flex-wrap gap-2">
+                                <div className="mt-4 flex flex-wrap gap-4">
                                   {acc.rooms.map((room, idx) => {
-                                    const currencySymbol = hotelCurrency === 'USD' ? '$' : hotelCurrency === 'EUR' ? '€' : ' UZS';
+                                    // Find matching room type to check if tourist tax is enabled
+                                    const matchingRoomType = acc.hotel?.roomTypes?.find(rt =>
+                                      rt.name === room.roomTypeCode ||
+                                      rt.displayName === room.roomTypeCode ||
+                                      rt.name?.toUpperCase() === room.roomTypeCode?.toUpperCase()
+                                    );
+
+                                    // Use saved price (already includes tourist tax and VAT)
+                                    const displayPrice = Math.round(room.pricePerNight).toLocaleString();
+
+                                    // Check if tourist tax is enabled (for display label)
+                                    const hasTouristTax = matchingRoomType?.touristTaxEnabled && matchingRoomType?.brvValue > 0;
 
                                     return (
-                                      <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-br from-green-50 to-green-100 text-green-700 border border-green-200 rounded-lg text-xs font-semibold shadow-sm">
-                                        {room.roomTypeCode}: {room.roomsCount} x {room.guestsPerRoom} чел.
-                                        {room.pricePerNight > 0 && ` (${room.pricePerNight.toLocaleString()}${currencySymbol}/ночь)`}
+                                      <span key={idx} className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-br from-green-50 via-green-100 to-emerald-100 text-green-900 border-2 border-green-400 rounded-2xl text-lg font-black shadow-lg hover:shadow-xl hover:scale-105 transition-all">
+                                        <span className="text-green-800 text-xl">{room.roomTypeCode}:</span>
+                                        <span className="text-gray-800">{room.roomsCount} × {room.guestsPerRoom} чел.</span>
+                                        {room.pricePerNight > 0 && (
+                                          <span className="text-green-700 text-base font-semibold">
+                                            ({displayPrice} UZS/ночь)
+                                            {hasTouristTax && (
+                                              <span className="text-green-600 text-xs ml-1">
+                                                (вкл. турсбор)
+                                              </span>
+                                            )}
+                                          </span>
+                                        )}
                                       </span>
                                     );
                                   })}
@@ -1427,46 +2564,677 @@ export default function BookingDetail() {
                               const displayCost = hotelCurrency === 'UZS' ? acc.totalCost.toLocaleString() : acc.totalCost.toFixed(2);
 
                               return (
-                                <div className="mt-3 text-sm text-gray-700 bg-gradient-to-r from-gray-50 to-transparent rounded-lg px-3 py-2 border-l-4 border-primary-400">
-                                  <span className="font-bold text-gray-800">Итого:</span>
-                                  {!isPAX && acc.totalRooms > 0 && <span className="ml-2 font-medium">{acc.totalRooms} номеров</span>}
-                                  {acc.totalGuests > 0 && <span className="ml-2 font-medium">{!isPAX && '• '}{acc.totalGuests} гостей</span>}
-                                  {acc.totalCost > 0 && <span className="ml-2 text-primary-600 font-bold">• {displayCost}{currencySymbol}</span>}
+                                <div className="mt-5 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl px-6 py-5 border-2 border-blue-300 shadow-lg">
+                                  <div className="flex items-center gap-4 flex-wrap justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <span className="text-2xl font-black text-gray-900">Итого:</span>
+                                      {!isPAX && acc.totalRooms > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-lg font-bold text-gray-700">
+                                          {acc.totalRooms} номеров
+                                        </span>
+                                      )}
+                                      {acc.totalGuests > 0 && (
+                                        <span className="inline-flex items-center gap-1 text-lg font-bold text-gray-700">
+                                          {!isPAX && <span className="text-gray-400">•</span>}
+                                          {acc.totalGuests} гостей
+                                        </span>
+                                      )}
+                                    </div>
+                                    {acc.totalCost > 0 && (
+                                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-primary-600 rounded-xl shadow-lg">
+                                        <span className="text-3xl font-black text-white">{displayCost}</span>
+                                        <span className="text-xl font-bold text-blue-100">{currencySymbol}</span>
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })()}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              const previewUrl = bookingsApi.getHotelRequestPreview(id, acc.id);
+                              // Open in new window for printing/PDF download
+                              const printWindow = window.open(previewUrl, '_blank');
+                              if (printWindow) {
+                                // Wait for content to load then trigger print dialog
+                                printWindow.addEventListener('load', () => {
+                                  setTimeout(() => {
+                                    printWindow.print();
+                                  }, 500);
+                                });
+                              }
+                            }}
+                            className="p-3 text-green-600 bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md"
+                            title="Скачать заявку для отеля (Print to PDF)"
+                          >
+                            <FileDown className="w-5 h-5" />
+                          </button>
                           <button
                             onClick={() => {
                               setEditingAccommodation(acc);
                               setAccommodationFormOpen(true);
                             }}
-                            className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl hover:scale-110 transition-all duration-200"
+                            className="p-3 text-primary-600 bg-primary-50 hover:bg-primary-100 border-2 border-primary-200 hover:border-primary-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md"
                             title="Редактировать"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-5 h-5" />
                           </button>
                           <button
                             onClick={async () => {
                               if (confirm('Удалить это размещение?')) {
                                 try {
                                   await bookingsApi.deleteAccommodation(id, acc.id);
-                                  toast.success('Размещение удалено');
+                                  toast.success('Accommodation deleted');
                                   loadData();
                                 } catch (error) {
                                   toast.error('Ошибка удаления');
                                 }
                               }
                             }}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl hover:scale-110 transition-all duration-200"
+                            className="p-3 text-red-600 bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md"
                             title="Удалить"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       </div>
+
+                      {/* Rooming List Toggle Button and Content */}
+                      {(() => {
+                        // Check if this is second visit to same Tashkent hotel
+                        const tashkentAccommodations = accommodations.filter(a => {
+                          const cityName = a.hotel?.city?.name?.toLowerCase() || '';
+                          return cityName.includes('ташкент') || cityName.includes('tashkent') || cityName.includes('toshkent');
+                        });
+
+                        const isSecondVisitSameHotel = tashkentAccommodations.length > 1 &&
+                                                        tashkentAccommodations[tashkentAccommodations.length - 1].id === acc.id &&
+                                                        tashkentAccommodations[0].hotel?.id === tashkentAccommodations[tashkentAccommodations.length - 1].hotel?.id &&
+                                                        tashkentAccommodations[0].id !== tashkentAccommodations[tashkentAccommodations.length - 1].id;
+
+                        // Filter tourists for this accommodation
+                        const isFirstAccommodation = accIndex === 0;
+                        let accTourists = tourists.filter(t => {
+                          const accCheckIn = new Date(acc.checkInDate);
+                          const accCheckOut = new Date(acc.checkOutDate);
+
+                          // If tourist has hotel name, match by it
+                          if (t.hotelName && acc.hotel?.name) {
+                            const hotelMatches = t.hotelName.toLowerCase().includes(acc.hotel.name.toLowerCase().split(' ')[0].toLowerCase());
+                            if (!hotelMatches) return false;
+                          }
+
+                          // Only check custom dates for first accommodation
+                          // For other accommodations, ignore custom dates and show all tourists
+                          if (isFirstAccommodation && t.checkInDate && t.checkOutDate) {
+                            const touristCheckIn = new Date(t.checkInDate);
+                            const touristCheckOut = new Date(t.checkOutDate);
+                            const datesOverlap = touristCheckIn <= accCheckOut && touristCheckOut >= accCheckIn;
+                            return datesOverlap;
+                          }
+
+                          // If no specific dates on tourist, check if booking dates overlap with accommodation
+                          if (booking?.departureDate && booking?.endDate) {
+                            const bookingStart = new Date(booking.departureDate);
+                            const bookingEnd = new Date(booking.endDate);
+                            const datesOverlap = bookingStart <= accCheckOut && bookingEnd >= accCheckIn;
+                            return datesOverlap;
+                          }
+
+                          // Default: show all tourists
+                          return true;
+                        });
+
+                        // For second visit to same hotel - only UZ tourists return to Tashkent
+                        if (isSecondVisitSameHotel) {
+                          accTourists = accTourists.filter(t => {
+                            const placement = (t.accommodation || '').toLowerCase();
+                            const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
+                            return isUzbekistan;
+                          });
+                          console.log(`⚠️ Second visit to ${acc.hotel?.name} - filtered UZ tourists: ${accTourists.length}`);
+                        }
+
+                        // Always show the section, even if empty (for debugging)
+                        console.log('🏨 Hotel:', acc.hotel?.name, '- Tourists:', accTourists.length, '/', tourists.length);
+                        console.log('   All tourists:', tourists.map(t => ({ name: t.fullName, hotel: t.hotelName, checkIn: t.checkInDate })));
+
+                        const isExpanded = expandedHotels[acc.id];
+
+                        // Use accommodation-specific rooming list if available, otherwise use filtered tourists
+                        const accommodationRoomingList = accommodationRoomingLists[acc.id];
+                        const touristsToDisplay = accommodationRoomingList || accTourists;
+
+                        // Sort tourists by room number to keep pairs together
+                        const sortedAccTourists = [...touristsToDisplay].sort((a, b) => {
+                          const roomA = a.roomNumber || '';
+                          const roomB = b.roomNumber || '';
+                          if (roomA !== roomB) return roomA.localeCompare(roomB);
+                          return (a.lastName || '').localeCompare(b.lastName || '');
+                        });
+
+                        return (
+                          <div className="mt-6 pt-6 border-t-2 border-gray-200">
+                            {/* Toggle Button */}
+                            <button
+                              onClick={() => {
+                                const willExpand = !expandedHotels[acc.id];
+                                setExpandedHotels(prev => ({ ...prev, [acc.id]: willExpand }));
+                                // Load accommodation-specific rooming list when expanding
+                                if (willExpand && !accommodationRoomingLists[acc.id]) {
+                                  loadAccommodationRoomingList(acc.id);
+                                }
+                              }}
+                              className="w-full flex items-center justify-between px-6 py-4 bg-gradient-to-r from-primary-50 to-blue-50 hover:from-primary-100 hover:to-blue-100 rounded-xl border-2 border-primary-200 transition-all mb-4 shadow-sm hover:shadow-md"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg shadow-sm">
+                                  <Users className="w-5 h-5 text-primary-600" />
+                                </div>
+                                <div className="text-left">
+                                  <h3 className="text-lg font-bold text-gray-900">Rooming List</h3>
+                                  <p className="text-sm text-gray-600">{accTourists.length} {accTourists.length === 1 ? 'турист' : 'туристов'}</p>
+                                </div>
+                              </div>
+                              <div className={`p-2 bg-white rounded-lg shadow-sm transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                <ChevronDown className="w-5 h-5 text-primary-600" />
+                              </div>
+                            </button>
+
+                            {/* Rooming List Content */}
+                            {isExpanded && (
+                              <div className="space-y-4 animate-in fade-in duration-200">
+                                {/* Statistics Cards */}
+                                {(() => {
+                                  // Calculate statistics
+                                  const totalGuests = accTourists.length;
+
+                                  // Count unique rooms by type
+                                  const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+                                  const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+                                  const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
+
+                                  accTourists.forEach(t => {
+                                    const roomType = (t.roomPreference || '').toUpperCase();
+                                    const roomNum = t.roomNumber;
+
+                                    if (roomType === 'DBL' || roomType === 'DOUBLE') {
+                                      if (roomNum && !seenRooms.DBL.has(roomNum)) {
+                                        roomCounts.DBL++;
+                                        seenRooms.DBL.add(roomNum);
+                                      } else if (!roomNum) {
+                                        touristsWithoutRoom.DBL++;
+                                      }
+                                    } else if (roomType === 'TWN' || roomType === 'TWIN') {
+                                      if (roomNum && !seenRooms.TWN.has(roomNum)) {
+                                        roomCounts.TWN++;
+                                        seenRooms.TWN.add(roomNum);
+                                      } else if (!roomNum) {
+                                        touristsWithoutRoom.TWN++;
+                                      }
+                                    } else if (roomType === 'SNGL' || roomType === 'SINGLE') {
+                                      if (roomNum && !seenRooms.SNGL.has(roomNum)) {
+                                        roomCounts.SNGL++;
+                                        seenRooms.SNGL.add(roomNum);
+                                      } else if (!roomNum) {
+                                        touristsWithoutRoom.SNGL++;
+                                      }
+                                    }
+                                  });
+
+                                  // Add tourists without room numbers (DBL/TWN: 2 people = 1 room, SNGL: 1 person = 1 room)
+                                  roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
+                                  roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
+                                  roomCounts.SNGL += touristsWithoutRoom.SNGL;
+
+                                  // Count by placement
+                                  const uzbekCount = accTourists.filter(t => {
+                                    const acc = (t.accommodation || '').toLowerCase();
+                                    return acc.includes('uzbek') || acc.includes('узбек');
+                                  }).length;
+
+                                  const turkmCount = accTourists.filter(t => {
+                                    const acc = (t.accommodation || '').toLowerCase();
+                                    return acc.includes('turkmen') || acc.includes('туркмен');
+                                  }).length;
+
+                                  return (
+                                    <div className="flex items-stretch gap-4 flex-wrap mb-6">
+                                      {/* Total Guests Card */}
+                                      <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                        <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
+                                          <Users className="w-7 h-7 text-primary-600" />
+                                        </div>
+                                        <div>
+                                          <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
+                                          <div className="text-3xl font-bold text-gray-900">{totalGuests}</div>
+                                          <div className="text-xs text-gray-600">{totalGuests === 1 ? 'guest' : 'guests'}</div>
+                                        </div>
+                                      </div>
+
+                                      {/* DBL Rooms Card */}
+                                      {roomCounts.DBL > 0 && (
+                                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                          <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
+                                            <Bed className="w-7 h-7 text-blue-600" />
+                                          </div>
+                                          <div>
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                                              DBL
+                                            </div>
+                                            <div className="text-3xl font-bold text-gray-900">{roomCounts.DBL}</div>
+                                            <div className="text-xs text-gray-600">{roomCounts.DBL === 1 ? 'room' : 'rooms'}</div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* TWN Rooms Card */}
+                                      {roomCounts.TWN > 0 && (
+                                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                          <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
+                                            <Bed className="w-7 h-7 text-emerald-600" />
+                                          </div>
+                                          <div>
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                                              TWN
+                                            </div>
+                                            <div className="text-3xl font-bold text-gray-900">{roomCounts.TWN}</div>
+                                            <div className="text-xs text-gray-600">{roomCounts.TWN === 1 ? 'room' : 'rooms'}</div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* SNGL Rooms Card */}
+                                      {roomCounts.SNGL > 0 && (
+                                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                          <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
+                                            <User className="w-7 h-7 text-violet-600" />
+                                          </div>
+                                          <div>
+                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                                              SNGL
+                                            </div>
+                                            <div className="text-3xl font-bold text-gray-900">{roomCounts.SNGL}</div>
+                                            <div className="text-xs text-gray-600">{roomCounts.SNGL === 1 ? 'room' : 'rooms'}</div>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Uzbekistan/Turkmenistan Split Card */}
+                                      {uzbekCount > 0 && turkmCount > 0 && (
+                                        <div className="flex items-center gap-4 px-5 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-sm">
+                                          <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
+                                              <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Uzbekistan</span>
+                                              <span className="text-lg font-bold text-gray-900">{uzbekCount}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
+                                              <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Turkmenistan</span>
+                                              <span className="text-lg font-bold text-gray-900">{turkmCount}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Header */}
+                                <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-2xl border-2 border-gray-300 p-5 shadow-lg">
+                                  <div className="grid grid-cols-12 gap-4 items-center">
+                                    <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">№</div>
+                                    <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Имя</div>
+                                    <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Дата заезда</div>
+                                    <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Дата выезда</div>
+                                    <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Тип</div>
+                                    <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Placement</div>
+                                    <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Примечание</div>
+                                    <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider text-right">Actions</div>
+                                  </div>
+                                </div>
+
+                                {/* Tourist Cards with Room Pairing */}
+                                {(() => {
+                                  const renderedIds = new Set();
+                                  const cards = [];
+
+                                  sortedAccTourists.forEach((tourist, index) => {
+                                    if (renderedIds.has(tourist.id)) return;
+
+                                    const roomType = (tourist.roomPreference || '').toUpperCase();
+                                    const isDBL = roomType === 'DBL' || roomType === 'DOUBLE';
+                                    const isTWN = roomType === 'TWN' || roomType === 'TWIN';
+                                    const isSNGL = roomType === 'SNGL' || roomType === 'SINGLE';
+
+                                    const roomBadgeColor = isDBL
+                                      ? 'bg-blue-500 text-white'
+                                      : isTWN
+                                      ? 'bg-emerald-500 text-white'
+                                      : isSNGL
+                                      ? 'bg-violet-500 text-white'
+                                      : 'bg-gray-400 text-white';
+
+                                    // Check if this is part of a room pair
+                                    const isRoomPair = (isTWN || isDBL) && tourist.roomNumber;
+                                    const roommate = isRoomPair ? sortedAccTourists.find(t =>
+                                      t.roomNumber === tourist.roomNumber && t.id !== tourist.id
+                                    ) : null;
+
+                                    // Visual grouping for room pairs
+                                    let roomPairClasses = 'border-gray-200';
+                                    if (roommate) {
+                                      const roomPairIndex = parseInt(tourist.roomNumber?.match(/\d+/)?.[0] || 0);
+                                      const borderColor = roomPairIndex % 2 === 0 ? 'border-blue-500' : 'border-emerald-500';
+                                      const bgColor = roomPairIndex % 2 === 0 ? 'bg-blue-50/30' : 'bg-emerald-50/30';
+                                      roomPairClasses = `${borderColor} ${bgColor}`;
+                                      renderedIds.add(roommate.id);
+                                    }
+
+                                    renderedIds.add(tourist.id);
+
+                                    // Render function for a single tourist row
+                                    const renderTouristRow = (t, idx) => {
+                                      // Check if this tourist has accommodation-specific override
+                                      const hasAccommodationOverride = t.hasAccommodationOverride || false;
+
+                                      // Accommodation default dates
+                                      const accCheckIn = new Date(acc.checkInDate);
+                                      const accCheckOut = new Date(acc.checkOutDate);
+
+                                      // Tourist's individual dates from Rooming List (use these for display)
+                                      const touristCheckInDate = t.checkInDate ? new Date(t.checkInDate) : accCheckIn;
+                                      const touristCheckOutDate = t.checkOutDate ? new Date(t.checkOutDate) : accCheckOut;
+
+                                      // Check if tourist has different dates than accommodation (extra nights)
+                                      const hasDifferentDates = (
+                                        touristCheckInDate.getTime() !== accCheckIn.getTime() ||
+                                        touristCheckOutDate.getTime() !== accCheckOut.getTime()
+                                      );
+                                      const hasCustomDates = hasAccommodationOverride || hasDifferentDates;
+                                      const isEditing = editingTouristId === t.id;
+
+                                      return (
+                                        <div key={t.id} className={`grid grid-cols-12 gap-4 items-center rounded-xl p-3 ${hasCustomDates ? 'bg-yellow-50 border-2 border-yellow-300' : ''} ${isEditing ? 'bg-primary-50 border-2 border-primary-300' : ''}`}>
+                                          {/* Number */}
+                                          <div className="col-span-1">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 flex items-center justify-center shadow-sm">
+                                              <span className="text-sm font-bold text-gray-700">{idx + 1}</span>
+                                            </div>
+                                          </div>
+
+                                          {/* Name */}
+                                          <div className="col-span-2">
+                                            <div className="flex items-center gap-2">
+                                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                <User className="w-5 h-5 text-blue-700" />
+                                              </div>
+                                              <div>
+                                                <div className="font-semibold text-gray-900 text-sm leading-tight">
+                                                  {t.fullName || `${t.lastName}, ${t.firstName}`}
+                                                </div>
+                                                {hasAccommodationOverride && (
+                                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full border border-yellow-300 mt-1">
+                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Custom
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {/* Check-in Date - Show individual tourist date from Rooming List */}
+                                          <div className="col-span-2">
+                                            {isEditing ? (
+                                              <input
+                                                type="date"
+                                                value={editForm.checkInDate}
+                                                onChange={(e) => setEditForm({...editForm, checkInDate: e.target.value})}
+                                                className="w-full px-3 py-2 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                              />
+                                            ) : (
+                                              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${hasCustomDates ? 'bg-yellow-100 border border-yellow-400' : 'bg-blue-50 border border-blue-200'}`}>
+                                                <span className={`text-xs font-medium ${hasCustomDates ? 'text-yellow-900' : 'text-blue-700'}`}>
+                                                  {format(touristCheckInDate, 'dd.MM.yyyy')}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Check-out Date - Show individual tourist date from Rooming List */}
+                                          <div className="col-span-2">
+                                            {isEditing ? (
+                                              <input
+                                                type="date"
+                                                value={editForm.checkOutDate}
+                                                onChange={(e) => setEditForm({...editForm, checkOutDate: e.target.value})}
+                                                className="w-full px-3 py-2 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                              />
+                                            ) : (
+                                              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${hasCustomDates ? 'bg-yellow-100 border border-yellow-400' : 'bg-red-50 border border-red-200'}`}>
+                                                <span className={`text-xs font-medium ${hasCustomDates ? 'text-yellow-900' : 'text-red-700'}`}>
+                                                  {format(touristCheckOutDate, 'dd.MM.yyyy')}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Room Type */}
+                                          <div className="col-span-1">
+                                            {isEditing ? (
+                                              <select
+                                                value={editForm.roomPreference}
+                                                onChange={(e) => setEditForm({...editForm, roomPreference: e.target.value})}
+                                                className="w-full px-2 py-2 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                              >
+                                                <option value="">-</option>
+                                                <option value="DBL">DBL</option>
+                                                <option value="TWN">TWN</option>
+                                                <option value="SNGL">SNGL</option>
+                                                <option value="TRPL">TRPL</option>
+                                              </select>
+                                            ) : (
+                                              <span className={`inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm ${roomBadgeColor}`}>
+                                                {t.roomPreference || '-'}
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          {/* Placement */}
+                                          <div className="col-span-1">
+                                            {isEditing ? (
+                                              <select
+                                                value={editForm.accommodation}
+                                                onChange={(e) => setEditForm({...editForm, accommodation: e.target.value})}
+                                                className="w-full px-2 py-2 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                              >
+                                                <option value="">-</option>
+                                                <option value="Uzbekistan">UZ</option>
+                                                <option value="Turkmenistan">TM</option>
+                                              </select>
+                                            ) : (
+                                              <>
+                                                {t.accommodation?.toLowerCase().includes('turkmen') ? (
+                                                  <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm">
+                                                    TM
+                                                  </span>
+                                                ) : t.accommodation?.toLowerCase().includes('uzbek') ? (
+                                                  <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm">
+                                                    UZ
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-gray-400 text-center text-xs">-</span>
+                                                )}
+                                              </>
+                                            )}
+                                          </div>
+
+                                          {/* Примечание - Show individual dates if different from group */}
+                                          <div className="col-span-2">
+                                            {(() => {
+                                              const notes = [];
+
+                                              // Check if early arrival (tourist arrives before group)
+                                              if (touristCheckInDate.getTime() < accCheckIn.getTime()) {
+                                                const earlyDate = format(touristCheckInDate, 'dd.MM.yyyy');
+                                                notes.push(`Заезд: ${earlyDate}`);
+                                              }
+
+                                              // Check if late departure (tourist leaves after group)
+                                              if (touristCheckOutDate.getTime() > accCheckOut.getTime()) {
+                                                const lateDate = format(touristCheckOutDate, 'dd.MM.yyyy');
+                                                notes.push(`Выезд: ${lateDate}`);
+                                              }
+
+                                              return notes.length > 0 ? (
+                                                <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-300 rounded-lg px-3 py-2 shadow-sm">
+                                                  <div className="text-xs leading-relaxed font-medium space-y-1">
+                                                    {notes.map((note, idx) => (
+                                                      <div key={idx}>{note}</div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <span className="text-gray-400 text-xs">-</span>
+                                              );
+                                            })()}
+                                          </div>
+
+                                          {/* Actions */}
+                                          <div className="col-span-1">
+                                            <div className="flex items-center justify-end gap-2">
+                                              {isEditing ? (
+                                                <>
+                                                  {/* Save Button */}
+                                                  <button
+                                                    onClick={async () => {
+                                                      try {
+                                                        // Use accommodation-specific API to save dates for this hotel only
+                                                        await bookingsApi.updateAccommodationRoomingList(
+                                                          booking.id,
+                                                          acc.id,
+                                                          t.id,
+                                                          {
+                                                            checkInDate: editForm.checkInDate || null,
+                                                            checkOutDate: editForm.checkOutDate || null,
+                                                            roomPreference: editForm.roomPreference,
+                                                            notes: editForm.remarks
+                                                          }
+                                                        );
+                                                        toast.success('Tourist updated for this hotel');
+                                                        setEditingTouristId(null);
+                                                        // Reload accommodation-specific rooming list
+                                                        await loadAccommodationRoomingList(acc.id);
+                                                        // Also reload main data to refresh calculations
+                                                        await loadData();
+                                                      } catch (error) {
+                                                        console.error('Update error:', error);
+                                                        toast.error('Error updating tourist');
+                                                      }
+                                                    }}
+                                                    className="p-2 text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-all hover:scale-110 shadow-sm"
+                                                    title="Save"
+                                                  >
+                                                    <Save className="w-4 h-4" />
+                                                  </button>
+                                                  {/* Cancel Button */}
+                                                  <button
+                                                    onClick={() => {
+                                                      setEditingTouristId(null);
+                                                      setEditForm({
+                                                        checkInDate: '',
+                                                        checkOutDate: '',
+                                                        roomPreference: '',
+                                                        accommodation: '',
+                                                        remarks: ''
+                                                      });
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all hover:scale-110 shadow-sm"
+                                                    title="Cancel"
+                                                  >
+                                                    <X className="w-4 h-4" />
+                                                  </button>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  {/* Edit Button */}
+                                                  <button
+                                                    onClick={() => {
+                                                      setEditingTouristId(t.id);
+                                                      setEditForm({
+                                                        checkInDate: t.checkInDate ? format(new Date(t.checkInDate), 'yyyy-MM-dd') : '',
+                                                        checkOutDate: t.checkOutDate ? format(new Date(t.checkOutDate), 'yyyy-MM-dd') : '',
+                                                        roomPreference: t.roomPreference || '',
+                                                        accommodation: t.accommodation || '',
+                                                        remarks: t.remarks || ''
+                                                      });
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all hover:scale-110 shadow-sm"
+                                                    title="Edit"
+                                                  >
+                                                    <Edit className="w-4 h-4" />
+                                                  </button>
+                                                  {/* Delete Button */}
+                                                  <button
+                                                    onClick={async () => {
+                                                      if (window.confirm(`Delete ${t.fullName || t.firstName + ' ' + t.lastName}?`)) {
+                                                        try {
+                                                          await touristsApi.delete(booking.id, t.id);
+                                                          toast.success('Tourist deleted');
+                                                          loadData();
+                                                        } catch (error) {
+                                                          console.error('Delete error:', error);
+                                                          toast.error('Error deleting tourist');
+                                                        }
+                                                      }
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all hover:scale-110 shadow-sm"
+                                                    title="Delete"
+                                                  >
+                                                    <Trash2 className="w-4 h-4" />
+                                                  </button>
+                                                </>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    };
+
+                                    cards.push(
+                                      <div
+                                        key={`card-${tourist.id}`}
+                                        className={`bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md hover:shadow-lg transition-all duration-300 p-4 ${roomPairClasses}`}
+                                      >
+                                        {roommate ? (
+                                          // Room pair - 2 tourists in one card
+                                          <div className="space-y-3">
+                                            {renderTouristRow(tourist, index)}
+                                            <div className="border-t-2 border-dashed border-gray-300 pt-3">
+                                              {renderTouristRow(roommate, sortedAccTourists.indexOf(roommate))}
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          // Single tourist
+                                          renderTouristRow(tourist, index)
+                                        )}
+                                      </div>
+                                    );
+                                  });
+
+                                  return cards;
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
 
@@ -1882,6 +3650,216 @@ export default function BookingDetail() {
                 <Save className="w-4 h-4" />
                 Сохранить
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Route Edit Modal */}
+      {showRouteModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scaleIn">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
+                    <MapPin className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold mb-1">
+                      {editingRoute ? 'Edit Route' : 'Add New Route'}
+                    </h2>
+                    <p className="text-blue-100">Configure transportation details</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowRouteModal(false);
+                    setEditingRoute(null);
+                  }}
+                  className="p-2.5 hover:bg-white/20 rounded-xl transition-all duration-300 hover:rotate-90"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-8 space-y-6 max-h-[calc(100vh-300px)] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 text-xs font-bold">1</span>
+                    Nomer
+                  </label>
+                  <input
+                    type="text"
+                    value={routeForm.nomer}
+                    onChange={(e) => setRouteForm({ ...routeForm, nomer: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-amber-100 focus:border-amber-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
+                    placeholder="e.g., 1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-rose-100 rounded-lg flex items-center justify-center text-rose-600 text-xs font-bold">2</span>
+                    Sana
+                  </label>
+                  <input
+                    type="date"
+                    value={routeForm.sana}
+                    onChange={(e) => setRouteForm({ ...routeForm, sana: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-rose-100 focus:border-rose-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 text-xs font-bold">3</span>
+                    Shahar
+                  </label>
+                  <select
+                    value={routeForm.shahar}
+                    onChange={(e) => setRouteForm({ ...routeForm, shahar: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-300 text-gray-900 font-medium"
+                  >
+                    <option value="">Select City</option>
+                    <option value="Tashkent">Tashkent</option>
+                    <option value="Samarkand">Samarkand</option>
+                    <option value="Asraf">Asraf</option>
+                    <option value="Bukhara">Bukhara</option>
+                    <option value="Khiva">Khiva</option>
+                    <option value="Urgench">Urgench</option>
+                    <option value="Fergana">Fergana</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xs font-bold">4</span>
+                    Route Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={routeForm.route}
+                    onChange={(e) => setRouteForm({ ...routeForm, route: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
+                    placeholder="e.g., Tashkent Airport PickUp"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 text-xs font-bold">5</span>
+                    Person Count
+                  </label>
+                  <input
+                    type="text"
+                    value={routeForm.person}
+                    onChange={(e) => setRouteForm({ ...routeForm, person: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
+                    placeholder="15"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 text-xs font-bold">6</span>
+                    Transport Type
+                  </label>
+                  <input
+                    type="text"
+                    value={routeForm.transportType}
+                    onChange={(e) => setRouteForm({ ...routeForm, transportType: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
+                    placeholder="e.g., Joylong"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-cyan-100 rounded-lg flex items-center justify-center text-cyan-600 text-xs font-bold">7</span>
+                    Provider
+                  </label>
+                  <select
+                    value={routeForm.choiceTab}
+                    onChange={(e) => setRouteForm({ ...routeForm, choiceTab: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-300 text-gray-900 font-medium"
+                  >
+                    <option value="">Select Provider</option>
+                    <option value="sevil">Sevil</option>
+                    <option value="xayrulla">Xayrulla</option>
+                    <option value="nosir">Nosir</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-pink-100 rounded-lg flex items-center justify-center text-pink-600 text-xs font-bold">8</span>
+                    Option Rate
+                  </label>
+                  <input
+                    type="text"
+                    value={routeForm.choiceRate}
+                    onChange={(e) => setRouteForm({ ...routeForm, choiceRate: e.target.value })}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-100 focus:border-pink-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
+                    placeholder="e.g., tagRate"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center text-green-600 text-xs font-bold">9</span>
+                    Price
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">$</span>
+                    <input
+                      type="text"
+                      value={routeForm.price}
+                      onChange={(e) => setRouteForm({ ...routeForm, price: e.target.value })}
+                      className="w-full pl-10 pr-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-green-100 focus:border-green-500 transition-all duration-300 text-gray-900 font-bold text-lg placeholder-gray-400"
+                      placeholder="50"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-8 py-6 flex items-center justify-between border-t border-gray-200">
+              <p className="text-sm text-gray-500">
+                {editingRoute ? 'Update your route information' : 'All fields are optional except Route Name'}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowRouteModal(false);
+                    setEditingRoute(null);
+                  }}
+                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 transition-all duration-300 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveRoute}
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold flex items-center gap-2"
+                >
+                  {editingRoute ? (
+                    <>
+                      <Edit className="w-4 h-4" />
+                      Update Route
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add Route
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

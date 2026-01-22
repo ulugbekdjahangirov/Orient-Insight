@@ -402,6 +402,7 @@ model Accommodation {
   roomTypeId    Int?
   roomType      RoomType? @relation(fields: [roomTypeId], references: [id])
   rooms         AccommodationRoom[]
+  roomingList   AccommodationRoomingList[]
 
   @@index([bookingId])
   @@index([hotelId])
@@ -473,6 +474,7 @@ model Tourist {
 
   // Назначения в номера
   roomAssignments TouristRoomAssignment[]
+  accommodationRoomingList AccommodationRoomingList[]
 
   @@index([bookingId])
   @@index([lastName])
@@ -500,6 +502,28 @@ model TouristRoomAssignment {
   @@unique([touristId, bookingRoomId])  // Один турист - одно назначение на номер
   @@index([touristId])
   @@index([bookingRoomId])
+}
+
+// Rooming List для конкретного размещения (hotel-specific tourist dates)
+model AccommodationRoomingList {
+  id              Int       @id @default(autoincrement())
+  accommodationId Int
+  accommodation   Accommodation @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
+  touristId       Int
+  tourist         Tourist   @relation(fields: [touristId], references: [id], onDelete: Cascade)
+
+  // Hotel-specific dates (override Tourist.checkInDate/checkOutDate for this hotel)
+  checkInDate     DateTime?                // Дата заезда в этот отель
+  checkOutDate    DateTime?                // Дата выезда из этого отеля
+  roomPreference  String?                  // Room type для этого отеля (DBL, TWN, SNGL)
+
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([accommodationId, touristId])  // One tourist per accommodation
+  @@index([accommodationId])
+  @@index([touristId])
 }
 
 // ============================================

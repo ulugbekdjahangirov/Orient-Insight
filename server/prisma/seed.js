@@ -346,6 +346,11 @@ async function main() {
     const { roomTypes, cityName, ...hotel } = hotelData;
     const cityId = createdCities[cityName];
 
+    // Convert stars to string if it's a number
+    if (typeof hotel.stars === 'number') {
+      hotel.stars = hotel.stars.toString();
+    }
+
     // Проверяем существование отеля
     const existingHotel = await prisma.hotel.findFirst({
       where: { name: hotel.name, cityId }

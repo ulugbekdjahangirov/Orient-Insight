@@ -13,7 +13,7 @@ export default function Layout() {
       <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
-        <main className="p-6">
+        <main>
           <Outlet />
         </main>
       </div>

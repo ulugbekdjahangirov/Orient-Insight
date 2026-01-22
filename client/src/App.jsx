@@ -9,6 +9,7 @@ import BookingDetail from './pages/BookingDetail';
 import Guides from './pages/Guides';
 import TourTypes from './pages/TourTypes';
 import Hotels from './pages/Hotels';
+import Opex from './pages/Opex';
 import Import from './pages/Import';
 import Users from './pages/Users';
 
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="guides" element={<Guides />} />
         <Route path="tour-types" element={<TourTypes />} />
         <Route path="hotels" element={<Hotels />} />
+        <Route path="opex" element={<Opex />} />
         <Route
           path="import"
           element={

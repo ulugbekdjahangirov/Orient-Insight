@@ -35,6 +35,20 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   // Export dropdown state
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
+  // Add Tourist modal state
+  const [addTouristModalOpen, setAddTouristModalOpen] = useState(false);
+  const [newTouristForm, setNewTouristForm] = useState({
+    firstName: '',
+    lastName: '',
+    fullName: '',
+    gender: 'M',
+    roomPreference: 'DBL',
+    accommodation: 'Uzbekistan',
+    country: 'Germany',
+    passportNumber: '',
+    remarks: ''
+  });
+
   useEffect(() => {
     loadData();
   }, [bookingId]);
@@ -90,8 +104,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
   // Check if tourist is Turkmenistan
   const isTurkmenistan = (tourist) => {
-    const acc = tourist.accommodation?.toLowerCase() || '';
-    return acc.includes('turkmenistan');
+    const acc = (tourist.accommodation || '').toLowerCase();
+    return acc.includes('turkmenistan') ||
+           acc.includes('turkmen') ||
+           acc.includes('туркмен') ||
+           acc === 'tm';
   };
 
   // Group tourists by room type for display
@@ -362,6 +379,51 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     }
   };
 
+  // Open Add Tourist modal
+  const openAddTouristModal = () => {
+    setNewTouristForm({
+      firstName: '',
+      lastName: '',
+      fullName: '',
+      gender: 'M',
+      roomPreference: 'DBL',
+      accommodation: 'Uzbekistan',
+      country: 'Germany',
+      passportNumber: '',
+      remarks: ''
+    });
+    setAddTouristModalOpen(true);
+  };
+
+  // Save new tourist
+  const saveNewTourist = async () => {
+    try {
+      // Validate required fields
+      if (!newTouristForm.firstName || !newTouristForm.lastName) {
+        toast.error('First name and last name are required');
+        return;
+      }
+
+      // Build full name
+      const fullName = newTouristForm.fullName || `${newTouristForm.lastName}, ${newTouristForm.firstName}`;
+
+      const touristData = {
+        ...newTouristForm,
+        fullName,
+        bookingId: parseInt(bookingId)
+      };
+
+      await touristsApi.create(bookingId, touristData);
+      toast.success('Tourist added successfully');
+      setAddTouristModalOpen(false);
+      loadData();
+      onUpdate?.();
+    } catch (error) {
+      console.error('Error adding tourist:', error);
+      toast.error(error.response?.data?.error || 'Error adding tourist');
+    }
+  };
+
   // ============================================
   // EXPORT HANDLER (Name, Room, Remarks only)
   // ============================================
@@ -447,7 +509,17 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           wsData.push(['']);
           wsData.push(['№', 'ФИО', 'Дата заезда', 'дата выезда', 'Категория номера', 'Дополнительная информация']);
 
-          hotelTourists.forEach((t, idx) => {
+          // Sort by placement: UZ first, then TM
+          const sortedHotelTourists = [...hotelTourists].sort((a, b) => {
+            const isATurkmen = isTurkmenistan(a);
+            const isBTurkmen = isTurkmenistan(b);
+            if (isATurkmen !== isBTurkmen) {
+              return isATurkmen ? 1 : -1;
+            }
+            return 0;
+          });
+
+          sortedHotelTourists.forEach((t, idx) => {
             const name = t.fullName || `${t.lastName}, ${t.firstName}`;
             const checkIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : checkInDate;
             const checkOut = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : checkOutDate;
@@ -491,7 +563,17 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             ['№', 'Name', 'Room', 'Additional Information']
           ];
 
-          filteredTourists.forEach((t, idx) => {
+          // Sort by placement: UZ first, then TM
+          const sortedTouristsForExcel = [...filteredTourists].sort((a, b) => {
+            const isATurkmen = isTurkmenistan(a);
+            const isBTurkmen = isTurkmenistan(b);
+            if (isATurkmen !== isBTurkmen) {
+              return isATurkmen ? 1 : -1;
+            }
+            return 0;
+          });
+
+          sortedTouristsForExcel.forEach((t, idx) => {
             const name = t.fullName || `${t.lastName}, ${t.firstName}`;
             wsData.push([idx + 1, name, t.roomPreference || '-', t.remarks || '-']);
           });
@@ -554,8 +636,18 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         const currentDate = formatDisplayDate(new Date().toISOString());
 
         // Build tourist rows for ROOMING LISTE table - simple sequential list
+        // Sort by placement: UZ first, then TM
+        const sortedFilteredTourists = [...filteredTourists].sort((a, b) => {
+          const isATurkmen = isTurkmenistan(a);
+          const isBTurkmen = isTurkmenistan(b);
+          if (isATurkmen !== isBTurkmen) {
+            return isATurkmen ? 1 : -1;
+          }
+          return 0;
+        });
+
         let touristRows = '';
-        filteredTourists.forEach((t, idx) => {
+        sortedFilteredTourists.forEach((t, idx) => {
           const name = t.fullName || `${t.lastName}, ${t.firstName}`;
 
           // Get room category - try different sources
@@ -899,8 +991,18 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       const currentDate = formatDisplayDate(new Date().toISOString());
 
       // Build tourist rows for ROOMING LISTE table
+      // Sort by placement: UZ first, then TM
+      const sortedHotelTouristsForPDF = [...hotelTourists].sort((a, b) => {
+        const isATurkmen = isTurkmenistan(a);
+        const isBTurkmen = isTurkmenistan(b);
+        if (isATurkmen !== isBTurkmen) {
+          return isATurkmen ? 1 : -1;
+        }
+        return 0;
+      });
+
       let touristRows = '';
-      hotelTourists.forEach((t, idx) => {
+      sortedHotelTouristsForPDF.forEach((t, idx) => {
         const name = t.fullName || `${t.lastName}, ${t.firstName}`;
 
         // Get room category
@@ -1225,22 +1327,40 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               {(() => {
                 const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
                 const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+                const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
 
                 tourists.forEach(t => {
                   const roomType = (t.roomPreference || '').toUpperCase();
                   const roomNum = t.roomNumber;
 
-                  if ((roomType === 'DBL' || roomType === 'DOUBLE') && roomNum && !seenRooms.DBL.has(roomNum)) {
-                    roomCounts.DBL++;
-                    seenRooms.DBL.add(roomNum);
-                  } else if (roomType === 'TWN' && roomNum && !seenRooms.TWN.has(roomNum)) {
-                    roomCounts.TWN++;
-                    seenRooms.TWN.add(roomNum);
-                  } else if ((roomType === 'SNGL' || roomType === 'SINGLE') && roomNum && !seenRooms.SNGL.has(roomNum)) {
-                    roomCounts.SNGL++;
-                    seenRooms.SNGL.add(roomNum);
+                  if (roomType === 'DBL' || roomType === 'DOUBLE') {
+                    if (roomNum && !seenRooms.DBL.has(roomNum)) {
+                      roomCounts.DBL++;
+                      seenRooms.DBL.add(roomNum);
+                    } else if (!roomNum) {
+                      touristsWithoutRoom.DBL++;
+                    }
+                  } else if (roomType === 'TWN' || roomType === 'TWIN') {
+                    if (roomNum && !seenRooms.TWN.has(roomNum)) {
+                      roomCounts.TWN++;
+                      seenRooms.TWN.add(roomNum);
+                    } else if (!roomNum) {
+                      touristsWithoutRoom.TWN++;
+                    }
+                  } else if (roomType === 'SNGL' || roomType === 'SINGLE') {
+                    if (roomNum && !seenRooms.SNGL.has(roomNum)) {
+                      roomCounts.SNGL++;
+                      seenRooms.SNGL.add(roomNum);
+                    } else if (!roomNum) {
+                      touristsWithoutRoom.SNGL++;
+                    }
                   }
                 });
+
+                // Add tourists without room numbers (DBL/TWN: 2 people = 1 room, SNGL: 1 person = 1 room)
+                roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
+                roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
+                roomCounts.SNGL += touristsWithoutRoom.SNGL;
 
                 const roomTypes = [
                   { key: 'DBL', label: 'Double', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-500', icon: '👫' },
@@ -1378,7 +1498,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       {/* Hotel-Grouped Tourist List */}
       {filteredTourists.length > 0 ? (
         <div className="space-y-8">
-          {Object.entries(touristsByHotel).map(([hotelName, hotelTourists]) => (
+          {(() => {
+            let globalTouristIndex = 0; // Global counter for all tourists across all hotels
+            return Object.entries(touristsByHotel).map(([hotelName, hotelTourists]) => (
             <div key={hotelName} className="bg-white rounded-2xl border-2 border-gray-300 shadow-lg overflow-hidden">
               {/* Hotel Header with Export Button */}
               <div className="bg-gradient-to-r from-blue-500 to-primary-600 px-6 py-4 flex items-center justify-between">
@@ -1391,14 +1513,24 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                     <p className="text-sm text-white/80">{hotelTourists.length} {hotelTourists.length === 1 ? 'guest' : 'guests'}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleHotelPdfExport(hotelName, hotelTourists)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-xl hover:bg-gray-50 font-medium shadow-lg transition-all hover:scale-105"
-                  title="Export PDF for this hotel"
-                >
-                  <FileText className="w-4 h-4" />
-                  Export PDF
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={openAddTouristModal}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 font-medium shadow-lg transition-all hover:scale-105"
+                    title="Add tourist manually"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Tourist
+                  </button>
+                  <button
+                    onClick={() => handleHotelPdfExport(hotelName, hotelTourists)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-xl hover:bg-gray-50 font-medium shadow-lg transition-all hover:scale-105"
+                    title="Export PDF for this hotel"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Export PDF
+                  </button>
+                </div>
               </div>
 
               {/* Room Statistics for this hotel */}
@@ -1407,22 +1539,40 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                   {(() => {
                     const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
                     const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+                    const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
 
                     hotelTourists.forEach(t => {
                       const roomType = (t.roomPreference || '').toUpperCase();
                       const roomNum = t.roomNumber;
 
-                      if ((roomType === 'DBL' || roomType === 'DOUBLE') && roomNum && !seenRooms.DBL.has(roomNum)) {
-                        roomCounts.DBL++;
-                        seenRooms.DBL.add(roomNum);
-                      } else if (roomType === 'TWN' && roomNum && !seenRooms.TWN.has(roomNum)) {
-                        roomCounts.TWN++;
-                        seenRooms.TWN.add(roomNum);
-                      } else if ((roomType === 'SNGL' || roomType === 'SINGLE') && roomNum && !seenRooms.SNGL.has(roomNum)) {
-                        roomCounts.SNGL++;
-                        seenRooms.SNGL.add(roomNum);
+                      if (roomType === 'DBL' || roomType === 'DOUBLE') {
+                        if (roomNum && !seenRooms.DBL.has(roomNum)) {
+                          roomCounts.DBL++;
+                          seenRooms.DBL.add(roomNum);
+                        } else if (!roomNum) {
+                          touristsWithoutRoom.DBL++;
+                        }
+                      } else if (roomType === 'TWN' || roomType === 'TWIN') {
+                        if (roomNum && !seenRooms.TWN.has(roomNum)) {
+                          roomCounts.TWN++;
+                          seenRooms.TWN.add(roomNum);
+                        } else if (!roomNum) {
+                          touristsWithoutRoom.TWN++;
+                        }
+                      } else if (roomType === 'SNGL' || roomType === 'SINGLE') {
+                        if (roomNum && !seenRooms.SNGL.has(roomNum)) {
+                          roomCounts.SNGL++;
+                          seenRooms.SNGL.add(roomNum);
+                        } else if (!roomNum) {
+                          touristsWithoutRoom.SNGL++;
+                        }
                       }
                     });
+
+                    // Add tourists without room numbers (DBL/TWN: 2 people = 1 room, SNGL: 1 person = 1 room)
+                    roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
+                    roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
+                    roomCounts.SNGL += touristsWithoutRoom.SNGL;
 
                     const roomTypes = [
                       { key: 'DBL', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', badge: 'bg-blue-500', icon: '👫' },
@@ -1468,11 +1618,22 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                   const renderedIds = new Set();
                   const cards = [];
 
-                  // Sort hotel tourists by room number
+                  // Sort hotel tourists: Uzbekistan first, then Turkmenistan
                   const sortedHotelTourists = [...hotelTourists].sort((a, b) => {
+                    // First: Sort by country (Uzbekistan before Turkmenistan)
+                    const isATurkmen = isTurkmenistan(a);
+                    const isBTurkmen = isTurkmenistan(b);
+
+                    if (isATurkmen !== isBTurkmen) {
+                      return isATurkmen ? 1 : -1; // Uzbekistan (false) first, Turkmenistan (true) last
+                    }
+
+                    // Second: Sort by room number
                     const roomA = a.roomNumber || '';
                     const roomB = b.roomNumber || '';
                     if (roomA !== roomB) return roomA.localeCompare(roomB);
+
+                    // Third: Sort by last name
                     return (a.lastName || '').localeCompare(b.lastName || '');
                   });
 
@@ -1527,10 +1688,12 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 const customCheckIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
                 const customCheckOut = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
 
-                // Extract flight date from remarks: "Flight: 09.10, Arrival: 10.10"
+                // Extract flight date and arrival date from remarks: "Flight: 09.10, Arrival: 10.10"
                 let flightDate = null;
                 let displayFlightDate = null;
+                let displayArrivalDate = null;
                 if (t.remarks) {
+                  // Extract Flight date
                   const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
                   if (flightMatch) {
                     const day = flightMatch[1];
@@ -1540,15 +1703,24 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                     displayFlightDate = `${day}.${month}.${year}`;
                     flightDate = true; // Flag to show yellow background
                   }
+
+                  // Extract Arrival date
+                  const arrivalMatch = t.remarks.match(/Arrival:\s*(\d{2})\.(\d{2})/i);
+                  if (arrivalMatch) {
+                    const day = arrivalMatch[1];
+                    const month = arrivalMatch[2];
+                    const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+                    displayArrivalDate = `${day}.${month}.${year}`;
+                  }
                 }
 
                 // Use custom dates if available, otherwise use booking dates
-                const displayCheckIn = customCheckIn || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
+                const displayCheckIn = displayArrivalDate || customCheckIn || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
                 const displayCheckOut = customCheckOut || (booking?.endDate ? formatDisplayDate(booking.endDate) : '-');
                 const displayTourStart = displayFlightDate || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
 
-                // Yellow background if has custom dates
-                const rowBgClass = hasCustomDates ? 'bg-yellow-50 border-2 border-yellow-300' : '';
+                // Yellow background if has custom dates or arrival date from remarks
+                const rowBgClass = (hasCustomDates || displayArrivalDate || displayFlightDate) ? 'bg-yellow-50 border-2 border-yellow-300' : '';
 
                 return (
                   <div key={t.id} className={`grid grid-cols-12 gap-4 items-center rounded-xl p-2 ${rowBgClass}`}>
@@ -1584,9 +1756,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
                     {/* Arrival */}
                     <div className="col-span-2">
-                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${customCheckIn ? 'bg-yellow-100 border border-yellow-400' : 'bg-green-50 border border-green-200'}`}>
-                        <span className={`text-xs font-medium ${customCheckIn ? 'text-yellow-900' : 'text-green-600'}`}>
-                          {customCheckIn || displayCheckIn}
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${displayArrivalDate || customCheckIn ? 'bg-yellow-100 border border-yellow-400' : 'bg-green-50 border border-green-200'}`}>
+                        <span className={`text-xs font-medium ${displayArrivalDate || customCheckIn ? 'text-yellow-900' : 'text-green-600'}`}>
+                          {displayCheckIn}
                         </span>
                       </div>
                     </div>
@@ -1625,15 +1797,24 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                     {/* Additional Information */}
                     <div className="col-span-2">
                       {(() => {
-                        // Build remarks text: only from Rooming List tab notes and custom dates
+                        // Show important information from remarks (Vegetarian, Birthday, Flight/Arrival)
                         const remarksLines = [];
-                        if (customCheckIn) {
-                          remarksLines.push(`Заезд: ${customCheckIn}`);
-                        }
-                        // Get notes from roomAssignments (Rooming List tab's Примечание column)
-                        const roomNotes = t.roomAssignments?.[0]?.notes || '';
-                        if (roomNotes) {
-                          remarksLines.push(...roomNotes.split('\n'));
+
+                        // Get remarks from tourist (contains Vegetarian, Birthday, Flight info from PDF import)
+                        const remarks = t.remarks || '';
+                        if (remarks && remarks !== '-') {
+                          // Split by newline and filter important info only
+                          const lines = remarks.split('\n').filter(line => {
+                            const lower = line.toLowerCase();
+                            // Include only important information
+                            return lower.includes('vegetarian') ||
+                                   lower.includes('birthday') ||
+                                   lower.includes('flight') ||
+                                   lower.includes('arrival') ||
+                                   lower.includes('заезд') ||
+                                   lower.includes('book extra nights');
+                          });
+                          remarksLines.push(...lines);
                         }
 
                         return remarksLines.length > 0 ? (
@@ -1682,6 +1863,10 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 );
               };
 
+              const currentIndex = globalTouristIndex;
+              globalTouristIndex++; // Increment for the first tourist
+              const roommateIndex = roommate ? globalTouristIndex++ : null; // Increment for roommate if exists
+
               cards.push(
 
                 <div
@@ -1691,14 +1876,14 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                   {roommate ? (
                     // Room pair - 2 tourists in one card
                     <div className="space-y-4">
-                      {renderTouristRow(tourist, index)}
+                      {renderTouristRow(tourist, currentIndex)}
                       <div className="border-t-2 border-dashed border-gray-300 pt-4">
-                        {renderTouristRow(roommate, sortedHotelTourists.indexOf(roommate))}
+                        {renderTouristRow(roommate, roommateIndex)}
                       </div>
                     </div>
                   ) : (
                     // Single tourist
-                    renderTouristRow(tourist, index)
+                    renderTouristRow(tourist, currentIndex)
                   )}
                 </div>
               );
@@ -1708,7 +1893,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           })()}
               </div>
             </div>
-          ))}
+          ));
+          })()}
         </div>
       ) : (
         <div className="text-center py-16 bg-gradient-to-b from-gray-50 to-white rounded-2xl border-2 border-dashed border-gray-200">
@@ -1807,6 +1993,166 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               >
                 <Save className="w-4 h-4" />
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Tourist Modal */}
+      {addTouristModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-5 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Plus className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Add New Tourist</h2>
+                    <p className="text-sm text-white/70">Enter tourist information</p>
+                  </div>
+                </div>
+                <button onClick={() => setAddTouristModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              {/* Name fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    First Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newTouristForm.firstName}
+                    onChange={(e) => setNewTouristForm({ ...newTouristForm, firstName: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="e.g., Peter"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newTouristForm.lastName}
+                    onChange={(e) => setNewTouristForm({ ...newTouristForm, lastName: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="e.g., Schmidt"
+                  />
+                </div>
+              </div>
+
+              {/* Full Name (optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Full Name (optional)
+                </label>
+                <input
+                  type="text"
+                  value={newTouristForm.fullName}
+                  onChange={(e) => setNewTouristForm({ ...newTouristForm, fullName: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="Leave empty to auto-generate: Last, First"
+                />
+              </div>
+
+              {/* Gender and Room Type */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Gender</label>
+                  <select
+                    value={newTouristForm.gender}
+                    onChange={(e) => setNewTouristForm({ ...newTouristForm, gender: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  >
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Room Type</label>
+                  <select
+                    value={newTouristForm.roomPreference}
+                    onChange={(e) => setNewTouristForm({ ...newTouristForm, roomPreference: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  >
+                    {roomOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Accommodation and Country */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Placement</label>
+                  <select
+                    value={newTouristForm.accommodation}
+                    onChange={(e) => setNewTouristForm({ ...newTouristForm, accommodation: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+                  >
+                    <option value="Uzbekistan">Uzbekistan</option>
+                    <option value="Turkmenistan">Turkmenistan</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Country</label>
+                  <input
+                    type="text"
+                    value={newTouristForm.country}
+                    onChange={(e) => setNewTouristForm({ ...newTouristForm, country: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="e.g., Germany"
+                  />
+                </div>
+              </div>
+
+              {/* Passport Number */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Passport Number</label>
+                <input
+                  type="text"
+                  value={newTouristForm.passportNumber}
+                  onChange={(e) => setNewTouristForm({ ...newTouristForm, passportNumber: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., C01X00T47"
+                />
+              </div>
+
+              {/* Remarks */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Additional Information</label>
+                <textarea
+                  value={newTouristForm.remarks}
+                  onChange={(e) => setNewTouristForm({ ...newTouristForm, remarks: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  rows={3}
+                  placeholder="Vegetarian, Birthday, etc..."
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-5 bg-gray-50 border-t border-gray-100">
+              <button
+                onClick={() => setAddTouristModalOpen(false)}
+                className="px-5 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-100 font-medium text-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveNewTourist}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl hover:from-emerald-700 hover:to-emerald-800 font-medium shadow-md transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Add Tourist
               </button>
             </div>
           </div>

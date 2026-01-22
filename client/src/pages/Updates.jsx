@@ -681,7 +681,10 @@ export default function Updates() {
           tripType: tripType,
           gender: gender,
           remarks: remarks,
-          selected: true
+          selected: true,
+          // Set default check-in/out dates from booking (for calculating extra nights)
+          checkInDate: actualDepartureDate,
+          checkOutDate: endDate
         });
       }
 
@@ -745,7 +748,7 @@ export default function Updates() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div className="bg-gradient-to-br from-white via-gray-50 to-white rounded-3xl shadow-xl border-2 border-gray-200 p-8">
         <div className="flex items-center justify-between">
@@ -850,10 +853,10 @@ export default function Updates() {
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-primary-400 via-primary-300 to-primary-400 border-b-4 border-primary-500 shadow-lg sticky top-0 z-10">
                   <tr>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-3 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-24">
                       Номер
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
                       Тип тура
                     </th>
                     <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
@@ -862,30 +865,30 @@ export default function Updates() {
                     <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
                       Дата выезда
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-20">
                       Pax
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-24">
                       Узбекистан
                     </th>
                     {activeTab === 'ER' && (
-                      <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                      <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-28">
                         Туркменистан
                       </th>
                     )}
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-32">
                       Гид
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-40">
                       ЖД Билеты
                     </th>
-                    <th className="px-6 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-16">
                       DBL
                     </th>
-                    <th className="px-6 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-16">
                       TWN
                     </th>
-                    <th className="px-6 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider">
+                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-16">
                       SNGL
                     </th>
                     <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
@@ -916,16 +919,16 @@ export default function Updates() {
 
                     return (
                     <tr key={booking.id} className={`${rowClass} transition-all duration-200`}>
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-4">
                         <span className="font-bold text-gray-900 text-base">{index + 1}</span>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-2 py-4">
                         <Link
                           to={`/bookings/${booking.id}?edit=true`}
                           className="inline-flex items-center"
                         >
                           <span
-                            className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold text-white hover:shadow-lg hover:scale-105 transition-all duration-200 whitespace-nowrap shadow-sm"
+                            className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-bold text-white hover:shadow-lg hover:scale-105 transition-all duration-200 whitespace-nowrap shadow-sm"
                             style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
                           >
                             {booking.bookingNumber}
@@ -944,11 +947,11 @@ export default function Updates() {
                           <span className="font-bold text-gray-900">{booking.pax}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 font-semibold">
+                      <td className="px-3 py-4 text-sm text-gray-700 font-semibold text-center">
                         {booking.paxUzbekistan || 0}
                       </td>
                       {activeTab === 'ER' && (
-                        <td className="px-4 py-4 text-sm text-gray-700 font-semibold">
+                        <td className="px-3 py-4 text-sm text-gray-700 font-semibold text-center">
                           {booking.paxTurkmenistan || 0}
                         </td>
                       )}
@@ -956,17 +959,17 @@ export default function Updates() {
                         {booking.guide?.name || '-'}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                        <span className="truncate max-w-[100px] block" title={booking.trainTickets || ''}>
+                        <span className="truncate max-w-[140px] block" title={booking.trainTickets || ''}>
                           {booking.trainTickets || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-center text-sm text-gray-700 font-semibold">
+                      <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
                         {booking.roomsDbl > 0 ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : booking.roomsDbl.toFixed(1)) : '-'}
                       </td>
-                      <td className="px-4 py-4 text-center text-sm text-gray-700 font-semibold">
+                      <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
                         {booking.roomsTwn > 0 ? (Number(booking.roomsTwn) % 1 === 0 ? booking.roomsTwn : booking.roomsTwn.toFixed(1)) : '-'}
                       </td>
-                      <td className="px-4 py-4 text-center text-sm text-gray-700 font-semibold">
+                      <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
                         {booking.roomsSngl > 0 ? (Number(booking.roomsSngl) % 1 === 0 ? booking.roomsSngl : booking.roomsSngl.toFixed(1)) : '-'}
                       </td>
                       <td className="px-4 py-4">

@@ -46,7 +46,7 @@ export default function TourTypes() {
       const response = await tourTypesApi.getAll(true);
       setTourTypes(response.data.tourTypes);
     } catch (error) {
-      toast.error('Ошибка загрузки типов туров');
+      toast.error('Error loading tour types');
     } finally {
       setLoading(false);
     }
@@ -76,34 +76,34 @@ export default function TourTypes() {
 
   const handleSave = async () => {
     if (!formData.code.trim() || !formData.name.trim()) {
-      toast.error('Заполните обязательные поля');
+      toast.error('Fill in required fields');
       return;
     }
 
     try {
       if (editingType) {
         await tourTypesApi.update(editingType.id, formData);
-        toast.success('Тип тура обновлён');
+        toast.success('Tour type updated');
       } else {
         await tourTypesApi.create(formData);
-        toast.success('Тип тура добавлен');
+        toast.success('Tour type added');
       }
       closeModal();
       loadTourTypes();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка сохранения');
+      toast.error(error.response?.data?.error || 'Error saving');
     }
   };
 
   const handleDelete = async (type) => {
-    if (!confirm(`Удалить тип тура ${type.code}?`)) return;
+    if (!confirm(`Delete tour type ${type.code}?`)) return;
 
     try {
       await tourTypesApi.delete(type.id);
-      toast.success('Тип тура удалён');
+      toast.success('Tour type deleted');
       loadTourTypes();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка удаления');
+      toast.error(error.response?.data?.error || 'Error deleting');
     }
   };
 
@@ -122,7 +122,7 @@ export default function TourTypes() {
       setCities(citiesRes.data.cities || []);
       setHotels(hotelsRes.data.hotels || []);
     } catch (error) {
-      toast.error('Ошибка загрузки программы тура');
+      toast.error('Error loading tour program');
     } finally {
       setLoadingItinerary(false);
     }
@@ -228,17 +228,17 @@ export default function TourTypes() {
 
   const handleSaveDay = async () => {
     if (!dayFormData.dayNumber || !dayFormData.title.trim()) {
-      toast.error('Заполните номер дня и заголовок');
+      toast.error('Fill in day number and title');
       return;
     }
 
     try {
       if (editingDay) {
         await tourTypesApi.updateItineraryItem(selectedTourType.id, editingDay.id, dayFormData);
-        toast.success('День программы обновлён');
+        toast.success('Program day updated');
       } else {
         await tourTypesApi.createItineraryItem(selectedTourType.id, dayFormData);
-        toast.success('День программы добавлен');
+        toast.success('Program day added');
       }
 
       // Reload itinerary
@@ -248,22 +248,22 @@ export default function TourTypes() {
       // Close form after successful save
       closeDayForm();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка сохранения');
+      toast.error(error.response?.data?.error || 'Error saving');
     }
   };
 
   const handleDeleteDay = async (day) => {
-    if (!confirm(`Удалить ${day.title}?`)) return;
+    if (!confirm(`Delete ${day.title}?`)) return;
 
     try {
       await tourTypesApi.deleteItineraryItem(selectedTourType.id, day.id);
-      toast.success('День программы удалён');
+      toast.success('Program day deleted');
 
       // Reload itinerary
       const response = await tourTypesApi.getItinerary(selectedTourType.id);
       setItinerary(response.data.itinerary || []);
     } catch (error) {
-      toast.error('Ошибка удаления');
+      toast.error('Error deleting');
     }
   };
 
@@ -281,12 +281,12 @@ export default function TourTypes() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Типы туров</h1>
-          <p className="text-gray-500">Управление категориями туров</p>
+          <h1 className="text-2xl font-bold text-gray-900">Tour Types</h1>
+          <p className="text-gray-500">Manage tour categories</p>
         </div>
 
         <button
@@ -294,7 +294,7 @@ export default function TourTypes() {
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Добавить тип
+          Add Type
         </button>
       </div>
 
@@ -323,7 +323,7 @@ export default function TourTypes() {
                   <div>
                     <h3 className="font-semibold text-gray-900">{type.name}</h3>
                     <p className="text-xs text-gray-500">
-                      {type._count?.bookings || 0} бронирований
+                      {type._count?.bookings || 0} bookings
                     </p>
                   </div>
                 </div>
@@ -341,7 +341,7 @@ export default function TourTypes() {
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm text-gray-700"
                 >
                   <FileText className="w-4 h-4" />
-                  Программа тура
+                  Tour Program
                 </button>
 
                 <div className="flex items-center justify-between">
@@ -350,7 +350,7 @@ export default function TourTypes() {
                       type.isActive ? 'text-green-600' : 'text-gray-400'
                     }`}
                   >
-                    {type.isActive ? 'Активен' : 'Неактивен'}
+                    {type.isActive ? 'Active' : 'Inactive'}
                   </span>
 
                   <div className="flex items-center gap-1">
@@ -376,7 +376,7 @@ export default function TourTypes() {
 
       {tourTypes.length === 0 && (
         <div className="text-center py-12 text-gray-500">
-          Типы туров не найдены
+          No tour types found
         </div>
       )}
 
@@ -388,10 +388,10 @@ export default function TourTypes() {
               <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-xl">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Программа тура: {selectedTourType?.name}
+                  Tour Program: {selectedTourType?.name}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  {selectedTourType?.code} - План мероприятий по дням
+                  {selectedTourType?.code} - Daily itinerary plan
                 </p>
               </div>
               <button onClick={closeItineraryModal} className="p-1 hover:bg-gray-100 rounded">
@@ -414,7 +414,7 @@ export default function TourTypes() {
                         className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                       >
                         <Plus className="w-5 h-5" />
-                        Добавить день
+                        Add Day
                       </button>
                     </div>
                   )}
@@ -427,7 +427,7 @@ export default function TourTypes() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Номер дня *
+                          Day Number *
                         </label>
                         <input
                           type="number"
@@ -440,34 +440,34 @@ export default function TourTypes() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Заголовок *
+                          Title *
                         </label>
                         <input
                           type="text"
                           value={dayFormData.title}
                           onChange={(e) => setDayFormData({ ...dayFormData, title: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                          placeholder="День 1: Прибытие в Ташкент"
+                          placeholder="Day 1: Arrival in Tashkent"
                         />
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Описание
+                        Description
                       </label>
                       <textarea
                         value={dayFormData.description}
                         onChange={(e) => setDayFormData({ ...dayFormData, description: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                         rows={3}
-                        placeholder="Описание программы дня..."
+                        placeholder="Day program description..."
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Питание
+                        Meals
                       </label>
                       <div className="flex flex-wrap gap-3">
                         <label className="inline-flex items-center">
@@ -477,7 +477,7 @@ export default function TourTypes() {
                             onChange={() => toggleMeal('Завтрак')}
                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
                           />
-                          <span className="ml-2 text-sm text-gray-700">Завтрак</span>
+                          <span className="ml-2 text-sm text-gray-700">Breakfast</span>
                         </label>
                         <label className="inline-flex items-center">
                           <input
@@ -486,7 +486,7 @@ export default function TourTypes() {
                             onChange={() => toggleMeal('Обед')}
                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
                           />
-                          <span className="ml-2 text-sm text-gray-700">Обед</span>
+                          <span className="ml-2 text-sm text-gray-700">Lunch</span>
                         </label>
                         <label className="inline-flex items-center">
                           <input
@@ -495,7 +495,7 @@ export default function TourTypes() {
                             onChange={() => toggleMeal('Ужин')}
                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
                           />
-                          <span className="ml-2 text-sm text-gray-700">Ужин</span>
+                          <span className="ml-2 text-sm text-gray-700">Dinner</span>
                         </label>
                       </div>
                     </div>
@@ -503,7 +503,7 @@ export default function TourTypes() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Город
+                          City
                         </label>
                         <select
                           value={selectedCity}
@@ -513,7 +513,7 @@ export default function TourTypes() {
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                         >
-                          <option value="">Выберите город</option>
+                          <option value="">Select city</option>
                           {cities.map((city) => (
                             <option key={city.id} value={city.id}>
                               {city.name}
@@ -524,7 +524,7 @@ export default function TourTypes() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Отель
+                          Hotel
                         </label>
                         <select
                           value={dayFormData.accommodation}
@@ -532,7 +532,7 @@ export default function TourTypes() {
                           disabled={!selectedCity}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                         >
-                          <option value="">Выберите отель</option>
+                          <option value="">Select hotel</option>
                           {filteredHotels.map((hotel) => (
                             <option key={hotel.id} value={hotel.name}>
                               {hotel.name}
@@ -547,14 +547,14 @@ export default function TourTypes() {
                           onClick={closeDayForm}
                           className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                         >
-                          Отмена
+                          Cancel
                         </button>
                         <button
                           onClick={handleSaveDay}
                           className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                         >
                           <Save className="w-4 h-4" />
-                          Добавить
+                          Add
                         </button>
                       </div>
                     </div>
@@ -563,14 +563,14 @@ export default function TourTypes() {
                   {/* Itinerary list */}
                   <div className="space-y-3">
                     <h3 className="font-medium text-gray-900">
-                      Программа ({new Set(itinerary.map(d => d.dayNumber)).size} дней)
+                      Program ({new Set(itinerary.map(d => d.dayNumber)).size} days)
                     </h3>
 
                     {itinerary.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
                         <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                        <p>Программа тура пуста</p>
-                        <p className="text-sm">Добавьте первый день программы</p>
+                        <p>Tour program is empty</p>
+                        <p className="text-sm">Add the first program day</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -594,13 +594,13 @@ export default function TourTypes() {
                                   <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                                     {day.meals && (
                                       <span className="inline-flex items-center gap-1">
-                                        <span className="font-medium">Питание:</span>
+                                        <span className="font-medium">Meals:</span>
                                         {day.meals}
                                       </span>
                                     )}
                                     {day.accommodation && (
                                       <span className="inline-flex items-center gap-1">
-                                        <span className="font-medium">Отель:</span>
+                                        <span className="font-medium">Hotel:</span>
                                         {day.accommodation}
                                       </span>
                                     )}
@@ -627,12 +627,12 @@ export default function TourTypes() {
                             {/* Inline edit form */}
                             {editingDay?.id === day.id && (
                               <div className="bg-blue-50 border-2 border-primary-500 rounded-lg p-4 space-y-3 mt-2">
-                                <h3 className="font-medium text-gray-900">Редактировать день</h3>
+                                <h3 className="font-medium text-gray-900">Edit Day</h3>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Номер дня *
+                                      Day Number *
                                     </label>
                                     <input
                                       type="number"
@@ -645,34 +645,34 @@ export default function TourTypes() {
 
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Заголовок *
+                                      Title *
                                     </label>
                                     <input
                                       type="text"
                                       value={dayFormData.title}
                                       onChange={(e) => setDayFormData({ ...dayFormData, title: e.target.value })}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                      placeholder="День 1: Прибытие в Ташкент"
+                                      placeholder="Day 1: Arrival in Tashkent"
                                     />
                                   </div>
                                 </div>
 
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Описание
+                                    Description
                                   </label>
                                   <textarea
                                     value={dayFormData.description}
                                     onChange={(e) => setDayFormData({ ...dayFormData, description: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                     rows={3}
-                                    placeholder="Описание программы дня..."
+                                    placeholder="Day program description..."
                                   />
                                 </div>
 
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Питание
+                                    Meals
                                   </label>
                                   <div className="flex flex-wrap gap-3">
                                     <label className="inline-flex items-center">
@@ -682,7 +682,7 @@ export default function TourTypes() {
                                         onChange={() => toggleMeal('Завтрак')}
                                         className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700">Завтрак</span>
+                                      <span className="ml-2 text-sm text-gray-700">Breakfast</span>
                                     </label>
                                     <label className="inline-flex items-center">
                                       <input
@@ -691,7 +691,7 @@ export default function TourTypes() {
                                         onChange={() => toggleMeal('Обед')}
                                         className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700">Обед</span>
+                                      <span className="ml-2 text-sm text-gray-700">Lunch</span>
                                     </label>
                                     <label className="inline-flex items-center">
                                       <input
@@ -700,7 +700,7 @@ export default function TourTypes() {
                                         onChange={() => toggleMeal('Ужин')}
                                         className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
                                       />
-                                      <span className="ml-2 text-sm text-gray-700">Ужин</span>
+                                      <span className="ml-2 text-sm text-gray-700">Dinner</span>
                                     </label>
                                   </div>
                                 </div>
@@ -708,7 +708,7 @@ export default function TourTypes() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Город
+                                      City
                                     </label>
                                     <select
                                       value={selectedCity}
@@ -718,7 +718,7 @@ export default function TourTypes() {
                                       }}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                                     >
-                                      <option value="">Выберите город</option>
+                                      <option value="">Select city</option>
                                       {cities.map((city) => (
                                         <option key={city.id} value={city.id}>
                                           {city.name}
@@ -729,7 +729,7 @@ export default function TourTypes() {
 
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Отель
+                                      Hotel
                                     </label>
                                     <select
                                       value={dayFormData.accommodation}
@@ -737,7 +737,7 @@ export default function TourTypes() {
                                       disabled={!selectedCity}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
                                     >
-                                      <option value="">Выберите отель</option>
+                                      <option value="">Select hotel</option>
                                       {filteredHotels.map((hotel) => (
                                         <option key={hotel.id} value={hotel.name}>
                                           {hotel.name}
@@ -752,14 +752,14 @@ export default function TourTypes() {
                                     onClick={closeDayForm}
                                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                                   >
-                                    Отмена
+                                    Cancel
                                   </button>
                                   <button
                                     onClick={handleSaveDay}
                                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                                   >
                                     <Save className="w-4 h-4" />
-                                    Сохранить
+                                    Save
                                   </button>
                                 </div>
                               </div>
@@ -778,7 +778,7 @@ export default function TourTypes() {
                   onClick={closeItineraryModal}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  Закрыть
+                  Close
                 </button>
               </div>
             </div>
@@ -792,7 +792,7 @@ export default function TourTypes() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
-                {editingType ? 'Редактировать тип тура' : 'Новый тип тура'}
+                {editingType ? 'Edit Tour Type' : 'New Tour Type'}
               </h2>
               <button onClick={closeModal} className="p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
@@ -802,7 +802,7 @@ export default function TourTypes() {
             <div className="p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Код *
+                  Code *
                 </label>
                 <input
                   type="text"
@@ -816,33 +816,33 @@ export default function TourTypes() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Название *
+                  Name *
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="Тур по Узбекистану"
+                  placeholder="Tour in Uzbekistan"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Описание
+                  Description
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   rows={3}
-                  placeholder="Описание типа тура..."
+                  placeholder="Tour type description..."
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Цвет
+                  Color
                 </label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {colorOptions.map((color) => (

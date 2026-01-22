@@ -34,7 +34,12 @@ export const bookingsApi = {
   deleteRoom: (bookingId, roomId) => api.delete(`/bookings/${bookingId}/rooms/${roomId}`),
   checkRoomAvailability: (bookingId, params) => api.get(`/bookings/${bookingId}/rooms/availability`, { params }),
   // Rooming List
-  getRoomingList: (bookingId) => api.get(`/bookings/${bookingId}/rooming-list`),
+  getRoomingList: (bookingId, accommodationId = null) =>
+    accommodationId
+      ? api.get(`/bookings/${bookingId}/accommodations/${accommodationId}/rooming-list`)
+      : api.get(`/bookings/${bookingId}/rooming-list`),
+  getRoomingListPreview: (bookingId) => `/api/bookings/${bookingId}/rooming-list-preview`,
+  getHotelRequestPreview: (bookingId, accommodationId) => `/api/bookings/${bookingId}/hotel-request-preview/${accommodationId}`,
   // Hotel Requests
   getHotelRequests: (bookingId) => api.get(`/bookings/${bookingId}/hotel-requests`),
   getHotelRequest: (bookingId, hotelId) => api.get(`/bookings/${bookingId}/hotel-requests/${hotelId}`),
@@ -45,8 +50,13 @@ export const bookingsApi = {
   createAccommodation: (bookingId, data) => api.post(`/bookings/${bookingId}/accommodations`, data),
   updateAccommodation: (bookingId, accId, data) => api.put(`/bookings/${bookingId}/accommodations/${accId}`, data),
   deleteAccommodation: (bookingId, accId) => api.delete(`/bookings/${bookingId}/accommodations/${accId}`),
+  // Accommodation-specific Rooming List
+  getAccommodationRoomingList: (bookingId, accId) => api.get(`/bookings/${bookingId}/accommodations/${accId}/rooming-list`),
+  updateAccommodationRoomingList: (bookingId, accId, touristId, data) => api.put(`/bookings/${bookingId}/accommodations/${accId}/rooming-list/${touristId}`, data),
   // Справочник типов размещения
   getAccommodationRoomTypes: () => api.get('/bookings/accommodation-room-types'),
+  // Tourists
+  getTourists: (bookingId) => api.get(`/bookings/${bookingId}/tourists`),
   // Update all bookings' statuses based on PAX
   updateAllStatuses: () => api.post('/bookings/update-all-statuses'),
   // Recalculate room counts for all bookings

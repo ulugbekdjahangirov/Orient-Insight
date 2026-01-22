@@ -11,21 +11,23 @@ import {
   ChevronRight,
   Compass,
   Building2,
-  Bell
+  Bell,
+  Wallet
 } from 'lucide-react';
 
 const navItems = [
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Панель управления' },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/updates', icon: Bell, label: 'Updates' },
-  { path: '/bookings', icon: CalendarDays, label: 'Бронирования' },
-  { path: '/guides', icon: Users, label: 'Гиды' },
-  { path: '/tour-types', icon: MapPin, label: 'Типы туров' },
-  { path: '/hotels', icon: Building2, label: 'Отели' },
+  { path: '/bookings', icon: CalendarDays, label: 'Bookings' },
+  { path: '/guides', icon: Users, label: 'Guides' },
+  { path: '/tour-types', icon: MapPin, label: 'Tours' },
+  { path: '/hotels', icon: Building2, label: 'Hotels' },
+  { path: '/opex', icon: Wallet, label: 'OPEX' },
 ];
 
 const adminItems = [
-  { path: '/import', icon: Upload, label: 'Импорт Excel' },
-  { path: '/users', icon: UserCog, label: 'Пользователи' },
+  { path: '/import', icon: Upload, label: 'Import Excel' },
+  { path: '/users', icon: UserCog, label: 'Users' },
 ];
 
 export default function Sidebar({ open, onToggle }) {
@@ -46,7 +48,7 @@ export default function Sidebar({ open, onToggle }) {
           {open && (
             <div>
               <h1 className="font-bold text-lg">Orient Insight</h1>
-              <p className="text-xs text-gray-400">Система туров</p>
+              <p className="text-xs text-gray-400">Tour Management System</p>
             </div>
           )}
         </div>
@@ -56,7 +58,7 @@ export default function Sidebar({ open, onToggle }) {
       <nav className="p-4 space-y-2">
         {open && (
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-4 px-3">
-            Меню
+            MENU
           </p>
         )}
 
@@ -81,7 +83,7 @@ export default function Sidebar({ open, onToggle }) {
           <>
             {open && (
               <p className="text-xs text-gray-500 uppercase tracking-wider mt-6 mb-4 px-3">
-                Администрирование
+                ADMINISTRATION
               </p>
             )}
             {!open && <div className="border-t border-gray-800 my-4" />}

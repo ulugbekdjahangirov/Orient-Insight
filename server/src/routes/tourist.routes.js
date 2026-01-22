@@ -153,6 +153,11 @@ router.get('/:bookingId/tourists', authenticate, async (req, res) => {
               }
             }
           }
+        },
+        accommodationRoomingList: {
+          include: {
+            accommodation: true
+          }
         }
       }
     });
@@ -160,13 +165,8 @@ router.get('/:bookingId/tourists', authenticate, async (req, res) => {
     // Sort by accommodation (Uzbekistan first, Turkmenistan second), then by name
     const sortedTourists = sortTouristsByAccommodation(tourists);
 
-    // Debug: Log tourists with remarks
-    console.log(`📤 Returning ${sortedTourists.length} tourists for booking ${bookingId}`);
-    sortedTourists.forEach(t => {
-      if (t.remarks && t.remarks !== '-') {
-        console.log(`   📝 ${t.fullName}: remarks = "${t.remarks}"`);
-      }
-    });
+    // Return sorted tourists
+    // console.log(`Returning ${sortedTourists.length} tourists for booking ${bookingId}`);
 
     res.json({ tourists: sortedTourists });
   } catch (error) {
@@ -2277,14 +2277,71 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       const nameMatch = line.match(/^(Mr\.|Mrs\.|Ms\.)\s+(.+)$/i);
       if (nameMatch && currentRoomType) {
         let fullName = `${nameMatch[1]} ${nameMatch[2]}`.trim();
-        const nameParts = nameMatch[2].split(',').map(p => p.trim());
+
+        // Extract additional information from the same line (after name)
+        // Format in PDF table: "Mr. Smith, John       Additional info here"
+        // or: "Mr. Smith, John Additional info"
+        let additionalInfo = '';
+        const restOfLine = nameMatch[2];
+
+        // Split by multiple spaces (table column separator) or look for text after name
+        // Name format: "LastName, FirstName(s)"
+        const nameAndInfoMatch = restOfLine.match(/^([^,]+,\s*[^,\s]+(?:\s+[^,\s]+)*)\s{2,}(.+)$/);
+        if (nameAndInfoMatch) {
+          // Found additional info separated by multiple spaces
+          additionalInfo = nameAndInfoMatch[2].trim();
+          fullName = `${nameMatch[1]} ${nameAndInfoMatch[1]}`.trim();
+          console.log(`   📋 Additional info in same line: "${additionalInfo}"`);
+        }
+
+        // Look ahead for additional information in next lines
+        // Continue reading lines until we hit another tourist name or section marker
+        let j = i + 1;
+        const additionalLines = [];
+        while (j < lines.length) {
+          const nextLine = lines[j].trim();
+          const nextLower = nextLine.toLowerCase();
+
+          // Stop if we hit another tourist name
+          if (nextLine.match(/^(Mr\.|Mrs\.|Ms\.)\s+/i)) {
+            break;
+          }
+
+          // Stop if we hit a section marker
+          if (nextLower === 'double' || nextLower === 'twin' || nextLower === 'single' ||
+              nextLower.startsWith('total') || nextLower.includes('additional information') ||
+              nextLower.startsWith('vegetarian') || nextLower.startsWith('birthdays') ||
+              nextLower.startsWith('remark') || nextLower.startsWith('tour:') ||
+              nextLine === '//' || nextLine === '-' || nextLine === '' ||
+              nextLine.startsWith('___')) {
+            break;
+          }
+
+          // This line is additional information for the tourist
+          additionalLines.push(nextLine);
+          i = j; // Skip this line in main loop
+          j++;
+        }
+
+        // Combine additional info from same line and next lines
+        if (additionalLines.length > 0) {
+          const additionalFromNextLines = additionalLines.join(' ').trim();
+          console.log(`   📋 Additional info from next lines: "${additionalFromNextLines}"`);
+          if (additionalInfo) {
+            additionalInfo += ' ' + additionalFromNextLines;
+          } else {
+            additionalInfo = additionalFromNextLines;
+          }
+        }
+
+        const nameParts = fullName.replace(/^(Mr\.|Mrs\.|Ms\.)\s+/i, '').split(',').map(p => p.trim());
 
         let lastName = '', firstName = '';
         if (nameParts.length >= 2) {
           lastName = nameParts[0];
           firstName = nameParts.slice(1).join(' ');
         } else {
-          lastName = nameMatch[2];
+          lastName = nameParts[0];
         }
 
         // 🔍 Check if name ends with asterisk (*) - means "half double room, no roommate found"
@@ -2341,7 +2398,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
           roomNumber = `SNGL-${roomCounters.SNGL}`;
         }
 
-        // Just store basic tourist info, we'll add additional info later
+        // Store basic tourist info with additional info from table
         tourists.push({
           fullName,
           firstName,
@@ -2350,7 +2407,8 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
           roomType: currentRoomType,
           roomNumber: roomNumber, // Room grouping identifier
           tourType: currentTourType,
-          remarks: '-' // Will be updated later
+          remarks: '-', // Will be updated later with vegetarian/birthday/global remarks
+          additionalInfoFromTable: additionalInfo // Store table column data separately
         });
         continue;
       }
@@ -2666,6 +2724,12 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         additionalInfo.push(`Birthday: ${birthdayDate}`);
       }
 
+      // Add additional info from PDF table column (if exists)
+      if (tourist.additionalInfoFromTable && tourist.additionalInfoFromTable.trim() !== '' && tourist.additionalInfoFromTable !== '-') {
+        additionalInfo.push(tourist.additionalInfoFromTable.trim());
+        console.log(`   📋 ${tourist.fullName} has table additional info: "${tourist.additionalInfoFromTable}"`);
+      }
+
       // Parse individual remarks from global remark
       if (globalRemark) {
         const individualRemarks = parseIndividualRemarks(globalRemark, tourist);
@@ -2722,89 +2786,75 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       tourist.remarks = additionalInfo.length > 0 ? additionalInfo.join('\n') : '-';
     });
 
-    // 🔄 UPDATE MODE: Only update room assignments, preserve personal data (passport, nationality, etc.)
-    console.log(`🔍 Fetching existing tourists for booking ${bookingId}...`);
+    // 🆕 FULL REPLACEMENT MODE: Create all tourists from scratch
+    console.log(`🔍 Creating ${tourists.length} tourists from PDF...`);
 
-    const existingTourists = await prisma.tourist.findMany({
-      where: { bookingId: bookingIdInt }
-    });
-
-    console.log(`📋 Found ${existingTourists.length} existing tourists in database`);
-
-    // Helper function to normalize names for matching
-    const normalizeName = (name) => {
-      if (!name) return '';
-      return name
-        .toLowerCase()
-        .replace(/^(mr\.|mrs\.|ms\.|dr\.)\s*/i, '') // Remove titles
-        .replace(/\s+/g, ' ') // Normalize spaces
-        .replace(/[*]/g, '') // Remove asterisks
-        .trim();
-    };
-
-    let updatedCount = 0;
     let createdCount = 0;
+    let updatedCount = 0; // Full replacement mode: always 0 (no updates, only creates)
 
-    // Delete only flights and sections (NOT tourists) - we'll update tourists instead
-    console.log('🗑️  Deleting old flight data...');
+    // DELETE ALL old data (tourists, flights, sections) - full replacement mode
+    console.log('🗑️  Deleting all old data (tourists, flights)...');
     await prisma.$transaction([
+      // Delete AccommodationRoomingList entries first (foreign key constraint)
+      prisma.accommodationRoomingList.deleteMany({
+        where: {
+          tourist: { bookingId: bookingIdInt }
+        }
+      }),
+      // Delete tourists (cascade will handle room assignments)
+      prisma.tourist.deleteMany({ where: { bookingId: bookingIdInt } }),
+      // Delete flights
       prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } }),
       prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
     ]);
-    console.log('✓ Old flight data deleted');
+    console.log('✓ All old data deleted - starting fresh import');
 
-    // Process each tourist from PDF - UPDATE mode (preserve passport, nationality, DOB, etc.)
+    // Process each tourist from PDF - CREATE all tourists from scratch
     for (const pdfTourist of tourists) {
-      console.log(`   🔍 Processing ${pdfTourist.fullName}: checkInDate=${pdfTourist.checkInDate}, checkOutDate=${pdfTourist.checkOutDate}`);
+      console.log(`   ➕ Creating ${pdfTourist.fullName}: checkInDate=${pdfTourist.checkInDate}, checkOutDate=${pdfTourist.checkOutDate}`);
 
-      // Try to find existing tourist by name
-      const normalizedPdfFirstName = normalizeName(pdfTourist.firstName);
-      const normalizedPdfLastName = normalizeName(pdfTourist.lastName);
-
-      const existingTourist = existingTourists.find(t => {
-        const normalizedFirstName = normalizeName(t.firstName);
-        const normalizedLastName = normalizeName(t.lastName);
-        return normalizedFirstName === normalizedPdfFirstName && normalizedLastName === normalizedPdfLastName;
-      });
-
-      if (existingTourist) {
-        // UPDATE: Only update rooming info, preserve personal data
-        await prisma.tourist.update({
-          where: { id: existingTourist.id },
-          data: {
-            roomPreference: pdfTourist.roomType,
-            roomNumber: pdfTourist.roomNumber,
-            accommodation: pdfTourist.tourType,
-            remarks: pdfTourist.remarks || '-',
-            checkInDate: pdfTourist.checkInDate ? new Date(pdfTourist.checkInDate) : null,
-            checkOutDate: pdfTourist.checkOutDate ? new Date(pdfTourist.checkOutDate) : null
-            // DO NOT update: firstName, lastName, fullName, gender, country, passportNumber, dateOfBirth, passportExpiryDate
-          }
-        });
-        console.log(`   ✏️  Updated existing tourist: ${pdfTourist.fullName}`);
-        updatedCount++;
-      } else {
-        // CREATE: New tourist not found in database
-        await prisma.tourist.create({
-          data: {
-            bookingId: bookingIdInt,
-            firstName: pdfTourist.firstName || 'Not provided',
-            lastName: pdfTourist.lastName || 'Not provided',
-            fullName: pdfTourist.fullName || `${pdfTourist.lastName}, ${pdfTourist.firstName}`,
-            gender: pdfTourist.gender || 'Not provided',
-            roomPreference: pdfTourist.roomType,
-            roomNumber: pdfTourist.roomNumber,
-            accommodation: pdfTourist.tourType,
-            remarks: pdfTourist.remarks || '-',
-            country: 'Not provided',
-            passportNumber: 'Not provided',
-            checkInDate: pdfTourist.checkInDate ? new Date(pdfTourist.checkInDate) : null,
-            checkOutDate: pdfTourist.checkOutDate ? new Date(pdfTourist.checkOutDate) : null
-          }
+      // CREATE: All tourists are new (we deleted old ones)
+      // DO NOT save checkInDate/checkOutDate to global fields - use AccommodationRoomingList instead
+      const newTourist = await prisma.tourist.create({
+        data: {
+          bookingId: bookingIdInt,
+          firstName: pdfTourist.firstName || 'Not provided',
+          lastName: pdfTourist.lastName || 'Not provided',
+          fullName: pdfTourist.fullName || `${pdfTourist.lastName}, ${pdfTourist.firstName}`,
+          gender: pdfTourist.gender || 'Not provided',
+          roomPreference: pdfTourist.roomType,
+          roomNumber: pdfTourist.roomNumber,
+          accommodation: pdfTourist.tourType,
+          remarks: pdfTourist.remarks || '-',
+          country: 'Not provided',
+          passportNumber: 'Not provided'
+          // DO NOT set: checkInDate, checkOutDate - these will be set via AccommodationRoomingList
+        }
         });
         console.log(`   ➕ Created new tourist: ${pdfTourist.fullName}`);
-        createdCount++;
-      }
+
+        // If tourist has custom dates, create AccommodationRoomingList for first accommodation
+        if (pdfTourist.checkInDate || pdfTourist.checkOutDate) {
+          // Find first accommodation for this booking
+          const firstAccommodation = await prisma.accommodation.findFirst({
+            where: { bookingId: bookingIdInt },
+            orderBy: { checkInDate: 'asc' }
+          });
+
+          if (firstAccommodation) {
+            await prisma.accommodationRoomingList.create({
+              data: {
+                accommodationId: firstAccommodation.id,
+                touristId: newTourist.id,
+                checkInDate: pdfTourist.checkInDate ? new Date(pdfTourist.checkInDate) : null,
+                checkOutDate: pdfTourist.checkOutDate ? new Date(pdfTourist.checkOutDate) : null
+              }
+            });
+            console.log(`   📅 Created AccommodationRoomingList for first accommodation`);
+          }
+        }
+
+      createdCount++;
     }
 
     console.log(`✅ Updated ${updatedCount} tourists, created ${createdCount} new tourists`);
@@ -3230,6 +3280,10 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
 
     const hotelName = 'Hotel Name'; // You can get this from accommodations if available
 
+    // For rooming-list-preview (whole tour), always use "Первый заезд/выезд"
+    const arrivalHeader = 'Первый<br>заезд';
+    const departureHeader = 'Первый<br>выезд';
+
     // Load logo as base64
     const logoPath = path.join(__dirname, '../../uploads/logo.png');
     let logoDataUrl = '';
@@ -3254,14 +3308,20 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
       // Determine placement (Uzbekistan or Turkmenistan)
       const placement = t.accommodation || '';
       const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
-      const placementText = isTurkmenistan ? 'TM' : placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') ? 'UZ' : '-';
+      const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') || placement === 'uz';
+      const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
+
+      // Get accommodation-specific dates if available
+      const entry = roomingListEntries.find(e => e.touristId === t.id);
+      const touristCheckInDate = entry?.checkInDate || t.checkInDate;
+      const touristCheckOutDate = entry?.checkOutDate || t.checkOutDate;
 
       // Get remarks only from roomAssignments.notes and custom dates
       const remarksLines = [];
 
       // Add custom check-in date if exists
-      if (t.checkInDate) {
-        remarksLines.push(`Заезд: ${formatDisplayDate(t.checkInDate)}`);
+      if (touristCheckInDate) {
+        remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
       }
 
       // Add room assignment notes (from Rooming list tab)
@@ -3269,17 +3329,41 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
         remarksLines.push(t.roomAssignments[0].notes);
       }
 
+      let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;
+      let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
+      let customDeparture = false;
+
+      // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
+      if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
+        console.log(`   🟢 PDF: UZ tourist in TM hotel: ${name}`);
+
+        // Calculate departure date 1 day earlier
+        const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
+        const originalDepDate = new Date(depDate);
+        depDate.setDate(depDate.getDate() - 1);
+        displayDeparture = formatDisplayDate(depDate.toISOString());
+        customDeparture = true;
+
+        console.log(`      Original departure: ${originalDepDate.toISOString().split('T')[0]}`);
+        console.log(`      Adjusted departure: ${depDate.toISOString().split('T')[0]}`);
+
+        // Calculate nights
+        const arrDate = new Date(touristCheckInDate || (typeof accommodation !== 'undefined' ? accommodation.checkInDate : arrivalDate));
+        const nights = Math.ceil((depDate - arrDate) / (1000 * 60 * 60 * 24));
+        remarksLines.push(`${nights} Nights`);
+
+        console.log(`      Nights: ${nights}, Remarks: "${nights} Nights"`);
+      }
+
       const remarks = remarksLines.filter(Boolean).join('\n');
-      const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
-      const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
-      const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+      const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
 
       touristRows += `
         <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
           <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
           <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
-          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
-          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${touristCheckInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${customDeparture || touristCheckOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
           <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
           <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
           <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
@@ -3518,8 +3602,8 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
               <th>Группа</th>
               <th>Страна</th>
               <th>PAX</th>
-              <th>Первый<br>заезд</th>
-              <th>Первый<br>выезд</th>
+              <th>${arrivalHeader}</th>
+              <th>${departureHeader}</th>
               <th>DBL</th>
               <th>TWN</th>
               <th>SNGL</th>
@@ -3634,6 +3718,14 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       return res.status(404).json({ error: 'Accommodation not found' });
     }
 
+    // Fetch accommodation-specific rooming list entries
+    const roomingListEntries = await prisma.accommodationRoomingList.findMany({
+      where: { accommodationId: accommodationIdInt },
+      include: {
+        tourist: true
+      }
+    });
+
     // Fetch all tourists for this booking
     const allTourists = await prisma.tourist.findMany({
       where: { bookingId: bookingIdInt },
@@ -3655,23 +3747,27 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
     // Filter tourists whose dates overlap with this accommodation's dates
     // A tourist overlaps if their checkIn/checkOut dates fall within the accommodation dates
     const touristsFiltered = allTourists.filter(t => {
-      // If tourist has no specific dates, include them (they follow booking dates)
-      if (!t.checkInDate && !t.checkOutDate) {
+      // Check for accommodation-specific dates first
+      const entry = roomingListEntries.find(e => e.touristId === t.id);
+      const hasAccommodationDates = entry?.checkInDate || entry?.checkOutDate;
+
+      // If tourist has no specific dates (neither accommodation-specific nor global), include them
+      if (!hasAccommodationDates && !t.checkInDate && !t.checkOutDate) {
         return true;
       }
 
-      // Check if tourist's dates overlap with accommodation dates
-      const touristCheckIn = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
-      const touristCheckOut = t.checkOutDate ? new Date(t.checkOutDate) : new Date(booking.endDate);
+      // Use accommodation-specific dates if available, otherwise fall back to global dates
+      const touristCheckIn = entry?.checkInDate || t.checkInDate || new Date(booking.departureDate);
+      const touristCheckOut = entry?.checkOutDate || t.checkOutDate || new Date(booking.endDate);
       const accCheckIn = new Date(accommodation.checkInDate);
       const accCheckOut = new Date(accommodation.checkOutDate);
 
       // Overlap logic: tourist checkout > acc checkin AND tourist checkin < acc checkout
-      return touristCheckOut > accCheckIn && touristCheckIn < accCheckOut;
+      return new Date(touristCheckOut) > accCheckIn && new Date(touristCheckIn) < accCheckOut;
     });
 
     // Sort tourists: Uzbekistan first, then Turkmenistan
-    const tourists = touristsFiltered.sort((a, b) => {
+    let tourists = touristsFiltered.sort((a, b) => {
       const aAccommodation = (a.accommodation || '').toLowerCase();
       const bAccommodation = (b.accommodation || '').toLowerCase();
 
@@ -3705,14 +3801,75 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
     const arrivalDate = formatDisplayDate(accommodation.checkInDate);
     const departureDate = formatDisplayDate(accommodation.checkOutDate);
     const currentDate = formatDisplayDate(new Date().toISOString());
+
+    const hotelName = accommodation.hotel?.name || 'Hotel Name';
+
+    // Check if this is a Turkmenistan/Khiva hotel
+    const cityNameCheck = accommodation.hotel?.city?.name?.toLowerCase() || '';
+    const isTurkmenistanHotel = cityNameCheck.includes('хива') || cityNameCheck.includes('khiva') ||
+                                 cityNameCheck.includes('туркмен') || cityNameCheck.includes('turkmen');
+
+    // Determine if this is the first Tashkent hotel
+    // Fetch all accommodations for this booking to check position
+    const allAccommodations = await prisma.accommodation.findMany({
+      where: { bookingId: bookingIdInt },
+      include: {
+        hotel: {
+          include: {
+            city: true
+          }
+        }
+      },
+      orderBy: { checkInDate: 'asc' }
+    });
+
+    // Filter Tashkent hotels
+    const tashkentAccommodations = allAccommodations.filter(acc => {
+      const cityName = acc.hotel?.city?.name?.toLowerCase() || '';
+      return cityName.includes('ташкент') || cityName.includes('tashkent') || cityName.includes('toshkent');
+    });
+
+    // Check if current accommodation is the first Tashkent hotel
+    const isFirstTashkentHotel = tashkentAccommodations.length > 0 &&
+                                  tashkentAccommodations[0].id === accommodationIdInt;
+
+    // Check if current accommodation is the last Tashkent hotel and same as first hotel
+    // (second visit to the same hotel at the end of tour)
+    const isSecondVisitSameHotel = tashkentAccommodations.length > 1 &&
+                                    tashkentAccommodations[tashkentAccommodations.length - 1].id === accommodationIdInt &&
+                                    tashkentAccommodations[0].hotelId === tashkentAccommodations[tashkentAccommodations.length - 1].hotelId &&
+                                    tashkentAccommodations[0].id !== tashkentAccommodations[tashkentAccommodations.length - 1].id;
+
+    // Set table headers based on position
+    let arrivalHeader = 'Заезд';
+    let departureHeader = 'Выезд';
+
+    if (isFirstTashkentHotel) {
+      arrivalHeader = 'Первый<br>заезд';
+      departureHeader = 'Первый<br>выезд';
+    } else if (isSecondVisitSameHotel) {
+      arrivalHeader = 'Второй<br>заезд';
+      departureHeader = 'Второй<br>выезд';
+
+      // Filter tourists for second visit - only UZ tourists return to Tashkent
+      // TM tourists stay in Khiva (Malika Khorazm)
+      tourists = tourists.filter(t => {
+        const placement = (t.accommodation || '').toLowerCase();
+        const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
+        return isUzbekistan;
+      });
+    }
+
+    // Calculate totalPax and room counts AFTER filtering tourists
     const totalPax = tourists.length;
 
-    // Calculate room counts from accommodation.rooms
+    // Calculate room counts from accommodation.rooms or from tourists
     let dblRooms = 0;
     let twnRooms = 0;
     let snglRooms = 0;
 
-    if (accommodation.rooms && accommodation.rooms.length > 0) {
+    if (accommodation.rooms && accommodation.rooms.length > 0 && !isSecondVisitSameHotel) {
+      // Use accommodation.rooms only if not second visit
       accommodation.rooms.forEach(room => {
         const code = room.roomTypeCode?.toUpperCase();
         if (code === 'DBL' || code === 'DOUBLE' || code === 'DZ') {
@@ -3724,13 +3881,11 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
         }
       });
     } else {
-      // Fallback: calculate from tourists
+      // Calculate from filtered tourists
       dblRooms = tourists.filter(t => ['DBL', 'DOUBLE', 'DZ'].includes(t.roomPreference)).length / 2;
       twnRooms = tourists.filter(t => ['TWN', 'TWIN'].includes(t.roomPreference)).length / 2;
       snglRooms = tourists.filter(t => ['SNGL', 'SINGLE', 'EZ'].includes(t.roomPreference)).length;
     }
-
-    const hotelName = accommodation.hotel?.name || 'Hotel Name';
 
     // Load logo as base64
     const logoPath = path.join(__dirname, '../../uploads/logo.png');
@@ -3756,14 +3911,20 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       // Determine placement (Uzbekistan or Turkmenistan)
       const placement = t.accommodation || '';
       const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
-      const placementText = isTurkmenistan ? 'TM' : placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') ? 'UZ' : '-';
+      const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') || placement === 'uz';
+      const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
+
+      // Get accommodation-specific dates if available
+      const entry = roomingListEntries.find(e => e.touristId === t.id);
+      const touristCheckInDate = entry?.checkInDate || t.checkInDate;
+      const touristCheckOutDate = entry?.checkOutDate || t.checkOutDate;
 
       // Get remarks only from roomAssignments.notes and custom dates
       const remarksLines = [];
 
       // Add custom check-in date if exists
-      if (t.checkInDate) {
-        remarksLines.push(`Заезд: ${formatDisplayDate(t.checkInDate)}`);
+      if (touristCheckInDate) {
+        remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
       }
 
       // Add room assignment notes (from Rooming list tab)
@@ -3771,17 +3932,41 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
         remarksLines.push(t.roomAssignments[0].notes);
       }
 
+      let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;
+      let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
+      let customDeparture = false;
+
+      // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
+      if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
+        console.log(`   🟢 PDF: UZ tourist in TM hotel: ${name}`);
+
+        // Calculate departure date 1 day earlier
+        const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
+        const originalDepDate = new Date(depDate);
+        depDate.setDate(depDate.getDate() - 1);
+        displayDeparture = formatDisplayDate(depDate.toISOString());
+        customDeparture = true;
+
+        console.log(`      Original departure: ${originalDepDate.toISOString().split('T')[0]}`);
+        console.log(`      Adjusted departure: ${depDate.toISOString().split('T')[0]}`);
+
+        // Calculate nights
+        const arrDate = new Date(touristCheckInDate || (typeof accommodation !== 'undefined' ? accommodation.checkInDate : arrivalDate));
+        const nights = Math.ceil((depDate - arrDate) / (1000 * 60 * 60 * 24));
+        remarksLines.push(`${nights} Nights`);
+
+        console.log(`      Nights: ${nights}, Remarks: "${nights} Nights"`);
+      }
+
       const remarks = remarksLines.filter(Boolean).join('\n');
-      const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
-      const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
-      const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+      const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
 
       touristRows += `
         <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
           <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
           <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
-          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
-          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${touristCheckInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+          <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${customDeparture || touristCheckOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
           <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
           <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
           <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
@@ -4023,8 +4208,8 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
               <th>Группа</th>
               <th>Страна</th>
               <th>PAX</th>
-              <th>Первый<br>заезд</th>
-              <th>Первый<br>выезд</th>
+              <th>${arrivalHeader}</th>
+              <th>${departureHeader}</th>
               <th>DBL</th>
               <th>TWN</th>
               <th>SNGL</th>
