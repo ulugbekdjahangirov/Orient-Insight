@@ -2616,7 +2616,52 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         if (mentionsTourist) {
           console.log(`   🔍 Found mention of ${tourist.fullName} in line: "${line}"`);
 
-          // Check next line(s) for important information only
+          // Helper function to extract info from a line
+          const extractInfoFromLine = (checkLine, checkLower) => {
+            // Extract earlier flight and arrival info
+            // Support both DD.MM and DD.MM.YYYY formats
+            if (checkLower.includes('earlier flight') || checkLower.includes('arrival on') || checkLower.includes('arrival:')) {
+              const flightMatch = checkLine.match(/earlier flight[^\d]*(\d{2}\.\d{2}(?:\.\d{4})?)/i);
+              const arrivalMatch = checkLine.match(/arrival[^\d]*(\d{2}\.\d{2}(?:\.\d{4})?)/i);
+
+              if (flightMatch && arrivalMatch) {
+                // Extract just DD.MM part
+                const flightDate = flightMatch[1].substring(0, 5);
+                const arrivalDate = arrivalMatch[1].substring(0, 5);
+                remarks.push(`Flight: ${flightDate}, Arrival: ${arrivalDate}`);
+                console.log(`      📋 Found flight ${flightDate}, arrival ${arrivalDate}`);
+              } else if (arrivalMatch) {
+                const arrivalDate = arrivalMatch[1].substring(0, 5);
+                remarks.push(`Early arrival: ${arrivalDate}`);
+                console.log(`      📋 Found early arrival ${arrivalDate}`);
+              }
+
+              // Extra nights request
+              if (checkLower.includes('extra night') || checkLower.includes('book extra')) {
+                remarks.push('Book extra nights');
+              }
+            }
+
+            // Extract departure date
+            if (checkLower.includes('departure on') || checkLower.includes('later departure') || checkLower.includes('departure:')) {
+              const dateMatch = checkLine.match(/(?:departure[^\d]*)(\d{2}\.\d{2}(?:\.\d{4})?)/i);
+              if (dateMatch) {
+                const depDate = dateMatch[1].substring(0, 5);
+                remarks.push(`Late departure: ${depDate}`);
+                console.log(`      📋 Found late departure ${depDate}`);
+              }
+            }
+
+            // Extract extra transfer request
+            if (checkLower.includes('extra transfer') || checkLower.includes('need transfer')) {
+              remarks.push('Extra transfer needed');
+            }
+          };
+
+          // FIRST: Check the SAME line for arrival/departure info
+          extractInfoFromLine(line, lowerLine);
+
+          // THEN: Check next line(s) for additional information
           let j = i + 1;
           while (j < lines.length) {
             const nextLine = lines[j].trim();
@@ -2627,35 +2672,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
               break;
             }
 
-            // Extract earlier flight and arrival info
-            if (nextLowerLine.includes('earlier flight') || nextLowerLine.includes('arrival on')) {
-              const flightMatch = nextLine.match(/earlier flight on (\d{2}\.\d{2})/i);
-              const arrivalMatch = nextLine.match(/arrival on (\d{2}\.\d{2})/i);
-
-              if (flightMatch && arrivalMatch) {
-                remarks.push(`Flight: ${flightMatch[1]}, Arrival: ${arrivalMatch[1]}`);
-              } else if (arrivalMatch) {
-                remarks.push(`Early arrival: ${arrivalMatch[1]}`);
-              }
-
-              // Extra nights request
-              if (nextLowerLine.includes('extra night') || nextLowerLine.includes('book extra')) {
-                remarks.push('Book extra nights');
-              }
-            }
-
-            // Extract departure date
-            if (nextLowerLine.includes('departure on') || nextLowerLine.includes('later departure')) {
-              const dateMatch = nextLine.match(/(?:departure on|later departure.*?)(\d{2}\.\d{2})/i);
-              if (dateMatch) {
-                remarks.push(`Late departure: ${dateMatch[1]}`);
-              }
-            }
-
-            // Extract extra transfer request
-            if (nextLowerLine.includes('extra transfer') || nextLowerLine.includes('need transfer')) {
-              remarks.push('Extra transfer needed');
-            }
+            extractInfoFromLine(nextLine, nextLowerLine);
 
             j++;
             if (j - i > 3) break; // Don't look more than 3 lines ahead
@@ -2786,76 +2803,135 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       tourist.remarks = additionalInfo.length > 0 ? additionalInfo.join('\n') : '-';
     });
 
-    // 🆕 FULL REPLACEMENT MODE: Create all tourists from scratch
-    console.log(`🔍 Creating ${tourists.length} tourists from PDF...`);
+    // 🔄 UPDATE MODE: Only update rooming info for existing tourists, don't delete anything
+    console.log(`🔍 Updating ${tourists.length} tourists from PDF (UPDATE MODE - no deletions)...`);
 
     let createdCount = 0;
-    let updatedCount = 0; // Full replacement mode: always 0 (no updates, only creates)
+    let updatedCount = 0;
 
-    // DELETE ALL old data (tourists, flights, sections) - full replacement mode
-    console.log('🗑️  Deleting all old data (tourists, flights)...');
-    await prisma.$transaction([
-      // Delete AccommodationRoomingList entries first (foreign key constraint)
-      prisma.accommodationRoomingList.deleteMany({
-        where: {
-          tourist: { bookingId: bookingIdInt }
-        }
-      }),
-      // Delete tourists (cascade will handle room assignments)
-      prisma.tourist.deleteMany({ where: { bookingId: bookingIdInt } }),
-      // Delete flights
-      prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } }),
-      prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
-    ]);
-    console.log('✓ All old data deleted - starting fresh import');
+    // Get existing tourists for this booking
+    const existingTourists = await prisma.tourist.findMany({
+      where: { bookingId: bookingIdInt }
+    });
+    console.log(`📋 Found ${existingTourists.length} existing tourists in database`);
 
-    // Process each tourist from PDF - CREATE all tourists from scratch
+    // Helper function to normalize name for matching
+    const normalizeName = (name) => {
+      if (!name) return '';
+      return name.toLowerCase()
+        // Remove all common titles: Mr., Mrs., Ms., Dr., Prof., etc.
+        .replace(/\b(mr\.?|mrs\.?|ms\.?|dr\.?|prof\.?)\s*/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    // Process each tourist from PDF - UPDATE existing tourists only
     for (const pdfTourist of tourists) {
-      console.log(`   ➕ Creating ${pdfTourist.fullName}: checkInDate=${pdfTourist.checkInDate}, checkOutDate=${pdfTourist.checkOutDate}`);
+      const pdfFullName = normalizeName(pdfTourist.fullName);
+      const pdfLastName = normalizeName(pdfTourist.lastName);
+      const pdfFirstName = normalizeName(pdfTourist.firstName);
 
-      // CREATE: All tourists are new (we deleted old ones)
-      // DO NOT save checkInDate/checkOutDate to global fields - use AccommodationRoomingList instead
-      const newTourist = await prisma.tourist.create({
-        data: {
-          bookingId: bookingIdInt,
-          firstName: pdfTourist.firstName || 'Not provided',
-          lastName: pdfTourist.lastName || 'Not provided',
-          fullName: pdfTourist.fullName || `${pdfTourist.lastName}, ${pdfTourist.firstName}`,
-          gender: pdfTourist.gender || 'Not provided',
+      // Find matching existing tourist by name
+      const existingTourist = existingTourists.find(et => {
+        const etFullName = normalizeName(et.fullName);
+        const etLastName = normalizeName(et.lastName);
+        const etFirstName = normalizeName(et.firstName);
+
+        // Match by full name or by last name + first name (flexible matching)
+        // 1. Exact full name match
+        if (etFullName === pdfFullName) return true;
+        // 2. Last name + first name match
+        if (etLastName === pdfLastName && etFirstName === pdfFirstName) return true;
+        // 3. Last name match with partial first name
+        if (etLastName === pdfLastName && pdfFirstName && etFirstName.includes(pdfFirstName.split(' ')[0])) return true;
+        // 4. Flexible: Last name contains PDF last name or vice versa (for compound names)
+        if (pdfLastName && (etLastName.includes(pdfLastName) || pdfLastName.includes(etLastName))) {
+          // Also check first name similarity
+          if (pdfFirstName && etFirstName && (etFirstName.includes(pdfFirstName.split(' ')[0]) || pdfFirstName.includes(etFirstName.split(' ')[0]))) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      console.log(`   🔍 Matching "${pdfTourist.fullName}" -> PDF normalized: lastName="${pdfLastName}", firstName="${pdfFirstName}"`);
+      if (existingTourist) {
+        console.log(`   ✅ Matched to existing: "${existingTourist.fullName}"`);
+      }
+
+      if (existingTourist) {
+        // UPDATE: Only update rooming-related fields (roomPreference, roomNumber, accommodation)
+        // DO NOT touch: firstName, lastName, fullName, gender, country, passportNumber, dateOfBirth, etc.
+        console.log(`   🔄 Updating rooming info for ${existingTourist.fullName}`);
+
+        // Build update data
+        const updateData = {
           roomPreference: pdfTourist.roomType,
           roomNumber: pdfTourist.roomNumber,
           accommodation: pdfTourist.tourType,
-          remarks: pdfTourist.remarks || '-',
-          country: 'Not provided',
-          passportNumber: 'Not provided'
-          // DO NOT set: checkInDate, checkOutDate - these will be set via AccommodationRoomingList
-        }
-        });
-        console.log(`   ➕ Created new tourist: ${pdfTourist.fullName}`);
+          // Only update remarks if it's rooming-related (vegetarian, birthday, etc.)
+          remarks: pdfTourist.remarks && pdfTourist.remarks !== '-' ? pdfTourist.remarks : existingTourist.remarks
+        };
 
-        // If tourist has custom dates, create AccommodationRoomingList for first accommodation
+        // Also set individual dates on Tourist model if available
+        if (pdfTourist.checkInDate) {
+          updateData.checkInDate = new Date(pdfTourist.checkInDate);
+          console.log(`   📅 Setting checkInDate for ${existingTourist.fullName}: ${pdfTourist.checkInDate}`);
+        }
+        if (pdfTourist.checkOutDate) {
+          updateData.checkOutDate = new Date(pdfTourist.checkOutDate);
+          console.log(`   📅 Setting checkOutDate for ${existingTourist.fullName}: ${pdfTourist.checkOutDate}`);
+        }
+
+        await prisma.tourist.update({
+          where: { id: existingTourist.id },
+          data: updateData
+        });
+
+        // Also create AccommodationRoomingList entry for first accommodation
         if (pdfTourist.checkInDate || pdfTourist.checkOutDate) {
-          // Find first accommodation for this booking
           const firstAccommodation = await prisma.accommodation.findFirst({
             where: { bookingId: bookingIdInt },
             orderBy: { checkInDate: 'asc' }
           });
 
           if (firstAccommodation) {
-            await prisma.accommodationRoomingList.create({
-              data: {
+            // Upsert AccommodationRoomingList entry
+            await prisma.accommodationRoomingList.upsert({
+              where: {
+                accommodationId_touristId: {
+                  accommodationId: firstAccommodation.id,
+                  touristId: existingTourist.id
+                }
+              },
+              update: {
+                checkInDate: pdfTourist.checkInDate ? new Date(pdfTourist.checkInDate) : null,
+                checkOutDate: pdfTourist.checkOutDate ? new Date(pdfTourist.checkOutDate) : null
+              },
+              create: {
                 accommodationId: firstAccommodation.id,
-                touristId: newTourist.id,
+                touristId: existingTourist.id,
                 checkInDate: pdfTourist.checkInDate ? new Date(pdfTourist.checkInDate) : null,
                 checkOutDate: pdfTourist.checkOutDate ? new Date(pdfTourist.checkOutDate) : null
               }
             });
-            console.log(`   📅 Created AccommodationRoomingList for first accommodation`);
+            console.log(`   📅 Updated AccommodationRoomingList for ${existingTourist.fullName}`);
           }
         }
 
-      createdCount++;
+        updatedCount++;
+      } else {
+        // Tourist not found in database - skip (don't create new tourists)
+        console.log(`   ⚠️ Tourist not found in database, skipping: ${pdfTourist.fullName}`);
+      }
     }
+
+    // Delete old flights and flight sections only (not tourists)
+    console.log('🗑️  Updating flights data...');
+    await prisma.$transaction([
+      prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } }),
+      prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
+    ]);
 
     console.log(`✅ Updated ${updatedCount} tourists, created ${createdCount} new tourists`);
 

@@ -1416,16 +1416,23 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={openAddTouristModal}
+            className="inline-flex items-center gap-2.5 px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 text-base font-semibold shadow-lg transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Add
+          </button>
           {tourists.length > 0 && (
             <div className="relative">
               <button
                 onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium text-gray-700 shadow-sm transition-all"
+                className="inline-flex items-center gap-2.5 px-6 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-base font-semibold text-gray-700 shadow-sm transition-all"
               >
-                <Download className="w-4 h-4 text-gray-500" />
+                <Download className="w-5 h-5 text-gray-500" />
                 Export
-                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {exportMenuOpen && (
                 <>
@@ -1461,8 +1468,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             </div>
           )}
 
-          <label className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 cursor-pointer text-sm font-medium shadow-md shadow-primary-200 transition-all">
-            <Upload className="w-4 h-4" />
+          <label className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 cursor-pointer text-base font-semibold shadow-lg shadow-primary-200 transition-all">
+            <Upload className="w-5 h-5" />
             {importing ? 'Importing...' : 'Import PDF'}
             <input
               type="file"
@@ -1501,102 +1508,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           {(() => {
             let globalTouristIndex = 0; // Global counter for all tourists across all hotels
             return Object.entries(touristsByHotel).map(([hotelName, hotelTourists]) => (
-            <div key={hotelName} className="bg-white rounded-2xl border-2 border-gray-300 shadow-lg overflow-hidden">
-              {/* Hotel Header with Export Button */}
-              <div className="bg-gradient-to-r from-blue-500 to-primary-600 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">{hotelName}</h3>
-                    <p className="text-sm text-white/80">{hotelTourists.length} {hotelTourists.length === 1 ? 'guest' : 'guests'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={openAddTouristModal}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 font-medium shadow-lg transition-all hover:scale-105"
-                    title="Add tourist manually"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Tourist
-                  </button>
-                  <button
-                    onClick={() => handleHotelPdfExport(hotelName, hotelTourists)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white text-primary-600 rounded-xl hover:bg-gray-50 font-medium shadow-lg transition-all hover:scale-105"
-                    title="Export PDF for this hotel"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Export PDF
-                  </button>
-                </div>
-              </div>
-
-              {/* Room Statistics for this hotel */}
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center gap-4 flex-wrap">
-                  {(() => {
-                    const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
-                    const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
-                    const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
-
-                    hotelTourists.forEach(t => {
-                      const roomType = (t.roomPreference || '').toUpperCase();
-                      const roomNum = t.roomNumber;
-
-                      if (roomType === 'DBL' || roomType === 'DOUBLE') {
-                        if (roomNum && !seenRooms.DBL.has(roomNum)) {
-                          roomCounts.DBL++;
-                          seenRooms.DBL.add(roomNum);
-                        } else if (!roomNum) {
-                          touristsWithoutRoom.DBL++;
-                        }
-                      } else if (roomType === 'TWN' || roomType === 'TWIN') {
-                        if (roomNum && !seenRooms.TWN.has(roomNum)) {
-                          roomCounts.TWN++;
-                          seenRooms.TWN.add(roomNum);
-                        } else if (!roomNum) {
-                          touristsWithoutRoom.TWN++;
-                        }
-                      } else if (roomType === 'SNGL' || roomType === 'SINGLE') {
-                        if (roomNum && !seenRooms.SNGL.has(roomNum)) {
-                          roomCounts.SNGL++;
-                          seenRooms.SNGL.add(roomNum);
-                        } else if (!roomNum) {
-                          touristsWithoutRoom.SNGL++;
-                        }
-                      }
-                    });
-
-                    // Add tourists without room numbers (DBL/TWN: 2 people = 1 room, SNGL: 1 person = 1 room)
-                    roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
-                    roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
-                    roomCounts.SNGL += touristsWithoutRoom.SNGL;
-
-                    const roomTypes = [
-                      { key: 'DBL', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', badge: 'bg-blue-500', icon: '👫' },
-                      { key: 'TWN', count: roomCounts.TWN, gradient: 'from-emerald-50 to-emerald-100', border: 'border-emerald-200', badge: 'bg-emerald-500', icon: '🛏️' },
-                      { key: 'SNGL', count: roomCounts.SNGL, gradient: 'from-violet-50 to-violet-100', border: 'border-violet-200', badge: 'bg-violet-500', icon: '👤' }
-                    ];
-
-                    return roomTypes.map(room => {
-                      if (room.count === 0) return null;
-
-                      return (
-                        <div key={room.key} className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-br ${room.gradient} border ${room.border} rounded-lg shadow-sm`}>
-                          <span className="text-lg">{room.icon}</span>
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full ${room.badge} text-white text-xs font-bold uppercase`}>
-                            {room.key}
-                          </span>
-                          <span className="text-lg font-bold text-gray-900">{room.count}</span>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-
+            <div key={hotelName} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               {/* Table Header */}
               <div className="px-6 py-3 bg-gray-100 border-b border-gray-200">
                 <div className="grid grid-cols-12 gap-4 items-center">

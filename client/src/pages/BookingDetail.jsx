@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
@@ -281,58 +281,79 @@ export default function BookingDetail() {
   const [selectedProviderTab, setSelectedProviderTab] = useState('sevil');
   const [editingRouteForProvider, setEditingRouteForProvider] = useState(null);
 
+  // Default vehicle data
+  const defaultSevilVehicles = [
+    { id: 1, name: 'Starex', seats: '7', person: '1-4', pickupDropoff: 20, tagRate: 30, urgenchRate: 80, shovotRate2: 60 },
+    { id: 2, name: 'Joylong', seats: '30', person: '5-8', pickupDropoff: 30, tagRate: 50, urgenchRate: 110, shovotRate2: 60 },
+    { id: 3, name: 'Yutong 33', seats: '45', person: '9-20', pickupDropoff: 40, tagRate: 50, urgenchRate: 160, shovotRate2: 120 },
+  ];
+
+  const defaultXayrullaVehicles = [
+    { id: 1, name: 'Starex', seats: '7', person: '1-4', vstrecha: 30, chimgan: 100, tag: 60, oybek: 70, chernyayevka: 80, cityTour: 80 },
+    { id: 2, name: 'Joylong', seats: '30', person: '5-8', vstrecha: 40, chimgan: 120, tag: 90, oybek: 100, chernyayevka: 110, cityTour: 100 },
+    { id: 3, name: 'Yutong 33', seats: '45', person: '9-20', vstrecha: 45, chimgan: 220, tag: 130, oybek: 150, chernyayevka: 160, cityTour: 150 },
+  ];
+
+  const defaultNosirVehicles = [
+    { id: 1, name: 'PKW', seats: '4', person: '1-2', margilan: '', qoqon: 20, dostlik: 60, toshkent: 170, extra: 60 },
+    { id: 2, name: 'Starex', seats: '7', person: '3-4', margilan: 30, qoqon: 100, dostlik: 100, toshkent: 120, extra: '' },
+    { id: 3, name: 'Joylong', seats: '30', person: '5-8', margilan: 80, qoqon: 180, dostlik: 180, toshkent: 200, extra: '' },
+    { id: 4, name: 'Yutong 33', seats: '45', person: '9-20', margilan: 100, qoqon: 220, dostlik: 220, toshkent: '', extra: '' },
+  ];
+
   // Sevil vehicles data with localStorage
   const [sevilVehicles, setSevilVehicles] = useState(() => {
     const saved = localStorage.getItem('sevilVehicles');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, name: 'Joylong', seats: '30', person: '', pickupDropoff: '', tagRate: 50, urgenchRate: 110, shovotRate2: 60 },
-      { id: 2, name: 'Coster', seats: '25', person: '', pickupDropoff: '', tagRate: 40, urgenchRate: 120, shovotRate2: '' },
-      { id: 3, name: 'Yutong 33', seats: '45', person: '', pickupDropoff: '', tagRate: 50, urgenchRate: 160, shovotRate2: 120 },
-    ];
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed[0]?.person?.includes('-')) return parsed;
+      localStorage.removeItem('sevilVehicles');
+    }
+    return defaultSevilVehicles;
   });
 
   // Xayrulla vehicles data with localStorage
   const [xayrullaVehicles, setXayrullaVehicles] = useState(() => {
     const saved = localStorage.getItem('xayrullaVehicles');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, name: 'Joylong', seats: '30', person: '', vstrecha: '', chimgan: 120, tag: 90 },
-      { id: 2, name: 'Sprinter', seats: '15', person: '', vstrecha: '', chimgan: 150, tag: '' },
-      { id: 3, name: 'Yutong 33', seats: '45', person: '', vstrecha: '', chimgan: 220, tag: 130 },
-    ];
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed[0]?.person?.includes('-')) return parsed;
+      localStorage.removeItem('xayrullaVehicles');
+    }
+    return defaultXayrullaVehicles;
   });
 
   // Nosir vehicles data with localStorage
   const [nosirVehicles, setNosirVehicles] = useState(() => {
     const saved = localStorage.getItem('nosirVehicles');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 1, name: 'PKW', seats: '4', person: '', margilan: '', qoqon: 20, dostlik: 60, toshkent: 170, extra: 60 },
-      { id: 2, name: 'Starex', seats: '7', person: '', margilan: 30, qoqon: 100, dostlik: 100, toshkent: 120, extra: '' },
-      { id: 3, name: 'Staria', seats: '9', person: '', margilan: 40, qoqon: 120, dostlik: 120, toshkent: 140, extra: '' },
-      { id: 4, name: 'Kinglong', seats: '18', person: '', margilan: 50, qoqon: 130, dostlik: 130, toshkent: '', extra: '' },
-      { id: 5, name: 'Sprinter', seats: '15', person: '', margilan: 170, qoqon: 160, dostlik: 160, toshkent: '', extra: '' },
-      { id: 6, name: 'Yutong 33', seats: '45', person: '', margilan: 100, qoqon: 220, dostlik: 220, toshkent: '', extra: '' },
-    ];
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed[0]?.person?.includes('-')) return parsed;
+      localStorage.removeItem('nosirVehicles');
+    }
+    return defaultNosirVehicles;
   });
 
   // Route data - ER
-  const [erRoutes, setErRoutes] = useState([
-    { id: 1, nomer: '', sana: '', shahar: '', route: 'Tashkent Airport PickUp', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
-    { id: 2, nomer: '', sana: '', shahar: '', route: 'Tashkent', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
-    { id: 3, nomer: '', sana: '', shahar: '', route: 'Tashkent-Chimgan-Tashkent', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
-    { id: 4, nomer: '', sana: '', shahar: '', route: 'Transfer zum Bahnhof', person: '15', transportType: 'Joylong', choiceTab: 'xayrulla', choiceRate: '', price: '' },
-    { id: 5, nomer: '', sana: '', shahar: '', route: 'Samarkand', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 6, nomer: '', sana: '', shahar: '', route: 'Samarkand-Asraf', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 7, nomer: '', sana: '', shahar: '', route: 'Asraf-Buchara', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 8, nomer: '', sana: '', shahar: '', route: 'Buchara', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 9, nomer: '', sana: '', shahar: '', route: 'Buchara-Chiwa', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 10, nomer: '', sana: '', shahar: '', route: 'Transfer nach Urgench', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 11, nomer: '', sana: '', shahar: '', route: 'Chiwa-Shovot', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 12, nomer: '', sana: '', shahar: '', route: 'Transfer zum Hotel', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-    { id: 13, nomer: '', sana: '', shahar: '', route: 'Transfer zum Flughafen', person: '15', transportType: 'Joylong', choiceTab: 'sevil', choiceRate: '', price: '' },
-  ]);
+  // Default ER route template - used for all ER bookings
+  const defaultERRoutesTemplate = [
+    { id: 1, shahar: 'Tashkent', route: 'Airport Pickup', choiceTab: 'xayrulla' },
+    { id: 2, shahar: 'Tashkent', route: 'Tashkent City Tour', choiceTab: 'xayrulla' },
+    { id: 3, shahar: 'Tashkent', route: 'Tashkent - Chimgan', choiceTab: 'xayrulla' },
+    { id: 4, shahar: 'Tashkent', route: 'Train Station Drop-off', choiceTab: 'xayrulla' },
+    { id: 5, shahar: 'Samarkand', route: 'Train Station Pickup', choiceTab: 'sevil' },
+    { id: 6, shahar: 'Samarkand', route: 'Samarkand City Tour', choiceTab: 'sevil' },
+    { id: 7, shahar: 'Samarkand', route: 'Samarkand - Asraf', choiceTab: 'sevil' },
+    { id: 8, shahar: 'Bukhara', route: 'Asraf - Bukhara', choiceTab: 'sevil' },
+    { id: 9, shahar: 'Bukhara', route: 'Bukhara City Tour', choiceTab: 'sevil' },
+    { id: 10, shahar: 'Khiva', route: 'Bukhara - Khiva', choiceTab: 'sevil' },
+    { id: 11, shahar: 'Khiva', route: 'Khiva City Tour', choiceTab: 'sevil' },
+    { id: 12, shahar: 'Khiva', route: 'Khiva - Urgench', choiceTab: 'sevil' },
+    { id: 13, shahar: 'Tashkent', route: 'Airport Pickup', choiceTab: 'xayrulla' },
+    { id: 14, shahar: 'Tashkent', route: 'Airport Drop-off', choiceTab: 'xayrulla' },
+  ];
+
+  const [erRoutes, setErRoutes] = useState([]);
 
   // Route sub-tabs configuration (only ER for now)
   const routeSubTabs = [
@@ -360,25 +381,119 @@ export default function BookingDetail() {
     notes: ''
   });
 
+  const [datesInitialized, setDatesInitialized] = useState(false);
+
+  // Refresh vehicle data from localStorage when component mounts or storage changes
   useEffect(() => {
+    const refreshVehiclesFromStorage = () => {
+      const savedSevil = localStorage.getItem('sevilVehicles');
+      if (savedSevil) {
+        const parsed = JSON.parse(savedSevil);
+        if (parsed[0]?.person?.includes('-')) setSevilVehicles(parsed);
+      }
+      const savedXayrulla = localStorage.getItem('xayrullaVehicles');
+      if (savedXayrulla) {
+        const parsed = JSON.parse(savedXayrulla);
+        if (parsed[0]?.person?.includes('-')) setXayrullaVehicles(parsed);
+      }
+      const savedNosir = localStorage.getItem('nosirVehicles');
+      if (savedNosir) {
+        const parsed = JSON.parse(savedNosir);
+        if (parsed[0]?.person?.includes('-')) setNosirVehicles(parsed);
+      }
+    };
+
+    // Refresh on mount
+    refreshVehiclesFromStorage();
+
+    // Listen for storage changes from other tabs/pages
+    window.addEventListener('storage', refreshVehiclesFromStorage);
+    // Listen for custom event from Opex page (same tab)
+    window.addEventListener('vehiclesUpdated', refreshVehiclesFromStorage);
+    return () => {
+      window.removeEventListener('storage', refreshVehiclesFromStorage);
+      window.removeEventListener('vehiclesUpdated', refreshVehiclesFromStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    setDatesInitialized(false); // Reset when booking changes
     loadData();
   }, [id]);
 
-  // Auto-populate route dates based on arrival date
+  // Auto-populate route dates based on departure date (дата заезда)
+  // Arrival in Tashkent = departure date + 1 day (tourists fly one day, arrive next day)
+
   useEffect(() => {
-    if (formData.arrivalDate && erRoutes.length > 0) {
-      const arrivalDate = new Date(formData.arrivalDate);
+    if (formData.departureDate && erRoutes.length > 0 && !datesInitialized) {
+      const departureDate = new Date(formData.departureDate);
+      const firstExpectedDate = format(addDays(departureDate, 1), 'yyyy-MM-dd');
+
+      // Always update dates on first load to match arrival date
       const updatedRoutes = erRoutes.map((route, index) => {
-        // Calculate date for this route: arrival date + index days
-        const routeDate = addDays(arrivalDate, index);
+        // Calculate date for this route: departure date + 1 (arrival) + index days
+        const routeDate = addDays(departureDate, index + 1);
         return {
           ...route,
           sana: format(routeDate, 'yyyy-MM-dd')
         };
       });
       setErRoutes(updatedRoutes);
+      setDatesInitialized(true);
     }
-  }, [formData.arrivalDate]);
+  }, [formData.departureDate, erRoutes.length, datesInitialized]);
+
+  // Auto-update route person count and dates when tourists change (from Rooming List import)
+  useEffect(() => {
+    if (tourists.length > 0 && erRoutes.length > 0) {
+      const newPersonCount = tourists.length.toString();
+      const departureDate = formData.departureDate ? new Date(formData.departureDate) : null;
+
+      // Check if any route needs updating (person count or dates)
+      // Arrival = departure + 1 day
+      const needsUpdate = erRoutes.some(r => r.person !== newPersonCount) ||
+        (departureDate && erRoutes.some((r, idx) => {
+          const expectedDate = format(addDays(departureDate, idx + 1), 'yyyy-MM-dd');
+          return r.sana !== expectedDate;
+        }));
+
+      if (needsUpdate) {
+        const updatedRoutes = erRoutes.map((route, index) => {
+          // Get best vehicle for this provider and new person count
+          const vehicles = route.choiceTab === 'sevil' ? defaultSevilVehicles
+            : route.choiceTab === 'xayrulla' ? defaultXayrullaVehicles
+            : route.choiceTab === 'nosir' ? defaultNosirVehicles
+            : [];
+
+          const count = parseInt(newPersonCount);
+          const suitable = vehicles.filter(v => {
+            const personRange = v.person || '';
+            if (personRange.includes('-')) {
+              const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
+              return !isNaN(min) && !isNaN(max) && count >= min && count <= max;
+            }
+            return false;
+          });
+          const bestVehicle = suitable.length > 0 ? suitable[0] : null;
+          const newTransportType = bestVehicle ? bestVehicle.name : route.transportType;
+
+          // Calculate date for this route: departure date + 1 (arrival) + index days
+          const routeDate = departureDate ? format(addDays(departureDate, index + 1), 'yyyy-MM-dd') : route.sana;
+
+          return {
+            ...route,
+            sana: routeDate,
+            person: newPersonCount,
+            transportType: newTransportType,
+            // Clear rate and price if transport type changed
+            choiceRate: newTransportType !== route.transportType ? '' : route.choiceRate,
+            price: newTransportType !== route.transportType ? '' : route.price
+          };
+        });
+        setErRoutes(updatedRoutes);
+      }
+    }
+  }, [tourists.length, formData.departureDate]);
 
   const loadData = async () => {
     try {
@@ -392,16 +507,132 @@ export default function BookingDetail() {
       setHotels(hotelsRes.data.hotels || []);
 
       if (!isNew) {
-        const [bookingRes, accommodationsRes, touristsRes] = await Promise.all([
+        const [bookingRes, accommodationsRes, touristsRes, routesRes] = await Promise.all([
           bookingsApi.getById(id),
           bookingsApi.getAccommodations(id),
-          touristsApi.getAll(id)
+          touristsApi.getAll(id),
+          routesApi.getAll(id)
         ]);
         const b = bookingRes.data.booking;
         setBooking(b);
         setBookingRooms(b.bookingRooms || []);
         setAccommodations(accommodationsRes.data.accommodations || []);
         setTourists(touristsRes.data.tourists || []);
+
+        // Load routes from database
+        const loadedRoutes = routesRes.data.routes || [];
+        if (loadedRoutes.length > 0) {
+          // Helper to get vehicles by provider for recalculation
+          const getVehicles = (provider) => {
+            if (provider === 'sevil') return defaultSevilVehicles;
+            if (provider === 'xayrulla') return defaultXayrullaVehicles;
+            if (provider === 'nosir') return defaultNosirVehicles;
+            return [];
+          };
+
+          // Helper to find best vehicle based on person count
+          const findVehicle = (vehicles, personCount) => {
+            if (!personCount) return null;
+            const count = parseInt(personCount);
+            if (isNaN(count)) return null;
+
+            const suitable = vehicles.filter(v => {
+              const personRange = v.person || '';
+              if (personRange.includes('-')) {
+                const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
+                return !isNaN(min) && !isNaN(max) && count >= min && count <= max;
+              }
+              return false;
+            });
+            return suitable.length > 0 ? suitable[0] : null;
+          };
+
+          // Get departure date for calculating arrival-based dates
+          const bookingDepartureDate = b.departureDate ? new Date(b.departureDate) : null;
+          // Get total PAX from tourists
+          const totalPax = touristsRes.data.tourists?.length || 0;
+
+          setErRoutes(loadedRoutes.map((r, index) => {
+            const provider = r.provider || '';
+            // Use total PAX from tourists as person count
+            const personCount = totalPax > 0 ? totalPax.toString() : (r.personCount?.toString() || '');
+            const vehicles = getVehicles(provider);
+            const bestVehicle = findVehicle(vehicles, personCount);
+            // Use recalculated transport type if available, otherwise keep saved value
+            const transportType = bestVehicle ? bestVehicle.name : (r.transportType || '');
+
+            // Calculate date from Arrival (departure + 1) + index
+            const routeDate = bookingDepartureDate
+              ? format(addDays(bookingDepartureDate, index + 1), 'yyyy-MM-dd')
+              : (r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '');
+
+            return {
+              id: r.id,
+              nomer: r.dayNumber?.toString() || '',
+              sana: routeDate,
+              shahar: r.city || '',
+              route: r.routeName || '',
+              person: personCount,
+              transportType: transportType,
+              choiceTab: provider,
+              choiceRate: r.optionRate || '',
+              price: r.price?.toString() || ''
+            };
+          }));
+        } else if (b.tourType?.code === 'ER') {
+          // No saved routes - use default ER template
+          const bookingDepartureDate = b.departureDate ? new Date(b.departureDate) : null;
+          const totalPax = touristsRes.data.tourists?.length || 0;
+
+          // Helper to get vehicles by provider for recalculation
+          const getVehicles = (provider) => {
+            if (provider === 'sevil') return defaultSevilVehicles;
+            if (provider === 'xayrulla') return defaultXayrullaVehicles;
+            if (provider === 'nosir') return defaultNosirVehicles;
+            return [];
+          };
+
+          // Helper to find best vehicle based on person count
+          const findVehicle = (vehicles, personCount) => {
+            if (!personCount) return null;
+            const count = parseInt(personCount);
+            if (isNaN(count)) return null;
+            const suitable = vehicles.filter(v => {
+              const personRange = v.person || '';
+              if (personRange.includes('-')) {
+                const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
+                return !isNaN(min) && !isNaN(max) && count >= min && count <= max;
+              }
+              return false;
+            });
+            return suitable.length > 0 ? suitable[0] : null;
+          };
+
+          setErRoutes(defaultERRoutesTemplate.map((template, index) => {
+            const personCount = totalPax > 0 ? totalPax.toString() : '';
+            const vehicles = getVehicles(template.choiceTab);
+            const bestVehicle = findVehicle(vehicles, personCount);
+            const transportType = bestVehicle ? bestVehicle.name : '';
+
+            // Calculate date from Arrival (departure + 1) + index
+            const routeDate = bookingDepartureDate
+              ? format(addDays(bookingDepartureDate, index + 1), 'yyyy-MM-dd')
+              : '';
+
+            return {
+              id: template.id,
+              nomer: '',
+              sana: routeDate,
+              shahar: template.shahar,
+              route: template.route,
+              person: personCount,
+              transportType: transportType,
+              choiceTab: template.choiceTab,
+              choiceRate: '',
+              price: ''
+            };
+          }));
+        }
         const uzbek = parseInt(b.paxUzbekistan) || 0;
         const turkmen = parseInt(b.paxTurkmenistan) || 0;
 
@@ -1128,23 +1359,106 @@ export default function BookingDetail() {
   };
 
   // Route module helper functions
+
+  // Get price from Opex data based on provider, transport type, and rate
+  const getPriceFromOpex = (provider, transportType, rateType) => {
+    if (!provider || !transportType || !rateType) return '';
+
+    let vehicles = [];
+    let rateField = rateType;
+
+    // Map rate type to actual field name
+    const rateFieldMap = {
+      // Sevil
+      'pickupDropoff': 'pickupDropoff',
+      'tagRate': 'tagRate',
+      'urgenchRate': 'urgenchRate',
+      'shovotRate': 'shovotRate2',
+      // Xayrulla
+      'vstrecha': 'vstrecha',
+      'chimgan': 'chimgan',
+      'tag': 'tag',
+      'oybek': 'oybek',
+      'chernyayevka': 'chernyayevka',
+      'cityTour': 'cityTour',
+      // Nosir
+      'margilan': 'margilan',
+      'qoqon': 'qoqon',
+      'dostlik': 'dostlik',
+      'toshkent': 'toshkent'
+    };
+
+    rateField = rateFieldMap[rateType] || rateType;
+
+    // Select the right vehicle list based on provider
+    if (provider === 'sevil' || ['pickupDropoff', 'tagRate', 'urgenchRate', 'shovotRate'].includes(rateType)) {
+      vehicles = sevilVehicles;
+    } else if (provider === 'xayrulla' || ['vstrecha', 'chimgan', 'tag', 'oybek', 'chernyayevka', 'cityTour'].includes(rateType)) {
+      vehicles = xayrullaVehicles;
+    } else if (provider === 'nosir' || ['margilan', 'qoqon', 'dostlik', 'toshkent'].includes(rateType)) {
+      vehicles = nosirVehicles;
+    }
+
+    // Find the vehicle by transport type name
+    const vehicle = vehicles.find(v =>
+      v.name?.toLowerCase() === transportType?.toLowerCase()
+    );
+
+    if (vehicle && vehicle[rateField]) {
+      return vehicle[rateField].toString();
+    }
+
+    return '';
+  };
+
   const findBestVehicle = (vehicles, personCount) => {
     if (!personCount || personCount === '') return null;
 
     const count = parseInt(personCount);
     if (isNaN(count)) return null;
 
-    // Filter vehicles that can accommodate the person count
+    // Parse person range (e.g., "5-8" or "9-20") and find vehicle where count falls within range
     const suitableVehicles = vehicles.filter(v => {
+      const personRange = v.person || '';
+      if (personRange.includes('-')) {
+        const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
+        return !isNaN(min) && !isNaN(max) && count >= min && count <= max;
+      }
+      // Fallback to seats if person range not defined
       const seats = parseInt(v.seats);
       return !isNaN(seats) && seats >= count;
     });
 
-    if (suitableVehicles.length === 0) return null;
+    if (suitableVehicles.length === 0) {
+      // If no exact match, find vehicle with capacity >= person count
+      const largerVehicles = vehicles.filter(v => {
+        const seats = parseInt(v.seats);
+        return !isNaN(seats) && seats >= count;
+      });
+      if (largerVehicles.length > 0) {
+        largerVehicles.sort((a, b) => parseInt(a.seats) - parseInt(b.seats));
+        return largerVehicles[0];
+      }
+      return null;
+    }
 
-    // Sort by seats (ascending) and return the smallest suitable vehicle
-    suitableVehicles.sort((a, b) => parseInt(a.seats) - parseInt(b.seats));
+    // Return first suitable vehicle (they should be ordered by size in the data)
     return suitableVehicles[0];
+  };
+
+  // Get vehicles list by provider
+  const getVehiclesByProvider = (provider) => {
+    if (provider === 'sevil') return sevilVehicles;
+    if (provider === 'xayrulla') return xayrullaVehicles;
+    if (provider === 'nosir') return nosirVehicles;
+    return [];
+  };
+
+  // Get best vehicle for provider and person count
+  const getBestVehicleForRoute = (provider, personCount) => {
+    const vehicles = getVehiclesByProvider(provider);
+    const bestVehicle = findBestVehicle(vehicles, personCount);
+    return bestVehicle ? bestVehicle.name : '';
   };
 
   const handleOpenProviderModal = (route) => {
@@ -1223,21 +1537,82 @@ export default function BookingDetail() {
     }
   };
 
+  // Determine provider based on city
+  const getProviderByCity = (city) => {
+    if (!city) return '';
+    const cityLower = city.toLowerCase().trim();
+
+    // Tashkent -> Xayrulla
+    if (cityLower.includes('tashkent') || cityLower.includes('toshkent') || cityLower.includes('ташкент')) {
+      return 'xayrulla';
+    }
+    // Fergana region -> Nosir
+    if (cityLower.includes('fergana') || cityLower.includes('fargona') || cityLower.includes('фергана') ||
+        cityLower.includes('andijan') || cityLower.includes('andijon') || cityLower.includes('андижан') ||
+        cityLower.includes('namangan') || cityLower.includes('наманган') ||
+        cityLower.includes('kokand') || cityLower.includes('qoqon') || cityLower.includes('коканд') ||
+        cityLower.includes('margilan') || cityLower.includes('margʻilon') || cityLower.includes('маргилан')) {
+      return 'nosir';
+    }
+    // Other cities (Samarkand, Bukhara, Khiva, etc.) -> Sevil
+    return 'sevil';
+  };
+
   const handleCityChange = (routeId, newCity) => {
-    setErRoutes(erRoutes.map(r =>
-      r.id === routeId ? { ...r, shahar: newCity } : r
-    ));
+    const autoProvider = getProviderByCity(newCity);
+    setErRoutes(erRoutes.map(r => {
+      if (r.id === routeId) {
+        // If provider changes, auto-select best vehicle for person count
+        const providerChanged = autoProvider && autoProvider !== r.choiceTab;
+        const newProvider = autoProvider || r.choiceTab;
+        const autoVehicle = providerChanged ? getBestVehicleForRoute(newProvider, r.person) : r.transportType;
+        return {
+          ...r,
+          shahar: newCity,
+          choiceTab: newProvider,
+          transportType: autoVehicle,
+          choiceRate: providerChanged ? '' : r.choiceRate,
+          price: providerChanged ? '' : r.price
+        };
+      }
+      return r;
+    }));
   };
 
   const handleRouteDateChange = (routeIndex, newDate) => {
     const updatedRoutes = [...erRoutes];
+    const oldDate = updatedRoutes[routeIndex].sana;
     updatedRoutes[routeIndex].sana = newDate;
 
-    // Update all subsequent routes to continue sequentially
-    for (let i = routeIndex + 1; i < updatedRoutes.length; i++) {
-      const previousDate = new Date(updatedRoutes[i - 1].sana);
-      const nextDate = addDays(previousDate, 1);
-      updatedRoutes[i].sana = format(nextDate, 'yyyy-MM-dd');
+    if (newDate) {
+      // Check if the new date is earlier than the previous row's date
+      // If so, sort by date to put it in the correct position
+      const prevRowDate = routeIndex > 0 ? updatedRoutes[routeIndex - 1].sana : null;
+      const isEarlierThanPrev = prevRowDate && new Date(newDate) < new Date(prevRowDate);
+
+      if (isEarlierThanPrev) {
+        // Sort routes by date (earlier dates first)
+        updatedRoutes.sort((a, b) => {
+          if (!a.sana && !b.sana) return 0;
+          if (!a.sana) return 1;
+          if (!b.sana) return -1;
+          return new Date(a.sana) - new Date(b.sana);
+        });
+
+        // After sorting, update all dates sequentially from the first one
+        for (let i = 1; i < updatedRoutes.length; i++) {
+          const previousDate = new Date(updatedRoutes[i - 1].sana);
+          const nextDate = addDays(previousDate, 1);
+          updatedRoutes[i].sana = format(nextDate, 'yyyy-MM-dd');
+        }
+      } else {
+        // Update all subsequent routes to continue sequentially from the changed date
+        for (let i = routeIndex + 1; i < updatedRoutes.length; i++) {
+          const previousDate = new Date(updatedRoutes[i - 1].sana);
+          const nextDate = addDays(previousDate, 1);
+          updatedRoutes[i].sana = format(nextDate, 'yyyy-MM-dd');
+        }
+      }
     }
 
     setErRoutes(updatedRoutes);
@@ -1283,19 +1658,237 @@ export default function BookingDetail() {
   };
 
   const handleAddRoute = () => {
-    setEditingRoute(null);
-    setRouteForm({
+    const lastRoute = erRoutes[erRoutes.length - 1];
+    const newId = lastRoute ? lastRoute.id + 1 : 1;
+
+    // Calculate next date if last route has a date
+    let nextDate = '';
+    if (lastRoute?.sana) {
+      const lastDate = new Date(lastRoute.sana);
+      const nextDay = addDays(lastDate, 1);
+      nextDate = format(nextDay, 'yyyy-MM-dd');
+    }
+
+    const newRoute = {
+      id: newId,
       nomer: '',
-      sana: '',
+      sana: nextDate,
       shahar: '',
       route: '',
-      person: '',
-      transportType: '',
+      person: lastRoute?.person || '',
+      transportType: lastRoute?.transportType || '',
       choiceTab: '',
       choiceRate: '',
       price: ''
+    };
+
+    setErRoutes([...erRoutes, newRoute]);
+  };
+
+  // Handle route selection with auto-split for Uzbekistan/Turkmenistan groups
+  const handleRouteSelectionChange = (routeId, newRouteValue, routeIndex) => {
+    // Calculate pax from tourists data
+    const uzbekistanTourists = tourists.filter(t => {
+      const acc = (t.accommodation || '').toLowerCase();
+      return !acc.includes('turkmen') && !acc.includes('туркмен');
     });
-    setShowRouteModal(true);
+    const turkmenistanTourists = tourists.filter(t => {
+      const acc = (t.accommodation || '').toLowerCase();
+      return acc.includes('turkmen') || acc.includes('туркмен');
+    });
+
+    const paxUzb = uzbekistanTourists.length || parseInt(formData.paxUzbekistan) || 0;
+    const paxTkm = turkmenistanTourists.length || parseInt(formData.paxTurkmenistan) || 0;
+    const currentRoute = erRoutes.find(r => r.id === routeId);
+    const currentDate = currentRoute?.sana || '';
+
+    // Check if this is a split route
+    if (newRouteValue === 'Khiva - Urgench' && paxUzb > 0) {
+      // Uzbekistan group: Khiva -> Urgench -> fly to Tashkent
+      const autoVehicleUzb = getBestVehicleForRoute('sevil', paxUzb);
+
+      // Create routes for split
+      const maxId = Math.max(...erRoutes.map(r => r.id));
+      const nextDate = currentDate ? format(addDays(new Date(currentDate), 1), 'yyyy-MM-dd') : '';
+
+      // Uzbekistan group: Airport Pickup in Tashkent (same day)
+      const tashkentPickup = {
+        id: maxId + 1,
+        nomer: '',
+        sana: currentDate, // Same day - they fly to Tashkent
+        shahar: 'Tashkent',
+        route: 'Airport Pickup',
+        person: paxUzb.toString(),
+        transportType: getBestVehicleForRoute('xayrulla', paxUzb),
+        choiceTab: 'xayrulla',
+        choiceRate: '',
+        price: ''
+      };
+
+      // Uzbekistan group: Airport Drop-off in Tashkent (next day)
+      const tashkentDropoff = {
+        id: maxId + 2,
+        nomer: '',
+        sana: nextDate,
+        shahar: 'Tashkent',
+        route: 'Airport Drop-off',
+        person: paxUzb.toString(),
+        transportType: getBestVehicleForRoute('xayrulla', paxUzb),
+        choiceTab: 'xayrulla',
+        choiceRate: '',
+        price: ''
+      };
+
+      // Turkmenistan group: Khiva -> Shovot (next day) - if there are Turkmenistan tourists
+      const newRoutesToAdd = [tashkentPickup, tashkentDropoff];
+      if (paxTkm > 0) {
+        const autoVehicleTkm = getBestVehicleForRoute('sevil', paxTkm);
+        const khivaShovot = {
+          id: maxId + 3,
+          nomer: '',
+          sana: nextDate, // Next day - Turkmenistan group leaves
+          shahar: 'Khiva',
+          route: 'Khiva - Shovot',
+          person: paxTkm.toString(),
+          transportType: autoVehicleTkm,
+          choiceTab: 'sevil',
+          choiceRate: '',
+          price: ''
+        };
+        newRoutesToAdd.push(khivaShovot);
+      }
+
+      // Update current route and add new routes
+      const updatedRoutes = erRoutes.map(r => {
+        if (r.id === routeId) {
+          return {
+            ...r,
+            route: newRouteValue,
+            person: paxUzb.toString(),
+            transportType: autoVehicleUzb,
+            choiceTab: 'sevil',
+            choiceRate: '',
+            price: ''
+          };
+        }
+        return r;
+      });
+
+      // Insert new routes after the current route
+      const insertIndex = routeIndex + 1;
+      updatedRoutes.splice(insertIndex, 0, ...newRoutesToAdd);
+
+      setErRoutes(updatedRoutes);
+      return;
+    }
+
+    if (newRouteValue === 'Khiva - Shovot' && paxTkm > 0) {
+      // Turkmenistan group: Khiva -> Shovot
+      const autoVehicle = getBestVehicleForRoute('sevil', paxTkm);
+
+      const updatedRoutes = erRoutes.map(r => {
+        if (r.id === routeId) {
+          return {
+            ...r,
+            route: newRouteValue,
+            person: paxTkm.toString(),
+            transportType: autoVehicle,
+            choiceTab: 'sevil',
+            choiceRate: '',
+            price: ''
+          };
+        }
+        return r;
+      });
+
+      setErRoutes(updatedRoutes);
+      return;
+    }
+
+    // Default behavior for other routes
+    const updatedRoutes = erRoutes.map(r =>
+      r.id === routeId ? { ...r, route: newRouteValue } : r
+    );
+    setErRoutes(updatedRoutes);
+  };
+
+  // Auto-update PAX for split routes when tourists data changes
+  useEffect(() => {
+    if (tourists.length === 0) return;
+
+    // Calculate pax from tourists
+    const paxUzb = tourists.filter(t => {
+      const acc = (t.accommodation || '').toLowerCase();
+      return !acc.includes('turkmen') && !acc.includes('туркмен');
+    }).length;
+    const paxTkm = tourists.filter(t => {
+      const acc = (t.accommodation || '').toLowerCase();
+      return acc.includes('turkmen') || acc.includes('туркмен');
+    }).length;
+
+    // Find the index of Khiva - Urgench route (split point)
+    const urgenchIndex = erRoutes.findIndex(r => r.route === 'Khiva - Urgench');
+    const hasShovotRoute = erRoutes.some(r => r.route === 'Khiva - Shovot');
+
+    if (urgenchIndex !== -1 || hasShovotRoute) {
+      const updatedRoutes = erRoutes.map((r, index) => {
+        // Update Khiva - Urgench with Uzbekistan PAX
+        if (r.route === 'Khiva - Urgench' && paxUzb > 0) {
+          const newVehicle = getBestVehicleForRoute(r.choiceTab || 'sevil', paxUzb);
+          const newPrice = r.choiceRate ? getPriceFromOpex(r.choiceTab || 'sevil', newVehicle, r.choiceRate) : r.price;
+          return { ...r, person: paxUzb.toString(), transportType: newVehicle, price: newPrice || r.price };
+        }
+        // Update Khiva - Shovot with Turkmenistan PAX
+        if (r.route === 'Khiva - Shovot' && paxTkm > 0) {
+          const newVehicle = getBestVehicleForRoute(r.choiceTab || 'sevil', paxTkm);
+          const newPrice = r.choiceRate ? getPriceFromOpex(r.choiceTab || 'sevil', newVehicle, r.choiceRate) : r.price;
+          return { ...r, person: paxTkm.toString(), transportType: newVehicle, price: newPrice || r.price };
+        }
+        // Update Tashkent routes after Khiva - Urgench (Uzbekistan group only)
+        if (urgenchIndex !== -1 && index > urgenchIndex && r.shahar === 'Tashkent' && paxUzb > 0) {
+          const newVehicle = getBestVehicleForRoute(r.choiceTab || 'xayrulla', paxUzb);
+          const newPrice = r.choiceRate ? getPriceFromOpex(r.choiceTab || 'xayrulla', newVehicle, r.choiceRate) : r.price;
+          return { ...r, person: paxUzb.toString(), transportType: newVehicle, price: newPrice || r.price };
+        }
+        return r;
+      });
+
+      // Only update if something changed
+      const hasChanges = updatedRoutes.some((r, i) =>
+        r.person !== erRoutes[i].person || r.transportType !== erRoutes[i].transportType || r.price !== erRoutes[i].price
+      );
+      if (hasChanges) {
+        setErRoutes(updatedRoutes);
+      }
+    }
+  }, [tourists]);
+
+  // Save all routes to database
+  const handleSaveAllRoutes = async () => {
+    if (!id || isNew) {
+      toast.error('Сначала сохраните бронирование');
+      return;
+    }
+
+    try {
+      const routesToSave = erRoutes.map((r, index) => ({
+        dayNumber: index + 1,
+        date: r.sana || null,
+        city: r.shahar || null,
+        routeName: r.route || '',
+        personCount: parseInt(r.person) || 0,
+        transportType: r.transportType || null,
+        provider: r.choiceTab || null,
+        optionRate: r.choiceRate || null,
+        price: parseFloat(r.price) || 0
+      }));
+
+      await routesApi.bulkUpdate(id, routesToSave);
+      toast.success('Маршруты сохранены');
+    } catch (error) {
+      console.error('Error saving routes:', error);
+      toast.error('Ошибка сохранения маршрутов');
+    }
   };
 
   // Export PDF ЗАЯВКА for specific accommodation
@@ -1564,184 +2157,336 @@ export default function BookingDetail() {
 
       {/* Route Tab */}
       {!isNew && activeTab === 'route' && (
-        <div className="space-y-6">
-          {/* Header Card */}
-          <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-2xl shadow-xl p-8 text-white">
+        <div className="space-y-4">
+          {/* Compact Header */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-                    <Car className="w-8 h-8" />
+              <div className="flex items-center gap-6">
+                {/* Group Badge */}
+                <div className="flex items-center gap-2">
+                  <span
+                    className="px-3 py-1.5 rounded-lg text-sm font-bold text-white"
+                    style={{ backgroundColor: booking?.tourType?.color || '#3B82F6' }}
+                  >
+                    {booking?.bookingNumber || '-'}
+                  </span>
+                </div>
+
+                {/* Dates */}
+                <div className="flex items-center gap-1 text-sm">
+                  <span className="text-gray-500">Departure:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.departureDate ? format(new Date(formData.departureDate), 'dd.MM.yyyy') : '-'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 text-sm">
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Arrival</span>
+                  <span className="font-semibold text-green-700">
+                    {formData.departureDate ? format(addDays(new Date(formData.departureDate), 1), 'dd.MM.yyyy') : '-'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 text-sm">
+                  <span className="text-gray-500">End:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.endDate ? format(new Date(formData.endDate), 'dd.MM.yyyy') : '-'}
+                  </span>
+                </div>
+
+                <div className="h-6 w-px bg-gray-200"></div>
+
+                {/* PAX Info */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg">
+                    <span className="text-xs text-blue-600">PAX</span>
+                    <span className="text-sm font-bold text-blue-700">{tourists.length || formData.pax || 0}</span>
                   </div>
-                  <div>
-                    <h2 className="text-3xl font-bold">Route Planning</h2>
-                    <p className="text-blue-100 mt-1">Manage transportation routes for this booking</p>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-xs text-emerald-600">UZB</span>
+                    <span className="text-sm font-bold text-emerald-700">{tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                    <span className="text-xs text-purple-600">TKM</span>
+                    <span className="text-sm font-bold text-purple-700">{tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0}</span>
                   </div>
                 </div>
               </div>
-              <button
-                onClick={handleAddRoute}
-                className="flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
-              >
-                <Plus className="w-5 h-5" />
-                Add Route
-              </button>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveAllRoutes}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+                >
+                  <Save className="w-4 h-4" />
+                  Save
+                </button>
+                <button
+                  onClick={handleAddRoute}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Route
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Route Table Card */}
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200/60 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 border-b border-gray-200">
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Nomer
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Sana
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Shahar
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Route
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Person
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Provider
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Transport Type
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Option Rate
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Price
-                    </th>
-                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Actions
-                    </th>
+                  <tr className="bg-slate-800 text-white">
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide w-12">#</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide">Date</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide">City</th>
+                    <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">Route</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide w-16">PAX</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide">Provider</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide">Vehicle</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide">Rate Type</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide w-20">Price</th>
+                    <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wide w-16"></th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
+                <tbody>
                   {erRoutes.map((route, index) => (
                     <tr
                       key={route.id}
-                      className="group hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 border-l-4 border-transparent hover:border-blue-500"
+                      className={`group border-b border-gray-100 transition-all duration-200 hover:bg-blue-50/50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
                     >
-                      <td className="px-6 py-5 whitespace-nowrap">
+                      <td className="px-3 py-2.5">
                         <div className="flex justify-center">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
-                            <span className="text-sm font-bold text-blue-600">{index + 1}</span>
+                          <div className="w-7 h-7 bg-slate-700 text-white rounded-md flex items-center justify-center text-xs font-bold">
+                            {index + 1}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex justify-center">
-                          <input
-                            type="date"
-                            value={route.sana || ''}
-                            onChange={(e) => handleRouteDateChange(index, e.target.value)}
-                            className="px-3 py-1.5 bg-gradient-to-r from-rose-100 to-pink-100 text-rose-700 rounded-lg text-sm font-semibold border-0 focus:ring-2 focus:ring-rose-400 transition-all cursor-pointer hover:shadow-md"
-                          />
-                        </div>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="date"
+                          value={route.sana || ''}
+                          onChange={(e) => handleRouteDateChange(index, e.target.value)}
+                          className="w-full px-2 py-1.5 bg-amber-50 text-amber-800 rounded-md text-xs font-medium border border-amber-200 focus:ring-1 focus:ring-amber-400 focus:border-amber-400 cursor-pointer"
+                        />
                       </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex justify-center">
-                          <select
-                            value={route.shahar || ''}
-                            onChange={(e) => handleCityChange(route.id, e.target.value)}
-                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 rounded-lg text-sm font-semibold border-0 focus:ring-2 focus:ring-emerald-400 transition-all cursor-pointer hover:shadow-md"
-                          >
-                            <option value="">Select City</option>
+                      <td className="px-3 py-2.5">
+                        <select
+                          value={route.shahar || ''}
+                          onChange={(e) => handleCityChange(route.id, e.target.value)}
+                          className="w-full px-2 py-1.5 bg-emerald-50 text-emerald-800 rounded-md text-xs font-medium border border-emerald-200 focus:ring-1 focus:ring-emerald-400 cursor-pointer"
+                        >
+                          <option value="">Select</option>
+                          <optgroup label="Tashkent (Xayrulla)">
                             <option value="Tashkent">Tashkent</option>
+                          </optgroup>
+                          <optgroup label="Fergana (Nosir)">
+                            <option value="Fergana">Fergana</option>
+                            <option value="Andijan">Andijan</option>
+                            <option value="Namangan">Namangan</option>
+                            <option value="Kokand">Kokand</option>
+                            <option value="Margilan">Margilan</option>
+                          </optgroup>
+                          <optgroup label="Other (Sevil)">
                             <option value="Samarkand">Samarkand</option>
-                            <option value="Asraf">Asraf</option>
                             <option value="Bukhara">Bukhara</option>
                             <option value="Khiva">Khiva</option>
                             <option value="Urgench">Urgench</option>
-                            <option value="Fergana">Fergana</option>
-                          </select>
-                        </div>
+                            <option value="Asraf">Asraf</option>
+                            <option value="Nukus">Nukus</option>
+                            <option value="Termez">Termez</option>
+                            <option value="Karshi">Karshi</option>
+                          </optgroup>
+                        </select>
                       </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {route.route}
-                        </div>
+                      <td className="px-3 py-2.5">
+                        <select
+                          value={route.route || ''}
+                          onChange={(e) => handleRouteSelectionChange(route.id, e.target.value, index)}
+                          className="w-full px-2 py-1.5 bg-violet-50 text-violet-800 rounded-md text-xs font-medium border border-violet-200 focus:ring-1 focus:ring-violet-400 cursor-pointer min-w-[160px]"
+                        >
+                          <option value="">Select Route</option>
+                          <optgroup label="Pickup / Drop-off">
+                            <option value="Airport Pickup">Airport Pickup</option>
+                            <option value="Airport Drop-off">Airport Drop-off</option>
+                            <option value="Train Station Pickup">Train Station Pickup</option>
+                            <option value="Train Station Drop-off">Train Station Drop-off</option>
+                          </optgroup>
+                          <optgroup label="City Tour">
+                            <option value="Tashkent City Tour">Tashkent City Tour</option>
+                            <option value="Samarkand City Tour">Samarkand City Tour</option>
+                            <option value="Bukhara City Tour">Bukhara City Tour</option>
+                            <option value="Khiva City Tour">Khiva City Tour</option>
+                            <option value="Fergana City Tour">Fergana City Tour</option>
+                            <option value="Nukus City Tour">Nukus City Tour</option>
+                            <option value="Termez City Tour">Termez City Tour</option>
+                            <option value="Kokand City Tour">Kokand City Tour</option>
+                            <option value="Margilan City Tour">Margilan City Tour</option>
+                            <option value="Shakhrisabz City Tour">Shakhrisabz City Tour</option>
+                          </optgroup>
+                          <optgroup label="Transfer">
+                            <option value="Tashkent - Samarkand">Tashkent - Samarkand</option>
+                            <option value="Samarkand - Asraf">Samarkand - Asraf</option>
+                            <option value="Asraf - Bukhara">Asraf - Bukhara</option>
+                            <option value="Samarkand - Bukhara">Samarkand - Bukhara</option>
+                            <option value="Bukhara - Khiva">Bukhara - Khiva</option>
+                            <option value="Olot - Bukhara">Olot - Bukhara</option>
+                            <option value="Khiva - Urgench">Khiva - Urgench</option>
+                            <option value="Khiva - Shovot">Khiva - Shovot</option>
+                            <option value="Khiva - Nukus">Khiva - Nukus</option>
+                            <option value="Tashkent - Fergana">Tashkent - Fergana</option>
+                            <option value="Fergana - Tashkent">Fergana - Tashkent</option>
+                            <option value="Samarkand - Shakhrisabz">Samarkand - Shakhrisabz</option>
+                            <option value="Shakhrisabz - Samarkand">Shakhrisabz - Samarkand</option>
+                            <option value="Tashkent - Chimgan">Tashkent - Chimgan</option>
+                            <option value="Chimgan - Tashkent">Chimgan - Tashkent</option>
+                          </optgroup>
+                          <optgroup label="Excursion">
+                            <option value="Chimgan Excursion">Chimgan Excursion</option>
+                            <option value="Charvak Excursion">Charvak Excursion</option>
+                            <option value="Nurata Excursion">Nurata Excursion</option>
+                            <option value="Aydarkul Excursion">Aydarkul Excursion</option>
+                            <option value="Muynak Excursion">Muynak Excursion</option>
+                          </optgroup>
+                        </select>
                       </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex justify-center">
-                          <span className="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-full text-sm font-semibold">
-                            {route.person || '-'}
-                          </span>
-                        </div>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="number"
+                          value={route.person || ''}
+                          onChange={(e) => {
+                            const newPersonCount = e.target.value;
+                            const autoVehicle = route.choiceTab ? getBestVehicleForRoute(route.choiceTab, newPersonCount) : '';
+                            const updatedRoutes = erRoutes.map(r =>
+                              r.id === route.id ? {
+                                ...r,
+                                person: newPersonCount,
+                                transportType: autoVehicle || r.transportType,
+                                choiceRate: autoVehicle && autoVehicle !== r.transportType ? '' : r.choiceRate,
+                                price: autoVehicle && autoVehicle !== r.transportType ? '' : r.price
+                              } : r
+                            );
+                            setErRoutes(updatedRoutes);
+                          }}
+                          className="w-14 px-2 py-1.5 bg-blue-50 text-blue-800 rounded-md text-xs font-bold text-center border border-blue-200 focus:ring-1 focus:ring-blue-400"
+                          placeholder="0"
+                          min="1"
+                        />
                       </td>
                       <td
-                        className="px-6 py-5 whitespace-nowrap cursor-pointer group/provider"
+                        className="px-3 py-2.5 cursor-pointer"
                         onClick={() => handleOpenProviderModal(route)}
                       >
-                        <div className="flex items-center justify-center gap-2">
-                          {route.choiceTab ? (
-                            <span className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all duration-300 ${
-                              route.choiceTab === 'xayrulla'
-                                ? 'bg-gradient-to-r from-cyan-100 to-blue-100 text-cyan-700 group-hover/provider:shadow-lg group-hover/provider:scale-105'
-                                : route.choiceTab === 'sevil'
-                                ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 group-hover/provider:shadow-lg group-hover/provider:scale-105'
-                                : 'bg-gradient-to-r from-teal-100 to-emerald-100 text-teal-700 group-hover/provider:shadow-lg group-hover/provider:scale-105'
-                            }`}>
-                              <span className="capitalize">{route.choiceTab}</span>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </span>
-                          ) : (
-                            <span className="px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 text-sm font-medium group-hover/provider:border-blue-400 group-hover/provider:text-blue-600 transition-all">
-                              Click to Select
-                            </span>
+                        {route.choiceTab ? (
+                          <div className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all hover:scale-105 ${
+                            route.choiceTab === 'xayrulla'
+                              ? 'bg-cyan-100 text-cyan-800 border border-cyan-200'
+                              : route.choiceTab === 'sevil'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-teal-100 text-teal-800 border border-teal-200'
+                          }`}>
+                            <span className="capitalize">{route.choiceTab}</span>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center px-2.5 py-1.5 border border-dashed border-gray-300 rounded-md text-xs text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors">
+                            Select
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <select
+                          value={route.transportType || ''}
+                          onChange={(e) => {
+                            const newTransportType = e.target.value;
+                            const updatedRoutes = erRoutes.map(r =>
+                              r.id === route.id ? { ...r, transportType: newTransportType, choiceRate: '', price: '' } : r
+                            );
+                            setErRoutes(updatedRoutes);
+                          }}
+                          className="w-full px-2 py-1.5 bg-indigo-50 text-indigo-800 rounded-md text-xs font-medium border border-indigo-200 focus:ring-1 focus:ring-indigo-400 cursor-pointer disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                          disabled={!route.choiceTab}
+                        >
+                          <option value="">{route.choiceTab ? 'Select' : '-'}</option>
+                          {route.choiceTab === 'sevil' && sevilVehicles.map(v => (
+                            <option key={v.id} value={v.name}>{v.name} ({v.person})</option>
+                          ))}
+                          {route.choiceTab === 'xayrulla' && xayrullaVehicles.map(v => (
+                            <option key={v.id} value={v.name}>{v.name} ({v.person})</option>
+                          ))}
+                          {route.choiceTab === 'nosir' && nosirVehicles.map(v => (
+                            <option key={v.id} value={v.name}>{v.name} ({v.person})</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <select
+                          value={route.choiceRate || ''}
+                          onChange={(e) => {
+                            const selectedRate = e.target.value;
+                            const autoPrice = getPriceFromOpex(route.choiceTab, route.transportType, selectedRate);
+                            const updatedRoutes = erRoutes.map(r =>
+                              r.id === route.id ? { ...r, choiceRate: selectedRate, price: autoPrice || r.price } : r
+                            );
+                            setErRoutes(updatedRoutes);
+                          }}
+                          className="w-full px-2 py-1.5 bg-rose-50 text-rose-800 rounded-md text-xs font-medium border border-rose-200 focus:ring-1 focus:ring-rose-400 cursor-pointer disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                          disabled={!route.choiceTab || !route.transportType}
+                        >
+                          <option value="">{!route.choiceTab || !route.transportType ? '-' : 'Select'}</option>
+                          {route.choiceTab === 'sevil' && (
+                            <>
+                              <option value="pickupDropoff">Pickup/Drop-off</option>
+                              <option value="tagRate">TAG Rate</option>
+                              <option value="urgenchRate">Urgench</option>
+                              <option value="shovotRate">Shovot</option>
+                            </>
                           )}
-                        </div>
+                          {route.choiceTab === 'xayrulla' && (
+                            <>
+                              <option value="vstrecha">Pickup/Drop-off</option>
+                              <option value="chimgan">Chimgan</option>
+                              <option value="tag">Tag</option>
+                              <option value="oybek">Oybek</option>
+                              <option value="chernyayevka">Chernyayevka</option>
+                              <option value="cityTour">City Tour</option>
+                            </>
+                          )}
+                          {route.choiceTab === 'nosir' && (
+                            <>
+                              <option value="margilan">Margilan</option>
+                              <option value="qoqon">Qoqon</option>
+                              <option value="dostlik">Dostlik</option>
+                              <option value="toshkent">Toshkent</option>
+                            </>
+                          )}
+                        </select>
                       </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-700 text-center">
-                          {route.transportType || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-700 text-center">
-                          {route.choiceRate || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 whitespace-nowrap">
+                      <td className="px-3 py-2.5">
                         <div className="flex justify-center">
                           {route.price ? (
-                            <span className="px-3 py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-lg text-sm font-bold">
+                            <span className="px-3 py-1.5 bg-emerald-500 text-white rounded-md text-xs font-bold shadow-sm">
                               ${route.price}
                             </span>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-gray-300 text-xs">-</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-5 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <button
-                            onClick={() => handleEditRoute(route)}
-                            className="p-2.5 text-blue-600 hover:text-white hover:bg-blue-600 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-110"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => handleDeleteRoute(route.id)}
-                            className="p-2.5 text-red-600 hover:text-white hover:bg-red-600 rounded-xl transition-all duration-300 hover:shadow-lg hover:scale-110"
+                            className="p-1.5 text-red-500 hover:text-white hover:bg-red-500 rounded-md transition-all"
                             title="Delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -1749,21 +2494,19 @@ export default function BookingDetail() {
                   ))}
                   {erRoutes.length === 0 && (
                     <tr>
-                      <td colSpan="7" className="px-6 py-16">
+                      <td colSpan="10" className="px-6 py-12">
                         <div className="flex flex-col items-center justify-center text-center">
-                          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mb-4">
-                            <MapPin className="w-10 h-10 text-gray-400" />
+                          <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mb-3">
+                            <MapPin className="w-8 h-8 text-gray-400" />
                           </div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Routes Yet</h3>
-                          <p className="text-gray-500 mb-6 max-w-sm">
-                            Start planning your transportation by adding your first route
-                          </p>
+                          <h3 className="text-sm font-semibold text-gray-700 mb-1">No Routes Yet</h3>
+                          <p className="text-xs text-gray-500 mb-4">Add your first route to start planning</p>
                           <button
                             onClick={handleAddRoute}
-                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+                            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors"
                           >
-                            <Plus className="w-5 h-5" />
-                            Add Your First Route
+                            <Plus className="w-4 h-4" />
+                            Add Route
                           </button>
                         </div>
                       </td>
@@ -1772,6 +2515,49 @@ export default function BookingDetail() {
                 </tbody>
               </table>
             </div>
+
+            {/* Cost Summary */}
+            {erRoutes.length > 0 && erRoutes.some(r => parseFloat(r.price) > 0) && (
+              <div className="mt-4 p-5 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between gap-8">
+                  {/* Provider Totals */}
+                  <div className="flex items-center gap-5">
+                    {erRoutes.some(r => r.choiceTab === 'sevil' && parseFloat(r.price) > 0) && (
+                      <div className="flex items-center gap-3 px-5 py-3 bg-blue-100 rounded-xl border border-blue-200">
+                        <span className="text-sm font-semibold text-blue-700">Sevil</span>
+                        <span className="text-xl font-bold text-blue-800">
+                          ${erRoutes.filter(r => r.choiceTab === 'sevil').reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
+                        </span>
+                      </div>
+                    )}
+                    {erRoutes.some(r => r.choiceTab === 'xayrulla' && parseFloat(r.price) > 0) && (
+                      <div className="flex items-center gap-3 px-5 py-3 bg-cyan-100 rounded-xl border border-cyan-200">
+                        <span className="text-sm font-semibold text-cyan-700">Xayrulla</span>
+                        <span className="text-xl font-bold text-cyan-800">
+                          ${erRoutes.filter(r => r.choiceTab === 'xayrulla').reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
+                        </span>
+                      </div>
+                    )}
+                    {erRoutes.some(r => r.choiceTab === 'nosir' && parseFloat(r.price) > 0) && (
+                      <div className="flex items-center gap-3 px-5 py-3 bg-teal-100 rounded-xl border border-teal-200">
+                        <span className="text-sm font-semibold text-teal-700">Nosir</span>
+                        <span className="text-xl font-bold text-teal-800">
+                          ${erRoutes.filter(r => r.choiceTab === 'nosir').reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex items-center gap-4 px-6 py-3 bg-emerald-600 rounded-xl shadow-lg">
+                    <span className="text-base font-semibold text-emerald-100">TOTAL</span>
+                    <span className="text-2xl font-bold text-white">
+                      ${erRoutes.reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1838,9 +2624,6 @@ export default function BookingDetail() {
                   <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Vehicle Name
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Seats
                     </th>
                     {selectedProviderTab === 'sevil' && (
                       <>
@@ -1929,17 +2712,6 @@ export default function BookingDetail() {
                                 </span>
                               )}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`px-3 py-1 text-sm font-medium rounded-lg ${
-                              isInsufficient
-                                ? 'bg-red-100 text-red-700'
-                                : isBestMatch
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}>
-                              {vehicle.seats || '-'}
-                            </span>
                           </td>
                           {selectedProviderTab === 'sevil' && (
                             <>
@@ -3691,7 +4463,7 @@ export default function BookingDetail() {
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                     <span className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 text-xs font-bold">1</span>
-                    Nomer
+                    Day
                   </label>
                   <input
                     type="text"
@@ -3705,7 +4477,7 @@ export default function BookingDetail() {
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                     <span className="w-6 h-6 bg-rose-100 rounded-lg flex items-center justify-center text-rose-600 text-xs font-bold">2</span>
-                    Sana
+                    Date
                   </label>
                   <input
                     type="date"
@@ -3718,21 +4490,48 @@ export default function BookingDetail() {
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                     <span className="w-6 h-6 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 text-xs font-bold">3</span>
-                    Shahar
+                    City
                   </label>
                   <select
                     value={routeForm.shahar}
-                    onChange={(e) => setRouteForm({ ...routeForm, shahar: e.target.value })}
+                    onChange={(e) => {
+                      const newCity = e.target.value;
+                      const autoProvider = getProviderByCity(newCity);
+                      const providerChanged = autoProvider && autoProvider !== routeForm.choiceTab;
+                      const newProvider = autoProvider || routeForm.choiceTab;
+                      const autoVehicle = providerChanged ? getBestVehicleForRoute(newProvider, routeForm.person) : routeForm.transportType;
+                      setRouteForm({
+                        ...routeForm,
+                        shahar: newCity,
+                        choiceTab: newProvider,
+                        transportType: autoVehicle,
+                        choiceRate: providerChanged ? '' : routeForm.choiceRate,
+                        price: providerChanged ? '' : routeForm.price
+                      });
+                    }}
                     className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-300 text-gray-900 font-medium"
                   >
                     <option value="">Select City</option>
-                    <option value="Tashkent">Tashkent</option>
-                    <option value="Samarkand">Samarkand</option>
-                    <option value="Asraf">Asraf</option>
-                    <option value="Bukhara">Bukhara</option>
-                    <option value="Khiva">Khiva</option>
-                    <option value="Urgench">Urgench</option>
-                    <option value="Fergana">Fergana</option>
+                    <optgroup label="Tashkent (Xayrulla)">
+                      <option value="Tashkent">Tashkent</option>
+                    </optgroup>
+                    <optgroup label="Fergana (Nosir)">
+                      <option value="Fergana">Fergana</option>
+                      <option value="Andijan">Andijan</option>
+                      <option value="Namangan">Namangan</option>
+                      <option value="Kokand">Kokand</option>
+                      <option value="Margilan">Margilan</option>
+                    </optgroup>
+                    <optgroup label="Other (Sevil)">
+                      <option value="Samarkand">Samarkand</option>
+                      <option value="Bukhara">Bukhara</option>
+                      <option value="Khiva">Khiva</option>
+                      <option value="Urgench">Urgench</option>
+                      <option value="Asraf">Asraf</option>
+                      <option value="Nukus">Nukus</option>
+                      <option value="Termez">Termez</option>
+                      <option value="Karshi">Karshi</option>
+                    </optgroup>
                   </select>
                 </div>
 
@@ -3756,11 +4555,24 @@ export default function BookingDetail() {
                     Person Count
                   </label>
                   <input
-                    type="text"
+                    type="number"
                     value={routeForm.person}
-                    onChange={(e) => setRouteForm({ ...routeForm, person: e.target.value })}
+                    onChange={(e) => {
+                      const newPersonCount = e.target.value;
+                      // Auto-select best vehicle for new person count
+                      const autoVehicle = routeForm.choiceTab ? getBestVehicleForRoute(routeForm.choiceTab, newPersonCount) : '';
+                      const vehicleChanged = autoVehicle && autoVehicle !== routeForm.transportType;
+                      setRouteForm({
+                        ...routeForm,
+                        person: newPersonCount,
+                        transportType: autoVehicle || routeForm.transportType,
+                        choiceRate: vehicleChanged ? '' : routeForm.choiceRate,
+                        price: vehicleChanged ? '' : routeForm.price
+                      });
+                    }}
                     className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-purple-100 focus:border-purple-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
                     placeholder="15"
+                    min="1"
                   />
                 </div>
 
@@ -3769,13 +4581,26 @@ export default function BookingDetail() {
                     <span className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 text-xs font-bold">6</span>
                     Transport Type
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={routeForm.transportType}
-                    onChange={(e) => setRouteForm({ ...routeForm, transportType: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
-                    placeholder="e.g., Joylong"
-                  />
+                    onChange={(e) => {
+                      // Clear rate and price when transport type changes
+                      setRouteForm({ ...routeForm, transportType: e.target.value, choiceRate: '', price: '' });
+                    }}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-300 text-gray-900 font-medium"
+                    disabled={!routeForm.choiceTab}
+                  >
+                    <option value="">{routeForm.choiceTab ? 'Select Vehicle' : 'Select City First'}</option>
+                    {routeForm.choiceTab === 'sevil' && sevilVehicles.map(v => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
+                    ))}
+                    {routeForm.choiceTab === 'xayrulla' && xayrullaVehicles.map(v => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
+                    ))}
+                    {routeForm.choiceTab === 'nosir' && nosirVehicles.map(v => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -3800,13 +4625,49 @@ export default function BookingDetail() {
                     <span className="w-6 h-6 bg-pink-100 rounded-lg flex items-center justify-center text-pink-600 text-xs font-bold">8</span>
                     Option Rate
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={routeForm.choiceRate}
-                    onChange={(e) => setRouteForm({ ...routeForm, choiceRate: e.target.value })}
-                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-100 focus:border-pink-500 transition-all duration-300 text-gray-900 font-medium placeholder-gray-400"
-                    placeholder="e.g., tagRate"
-                  />
+                    onChange={(e) => {
+                      const selectedRate = e.target.value;
+                      // Get price from Opex data
+                      const autoPrice = getPriceFromOpex(routeForm.choiceTab, routeForm.transportType, selectedRate);
+                      setRouteForm({
+                        ...routeForm,
+                        choiceRate: selectedRate,
+                        price: autoPrice || routeForm.price
+                      });
+                    }}
+                    className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-100 focus:border-pink-500 transition-all duration-300 text-gray-900 font-medium"
+                    disabled={!routeForm.choiceTab}
+                  >
+                    <option value="">{routeForm.choiceTab ? 'Select Rate' : 'Select City First'}</option>
+                    {routeForm.choiceTab === 'sevil' && (
+                      <>
+                        <option value="pickupDropoff">Pickup / Drop-off</option>
+                        <option value="tagRate">TAG Rate</option>
+                        <option value="urgenchRate">Urgench Rate</option>
+                        <option value="shovotRate">Shovot Rate</option>
+                      </>
+                    )}
+                    {routeForm.choiceTab === 'xayrulla' && (
+                      <>
+                        <option value="vstrecha">Pickup / Drop-off</option>
+                        <option value="chimgan">Chimgan Rate</option>
+                        <option value="tag">Tag Rate</option>
+                        <option value="oybek">Oybek Rate</option>
+                        <option value="chernyayevka">Chernyayevka Rate</option>
+                        <option value="cityTour">City Tour Rate</option>
+                      </>
+                    )}
+                    {routeForm.choiceTab === 'nosir' && (
+                      <>
+                        <option value="margilan">Margilan Rate</option>
+                        <option value="qoqon">Qoqon Rate</option>
+                        <option value="dostlik">Dostlik Rate</option>
+                        <option value="toshkent">Toshkent Rate</option>
+                      </>
+                    )}
+                  </select>
                 </div>
 
                 <div className="md:col-span-2">

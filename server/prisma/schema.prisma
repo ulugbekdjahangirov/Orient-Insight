@@ -158,6 +158,9 @@ model Booking {
   // Raw flight sections from PDF
   flightSections  FlightSection[]
 
+  // Маршруты транспорта
+  routes          Route[]
+
   // Дополнительные даты для ZA туров
   dateOlot        DateTime? // Olot
   dateJartepa     DateTime? // Jartepa
@@ -591,6 +594,39 @@ model FlightSection {
 
   @@index([bookingId])
   @@index([type])
+}
+
+// ============================================
+// Модуль: Route (Маршруты транспорта)
+// ============================================
+
+// Маршруты для бронирования
+model Route {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Основные данные
+  dayNumber       Int       @default(1)    // Номер дня
+  date            DateTime?                // Дата маршрута
+  city            String?                  // Город (Tashkent, Samarkand, etc.)
+  routeName       String                   // Название маршрута (Tashkent Airport PickUp, etc.)
+
+  // Транспорт
+  personCount     Int       @default(0)    // Количество человек
+  transportType   String?                  // Тип транспорта (Joylong, Starex, etc.)
+
+  // Поставщик
+  provider        String?                  // Провайдер (xayrulla, sevil, etc.)
+  optionRate      String?                  // Опция тарифа
+  price           Float     @default(0)    // Цена
+
+  sortOrder       Int       @default(0)    // Порядок сортировки
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([date])
 }
 
 // ============================================

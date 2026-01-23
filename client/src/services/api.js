@@ -107,6 +107,15 @@ export const touristsApi = {
 // Backward compatibility alias
 export const participantsApi = touristsApi;
 
+// API for routes (transport planning)
+export const routesApi = {
+  getAll: (bookingId) => api.get(`/bookings/${bookingId}/routes`),
+  create: (bookingId, data) => api.post(`/bookings/${bookingId}/routes`, data),
+  update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/routes/${id}`, data),
+  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/routes/${id}`),
+  bulkUpdate: (bookingId, routes) => api.put(`/bookings/${bookingId}/routes/bulk`, { routes })
+};
+
 // API for flights
 export const flightsApi = {
   getAll: (bookingId) => api.get(`/bookings/${bookingId}/flights`),

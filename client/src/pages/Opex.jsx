@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation, Users, Car, Train, Plane, MapPin } from 'lucide-react';
+import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation, Users, Car, Train, Plane, MapPin, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const categories = [
@@ -33,9 +33,9 @@ export default function Opex() {
       return JSON.parse(saved);
     }
     return [
-      { id: 1, name: 'Joylong', seats: '', person: '', pickupDropoff: '', tagRate: 50, urgenchRate: 110, shovotRate2: 60 },
-      { id: 2, name: 'Coster', seats: '', person: '', pickupDropoff: '', tagRate: 40, urgenchRate: 120, shovotRate2: '' },
-      { id: 3, name: 'Yutong 33', seats: '', person: '', pickupDropoff: '', tagRate: 50, urgenchRate: 160, shovotRate2: 120 },
+      { id: 1, name: 'Starex', seats: '7', person: '1-4', pickupDropoff: '', tagRate: 30, urgenchRate: 80, shovotRate2: '' },
+      { id: 2, name: 'Joylong', seats: '30', person: '5-8', pickupDropoff: '', tagRate: 50, urgenchRate: 110, shovotRate2: 60 },
+      { id: 3, name: 'Yutong 33', seats: '45', person: '9-20', pickupDropoff: '', tagRate: 50, urgenchRate: 160, shovotRate2: 120 },
     ];
   });
 
@@ -46,9 +46,9 @@ export default function Opex() {
       return JSON.parse(saved);
     }
     return [
-      { id: 1, name: 'Joylong', seats: '30', person: '', vstrecha: '', chimgan: 120, tag: 90 },
-      { id: 2, name: 'Sprinter', seats: '', person: '', vstrecha: '', chimgan: 150, tag: '' },
-      { id: 3, name: 'Yutong 33', seats: '45', person: '', vstrecha: '', chimgan: 220, tag: 130 },
+      { id: 1, name: 'Starex', seats: '7', person: '1-4', vstrecha: '', chimgan: 100, tag: '', oybek: '', chernyayevka: '', cityTour: 80 },
+      { id: 2, name: 'Joylong', seats: '30', person: '5-8', vstrecha: '', chimgan: 120, tag: 90, oybek: 100, chernyayevka: 110, cityTour: 100 },
+      { id: 3, name: 'Yutong 33', seats: '45', person: '9-20', vstrecha: '', chimgan: 220, tag: 130, oybek: 150, chernyayevka: 160, cityTour: 150 },
     ];
   });
 
@@ -59,38 +59,54 @@ export default function Opex() {
       return JSON.parse(saved);
     }
     return [
-      { id: 1, name: 'PKW', seats: '', person: '', margilan: '', qoqon: 20, dostlik: 60, toshkent: 170, extra: 60 },
-      { id: 2, name: 'Starex', seats: '', person: '', margilan: 30, qoqon: 100, dostlik: 100, toshkent: 120, extra: '' },
-      { id: 3, name: 'Staria', seats: '', person: '', margilan: 40, qoqon: 120, dostlik: 120, toshkent: 140, extra: '' },
-      { id: 4, name: 'Kinglong', seats: '', person: '', margilan: 50, qoqon: 130, dostlik: 130, toshkent: '', extra: '' },
-      { id: 5, name: 'Sprinter', seats: '', person: '', margilan: 170, qoqon: 160, dostlik: 160, toshkent: '', extra: '' },
-      { id: 6, name: 'Yutong 33', seats: '', person: '', margilan: 100, qoqon: 220, dostlik: 220, toshkent: '', extra: '' },
+      { id: 1, name: 'PKW', seats: '4', person: '1-2', margilan: '', qoqon: 20, dostlik: 60, toshkent: 170, extra: 60 },
+      { id: 2, name: 'Starex', seats: '7', person: '3-4', margilan: 30, qoqon: 100, dostlik: 100, toshkent: 120, extra: '' },
+      { id: 3, name: 'Joylong', seats: '30', person: '5-8', margilan: 80, qoqon: 180, dostlik: 180, toshkent: 200, extra: '' },
+      { id: 4, name: 'Yutong 33', seats: '45', person: '9-20', margilan: 100, qoqon: 220, dostlik: 220, toshkent: '', extra: '' },
     ];
   });
 
   // Metro vehicles data
-  const [metroVehicles, setMetroVehicles] = useState([
-    { id: 1, name: 'Tashkent Metro Line 1', economPrice: '1 400' },
-    { id: 2, name: 'Tashkent Metro Line 2', economPrice: '1 400' },
-    { id: 3, name: 'Tashkent Metro Line 3', economPrice: '1 400' },
-  ]);
+  const [metroVehicles, setMetroVehicles] = useState(() => {
+    const saved = localStorage.getItem('metroVehicles');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return [
+      { id: 1, name: 'Tashkent Metro Line 1', economPrice: '1 400' },
+      { id: 2, name: 'Tashkent Metro Line 2', economPrice: '1 400' },
+      { id: 3, name: 'Tashkent Metro Line 3', economPrice: '1 400' },
+    ];
+  });
 
   // Train vehicles data
-  const [trainVehicles, setTrainVehicles] = useState([
-    { id: 1, name: 'Afrosiyob764Ф (CKPCT) Tashkent Central → Karshi', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '6:33', arrival: '8:46' },
-    { id: 2, name: 'Afrosiyob766Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '7:30', arrival: '9:49' },
-    { id: 3, name: 'Afrosiyob768Ф (CKPCT) Tashkent Central → Samarkand', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:00', arrival: '10:25' },
-    { id: 4, name: 'Afrosiyob770Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:30', arrival: '10:49' },
-    { id: 5, name: 'Sharq710Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:30', arrival: '10:49' },
-    { id: 6, name: 'Nasaf716Ф (CKPCT) Tashkent Central → Karshi', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:30', arrival: '10:49' },
-  ]);
+  const [trainVehicles, setTrainVehicles] = useState(() => {
+    const saved = localStorage.getItem('trainVehicles');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return [
+      { id: 1, name: 'Afrosiyob764Ф (CKPCT) Tashkent Central → Karshi', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '6:33', arrival: '8:46' },
+      { id: 2, name: 'Afrosiyob766Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '7:30', arrival: '9:49' },
+      { id: 3, name: 'Afrosiyob768Ф (CKPCT) Tashkent Central → Samarkand', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:00', arrival: '10:25' },
+      { id: 4, name: 'Afrosiyob770Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:30', arrival: '10:49' },
+      { id: 5, name: 'Sharq710Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:30', arrival: '10:49' },
+      { id: 6, name: 'Nasaf716Ф (CKPCT) Tashkent Central → Karshi', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:30', arrival: '10:49' },
+    ];
+  });
 
   // Plane vehicles data
-  const [planeVehicles, setPlaneVehicles] = useState([
-    { id: 1, name: 'Uzbekistan Airways HY-101', route: 'Tashkent - Samarkand', economPrice: '450 000', businessPrice: '850 000', departure: '7:00', arrival: '8:15' },
-    { id: 2, name: 'Uzbekistan Airways HY-102', route: 'Tashkent - Bukhara', economPrice: '480 000', businessPrice: '900 000', departure: '9:30', arrival: '10:50' },
-    { id: 3, name: 'Uzbekistan Airways HY-103', route: 'Tashkent - Urgench', economPrice: '520 000', businessPrice: '950 000', departure: '11:00', arrival: '12:30' },
-  ]);
+  const [planeVehicles, setPlaneVehicles] = useState(() => {
+    const saved = localStorage.getItem('planeVehicles');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return [
+      { id: 1, name: 'Uzbekistan Airways HY-101', route: 'Tashkent - Samarkand', economPrice: '450 000', businessPrice: '850 000', departure: '7:00', arrival: '8:15' },
+      { id: 2, name: 'Uzbekistan Airways HY-102', route: 'Tashkent - Bukhara', economPrice: '480 000', businessPrice: '900 000', departure: '9:30', arrival: '10:50' },
+      { id: 3, name: 'Uzbekistan Airways HY-103', route: 'Tashkent - Urgench', economPrice: '520 000', businessPrice: '950 000', departure: '11:00', arrival: '12:30' },
+    ];
+  });
 
   // Modal states
   const [showVehicleModal, setShowVehicleModal] = useState(false);
@@ -107,6 +123,9 @@ export default function Opex() {
     vstrecha: '',
     chimgan: '',
     tag: '',
+    oybek: '',
+    chernyayevka: '',
+    cityTour: '',
     // Nosir fields
     margilan: '',
     qoqon: '',
@@ -139,6 +158,9 @@ export default function Opex() {
       vstrecha: '',
       chimgan: '',
       tag: '',
+      oybek: '',
+      chernyayevka: '',
+      cityTour: '',
       margilan: '',
       qoqon: '',
       dostlik: '',
@@ -169,6 +191,9 @@ export default function Opex() {
       vstrecha: vehicle.vstrecha || '',
       chimgan: vehicle.chimgan || '',
       tag: vehicle.tag || '',
+      oybek: vehicle.oybek || '',
+      chernyayevka: vehicle.chernyayevka || '',
+      cityTour: vehicle.cityTour || '',
       margilan: vehicle.margilan || '',
       qoqon: vehicle.qoqon || '',
       dostlik: vehicle.dostlik || '',
@@ -257,17 +282,20 @@ export default function Opex() {
     setShowVehicleModal(false);
   };
 
-  // Save to localStorage whenever data changes
+  // Save to localStorage whenever data changes and dispatch custom event
   useEffect(() => {
     localStorage.setItem('sevilVehicles', JSON.stringify(sevilVehicles));
+    window.dispatchEvent(new Event('vehiclesUpdated'));
   }, [sevilVehicles]);
 
   useEffect(() => {
     localStorage.setItem('xayrullaVehicles', JSON.stringify(xayrullaVehicles));
+    window.dispatchEvent(new Event('vehiclesUpdated'));
   }, [xayrullaVehicles]);
 
   useEffect(() => {
     localStorage.setItem('nosirVehicles', JSON.stringify(nosirVehicles));
+    window.dispatchEvent(new Event('vehiclesUpdated'));
   }, [nosirVehicles]);
 
   useEffect(() => {
@@ -282,9 +310,15 @@ export default function Opex() {
     localStorage.setItem('metroVehicles', JSON.stringify(metroVehicles));
   }, [metroVehicles]);
 
+  // Manual save handler for transport data
+  const handleSaveTransportData = (tabName) => {
+    // Data is already auto-saved via useEffect, just show confirmation
+    toast.success(`${tabName} ma'lumotlari saqlandi!`);
+  };
+
   useEffect(() => {
     loadExpenses();
-  }, [activeCategory, activeTransportTab, activeRouteTab]);
+  }, [activeCategory, activeTransportTab]);
 
   const loadExpenses = async () => {
     try {
@@ -334,8 +368,7 @@ export default function Opex() {
 
         <button
           onClick={() => {
-            if ((activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) ||
-                (activeCategory === 'route' && ['er', 'co', 'kas', 'za'].includes(activeRouteTab))) {
+            if (activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) {
               handleAddVehicle();
             } else {
               toast.info('Функционал в разработке');
@@ -346,8 +379,7 @@ export default function Opex() {
           <div className="absolute inset-0 bg-gradient-to-r from-primary-400 to-primary-600 rounded-xl blur opacity-0 group-hover:opacity-30 transition-opacity"></div>
           <Plus className="w-5 h-5 relative" />
           <span className="relative font-medium">
-            {(activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) ||
-             (activeCategory === 'route' && ['er', 'co', 'kas', 'za'].includes(activeRouteTab)) ? 'Добавить транспорт' : 'Добавить расход'}
+            {activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab) ? 'Добавить транспорт' : 'Добавить расход'}
           </span>
         </button>
       </div>
@@ -459,10 +491,7 @@ export default function Opex() {
                     Название
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Seats
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Person
+                    PAX
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Pickup / Drop-off
@@ -472,6 +501,15 @@ export default function Opex() {
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Tag Rate
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Oybek Rate
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Chernyayevka Rate
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    City Tour Rate
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Действия
@@ -484,11 +522,6 @@ export default function Opex() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {vehicle.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.seats || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -509,6 +542,21 @@ export default function Opex() {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="text-sm font-medium text-gray-900">
                         {vehicle.tag || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="text-sm font-medium text-gray-900">
+                        {vehicle.oybek || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="text-sm font-medium text-gray-900">
+                        {vehicle.chernyayevka || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="text-sm font-medium text-gray-900">
+                        {vehicle.cityTour || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -544,6 +592,16 @@ export default function Opex() {
                 </tr>
               </tbody>
             </table>
+            {/* Save Button for Xayrulla */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => handleSaveTransportData('Xayrulla')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+              >
+                <Save className="w-5 h-5" />
+                Сохранить
+              </button>
+            </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'nosir' ? (
           <div className="overflow-x-auto">
@@ -554,22 +612,19 @@ export default function Opex() {
                     Название
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Seats
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Person
+                    PAX
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Margilan
+                    Margilan Rate
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Qoqon
+                    Qoqon Rate
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    dostlik
+                    Dostlik Rate
                   </th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Toshkent
+                    Toshkent Rate
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Действия
@@ -582,11 +637,6 @@ export default function Opex() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {vehicle.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.seats || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -633,7 +683,7 @@ export default function Opex() {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan="8" className="px-6 py-4">
+                  <td colSpan="7" className="px-6 py-4">
                     <button
                       onClick={handleAddVehicle}
                       className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
@@ -647,6 +697,16 @@ export default function Opex() {
                 </tr>
               </tbody>
             </table>
+            {/* Save Button for Nosir */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => handleSaveTransportData('Nosir')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+              >
+                <Save className="w-5 h-5" />
+                Сохранить
+              </button>
+            </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'metro' ? (
           <div className="overflow-x-auto">
@@ -735,6 +795,16 @@ export default function Opex() {
                 )}
               </tbody>
             </table>
+            {/* Save Button for Metro */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => handleSaveTransportData('Metro')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+              >
+                <Save className="w-5 h-5" />
+                Сохранить
+              </button>
+            </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'plane' ? (
           <div className="overflow-x-auto">
@@ -865,6 +935,16 @@ export default function Opex() {
                 )}
               </tbody>
             </table>
+            {/* Save Button for Plane */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => handleSaveTransportData('Plane')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+              >
+                <Save className="w-5 h-5" />
+                Сохранить
+              </button>
+            </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'train' ? (
           <div className="overflow-x-auto">
@@ -995,6 +1075,16 @@ export default function Opex() {
                 )}
               </tbody>
             </table>
+            {/* Save Button for Train */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => handleSaveTransportData('Train')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+              >
+                <Save className="w-5 h-5" />
+                Сохранить
+              </button>
+            </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'sevil' ? (
           <div className="overflow-x-auto">
@@ -1005,10 +1095,7 @@ export default function Opex() {
                     Название
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Seats
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Person
+                    PAX
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Pickup / Drop-off
@@ -1033,11 +1120,6 @@ export default function Opex() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {vehicle.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.seats || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -1084,7 +1166,7 @@ export default function Opex() {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan="8" className="px-6 py-4">
+                  <td colSpan="7" className="px-6 py-4">
                     <button
                       onClick={handleAddVehicle}
                       className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
@@ -1098,6 +1180,16 @@ export default function Opex() {
                 </tr>
               </tbody>
             </table>
+            {/* Save Button for Sevil */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => handleSaveTransportData('Sevil')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
+              >
+                <Save className="w-5 h-5" />
+                Сохранить
+              </button>
+            </div>
           </div>
         ) : filteredExpenses.length === 0 ? (
           <div className="text-center py-20">
@@ -1240,30 +1332,16 @@ export default function Opex() {
               </div>
 
               {!['train', 'plane', 'metro'].includes(activeTransportTab) && activeCategory !== 'route' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Seats
-                    </label>
-                    <input
-                      type="text"
-                      value={vehicleForm.seats}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, seats: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Person
-                    </label>
-                    <input
-                      type="text"
-                      value={vehicleForm.person}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, person: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    PAX
+                  </label>
+                  <input
+                    type="text"
+                    value={vehicleForm.person}
+                    onChange={(e) => setVehicleForm({ ...vehicleForm, person: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
+                  />
                 </div>
               )}
 
@@ -1356,6 +1434,42 @@ export default function Opex() {
                         type="number"
                         value={vehicleForm.tag}
                         onChange={(e) => setVehicleForm({ ...vehicleForm, tag: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Oybek Rate
+                      </label>
+                      <input
+                        type="number"
+                        value={vehicleForm.oybek}
+                        onChange={(e) => setVehicleForm({ ...vehicleForm, oybek: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Chernyayevka Rate
+                      </label>
+                      <input
+                        type="number"
+                        value={vehicleForm.chernyayevka}
+                        onChange={(e) => setVehicleForm({ ...vehicleForm, chernyayevka: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        City Tour Rate
+                      </label>
+                      <input
+                        type="number"
+                        value={vehicleForm.cityTour}
+                        onChange={(e) => setVehicleForm({ ...vehicleForm, cityTour: e.target.value })}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
                       />
                     </div>
@@ -1507,14 +1621,14 @@ export default function Opex() {
                 <>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Person
+                      PAX
                     </label>
                     <input
                       type="text"
                       value={vehicleForm.person}
                       onChange={(e) => setVehicleForm({ ...vehicleForm, person: e.target.value })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
-                      placeholder="Person"
+                      placeholder="e.g., 9-20"
                     />
                   </div>
 
