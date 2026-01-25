@@ -40,6 +40,7 @@ export const bookingsApi = {
       : api.get(`/bookings/${bookingId}/rooming-list`),
   getRoomingListPreview: (bookingId) => `/api/bookings/${bookingId}/rooming-list-preview`,
   getHotelRequestPreview: (bookingId, accommodationId) => `/api/bookings/${bookingId}/hotel-request-preview/${accommodationId}`,
+  getHotelRequestCombined: (bookingId, hotelId) => `/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`,
   // Hotel Requests
   getHotelRequests: (bookingId) => api.get(`/bookings/${bookingId}/hotel-requests`),
   getHotelRequest: (bookingId, hotelId) => api.get(`/bookings/${bookingId}/hotel-requests/${hotelId}`),
@@ -113,7 +114,17 @@ export const routesApi = {
   create: (bookingId, data) => api.post(`/bookings/${bookingId}/routes`, data),
   update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/routes/${id}`, data),
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/routes/${id}`),
-  bulkUpdate: (bookingId, routes) => api.put(`/bookings/${bookingId}/routes/bulk`, { routes })
+  bulkUpdate: (bookingId, routes) => api.put(`/bookings/${bookingId}/routes/bulk`, { routes }),
+  // Route templates
+  getTemplate: (tourTypeCode) => api.get(`/routes/templates/${tourTypeCode}`),
+  saveTemplate: (tourTypeCode, routes) => api.put(`/routes/templates/${tourTypeCode}`, { routes })
+};
+
+// API for accommodations (hotel bookings)
+export const accommodationsApi = {
+  // Accommodation templates (for ER tours)
+  getTemplate: (tourTypeCode) => api.get(`/accommodations/templates/${tourTypeCode}`),
+  saveTemplate: (tourTypeCode, accommodations) => api.put(`/accommodations/templates/${tourTypeCode}`, { accommodations })
 };
 
 // API for flights
@@ -188,6 +199,16 @@ export const citiesApi = {
   create: (data) => api.post('/cities', data),
   update: (id, data) => api.put(`/cities/${id}`, data),
   delete: (id) => api.delete(`/cities/${id}`)
+};
+
+// API for transport (Opex)
+export const transportApi = {
+  getAll: () => api.get('/transport'),
+  getByProvider: (provider) => api.get(`/transport/${provider}`),
+  create: (data) => api.post('/transport', data),
+  update: (id, data) => api.put(`/transport/${id}`, data),
+  delete: (id) => api.delete(`/transport/${id}`),
+  bulkUpdate: (provider, vehicles) => api.post('/transport/bulk', { provider, vehicles })
 };
 
 // API для отелей
