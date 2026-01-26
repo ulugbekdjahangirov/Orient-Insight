@@ -16,6 +16,15 @@ try {
   console.warn('pdf-parse not available');
 }
 
+// Load Anthropic SDK for Claude API (multimodal PDF processing)
+let Anthropic;
+try {
+  Anthropic = require('@anthropic-ai/sdk').default;
+} catch (e) {
+  console.warn('Anthropic SDK not available');
+}
+
+
 // Import PDF rooming list parser utility
 const { parseRoomingListPdf: utilParseRoomingListPdf, getAirportName } = require('../utils/pdfRoomingListParser');
 
@@ -2095,12 +2104,13 @@ router.post('/:bookingId/flights/import-pdf', authenticate, upload.single('file'
     const addFlightInfo = (flightInfo) => {
       const dep = flightInfo.departure;
       const arr = flightInfo.arrival;
+      const airline = flightInfo.flightNumber?.split(' ')[0];
 
-      // International = IST ↔ TAS, Domestic = within Uzbekistan
+      // International = IST ↔ TAS only, Domestic = HY flights only
       const isIstTas = (dep === 'IST' && arr === 'TAS') || (dep === 'TAS' && arr === 'IST');
-      const isDomestic = uzbekAirports.includes(dep) && uzbekAirports.includes(arr);
+      const isHYFlight = airline === 'HY' && uzbekAirports.includes(dep) && uzbekAirports.includes(arr);
 
-      if (!isIstTas && !isDomestic) return;
+      if (!isIstTas && !isHYFlight) return;
 
       flightInfo.type = isIstTas ? 'INTERNATIONAL' : 'DOMESTIC';
       const targetArray = isIstTas ? flights.international : flights.domestic;
@@ -2121,6 +2131,28 @@ router.post('/:bookingId/flights/import-pdf', authenticate, upload.single('file'
     let match1;
     while ((match1 = pattern1.exec(text)) !== null) {
       const [, airline, num, dateStr, dep, arr, depTime, arrTime] = match1;
+      const flightInfo = {
+        flightNumber: `${airline.toUpperCase()} ${num}`,
+        departure: dep,
+        arrival: arr,
+        departureTime: depTime,
+        arrivalTime: arrTime
+      };
+      const dateMatch = dateStr.match(/(\d{2})([A-Z]{3})/i);
+      if (dateMatch) {
+        const day = dateMatch[1];
+        const month = monthMap[dateMatch[2].toUpperCase()] || '01';
+        const year = new Date().getFullYear();
+        flightInfo.date = `${year}-${month}-${day}`;
+      }
+      addFlightInfo(flightInfo);
+    }
+
+    // Pattern 1b: "TK 368 Mo. 13OCT IST - TAS 01:20 - 07:55" (day + period format)
+    const pattern1b = /(TK|HY)\s*(\d{2,4})\s+\w+[.,]?\s+(\d{2}[A-Z]{3})\s+([A-Z]{3})\s*[-–]\s*([A-Z]{3})\s+(\d{2}:\d{2})\s*[-–]\s*(\d{2}:\d{2})/gi;
+    let match1b;
+    while ((match1b = pattern1b.exec(text)) !== null) {
+      const [, airline, num, dateStr, dep, arr, depTime, arrTime] = match1b;
       const flightInfo = {
         flightNumber: `${airline.toUpperCase()} ${num}`,
         departure: dep,
@@ -2170,10 +2202,138 @@ router.post('/:bookingId/flights/import-pdf', authenticate, upload.single('file'
       });
     }
 
-    console.log(`✈️ Parsed flights:`, {
+    console.log(`✈️ Parsed flights (text-based):`, {
       international: flights.international.length,
       domestic: flights.domestic.length
     });
+
+    // If no flights found from text AND Claude API is available, try multimodal extraction
+    if (flights.international.length === 0 && flights.domestic.length === 0 && Anthropic) {
+      console.log('📸 No flights found in text, trying Claude API for image-based extraction...');
+
+      try {
+        const anthropic = new Anthropic({
+          apiKey: process.env.ANTHROPIC_API_KEY
+        });
+
+        // Convert PDF buffer to base64
+        const pdfBase64 = req.file.buffer.toString('base64');
+
+        // Call Claude API with multimodal prompt
+        const message = await anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4096,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: pdfBase64
+                }
+              },
+              {
+                type: 'text',
+                text: `Extract ALL flight information from this PDF. I need ONLY:
+- IST ↔ TAS flights (International - Istanbul to/from Tashkent)
+- HY flights between Uzbekistan airports: TAS, SKD, UGC, BHK, NCU, NVI, KSQ, TMJ, FEG (Domestic)
+
+Return ONLY a JSON object in this exact format (no markdown, no explanations):
+{
+  "international": [
+    {
+      "flightNumber": "TK 368",
+      "departure": "IST",
+      "arrival": "TAS",
+      "date": "2025-10-13",
+      "departureTime": "01:20",
+      "arrivalTime": "07:55"
+    }
+  ],
+  "domestic": [
+    {
+      "flightNumber": "HY 1057",
+      "departure": "TAS",
+      "arrival": "UGC",
+      "date": "2025-10-14",
+      "departureTime": "07:00",
+      "arrivalTime": "08:20"
+    }
+  ]
+}
+
+IMPORTANT:
+- Extract ALL matching flights you see
+- Use YYYY-MM-DD format for dates
+- Use HH:MM format for times (24-hour)
+- Ignore all other flights (not IST-TAS and not HY domestic)`
+              }
+            ]
+          }],
+          temperature: 0
+        });
+
+        // Parse Claude's response
+        const responseText = message.content[0].text.trim();
+        console.log('🤖 Claude API response:', responseText);
+
+        // Try to parse JSON from response
+        let claudeFlights;
+        try {
+          claudeFlights = JSON.parse(responseText);
+        } catch (parseError) {
+          // If response has markdown code blocks, extract JSON
+          const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+          if (jsonMatch) {
+            claudeFlights = JSON.parse(jsonMatch[1]);
+          } else {
+            throw new Error('Could not parse JSON from Claude response');
+          }
+        }
+
+        // Add flights using existing addFlightInfo function
+        if (claudeFlights.international && Array.isArray(claudeFlights.international)) {
+          claudeFlights.international.forEach(f => {
+            if (f.flightNumber && f.departure && f.arrival) {
+              addFlightInfo({
+                flightNumber: f.flightNumber,
+                departure: f.departure,
+                arrival: f.arrival,
+                date: f.date,
+                departureTime: f.departureTime,
+                arrivalTime: f.arrivalTime
+              });
+            }
+          });
+        }
+
+        if (claudeFlights.domestic && Array.isArray(claudeFlights.domestic)) {
+          claudeFlights.domestic.forEach(f => {
+            if (f.flightNumber && f.departure && f.arrival) {
+              addFlightInfo({
+                flightNumber: f.flightNumber,
+                departure: f.departure,
+                arrival: f.arrival,
+                date: f.date,
+                departureTime: f.departureTime,
+                arrivalTime: f.arrivalTime
+              });
+            }
+          });
+        }
+
+        console.log(`✈️ Parsed flights (Claude API):`, {
+          international: flights.international.length,
+          domestic: flights.domestic.length
+        });
+
+      } catch (claudeError) {
+        console.error('❌ Claude API error:', claudeError.message);
+        // Continue with empty flights (don't fail the whole import)
+      }
+    }
 
     // Delete existing flights
     await prisma.flight.deleteMany({
