@@ -12,7 +12,9 @@ import {
   Compass,
   Building2,
   Bell,
-  Wallet
+  Wallet,
+  Mail,
+  Settings
 } from 'lucide-react';
 
 const navItems = [
@@ -23,10 +25,12 @@ const navItems = [
   { path: '/tour-types', icon: MapPin, label: 'Tours' },
   { path: '/hotels', icon: Building2, label: 'Hotels' },
   { path: '/opex', icon: Wallet, label: 'OPEX' },
+  { path: '/email-imports', icon: Mail, label: 'Email Imports' },
 ];
 
 const adminItems = [
   { path: '/import', icon: Upload, label: 'Import Excel' },
+  { path: '/gmail-settings', icon: Settings, label: 'Gmail Settings' },
   { path: '/users', icon: UserCog, label: 'Users' },
 ];
 

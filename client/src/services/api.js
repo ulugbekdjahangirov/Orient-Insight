@@ -239,4 +239,22 @@ export const hotelsApi = {
   getPriceForDate: (hotelId, roomTypeId, date) => api.get(`/hotels/${hotelId}/room-types/${roomTypeId}/price`, { params: { date } })
 };
 
+// API для Gmail интеграции
+export const gmailApi = {
+  // OAuth
+  authorize: () => api.post('/gmail/authorize'),
+  getStatus: () => api.get('/gmail/status'),
+  disconnect: () => api.post('/gmail/disconnect'),
+  // Polling
+  pollNow: () => api.post('/gmail/poll'),
+  // Imports
+  getImports: (params) => api.get('/gmail/imports', { params }),
+  getImport: (id) => api.get(`/gmail/imports/${id}`),
+  retryImport: (id) => api.post(`/gmail/imports/${id}/retry`),
+  deleteImport: (id) => api.delete(`/gmail/imports/${id}`),
+  // Settings
+  getSettings: () => api.get('/gmail/settings'),
+  updateSettings: (data) => api.post('/gmail/settings', data)
+};
+
 export default api;

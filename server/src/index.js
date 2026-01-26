@@ -14,6 +14,7 @@ const cityRoutes = require('./routes/city.routes');
 const touristRoutes = require('./routes/tourist.routes');
 const routeRoutes = require('./routes/route.routes');
 const transportRoutes = require('./routes/transport.routes');
+const gmailRoutes = require('./routes/gmail.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,10 +43,20 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/cities', cityRoutes);
 app.use('/api/transport', transportRoutes);
+app.use('/api/gmail', gmailRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Orient Insight API is running' });
+});
+
+// Serve client static files (production)
+const clientPath = path.join(__dirname, '../../client');
+app.use(express.static(clientPath));
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientPath, 'index.html'));
 });
 
 // Error handling middleware
@@ -60,4 +71,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Orient Insight сервер запущен на порту ${PORT}`);
 });
+
+// Start Gmail polling cron job
+const { startGmailPolling } = require('./jobs/gmailPoller.job');
+startGmailPolling();
 

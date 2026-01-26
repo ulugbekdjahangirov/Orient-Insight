@@ -12,6 +12,8 @@ import Hotels from './pages/Hotels';
 import Opex from './pages/Opex';
 import Import from './pages/Import';
 import Users from './pages/Users';
+import GmailSettings from './pages/GmailSettings';
+import EmailImports from './pages/EmailImports';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -70,6 +72,15 @@ export default function App() {
             </AdminRoute>
           }
         />
+        <Route
+          path="gmail-settings"
+          element={
+            <AdminRoute>
+              <GmailSettings />
+            </AdminRoute>
+          }
+        />
+        <Route path="email-imports" element={<EmailImports />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

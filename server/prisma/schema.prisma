@@ -767,3 +767,54 @@ model RoomingListEntry {
   @@index([placement])
   @@index([roomPairId])
 }
+
+// ============================================
+// Модуль: Gmail Integration (Email Imports)
+// ============================================
+
+// Email import tracking
+model EmailImport {
+  id              Int       @id @default(autoincrement())
+
+  // Gmail metadata
+  gmailMessageId  String    @unique
+  emailSubject    String?
+  emailFrom       String
+  emailDate       DateTime
+
+  // Attachment
+  attachmentName  String?
+  attachmentUrl   String?
+  attachmentType  String?
+
+  // Processing
+  status          String    @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED, MANUAL_REVIEW
+  rawParsedData   String?   // JSON from Claude
+  errorMessage    String?
+
+  // Results
+  bookingsCreated Int       @default(0)
+  bookingsUpdated Int       @default(0)
+  bookingIds      String?   // "123,124,125"
+
+  // Metadata
+  processedAt     DateTime?
+  processedBy     String?   @default("SYSTEM")
+  retryCount      Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([emailFrom])
+  @@index([emailDate])
+}
+
+// System settings (key-value store)
+model SystemSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String   // Stored as TEXT in SQLite
+  encrypted Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
