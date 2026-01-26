@@ -397,6 +397,9 @@ model Accommodation {
   checkInDate     DateTime
   checkOutDate    DateTime
   nights          Int       @default(0)  // Рассчитывается на бэкенде
+  totalCost       Float     @default(0)  // Общая стоимость (из frontend)
+  totalRooms      Int       @default(0)  // Общее кол-во номеров
+  totalGuests     Int       @default(0)  // Общее кол-во гостей
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -608,6 +611,7 @@ model Route {
 
   // Основные данные
   dayNumber       Int       @default(1)    // Номер дня
+  dayOffset       Int       @default(1)    // Смещение дней от даты вылета (для расчета даты маршрута)
   date            DateTime?                // Дата маршрута
   city            String?                  // Город (Tashkent, Samarkand, etc.)
   routeName       String                   // Название маршрута (Tashkent Airport PickUp, etc.)
@@ -627,6 +631,103 @@ model Route {
 
   @@index([bookingId])
   @@index([date])
+}
+
+// Route templates for tour types (default routes for ER, CO, etc.)
+model RouteTemplate {
+  id              Int       @id @default(autoincrement())
+  tourTypeCode    String                   // ER, CO, KAS, ZA
+
+  // Основные данные
+  dayNumber       Int       @default(1)    // Номер дня
+  dayOffset       Int       @default(1)    // Смещение дней от даты вылета
+  city            String?                  // Город (Tashkent, Samarkand, etc.)
+  routeName       String                   // Название маршрута
+
+  // Транспорт (default values)
+  provider        String?                  // Провайдер (xayrulla, sevil, etc.)
+  optionRate      String?                  // Опция тарифа
+
+  sortOrder       Int       @default(0)    // Порядок сортировки
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tourTypeCode])
+}
+
+// Accommodation templates for tour types (default hotels for ER, CO, etc.)
+model AccommodationTemplate {
+  id              Int       @id @default(autoincrement())
+  tourTypeCode    String                   // ER, CO, KAS, ZA
+
+  // Hotel info
+  hotelId         Int?                     // Hotel ID from Hotel table
+  hotelName       String?                  // Hotel name (for display)
+  cityId          Int?                     // City ID
+  cityName        String?                  // City name (for display)
+
+  // Dates (offsets from departure date)
+  checkInOffset   Int       @default(0)    // Days offset from departure for check-in
+  checkOutOffset  Int       @default(1)    // Days offset from departure for check-out
+  nights          Int       @default(1)    // Number of nights
+
+  sortOrder       Int       @default(0)    // Order in list
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([tourTypeCode])
+}
+
+// ============================================
+// Модуль: Transport (Транспорт - Opex)
+// ============================================
+
+// Transport providers (Sevil, Xayrulla, Nosir, Train, Plane, Metro)
+model TransportVehicle {
+  id              Int       @id @default(autoincrement())
+
+  // Provider category
+  provider        String                   // sevil, xayrulla, nosir, train, plane, metro
+
+  // Basic info
+  name            String                   // Vehicle name (Starex, Joylong, Yutong 33, etc.)
+  seats           String?                  // Number of seats
+  person          String?                  // Person range (1-4, 5-8, 9-20, etc.)
+
+  // Sevil rates
+  pickupDropoff   String?                  // Pickup/Dropoff rate
+  tagRate         Float?                   // Tag rate
+  urgenchRate     Float?                   // Urgench rate
+  shovotRate2     Float?                   // Shovot rate 2
+
+  // Xayrulla rates
+  vstrecha        Float?                   // Vstrecha rate
+  chimgan         Float?                   // Chimgan rate
+  tag             Float?                   // Tag rate (Xayrulla)
+  oybek           Float?                   // Oybek rate
+  chernyayevka    Float?                   // Chernyayevka rate
+  cityTour        Float?                   // City Tour rate
+
+  // Nosir rates
+  margilan        Float?                   // Margilan rate
+  qoqon           Float?                   // Qoqon rate
+  dostlik         Float?                   // Dostlik rate
+  toshkent        Float?                   // Toshkent rate
+  extra           Float?                   // Extra rate
+
+  // Train/Plane fields
+  route           String?                  // Route name
+  economPrice     String?                  // Economy price
+  businessPrice   String?                  // Business price
+  departure       String?                  // Departure time
+  arrival         String?                  // Arrival time
+
+  sortOrder       Int       @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([provider])
 }
 
 // ============================================

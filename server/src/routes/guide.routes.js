@@ -137,9 +137,19 @@ router.get('/:id', authenticate, async (req, res) => {
       where: { id: parseInt(id) },
       include: {
         bookings: {
-          orderBy: { departureDate: 'desc' },
+          orderBy: { departureDate: 'asc' },
           take: 20,
-          include: { tourType: { select: { code: true, name: true, color: true } } }
+          select: {
+            id: true,
+            bookingNumber: true,
+            departureDate: true,
+            arrivalDate: true,
+            endDate: true,
+            pax: true,
+            paxUzbekistan: true,
+            paxTurkmenistan: true,
+            tourType: { select: { code: true, name: true, color: true } }
+          }
         },
         guidePayments: {
           orderBy: { paymentDate: 'desc' },

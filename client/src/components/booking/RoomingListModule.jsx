@@ -18,11 +18,14 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   // Import state
   const [importing, setImporting] = useState(false);
 
-  // Modal state for editing room/remarks
+  // Modal state for editing tourist
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTourist, setEditingTourist] = useState(null);
   const [form, setForm] = useState({
+    checkInDate: '',
+    checkOutDate: '',
     roomPreference: '',
+    accommodation: '',
     remarks: ''
   });
 
@@ -148,15 +151,48 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     return groups;
   };
 
-  // Filter tourists by search query
-  const filteredTourists = tourists.filter(p => {
-    const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
-    return fullName.includes(searchQuery.toLowerCase());
-  });
+  // Filter tourists by search query and room assignment
+  // IMPORTANT: Only show tourists with room numbers (from rooming list PDF)
+  const filteredTourists = tourists
+    .filter(p => p.roomNumber) // Only show tourists assigned to rooms
+    .filter(p => {
+      const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
+      return fullName.includes(searchQuery.toLowerCase());
+    });
 
   // Separate Uzbekistan and Turkmenistan tourists
   const uzbekistanTourists = filteredTourists.filter(t => !isTurkmenistan(t));
   const turkmenistanTourists = filteredTourists.filter(t => isTurkmenistan(t));
+
+  // Find the first accommodation (earliest check-in date or within 2 days of departure)
+  const firstAccommodationHotel = useMemo(() => {
+    if (!Array.isArray(accommodations) || accommodations.length === 0) return null;
+
+    // Sort accommodations by check-in date
+    const sorted = [...accommodations].sort((a, b) => {
+      const dateA = new Date(a.checkInDate);
+      const dateB = new Date(b.checkInDate);
+      return dateA - dateB;
+    });
+
+    // First accommodation is the one with earliest check-in
+    const firstAcc = sorted[0];
+
+    // Also verify it's within 2 days of departure date
+    if (booking?.departureDate && firstAcc) {
+      const departureDate = new Date(booking.departureDate);
+      departureDate.setHours(0, 0, 0, 0);
+      const checkInDate = new Date(firstAcc.checkInDate);
+      checkInDate.setHours(0, 0, 0, 0);
+      const daysDiff = Math.abs((checkInDate - departureDate) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff <= 2) {
+        return firstAcc.hotel?.name || null;
+      }
+    }
+
+    return firstAcc?.hotel?.name || null;
+  }, [accommodations, booking?.departureDate]);
 
   // Group tourists by hotel (match by dates and accommodation)
   const touristsByHotel = useMemo(() => {
@@ -295,11 +331,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
       if (response.data.success) {
         const { summary } = response.data;
-        const msg = summary.touristsUpdated > 0 && summary.touristsCreated > 0
-          ? `Updated ${summary.touristsUpdated} tourists, created ${summary.touristsCreated} new (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`
-          : summary.touristsUpdated > 0
-          ? `Updated ${summary.touristsUpdated} tourists (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`
-          : `Created ${summary.touristsCreated} tourists (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`;
+        const parts = [];
+        if (summary.touristsUpdated > 0) parts.push(`${summary.touristsUpdated} updated`);
+        if (summary.touristsCreated > 0) parts.push(`${summary.touristsCreated} created`);
+        if (summary.touristsDeleted > 0) parts.push(`${summary.touristsDeleted} deleted`);
+        const msg = `${parts.join(', ')} (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`;
         toast.success(msg);
         await loadData();
         onUpdate?.();
@@ -322,8 +358,20 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const openModal = (tourist) => {
     setEditingTourist(tourist);
     const remarkValue = tourist.remarks && tourist.remarks !== '-' ? tourist.remarks : '';
+
+    // Format dates for input fields
+    const formatDateForInput = (dateStr) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    };
+
     setForm({
+      checkInDate: formatDateForInput(tourist.checkInDate),
+      checkOutDate: formatDateForInput(tourist.checkOutDate),
       roomPreference: tourist.roomPreference || '',
+      accommodation: tourist.accommodation || 'Uzbekistan',
       remarks: remarkValue
     });
     setModalOpen(true);
@@ -332,10 +380,14 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const saveRoomAndRemarks = async () => {
     try {
       console.log('Saving tourist:', editingTourist.id, 'with data:', form);
-      const response = await touristsApi.update(bookingId, editingTourist.id, {
+      const updateData = {
+        checkInDate: form.checkInDate || null,
+        checkOutDate: form.checkOutDate || null,
         roomPreference: form.roomPreference || null,
+        accommodation: form.accommodation || null,
         remarks: form.remarks || null
-      });
+      };
+      const response = await touristsApi.update(bookingId, editingTourist.id, updateData);
       console.log('Save response:', response);
       toast.success('Updated successfully');
       setModalOpen(false);
@@ -486,7 +538,14 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             else if (rt === 'SNGL' || rt === 'SINGLE') roomTypeCounts.SNGL++;
           });
 
-          const checkInDate = hotelTourists[0]?.checkInDate ? formatDisplayDate(hotelTourists[0].checkInDate) : booking?.arrivalDate ? formatDisplayDate(booking.arrivalDate) : '';
+          // ARRIVAL = TOUR START + 1 day
+          const arrivalDate = booking?.departureDate ? (() => {
+            const arrival = new Date(booking.departureDate);
+            arrival.setDate(arrival.getDate() + 1);
+            return formatDisplayDate(arrival);
+          })() : '';
+
+          const checkInDate = hotelTourists[0]?.checkInDate ? formatDisplayDate(hotelTourists[0].checkInDate) : arrivalDate;
           const checkOutDate = hotelTourists[0]?.checkOutDate ? formatDisplayDate(hotelTourists[0].checkOutDate) : booking?.endDate ? formatDisplayDate(booking.endDate) : '';
 
           wsData.push(['№', 'Группа', 'Страна', 'PAX', 'Первый заезд', 'Первый выезд', 'DBL', 'TWN', 'SNGL', 'Тип номера']);
@@ -611,7 +670,12 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         const totalPax = filteredTourists.length;
 
         // Calculate arrival/departure dates from booking
-        const arrivalDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+        // ARRIVAL = TOUR START + 1 day
+        const arrivalDate = booking?.departureDate ? (() => {
+          const arrival = new Date(booking.departureDate);
+          arrival.setDate(arrival.getDate() + 1);
+          return formatDisplayDate(arrival);
+        })() : '';
         const departureDate = booking?.endDate ? formatDisplayDate(booking.endDate) : '';
 
         // Calculate room counts
@@ -970,7 +1034,12 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       const totalPax = hotelTourists.length;
 
       // Calculate arrival/departure dates from booking
-      const arrivalDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+      // ARRIVAL = TOUR START + 1 day
+      const arrivalDate = booking?.departureDate ? (() => {
+        const arrival = new Date(booking.departureDate);
+        arrival.setDate(arrival.getDate() + 1);
+        return formatDisplayDate(arrival);
+      })() : '';
       const departureDate = booking?.endDate ? formatDisplayDate(booking.endDate) : '';
 
       // Calculate room counts
@@ -991,69 +1060,216 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       const currentDate = formatDisplayDate(new Date().toISOString());
 
       // Build tourist rows for ROOMING LISTE table
-      // Sort by placement: UZ first, then TM
-      const sortedHotelTouristsForPDF = [...hotelTourists].sort((a, b) => {
-        const isATurkmen = isTurkmenistan(a);
-        const isBTurkmen = isTurkmenistan(b);
-        if (isATurkmen !== isBTurkmen) {
-          return isATurkmen ? 1 : -1;
-        }
-        return 0;
-      });
+      // Group tourists by room number for TWN and DBL
+      const roomGroups = {};
+      const singleTourists = [];
 
-      let touristRows = '';
-      sortedHotelTouristsForPDF.forEach((t, idx) => {
-        const name = t.fullName || `${t.lastName}, ${t.firstName}`;
-
+      hotelTourists.forEach(tourist => {
         // Get room category
-        const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
-        let roomCategory = assignedRoomType || t.roomPreference || '';
+        const assignedRoomType = tourist.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+        let roomCategory = assignedRoomType || tourist.roomPreference || '';
 
         // Normalize room category names
         if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
         if (roomCategory === 'TWIN') roomCategory = 'TWN';
         if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
 
-        // Determine placement (Uzbekistan or Turkmenistan)
-        const placement = t.accommodation || '';
-        const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
-        const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек');
-        const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
-
-        // Get notes from roomAssignments (Rooming List tab's Примечание column)
-        const remarks = t.roomAssignments?.[0]?.notes || '';
-
-        // Use custom dates if available, otherwise use booking dates
-        const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
-        const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
-
-        // Extract flight date from remarks
-        let displayFlightDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
-        if (t.remarks) {
-          const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
-          if (flightMatch) {
-            const day = flightMatch[1];
-            const month = flightMatch[2];
-            const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
-            displayFlightDate = `${day}.${month}.${year}`;
+        if (tourist.roomNumber && (roomCategory === 'DBL' || roomCategory === 'TWN')) {
+          if (!roomGroups[tourist.roomNumber]) {
+            roomGroups[tourist.roomNumber] = [];
           }
+          roomGroups[tourist.roomNumber].push(tourist);
+        } else {
+          singleTourists.push(tourist);
         }
+      });
 
-        // Yellow background if has custom dates
-        const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+      // Sort room groups by accommodation (Uzbekistan first) then room number
+      const sortedRoomNumbers = Object.keys(roomGroups).sort((a, b) => {
+        const groupA = roomGroups[a];
+        const groupB = roomGroups[b];
 
-        touristRows += `
-          <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td>
-            <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayFlightDate}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
-            <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
-            <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
-          </tr>
-        `;
+        // Get accommodation of first tourist in each group
+        const accA = (groupA[0]?.accommodation || 'Uzbekistan').toLowerCase();
+        const accB = (groupB[0]?.accommodation || 'Uzbekistan').toLowerCase();
+
+        // Sort by accommodation first (Uzbekistan before Turkmenistan)
+        if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
+        if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
+
+        // Then sort by room type and number
+        const aMatch = a.match(/(DBL|TWN)-(\d+)/);
+        const bMatch = b.match(/(DBL|TWN)-(\d+)/);
+        if (aMatch && bMatch) {
+          if (aMatch[1] !== bMatch[1]) {
+            return aMatch[1] === 'DBL' ? -1 : 1; // DBL first
+          }
+          return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+        }
+        return 0;
+      });
+
+      // Sort single tourists by accommodation
+      singleTourists.sort((a, b) => {
+        const accA = (a.accommodation || 'Uzbekistan').toLowerCase();
+        const accB = (b.accommodation || 'Uzbekistan').toLowerCase();
+        if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
+        if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
+        return 0;
+      });
+
+      // Create combined array of room groups and single tourists
+      const allEntries = [];
+
+      // Add room groups
+      sortedRoomNumbers.forEach(roomNumber => {
+        const group = roomGroups[roomNumber];
+        allEntries.push({
+          type: 'group',
+          accommodation: (group[0]?.accommodation || 'Uzbekistan').toLowerCase(),
+          roomNumber,
+          tourists: group
+        });
+      });
+
+      // Add single tourists
+      singleTourists.forEach(tourist => {
+        allEntries.push({
+          type: 'single',
+          accommodation: (tourist.accommodation || 'Uzbekistan').toLowerCase(),
+          tourist
+        });
+      });
+
+      // Sort all entries by accommodation (Uzbekistan first)
+      allEntries.sort((a, b) => {
+        const accA = a.accommodation;
+        const accB = b.accommodation;
+        if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
+        if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
+        return 0;
+      });
+
+      let touristRows = '';
+      let counter = 0;
+
+      // Render entries in sorted order
+      allEntries.forEach(entry => {
+        if (entry.type === 'group') {
+          // Render paired tourists (DBL and TWN)
+          const group = entry.tourists;
+          group.forEach((t, groupIndex) => {
+            counter++;
+            const isFirstInGroup = groupIndex === 0;
+            const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+
+            // Get room category
+            const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+            let roomCategory = assignedRoomType || t.roomPreference || '';
+
+            // Normalize room category names
+            if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
+            if (roomCategory === 'TWIN') roomCategory = 'TWN';
+            if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
+
+            // Determine placement (Uzbekistan or Turkmenistan)
+            const placement = t.accommodation || '';
+            const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
+            const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек');
+            const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
+
+            // Get notes from roomAssignments (Rooming List tab's Примечание column)
+            const remarks = t.roomAssignments?.[0]?.notes || '';
+
+            // Use custom dates if available, otherwise use booking dates
+            const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
+            const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
+
+            // Extract flight date from remarks
+            let displayFlightDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+            if (t.remarks) {
+              const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
+              if (flightMatch) {
+                const day = flightMatch[1];
+                const month = flightMatch[2];
+                const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+                displayFlightDate = `${day}.${month}.${year}`;
+              }
+            }
+
+            // Yellow background if has custom dates
+            const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+
+            touristRows += `
+              <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
+                <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${counter}</td>
+                <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+                <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayFlightDate}</td>
+                <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+                <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+                ${isFirstInGroup ? `<td rowspan="${group.length}" style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;vertical-align:middle;">${roomCategory}</td>` : ''}
+                <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
+                <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
+              </tr>
+            `;
+          });
+        } else if (entry.type === 'single') {
+          // Render single tourist (SNGL)
+          const t = entry.tourist;
+          counter++;
+
+          const name = t.fullName || `${t.lastName}, ${t.firstName}`;
+
+          // Get room category
+          const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+          let roomCategory = assignedRoomType || t.roomPreference || '';
+
+          // Normalize room category names
+          if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
+          if (roomCategory === 'TWIN') roomCategory = 'TWN';
+          if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
+
+          // Determine placement (Uzbekistan or Turkmenistan)
+          const placement = t.accommodation || '';
+          const isTurkmenistan = placement.toLowerCase().includes('turkmen') || placement.toLowerCase().includes('туркмен');
+          const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек');
+          const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
+
+          // Get notes from roomAssignments (Rooming List tab's Примечание column)
+          const remarks = t.roomAssignments?.[0]?.notes || '';
+
+          // Use custom dates if available, otherwise use booking dates
+          const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
+          const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
+
+          // Extract flight date from remarks
+          let displayFlightDate = booking?.departureDate ? formatDisplayDate(booking.departureDate) : '';
+          if (t.remarks) {
+            const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
+            if (flightMatch) {
+              const day = flightMatch[1];
+              const month = flightMatch[2];
+              const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+              displayFlightDate = `${day}.${month}.${year}`;
+            }
+          }
+
+          // Yellow background if has custom dates
+          const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+
+          touristRows += `
+            <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${counter}</td>
+              <td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayFlightDate}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkInDate ? 'font-weight:bold;' : ''}">${displayArrival}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;${t.checkOutDate ? 'font-weight:bold;' : ''}">${displayDeparture}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${roomCategory}</td>
+              <td style="border:1px solid #000;padding:3px;text-align:center;font-size:7pt;font-weight:bold;color:${isTurkmenistan ? '#8b5cf6' : '#10b981'};">${placementText}</td>
+              <td style="border:1px solid #000;padding:3px;font-size:8pt;">${remarks}</td>
+            </tr>
+          `;
+        }
       });
 
       // Create a temporary container for the PDF content
@@ -1318,8 +1534,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 </div>
                 <div>
                   <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
-                  <div className="text-2xl font-bold text-gray-900">{tourists.length}</div>
-                  <div className="text-xs text-gray-600">{tourists.length === 1 ? 'guest' : 'guests'}</div>
+                  <div className="text-2xl font-bold text-gray-900">{filteredTourists.length}</div>
+                  <div className="text-xs text-gray-600">{filteredTourists.length === 1 ? 'guest' : 'guests'}</div>
                 </div>
               </div>
 
@@ -1329,7 +1545,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
                 const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
 
-                tourists.forEach(t => {
+                // IMPORTANT: Use filteredTourists (only those with room numbers)
+                filteredTourists.forEach(t => {
                   const roomType = (t.roomPreference || '').toUpperCase();
                   const roomNum = t.roomNumber;
 
@@ -1514,9 +1731,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 <div className="grid grid-cols-12 gap-4 items-center">
                   <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">No</div>
                   <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Name</div>
-                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Start Date</div>
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Tour Start</div>
                   <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Arrival</div>
-                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">End Date</div>
+                  <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Tour End</div>
                   <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Room Type</div>
                   <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">Placement</div>
                   <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Additional Information</div>
@@ -1595,44 +1812,68 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               const renderTouristRow = (t, idx) => {
                 const tPlacement = t.accommodation || '';
 
+                // Check if this is the first hotel - only show custom dates for first hotel
+                const isFirstHotel = hotelName === firstAccommodationHotel;
+
                 // Check if tourist has custom arrival/departure dates
-                const hasCustomDates = t.checkInDate || t.checkOutDate;
-                const customCheckIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
-                const customCheckOut = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
+                const hasCustomDates = isFirstHotel && (t.checkInDate || t.checkOutDate);
+                const customCheckIn = isFirstHotel && t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
+                const customCheckOut = isFirstHotel && t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
 
                 // Extract flight date and arrival date from remarks: "Flight: 09.10, Arrival: 10.10"
+                // Show for ALL hotels (flight/arrival info is about when tourist arrives in country)
                 let flightDate = null;
                 let displayFlightDate = null;
                 let displayArrivalDate = null;
+
+                // Check remarks for flight/arrival dates
                 if (t.remarks) {
-                  // Extract Flight date
-                  const flightMatch = t.remarks.match(/Flight:\s*(\d{2})\.(\d{2})/i);
+                  // Extract Flight date (departure from home country)
+                  const flightMatch = t.remarks.match(/Flight[:\s]*(\d{2})\.(\d{2})/i);
                   if (flightMatch) {
                     const day = flightMatch[1];
                     const month = flightMatch[2];
-                    // Use booking year for context
                     const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
                     displayFlightDate = `${day}.${month}.${year}`;
-                    flightDate = true; // Flag to show yellow background
+                    flightDate = true;
                   }
 
-                  // Extract Arrival date
-                  const arrivalMatch = t.remarks.match(/Arrival:\s*(\d{2})\.(\d{2})/i);
+                  // Extract Arrival date (arrival in Uzbekistan)
+                  const arrivalMatch = t.remarks.match(/Arrival[:\s]*(\d{2})\.(\d{2})/i);
                   if (arrivalMatch) {
                     const day = arrivalMatch[1];
                     const month = arrivalMatch[2];
                     const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
                     displayArrivalDate = `${day}.${month}.${year}`;
                   }
+
+                  // Also check for "Early arrival" pattern
+                  if (!displayArrivalDate) {
+                    const earlyArrivalMatch = t.remarks.match(/Early arrival[:\s]*(\d{2})\.(\d{2})/i);
+                    if (earlyArrivalMatch) {
+                      const day = earlyArrivalMatch[1];
+                      const month = earlyArrivalMatch[2];
+                      const year = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+                      displayArrivalDate = `${day}.${month}.${year}`;
+                    }
+                  }
                 }
 
-                // Use custom dates if available, otherwise use booking dates
-                const displayCheckIn = displayArrivalDate || customCheckIn || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
+                // Use extracted dates, then custom dates from database, then booking dates as fallback
+                // IMPORTANT: ARRIVAL is ALWAYS Tour Start + 1 day (departureDate + 1)
+                const arrivalDateFallback = booking?.departureDate ? (() => {
+                  const arrivalDate = new Date(booking.departureDate);
+                  arrivalDate.setDate(arrivalDate.getDate() + 1); // ARRIVAL = TOUR START + 1 day
+                  return formatDisplayDate(arrivalDate);
+                })() : '-';
+
+                const displayCheckIn = displayArrivalDate || customCheckIn || arrivalDateFallback;
                 const displayCheckOut = customCheckOut || (booking?.endDate ? formatDisplayDate(booking.endDate) : '-');
                 const displayTourStart = displayFlightDate || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
 
-                // Yellow background if has custom dates or arrival date from remarks
-                const rowBgClass = (hasCustomDates || displayArrivalDate || displayFlightDate) ? 'bg-yellow-50 border-2 border-yellow-300' : '';
+                // Yellow background if tourist has custom/different dates
+                const hasSpecialDates = displayArrivalDate || displayFlightDate || hasCustomDates;
+                const rowBgClass = hasSpecialDates ? 'bg-yellow-50 border-2 border-yellow-300' : '';
 
                 return (
                   <div key={t.id} className={`grid grid-cols-12 gap-4 items-center rounded-xl p-2 ${rowBgClass}`}>
@@ -1657,7 +1898,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       </div>
                     </div>
 
-                    {/* Start Date */}
+                    {/* Tour Start (Начало тура from Information module) */}
                     <div className="col-span-1">
                       <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${flightDate ? 'bg-yellow-100 border border-yellow-400' : 'bg-blue-50 border border-blue-200'}`}>
                         <span className={`text-xs font-medium ${flightDate ? 'text-yellow-900' : 'text-blue-600'}`}>
@@ -1666,7 +1907,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       </div>
                     </div>
 
-                    {/* Arrival */}
+                    {/* Arrival (Прибытие from Information module) */}
                     <div className="col-span-2">
                       <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${displayArrivalDate || customCheckIn ? 'bg-yellow-100 border border-yellow-400' : 'bg-green-50 border border-green-200'}`}>
                         <span className={`text-xs font-medium ${displayArrivalDate || customCheckIn ? 'text-yellow-900' : 'text-green-600'}`}>
@@ -1675,11 +1916,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       </div>
                     </div>
 
-                    {/* End Date */}
+                    {/* Tour End (Окончание тура from Information module) */}
                     <div className="col-span-1">
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
                         <span className="text-xs font-medium text-red-600">
-                          {booking?.endDate ? formatDisplayDate(booking.endDate) : '-'}
+                          {displayCheckOut}
                         </span>
                       </div>
                     </div>
@@ -1834,7 +2075,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       {/* Edit Room/Remarks Modal */}
       {modalOpen && editingTourist && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-5 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -1842,8 +2083,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                     <User className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Edit Assignment</h2>
-                    <p className="text-sm text-white/70">Room & remarks</p>
+                    <h2 className="text-lg font-semibold text-white">Edit Tourist Details</h2>
+                    <p className="text-sm text-white/70">Dates, room & placement</p>
                   </div>
                 </div>
                 <button onClick={() => setModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
@@ -1858,6 +2099,50 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium">
                   {editingTourist.fullName || `${editingTourist.lastName}, ${editingTourist.firstName}`}
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Arrival Date
+                    <span className="ml-1 text-xs text-gray-400 normal-case">(custom)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={form.checkInDate}
+                    onChange={(e) => setForm({ ...form, checkInDate: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                    placeholder="Leave empty for default"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave empty to use booking arrival date</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Tour End Date
+                    <span className="ml-1 text-xs text-gray-400 normal-case">(custom)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={form.checkOutDate}
+                    onChange={(e) => setForm({ ...form, checkOutDate: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                    placeholder="Leave empty for default"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave empty to use booking end date</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Placement</label>
+                <select
+                  value={form.accommodation}
+                  onChange={(e) => setForm({ ...form, accommodation: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                >
+                  <option value="Uzbekistan">Uzbekistan</option>
+                  <option value="Turkmenistan">Turkmenistan</option>
+                </select>
               </div>
 
               <div>

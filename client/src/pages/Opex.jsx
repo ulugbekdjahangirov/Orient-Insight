@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation, Users, Car, Train, Plane, MapPin, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { transportApi, guidesApi } from '../services/api';
+import { transportApi } from '../services/api';
 
 const categories = [
   { id: 'transport', name: 'Transport', icon: Bus, color: 'blue', hasSubTabs: true },
   { id: 'sightseeing', name: 'Sightseeing', icon: Eye, color: 'purple', hasSubTabs: true },
   { id: 'meal', name: 'Meal', icon: Coffee, color: 'orange', hasSubTabs: true },
   { id: 'shows', name: 'Shows', icon: Drama, color: 'indigo', hasSubTabs: true },
-  { id: 'guide', name: 'Guide', icon: Users, color: 'emerald', hasSubTabs: true },
 ];
 
 const transportSubTabs = [
@@ -39,11 +38,6 @@ const showsSubTabs = [
   { id: 'co', name: 'CO', icon: Drama, color: 'emerald' },
   { id: 'kas', name: 'KAS', icon: Drama, color: 'orange' },
   { id: 'za', name: 'ZA', icon: Drama, color: 'purple' },
-];
-
-const guideSubTabs = [
-  { id: 'tour', name: 'Tour', icon: Navigation, color: 'blue' },
-  { id: 'city', name: 'City', icon: MapPin, color: 'emerald' },
 ];
 
 // Default vehicle data for initial seeding
@@ -365,45 +359,6 @@ export default function Opex() {
     ];
   });
 
-  // Guide data
-  const [activeGuideTab, setActiveGuideTab] = useState('tour');
-
-  const [tourGuide, setTourGuide] = useState(() => {
-    const saved = localStorage.getItem('tourGuide');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading tour guide from localStorage:', e);
-      }
-    }
-    return [
-      { id: 1, name: 'Tour Guide Tashkent - Samarkand', guideId: '', vstrecha: '50', price: '100' },
-      { id: 2, name: 'Tour Guide Bukhara - Khiva', guideId: '', vstrecha: '45', price: '90' },
-      { id: 3, name: 'Tour Guide Samarkand Full Day', guideId: '', vstrecha: '40', price: '80' },
-    ];
-  });
-
-  // Available guides from Guides module
-  const [availableGuides, setAvailableGuides] = useState([]);
-
-  const [cityGuide, setCityGuide] = useState(() => {
-    const saved = localStorage.getItem('cityGuide');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading city guide from localStorage:', e);
-      }
-    }
-    return [
-      { id: 1, name: 'City Guide Tashkent Half Day', city: 'Tashkent', price: '200 000' },
-      { id: 2, name: 'City Guide Samarkand Half Day', city: 'Samarkand', price: '180 000' },
-      { id: 3, name: 'City Guide Bukhara Full Day', city: 'Bukhara', price: '250 000' },
-      { id: 4, name: 'City Guide Khiva Full Day', city: 'Khiva', price: '220 000' },
-    ];
-  });
-
   // Load transport data from API
   const loadTransportData = useCallback(async () => {
     try {
@@ -433,20 +388,6 @@ export default function Opex() {
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  // Load guides data
-  useEffect(() => {
-    const loadGuides = async () => {
-      try {
-        const response = await guidesApi.getAll(true);
-        setAvailableGuides(response.data);
-      } catch (error) {
-        console.error('Error loading guides:', error);
-        toast.error('Failed to load guides');
-      }
-    };
-    loadGuides();
   }, []);
 
   // Load data on mount
@@ -513,16 +454,6 @@ export default function Opex() {
   useEffect(() => {
     localStorage.setItem('zaShows', JSON.stringify(zaShows));
   }, [zaShows]);
-
-  // Save tour guide to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('tourGuide', JSON.stringify(tourGuide));
-  }, [tourGuide]);
-
-  // Save city guide to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('cityGuide', JSON.stringify(cityGuide));
-  }, [cityGuide]);
 
   // Modal states
   const [showVehicleModal, setShowVehicleModal] = useState(false);
@@ -882,100 +813,6 @@ export default function Opex() {
     }
   };
 
-  // Guide modal state
-  const [showGuideModal, setShowGuideModal] = useState(false);
-  const [editingGuide, setEditingGuide] = useState(null);
-  const [guideForm, setGuideForm] = useState({
-    name: '',
-    city: '',
-    guideId: '',
-    vstrecha: '',
-    price: ''
-  });
-
-  // Guide handlers
-  const handleAddGuide = () => {
-    setEditingGuide(null);
-    setGuideForm({ name: '', city: '', guideId: '', vstrecha: '', price: '' });
-    setShowGuideModal(true);
-  };
-
-  const handleEditGuide = (item) => {
-    setEditingGuide(item);
-    setGuideForm({
-      name: item.name,
-      city: item.city,
-      guideId: item.guideId || '',
-      vstrecha: item.vstrecha || '',
-      price: item.price
-    });
-    setShowGuideModal(true);
-  };
-
-  const handleSaveGuide = () => {
-    if (!guideForm.name) {
-      toast.error('Please fill in guide name');
-      return;
-    }
-
-    if (activeGuideTab === 'city' && !guideForm.city) {
-      toast.error('Please fill in city');
-      return;
-    }
-
-    if (editingGuide) {
-      // Update existing
-      if (activeGuideTab === 'tour') {
-        setTourGuide(tourGuide.map(item =>
-          item.id === editingGuide.id
-            ? { ...item, ...guideForm }
-            : item
-        ));
-      } else if (activeGuideTab === 'city') {
-        setCityGuide(cityGuide.map(item =>
-          item.id === editingGuide.id
-            ? { ...item, ...guideForm }
-            : item
-        ));
-      }
-      toast.success('Guide updated');
-      setShowGuideModal(false);
-    } else {
-      // Add new
-      let currentList;
-      if (activeGuideTab === 'tour') currentList = tourGuide;
-      else if (activeGuideTab === 'city') currentList = cityGuide;
-
-      const newId = currentList.length > 0
-        ? Math.max(...currentList.map(i => i.id), 0) + 1
-        : 1;
-
-      const newItem = {
-        id: newId,
-        ...guideForm
-      };
-
-      if (activeGuideTab === 'tour') {
-        setTourGuide([...tourGuide, newItem]);
-      } else if (activeGuideTab === 'city') {
-        setCityGuide([...cityGuide, newItem]);
-      }
-      toast.success('Guide added');
-      setShowGuideModal(false);
-    }
-  };
-
-  const handleDeleteGuide = (item) => {
-    if (window.confirm(`Delete "${item.name}"?`)) {
-      if (activeGuideTab === 'tour') {
-        setTourGuide(tourGuide.filter(i => i.id !== item.id));
-      } else if (activeGuideTab === 'city') {
-        setCityGuide(cityGuide.filter(i => i.id !== item.id));
-      }
-      toast.success('Guide deleted');
-    }
-  };
-
   const handleAddVehicle = () => {
     setEditingVehicle(null);
     setVehicleForm({
@@ -1206,55 +1043,64 @@ export default function Opex() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl blur-lg opacity-50"></div>
-            <div className="relative w-16 h-16 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-2xl">
-              <Wallet className="w-8 h-8 text-white" />
+      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-emerald-100 p-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-cyan-500/10"></div>
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-cyan-400/20 to-teal-400/20 rounded-full blur-3xl"></div>
+
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="relative">
+              <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/40 transform hover:scale-110 transition-transform duration-300">
+                <Wallet className="w-10 h-10 text-white" />
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                <span className="text-xs font-bold text-white">$</span>
+              </div>
+            </div>
+            <div>
+              <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                OPEX Management
+              </h1>
+              <p className="text-slate-600 text-sm mt-1 font-medium">Operational Expenses & Cost Control</p>
             </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">OPEX</h1>
-            <p className="text-sm text-gray-500 font-medium mt-1">Операционные расходы</p>
-          </div>
-        </div>
 
-        <button
-          onClick={() => {
-            if (activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) {
-              handleAddVehicle();
-            } else {
-              toast.success('Функционал в разработке');
-            }
-          }}
-          className="relative group inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-400 to-primary-600 rounded-xl blur opacity-0 group-hover:opacity-30 transition-opacity"></div>
-          <Plus className="w-5 h-5 relative" />
-          <span className="relative font-medium">
-            {activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab) ? 'Добавить транспорт' : 'Добавить расход'}
-          </span>
-        </button>
+          <button
+            onClick={() => {
+              if (activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) {
+                handleAddVehicle();
+              } else {
+                toast.success('Функционал в разработке');
+              }
+            }}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-2xl hover:shadow-2xl hover:shadow-emerald-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-base"
+          >
+            <Plus className="w-5 h-5" />
+            <span>
+              {activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab) ? 'Добавить транспорт' : 'Добавить расход'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Category Tabs */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-3">
-        <div className="flex gap-3 overflow-x-auto ">
+      <div className="bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-4">
+        <div className="flex gap-4 overflow-x-auto justify-center">
           {categories.map((category) => {
             const Icon = category.icon;
             const isActive = activeCategory === category.id;
 
             const colorMap = {
-              blue: { bg: 'bg-gradient-to-r from-blue-500 to-blue-600', text: 'text-blue-600', iconBg: 'bg-blue-100', hoverBg: 'hover:bg-blue-50' },
-              sky: { bg: 'bg-gradient-to-r from-sky-500 to-sky-600', text: 'text-sky-600', iconBg: 'bg-sky-100', hoverBg: 'hover:bg-sky-50' },
-              indigo: { bg: 'bg-gradient-to-r from-indigo-500 to-indigo-600', text: 'text-indigo-600', iconBg: 'bg-indigo-100', hoverBg: 'hover:bg-indigo-50' },
-              purple: { bg: 'bg-gradient-to-r from-purple-500 to-purple-600', text: 'text-purple-600', iconBg: 'bg-purple-100', hoverBg: 'hover:bg-purple-50' },
-              orange: { bg: 'bg-gradient-to-r from-orange-500 to-orange-600', text: 'text-orange-600', iconBg: 'bg-orange-100', hoverBg: 'hover:bg-orange-50' },
-              pink: { bg: 'bg-gradient-to-r from-pink-500 to-pink-600', text: 'text-pink-600', iconBg: 'bg-pink-100', hoverBg: 'hover:bg-pink-50' },
-              emerald: { bg: 'bg-gradient-to-r from-emerald-500 to-emerald-600', text: 'text-emerald-600', iconBg: 'bg-emerald-100', hoverBg: 'hover:bg-emerald-50' },
+              blue: { bg: 'bg-gradient-to-r from-blue-500 to-blue-600', text: 'text-blue-600', iconBg: 'bg-blue-100', hoverBg: 'hover:from-blue-50 hover:to-blue-100' },
+              sky: { bg: 'bg-gradient-to-r from-sky-500 to-sky-600', text: 'text-sky-600', iconBg: 'bg-sky-100', hoverBg: 'hover:from-sky-50 hover:to-sky-100' },
+              indigo: { bg: 'bg-gradient-to-r from-indigo-500 to-indigo-600', text: 'text-indigo-600', iconBg: 'bg-indigo-100', hoverBg: 'hover:from-indigo-50 hover:to-indigo-100' },
+              purple: { bg: 'bg-gradient-to-r from-purple-500 to-purple-600', text: 'text-purple-600', iconBg: 'bg-purple-100', hoverBg: 'hover:from-purple-50 hover:to-purple-100' },
+              orange: { bg: 'bg-gradient-to-r from-orange-500 to-orange-600', text: 'text-orange-600', iconBg: 'bg-orange-100', hoverBg: 'hover:from-orange-50 hover:to-orange-100' },
+              pink: { bg: 'bg-gradient-to-r from-pink-500 to-pink-600', text: 'text-pink-600', iconBg: 'bg-pink-100', hoverBg: 'hover:from-pink-50 hover:to-pink-100' },
+              emerald: { bg: 'bg-gradient-to-r from-emerald-500 to-emerald-600', text: 'text-emerald-600', iconBg: 'bg-emerald-100', hoverBg: 'hover:from-emerald-50 hover:to-emerald-100' },
             };
 
             const colors = colorMap[category.color];
@@ -1263,18 +1109,18 @@ export default function Opex() {
               <button
                 key={category.id}
                 onClick={() => setActiveCategory(category.id)}
-                className={`group relative flex items-center gap-3 px-6 py-3.5 rounded-xl font-semibold transition-all duration-300 whitespace-nowrap ${
+                className={`group relative flex items-center gap-3 px-8 py-4 rounded-2xl font-black transition-all duration-300 whitespace-nowrap transform ${
                   isActive
-                    ? `${colors.bg} text-white shadow-lg hover:shadow-xl scale-105`
-                    : `text-gray-600 ${colors.hoverBg} hover:scale-105`
+                    ? `${colors.bg} text-white shadow-2xl hover:shadow-3xl scale-110 hover:scale-115`
+                    : `text-gray-700 bg-gradient-to-br ${colors.hoverBg} hover:shadow-xl hover:scale-105 border-2 border-slate-200`
                 }`}
               >
-                <div className={`${isActive ? 'bg-white/20' : colors.iconBg} p-1.5 rounded-lg transition-all duration-300`}>
-                  <Icon className="w-5 h-5" />
+                <div className={`${isActive ? 'bg-white/30 backdrop-blur-sm' : colors.iconBg} p-2 rounded-xl transition-all duration-300 shadow-md`}>
+                  <Icon className="w-6 h-6" />
                 </div>
-                {category.name}
+                <span className="text-base">{category.name}</span>
                 {isActive && (
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-1 bg-white rounded-full"></div>
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-white rounded-full shadow-lg"></div>
                 )}
               </button>
             );
@@ -1284,20 +1130,55 @@ export default function Opex() {
 
       {/* Transport Sub-Tabs */}
       {activeCategory === 'transport' && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-2.5">
-          <div className="flex gap-2 overflow-x-auto ">
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4">
+          <div className="flex gap-3 overflow-x-auto">
             {transportSubTabs.map((subTab) => {
               const Icon = subTab.icon;
               const isActive = activeTransportTab === subTab.id;
 
               const colorMap = {
-                blue: { bg: 'bg-blue-500', ring: 'ring-blue-200' },
-                cyan: { bg: 'bg-cyan-500', ring: 'ring-cyan-200' },
-                teal: { bg: 'bg-teal-500', ring: 'ring-teal-200' },
-                violet: { bg: 'bg-violet-500', ring: 'ring-violet-200' },
-                sky: { bg: 'bg-sky-500', ring: 'ring-sky-200' },
-                emerald: { bg: 'bg-emerald-500', ring: 'ring-emerald-200' },
-                pink: { bg: 'bg-pink-500', ring: 'ring-pink-200' },
+                blue: {
+                  gradient: 'from-blue-500 to-blue-600',
+                  shadow: 'shadow-blue-500/30',
+                  ring: 'ring-blue-200',
+                  hover: 'hover:from-blue-600 hover:to-blue-700'
+                },
+                cyan: {
+                  gradient: 'from-cyan-500 to-cyan-600',
+                  shadow: 'shadow-cyan-500/30',
+                  ring: 'ring-cyan-200',
+                  hover: 'hover:from-cyan-600 hover:to-cyan-700'
+                },
+                teal: {
+                  gradient: 'from-teal-500 to-teal-600',
+                  shadow: 'shadow-teal-500/30',
+                  ring: 'ring-teal-200',
+                  hover: 'hover:from-teal-600 hover:to-teal-700'
+                },
+                violet: {
+                  gradient: 'from-violet-500 to-violet-600',
+                  shadow: 'shadow-violet-500/30',
+                  ring: 'ring-violet-200',
+                  hover: 'hover:from-violet-600 hover:to-violet-700'
+                },
+                sky: {
+                  gradient: 'from-sky-500 to-sky-600',
+                  shadow: 'shadow-sky-500/30',
+                  ring: 'ring-sky-200',
+                  hover: 'hover:from-sky-600 hover:to-sky-700'
+                },
+                emerald: {
+                  gradient: 'from-emerald-500 to-emerald-600',
+                  shadow: 'shadow-emerald-500/30',
+                  ring: 'ring-emerald-200',
+                  hover: 'hover:from-emerald-600 hover:to-emerald-700'
+                },
+                pink: {
+                  gradient: 'from-pink-500 to-pink-600',
+                  shadow: 'shadow-pink-500/30',
+                  ring: 'ring-pink-200',
+                  hover: 'hover:from-pink-600 hover:to-pink-700'
+                },
               };
 
               const colors = colorMap[subTab.color];
@@ -1306,13 +1187,13 @@ export default function Opex() {
                 <button
                   key={subTab.id}
                   onClick={() => setActiveTransportTab(subTab.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap text-sm ${
+                  className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
                     isActive
-                      ? `${colors.bg} text-white shadow-md ring-2 ${colors.ring} scale-105`
-                      : 'text-gray-600 hover:bg-gray-100 hover:scale-105'
+                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
+                      : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-5 h-5" />
                   {subTab.name}
                 </button>
               );
@@ -1323,17 +1204,37 @@ export default function Opex() {
 
       {/* Sightseeing Sub-Tabs */}
       {activeCategory === 'sightseeing' && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-2.5">
-          <div className="flex gap-2 overflow-x-auto ">
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4">
+          <div className="flex gap-3 overflow-x-auto">
             {sightseeingSubTabs.map((subTab) => {
               const Icon = subTab.icon;
               const isActive = activeSightseeingTab === subTab.id;
 
               const colorMap = {
-                blue: { bg: 'bg-blue-500', ring: 'ring-blue-200' },
-                emerald: { bg: 'bg-emerald-500', ring: 'ring-emerald-200' },
-                orange: { bg: 'bg-orange-500', ring: 'ring-orange-200' },
-                purple: { bg: 'bg-purple-500', ring: 'ring-purple-200' },
+                blue: {
+                  gradient: 'from-blue-500 to-blue-600',
+                  shadow: 'shadow-blue-500/30',
+                  ring: 'ring-blue-200',
+                  hover: 'hover:from-blue-600 hover:to-blue-700'
+                },
+                emerald: {
+                  gradient: 'from-emerald-500 to-emerald-600',
+                  shadow: 'shadow-emerald-500/30',
+                  ring: 'ring-emerald-200',
+                  hover: 'hover:from-emerald-600 hover:to-emerald-700'
+                },
+                orange: {
+                  gradient: 'from-orange-500 to-orange-600',
+                  shadow: 'shadow-orange-500/30',
+                  ring: 'ring-orange-200',
+                  hover: 'hover:from-orange-600 hover:to-orange-700'
+                },
+                purple: {
+                  gradient: 'from-purple-500 to-purple-600',
+                  shadow: 'shadow-purple-500/30',
+                  ring: 'ring-purple-200',
+                  hover: 'hover:from-purple-600 hover:to-purple-700'
+                },
               };
 
               const colors = colorMap[subTab.color];
@@ -1342,13 +1243,13 @@ export default function Opex() {
                 <button
                   key={subTab.id}
                   onClick={() => setActiveSightseeingTab(subTab.id)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap text-sm ${
+                  className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
                     isActive
-                      ? `${colors.bg} text-white shadow-md ring-2 ${colors.ring} scale-105`
-                      : 'text-gray-600 hover:bg-gray-100 hover:scale-105'
+                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
+                      : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-5 h-5" />
                   {subTab.name}
                 </button>
               );
@@ -1358,59 +1259,61 @@ export default function Opex() {
       )}
 
       {/* Search */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-200 p-5">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-6">
         <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary-500 transition-colors z-10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl opacity-0 group-focus-within:opacity-100 transition-all duration-300"></div>
+          <div className="absolute left-5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl opacity-70 group-focus-within:opacity-100 transition-all duration-300 shadow-lg">
+            <Search className="w-5 h-5 text-white" />
+          </div>
           <input
             type="text"
             placeholder={`Поиск в ${activeTab.name}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="relative w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 placeholder:text-gray-400"
+            className="relative w-full pl-20 pr-6 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 placeholder:text-gray-400 font-medium shadow-md hover:shadow-lg"
           />
         </div>
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
         {activeCategory === 'transport' && activeTransportTab === 'xayrulla' ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-600 border-b-3 border-cyan-300">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Название
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     PAX
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Pickup / Drop-off
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     chimgan Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Tag Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Oybek Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Chernyayevka Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     City Tour Rate
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {xayrullaVehicles.map((vehicle) => (
-                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-cyan-50 hover:to-teal-50 transition-all duration-300 border-b border-gray-100 group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {vehicle.name}
@@ -1499,33 +1402,33 @@ export default function Opex() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 border-b-3 border-teal-300">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Название
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     PAX
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Margilan Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Qoqon Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Dostlik Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Toshkent Rate
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {nosirVehicles.map((vehicle) => (
-                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 transition-all duration-300 border-b border-gray-100 group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {vehicle.name}
@@ -1604,14 +1507,14 @@ export default function Opex() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-violet-500 via-purple-500 to-violet-600 border-b-3 border-violet-300">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Price
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
                   </th>
                 </tr>
@@ -1621,26 +1524,26 @@ export default function Opex() {
                   <tr>
                     <td colSpan="3" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4">
-                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
-                          <Navigation className="w-10 h-10 text-gray-400" />
+                        <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-200 rounded-full flex items-center justify-center shadow-lg">
+                          <Navigation className="w-10 h-10 text-violet-500" />
                         </div>
                         <div>
-                          <p className="text-gray-600 font-semibold mb-1">Нет данных</p>
-                          <p className="text-gray-400 text-sm">Начните добавлять транспорт</p>
+                          <p className="text-gray-700 font-bold mb-1">Нет данных</p>
+                          <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
                         </div>
                         <button
                           onClick={handleAddVehicle}
-                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-700 text-white rounded-2xl hover:from-violet-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-bold"
                         >
                           <Plus className="w-5 h-5" />
-                          <span className="font-medium">Добавить</span>
+                          <span>Добавить</span>
                         </button>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   metroVehicles.map((vehicle) => (
-                    <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                    <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-violet-50 hover:to-purple-50 transition-all duration-300 border-b border-gray-100 group">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {vehicle.name}
@@ -1702,38 +1605,38 @@ export default function Opex() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-sky-500 via-blue-500 to-sky-600 border-b-3 border-sky-300">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Route
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan="2">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider" colSpan="2">
                     Preis
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Departure
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Arrival
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
                   </th>
                 </tr>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-sky-400 via-blue-400 to-sky-500">
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Econom
                   </th>
-                  <th className="px-6 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Business
                   </th>
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2"></th>
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -1741,12 +1644,12 @@ export default function Opex() {
                   <tr>
                     <td colSpan="7" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4">
-                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
-                          <Plane className="w-10 h-10 text-gray-400" />
+                        <div className="w-20 h-20 bg-gradient-to-br from-sky-100 to-blue-200 rounded-full flex items-center justify-center shadow-lg">
+                          <Plane className="w-10 h-10 text-sky-500" />
                         </div>
                         <div>
-                          <p className="text-gray-600 font-semibold mb-1">Нет данных</p>
-                          <p className="text-gray-400 text-sm">Начните добавлять транспорт</p>
+                          <p className="text-gray-700 font-bold mb-1">Нет данных</p>
+                          <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
                         </div>
                         <button
                           onClick={handleAddVehicle}
@@ -1842,38 +1745,38 @@ export default function Opex() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 border-b-3 border-emerald-300">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Route
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider" colSpan="2">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider" colSpan="2">
                     Preis
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Departure
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Arrival
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
                   </th>
                 </tr>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500">
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Econom
                   </th>
-                  <th className="px-6 py-2 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Business
                   </th>
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2"></th>
-                  <th className="px-6 py-2"></th>
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -1881,12 +1784,12 @@ export default function Opex() {
                   <tr>
                     <td colSpan="7" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4">
-                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
-                          <Train className="w-10 h-10 text-gray-400" />
+                        <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-green-200 rounded-full flex items-center justify-center shadow-lg">
+                          <Train className="w-10 h-10 text-emerald-500" />
                         </div>
                         <div>
-                          <p className="text-gray-600 font-semibold mb-1">Нет данных</p>
-                          <p className="text-gray-400 text-sm">Начните добавлять транспорт</p>
+                          <p className="text-gray-700 font-bold mb-1">Нет данных</p>
+                          <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
                         </div>
                         <button
                           onClick={handleAddVehicle}
@@ -1982,33 +1885,33 @@ export default function Opex() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <tr className="bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 border-b-3 border-blue-300">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Название
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     PAX
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Pickup / Drop-off
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     TAG Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Urgench Rate
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Shovot Rate
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {sevilVehicles.map((vehicle) => (
-                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 border-b border-gray-100 group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {vehicle.name}
@@ -2494,30 +2397,56 @@ export default function Opex() {
         ) : activeCategory === 'meal' ? (
           <div>
             {/* Meal Sub-tabs */}
-            <div className="flex gap-3 mb-6">
-              {mealSubTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeMealTab === tab.id;
-                const colorClasses = {
-                  blue: isActive ? 'from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/50' : 'bg-blue-50 text-blue-700 hover:bg-blue-100',
-                  emerald: isActive ? 'from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/50' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
-                  orange: isActive ? 'from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/50' : 'bg-orange-50 text-orange-700 hover:bg-orange-100',
-                  purple: isActive ? 'from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/50' : 'bg-purple-50 text-purple-700 hover:bg-purple-100',
-                };
+            <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4 mb-6">
+              <div className="flex gap-3 overflow-x-auto">
+                {mealSubTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeMealTab === tab.id;
+                  const colorClasses = {
+                    blue: {
+                      gradient: 'from-blue-500 to-blue-600',
+                      shadow: 'shadow-blue-500/30',
+                      ring: 'ring-blue-200',
+                      hover: 'hover:from-blue-600 hover:to-blue-700'
+                    },
+                    emerald: {
+                      gradient: 'from-emerald-500 to-emerald-600',
+                      shadow: 'shadow-emerald-500/30',
+                      ring: 'ring-emerald-200',
+                      hover: 'hover:from-emerald-600 hover:to-emerald-700'
+                    },
+                    orange: {
+                      gradient: 'from-orange-500 to-orange-600',
+                      shadow: 'shadow-orange-500/30',
+                      ring: 'ring-orange-200',
+                      hover: 'hover:from-orange-600 hover:to-orange-700'
+                    },
+                    purple: {
+                      gradient: 'from-purple-500 to-purple-600',
+                      shadow: 'shadow-purple-500/30',
+                      ring: 'ring-purple-200',
+                      hover: 'hover:from-purple-600 hover:to-purple-700'
+                    },
+                  };
 
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveMealTab(tab.id)}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                      isActive ? `bg-gradient-to-r ${colorClasses[tab.color]}` : colorClasses[tab.color]
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span>{tab.name}</span>
-                  </button>
-                );
-              })}
+                  const colors = colorClasses[tab.color];
+
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveMealTab(tab.id)}
+                      className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
+                        isActive
+                          ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
+                          : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{tab.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Meal tables content will go here */}
@@ -2594,24 +2523,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                            {erMeal.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
                   <button
@@ -2698,24 +2609,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                            {coMeal.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
                   <button
@@ -2802,24 +2695,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                            {kasMeal.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
                   <button
@@ -2906,24 +2781,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                            {zaMeal.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
                   <button
@@ -2940,21 +2797,56 @@ export default function Opex() {
         ) : activeCategory === 'shows' ? (
           <div>
             {/* Shows Sub-tabs */}
-            <div className="flex gap-3 mb-6">
-              {showsSubTabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveShowsTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 ${
-                    activeShowsTab === tab.id
-                      ? `bg-gradient-to-r from-${tab.color}-600 to-${tab.color}-700 text-white`
-                      : `bg-white text-${tab.color}-600 hover:bg-${tab.color}-50 border-2 border-${tab.color}-200`
-                  }`}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  <span>{tab.name}</span>
-                </button>
-              ))}
+            <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4 mb-6">
+              <div className="flex gap-3 overflow-x-auto">
+                {showsSubTabs.map(tab => {
+                  const Icon = tab.icon;
+                  const isActive = activeShowsTab === tab.id;
+                  const colorClasses = {
+                    blue: {
+                      gradient: 'from-blue-500 to-blue-600',
+                      shadow: 'shadow-blue-500/30',
+                      ring: 'ring-blue-200',
+                      hover: 'hover:from-blue-600 hover:to-blue-700'
+                    },
+                    emerald: {
+                      gradient: 'from-emerald-500 to-emerald-600',
+                      shadow: 'shadow-emerald-500/30',
+                      ring: 'ring-emerald-200',
+                      hover: 'hover:from-emerald-600 hover:to-emerald-700'
+                    },
+                    orange: {
+                      gradient: 'from-orange-500 to-orange-600',
+                      shadow: 'shadow-orange-500/30',
+                      ring: 'ring-orange-200',
+                      hover: 'hover:from-orange-600 hover:to-orange-700'
+                    },
+                    purple: {
+                      gradient: 'from-purple-500 to-purple-600',
+                      shadow: 'shadow-purple-500/30',
+                      ring: 'ring-purple-200',
+                      hover: 'hover:from-purple-600 hover:to-purple-700'
+                    },
+                  };
+
+                  const colors = colorClasses[tab.color];
+
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveShowsTab(tab.id)}
+                      className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
+                        isActive
+                          ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
+                          : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{tab.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {activeShowsTab === 'er' && (
@@ -3030,24 +2922,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 border-t-4 border-blue-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-                            {erShows.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
                   <button
@@ -3134,24 +3008,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700 border-t-4 border-emerald-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">
-                            {coShows.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
                   <button
@@ -3238,24 +3094,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                            {kasShows.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
                   <button
@@ -3342,24 +3180,6 @@ export default function Opex() {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 border-t-4 border-purple-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
-                            {zaShows.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
                 </table>
                 <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
                   <button
@@ -3368,253 +3188,6 @@ export default function Opex() {
                   >
                     <Plus className="w-5 h-5" />
                     <span>Add Show</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : activeCategory === 'guide' ? (
-          <div>
-            {/* Guide Sub-tabs */}
-            <div className="flex gap-3 mb-6">
-              {guideSubTabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveGuideTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 ${
-                    activeGuideTab === tab.id
-                      ? `bg-gradient-to-r from-${tab.color}-600 to-${tab.color}-700 text-white`
-                      : `bg-white text-${tab.color}-600 hover:bg-${tab.color}-50 border-2 border-${tab.color}-200`
-                  }`}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  <span>{tab.name}</span>
-                </button>
-              ))}
-            </div>
-
-            {activeGuideTab === 'tour' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-blue-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          Tour Guide
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          Guide
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        vstrecha/Provodi (Half Day USD)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (USD)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-blue-100">
-                    {tourGuide.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-700">
-                            {item.guideId && availableGuides.length > 0
-                              ? availableGuides.find(g => g.id === item.guideId)?.name || '-'
-                              : '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200">
-                            <span className="text-sm font-bold text-blue-700">${item.vstrecha || '-'}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">${item.price || '-'}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditGuide(item)}
-                              className="p-2.5 text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteGuide(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 border-t-4 border-blue-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-                            ${tourGuide.reduce((sum, item) => {
-                              const price = parseFloat(item.vstrecha) || 0;
-                              return sum + price;
-                            }, 0).toFixed(2)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-                            ${tourGuide.reduce((sum, item) => {
-                              const price = parseFloat(item.price) || 0;
-                              return sum + price;
-                            }, 0).toFixed(2)}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
-                  <button
-                    onClick={handleAddGuide}
-                    className="w-full flex items-center justify-center gap-3 py-4 text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 hover:text-white rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
-                  >
-                    <Plus className="w-5 h-5" />
-                    <span>Add Tour Guide</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeGuideTab === 'city' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-emerald-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          City Guide
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-emerald-100">
-                    {cityGuide.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditGuide(item)}
-                              className="p-2.5 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteGuide(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700 border-t-4 border-emerald-300">
-                      <td colSpan="3" className="px-6 py-5 text-right">
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                          <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">
-                            {cityGuide.reduce((sum, item) => {
-                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                              return sum + price;
-                            }, 0).toLocaleString('ru-RU')}
-                          </span>
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
-                  <button
-                    onClick={handleAddGuide}
-                    className="w-full flex items-center justify-center gap-3 py-4 text-emerald-700 bg-white hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 hover:text-white rounded-xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
-                  >
-                    <Plus className="w-5 h-5" />
-                    <span>Add City Guide</span>
                   </button>
                 </div>
               </div>
@@ -4392,126 +3965,6 @@ export default function Opex() {
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-lg hover:shadow-xl font-medium"
               >
                 {editingShow ? 'Save' : 'Add'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Guide Modal */}
-      {showGuideModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {editingGuide ? 'Edit Guide' : 'Add Guide'}
-              </h2>
-              <button
-                onClick={() => setShowGuideModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Guide Name *
-                </label>
-                <input
-                  type="text"
-                  value={guideForm.name}
-                  onChange={(e) => setGuideForm({ ...guideForm, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder={activeGuideTab === 'tour' ? 'e.g. Tour Guide Tashkent - Samarkand' : 'e.g. City Guide Tashkent Half Day'}
-                />
-              </div>
-
-              {/* Guide - Only for Tour Guide */}
-              {activeGuideTab === 'tour' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Guide
-                  </label>
-                  <select
-                    value={guideForm.guideId}
-                    onChange={(e) => setGuideForm({ ...guideForm, guideId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Guide</option>
-                    {availableGuides.map(guide => (
-                      <option key={guide.id} value={guide.id}>
-                        {guide.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* City */}
-              {activeGuideTab === 'city' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    value={guideForm.city}
-                    onChange={(e) => setGuideForm({ ...guideForm, city: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="e.g. Tashkent"
-                  />
-                </div>
-              )}
-
-              {/* vstrecha/Provodi - Only for Tour Guide */}
-              {activeGuideTab === 'tour' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    vstrecha/Provodi (Half Day USD)
-                  </label>
-                  <input
-                    type="text"
-                    value={guideForm.vstrecha}
-                    onChange={(e) => setGuideForm({ ...guideForm, vstrecha: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g. 50"
-                  />
-                </div>
-              )}
-
-              {/* Price */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {activeGuideTab === 'tour' ? 'Price (USD)' : 'Price (UZS)'}
-                </label>
-                <input
-                  type="text"
-                  value={guideForm.price}
-                  onChange={(e) => setGuideForm({ ...guideForm, price: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder={activeGuideTab === 'tour' ? 'e.g. 100' : 'e.g. 500 000'}
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowGuideModal(false)}
-                className="flex-1 px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveGuide}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-lg hover:shadow-xl font-medium"
-              >
-                {editingGuide ? 'Save' : 'Add'}
               </button>
             </div>
           </div>

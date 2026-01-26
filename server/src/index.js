@@ -13,6 +13,7 @@ const hotelRoutes = require('./routes/hotel.routes');
 const cityRoutes = require('./routes/city.routes');
 const touristRoutes = require('./routes/tourist.routes');
 const routeRoutes = require('./routes/route.routes');
+const transportRoutes = require('./routes/transport.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,8 @@ app.use('/api/bookings', (req, res, next) => {
 });
 app.use('/api/bookings', touristRoutes); // Tourist routes MUST be before bookingRoutes to avoid :id catch-all
 app.use('/api/bookings', routeRoutes);  // Route routes for transport planning
+app.use('/api/routes', routeRoutes);     // Route template routes (standalone, not per booking)
+app.use('/api/accommodations', bookingRoutes); // Accommodation template routes
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/guides', guideRoutes);
 app.use('/api/tour-types', tourTypeRoutes);
@@ -38,6 +41,7 @@ app.use('/api/import', importRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/hotels', hotelRoutes);
 app.use('/api/cities', cityRoutes);
+app.use('/api/transport', transportRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

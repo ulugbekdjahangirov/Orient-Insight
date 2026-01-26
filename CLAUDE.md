@@ -156,6 +156,78 @@ Turkmenistan tourists are identified by:
 
 The `accommodation` field on Tourist model stores "Uzbekistan" or "Turkmenistan".
 
+### Hotel Accommodation Cost Calculation
+
+**CRITICAL: This logic must remain stable for ER tours. Do NOT modify without careful consideration.**
+
+Hotel costs are calculated using **individual tourist dates** from the rooming list, not just accommodation dates. This handles special cases like:
+
+1. **Early arrivals** (e.g., Baetgen arriving 3 days before group)
+2. **Uzbekistan/Turkmenistan splits** in Khiva region
+3. **Per-hotel guest-specific dates**
+
+#### Date Priority (MUST be followed in this order):
+
+**Backend** (`server/src/routes/booking.routes.js`, line 1625-1692):
+1. **AccommodationRoomingList** table (explicitly saved hotel-specific dates)
+2. **Tourist.checkInDate/checkOutDate** (for first accommodation only - handles early arrivals)
+3. **Accommodation.checkInDate/checkOutDate** (default for all guests)
+
+**Special Rule - Khiva/Turkmenistan Hotels**:
+- If hotel city contains "Хива", "Khiva", "Туркмен", or "Turkmen"
+- AND tourist.accommodation = "Uzbekistan" or "Uz"
+- THEN checkout date is **reduced by 1 day** (UZ tourists leave earlier)
+- Backend log: `🟢 UZ tourist in TM hotel: [name]`
+- Example: Malika Khorazm (22.10-25.10): TM tourists stay 3 nights, UZ tourists stay 2 nights
+
+**Frontend - Form Calculation** (`client/src/components/booking/HotelAccommodationForm.jsx`, line 222-256 & 493-516):
+1. **tourist.checkInDate/checkOutDate** from rooming list API (already adjusted by backend)
+2. **AccommodationRoomingList** table (if manually saved)
+3. **formData.checkInDate/checkOutDate** (accommodation default)
+
+**Frontend - Card View** (`client/src/pages/BookingDetail.jsx`, line 4310-4338):
+1. **tourist.checkInDate/checkOutDate** from `accommodationRoomingLists` state (loaded from API)
+2. **Fallback to accommodation dates**
+
+#### Implementation Files:
+
+**Backend:**
+- `server/src/routes/booking.routes.js`:
+  - Line 1625-1692: Khiva/TM hotel detection & UZ tourist adjustment
+  - Line 1553-1710: GET `/api/bookings/:id/accommodations/:accId/rooming-list`
+  - Line 773-920: Cost calculation using individual tourist nights
+
+**Frontend:**
+- `client/src/components/booking/HotelAccommodationForm.jsx`:
+  - Line 222-256: Total cost calculation (uses rooming list dates)
+  - Line 493-607: Display calculation & rooming list details
+  - Line 89-106: `loadRoomingList()` - loads backend-adjusted dates
+- `client/src/pages/BookingDetail.jsx`:
+  - Line 4310-4450: Card view guest-nights calculation
+  - Line 783-803: Auto-load all rooming lists on page load (CRITICAL for correct display)
+  - Line 1237-1247: `loadAccommodationRoomingList()` function
+
+#### Testing Checklist:
+
+When modifying hotel calculation logic, ALWAYS test with **ER-03** booking:
+1. **Arien Plaza (first hotel, 13.10-15.10)**: Baetgen early arrival (10.10-15.10) = 5 nights, others 2 nights
+2. **Malika Khorazm (22.10-25.10)**: UZ tourists 2 nights, TM tourists 3 nights
+3. Verify **card view** and **edit modal** show same total cost
+4. Check server logs for `🟢 UZ tourist in TM hotel` messages
+5. Open "Hisob-kitob tafsilotlari" dropdown to verify individual guest nights
+
+#### Common Mistakes to Avoid:
+
+❌ Using `tourist.checkInDate/checkOutDate` (global tour dates) instead of rooming list dates
+❌ Applying early arrival logic to ALL hotels (should only apply to first hotel)
+❌ Not loading `accommodationRoomingLists` state on page load
+❌ Hardcoding nights = accommodation.nights for all guests
+❌ Ignoring backend-adjusted dates in frontend calculations
+
+✅ Always use rooming list API response dates (backend already handles all adjustments)
+✅ Load all rooming lists on page load for correct card display
+✅ Check date priority order: rooming list → accommodationRoomingList → accommodation dates
+
 ### Database Schema Updates
 After modifying `schema.prisma`:
 ```bash

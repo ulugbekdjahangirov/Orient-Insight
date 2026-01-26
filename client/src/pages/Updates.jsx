@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, touristsApi } from '../services/api';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Bell, Edit, Trash2, Users, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -14,11 +14,11 @@ const tourTypeModules = [
 ];
 
 const statusLabels = {
-  PENDING: 'Ожидает',
-  CONFIRMED: 'Подтверждено',
-  IN_PROGRESS: 'В процессе',
-  COMPLETED: 'Завершено',
-  CANCELLED: 'Отменено'
+  PENDING: 'Pending',
+  CONFIRMED: 'Confirmed',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled'
 };
 
 const statusClasses = {
@@ -70,15 +70,15 @@ export default function Updates() {
       const debugData = debugResponse.data;
 
       console.log('\n📊 BOOKING DEBUG INFO:');
-      console.log(`   Actual: ${debugData.total} туров`);
-      console.log(`   Expected: ${debugData.expected.total} туров`);
-      console.log(`   Missing: ${debugData.difference.total} туров`);
+      console.log(`   Actual: ${debugData.total} tours`);
+      console.log(`   Expected: ${debugData.expected.total} tours`);
+      console.log(`   Missing: ${debugData.difference.total} tours`);
       console.log('\n   By Status:');
-      console.log(`   Подтверждено (CONFIRMED): ${debugData.statusCounts.CONFIRMED}`);
-      console.log(`   В процессе (IN_PROGRESS): ${debugData.statusCounts.IN_PROGRESS}`);
-      console.log(`   Ожидает (PENDING): ${debugData.statusCounts.PENDING}`);
-      console.log(`   Отменено (CANCELLED): ${debugData.statusCounts.CANCELLED || 0}`);
-      console.log(`   Завершено (COMPLETED): ${debugData.statusCounts.COMPLETED || 0}`);
+      console.log(`   Confirmed (CONFIRMED): ${debugData.statusCounts.CONFIRMED}`);
+      console.log(`   In Progress (IN_PROGRESS): ${debugData.statusCounts.IN_PROGRESS}`);
+      console.log(`   Pending (PENDING): ${debugData.statusCounts.PENDING}`);
+      console.log(`   Cancelled (CANCELLED): ${debugData.statusCounts.CANCELLED || 0}`);
+      console.log(`   Completed (COMPLETED): ${debugData.statusCounts.COMPLETED || 0}`);
       console.log('\n   By Type (Actual / Expected / Missing):');
       console.log(`   ER:  ${debugData.byType.ER || 0} / ${debugData.expected.ER} / ${debugData.difference.ER}`);
       console.log(`   CO:  ${debugData.byType.CO || 0} / ${debugData.expected.CO} / ${debugData.difference.CO}`);
@@ -107,21 +107,21 @@ export default function Updates() {
       const response = await bookingsApi.getAll({ tourTypeId: tourType.id });
       setBookings(response.data.bookings || []);
     } catch (error) {
-      toast.error('Ошибка загрузки бронирований');
+      toast.error('Error loading bookings');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id, bookingNumber) => {
-    if (!confirm(`Удалить бронирование ${bookingNumber}?`)) return;
+    if (!confirm(`Delete booking ${bookingNumber}?`)) return;
 
     try {
       await bookingsApi.delete(id);
-      toast.success('Бронирование удалено');
+      toast.success('Booking deleted');
       loadBookings();
     } catch (error) {
-      toast.error('Ошибка удаления');
+      toast.error('Error deleting');
     }
   };
 
@@ -196,7 +196,7 @@ export default function Updates() {
         console.log(`\n🚀 Importing to ${group.booking.bookingNumber}: ${uzbekCount} Uzbekistan + ${turkCount} Turkmenistan = ${allTourists.length} total`);
 
         try {
-          const importResponse = await touristsApi.import(group.booking.id, allTourists, { createOnly: true });
+          const importResponse = await touristsApi.import(group.booking.id, allTourists, { replaceAll: true });
           const { created, skipped } = importResponse.data;
 
           // Update booking PAX
@@ -234,15 +234,15 @@ export default function Updates() {
         const summary = results
           .map(r => {
             const parts = [];
-            if (r.created > 0) parts.push(`создано: ${r.created}`);
-            if (r.skipped > 0) parts.push(`пропущено: ${r.skipped}`);
+            if (r.created > 0) parts.push(`created: ${r.created}`);
+            if (r.skipped > 0) parts.push(`skipped: ${r.skipped}`);
             return `${r.bookingNumber} (${parts.join(', ')})`;
           })
           .join(', ');
 
         const mainMessage = totalSkipped > 0
-          ? `Создано ${totalCreated} туристов, пропущено ${totalSkipped} существующих`
-          : `Создано ${totalCreated} туристов`;
+          ? `Created ${totalCreated} tourists, skipped ${totalSkipped} existing`
+          : `Created ${totalCreated} tourists`;
 
         toast.success(`${mainMessage}\n${summary}`);
         loadBookings();
@@ -251,15 +251,15 @@ export default function Updates() {
       if (totalErrors > 0) {
         const errorSummary = errors.map(e => `${e.file}: ${e.error}`).join('\n');
         console.error('Import errors:', errorSummary);
-        toast.error(`Ошибок: ${totalErrors}. Проверьте консоль для деталей.`);
+        toast.error(`Errors: ${totalErrors}. Check console for details.`);
       }
       if (totalSuccess === 0 && totalErrors === 0) {
-        toast.error('Нет файлов для импорта');
+        toast.error('No files to import');
       }
 
     } catch (error) {
       console.error('Import error:', error);
-      toast.error('Ошибка импорта файлов');
+      toast.error('Error importing files');
     } finally {
       setImporting(false);
       if (fileInputRef.current) {
@@ -424,12 +424,12 @@ export default function Updates() {
 
       if (!tourTypeCode) {
         console.error(`Could not determine tour type from file: ${file.name}, tour name: "${tourName}"`);
-        return { success: false, error: `Тип тура не определен: "${tourName}"` };
+        return { success: false, error: `Tour type not determined: "${tourName}"` };
       }
 
       if (!departureDate) {
         console.error(`Could not parse departure date from file: ${file.name}`);
-        return { success: false, error: 'Дата не найдена в файле' };
+        return { success: false, error: 'Date not found in file' };
       }
 
       // Find tour type
@@ -521,22 +521,22 @@ export default function Updates() {
         let criteriaDate = '';
 
         if (tourTypeCode === 'KAS') {
-          matchCriteria = 'end date (выезд из региона)';
-          criteriaDate = endDate?.toLocaleDateString('ru-RU');
+          matchCriteria = 'end date (departure from region)';
+          criteriaDate = endDate?.toLocaleDateString('en-US');
         } else if (tourTypeCode === 'ZA') {
-          matchCriteria = 'departure date (приезд в UZ, Excel дата + 4 дня)';
-          criteriaDate = `${departureDate?.toLocaleDateString('ru-RU')} + 4 = ${actualDepartureDate?.toLocaleDateString('ru-RU')}`;
+          matchCriteria = 'departure date (arrival in UZ, Excel date + 4 days)';
+          criteriaDate = `${departureDate?.toLocaleDateString('en-US')} + 4 = ${actualDepartureDate?.toLocaleDateString('en-US')}`;
         } else {
-          matchCriteria = 'departure date (приезд в UZ)';
-          criteriaDate = departureDate?.toLocaleDateString('ru-RU');
+          matchCriteria = 'departure date (arrival in UZ)';
+          criteriaDate = departureDate?.toLocaleDateString('en-US');
         }
 
         console.error(`No booking found for ${tourTypeCode} with ${matchCriteria}: ${criteriaDate}`);
         console.error('Available bookings:', existingBookings.map(b =>
-          `${b.bookingNumber}: ${new Date(b.departureDate).toLocaleDateString('ru-RU')} - ${new Date(b.endDate).toLocaleDateString('ru-RU')}`
+          `${b.bookingNumber}: ${new Date(b.departureDate).toLocaleDateString('en-US')} - ${new Date(b.endDate).toLocaleDateString('en-US')}`
         ));
 
-        return { success: false, error: `Группа не найдена: ${tourTypeCode} (дата: ${criteriaDate})` };
+        return { success: false, error: `Group not found: ${tourTypeCode} (date: ${criteriaDate})` };
       }
 
       console.log(`✓ Matched booking: ${matchedBooking.bookingNumber}`);
@@ -552,7 +552,7 @@ export default function Updates() {
       }
 
       if (headerRowIndex === -1) {
-        toast.error('Не найдены заголовки таблицы в файле');
+        toast.error('Table headers not found in file');
         return;
       }
 
@@ -691,7 +691,7 @@ export default function Updates() {
       console.log(`Parsed ${tourists.length} tourists from Excel`);
 
       if (tourists.length === 0) {
-        return { success: false, error: 'Нет туристов в файле' };
+        return { success: false, error: 'No tourists found in file' };
       }
 
       // Return parsed data without importing
@@ -748,18 +748,28 @@ export default function Updates() {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-br from-white via-gray-50 to-white rounded-3xl shadow-xl border-2 border-gray-200 p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-400 via-primary-500 to-primary-600 border-2 border-primary-300 rounded-2xl flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-200">
-              <Bell className="w-8 h-8 text-white" />
+      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-pink-500/10"></div>
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-600 rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
+              <Bell className="w-10 h-10 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-extrabold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent mb-2">Updates</h1>
-              <p className="text-gray-600 font-medium text-sm">
-                Туры по категориям • Всего: <span className="text-primary-600 font-bold text-base">{allBookingsCount}</span> туров
+              <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                Updates & Tours
+              </h1>
+              <p className="text-gray-600 font-semibold flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full">
+                  <span className="text-gray-700">Total:</span>
+                  <span className="text-indigo-700 font-bold">{allBookingsCount}</span>
+                  <span className="text-gray-700">tours</span>
+                </span>
               </p>
             </div>
           </div>
@@ -768,31 +778,31 @@ export default function Updates() {
           <button
             onClick={handleImportClick}
             disabled={importing}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-md"
+            className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-2xl shadow-2xl hover:shadow-indigo-500/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-base"
           >
-            <Upload className="w-5 h-5" />
-            {importing ? 'Импорт...' : 'Импорт Excel'}
+            <Upload className="w-6 h-6" />
+            {importing ? 'Importing...' : 'Import Excel'}
           </button>
         </div>
 
         {/* Statistics Cards */}
-        <div className="flex items-center gap-3 mt-6">
+        <div className="relative flex items-center gap-4 mt-6">
           {confirmedCount > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-300 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-green-700 font-bold text-sm">Подтверждено: {confirmedCount}</span>
+            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 border-2 border-green-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-base">Confirmed: {confirmedCount}</span>
             </div>
           )}
           {inProgressCount > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
-              <span className="text-purple-700 font-bold text-sm">В процессе: {inProgressCount}</span>
+            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 border-2 border-purple-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-base">In Progress: {inProgressCount}</span>
             </div>
           )}
           {pendingCount > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
-              <span className="text-yellow-700 font-bold text-sm">Ожидает: {pendingCount}</span>
+            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 border-2 border-yellow-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-base">Pending: {pendingCount}</span>
             </div>
           )}
         </div>
@@ -808,94 +818,119 @@ export default function Updates() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl shadow-md border-2 border-gray-200 overflow-hidden">
-        <div className="flex bg-gradient-to-r from-gray-50 to-white gap-2 p-2">
-          {tourTypeModules.map((module) => (
-            <button
-              key={module.code}
-              onClick={() => setActiveTab(module.code)}
-              className={`flex-1 px-6 py-4 text-base font-bold transition-all duration-200 rounded-xl relative shadow-sm ${
-                activeTab === module.code
-                  ? 'text-white scale-105 shadow-lg'
-                  : 'text-gray-600 hover:bg-white hover:shadow-md bg-gray-50'
-              }`}
-              style={
-                activeTab === module.code
-                  ? { backgroundColor: module.color }
-                  : undefined
-              }
-            >
-              {module.code}
-            </button>
-          ))}
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
+        <div className="flex bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 gap-3 p-4">
+          {tourTypeModules.map((module) => {
+            const isActive = activeTab === module.code;
+            const count = bookingCountsByType[module.code] || 0;
+
+            return (
+              <button
+                key={module.code}
+                onClick={() => setActiveTab(module.code)}
+                className={`flex-1 px-6 py-4 text-base font-bold transition-all duration-300 rounded-2xl relative shadow-lg hover:shadow-xl ${
+                  isActive
+                    ? 'text-white scale-110 -translate-y-1'
+                    : 'text-gray-700 hover:bg-white hover:shadow-md bg-white/70 hover:scale-105'
+                }`}
+                style={
+                  isActive
+                    ? {
+                        background: `linear-gradient(135deg, ${module.color}, ${module.color}dd)`,
+                        boxShadow: `0 10px 25px -5px ${module.color}40`
+                      }
+                    : undefined
+                }
+              >
+                <span>{module.code}</span>
+                {count > 0 && (
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full font-black ${
+                    isActive ? 'bg-white/30' : 'bg-gray-200'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <div className="mb-6 bg-gradient-to-r from-gray-50 to-transparent rounded-xl p-4 border-l-4" style={{ borderColor: activeModule?.color }}>
-            <h2 className="text-xl font-bold text-gray-900">{activeModule?.name}</h2>
-            <p className="text-sm text-gray-600 font-medium mt-1">
-              Всего: <span className="text-primary-600 font-bold">{bookings.length}</span> бронирований
+        <div className="p-8">
+          <div className="mb-6 bg-gradient-to-r from-white to-transparent rounded-2xl p-6 border-l-4 shadow-lg" style={{ borderColor: activeModule?.color }}>
+            <h2 className="text-2xl font-black text-gray-900">{activeModule?.name}</h2>
+            <p className="text-base text-gray-600 font-semibold mt-2">
+              Total: <span className="px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg font-bold text-indigo-700">{bookings.length}</span> bookings
             </p>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200"></div>
+                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-600 absolute top-0"></div>
+              </div>
+              <p className="text-gray-600 font-semibold">Loading {activeTab} tours...</p>
             </div>
           ) : bookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-              <Bell className="w-12 h-12 mb-4 text-gray-300" />
-              <p>Нет бронирований для типа {activeTab}</p>
+              <div className="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-200 rounded-full flex items-center justify-center shadow-lg mb-4">
+                <Bell className="w-12 h-12 text-indigo-500" />
+              </div>
+              <p className="text-xl font-bold text-gray-700 mb-2">No bookings for type {activeTab}</p>
+              <p className="text-gray-500">Import Excel files to add tours</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border-2 border-gray-300 shadow-lg">
+            <div className="overflow-x-auto rounded-2xl">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-primary-400 via-primary-300 to-primary-400 border-b-4 border-primary-500 shadow-lg sticky top-0 z-10">
+                <thead className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 border-b-4 border-indigo-600 shadow-2xl sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-24">
-                      Номер
+                    <th className="px-3 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-24">
+                      Number
                     </th>
-                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                      Тип тура
+                    <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                      Tour Type
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                      Дата заезда
+                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                      Tour Start
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                      Дата выезда
+                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                      Arrival
                     </th>
-                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-20">
+                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                      Tour End
+                    </th>
+                    <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-20">
                       Pax
                     </th>
-                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-24">
-                      Узбекистан
+                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-24">
+                      Uzbekistan
                     </th>
                     {activeTab === 'ER' && (
-                      <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-28">
-                        Туркменистан
+                      <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-28">
+                        Turkmenistan
                       </th>
                     )}
-                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-32">
-                      Гид
+                    <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-32">
+                      Guide
                     </th>
-                    <th className="px-4 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider w-40">
-                      ЖД Билеты
+                    <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-40">
+                      Train Tickets
                     </th>
-                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-16">
+                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
                       DBL
                     </th>
-                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-16">
+                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
                       TWN
                     </th>
-                    <th className="px-3 py-5 text-center text-sm font-black text-primary-900 uppercase tracking-wider w-16">
+                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
                       SNGL
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                      Статус
+                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                      Status
                     </th>
-                    <th className="px-6 py-5 text-right text-sm font-black text-primary-900 uppercase tracking-wider">
-                      Действия
+                    <th className="px-6 py-5 text-right text-sm font-black text-white uppercase tracking-wider">
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -939,6 +974,11 @@ export default function Updates() {
                         {format(new Date(booking.departureDate), 'dd.MM.yyyy')}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                        {booking.arrivalDate
+                          ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy')
+                          : format(addDays(new Date(booking.departureDate), 1), 'dd.MM.yyyy')}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-700 font-medium">
                         {format(new Date(booking.endDate), 'dd.MM.yyyy')}
                       </td>
                       <td className="px-4 py-4">
@@ -978,20 +1018,20 @@ export default function Updates() {
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-3">
                           <Link
                             to={`/bookings/${booking.id}?edit=true`}
-                            className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg hover:scale-110 transition-all duration-200"
-                            title="Редактировать"
+                            className="p-2.5 text-indigo-600 hover:text-white bg-indigo-50 hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                            title="Edit"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-5 h-5" />
                           </Link>
                           <button
                             onClick={() => handleDelete(booking.id, booking.bookingNumber)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200"
-                            title="Удалить"
+                            className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                            title="Delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       </td>

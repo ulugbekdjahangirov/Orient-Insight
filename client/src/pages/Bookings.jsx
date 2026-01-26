@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi } from '../services/api';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { format, addDays } from 'date-fns';
+import { enUS } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -18,11 +18,11 @@ import {
 } from 'lucide-react';
 
 const statusLabels = {
-  PENDING: 'Ожидает',
-  CONFIRMED: 'Подтверждено',
-  IN_PROGRESS: 'В процессе',
-  COMPLETED: 'Завершено',
-  CANCELLED: 'Отменено'
+  PENDING: 'Pending',
+  CONFIRMED: 'Confirmed',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled'
 };
 
 const statusClasses = {
@@ -68,7 +68,7 @@ const getStatusByPax = (pax, departureDate, endDate) => {
 export default function Bookings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: 50 });
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: 200 });
   const [loading, setLoading] = useState(true);
   const [tourTypes, setTourTypes] = useState([]);
   const [guides, setGuides] = useState([]);
@@ -113,6 +113,9 @@ export default function Bookings() {
       // Remove status from backend params (we'll filter on frontend)
       const { status, ...backendParams } = params;
 
+      // Ensure limit is set to 200 to show all bookings on one page
+      backendParams.limit = 200;
+
       const response = await bookingsApi.getAll(backendParams);
       let bookingsData = response.data.bookings;
 
@@ -132,7 +135,7 @@ export default function Bookings() {
         total: bookingsData.length
       });
     } catch (error) {
-      toast.error('Ошибка загрузки бронирований');
+      toast.error('Error loading bookings');
     } finally {
       setLoading(false);
     }
@@ -167,66 +170,86 @@ export default function Bookings() {
   };
 
   const handleDelete = async (id, bookingNumber) => {
-    if (!confirm(`Удалить бронирование ${bookingNumber}?`)) return;
+    if (!confirm(`Delete booking ${bookingNumber}?`)) return;
 
     try {
       await bookingsApi.delete(id);
-      toast.success('Бронирование удалено');
+      toast.success('Booking deleted');
       loadBookings();
     } catch (error) {
-      toast.error('Ошибка удаления');
+      toast.error('Error deleting');
     }
   };
 
   const hasActiveFilters = Object.values(filters).some(v => v);
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl shadow-md border border-gray-200 p-6">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Бронирования</h1>
-          <p className="text-gray-600 font-medium mt-1">
-            Всего: <span className="text-primary-600 font-bold">{pagination.total}</span> записей
-          </p>
-        </div>
+      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-primary-100 p-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/5 to-pink-500/10"></div>
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-primary-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
 
-        <Link
-          to="/bookings/new"
-          className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-semibold"
-        >
-          <Plus className="w-5 h-5" />
-          Добавить
-        </Link>
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-primary-500 via-purple-500 to-pink-600 rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
+              <CalendarDays className="w-10 h-10 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Bookings Management
+              </h1>
+              <p className="text-gray-600 font-semibold mt-2 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-primary-100 to-purple-100 rounded-full">
+                  <span className="text-gray-700">Total:</span>
+                  <span className="text-primary-700 font-bold">{pagination.total}</span>
+                  <span className="text-gray-700">records</span>
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/bookings/new"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:from-primary-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-base"
+          >
+            <Plus className="w-6 h-6" />
+            <span>Add New Booking</span>
+          </Link>
+        </div>
       </div>
 
       {/* Search and filters */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-md border-2 border-gray-200 p-6">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="flex-1 relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary-50 via-purple-50 to-pink-50 rounded-2xl opacity-0 group-focus-within:opacity-100 transition-all duration-300"></div>
+            <div className="absolute left-5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r from-primary-500 to-purple-500 rounded-xl opacity-70 group-focus-within:opacity-100 transition-all duration-300 shadow-lg">
+              <Search className="w-5 h-5 text-white" />
+            </div>
             <input
               type="text"
-              placeholder="Поиск по номеру бронирования..."
+              placeholder="Search by booking number..."
               value={filters.search}
               onChange={(e) => setFilters({ ...filters, search: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-              className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm font-medium"
+              className="relative w-full pl-20 pr-6 py-4 bg-white border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 placeholder:text-gray-400 font-medium shadow-md hover:shadow-lg"
             />
           </div>
 
           {/* Filter button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex items-center gap-2 px-5 py-3 border-2 rounded-xl transition-all duration-200 font-semibold ${
+            className={`inline-flex items-center gap-2 px-6 py-4 border-2 rounded-2xl transition-all duration-300 font-bold shadow-lg hover:shadow-xl hover:scale-105 ${
               hasActiveFilters
-                ? 'border-primary-500 bg-gradient-to-r from-primary-50 to-primary-100 text-primary-700 shadow-md'
-                : 'border-gray-300 hover:bg-gray-50 hover:shadow-md'
+                ? 'border-primary-500 bg-gradient-to-r from-primary-500 to-purple-500 text-white shadow-primary-500/30'
+                : 'border-gray-300 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100'
             }`}
           >
             <Filter className="w-5 h-5" />
-            Фильтры
+            Filters
             {hasActiveFilters && (
               <span className="w-5 h-5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-full text-xs flex items-center justify-center shadow-sm font-bold">
                 !
@@ -237,26 +260,26 @@ export default function Bookings() {
           {/* Apply button */}
           <button
             onClick={applyFilters}
-            className="px-5 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-semibold"
+            className="px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:from-primary-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-2xl shadow-xl hover:shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold"
           >
-            Применить
+            Apply
           </button>
         </div>
 
         {/* Filters panel */}
         {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-6 pt-6 border-t-2 border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Tour type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тип тура
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Tour Type
               </label>
               <select
                 value={filters.tourTypeId}
                 onChange={(e) => setFilters({ ...filters, tourTypeId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm hover:shadow-md transition-all duration-200 font-medium bg-white"
               >
-                <option value="">Все типы</option>
+                <option value="">All types</option>
                 {tourTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.code} - {type.name}
@@ -267,15 +290,15 @@ export default function Bookings() {
 
             {/* Guide */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Гид
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Guide
               </label>
               <select
                 value={filters.guideId}
                 onChange={(e) => setFilters({ ...filters, guideId: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm hover:shadow-md transition-all duration-200 font-medium bg-white"
               >
-                <option value="">Все гиды</option>
+                <option value="">All guides</option>
                 <option value="unassigned">-</option>
                 {guides.map((guide) => (
                   <option key={guide.id} value={guide.id}>
@@ -287,15 +310,15 @@ export default function Bookings() {
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Статус
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Status
               </label>
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm hover:shadow-md transition-all duration-200 font-medium bg-white"
               >
-                <option value="">Все статусы</option>
+                <option value="">All statuses</option>
                 {Object.entries(statusLabels).map(([key, label]) => (
                   <option key={key} value={key}>
                     {label}
@@ -306,59 +329,61 @@ export default function Bookings() {
 
             {/* Date range */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Период
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Period
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm hover:shadow-md transition-all duration-200 font-medium bg-white"
                 />
                 <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm hover:shadow-md transition-all duration-200 font-medium bg-white"
                 />
               </div>
             </div>
 
             {/* Clear filters */}
             {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-4 h-4" />
-                Сбросить фильтры
-              </button>
+              <div className="flex items-end">
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-bold text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 border-2 border-red-200 hover:border-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105"
+                >
+                  <X className="w-5 h-5" />
+                  Clear filters
+                </button>
+              </div>
             )}
           </div>
         )}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
         {/* Pagination Top */}
         {pagination.pages > 1 && !loading && bookings.length > 0 && (
-          <div className="px-6 py-4 border-b-2 border-gray-200 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-700">
-              Страница <span className="text-primary-600">{pagination.page}</span> из <span className="text-primary-600">{pagination.pages}</span>
+          <div className="px-8 py-5 border-b-3 border-gray-200 bg-gradient-to-r from-primary-50 via-purple-50 to-pink-50 flex items-center justify-between">
+            <p className="text-base font-bold text-gray-700">
+              Page <span className="text-primary-600 px-2 py-1 bg-white rounded-lg shadow-sm">{pagination.page}</span> of <span className="text-primary-600 px-2 py-1 bg-white rounded-lg shadow-sm">{pagination.pages}</span>
             </p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => changePage(pagination.page - 1)}
                 disabled={pagination.page === 1}
-                className="p-2 rounded-xl bg-white border-2 border-gray-300 hover:bg-primary-50 hover:border-primary-500 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                className="p-3 rounded-2xl bg-white border-2 border-gray-300 hover:bg-gradient-to-r hover:from-primary-500 hover:to-purple-500 hover:text-white hover:border-primary-500 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={() => changePage(pagination.page + 1)}
                 disabled={pagination.page === pagination.pages}
-                className="p-2 rounded-xl bg-white border-2 border-gray-300 hover:bg-primary-50 hover:border-primary-500 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                className="p-3 rounded-2xl bg-white border-2 border-gray-300 hover:bg-gradient-to-r hover:from-primary-500 hover:to-purple-500 hover:text-white hover:border-primary-500 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -367,60 +392,70 @@ export default function Bookings() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="flex flex-col items-center justify-center h-64 gap-4">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-200"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-primary-600 absolute top-0"></div>
+            </div>
+            <p className="text-gray-600 font-semibold">Loading bookings...</p>
           </div>
         ) : bookings.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-            <CalendarDays className="w-12 h-12 mb-4 text-gray-300" />
-            <p>Бронирования не найдены</p>
+            <div className="w-24 h-24 bg-gradient-to-br from-primary-100 to-purple-200 rounded-full flex items-center justify-center shadow-lg mb-4">
+              <CalendarDays className="w-12 h-12 text-primary-500" />
+            </div>
+            <p className="text-xl font-bold text-gray-700 mb-2">No bookings found</p>
+            <p className="text-gray-500">Try adjusting your filters or create a new booking</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border-2 border-gray-300 shadow-lg">
+          <div className="overflow-x-auto rounded-2xl">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-primary-400 via-primary-300 to-primary-400 border-b-4 border-primary-500 shadow-lg sticky top-0 z-10">
+              <thead className="bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 border-b-4 border-primary-600 shadow-2xl sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Номер
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Number
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Тип тура
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Tour Type
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Дата заезда
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Tour Start
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Дата выезда
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Arrival
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Tour End
+                  </th>
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Pax
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Узбекистан
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Uzbekistan
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Туркменистан
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Turkmenistan
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Гид
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Guide
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    ЖД билеты
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Train Tickets
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     DBL
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     TWN
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     SNGL
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Статус
+                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                    Status
                   </th>
-                  <th className="px-6 py-5 text-right text-sm font-black text-primary-900 uppercase tracking-wider">
-                    Действия
+                  <th className="px-6 py-5 text-right text-sm font-black text-white uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -463,11 +498,17 @@ export default function Bookings() {
                         </span>
                       </Link>
                     </td>
-                    {/* ДАТА ЗАЕЗДА */}
+                    {/* TOUR START */}
                     <td className="px-4 py-4 text-sm text-gray-700 font-medium">
                       {format(new Date(booking.departureDate), 'dd.MM.yyyy')}
                     </td>
-                    {/* ДАТА ВЫЕЗДА */}
+                    {/* ARRIVAL */}
+                    <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                      {booking.arrivalDate
+                        ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy')
+                        : format(addDays(new Date(booking.departureDate), 1), 'dd.MM.yyyy')}
+                    </td>
+                    {/* TOUR END */}
                     <td className="px-4 py-4 text-sm text-gray-700 font-medium">
                       {format(new Date(booking.endDate), 'dd.MM.yyyy')}
                     </td>
@@ -518,21 +559,21 @@ export default function Bookings() {
                         <Link
                           to={`/bookings/${booking.id}`}
                           className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg hover:scale-110 transition-all duration-200"
-                          title="Просмотр"
+                          title="View"
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
                         <Link
                           to={`/bookings/${booking.id}?edit=true`}
                           className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg hover:scale-110 transition-all duration-200"
-                          title="Редактировать"
+                          title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => handleDelete(booking.id, booking.bookingNumber)}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200"
-                          title="Удалить"
+                          title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -567,6 +608,20 @@ export default function Bookings() {
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Total PAX */}
+        {!loading && bookings.length > 0 && (
+          <div className="px-8 py-5 border-t-3 border-gray-200 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 flex items-center justify-end shadow-inner">
+            <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl shadow-xl">
+              <div className="p-2 bg-gradient-to-r from-primary-500 to-purple-500 rounded-xl">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <p className="text-xl font-black text-gray-800">
+                Total PAX: <span className="text-transparent bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text">{bookings.reduce((sum, booking) => sum + (parseInt(booking.pax) || 0), 0)}</span>
+              </p>
             </div>
           </div>
         )}

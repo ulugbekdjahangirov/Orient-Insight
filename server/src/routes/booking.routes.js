@@ -279,13 +279,18 @@ router.post('/', authenticate, async (req, res) => {
       autoStatus = 'IN_PROGRESS';
     }
 
+    // Calculate arrivalDate as departureDate + 1 day
+    const departureDateObj = new Date(departureDate);
+    const arrivalDateObj = new Date(departureDateObj);
+    arrivalDateObj.setDate(arrivalDateObj.getDate() + 1);
+
     const booking = await prisma.booking.create({
       data: {
         bookingNumber,
         tourTypeId: parseInt(tourTypeId),
-        departureDate: new Date(departureDate),
-        arrivalDate: arrivalDate ? new Date(arrivalDate) : new Date(departureDate),
-        endDate: endDate ? new Date(endDate) : new Date(departureDate),
+        departureDate: departureDateObj,
+        arrivalDate: arrivalDateObj, // Always departureDate + 1 day
+        endDate: endDate ? new Date(endDate) : departureDateObj,
         pax: calculatedPax,
         paxUzbekistan: uzbek || null,
         paxTurkmenistan: turkmen || null,
@@ -352,8 +357,16 @@ router.put('/:id', authenticate, async (req, res) => {
     if (bookingNumber) updateData.bookingNumber = bookingNumber;
     if (tourTypeId) updateData.tourTypeId = parseInt(tourTypeId);
     if (country !== undefined) updateData.country = country || null;
-    if (departureDate) updateData.departureDate = new Date(departureDate);
-    if (arrivalDate) updateData.arrivalDate = new Date(arrivalDate);
+
+    // Handle dates - arrivalDate is always departureDate + 1 day
+    if (departureDate) {
+      const departureDateObj = new Date(departureDate);
+      const arrivalDateObj = new Date(departureDateObj);
+      arrivalDateObj.setDate(arrivalDateObj.getDate() + 1);
+
+      updateData.departureDate = departureDateObj;
+      updateData.arrivalDate = arrivalDateObj; // Auto-sync: departureDate + 1 day
+    }
     if (endDate) updateData.endDate = new Date(endDate);
 
     // Handle Uzbekistan and Turkmenistan PAX
@@ -757,138 +770,133 @@ router.delete('/:id/rooms/:roomId', authenticate, async (req, res) => {
 const VALID_ROOM_TYPE_CODES = ['SNGL', 'DBL', 'TWN', 'TRPL', 'QDPL', 'SUITE', 'EXTRA', 'PAX'];
 
 // Функция расчёта итогов для размещения с учётом индивидуальных дат туристов
+// NEW: Calculates cost based on each tourist's actual nights from Rooming List
 function calculateAccommodationTotals(rooms, nights, tourists = [], accommodation = null, allTourists = []) {
   let totalRooms = 0;
   let totalGuests = 0;
   let totalCost = 0;
 
-  // Check if this is Turkmenistan/Khiva hotel
-  const isTurkmenistanHotel = accommodation && (
-    accommodation.hotel?.city?.name?.toLowerCase().includes('хива') ||
-    accommodation.hotel?.city?.name?.toLowerCase().includes('khiva') ||
-    accommodation.hotel?.city?.name?.toLowerCase().includes('туркмен') ||
-    accommodation.hotel?.city?.name?.toLowerCase().includes('turkmen')
-  );
+  // Build room price map
+  const roomPrices = {};
+  rooms.forEach(room => {
+    const normalizedCode = normalizeRoomType(room.roomTypeCode);
+    roomPrices[normalizedCode] = room.pricePerNight || 0;
+    totalRooms += room.roomsCount || 0;
 
-  // For Turkmenistan hotels: calculate separately for UZ (2 nights) and TM (3 nights) tourists
-  if (isTurkmenistanHotel && allTourists.length > 0) {
-    const uzTourists = allTourists.filter(t => {
-      const placement = (t.accommodation || '').toLowerCase();
-      return placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
-    });
-    const tmTourists = allTourists.filter(t => {
-      const placement = (t.accommodation || '').toLowerCase();
-      return placement.includes('turkmen') || placement.includes('туркмен') || placement === 'tm';
-    });
+    // Calculate guests based on room type
+    const guestsPerRoom = ['SNGL', 'SINGLE', 'EZ'].includes(normalizedCode) ? 1 :
+                         ['TRPL', 'TRIPLE'].includes(normalizedCode) ? 3 :
+                         ['QDPL', 'QUAD'].includes(normalizedCode) ? 4 : 2;
+    totalGuests += (room.roomsCount || 0) * (room.guestsPerRoom || guestsPerRoom);
+  });
 
-    // Calculate UZ tourists rooms (2 nights)
-    const uzNights = 2;
-    rooms.forEach(room => {
-      // Determine how many of this room type are for UZ tourists
-      const roomTypeCode = room.roomTypeCode?.toUpperCase();
-      let uzRoomsCount = 0;
-
-      if (roomTypeCode === 'SNGL' || roomTypeCode === 'SINGLE' || roomTypeCode === 'EZ') {
-        uzRoomsCount = uzTourists.filter(t => ['SNGL', 'SINGLE', 'EZ'].includes(t.roomPreference?.toUpperCase())).length;
-      } else if (roomTypeCode === 'DBL' || roomTypeCode === 'DOUBLE') {
-        uzRoomsCount = Math.floor(uzTourists.filter(t => ['DBL', 'DOUBLE', 'DZ'].includes(t.roomPreference?.toUpperCase())).length / 2);
-      } else if (roomTypeCode === 'TWN' || roomTypeCode === 'TWIN') {
-        uzRoomsCount = Math.floor(uzTourists.filter(t => ['TWN', 'TWIN'].includes(t.roomPreference?.toUpperCase())).length / 2);
-      }
-
-      const tmRoomsCount = room.roomsCount - uzRoomsCount;
-
-      // Add UZ cost (2 nights)
-      if (uzRoomsCount > 0) {
-        totalCost += uzRoomsCount * room.pricePerNight * uzNights;
-      }
-      // Add TM cost (3 nights)
-      if (tmRoomsCount > 0) {
-        totalCost += tmRoomsCount * room.pricePerNight * nights;
-      }
-
-      totalRooms += room.roomsCount;
-      totalGuests += room.roomsCount * (room.guestsPerRoom || 2);
-    });
-  } else {
-    // Standard calculation
-    for (const room of rooms) {
-      totalRooms += room.roomsCount;
-      totalGuests += room.roomsCount * (room.guestsPerRoom || 2);
-      totalCost += room.totalCost || (room.roomsCount * room.pricePerNight * nights);
-    }
+  // Helper to normalize room type codes
+  function normalizeRoomType(code) {
+    const upper = (code || '').toUpperCase();
+    if (['DBL', 'DOUBLE', 'DZ'].includes(upper)) return 'DBL';
+    if (['TWN', 'TWIN'].includes(upper)) return 'TWN';
+    if (['SNGL', 'SINGLE', 'EZ'].includes(upper)) return 'SNGL';
+    if (['TRPL', 'TRIPLE'].includes(upper)) return 'TRPL';
+    return upper;
   }
 
-  // Calculate extra nights cost for tourists with custom dates
-  if (tourists.length > 0 && accommodation) {
+  // Check if we have rooming list data to calculate from
+  const hasRoomingListData = allTourists.length > 0 && accommodation;
+
+  if (hasRoomingListData) {
+    // Calculate guest-nights from each tourist's actual dates
+    const guestNightsByRoomType = {};
+
     const accCheckIn = new Date(accommodation.checkInDate);
+    accCheckIn.setHours(0, 0, 0, 0);
     const accCheckOut = new Date(accommodation.checkOutDate);
+    accCheckOut.setHours(0, 0, 0, 0);
 
-    // Find tourists staying at this hotel during these dates
-    tourists.forEach(tourist => {
-      if (!tourist.checkInDate || !tourist.checkOutDate) {
-        return;
-      }
+    allTourists.forEach(tourist => {
+      // Get tourist's dates - first check AccommodationRoomingList, then global dates, then use accommodation dates
+      let touristCheckIn, touristCheckOut;
 
-      const touristCheckIn = new Date(tourist.checkInDate);
-      const touristCheckOut = new Date(tourist.checkOutDate);
-
-      // Normalize dates to midnight to avoid time zone issues
-      const normalizedTouristCheckIn = new Date(touristCheckIn);
-      normalizedTouristCheckIn.setHours(0, 0, 0, 0);
-
-      const normalizedTouristCheckOut = new Date(touristCheckOut);
-      normalizedTouristCheckOut.setHours(0, 0, 0, 0);
-
-      const normalizedAccCheckIn = new Date(accCheckIn);
-      normalizedAccCheckIn.setHours(0, 0, 0, 0);
-
-      const normalizedAccCheckOut = new Date(accCheckOut);
-      normalizedAccCheckOut.setHours(0, 0, 0, 0);
-
-      // Check if tourist dates overlap with accommodation dates
-      const datesOverlap = normalizedTouristCheckIn <= normalizedAccCheckOut && normalizedTouristCheckOut >= normalizedAccCheckIn;
-      if (!datesOverlap) {
-        return;
-      }
-
-      // Calculate extra nights BEFORE group check-in
-      let extraNightsBefore = 0;
-      if (normalizedTouristCheckIn < normalizedAccCheckIn) {
-        extraNightsBefore = Math.round((normalizedAccCheckIn - normalizedTouristCheckIn) / (1000 * 60 * 60 * 24));
-      }
-
-      // Calculate extra nights AFTER group check-out
-      let extraNightsAfter = 0;
-      if (normalizedTouristCheckOut > normalizedAccCheckOut) {
-        extraNightsAfter = Math.round((normalizedTouristCheckOut - normalizedAccCheckOut) / (1000 * 60 * 60 * 24));
-      }
-
-      const totalExtraNights = extraNightsBefore + extraNightsAfter;
-
-      if (totalExtraNights > 0) {
-        // Find price for tourist's room type
-        const touristRoomType = tourist.roomPreference?.toUpperCase();
-        let pricePerNight = 0;
-
-        // Find matching room price
-        const matchingRoom = rooms.find(r =>
-          r.roomTypeCode?.toUpperCase() === touristRoomType ||
-          (touristRoomType === 'SNGL' && r.roomTypeCode === 'SINGLE') ||
-          (touristRoomType === 'DBL' && r.roomTypeCode === 'DOUBLE') ||
-          (touristRoomType === 'EZ' && r.roomTypeCode === 'SNGL') ||
-          (touristRoomType === 'DZ' && (r.roomTypeCode === 'DBL' || r.roomTypeCode === 'TWN'))
-        );
-
-        if (matchingRoom) {
-          pricePerNight = matchingRoom.pricePerNight;
+      // Check for accommodation-specific dates in accommodationRoomingList
+      if (tourist.accommodationRoomingList && tourist.accommodationRoomingList.length > 0 && accommodation.id) {
+        const roomingEntry = tourist.accommodationRoomingList.find(e => e.accommodationId === accommodation.id);
+        if (roomingEntry) {
+          touristCheckIn = roomingEntry.checkInDate ? new Date(roomingEntry.checkInDate) : null;
+          touristCheckOut = roomingEntry.checkOutDate ? new Date(roomingEntry.checkOutDate) : null;
         }
+      }
 
-        // Add extra cost for extra nights
-        const extraCost = totalExtraNights * pricePerNight;
-        totalCost += extraCost;
+      // Fallback to global tourist dates
+      if (!touristCheckIn && tourist.checkInDate) {
+        touristCheckIn = new Date(tourist.checkInDate);
+      }
+      if (!touristCheckOut && tourist.checkOutDate) {
+        touristCheckOut = new Date(tourist.checkOutDate);
+      }
+
+      // Default to accommodation dates if no custom dates
+      let effectiveCheckIn = touristCheckIn || accCheckIn;
+      let effectiveCheckOut = touristCheckOut || accCheckOut;
+      effectiveCheckIn.setHours(0, 0, 0, 0);
+      effectiveCheckOut.setHours(0, 0, 0, 0);
+
+      // Clamp tourist dates to accommodation dates (tourist can't stay outside accommodation period)
+      if (effectiveCheckIn < accCheckIn) effectiveCheckIn = new Date(accCheckIn);
+      if (effectiveCheckOut > accCheckOut) effectiveCheckOut = new Date(accCheckOut);
+
+      // Calculate this tourist's nights (0 if dates don't overlap)
+      const touristNights = Math.max(0, Math.round((effectiveCheckOut - effectiveCheckIn) / (1000 * 60 * 60 * 24)));
+
+      // Get normalized room type
+      const roomType = normalizeRoomType(tourist.roomPreference);
+
+      // Accumulate guest-nights
+      if (!guestNightsByRoomType[roomType]) {
+        guestNightsByRoomType[roomType] = 0;
+      }
+      guestNightsByRoomType[roomType] += touristNights;
+    });
+
+    // Convert guest-nights to cost
+    // Check if this is PAX-based (Guesthouse/Yurta) - PAX pricing is per person, not per room
+    const isPaxBased = roomPrices['PAX'] !== undefined && roomPrices['PAX'] > 0;
+
+    // If no PAX price in rooms but accommodation hotel is Guesthouse/Yurta, get PAX price from hotel
+    let paxPrice = roomPrices['PAX'] || 0;
+    if (!isPaxBased && accommodation?.hotel?.stars && (accommodation.hotel.stars === 'Guesthouse' || accommodation.hotel.stars === 'Yurta')) {
+      const hotelPaxRoomType = accommodation.hotel.roomTypes?.find(rt => rt.name === 'PAX');
+      if (hotelPaxRoomType) {
+        paxPrice = hotelPaxRoomType.pricePerNight || 0;
+        console.log(`💡 PAX price from hotel room types: ${paxPrice} (${hotelPaxRoomType.currency})`);
+      }
+    }
+
+    const isPaxBasedFinal = isPaxBased || (paxPrice > 0 && accommodation?.hotel?.stars && (accommodation.hotel.stars === 'Guesthouse' || accommodation.hotel.stars === 'Yurta'));
+
+    Object.keys(guestNightsByRoomType).forEach(roomType => {
+      const guestNights = guestNightsByRoomType[roomType];
+
+      if (isPaxBasedFinal) {
+        // For PAX-based accommodations (Guesthouse/Yurta), use PAX price for all tourists
+        // PAX is per person per night, so cost = guestNights × price
+        totalCost += guestNights * paxPrice;
+      } else {
+        const pricePerNight = roomPrices[roomType] || 0;
+        // TWN and DBL: 2 guests share 1 room, so room-nights = guest-nights / 2
+        // SNGL: 1 guest per room, so room-nights = guest-nights
+        let roomNights;
+        if (roomType === 'TWN' || roomType === 'DBL') {
+          roomNights = guestNights / 2;
+        } else {
+          roomNights = guestNights;
+        }
+        totalCost += roomNights * pricePerNight;
       }
     });
+  } else {
+    // Fallback: standard calculation based on room count × nights
+    for (const room of rooms) {
+      totalCost += room.totalCost || ((room.roomsCount || 0) * (room.pricePerNight || 0) * nights);
+    }
   }
 
   return { totalRooms, totalGuests, totalCost };
@@ -928,216 +936,11 @@ router.get('/:id/accommodations', authenticate, async (req, res) => {
       orderBy: { checkInDate: 'asc' }
     });
 
-    // console.log(`Total tourists loaded: ${tourists.length}`);
+    console.log(`📋 GET /accommodations: Found ${accommodations.length} accommodations for booking ${id}:`, accommodations.map(a => ({ id: a.id, hotel: a.hotel?.name, totalCost: a.totalCost })));
 
-    // Identify Tashkent accommodations
-    const tashkentAccommodations = accommodations.filter(acc => {
-      const cityName = acc.hotel?.city?.name?.toLowerCase() || '';
-      return cityName.includes('ташкент') || cityName.includes('tashkent') || cityName.includes('toshkent');
-    });
-
-    // Добавляем итоги к каждому размещению с учётом индивидуальных дат туристов
-    const accommodationsWithTotals = accommodations.map((acc, accIndex) => {
-      // console.log(`Processing accommodation: ${acc.hotel?.name} (${acc.checkInDate} - ${acc.checkOutDate})`);
-
-      // Only calculate extra nights for the FIRST accommodation
-      // Subsequent accommodations use standard group dates
-      const isFirstAccommodation = accIndex === 0;
-
-      // Check if this is second visit to same Tashkent hotel
-      const isSecondVisitSameHotel = tashkentAccommodations.length > 1 &&
-                                      tashkentAccommodations[tashkentAccommodations.length - 1].id === acc.id &&
-                                      tashkentAccommodations[0].hotelId === tashkentAccommodations[tashkentAccommodations.length - 1].hotelId &&
-                                      tashkentAccommodations[0].id !== tashkentAccommodations[tashkentAccommodations.length - 1].id;
-
-      // Filter tourists for this accommodation
-      let accTourists = tourists.filter(t => {
-        if (!t.checkInDate || !t.checkOutDate) return false;
-
-        const accCheckIn = new Date(acc.checkInDate);
-        const accCheckOut = new Date(acc.checkOutDate);
-        const touristCheckIn = new Date(t.checkInDate);
-        const touristCheckOut = new Date(t.checkOutDate);
-
-        // Check if tourist dates overlap with accommodation dates
-        return touristCheckIn <= accCheckOut && touristCheckOut >= accCheckIn;
-      });
-
-      // For second visit to same hotel - only UZ tourists return to Tashkent
-      if (isSecondVisitSameHotel) {
-        const allBookingTourists = tourists; // All tourists for this booking
-        const uzTourists = allBookingTourists.filter(t => {
-          const placement = (t.accommodation || '').toLowerCase();
-          const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
-          return isUzbekistan;
-        });
-
-        // console.log(`Second visit to same hotel - filtering UZ tourists only: ${uzTourists.length} out of ${allBookingTourists.length}`);
-
-        // Recalculate rooms based on UZ tourists only
-        let roomsForCalculation = acc.rooms;
-
-        // Calculate room counts from UZ tourists
-        const uzDblCount = Math.ceil(uzTourists.filter(t => ['DBL', 'DOUBLE', 'DZ'].includes(t.roomPreference)).length / 2);
-        const uzTwnCount = Math.ceil(uzTourists.filter(t => ['TWN', 'TWIN'].includes(t.roomPreference)).length / 2);
-        const uzSnglCount = uzTourists.filter(t => ['SNGL', 'SINGLE', 'EZ'].includes(t.roomPreference)).length;
-
-        // Override rooms with recalculated values
-        roomsForCalculation = [];
-        if (uzDblCount > 0) {
-          roomsForCalculation.push({
-            roomTypeCode: 'DBL',
-            roomsCount: uzDblCount,
-            pricePerNight: acc.rooms.find(r => r.roomTypeCode === 'DBL')?.pricePerNight || 0
-          });
-        }
-        if (uzTwnCount > 0) {
-          roomsForCalculation.push({
-            roomTypeCode: 'TWN',
-            roomsCount: uzTwnCount,
-            pricePerNight: acc.rooms.find(r => r.roomTypeCode === 'TWN')?.pricePerNight || 0
-          });
-        }
-        if (uzSnglCount > 0) {
-          roomsForCalculation.push({
-            roomTypeCode: 'SNGL',
-            roomsCount: uzSnglCount,
-            pricePerNight: acc.rooms.find(r => r.roomTypeCode === 'SNGL')?.pricePerNight || 0
-          });
-        }
-
-        // console.log(`Recalculated rooms for UZ tourists: DBL=${uzDblCount}, TWN=${uzTwnCount}, SNGL=${uzSnglCount}`);
-
-        const totals = calculateAccommodationTotals(roomsForCalculation, acc.nights, [], acc, tourists);
-        return {
-          ...acc,
-          rooms: roomsForCalculation, // Override with filtered rooms
-          ...totals
-        };
-      }
-
-      // console.log(`Found ${accTourists.length} tourists for this accommodation`);
-
-      // Get tourists with AccommodationRoomingList entries for THIS accommodation
-      const touristsWithCustomDates = tourists.filter(t => {
-        if (!t.accommodationRoomingList || t.accommodationRoomingList.length === 0) return false;
-        return t.accommodationRoomingList.some(entry => entry.accommodationId === acc.id);
-      }).map(t => {
-        // Find this accommodation's entry
-        const entry = t.accommodationRoomingList.find(e => e.accommodationId === acc.id);
-        return {
-          ...t,
-          checkInDate: entry.checkInDate,
-          checkOutDate: entry.checkOutDate
-        };
-      });
-
-      // console.log(`Found ${touristsWithCustomDates.length} tourists with custom dates for accommodation ${acc.id}`);
-
-      // RECALCULATE room counts based on actual tourists' room preferences
-      // This ensures displayed room counts match Rooming List data
-      const touristsForThisAccommodation = tourists.filter(t => {
-        // Use AccommodationRoomingList if available
-        if (t.accommodationRoomingList && t.accommodationRoomingList.length > 0) {
-          return t.accommodationRoomingList.some(entry => entry.accommodationId === acc.id);
-        }
-        // Fallback: check if tourist dates overlap with accommodation dates
-        if (t.checkInDate && t.checkOutDate) {
-          const accCheckIn = new Date(acc.checkInDate);
-          const accCheckOut = new Date(acc.checkOutDate);
-          const touristCheckIn = new Date(t.checkInDate);
-          const touristCheckOut = new Date(t.checkOutDate);
-          return touristCheckIn <= accCheckOut && touristCheckOut >= accCheckIn;
-        }
-        return false;
-      });
-
-      // Calculate room counts from tourists' room preferences
-      const roomCounts = {};
-      const roomPrices = {};
-
-      // Build room price map from existing rooms
-      acc.rooms.forEach(room => {
-        roomPrices[room.roomTypeCode] = room.pricePerNight;
-      });
-
-      // Count tourists by room type
-      touristsForThisAccommodation.forEach(tourist => {
-        const roomPref = (tourist.roomPreference || '').toUpperCase();
-
-        // Normalize room type codes
-        let normalizedType = roomPref;
-        if (['DBL', 'DOUBLE', 'DZ'].includes(roomPref)) {
-          normalizedType = 'DBL';
-        } else if (['TWN', 'TWIN'].includes(roomPref)) {
-          normalizedType = 'TWN';
-        } else if (['SNGL', 'SINGLE', 'EZ'].includes(roomPref)) {
-          normalizedType = 'SNGL';
-        } else if (['TRPL', 'TRIPLE'].includes(roomPref)) {
-          normalizedType = 'TRPL';
-        }
-
-        if (!roomCounts[normalizedType]) {
-          roomCounts[normalizedType] = 0;
-        }
-        roomCounts[normalizedType]++;
-      });
-
-      // Convert tourist counts to room counts (2 tourists per DBL/TWN, 1 per SNGL)
-      const recalculatedRooms = [];
-
-      if (roomCounts['DBL'] && roomCounts['DBL'] > 0) {
-        recalculatedRooms.push({
-          id: acc.rooms.find(r => r.roomTypeCode === 'DBL')?.id || null,
-          roomTypeCode: 'DBL',
-          roomsCount: Math.ceil(roomCounts['DBL'] / 2), // 2 tourists per room, round up for odd numbers
-          pricePerNight: roomPrices['DBL'] || 0,
-          accommodationRoomType: acc.rooms.find(r => r.roomTypeCode === 'DBL')?.accommodationRoomType
-        });
-      }
-
-      if (roomCounts['TWN'] && roomCounts['TWN'] > 0) {
-        recalculatedRooms.push({
-          id: acc.rooms.find(r => r.roomTypeCode === 'TWN')?.id || null,
-          roomTypeCode: 'TWN',
-          roomsCount: Math.ceil(roomCounts['TWN'] / 2), // 2 tourists per room, round up for odd numbers
-          pricePerNight: roomPrices['TWN'] || 0,
-          accommodationRoomType: acc.rooms.find(r => r.roomTypeCode === 'TWN')?.accommodationRoomType
-        });
-      }
-
-      if (roomCounts['SNGL'] && roomCounts['SNGL'] > 0) {
-        recalculatedRooms.push({
-          id: acc.rooms.find(r => r.roomTypeCode === 'SNGL')?.id || null,
-          roomTypeCode: 'SNGL',
-          roomsCount: roomCounts['SNGL'], // 1 tourist per room
-          pricePerNight: roomPrices['SNGL'] || 0,
-          accommodationRoomType: acc.rooms.find(r => r.roomTypeCode === 'SNGL')?.accommodationRoomType
-        });
-      }
-
-      if (roomCounts['TRPL'] && roomCounts['TRPL'] > 0) {
-        recalculatedRooms.push({
-          id: acc.rooms.find(r => r.roomTypeCode === 'TRPL')?.id || null,
-          roomTypeCode: 'TRPL',
-          roomsCount: Math.ceil(roomCounts['TRPL'] / 3), // 3 tourists per room, round up
-          pricePerNight: roomPrices['TRPL'] || 0,
-          accommodationRoomType: acc.rooms.find(r => r.roomTypeCode === 'TRPL')?.accommodationRoomType
-        });
-      }
-
-      // Use recalculated rooms if we have tourists, otherwise use original rooms
-      const roomsForCalculation = touristsForThisAccommodation.length > 0 ? recalculatedRooms : acc.rooms;
-
-      const totals = calculateAccommodationTotals(roomsForCalculation, acc.nights, touristsWithCustomDates, acc, tourists);
-      return {
-        ...acc,
-        rooms: roomsForCalculation, // Override with recalculated rooms based on tourists
-        ...totals
-      };
-    });
-
-    res.json({ accommodations: accommodationsWithTotals });
+    // Simply return database values
+    // Edit modal auto-saves calculated totals when opened
+    res.json({ accommodations });
   } catch (error) {
     console.error('Get accommodations error:', error);
     res.status(500).json({ error: 'Ошибка получения размещений' });
@@ -1148,7 +951,7 @@ router.get('/:id/accommodations', authenticate, async (req, res) => {
 router.post('/:id/accommodations', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { hotelId, roomTypeId, roomTypeCode, checkInDate, checkOutDate, notes, rooms } = req.body;
+    const { hotelId, roomTypeId, roomTypeCode, checkInDate, checkOutDate, notes, rooms, totalCost, totalRooms, totalGuests } = req.body;
 
     console.log('📥 POST /accommodations:', { hotelId, checkInDate, checkOutDate });
 
@@ -1252,6 +1055,9 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
         checkInDate: checkIn,
         checkOutDate: checkOut,
         nights,
+        totalCost: parseFloat(totalCost) || 0,
+        totalRooms: parseInt(totalRooms) || 0,
+        totalGuests: parseInt(totalGuests) || 0,
         notes,
         rooms: {
           create: roomsData
@@ -1271,32 +1077,9 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
       }
     });
 
-    // Load tourists to calculate extra nights
-    const tourists = await prisma.tourist.findMany({
-      where: { bookingId: parseInt(id) }
-    });
-
-    // Filter tourists for this accommodation
-    const accTourists = tourists.filter(t => {
-      if (!t.checkInDate || !t.checkOutDate) return false;
-
-      const accCheckIn = new Date(accommodation.checkInDate);
-      const accCheckOut = new Date(accommodation.checkOutDate);
-      const touristCheckIn = new Date(t.checkInDate);
-      const touristCheckOut = new Date(t.checkOutDate);
-
-      return touristCheckIn <= accCheckOut && touristCheckOut >= accCheckIn;
-    });
-
-    // Добавляем итоги с учётом индивидуальных дат туристов
-    const totals = calculateAccommodationTotals(accommodation.rooms, nights, accTourists, accommodation, tourists);
-
-    res.status(201).json({
-      accommodation: {
-        ...accommodation,
-        ...totals
-      }
-    });
+    // Simply return created accommodation from database
+    // Frontend calculates and saves correct values
+    res.status(201).json({ accommodation });
   } catch (error) {
     console.error('Create accommodation error:', error);
     res.status(500).json({ error: 'Ошибка создания размещения' });
@@ -1307,7 +1090,9 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
 router.put('/:id/accommodations/:accId', authenticate, async (req, res) => {
   try {
     const { accId } = req.params;
-    const { hotelId, roomTypeId, roomTypeCode, checkInDate, checkOutDate, notes, rooms } = req.body;
+    const { hotelId, roomTypeId, roomTypeCode, checkInDate, checkOutDate, notes, rooms, totalCost, totalRooms, totalGuests } = req.body;
+
+    console.log('📝 PUT /accommodations/:accId - Received data:', { accId, totalCost, totalRooms, totalGuests, roomsCount: rooms?.length });
 
     const existing = await prisma.accommodation.findUnique({
       where: { id: parseInt(accId) }
@@ -1335,6 +1120,17 @@ router.put('/:id/accommodations/:accId', authenticate, async (req, res) => {
       nights,
       notes: notes !== undefined ? notes : existing.notes
     };
+
+    // Сохраняем totalCost, totalRooms, totalGuests из frontend
+    if (totalCost !== undefined) {
+      updateData.totalCost = parseFloat(totalCost) || 0;
+    }
+    if (totalRooms !== undefined) {
+      updateData.totalRooms = parseInt(totalRooms) || 0;
+    }
+    if (totalGuests !== undefined) {
+      updateData.totalGuests = parseInt(totalGuests) || 0;
+    }
 
     // Если указан отель
     if (hotelId) {
@@ -1441,32 +1237,9 @@ router.put('/:id/accommodations/:accId', authenticate, async (req, res) => {
       }
     });
 
-    // Load tourists to calculate extra nights
-    const tourists = await prisma.tourist.findMany({
-      where: { bookingId: updatedAccommodation.bookingId }
-    });
-
-    // Filter tourists for this accommodation
-    const accTourists = tourists.filter(t => {
-      if (!t.checkInDate || !t.checkOutDate) return false;
-
-      const accCheckIn = new Date(updatedAccommodation.checkInDate);
-      const accCheckOut = new Date(updatedAccommodation.checkOutDate);
-      const touristCheckIn = new Date(t.checkInDate);
-      const touristCheckOut = new Date(t.checkOutDate);
-
-      return touristCheckIn <= accCheckOut && touristCheckOut >= accCheckIn;
-    });
-
-    // Добавляем итоги с учётом индивидуальных дат туристов
-    const totals = calculateAccommodationTotals(updatedAccommodation.rooms, nights, accTourists, updatedAccommodation, tourists);
-
-    res.json({
-      accommodation: {
-        ...updatedAccommodation,
-        ...totals
-      }
-    });
+    // Simply return updated accommodation from database
+    // Frontend calculates and saves correct values
+    res.json({ accommodation: updatedAccommodation });
   } catch (error) {
     console.error('Update accommodation error:', error);
     res.status(500).json({ error: 'Ошибка обновления размещения' });
@@ -1854,15 +1627,48 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
     const isTurkmenistanHotel = cityName.includes('хива') || cityName.includes('khiva') ||
                                  cityName.includes('туркмен') || cityName.includes('turkmen');
 
+    // Check if this is the first accommodation (earliest check-in date)
+    const isFirstAccommodation = allAccommodations.length > 0 && allAccommodations[0].id === accommodationIdInt;
+
+    // Check if this is the last accommodation (latest check-out date)
+    const isLastAccommodation = allAccommodations.length > 0 &&
+                                 allAccommodations[allAccommodations.length - 1].id === accommodationIdInt;
+
     // Merge tourists with accommodation-specific data
     const roomingList = tourists.map(tourist => {
       const entry = roomingListEntries.find(e => e.touristId === tourist.id);
 
-      let checkInDate = entry?.checkInDate || tourist.checkInDate || accommodation.checkInDate;
-      let checkOutDate = entry?.checkOutDate || tourist.checkOutDate || accommodation.checkOutDate;
+      // Priority:
+      // 1) AccommodationRoomingList entry (explicitly set dates)
+      // 2) For FIRST hotel: tourist's global checkInDate (for early arrivals like Mrs. Baetgen)
+      // 3) For LAST hotel: tourist's global checkOutDate (for late departures)
+      // 4) Accommodation dates (default)
+      let checkInDate, checkOutDate;
+
+      if (entry?.checkInDate) {
+        checkInDate = entry.checkInDate;
+      } else if (isFirstAccommodation && tourist.checkInDate) {
+        // For first hotel, use tourist's arrival date if set (handles early arrivals)
+        checkInDate = tourist.checkInDate;
+      } else {
+        checkInDate = accommodation.checkInDate;
+      }
+
+      if (entry?.checkOutDate) {
+        checkOutDate = entry.checkOutDate;
+      } else if (isLastAccommodation && tourist.checkOutDate) {
+        // CRITICAL: Only use tourist's global checkout date for LAST hotel
+        // For first/middle hotels, ALWAYS use accommodation checkout date
+        checkOutDate = tourist.checkOutDate;
+      } else {
+        checkOutDate = accommodation.checkOutDate;
+      }
+
       let remarks = tourist.remarks || '';
 
-      // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier
+      // CRITICAL FOR ER TOURS: UZ tourists in Khiva/Turkmenistan hotels leave 1 day earlier
+      // This logic handles Malika Khorazm case where UZ tourists stay 2 nights, TM tourists stay 3 nights
+      // DO NOT MODIFY without testing ER-03 booking
       const placement = (tourist.accommodation || '').toLowerCase();
       const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
 
@@ -1945,6 +1751,72 @@ router.put('/:id/accommodations/:accId/rooming-list/:touristId', authenticate, a
   } catch (error) {
     console.error('Update accommodation rooming list error:', error);
     res.status(500).json({ error: 'Error updating rooming list' });
+  }
+});
+
+// ============================================
+// ACCOMMODATION TEMPLATES API (for ER tours)
+// ============================================
+
+// GET /api/accommodations/templates/:tourTypeCode - Get accommodation template for tour type
+router.get('/templates/:tourTypeCode', authenticate, async (req, res) => {
+  try {
+    const { tourTypeCode } = req.params;
+
+    const templates = await prisma.accommodationTemplate.findMany({
+      where: { tourTypeCode: tourTypeCode.toUpperCase() },
+      orderBy: { sortOrder: 'asc' }
+    });
+
+    console.log(`🏨 Loaded ${templates.length} accommodation templates for ${tourTypeCode}`);
+    res.json({ templates });
+  } catch (error) {
+    console.error('Error fetching accommodation templates:', error);
+    res.status(500).json({ error: 'Ошибка получения шаблонов размещений' });
+  }
+});
+
+// PUT /api/accommodations/templates/:tourTypeCode - Save accommodation template for tour type
+router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
+  try {
+    const { tourTypeCode } = req.params;
+    const { accommodations } = req.body;
+
+    console.log(`💾 Saving ${accommodations?.length} accommodation templates for ${tourTypeCode}`);
+
+    if (!Array.isArray(accommodations)) {
+      return res.status(400).json({ error: 'accommodations должен быть массивом' });
+    }
+
+    // Delete existing templates for this tour type
+    await prisma.accommodationTemplate.deleteMany({
+      where: { tourTypeCode: tourTypeCode.toUpperCase() }
+    });
+
+    // Create new templates
+    const createdTemplates = await Promise.all(
+      accommodations.map((acc, index) =>
+        prisma.accommodationTemplate.create({
+          data: {
+            tourTypeCode: tourTypeCode.toUpperCase(),
+            hotelId: acc.hotelId || acc.hotel?.id || null,
+            hotelName: acc.hotelName || acc.hotel?.name || null,
+            cityId: acc.cityId || acc.hotel?.cityId || null,
+            cityName: acc.cityName || acc.hotel?.city?.name || null,
+            checkInOffset: acc.checkInOffset || 0,
+            checkOutOffset: acc.checkOutOffset || 1,
+            nights: acc.nights || 1,
+            sortOrder: index
+          }
+        })
+      )
+    );
+
+    console.log(`✅ Saved ${createdTemplates.length} accommodation templates for ${tourTypeCode}`);
+    res.json({ templates: createdTemplates, message: 'Шаблон размещений сохранён' });
+  } catch (error) {
+    console.error('Error saving accommodation templates:', error);
+    res.status(500).json({ error: 'Ошибка сохранения шаблонов размещений' });
   }
 });
 

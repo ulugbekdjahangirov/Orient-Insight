@@ -274,28 +274,47 @@ export default function TourTypes() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-orange-200"></div>
+            <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-orange-600 absolute top-0"></div>
+          </div>
+          <p className="text-gray-700 font-bold text-lg">Loading Tour Types...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tour Types</h1>
-          <p className="text-gray-500">Manage tour categories</p>
-        </div>
+      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-orange-100 p-8">
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-yellow-500/10"></div>
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-orange-400/20 to-amber-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rounded-full blur-3xl"></div>
 
-        <button
-          onClick={() => openModal()}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Add Type
-        </button>
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-600 rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
+              <MapPin className="w-10 h-10 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-black bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600 bg-clip-text text-transparent mb-2">
+                Tour Types
+              </h1>
+              <p className="text-gray-600 font-semibold text-base">Manage Tour Categories & Itineraries</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => openModal()}
+            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600 text-white rounded-2xl shadow-2xl hover:shadow-orange-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-base"
+          >
+            <Plus className="w-6 h-6" />
+            Add Tour Type
+          </button>
+        </div>
       </div>
 
       {/* Tour types grid */}
@@ -303,26 +322,32 @@ export default function TourTypes() {
         {tourTypes.map((type) => (
           <div
             key={type.id}
-            className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden ${
+            className={`relative group bg-white rounded-3xl shadow-xl border-2 border-gray-100 overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 ${
               !type.isActive ? 'opacity-60' : ''
             }`}
           >
             <div
-              className="h-2"
-              style={{ backgroundColor: type.color }}
+              className="h-3"
+              style={{
+                background: `linear-gradient(90deg, ${type.color}, ${type.color}dd)`,
+                boxShadow: `0 4px 15px -3px ${type.color}40`
+              }}
             />
-            <div className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-4">
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: type.color }}
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-lg group-hover:scale-110 transition-all duration-300"
+                    style={{
+                      background: `linear-gradient(135deg, ${type.color}, ${type.color}dd)`,
+                      boxShadow: `0 8px 20px -5px ${type.color}60`
+                    }}
                   >
                     {type.code}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{type.name}</h3>
-                    <p className="text-xs text-gray-500">
+                    <h3 className="font-black text-gray-900 text-lg">{type.name}</h3>
+                    <p className="text-sm text-gray-500 font-semibold mt-1">
                       {type._count?.bookings || 0} bookings
                     </p>
                   </div>
@@ -330,41 +355,44 @@ export default function TourTypes() {
               </div>
 
               {type.description && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2 font-medium">
                   {type.description}
                 </p>
               )}
 
-              <div className="pt-3 border-t border-gray-200 space-y-2">
+              <div className="pt-4 border-t-2 border-gray-100 space-y-3">
                 <button
                   onClick={() => openItineraryModal(type)}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm text-gray-700"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-orange-50 hover:to-amber-50 rounded-xl transition-all duration-300 text-sm text-gray-700 hover:text-orange-600 font-bold shadow-md hover:shadow-lg"
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-5 h-5" />
                   Tour Program
                 </button>
 
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-xs font-medium ${
-                      type.isActive ? 'text-green-600' : 'text-gray-400'
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold shadow-md ${
+                      type.isActive
+                        ? 'bg-gradient-to-r from-green-200 to-emerald-300 text-green-900 border-2 border-green-400'
+                        : 'bg-gradient-to-r from-gray-200 to-gray-300 text-gray-600 border-2 border-gray-400'
                     }`}
                   >
+                    <div className={`w-2 h-2 rounded-full ${type.isActive ? 'bg-green-600 animate-pulse' : 'bg-gray-500'}`}></div>
                     {type.isActive ? 'Active' : 'Inactive'}
                   </span>
 
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => openModal(type)}
-                      className="p-1.5 text-gray-400 hover:text-primary-600 rounded"
+                      className="p-2.5 text-orange-600 hover:text-white bg-orange-50 hover:bg-gradient-to-r hover:from-orange-500 hover:to-amber-500 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDelete(type)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 rounded"
+                      className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -375,8 +403,12 @@ export default function TourTypes() {
       </div>
 
       {tourTypes.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No tour types found
+        <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+          <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-amber-200 rounded-full flex items-center justify-center shadow-lg mb-4">
+            <MapPin className="w-12 h-12 text-orange-500" />
+          </div>
+          <p className="text-xl font-bold text-gray-700 mb-2">No Tour Types Found</p>
+          <p className="text-gray-500">Create your first tour type to get started</p>
         </div>
       )}
 
@@ -788,70 +820,73 @@ export default function TourTypes() {
 
       {/* Edit Type Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md border-2 border-orange-100 overflow-hidden">
+            <div className="flex items-center justify-between p-6 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 border-b-2 border-orange-300">
+              <h2 className="text-2xl font-black text-white">
                 {editingType ? 'Edit Tour Type' : 'New Tour Type'}
               </h2>
-              <button onClick={closeModal} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-white/20 rounded-xl transition-all duration-300"
+              >
+                <X className="w-6 h-6 text-white" />
               </button>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Code *
                 </label>
                 <input
                   type="text"
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
                   placeholder="ER"
                   maxLength={10}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Name *
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
                   placeholder="Tour in Uzbekistan"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
                   Description
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
                   rows={3}
                   placeholder="Tour type description..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-bold text-gray-700 mb-3">
                   Color
                 </label>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap">
                   {colorOptions.map((color) => (
                     <button
                       key={color}
                       type="button"
                       onClick={() => setFormData({ ...formData, color })}
-                      className={`w-8 h-8 rounded-lg transition-transform ${
-                        formData.color === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''
+                      className={`w-10 h-10 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl ${
+                        formData.color === color ? 'ring-4 ring-offset-2 ring-orange-400 scale-125' : 'hover:scale-110'
                       }`}
                       style={{ backgroundColor: color }}
                     />
@@ -860,24 +895,24 @@ export default function TourTypes() {
                     type="color"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-8 h-8 rounded cursor-pointer"
+                    className="w-10 h-10 rounded-xl cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
+            <div className="flex items-center justify-end gap-4 p-6 bg-gradient-to-r from-orange-50 via-amber-50 to-yellow-50 border-t-2 border-gray-200">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-white hover:shadow-lg transition-all duration-300 font-bold text-gray-700"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSave}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600 text-white rounded-xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 font-bold"
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-5 h-5" />
                 Сохранить
               </button>
             </div>

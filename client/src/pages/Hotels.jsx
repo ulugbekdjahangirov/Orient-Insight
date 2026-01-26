@@ -4,7 +4,8 @@ import toast from 'react-hot-toast';
 import {
   Plus, Edit, Trash2, Building2, MapPin, X, Save,
   ChevronDown, ChevronRight, Search, Bed, DollarSign,
-  Star, Phone, Mail, Globe, Image, Upload, Calendar, Tag
+  Star, Phone, Mail, Globe, Image, Upload, Calendar, Tag,
+  Users, Home, Sparkles
 } from 'lucide-react';
 
 export default function Hotels() {
@@ -60,11 +61,32 @@ export default function Hotels() {
     loadData();
   }, []);
 
+  // Set default city (Tashkent) when cities are loaded
+  useEffect(() => {
+    if (cities.length > 0 && !selectedCity) {
+      const cityOrder = ['Tashkent', 'Samarkand', 'Fergana', 'Asraf', 'Bukhara', 'Khiva'];
+      const sortedCities = [...cities].sort((a, b) => {
+        const aName = (a.nameEn || a.name || '').toLowerCase();
+        const bName = (b.nameEn || b.name || '').toLowerCase();
+        const aIndex = cityOrder.findIndex(c => c.toLowerCase() === aName);
+        const bIndex = cityOrder.findIndex(c => c.toLowerCase() === bName);
+        if (aIndex === -1 && bIndex === -1) return 0;
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      });
+      // Set first city (Tashkent if exists, otherwise first in sorted list)
+      if (sortedCities.length > 0) {
+        setSelectedCity(sortedCities[0].id.toString());
+      }
+    }
+  }, [cities]);
+
   const loadData = async (keepExpanded = false) => {
     try {
       const [hotelsRes, citiesRes] = await Promise.all([
         hotelsApi.getAll({ includeInactive: false }),
-        citiesApi.getAll(true)
+        citiesApi.getAll(false)  // Only active cities
       ]);
       setGroupedHotels(hotelsRes.data.groupedByCity || []);
       setCities(citiesRes.data.cities);
@@ -78,7 +100,7 @@ export default function Hotels() {
         setExpandedCities(expanded);
       }
     } catch (error) {
-      toast.error('Ошибка загрузки данных');
+      toast.error('Error loading data');
     } finally {
       setLoading(false);
     }
@@ -104,7 +126,7 @@ export default function Hotels() {
     .filter(group => group.hotels.length > 0);
 
   // ============ HOTEL CRUD ============
-  const openHotelModal = (hotel = null) => {
+  const openHotelModal = (hotel = null, preselectedCityId = null) => {
     if (hotel) {
       setEditingHotel(hotel);
       setHotelForm({
@@ -121,7 +143,9 @@ export default function Hotels() {
     } else {
       setEditingHotel(null);
       setHotelForm({
-        name: '', cityId: cities[0]?.id || '', address: '', phone: '',
+        name: '',
+        cityId: preselectedCityId || cities[0]?.id || '',
+        address: '', phone: '',
         email: '', website: '', stars: '', description: '', totalRooms: 0
       });
     }
@@ -130,7 +154,7 @@ export default function Hotels() {
 
   const saveHotel = async () => {
     if (!hotelForm.name.trim() || !hotelForm.cityId) {
-      toast.error('Заполните обязательные поля');
+      toast.error('Please fill in required fields');
       return;
     }
 
@@ -143,27 +167,27 @@ export default function Hotels() {
 
       if (editingHotel) {
         await hotelsApi.update(editingHotel.id, data);
-        toast.success('Отель обновлён');
+        toast.success('Hotel updated');
       } else {
         await hotelsApi.create(data);
-        toast.success('Отель добавлен');
+        toast.success('Hotel added');
       }
       setHotelModalOpen(false);
       loadData(true);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка сохранения');
+      toast.error(error.response?.data?.error || 'Error saving');
     }
   };
 
   const deleteHotel = async (hotel) => {
-    if (!confirm(`Удалить отель "${hotel.name}"?`)) return;
+    if (!confirm(`Delete hotel "${hotel.name}"?`)) return;
 
     try {
       await hotelsApi.delete(hotel.id);
-      toast.success('Отель удалён');
+      toast.success('Hotel deleted');
       loadData(true);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка удаления');
+      toast.error(error.response?.data?.error || 'Error deleting');
     }
   };
 
@@ -181,11 +205,36 @@ export default function Hotels() {
 
     if (room) {
       setEditingRoom(room);
+
+      // Calculate total price from base price (for display in edit mode)
+      let displayPrice = room.pricePerNight;
+      console.log('🔍 Base price:', displayPrice, room.currency);
+      console.log('🔍 VAT included:', room.vatIncluded);
+      console.log('🔍 Tourist tax enabled:', room.touristTaxEnabled);
+      console.log('🔍 Hotel totalRooms:', hotel?.totalRooms);
+
+      const vatAmount = room.vatIncluded ? displayPrice * 0.12 : 0;
+      displayPrice += vatAmount;
+      console.log('🔍 After VAT:', displayPrice);
+
+      if (room.touristTaxEnabled && room.brvValue > 0) {
+        const totalRooms = hotel?.totalRooms || 0;
+        const percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
+        const tax = room.brvValue * percentage * (room.maxGuests || 1);
+        console.log('🔍 Tourist tax (UZS):', tax, 'Percentage:', percentage);
+
+        if (room.currency === 'USD') displayPrice += tax / 12700;
+        else if (room.currency === 'EUR') displayPrice += tax / 13500;
+        else displayPrice += tax;
+      }
+
+      console.log('🔍 Final display price:', displayPrice);
+
       setRoomForm({
         name: room.name,
         displayName: room.displayName || '',
         roomCount: room.roomCount,
-        pricePerNight: room.pricePerNight,
+        pricePerNight: displayPrice, // Show total price (incl. tax)
         currency: room.currency,
         description: room.description || '',
         maxGuests: room.maxGuests,
@@ -206,28 +255,55 @@ export default function Hotels() {
 
   const saveRoom = async () => {
     if (!roomForm.name.trim()) {
-      toast.error('Введите название типа номера');
+      toast.error('Enter room type name');
       return;
     }
 
     try {
+      let basePrice = roomForm.pricePerNight;
+
+      // If editing existing room, convert total price back to base price
       if (editingRoom) {
-        await hotelsApi.updateRoomType(currentHotelId, editingRoom.id, roomForm);
-        toast.success('Тип номера обновлён');
+        // Remove tourist tax first
+        if (roomForm.touristTaxEnabled && roomForm.brvValue > 0) {
+          const totalRooms = currentHotel?.totalRooms || 0;
+          const percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
+          const tax = roomForm.brvValue * percentage * (roomForm.maxGuests || 1);
+
+          if (roomForm.currency === 'USD') basePrice -= tax / 12700;
+          else if (roomForm.currency === 'EUR') basePrice -= tax / 13500;
+          else basePrice -= tax;
+        }
+
+        // Remove VAT (12%)
+        if (roomForm.vatIncluded) {
+          basePrice = basePrice / 1.12;
+        }
+      }
+      // For new rooms, user enters base price directly, no conversion needed
+
+      const dataToSave = {
+        ...roomForm,
+        pricePerNight: basePrice
+      };
+
+      if (editingRoom) {
+        await hotelsApi.updateRoomType(currentHotelId, editingRoom.id, dataToSave);
+        toast.success('Room type updated');
       } else {
-        await hotelsApi.createRoomType(currentHotelId, roomForm);
-        toast.success('Тип номера добавлен');
+        await hotelsApi.createRoomType(currentHotelId, dataToSave);
+        toast.success('Room type added');
       }
       setRoomModalOpen(false);
       loadData(true);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка сохранения');
+      toast.error(error.response?.data?.error || 'Error saving');
     }
   };
 
   const deleteRoom = async (hotelId, room) => {
     console.log('Delete room clicked:', hotelId, room);
-    if (!confirm(`Удалить тип номера "${room.name}"?`)) {
+    if (!confirm(`Delete room type "${room.name}"?`)) {
       console.log('Delete cancelled by user');
       return;
     }
@@ -235,11 +311,11 @@ export default function Hotels() {
     try {
       console.log('Deleting room type...', hotelId, room.id);
       await hotelsApi.deleteRoomType(hotelId, room.id);
-      toast.success('Тип номера удалён');
+      toast.success('Room type deleted');
       loadData(true);
     } catch (error) {
       console.error('Delete room error:', error);
-      toast.error(error.response?.data?.error || 'Ошибка удаления');
+      toast.error(error.response?.data?.error || 'Error deleting');
     }
   };
 
@@ -261,22 +337,51 @@ export default function Hotels() {
 
   const saveCity = async () => {
     if (!cityForm.name.trim()) {
-      toast.error('Введите название города');
+      toast.error('Enter city name');
       return;
     }
 
     try {
       if (editingCity) {
         await citiesApi.update(editingCity.id, cityForm);
-        toast.success('Город обновлён');
+        toast.success('City updated');
       } else {
         await citiesApi.create(cityForm);
-        toast.success('Город добавлен');
+        toast.success('City added');
       }
       setCityModalOpen(false);
       loadData(true);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка сохранения');
+      toast.error(error.response?.data?.error || 'Error saving');
+    }
+  };
+
+  const deleteCity = async (city) => {
+    if (!confirm(`Delete city "${city.nameEn || city.name}"?`)) return;
+
+    try {
+      const response = await citiesApi.delete(city.id);
+
+      // Check if city was deactivated instead of deleted (has hotels)
+      if (response.data?.message?.includes('деактивирован')) {
+        toast.success('City deactivated (has linked hotels)');
+      } else {
+        toast.success('City deleted');
+      }
+
+      // Reset selected city if deleted
+      if (selectedCity === city.id.toString()) {
+        const remainingCities = cities.filter(c => c.id !== city.id);
+        if (remainingCities.length > 0) {
+          setSelectedCity(remainingCities[0].id.toString());
+        } else {
+          setSelectedCity('');
+        }
+      }
+      loadData(true);
+    } catch (error) {
+      console.error('Delete city error:', error);
+      toast.error(error.response?.data?.error || 'Error deleting city');
     }
   };
 
@@ -291,7 +396,7 @@ export default function Hotels() {
   }, [currentHotel]);
 
   const roomTypeDisplayNames = {
-    'PAX': 'PAX (за человека)',
+    'PAX': 'PAX (per person)',
     'DBL': 'Double Room',
     'TWN': 'Twin Room',
     'SNGL': 'Single Room',
@@ -308,7 +413,7 @@ export default function Hotels() {
       const res = await hotelsApi.getImages(hotel.id);
       setHotelImages(res.data.images || []);
     } catch (error) {
-      toast.error('Ошибка загрузки изображений');
+      toast.error('Error loading images');
       setHotelImages([]);
     }
   };
@@ -323,38 +428,38 @@ export default function Hotels() {
     setUploadingImage(true);
     try {
       await hotelsApi.uploadImage(imageModalHotel.id, formData);
-      toast.success('Изображение загружено');
+      toast.success('Image uploaded');
       // Reload images
       const res = await hotelsApi.getImages(imageModalHotel.id);
       setHotelImages(res.data.images || []);
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка загрузки');
+      toast.error(error.response?.data?.error || 'Error uploading');
     } finally {
       setUploadingImage(false);
     }
   };
 
   const deleteImage = async (imageId) => {
-    if (!confirm('Удалить изображение?')) return;
+    if (!confirm('Delete image?')) return;
 
     try {
       await hotelsApi.deleteImage(imageModalHotel.id, imageId);
-      toast.success('Изображение удалено');
+      toast.success('Image deleted');
       setHotelImages(prev => prev.filter(img => img.id !== imageId));
     } catch (error) {
-      toast.error('Ошибка удаления');
+      toast.error('Error deleting');
     }
   };
 
   const setMainImage = async (imageId) => {
     try {
       await hotelsApi.updateImage(imageModalHotel.id, imageId, { isMain: true });
-      toast.success('Главное изображение установлено');
+      toast.success('Main image set');
       // Reload images
       const res = await hotelsApi.getImages(imageModalHotel.id);
       setHotelImages(res.data.images || []);
     } catch (error) {
-      toast.error('Ошибка обновления');
+      toast.error('Error updating');
     }
   };
 
@@ -369,14 +474,14 @@ export default function Hotels() {
       const res = await hotelsApi.getSeasonalPrices(hotelId, room.id);
       setSeasonalPrices(res.data.seasonalPrices || []);
     } catch (error) {
-      toast.error('Ошибка загрузки сезонных цен');
+      toast.error('Error loading seasonal prices');
       setSeasonalPrices([]);
     }
   };
 
   const saveSeason = async () => {
     if (!seasonForm.name.trim() || !seasonForm.startDate || !seasonForm.endDate) {
-      toast.error('Заполните все обязательные поля');
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -385,12 +490,12 @@ export default function Hotels() {
         await hotelsApi.updateSeasonalPrice(
           seasonModalHotelId, seasonModalRoom.id, editingSeason.id, seasonForm
         );
-        toast.success('Сезонная цена обновлена');
+        toast.success('Seasonal price updated');
       } else {
         await hotelsApi.createSeasonalPrice(
           seasonModalHotelId, seasonModalRoom.id, seasonForm
         );
-        toast.success('Сезонная цена добавлена');
+        toast.success('Seasonal price added');
       }
       // Reload
       const res = await hotelsApi.getSeasonalPrices(seasonModalHotelId, seasonModalRoom.id);
@@ -398,7 +503,7 @@ export default function Hotels() {
       setEditingSeason(null);
       setSeasonForm({ name: '', startDate: '', endDate: '', pricePerNight: 0 });
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка сохранения');
+      toast.error(error.response?.data?.error || 'Error saving');
     }
   };
 
@@ -413,14 +518,14 @@ export default function Hotels() {
   };
 
   const deleteSeason = async (seasonId) => {
-    if (!confirm('Удалить сезонную цену?')) return;
+    if (!confirm('Delete seasonal price?')) return;
 
     try {
       await hotelsApi.deleteSeasonalPrice(seasonModalHotelId, seasonModalRoom.id, seasonId);
-      toast.success('Сезонная цена удалена');
+      toast.success('Seasonal price deleted');
       setSeasonalPrices(prev => prev.filter(s => s.id !== seasonId));
     } catch (error) {
-      toast.error('Ошибка удаления');
+      toast.error('Error deleting');
     }
   };
 
@@ -432,355 +537,506 @@ export default function Hotels() {
     );
   }
 
+  // Get city color based on name
+  const getCityColor = (cityName) => {
+    const name = (cityName || '').toLowerCase();
+    if (name.includes('tashkent') || name.includes('ташкент')) return { bg: 'from-blue-500 to-blue-600', light: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200' };
+    if (name.includes('samarkand') || name.includes('самарканд')) return { bg: 'from-purple-500 to-purple-600', light: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200' };
+    if (name.includes('bukhara') || name.includes('бухара')) return { bg: 'from-amber-500 to-amber-600', light: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200' };
+    if (name.includes('khiva') || name.includes('хива')) return { bg: 'from-teal-500 to-teal-600', light: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-200' };
+    if (name.includes('fergana') || name.includes('фергана')) return { bg: 'from-rose-500 to-rose-600', light: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200' };
+    if (name.includes('asraf') || name.includes('асраф')) return { bg: 'from-emerald-500 to-emerald-600', light: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200' };
+    return { bg: 'from-gray-500 to-gray-600', light: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200' };
+  };
+
+  // Room type icons and colors
+  const getRoomTypeStyle = (roomName) => {
+    const name = (roomName || '').toUpperCase();
+    if (name === 'SNGL') return { icon: Users, color: 'text-blue-500', bg: 'bg-blue-50', label: '1' };
+    if (name === 'DBL') return { icon: Users, color: 'text-green-500', bg: 'bg-green-50', label: '2' };
+    if (name === 'TWN') return { icon: Bed, color: 'text-purple-500', bg: 'bg-purple-50', label: '2' };
+    if (name === 'TRPL') return { icon: Users, color: 'text-orange-500', bg: 'bg-orange-50', label: '3' };
+    if (name === 'PAX') return { icon: Users, color: 'text-cyan-500', bg: 'bg-cyan-50', label: '1' };
+    if (name.includes('SUITE')) return { icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-50', label: '' };
+    if (name.includes('DELUXE')) return { icon: Star, color: 'text-rose-500', bg: 'bg-rose-50', label: '' };
+    return { icon: Bed, color: 'text-gray-500', bg: 'bg-gray-50', label: '' };
+  };
+
   return (
-    <div className="space-y-6 p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-white via-gray-50 to-white rounded-2xl shadow-md border border-gray-200 p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-primary-100 to-primary-200 border-2 border-primary-300 rounded-2xl flex items-center justify-center shadow-sm">
-            <Building2 className="w-7 h-7 text-primary-600" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Отели</h1>
-            <p className="text-gray-600 font-medium mt-1">Управление отелями и номерами</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => openCityModal()}
-            className="inline-flex items-center gap-2 px-4 py-2 border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-primary-500 hover:shadow-md transition-all duration-200 font-medium"
-          >
-            <MapPin className="w-4 h-4" />
-            Добавить город
-          </button>
-          <button
-            onClick={() => openHotelModal()}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-semibold"
-          >
-            <Plus className="w-5 h-5" />
-            Добавить отель
-          </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-4 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Поиск отелей..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm font-medium"
-          />
-        </div>
-        <select
-          value={selectedCity}
-          onChange={(e) => setSelectedCity(e.target.value)}
-          className="px-5 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 shadow-sm font-medium bg-white"
-        >
-          <option value="">Все города</option>
-          {cities.map(city => (
-            <option key={city.id} value={city.id}>{city.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Hotels grouped by city */}
-      <div className="space-y-5">
-        {filteredGroups.map(group => (
-          <div key={group.city.id} className="bg-white rounded-2xl shadow-md border-2 border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-200">
-            {/* City header */}
-            <div
-              className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-primary-50 via-white to-primary-50 border-b-2 border-primary-200 cursor-pointer hover:from-primary-100 hover:to-primary-100 transition-all duration-200"
-              onClick={() => toggleCity(group.city.id)}
-            >
-              <div className="flex items-center gap-4">
-                {expandedCities[group.city.id] ? (
-                  <ChevronDown className="w-6 h-6 text-primary-600 transition-transform duration-200" />
-                ) : (
-                  <ChevronRight className="w-6 h-6 text-gray-500 transition-transform duration-200" />
-                )}
-                <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 border-2 border-primary-300 rounded-xl flex items-center justify-center shadow-sm">
-                  <MapPin className="w-5 h-5 text-primary-600" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      <div className="px-6 py-6 space-y-6">
+        {/* Header */}
+        <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-primary-100">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/5 to-pink-500/10"></div>
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-primary-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+          <div className="relative flex items-center justify-between p-8">
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-primary-500 via-purple-500 to-primary-700 rounded-3xl flex items-center justify-center shadow-2xl shadow-primary-500/40 transform hover:scale-110 transition-transform duration-300">
+                  <Building2 className="w-10 h-10 text-white" />
                 </div>
-                <span className="font-bold text-xl text-gray-900">{group.city.name}</span>
-                {group.city.nameEn && (
-                  <span className="text-sm text-gray-600 font-medium">({group.city.nameEn})</span>
-                )}
-                <span className="px-4 py-1.5 bg-gradient-to-r from-primary-100 to-primary-200 text-primary-700 text-sm font-bold rounded-full border border-primary-300 shadow-sm">
-                  {group.hotels.length}
-                </span>
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                  <span className="text-xs font-bold text-white">
+                    {groupedHotels.reduce((sum, g) => sum + g.hotels.length, 0)}
+                  </span>
+                </div>
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); openCityModal(group.city); }}
-                className="p-2 hover:bg-primary-200 hover:scale-110 rounded-xl transition-all duration-200"
-                title="Редактировать город"
-              >
-                <Edit className="w-5 h-5 text-primary-600" />
-              </button>
+              <div>
+                <h1 className="text-3xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Hotels Management
+                </h1>
+                <p className="text-slate-600 text-sm mt-1 font-medium">Luxury hotels and room reservations</p>
+              </div>
             </div>
 
-            {/* Hotels */}
-            {expandedCities[group.city.id] && (
-              <div className="bg-gradient-to-br from-gray-50 to-white p-5 space-y-4">
-                {group.hotels.map(hotel => (
-                  <div key={hotel.id} className="bg-white rounded-xl shadow-md border-2 border-gray-200 p-5 hover:shadow-lg hover:scale-[1.01] transition-all duration-200">
-                    {/* Hotel header */}
-                    <div className="flex items-start justify-between">
-                      <div
-                        className="flex items-start gap-3 cursor-pointer flex-1"
-                        onClick={() => toggleHotel(hotel.id)}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => openHotelModal()}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-600 text-white rounded-2xl hover:shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-base"
+              >
+                <Plus className="w-5 h-5" />
+                Add Hotel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Search and City Tabs */}
+        <div className="bg-white rounded-3xl shadow-2xl border-2 border-slate-100 overflow-hidden">
+          {/* Search Bar */}
+          <div className="p-6 border-b-2 border-gradient-to-r from-primary-100 via-purple-100 to-pink-100">
+            <div className="relative max-w-2xl mx-auto">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-br from-primary-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <Search className="w-6 h-6 text-white" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search hotels by name or city..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-20 pr-6 py-4 bg-gradient-to-r from-slate-50 to-white border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 text-base font-medium shadow-inner"
+              />
+            </div>
+          </div>
+
+          {/* City Tabs */}
+          <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50">
+            <div className="flex items-center gap-4 flex-wrap justify-center">
+              {(() => {
+                const cityOrder = ['Tashkent', 'Samarkand', 'Fergana', 'Asraf', 'Bukhara', 'Khiva'];
+                const sortedCities = [...cities].sort((a, b) => {
+                  const aName = (a.nameEn || a.name || '').toLowerCase();
+                  const bName = (b.nameEn || b.name || '').toLowerCase();
+                  const aIndex = cityOrder.findIndex(c => c.toLowerCase() === aName);
+                  const bIndex = cityOrder.findIndex(c => c.toLowerCase() === bName);
+                  if (aIndex === -1 && bIndex === -1) return 0;
+                  if (aIndex === -1) return 1;
+                  if (bIndex === -1) return -1;
+                  return aIndex - bIndex;
+                });
+
+                return sortedCities.map(city => {
+                  const isActive = selectedCity === city.id.toString();
+                  const colors = getCityColor(city.nameEn || city.name);
+                  const hotelCount = groupedHotels.find(g => g.city.id === city.id)?.hotels.length || 0;
+
+                  return (
+                    <div key={city.id} className="relative group/tab">
+                      <button
+                        onClick={() => setSelectedCity(city.id.toString())}
+                        className={`relative px-6 py-4 rounded-2xl text-base font-bold transition-all duration-300 transform ${
+                          isActive
+                            ? `bg-gradient-to-r ${colors.bg} text-white shadow-2xl shadow-primary-500/30 scale-110 hover:scale-115`
+                            : 'bg-white text-slate-700 hover:bg-gradient-to-br hover:from-slate-50 hover:to-white border-2 border-slate-200 hover:border-primary-300 hover:shadow-xl hover:scale-105'
+                        }`}
                       >
-                        {expandedHotels[hotel.id] ? (
-                          <ChevronDown className="w-4 h-4 text-gray-400 mt-1" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400 mt-1" />
-                        )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 rounded-xl flex items-center justify-center shadow-sm">
-                              <Building2 className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <h3 className="font-bold text-lg text-gray-900">{hotel.name}</h3>
-                            {hotel.stars && (
-                              <div className="flex items-center gap-1">
-                                {!isNaN(parseInt(hotel.stars)) ? (
-                                  [...Array(parseInt(hotel.stars))].map((_, i) => (
-                                    <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                  ))
-                                ) : (
-                                  <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                                    {hotel.stars}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {!hotel.isActive && (
-                              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
-                                Неактивен
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                            {hotel.address && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {hotel.address}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => openImageModal(hotel)}
-                          className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-xl hover:scale-110 transition-all duration-200 shadow-sm"
-                          title="Галерея изображений"
-                        >
-                          <Image className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => openRoomModal(hotel.id)}
-                          className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-xl hover:scale-110 transition-all duration-200 shadow-sm"
-                          title="Добавить тип номера"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => openHotelModal(hotel)}
-                          className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-xl hover:scale-110 transition-all duration-200 shadow-sm"
-                          title="Редактировать отель"
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => deleteHotel(hotel)}
-                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl hover:scale-110 transition-all duration-200 shadow-sm"
-                          title="Удалить отель"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                        <span className="flex items-center gap-3">
+                          <MapPin className={`w-6 h-6 ${isActive ? 'text-white' : colors.text}`} />
+                          {city.nameEn || city.name}
+                          {hotelCount > 0 && (
+                            <span className={`px-3 py-1 rounded-xl text-sm font-black ${
+                              isActive ? 'bg-white/30 text-white backdrop-blur-sm' : `${colors.light} ${colors.text}`
+                            }`}>
+                              {hotelCount}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                      {/* Delete city button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          deleteCity(city);
+                        }}
+                        className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tab:opacity-100 shadow-2xl hover:scale-125 z-10 cursor-pointer transition-all duration-300"
+                        title="Delete city"
+                      >
+                        <X className="w-5 h-5 pointer-events-none" />
+                      </button>
                     </div>
+                  );
+                });
+              })()}
 
-                    {/* Room types */}
-                    {expandedHotels[hotel.id] && hotel.roomTypes?.length > 0 && (
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {hotel.roomTypes.map(room => (
-                          <div
-                            key={room.id}
-                            className="flex flex-col p-4 bg-gradient-to-br from-white to-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-semibold text-lg text-gray-900">{room.name}</span>
-                                  {room.name === 'PAX' && (
-                                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium">
-                                      за человека
-                                    </span>
-                                  )}
-                                </div>
-                                {room.displayName && (
-                                  <span className="text-sm text-gray-600">{room.displayName}</span>
-                                )}
-                              </div>
-                            </div>
+              {/* Add City Button */}
+              <button
+                onClick={() => {
+                  setEditingCity(null);
+                  setCityForm({ name: '', nameEn: '', sortOrder: cities.length });
+                  setCityModalOpen(true);
+                }}
+                className="px-4 py-3 rounded-xl text-base font-medium text-slate-400 hover:text-slate-600 border-2 border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all"
+                title="Add city"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
 
-                            <div className="flex flex-col gap-2 mb-3">
-                              {(() => {
-                                // Calculate all price components
-                                let basePrice = room.pricePerNight;
-                                const vatAmount = room.vatIncluded ? basePrice * 0.12 : 0;
-                                let priceInCurrency = basePrice + vatAmount;
+        {/* Hotels List */}
+        <div className="space-y-8">
+          {filteredGroups.map(group => {
+            const cityColors = getCityColor(group.city.nameEn || group.city.name);
 
-                                // Calculate tourist tax (always in UZS)
-                                let touristTax = 0;
-                                let touristTaxUZS = 0;
-                                if (room.touristTaxEnabled && room.brvValue > 0) {
-                                  const totalRooms = hotel.totalRooms || 0;
-                                  let percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
-                                  touristTaxUZS = room.brvValue * percentage * (room.maxGuests || 1);
-
-                                  // Convert tourist tax to room currency for total
-                                  if (room.currency === 'USD') {
-                                    touristTax = touristTaxUZS / 12700;
-                                  } else if (room.currency === 'EUR') {
-                                    touristTax = touristTaxUZS / 13500;
-                                  } else {
-                                    touristTax = touristTaxUZS;
-                                  }
-                                }
-
-                                const totalPrice = priceInCurrency + touristTax;
-                                const currencySymbol = room.currency === 'USD' ? '$' : room.currency === 'EUR' ? '€' : 'UZS';
-
-                                return (
-                                  <>
-                                    <div className="flex items-baseline gap-2">
-                                      <span className="text-2xl font-bold text-green-600">
-                                        {totalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })} {currencySymbol}
-                                      </span>
-                                      <span className="text-sm text-gray-500">за ночь</span>
-                                    </div>
-                                    {room.touristTaxEnabled && room.brvValue > 0 && (
-                                      <div className="text-xs text-gray-500">
-                                        Включает турсбор {touristTaxUZS.toLocaleString()} UZS
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
-                              <button
-                                onClick={() => openSeasonModal(hotel.id, room)}
-                                className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 transition-colors"
-                                title="Сезонные цены"
-                              >
-                                <Calendar className="w-3.5 h-3.5" />
-                                Сезон
-                              </button>
-                              <button
-                                onClick={() => openRoomModal(hotel.id, room)}
-                                className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                title="Редактировать"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteRoom(hotel.id, room)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Удалить"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {expandedHotels[hotel.id] && (!hotel.roomTypes || hotel.roomTypes.length === 0) && (
-                      <div className="mt-4 p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-center">
-                        <Bed className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500 mb-2">Нет типов номеров</p>
-                        <button
-                          onClick={() => openRoomModal(hotel.id)}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Добавить тип номера
-                        </button>
-                      </div>
+            return (
+              <div key={group.city.id} className="space-y-5">
+                {/* City Header */}
+                <div
+                  className="flex items-center justify-between cursor-pointer group py-3 px-4 bg-white rounded-2xl shadow-lg border-2 border-slate-100 hover:shadow-2xl hover:border-primary-200 transition-all duration-300"
+                  onClick={() => toggleCity(group.city.id)}
+                >
+                  <div className="flex items-center gap-5">
+                    <div className={`w-2 h-14 rounded-full bg-gradient-to-b ${cityColors.bg} shadow-lg`}></div>
+                    <h2 className="text-2xl font-black text-slate-800">{group.city.nameEn || group.city.name}</h2>
+                    <span className={`px-4 py-2 rounded-xl text-sm font-black ${cityColors.light} ${cityColors.text} shadow-md`}>
+                      {group.hotels.length} {group.hotels.length === 1 ? 'hotel' : 'hotels'}
+                    </span>
+                    {expandedCities[group.city.id] ? (
+                      <ChevronDown className="w-7 h-7 text-slate-400 group-hover:text-primary-600 transition-colors" />
+                    ) : (
+                      <ChevronRight className="w-7 h-7 text-slate-400 group-hover:text-primary-600 transition-colors" />
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+                  <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openHotelModal(null, group.city.id); }}
+                      className="p-3 text-white bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
+                      title="Add hotel to this city"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openCityModal(group.city); }}
+                      className="p-3 text-white bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
+                      title="Edit city"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteCity(group.city); }}
+                      className="p-3 text-white bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
+                      title="Delete city"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
 
-        {filteredGroups.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            {searchQuery || selectedCity ? 'Отели не найдены' : 'Нет отелей. Добавьте первый отель!'}
-          </div>
-        )}
+                {/* Hotels - Single Row Layout */}
+                {expandedCities[group.city.id] && (
+                  <div className="space-y-4">
+                    {group.hotels.map(hotel => {
+                      // Calculate price for display
+                      const getDisplayPrice = (room) => {
+                        let basePrice = room.pricePerNight;
+                        const vatAmount = room.vatIncluded ? basePrice * 0.12 : 0;
+                        let price = basePrice + vatAmount;
+                        if (room.touristTaxEnabled && room.brvValue > 0) {
+                          const totalRooms = hotel.totalRooms || 0;
+                          let percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
+                          let tax = room.brvValue * percentage * (room.maxGuests || 1);
+                          if (room.currency === 'USD') price += tax / 12700;
+                          else if (room.currency === 'EUR') price += tax / 13500;
+                          else price += tax;
+                        }
+                        return price;
+                      };
+
+                      return (
+                        <div
+                          key={hotel.id}
+                          className="bg-white rounded-2xl border-2 border-slate-200 hover:border-primary-300 hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:scale-[1.02]"
+                        >
+                          {/* Single Row: Hotel Info + Room Types + Actions */}
+                          <div className="flex items-stretch">
+                            {/* Hotel Info - Left Side */}
+                            <div
+                              className={`w-80 flex-shrink-0 p-6 border-r-2 border-slate-100 cursor-pointer hover:bg-gradient-to-br hover:from-slate-50 hover:to-white transition-all duration-300 bg-gradient-to-br ${cityColors.light}`}
+                              onClick={() => toggleHotel(hotel.id)}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-xl border-2 border-slate-100`}>
+                                  {hotel.stars && !isNaN(parseInt(hotel.stars)) ? (
+                                    <div className="flex flex-col items-center">
+                                      <Star className={`w-8 h-8 ${cityColors.text} fill-current`} />
+                                      <span className={`text-base font-black ${cityColors.text}`}>{hotel.stars}</span>
+                                    </div>
+                                  ) : hotel.stars === 'Guesthouse' || hotel.stars === 'Yurta' ? (
+                                    <Home className={`w-10 h-10 ${cityColors.text}`} />
+                                  ) : (
+                                    <Building2 className={`w-10 h-10 ${cityColors.text}`} />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-black text-xl text-slate-900 truncate">{hotel.name}</h3>
+                                  {hotel.address && (
+                                    <p className="text-sm text-slate-600 truncate mt-1 font-medium">{hotel.address}</p>
+                                  )}
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <span className={`px-3 py-1 rounded-xl text-xs font-black ${cityColors.light} ${cityColors.text} shadow-sm`}>
+                                      {hotel.roomTypes?.length || 0} room types
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Room Types - Middle (Scrollable) */}
+                            <div className="flex-1 flex items-center gap-4 px-6 py-5 overflow-x-auto">
+                              {hotel.roomTypes?.length > 0 ? (
+                                hotel.roomTypes.map(room => {
+                                  const roomStyle = getRoomTypeStyle(room.name);
+                                  const price = getDisplayPrice(room);
+                                  const symbol = room.currency === 'USD' ? '$' : room.currency === 'EUR' ? '€' : '';
+
+                                  return (
+                                    <div
+                                      key={room.id}
+                                      className={`flex-shrink-0 px-6 py-4 rounded-2xl border-2 ${roomStyle.bg} border-slate-200 hover:shadow-2xl hover:scale-110 transition-all duration-300 cursor-pointer group relative`}
+                                      onClick={() => openRoomModal(hotel.id, room)}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <span className={`font-black text-lg ${roomStyle.color}`}>{room.name}</span>
+                                        <span className="text-lg font-black text-slate-800">
+                                          {symbol}{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                          {room.currency === 'UZS' && ' ₿'}
+                                        </span>
+                                      </div>
+                                      {/* Hover actions */}
+                                      <div className="absolute -top-3 -right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); openSeasonModal(hotel.id, room); }}
+                                          className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
+                                          title="Seasonal prices"
+                                        >
+                                          <Calendar className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); deleteRoom(hotel.id, room); }}
+                                          className="w-8 h-8 bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
+                                          title="Delete"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-base text-slate-400 italic font-medium">No room types</span>
+                              )}
+
+                              {/* Add Room Button */}
+                              <button
+                                onClick={() => openRoomModal(hotel.id)}
+                                className="flex-shrink-0 px-5 py-4 rounded-2xl border-3 border-dashed border-emerald-400 text-emerald-600 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-green-50 hover:border-emerald-500 hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+                              >
+                                <Plus className="w-6 h-6" />
+                              </button>
+                            </div>
+
+                            {/* Actions - Right Side */}
+                            <div className="flex-shrink-0 flex items-center gap-3 px-5 border-l-2 border-slate-100 bg-gradient-to-br from-slate-50 to-white">
+                              <button
+                                onClick={() => openImageModal(hotel)}
+                                className="p-3 text-white bg-gradient-to-br from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110"
+                                title="Photos"
+                              >
+                                <Image className="w-6 h-6" />
+                              </button>
+                              <button
+                                onClick={() => openHotelModal(hotel)}
+                                className="p-3 text-white bg-gradient-to-br from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110"
+                                title="Edit"
+                              >
+                                <Edit className="w-6 h-6" />
+                              </button>
+                              <button
+                                onClick={() => deleteHotel(hotel)}
+                                className="p-3 text-white bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-6 h-6" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded Details (Optional) */}
+                          {expandedHotels[hotel.id] && hotel.roomTypes?.length > 0 && (
+                            <div className="border-t border-slate-100 bg-slate-50/50 p-4">
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                                {hotel.roomTypes.map(room => {
+                                  const roomStyle = getRoomTypeStyle(room.name);
+                                  const RoomIcon = roomStyle.icon;
+                                  const price = getDisplayPrice(room);
+                                  const symbol = room.currency === 'USD' ? '$' : room.currency === 'EUR' ? '€' : '';
+
+                                  return (
+                                    <div
+                                      key={room.id}
+                                      className="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition-all group"
+                                    >
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <div className={`w-8 h-8 ${roomStyle.bg} rounded-lg flex items-center justify-center`}>
+                                          <RoomIcon className={`w-4 h-4 ${roomStyle.color}`} />
+                                        </div>
+                                        <span className="font-bold text-slate-800">{room.name}</span>
+                                      </div>
+                                      {room.displayName && (
+                                        <p className="text-xs text-slate-500 mb-2 truncate">{room.displayName}</p>
+                                      )}
+                                      <div className="text-lg font-bold text-emerald-600">
+                                        {symbol}{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        {room.currency === 'UZS' && ' UZS'}
+                                      </div>
+                                      <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          onClick={() => openSeasonModal(hotel.id, room)}
+                                          className="flex-1 p-1.5 text-xs text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg"
+                                        >
+                                          <Calendar className="w-3 h-3 mx-auto" />
+                                        </button>
+                                        <button
+                                          onClick={() => openRoomModal(hotel.id, room)}
+                                          className="flex-1 p-1.5 text-xs text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg"
+                                        >
+                                          <Edit className="w-3 h-3 mx-auto" />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteRoom(hotel.id, room)}
+                                          className="flex-1 p-1.5 text-xs text-red-600 bg-red-50 hover:bg-red-100 rounded-lg"
+                                        >
+                                          <Trash2 className="w-3 h-3 mx-auto" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Add Hotel to this City */}
+                    <button
+                      onClick={() => openHotelModal(null, group.city.id)}
+                      className="w-full py-5 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:text-primary-600 hover:border-primary-400 hover:bg-primary-50/50 transition-all flex items-center justify-center gap-3"
+                    >
+                      <Plus className="w-6 h-6" />
+                      <span className="font-semibold text-base">Add Hotel to {group.city.nameEn || group.city.name}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {filteredGroups.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-medium text-slate-700 mb-2">
+                {searchQuery ? 'No hotels found' : 'No hotels'}
+              </h3>
+              <p className="text-slate-500 mb-4">
+                {searchQuery ? 'Try changing your search query' : 'Add your first hotel to get started'}
+              </p>
+              {!searchQuery && (
+                <button
+                  onClick={() => openHotelModal()}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white font-medium rounded-xl hover:bg-primary-600 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Hotel
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Hotel Modal */}
       {hotelModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {editingHotel ? 'Редактировать отель' : 'Новый отель'}
-              </h2>
-              <button onClick={() => setHotelModalOpen(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-primary-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  {editingHotel ? 'Edit Hotel' : 'New Hotel'}
+                </h2>
+              </div>
+              <button onClick={() => setHotelModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
-            <div className="p-4 space-y-4">
+            {/* Content */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Название *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Name *</label>
                   <input
                     type="text"
                     value={hotelForm.name}
                     onChange={(e) => setHotelForm({ ...hotelForm, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                     placeholder="Hotel Uzbekistan"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Город *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">City *</label>
                   <select
                     value={hotelForm.cityId}
                     onChange={(e) => setHotelForm({ ...hotelForm, cityId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                   >
-                    <option value="">Выберите город</option>
+                    <option value="">Select</option>
                     {cities.map(city => (
-                      <option key={city.id} value={city.id}>{city.name}</option>
+                      <option key={city.id} value={city.id}>{city.nameEn || city.name}</option>
                     ))}
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Звёзды</label>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Category</label>
                   <select
                     value={hotelForm.stars}
                     onChange={(e) => setHotelForm({ ...hotelForm, stars: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                   >
-                    <option value="">Не указано</option>
+                    <option value="">Not specified</option>
                     {[1,2,3,4,5].map(n => (
                       <option key={n} value={String(n)}>{n} {'★'.repeat(n)}</option>
                     ))}
@@ -789,88 +1045,77 @@ export default function Hotels() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Количество номеров</label>
-                  <input
-                    type="number"
-                    value={hotelForm.totalRooms || ''}
-                    onChange={(e) => setHotelForm({ ...hotelForm, totalRooms: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    min={0}
-                    placeholder="Общее количество номеров"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Для расчёта туристического сбора</p>
-                </div>
-
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Адрес</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Address</label>
                   <input
                     type="text"
                     value={hotelForm.address}
                     onChange={(e) => setHotelForm({ ...hotelForm, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    placeholder="ул. Мустакиллик, 1"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
+                    placeholder="123 Main Street"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Phone</label>
                   <input
                     type="text"
                     value={hotelForm.phone}
                     onChange={(e) => setHotelForm({ ...hotelForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                     placeholder="+998 71 123 45 67"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
                   <input
                     type="email"
                     value={hotelForm.email}
                     onChange={(e) => setHotelForm({ ...hotelForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                     placeholder="info@hotel.uz"
                   />
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Вебсайт</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Website</label>
                   <input
                     type="url"
                     value={hotelForm.website}
                     onChange={(e) => setHotelForm({ ...hotelForm, website: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                     placeholder="https://hotel.uz"
                   />
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
                   <textarea
                     value={hotelForm.description}
                     onChange={(e) => setHotelForm({ ...hotelForm, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all resize-none"
                     rows={3}
+                    placeholder="Additional information..."
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 bg-slate-50">
               <button
                 onClick={() => setHotelModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-5 py-2.5 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl font-medium transition-colors"
               >
-                Отмена
+                Cancel
               </button>
               <button
                 onClick={saveHotel}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 font-medium shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all"
               >
                 <Save className="w-4 h-4" />
-                Сохранить
+                Save
               </button>
             </div>
           </div>
@@ -879,147 +1124,108 @@ export default function Hotels() {
 
       {/* Room Type Modal */}
       {roomModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 overflow-y-auto p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {editingRoom ? 'Редактировать тип номера' : 'Новый тип номера'}
-              </h2>
-              <button onClick={() => setRoomModalOpen(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl my-8 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <Bed className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800">
+                    {editingRoom ? 'Edit Room Type' : 'New Room Type'}
+                  </h2>
+                  {currentHotel && (
+                    <p className="text-xs text-slate-500">{currentHotel.name}</p>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setRoomModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
-            <div className="p-4 space-y-4 overflow-y-auto flex-1">
+            {/* Content */}
+            <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
+              {/* Room Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Тип номера *</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {roomTypePresets.map(preset => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => {
-                        const guestsByType = {
-                          'PAX': 1,
-                          'SNGL': 1,
-                          'DBL': 2,
-                          'TWN': 2,
-                          'TRPL': 3,
-                          'Suite': 2,
-                          'Deluxe': 2
-                        };
-                        setRoomForm({
-                          ...roomForm,
-                          name: preset,
-                          displayName: roomTypeDisplayNames[preset] || preset,
-                          maxGuests: guestsByType[preset] || 2
-                        });
-                      }}
-                      className={`px-3 py-1 text-sm rounded-full border ${
-                        roomForm.name === preset
-                          ? 'bg-primary-100 border-primary-500 text-primary-700'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
+                <label className="block text-sm font-medium text-slate-700 mb-2">Room Type *</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {roomTypePresets.map(preset => {
+                    const style = getRoomTypeStyle(preset);
+                    const isSelected = roomForm.name === preset;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          const guestsByType = { 'PAX': 1, 'SNGL': 1, 'DBL': 2, 'TWN': 2, 'TRPL': 3, 'Suite': 2, 'Deluxe': 2 };
+                          setRoomForm({
+                            ...roomForm,
+                            name: preset,
+                            displayName: roomTypeDisplayNames[preset] || preset,
+                            maxGuests: guestsByType[preset] || 2
+                          });
+                        }}
+                        className={`px-4 py-2 text-sm font-medium rounded-xl border-2 transition-all ${
+                          isSelected
+                            ? `${style.bg} ${style.color} border-current shadow-sm`
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    );
+                  })}
                 </div>
                 <input
                   type="text"
                   value={roomForm.name}
                   onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="DBL"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
+                  placeholder="Or enter your own type"
                   maxLength={20}
                 />
               </div>
 
+              {/* Display Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Полное название</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Display Name</label>
                 <input
                   type="text"
                   value={roomForm.displayName}
                   onChange={(e) => setRoomForm({ ...roomForm, displayName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                   placeholder="Double Room"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Макс. гостей</label>
-                  <input
-                    type="number"
-                    value={roomForm.maxGuests}
-                    onChange={(e) => setRoomForm({ ...roomForm, maxGuests: parseInt(e.target.value) || 2 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                    min={1}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Цена за ночь (базовая)</label>
+              {/* Price and Currency */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    {editingRoom ? 'Total Price/Night (incl. tax)' : 'Base Price per Night'}
+                  </label>
                   <input
                     type="number"
                     value={roomForm.pricePerNight || ''}
                     onChange={(e) => setRoomForm({ ...roomForm, pricePerNight: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                     min={0}
                     step={0.01}
-                    placeholder="Введите цену за ночь"
+                    placeholder="0.00"
                   />
-                  {roomForm.pricePerNight > 0 && (() => {
-                    // Convert price to UZS if needed
-                    let basePrice = roomForm.pricePerNight;
-                    let currencySymbol = roomForm.currency;
-                    if (roomForm.currency === 'USD') {
-                      basePrice = roomForm.pricePerNight * 12700;
-                      currencySymbol = 'UZS';
-                    } else if (roomForm.currency === 'EUR') {
-                      basePrice = roomForm.pricePerNight * 13500;
-                      currencySymbol = 'UZS';
-                    }
-
-                    // Calculate VAT
-                    const vatAmount = roomForm.vatIncluded ? basePrice * 0.12 : 0;
-                    const priceWithVat = basePrice + vatAmount;
-
-                    // Calculate tourist tax
-                    let touristTax = 0;
-                    if (roomForm.touristTaxEnabled && roomForm.brvValue > 0) {
-                      const totalRooms = currentHotel?.totalRooms || 0;
-                      let percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
-                      touristTax = roomForm.brvValue * percentage * (roomForm.maxGuests || 1);
-                    }
-
-                    const totalPrice = priceWithVat + touristTax;
-
-                    return (
-                      <div className="text-xs mt-2 space-y-1 bg-gray-50 p-2 rounded">
-                        <p className="text-gray-700">Базовая цена: {basePrice.toLocaleString()} {currencySymbol}</p>
-                        {roomForm.vatIncluded && (
-                          <p className="text-gray-700">+ НДС 12%: {vatAmount.toLocaleString()} {currencySymbol}</p>
-                        )}
-                        {roomForm.touristTaxEnabled && touristTax > 0 && (
-                          <p className="text-gray-700">+ Турсбор: {touristTax.toLocaleString()} UZS</p>
-                        )}
-                        <p className="font-bold text-primary-600 pt-1 border-t border-gray-300">
-                          Итого: {totalPrice.toLocaleString()} {currencySymbol} {roomForm.name === 'PAX' ? 'за человека/ночь' : 'за ночь'}
-                        </p>
-                      </div>
-                    );
-                  })()}
+                  {editingRoom && (
+                    <p className="text-xs text-slate-500 mt-1">Includes VAT and tourist tax</p>
+                  )}
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Валюта</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Currency</label>
                   <select
                     value={roomForm.currency}
                     onChange={(e) => setRoomForm({ ...roomForm, currency: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                   >
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
@@ -1028,125 +1234,135 @@ export default function Hotels() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
-                <textarea
-                  value={roomForm.description}
-                  onChange={(e) => setRoomForm({ ...roomForm, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  rows={2}
-                  placeholder="Описание номера, удобства..."
+              {/* Max Guests */}
+              <div className="w-32">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Guests</label>
+                <input
+                  type="number"
+                  value={roomForm.maxGuests}
+                  onChange={(e) => setRoomForm({ ...roomForm, maxGuests: parseInt(e.target.value) || 2 })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all text-center"
+                  min={1}
                 />
               </div>
 
-              {/* НДС 12% */}
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center gap-2">
+              {/* Taxes Section */}
+              <div className="p-4 bg-slate-50 rounded-xl space-y-3">
+                <h4 className="text-sm font-medium text-slate-700">Taxes & Fees</h4>
+
+                {/* VAT */}
+                <label className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-primary-300 transition-colors">
                   <input
                     type="checkbox"
-                    id="vatIncluded"
                     checked={roomForm.vatIncluded}
                     onChange={(e) => setRoomForm({ ...roomForm, vatIncluded: e.target.checked })}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+                    className="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                   />
-                  <label htmlFor="vatIncluded" className="text-sm font-medium text-gray-700">
-                    Включить НДС 12%
-                  </label>
-                </div>
-                <p className="text-xs text-gray-500 mt-1 ml-6">Налог на добавленную стоимость</p>
-              </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-slate-700">VAT 12%</span>
+                    <p className="text-xs text-slate-500">Value Added Tax</p>
+                  </div>
+                  {roomForm.vatIncluded && roomForm.pricePerNight > 0 && (
+                    <span className="text-sm font-medium text-emerald-600">
+                      +{(roomForm.pricePerNight * 0.12).toLocaleString()} {roomForm.currency}
+                    </span>
+                  )}
+                </label>
 
-              {/* Туристический сбор */}
-              <div className="border-t border-gray-200 pt-4">
-                <div className="flex items-center gap-2 mb-3">
+                {/* Tourist Tax */}
+                <label className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-primary-300 transition-colors">
                   <input
                     type="checkbox"
-                    id="touristTaxEnabled"
                     checked={roomForm.touristTaxEnabled}
                     onChange={(e) => setRoomForm({ ...roomForm, touristTaxEnabled: e.target.checked })}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+                    className="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500 mt-0.5"
                   />
-                  <label htmlFor="touristTaxEnabled" className="text-sm font-medium text-gray-700">
-                    Включить туристический сбор
-                  </label>
-                </div>
-
-                {roomForm.touristTaxEnabled && (
-                  <div className="bg-blue-50 rounded-lg p-3 space-y-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        БРВ (Базовая расчётная величина) - в сумах
-                      </label>
-                      <input
-                        type="number"
-                        value={roomForm.brvValue || ''}
-                        onChange={(e) => setRoomForm({ ...roomForm, brvValue: parseFloat(e.target.value) || 0 })}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                        min={0}
-                        step={1000}
-                        placeholder="412000"
-                      />
-                    </div>
-
-                    <div className="bg-white rounded p-2 text-xs space-y-1">
-                      {(() => {
-                        // Calculate percentage based on hotel's total rooms
-                        const totalRooms = currentHotel?.totalRooms || 0;
-                        let percentage = 0;
-                        let percentageText = '';
-                        if (totalRooms <= 10) {
-                          percentage = 0.05;
-                          percentageText = '5%';
-                        } else if (totalRooms <= 40) {
-                          percentage = 0.10;
-                          percentageText = '10%';
-                        } else {
-                          percentage = 0.15;
-                          percentageText = '15%';
-                        }
-
-                        return (
-                          <>
-                            <div>
-                              <p className="font-medium text-gray-700 text-[10px] mb-0.5">Процент: 5% (≤10), 10% (11-40), 15% (&gt;40)</p>
-                              {currentHotel && (
-                                <p className="text-primary-600 font-medium text-[10px]">
-                                  {currentHotel.name}: {totalRooms} номеров = {percentageText}
-                                </p>
-                              )}
-                            </div>
-                            <div className="border-t pt-1">
-                              <p className="text-gray-600 text-[10px]">SNGL: БРВ×%×1 | DBL/TWN: БРВ×%×2 | TRPL: БРВ×%×3</p>
-                            </div>
-                            {roomForm.brvValue > 0 && roomForm.maxGuests > 0 && percentage > 0 && (
-                              <div className="bg-blue-50 rounded p-2 border border-blue-200">
-                                <p className="text-blue-800 text-[10px] font-medium">
-                                  {roomForm.brvValue.toLocaleString()} × {percentageText} × {roomForm.maxGuests} = <span className="font-bold">{(roomForm.brvValue * percentage * roomForm.maxGuests).toLocaleString()} UZS</span>
-                                </p>
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-slate-700">Tourist Tax</span>
+                    {roomForm.touristTaxEnabled && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-slate-500">BRV:</span>
+                        <input
+                          type="number"
+                          value={roomForm.brvValue || ''}
+                          onChange={(e) => setRoomForm({ ...roomForm, brvValue: parseFloat(e.target.value) || 0 })}
+                          className="w-28 px-2 py-1 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-1 focus:ring-primary-500"
+                          min={0}
+                          step={1000}
+                          placeholder="412000"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <span className="text-xs text-slate-500">UZS</span>
+                        {roomForm.brvValue > 0 && (() => {
+                          const totalRooms = currentHotel?.totalRooms || 0;
+                          const percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
+                          const tax = roomForm.brvValue * percentage * (roomForm.maxGuests || 1);
+                          return (
+                            <span className="text-xs text-emerald-600 font-medium">
+                              = {tax.toLocaleString()} UZS
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
-                )}
+                </label>
               </div>
+
+              {/* Price Summary - Only show when adding new room */}
+              {!editingRoom && roomForm.pricePerNight > 0 && (
+                <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
+                  {(() => {
+                    const basePrice = parseFloat(roomForm.pricePerNight) || 0;
+                    const currencySymbol = roomForm.currency === 'USD' ? '$' : roomForm.currency === 'EUR' ? '€' : '';
+                    const vatAmount = roomForm.vatIncluded ? basePrice * 0.12 : 0;
+                    const priceWithVat = basePrice + vatAmount;
+
+                    let touristTax = 0;
+                    if (roomForm.touristTaxEnabled && roomForm.brvValue > 0) {
+                      const totalRooms = currentHotel?.totalRooms || 0;
+                      let percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
+                      touristTax = roomForm.brvValue * percentage * (roomForm.maxGuests || 1);
+                    }
+
+                    let totalPrice = priceWithVat;
+                    if (roomForm.currency === 'UZS') {
+                      totalPrice = priceWithVat + touristTax;
+                    } else if (touristTax > 0) {
+                      const rate = roomForm.currency === 'USD' ? 12700 : 13500;
+                      totalPrice = priceWithVat + (touristTax / rate);
+                    }
+
+                    return (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-600">
+                          Total per {roomForm.name === 'PAX' ? 'person' : 'room'}/night:
+                        </span>
+                        <span className="text-xl font-bold text-emerald-600">
+                          {currencySymbol}{roomForm.currency === 'UZS' ? totalPrice.toLocaleString() : totalPrice.toFixed(2)}
+                          {roomForm.currency === 'UZS' ? ' UZS' : ` ${roomForm.currency}`}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 bg-white sticky bottom-0">
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 bg-slate-50">
               <button
                 onClick={() => setRoomModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-5 py-2.5 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl font-medium transition-colors"
               >
-                Отмена
+                Cancel
               </button>
               <button
                 onClick={saveRoom}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 font-medium shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all"
               >
                 <Save className="w-4 h-4" />
-                Сохранить
+                Save
               </button>
             </div>
           </div>
@@ -1155,89 +1371,157 @@ export default function Hotels() {
 
       {/* City Modal */}
       {cityModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {editingCity ? 'Редактировать город' : 'Новый город'}
-              </h2>
-              <button onClick={() => setCityModalOpen(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-violet-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  {editingCity ? 'Edit City' : 'New City'}
+                </h2>
+              </div>
+              <button onClick={() => setCityModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
-            <div className="p-4 space-y-4">
+            {/* Content */}
+            <div className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Название *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Name (Local) *</label>
                 <input
                   type="text"
                   value={cityForm.name}
                   onChange={(e) => setCityForm({ ...cityForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  placeholder="Ташкент"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
+                  placeholder="Toshkent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Название (англ.)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Name (English)</label>
                 <input
                   type="text"
                   value={cityForm.nameEn}
                   onChange={(e) => setCityForm({ ...cityForm, nameEn: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                   placeholder="Tashkent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Порядок сортировки</label>
-                <input
-                  type="number"
-                  value={cityForm.sortOrder}
-                  onChange={(e) => setCityForm({ ...cityForm, sortOrder: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 bg-slate-50">
               <button
                 onClick={() => setCityModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-5 py-2.5 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl font-medium transition-colors"
               >
-                Отмена
+                Cancel
               </button>
               <button
                 onClick={saveCity}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-500 text-white rounded-xl hover:bg-violet-600 font-medium shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all"
               >
                 <Save className="w-4 h-4" />
-                Сохранить
+                Save
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Image Gallery Modal */}
+      {/* Image Gallery Modal - Full Page */}
       {imageModalOpen && imageModalHotel && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Галерея: {imageModalHotel.name}
-              </h2>
-              <button onClick={() => setImageModalOpen(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900 z-50 flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center">
+                <Image className="w-6 h-6 text-rose-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">{imageModalHotel.name}</h2>
+                <p className="text-sm text-slate-400">{hotelImages.length} images</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all ${
+                uploadingImage
+                  ? 'bg-slate-700 text-slate-400'
+                  : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:shadow-lg hover:shadow-rose-500/30'
+              }`}>
+                <Upload className="w-4 h-4" />
+                {uploadingImage ? 'Uploading...' : 'Upload'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={uploadingImage}
+                />
+              </label>
+              <button
+                onClick={() => setImageModalOpen(false)}
+                className="p-3 bg-slate-700/50 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors"
+              >
+                <X className="w-6 h-6" />
               </button>
             </div>
+          </div>
 
-            <div className="p-4 flex-1 overflow-y-auto">
-              {/* Upload button */}
-              <div className="mb-4">
-                <label className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 cursor-pointer">
-                  <Upload className="w-4 h-4" />
-                  {uploadingImage ? 'Загрузка...' : 'Загрузить изображение'}
+          {/* Content - Full page gallery */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {hotelImages.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {hotelImages.map(image => (
+                  <div key={image.id} className="relative group rounded-2xl overflow-hidden bg-slate-800 shadow-xl hover:shadow-2xl transition-all hover:scale-[1.02]">
+                    <img
+                      src={`/api${image.url}`}
+                      alt={image.caption || 'Hotel image'}
+                      className="w-full h-64 object-cover"
+                    />
+                    {image.isMain && (
+                      <div className="absolute top-3 left-3 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg flex items-center gap-1.5 shadow-lg">
+                        <Star className="w-4 h-4 fill-current" />
+                        Main
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-6 gap-3">
+                      {!image.isMain && (
+                        <button
+                          onClick={() => setMainImage(image.id)}
+                          className="px-4 py-2.5 bg-white/90 backdrop-blur rounded-xl text-amber-600 hover:bg-white shadow-lg font-medium flex items-center gap-2"
+                          title="Set as main"
+                        >
+                          <Star className="w-4 h-4" />
+                          Main
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteImage(image.id)}
+                        className="px-4 py-2.5 bg-white/90 backdrop-blur rounded-xl text-red-600 hover:bg-white shadow-lg font-medium flex items-center gap-2"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="w-24 h-24 bg-slate-800 rounded-3xl flex items-center justify-center mb-6">
+                  <Image className="w-12 h-12 text-slate-600" />
+                </div>
+                <h3 className="text-2xl font-medium text-white mb-2">No images</h3>
+                <p className="text-slate-400 mb-6">Upload the first hotel image</p>
+                <label className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-medium cursor-pointer hover:shadow-lg hover:shadow-rose-500/30 transition-all">
+                  <Upload className="w-5 h-5" />
+                  Upload image
                   <input
                     type="file"
                     accept="image/*"
@@ -1247,134 +1531,87 @@ export default function Hotels() {
                   />
                 </label>
               </div>
-
-              {/* Images grid */}
-              {hotelImages.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {hotelImages.map(image => (
-                    <div key={image.id} className="relative group rounded-lg overflow-hidden border border-gray-200">
-                      <img
-                        src={`/api${image.url}`}
-                        alt={image.caption || 'Hotel image'}
-                        className="w-full h-40 object-cover"
-                      />
-                      {image.isMain && (
-                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-primary-600 text-white text-xs rounded">
-                          Главное
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        {!image.isMain && (
-                          <button
-                            onClick={() => setMainImage(image.id)}
-                            className="p-2 bg-white rounded-lg text-primary-600 hover:bg-primary-50"
-                            title="Сделать главным"
-                          >
-                            <Star className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => deleteImage(image.id)}
-                          className="p-2 bg-white rounded-lg text-red-600 hover:bg-red-50"
-                          title="Удалить"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      {image.caption && (
-                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
-                          <p className="text-white text-sm">{image.caption}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  Нет изображений. Загрузите первое!
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
-              <button
-                onClick={() => setImageModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Закрыть
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Seasonal Pricing Modal */}
       {seasonModalOpen && seasonModalRoom && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Сезонные цены: {seasonModalRoom.name}
-              </h2>
-              <button onClick={() => setSeasonModalOpen(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800">Seasonal Prices</h2>
+                  <p className="text-xs text-slate-500">{seasonModalRoom.name} - Base: ${seasonModalRoom.pricePerNight}</p>
+                </div>
+              </div>
+              <button onClick={() => setSeasonModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
 
-            <div className="p-4 flex-1 overflow-y-auto">
+            {/* Content */}
+            <div className="p-5 flex-1 overflow-y-auto space-y-5">
               {/* Add/Edit form */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  {editingSeason ? 'Редактировать сезон' : 'Добавить сезон'}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-5 border border-amber-100">
+                <h3 className="text-sm font-medium text-slate-700 mb-4 flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  {editingSeason ? 'Edit Season' : 'Add Season'}
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Название сезона *</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Name *</label>
                     <input
                       type="text"
                       value={seasonForm.name}
                       onChange={(e) => setSeasonForm({ ...seasonForm, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
-                      placeholder="Лето, Зима, Высокий сезон..."
+                      className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
+                      placeholder="High season..."
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Цена за ночь *</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Price per Night *</label>
                     <input
                       type="number"
                       value={seasonForm.pricePerNight}
                       onChange={(e) => setSeasonForm({ ...seasonForm, pricePerNight: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                      className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
                       min={0}
                       step={0.01}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Начало сезона *</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Start Date</label>
                     <input
                       type="date"
                       value={seasonForm.startDate}
                       onChange={(e) => setSeasonForm({ ...seasonForm, startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                      className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Конец сезона *</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">End Date</label>
                     <input
                       type="date"
                       value={seasonForm.endDate}
                       onChange={(e) => setSeasonForm({ ...seasonForm, endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
+                      className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all text-sm"
                     />
                   </div>
                 </div>
-                <div className="flex gap-2 mt-3">
+                <div className="flex gap-2 mt-4">
                   <button
                     onClick={saveSeason}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 text-sm font-medium shadow-lg shadow-amber-500/25 transition-all"
                   >
-                    <Save className="w-3.5 h-3.5" />
-                    {editingSeason ? 'Обновить' : 'Добавить'}
+                    <Save className="w-4 h-4" />
+                    {editingSeason ? 'Update' : 'Add'}
                   </button>
                   {editingSeason && (
                     <button
@@ -1382,52 +1619,49 @@ export default function Hotels() {
                         setEditingSeason(null);
                         setSeasonForm({ name: '', startDate: '', endDate: '', pricePerNight: 0 });
                       }}
-                      className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                      className="px-4 py-2 text-slate-600 hover:bg-white rounded-xl text-sm font-medium transition-colors"
                     >
-                      Отмена
+                      Cancel
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Existing seasonal prices */}
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-700">
-                  Текущие сезонные цены
-                </h3>
-                <p className="text-xs text-gray-500 mb-2">
-                  Базовая цена: <strong>${seasonModalRoom.pricePerNight}</strong> (используется, если нет активного сезона)
-                </p>
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-slate-700">Current Seasons</h3>
                 {seasonalPrices.length > 0 ? (
                   <div className="space-y-2">
                     {seasonalPrices.map(season => (
                       <div
                         key={season.id}
-                        className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100"
+                        className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 hover:border-amber-200 hover:shadow-sm transition-all group"
                       >
-                        <div className="flex items-center gap-3">
-                          <Tag className="w-4 h-4 text-orange-600" />
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                            <Tag className="w-5 h-5 text-amber-600" />
+                          </div>
                           <div>
-                            <span className="font-medium text-gray-900">{season.name}</span>
-                            <div className="text-xs text-gray-500">
+                            <span className="font-medium text-slate-800">{season.name}</span>
+                            <div className="text-xs text-slate-500 mt-0.5">
                               {new Date(season.startDate).toLocaleDateString('ru-RU')} — {new Date(season.endDate).toLocaleDateString('ru-RU')}
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium text-green-600">${season.pricePerNight}</span>
-                          <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-4">
+                          <span className="text-lg font-bold text-emerald-600">${season.pricePerNight}</span>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => editSeason(season)}
-                              className="p-1 text-gray-400 hover:text-primary-600 rounded"
+                              className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                             >
-                              <Edit className="w-3.5 h-3.5" />
+                              <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => deleteSeason(season.id)}
-                              className="p-1 text-gray-400 hover:text-red-600 rounded"
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
@@ -1435,19 +1669,22 @@ export default function Hotels() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg">
-                    Нет сезонных цен. Будет использоваться базовая цена.
+                  <div className="text-center py-10 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                    <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500">No seasonal prices</p>
+                    <p className="text-xs text-slate-400 mt-1">Base price is used</p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-100 bg-slate-50">
               <button
                 onClick={() => setSeasonModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-5 py-2.5 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl font-medium transition-colors"
               >
-                Закрыть
+                Close
               </button>
             </div>
           </div>
