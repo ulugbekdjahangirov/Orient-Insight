@@ -1367,39 +1367,6 @@ export default function BookingDetail() {
   };
 
   // Handle flight PDF import
-  const handleFlightPdfImport = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Check if PDF
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      toast.error('Iltimos, faqat PDF fayl yuklang');
-      return;
-    }
-
-    try {
-      setLoadingFlights(true);
-      toast.loading('PDF import qilinmoqda...');
-
-      const response = await flightsApi.importPdf(id, file);
-
-      toast.dismiss();
-      toast.success(response.data.message || 'Parvozlar muvaffaqiyatli import qilindi!');
-
-      // Reload flights
-      await loadFlights();
-
-    } catch (error) {
-      toast.dismiss();
-      console.error('Flight PDF import error:', error);
-      toast.error(error.response?.data?.error || 'PDF import xatosi');
-    } finally {
-      setLoadingFlights(false);
-      // Reset file input
-      event.target.value = '';
-    }
-  };
-
   // Open flight modal for adding new flight
   const openFlightModal = () => {
     setEditingFlight(null);
@@ -4201,21 +4168,6 @@ export default function BookingDetail() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFlightPdfImport}
-                    className="hidden"
-                    id="flight-pdf-upload"
-                  />
-                  <label
-                    htmlFor="flight-pdf-upload"
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-500 to-blue-500 text-white font-bold rounded-xl hover:from-sky-600 hover:to-blue-600 transition-all cursor-pointer shadow-lg hover:shadow-xl"
-                  >
-                    <Upload className="w-5 h-5" />
-                    PDF Import
-                  </label>
-
                   <button
                     onClick={openFlightModal}
                     className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg hover:shadow-xl"

@@ -135,15 +135,7 @@ export const flightsApi = {
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/flights/${id}`),
   // Flight sections (raw content from PDF)
   getSections: (bookingId) => api.get(`/bookings/${bookingId}/flight-sections`),
-  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/flight-sections`),
-  // Import flights from PDF
-  importPdf: (bookingId, file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post(`/bookings/${bookingId}/flights/import-pdf`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-  }
+  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/flight-sections`)
 };
 
 // API для гидов
