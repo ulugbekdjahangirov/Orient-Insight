@@ -76,7 +76,7 @@ router.post('/', authenticate, async (req, res) => {
       // Nosir
       margilan, qoqon, dostlik, toshkent, extra,
       // Train/Plane
-      route, economPrice, businessPrice, departure, arrival,
+      trainNumber, route, economPrice, businessPrice, departure, arrival,
       sortOrder
     } = req.body;
 
@@ -105,6 +105,7 @@ router.post('/', authenticate, async (req, res) => {
         dostlik: dostlik ? parseFloat(dostlik) : null,
         toshkent: toshkent ? parseFloat(toshkent) : null,
         extra: extra ? parseFloat(extra) : null,
+        trainNumber,
         route,
         economPrice,
         businessPrice,
@@ -130,7 +131,7 @@ router.put('/:id', authenticate, async (req, res) => {
       pickupDropoff, tagRate, urgenchRate, shovotRate2,
       vstrecha, chimgan, tag, oybek, chernyayevka, cityTour,
       margilan, qoqon, dostlik, toshkent, extra,
-      route, economPrice, businessPrice, departure, arrival,
+      trainNumber, route, economPrice, businessPrice, departure, arrival,
       sortOrder, isActive
     } = req.body;
 
@@ -162,6 +163,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (extra !== undefined) updateData.extra = extra ? parseFloat(extra) : null;
 
     // Train/Plane
+    if (trainNumber !== undefined) updateData.trainNumber = trainNumber;
     if (route !== undefined) updateData.route = route;
     if (economPrice !== undefined) updateData.economPrice = economPrice;
     if (businessPrice !== undefined) updateData.businessPrice = businessPrice;
@@ -237,6 +239,7 @@ router.post('/bulk', authenticate, async (req, res) => {
             dostlik: v.dostlik ? parseFloat(v.dostlik) : null,
             toshkent: v.toshkent ? parseFloat(v.toshkent) : null,
             extra: v.extra ? parseFloat(v.extra) : null,
+            trainNumber: v.trainNumber,
             route: v.route,
             economPrice: v.economPrice,
             businessPrice: v.businessPrice,
