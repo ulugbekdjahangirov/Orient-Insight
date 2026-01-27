@@ -1757,8 +1757,11 @@ export default function Opex() {
                   <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Route
                   </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider" colSpan="2">
-                    Preis
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    Econom
+                  </th>
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    Business
                   </th>
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Departure
@@ -1769,20 +1772,6 @@ export default function Opex() {
                   <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
                   </th>
-                </tr>
-                <tr className="bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500">
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Econom
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Business
-                  </th>
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
