@@ -138,6 +138,17 @@ export const flightsApi = {
   deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/flight-sections`)
 };
 
+// API for railways
+export const railwaysApi = {
+  getAll: (bookingId) => api.get(`/bookings/${bookingId}/railways`),
+  create: (bookingId, data) => api.post(`/bookings/${bookingId}/railways`, data),
+  update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/railways/${id}`, data),
+  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/railways/${id}`),
+  // Railway sections (raw content from PDF)
+  getSections: (bookingId) => api.get(`/bookings/${bookingId}/railway-sections`),
+  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/railway-sections`)
+};
+
 // API для гидов
 export const guidesApi = {
   getAll: (includeInactive = false) => api.get('/guides', { params: { includeInactive } }),

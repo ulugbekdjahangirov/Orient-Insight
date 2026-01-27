@@ -2056,6 +2056,151 @@ router.delete('/:bookingId/flight-sections', authenticate, async (req, res) => {
 });
 
 // ============================================
+// RAILWAYS CRUD
+// ============================================
+
+// GET /api/bookings/:bookingId/railways - Get all railways for a booking
+router.get('/:bookingId/railways', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const railways = await prisma.railway.findMany({
+      where: { bookingId: parseInt(bookingId) },
+      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }]
+    });
+
+    res.json({ railways });
+  } catch (error) {
+    console.error('Error fetching railways:', error);
+    res.status(500).json({ error: 'Error loading railways' });
+  }
+});
+
+// POST /api/bookings/:bookingId/railways - Create a new railway
+router.post('/:bookingId/railways', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { type, trainNumber, trainName, departure, arrival, date, departureTime, arrivalTime, notes } = req.body;
+
+    // Get max sortOrder for this type
+    const maxSort = await prisma.railway.aggregate({
+      where: { bookingId: parseInt(bookingId), type: type || 'INTERNATIONAL' },
+      _max: { sortOrder: true }
+    });
+
+    const railway = await prisma.railway.create({
+      data: {
+        bookingId: parseInt(bookingId),
+        type: type || 'INTERNATIONAL',
+        trainNumber: trainNumber || null,
+        trainName: trainName || null,
+        departure: departure || '',
+        arrival: arrival || '',
+        date: date ? new Date(date) : null,
+        departureTime: departureTime || null,
+        arrivalTime: arrivalTime || null,
+        notes: notes || null,
+        sortOrder: (maxSort._max.sortOrder || 0) + 1
+      }
+    });
+
+    res.status(201).json({ railway });
+  } catch (error) {
+    console.error('Error creating railway:', error);
+    res.status(500).json({ error: 'Error creating railway' });
+  }
+});
+
+// PUT /api/bookings/:bookingId/railways/:id - Update a railway
+router.put('/:bookingId/railways/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, trainNumber, trainName, departure, arrival, date, departureTime, arrivalTime, notes } = req.body;
+
+    const railway = await prisma.railway.update({
+      where: { id: parseInt(id) },
+      data: {
+        type,
+        trainNumber,
+        trainName,
+        departure,
+        arrival,
+        date: date ? new Date(date) : null,
+        departureTime,
+        arrivalTime,
+        notes
+      }
+    });
+
+    res.json({ railway });
+  } catch (error) {
+    console.error('Error updating railway:', error);
+    res.status(500).json({ error: 'Error updating railway' });
+  }
+});
+
+// DELETE /api/bookings/:bookingId/railways/:id - Delete a railway
+router.delete('/:bookingId/railways/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.railway.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting railway:', error);
+    res.status(500).json({ error: 'Error deleting railway' });
+  }
+});
+
+// ============================================
+// RAILWAY SECTIONS (Raw content from PDF)
+// ============================================
+
+// GET /api/bookings/:bookingId/railway-sections - Get raw railway sections
+router.get('/:bookingId/railway-sections', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    const sections = await prisma.railwaySection.findMany({
+      where: { bookingId: parseInt(bookingId) },
+      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }]
+    });
+
+    // Separate by type
+    const international = sections.filter(s => s.type === 'INTERNATIONAL');
+    const domestic = sections.filter(s => s.type === 'DOMESTIC');
+
+    res.json({
+      railwaySections: sections,
+      international: international.length > 0 ? international[0] : null,
+      domestic: domestic.length > 0 ? domestic[0] : null
+    });
+  } catch (error) {
+    console.error('Error loading railway sections:', error);
+    res.status(500).json({ error: 'Error loading railway sections' });
+  }
+});
+
+// DELETE /api/bookings/:bookingId/railway-sections - Delete all railway sections
+router.delete('/:bookingId/railway-sections', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    await prisma.railwaySection.deleteMany({
+      where: { bookingId: parseInt(bookingId) }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting railway sections:', error);
+    res.status(500).json({ error: 'Error deleting railway sections' });
+  }
+});
+
+// ============================================
 // ROOMING LIST PDF IMPORT
 // ============================================
 

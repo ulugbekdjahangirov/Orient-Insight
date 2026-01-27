@@ -158,6 +158,12 @@ model Booking {
   // Raw flight sections from PDF
   flightSections  FlightSection[]
 
+  // Поезда
+  railways        Railway[]
+
+  // Raw railway sections from PDF
+  railwaySections RailwaySection[]
+
   // Маршруты транспорта
   routes          Route[]
 
@@ -584,6 +590,73 @@ model FlightSection {
   rawContent      String?                  // Raw text block from PDF
 
   // Image content (base64 encoded) for image-based flight info
+  imageData       String?                  // Base64 encoded image data
+  imageMimeType   String?                  // image/png, image/jpeg, etc.
+
+  // Metadata
+  sourceFileName  String?                  // Original PDF filename
+  pageNumber      Int?                     // Page number in PDF where found
+
+  sortOrder       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([type])
+}
+
+// ============================================
+// Модуль: Railways (Поезда)
+// ============================================
+
+// Информация о поездах для бронирования
+model Railway {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Тип поезда
+  type            String    @default("INTERNATIONAL") // INTERNATIONAL, DOMESTIC
+
+  // Информация о поезде
+  trainNumber     String?                  // Номер поезда (например, 661)
+  trainName       String?                  // Название поезда
+  departure       String                   // Город отправления
+  arrival         String                   // Город прибытия
+
+  // Дата и время
+  date            DateTime?                // Дата отправления
+  departureTime   String?                  // Время отправления (HH:MM)
+  arrivalTime     String?                  // Время прибытия (HH:MM)
+
+  // Дополнительная информация
+  notes           String?
+  sortOrder       Int       @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([type])
+}
+
+// ============================================
+// Модуль: Railway Sections (Raw content from PDF)
+// ============================================
+
+// Raw railway section content extracted from PDF
+model RailwaySection {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Type: INTERNATIONAL or DOMESTIC
+  type            String    @default("INTERNATIONAL")
+
+  // Raw text content extracted from PDF
+  rawContent      String?                  // Raw text block from PDF
+
+  // Image content (base64 encoded) for image-based railway info
   imageData       String?                  // Base64 encoded image data
   imageMimeType   String?                  // image/png, image/jpeg, etc.
 

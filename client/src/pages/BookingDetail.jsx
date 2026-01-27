@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
@@ -179,6 +179,24 @@ export default function BookingDetail() {
     type: 'INTERNATIONAL',
     flightNumber: '',
     airline: '',
+    departure: '',
+    arrival: '',
+    date: '',
+    departureTime: '',
+    arrivalTime: '',
+    notes: ''
+  });
+
+  // Railway state
+  const [railways, setRailways] = useState([]);
+  const [railwaySections, setRailwaySections] = useState([]);
+  const [loadingRailways, setLoadingRailways] = useState(false);
+  const [railwayModalOpen, setRailwayModalOpen] = useState(false);
+  const [editingRailway, setEditingRailway] = useState(null);
+  const [railwayForm, setRailwayForm] = useState({
+    type: 'INTERNATIONAL',
+    trainNumber: '',
+    trainName: '',
     departure: '',
     arrival: '',
     date: '',
@@ -1454,6 +1472,122 @@ export default function BookingDetail() {
     }
   };
 
+  // Load railway data
+  const loadRailways = async () => {
+    if (!id || isNew) return;
+
+    try {
+      setLoadingRailways(true);
+      const [railwaysRes, sectionsRes] = await Promise.all([
+        railwaysApi.getAll(id),
+        railwaysApi.getSections(id)
+      ]);
+
+      // Backend returns { railways: [...] } and { railwaySections: [...] }
+      const railwaysData = Array.isArray(railwaysRes.data?.railways) ? railwaysRes.data.railways : [];
+      const sectionsData = Array.isArray(sectionsRes.data?.railwaySections) ? sectionsRes.data.railwaySections : [];
+
+      setRailways(railwaysData);
+      setRailwaySections(sectionsData);
+      console.log('🚂 Loaded railways:', railwaysData);
+      console.log('📄 Loaded railway sections:', sectionsData);
+    } catch (error) {
+      console.error('Error loading railways:', error);
+      // Set empty arrays on error
+      setRailways([]);
+      setRailwaySections([]);
+    } finally {
+      setLoadingRailways(false);
+    }
+  };
+
+  // Open railway modal for adding new railway
+  const openRailwayModal = () => {
+    setEditingRailway(null);
+    setRailwayForm({
+      type: 'INTERNATIONAL',
+      trainNumber: '',
+      trainName: '',
+      departure: '',
+      arrival: '',
+      date: '',
+      departureTime: '',
+      arrivalTime: '',
+      notes: ''
+    });
+    setRailwayModalOpen(true);
+  };
+
+  // Open railway modal for editing
+  const editRailway = (railway) => {
+    setEditingRailway(railway);
+    setRailwayForm({
+      type: railway.type || 'INTERNATIONAL',
+      trainNumber: railway.trainNumber || '',
+      trainName: railway.trainName || '',
+      departure: railway.departure || '',
+      arrival: railway.arrival || '',
+      date: railway.date ? format(new Date(railway.date), 'yyyy-MM-dd') : '',
+      departureTime: railway.departureTime || '',
+      arrivalTime: railway.arrivalTime || '',
+      notes: railway.notes || ''
+    });
+    setRailwayModalOpen(true);
+  };
+
+  // Close railway modal
+  const closeRailwayModal = () => {
+    setRailwayModalOpen(false);
+    setEditingRailway(null);
+  };
+
+  // Save railway (create or update)
+  const saveRailway = async () => {
+    if (!id) return;
+
+    // Validation
+    if (!railwayForm.departure || !railwayForm.arrival) {
+      toast.error('Departure va Arrival maydonlari majburiy');
+      return;
+    }
+
+    try {
+      if (editingRailway) {
+        // Update existing railway
+        await railwaysApi.update(id, editingRailway.id, railwayForm);
+        toast.success('Poezd yangilandi');
+      } else {
+        // Create new railway
+        await railwaysApi.create(id, railwayForm);
+        toast.success('Poezd qo\'shildi');
+      }
+
+      closeRailwayModal();
+      await loadRailways();
+    } catch (error) {
+      console.error('Error saving railway:', error);
+      toast.error(error.response?.data?.error || 'Poezd saqlashda xatolik');
+    }
+  };
+
+  // Delete railway
+  const deleteRailway = async (railwayId) => {
+    if (!id) return;
+
+    if (!window.confirm('Poezdni o\'chirmoqchimisiz?')) {
+      return;
+    }
+
+    try {
+      await railwaysApi.delete(id, railwayId);
+      toast.success('Poezd o\'chirildi');
+      await loadRailways();
+    } catch (error) {
+      console.error('Error deleting railway:', error);
+      toast.error(error.response?.data?.error || 'Poezd o\'chirishda xatolik');
+    }
+  };
+
   // Export Tourist List as PDF
   const exportTouristListPDF = () => {
     if (!tourists || tourists.length === 0) {
@@ -1803,10 +1937,11 @@ export default function BookingDetail() {
     });
   };
 
-  // Load flights when Fly&Railway tab is accessed
+  // Load flights and railways when Fly&Railway tab is accessed
   useEffect(() => {
     if (activeTab === 'rooming' && !isNew && id) {
       loadFlights();
+      loadRailways();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, id, isNew]);
@@ -4360,17 +4495,199 @@ export default function BookingDetail() {
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500"></div>
               <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-emerald-400/10 to-green-400/10 rounded-full blur-3xl"></div>
 
-              <h2 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 bg-clip-text text-transparent mb-6 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                  <Train className="w-6 h-6 text-white" />
-                </div>
-                Railway Information
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 bg-clip-text text-transparent flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                    <Train className="w-6 h-6 text-white" />
+                  </div>
+                  Railway Information
+                </h2>
 
-              <div className="text-gray-600">
-                {/* Railway content will go here */}
-                <p>Railway information module coming soon...</p>
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={openRailwayModal}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Railway
+                  </button>
+                </div>
               </div>
+
+              {loadingRailways ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200"></div>
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-emerald-600 absolute top-0"></div>
+                    </div>
+                    <p className="text-gray-600 font-medium">Loading railways...</p>
+                  </div>
+                </div>
+              ) : (!Array.isArray(railways) || railways.length === 0) && (!Array.isArray(railwaySections) || railwaySections.length === 0) ? (
+                <div className="text-center py-12 bg-gradient-to-b from-emerald-50 to-white rounded-2xl border-2 border-dashed border-emerald-200">
+                  <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Train className="w-10 h-10 text-emerald-400" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-800 mb-2">No Railway Information</h4>
+                  <p className="text-sm text-gray-500 max-w-md mx-auto">
+                    Add railway information manually or import from PDF.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* International Railways Section */}
+                  {(() => {
+                    const internationalRailways = Array.isArray(railways) ? railways.filter(r => r.type === 'INTERNATIONAL') : [];
+                    const internationalSection = Array.isArray(railwaySections) ? railwaySections.find(s => s.type === 'INTERNATIONAL') : null;
+
+                    if (internationalRailways.length === 0 && !internationalSection) return null;
+
+                    return (
+                      <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-6">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-indigo-300/20 rounded-full blur-2xl"></div>
+
+                        <h3 className="text-xl font-black text-blue-900 mb-4 flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                            <Train className="w-4 h-4 text-white" />
+                          </div>
+                          International Railways
+                        </h3>
+
+                        {internationalSection && internationalSection.rawContent && (
+                          <div className="mb-4 p-4 bg-white rounded-xl border border-blue-200">
+                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
+                              {internationalSection.rawContent}
+                            </pre>
+                          </div>
+                        )}
+
+                        {internationalRailways.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Train</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                  <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {internationalRailways.map((railway, idx) => (
+                                  <tr key={railway.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                                    <td className="px-4 py-3 font-bold text-blue-900">{railway.trainNumber || railway.trainName || '-'}</td>
+                                    <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
+                                    <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
+                                    <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
+                                    <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center justify-center gap-2">
+                                        <button
+                                          onClick={() => editRailway(railway)}
+                                          className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
+                                          title="Edit"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteRailway(railway.id)}
+                                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                          title="Delete"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Domestic Railways Section */}
+                  {(() => {
+                    const domesticRailways = Array.isArray(railways) ? railways.filter(r => r.type === 'DOMESTIC') : [];
+                    const domesticSection = Array.isArray(railwaySections) ? railwaySections.find(s => s.type === 'DOMESTIC') : null;
+
+                    if (domesticRailways.length === 0 && !domesticSection) return null;
+
+                    return (
+                      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200 p-6">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-300/20 to-teal-300/20 rounded-full blur-2xl"></div>
+
+                        <h3 className="text-xl font-black text-emerald-900 mb-4 flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                            <Train className="w-4 h-4 text-white" />
+                          </div>
+                          Domestic Railways
+                        </h3>
+
+                        {domesticSection && domesticSection.rawContent && (
+                          <div className="mb-4 p-4 bg-white rounded-xl border border-emerald-200">
+                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
+                              {domesticSection.rawContent}
+                            </pre>
+                          </div>
+                        )}
+
+                        {domesticRailways.length > 0 && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Train</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
+                                  <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                  <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {domesticRailways.map((railway, idx) => (
+                                  <tr key={railway.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                    <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainNumber || railway.trainName || '-'}</td>
+                                    <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
+                                    <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
+                                    <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
+                                    <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center justify-center gap-2">
+                                        <button
+                                          onClick={() => editRailway(railway)}
+                                          className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"
+                                          title="Edit"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteRailway(railway.id)}
+                                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                          title="Delete"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
 
@@ -4515,6 +4832,169 @@ export default function BookingDetail() {
                     </button>
                     <button
                       onClick={closeFlightModal}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Railway Add/Edit Modal */}
+          {railwayModalOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-gradient-to-r from-emerald-500 to-green-500 text-white px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Train className="w-6 h-6" />
+                    {editingRailway ? 'Edit Railway' : 'Add New Railway'}
+                  </h3>
+                  <button
+                    onClick={closeRailwayModal}
+                    className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* Railway Type */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Railway Type *
+                    </label>
+                    <select
+                      value={railwayForm.type}
+                      onChange={(e) => setRailwayForm({ ...railwayForm, type: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    >
+                      <option value="INTERNATIONAL">International</option>
+                      <option value="DOMESTIC">Domestic (O'zbekiston ichida)</option>
+                    </select>
+                  </div>
+
+                  {/* Train Number and Name */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Train Number
+                      </label>
+                      <input
+                        type="text"
+                        value={railwayForm.trainNumber}
+                        onChange={(e) => setRailwayForm({ ...railwayForm, trainNumber: e.target.value })}
+                        placeholder="661"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Train Name
+                      </label>
+                      <input
+                        type="text"
+                        value={railwayForm.trainName}
+                        onChange={(e) => setRailwayForm({ ...railwayForm, trainName: e.target.value })}
+                        placeholder="Afrosiyob"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Departure and Arrival */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Departure *
+                      </label>
+                      <input
+                        type="text"
+                        value={railwayForm.departure}
+                        onChange={(e) => setRailwayForm({ ...railwayForm, departure: e.target.value })}
+                        placeholder="Tashkent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Arrival *
+                      </label>
+                      <input
+                        type="text"
+                        value={railwayForm.arrival}
+                        onChange={(e) => setRailwayForm({ ...railwayForm, arrival: e.target.value })}
+                        placeholder="Samarkand"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={railwayForm.date}
+                      onChange={(e) => setRailwayForm({ ...railwayForm, date: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Departure and Arrival Times */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Departure Time
+                      </label>
+                      <input
+                        type="time"
+                        value={railwayForm.departureTime}
+                        onChange={(e) => setRailwayForm({ ...railwayForm, departureTime: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Arrival Time
+                      </label>
+                      <input
+                        type="time"
+                        value={railwayForm.arrivalTime}
+                        onChange={(e) => setRailwayForm({ ...railwayForm, arrivalTime: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      value={railwayForm.notes}
+                      onChange={(e) => setRailwayForm({ ...railwayForm, notes: e.target.value })}
+                      placeholder="Additional notes..."
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 pt-4 border-t">
+                    <button
+                      onClick={saveRailway}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold rounded-xl hover:from-emerald-600 hover:to-green-600 transition-all shadow-lg"
+                    >
+                      <Save className="w-5 h-5 inline mr-2" />
+                      {editingRailway ? 'Update Railway' : 'Save Railway'}
+                    </button>
+                    <button
+                      onClick={closeRailwayModal}
                       className="px-6 py-3 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-all"
                     >
                       Cancel
