@@ -817,6 +817,7 @@ export default function Opex() {
     setEditingVehicle(null);
     setVehicleForm({
       name: '',
+      trainNumber: '',
       seats: '',
       person: '',
       pickupDropoff: '',
@@ -850,6 +851,7 @@ export default function Opex() {
     setEditingVehicle(vehicle);
     setVehicleForm({
       name: vehicle.name || vehicle.route || '',
+      trainNumber: vehicle.trainNumber || '',
       seats: vehicle.seats || '',
       person: vehicle.person || '',
       pickupDropoff: vehicle.pickupDropoff || '',
@@ -1747,7 +1749,10 @@ export default function Opex() {
               <thead>
                 <tr className="bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 border-b-3 border-emerald-300">
                   <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Name
+                    Train Number
+                  </th>
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Train Name
                   </th>
                   <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Route
@@ -1768,6 +1773,7 @@ export default function Opex() {
                 <tr className="bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-500">
                   <th className="px-6 py-3"></th>
                   <th className="px-6 py-3"></th>
+                  <th className="px-6 py-3"></th>
                   <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Econom
                   </th>
@@ -1782,7 +1788,7 @@ export default function Opex() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {trainVehicles.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-16 text-center">
+                    <td colSpan="8" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-green-200 rounded-full flex items-center justify-center shadow-lg">
                           <Train className="w-10 h-10 text-emerald-500" />
@@ -1804,6 +1810,11 @@ export default function Opex() {
                 ) : (
                   trainVehicles.map((vehicle) => (
                     <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {vehicle.trainNumber || '-'}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {vehicle.name}
@@ -1855,7 +1866,7 @@ export default function Opex() {
                 )}
                 {trainVehicles.length > 0 && (
                   <tr>
-                    <td colSpan="7" className="px-6 py-4">
+                    <td colSpan="8" className="px-6 py-4">
                       <button
                         onClick={handleAddVehicle}
                         className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
@@ -3314,9 +3325,28 @@ export default function Opex() {
             </div>
 
             <div className="space-y-6">
+              {/* Train Number field (only for train) */}
+              {activeCategory === 'transport' && activeTransportTab === 'train' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Train Number
+                  </label>
+                  <input
+                    type="text"
+                    value={vehicleForm.trainNumber || ''}
+                    onChange={(e) => setVehicleForm({ ...vehicleForm, trainNumber: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
+                    placeholder="764Ф или Afrosiyob764Ф"
+                  />
+                </div>
+              )}
+
+              {/* Name / Train Name field */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  {activeCategory === 'route' ? 'Route *' : (['train', 'plane', 'metro'].includes(activeTransportTab) ? 'Name *' : 'Название *')}
+                  {activeCategory === 'route' ? 'Route *' :
+                   (activeTransportTab === 'train' ? 'Train Name *' :
+                    ['plane', 'metro'].includes(activeTransportTab) ? 'Name *' : 'Название *')}
                 </label>
                 <input
                   type="text"
@@ -3325,7 +3355,7 @@ export default function Opex() {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
                   placeholder={
                     activeCategory === 'route' ? 'Tashkent' :
-                    activeTransportTab === 'train' ? 'Afrosiyob764Ф (CKPCT) Tashkent Central → Karshi' :
+                    activeTransportTab === 'train' ? 'Tashkent Central → Karshi' :
                     activeTransportTab === 'plane' ? 'Uzbekistan Airways HY-101' :
                     activeTransportTab === 'metro' ? 'Tashkent Metro Line 1' :
                     'Joylong'
