@@ -789,6 +789,7 @@ model TransportVehicle {
   extra           Float?                   // Extra rate
 
   // Train/Plane fields
+  trainNumber     String?                  // Train number (e.g., 764Ф)
   route           String?                  // Route name
   economPrice     String?                  // Economy price
   businessPrice   String?                  // Business price
