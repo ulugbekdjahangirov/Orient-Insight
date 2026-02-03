@@ -5524,8 +5524,8 @@ export default function BookingDetail() {
                           let autoDate = '';
                           if (booking) {
                             if (flightForm.type === 'INTERNATIONAL') {
-                              // International: arrival date (group arrives)
-                              autoDate = booking.departureDate ? format(new Date(booking.departureDate), 'yyyy-MM-dd') : '';
+                              // International: arrival date (group arrives +1 day)
+                              autoDate = booking.departureDate ? format(addDays(new Date(booking.departureDate), 1), 'yyyy-MM-dd') : '';
                             } else if (flightForm.type === 'DOMESTIC') {
                               // Domestic: 1 day before group departure
                               if (booking.endDate) {
@@ -7312,13 +7312,107 @@ export default function BookingDetail() {
           )}
 
           {/* Meals Tab */}
-          {tourServicesTab === 'meals' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500"></div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Meal Services</h3>
-              <p className="text-gray-600">Meal costs and details will be displayed here</p>
-            </div>
-          )}
+          {tourServicesTab === 'meals' && (() => {
+            // Load meals data from Opex based on tour type
+            const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+            const mealsKey = `${tourTypeCode}Meal`; // Note: singular "Meal" not "Meals"
+            let mealsData = [];
+            try {
+              const saved = localStorage.getItem(mealsKey);
+              if (saved) {
+                mealsData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading meals from localStorage:', e);
+            }
+
+            const pax = booking?.pax || 0;
+
+            // Calculate total
+            const grandTotal = mealsData.reduce((sum, meal) => {
+              // OPEX stores price as string with spaces (e.g., "150 000")
+              const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              return sum + (pricePerPerson * pax);
+            }, 0);
+
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500"></div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Meal Services</h3>
+
+                {mealsData.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-500 to-blue-600 border-b-2 border-blue-700">
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">#</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">CITY</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">RESTAURANT</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-blue-400">PRICE (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">PAX</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mealsData.map((meal, index) => {
+                          // OPEX stores price as string with spaces (e.g., "150 000")
+                          const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+                          const pricePerPerson = parseFloat(priceStr) || 0;
+                          const total = pricePerPerson * pax;
+
+                          return (
+                            <tr key={index} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
+                              <td className="px-4 py-3 text-center border-r border-gray-200">
+                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold mx-auto">
+                                  {index + 1}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 border-r border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                                  <span className="font-medium text-gray-900">{meal.city || '-'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
+                                {meal.name || meal.restaurant || '-'}
+                              </td>
+                              <td className="px-4 py-3 text-right border-r border-gray-200">
+                                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-md font-medium">
+                                  {pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-bold text-blue-600 text-lg border-r border-gray-200">
+                                {pax}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">
+                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-orange-100 to-orange-200 border-t-2 border-orange-300">
+                          <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                            Grand Total:
+                          </td>
+                          <td className="px-4 py-4 text-right font-bold text-orange-700 text-xl">
+                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <p>No meals data found for {tourTypeCode.toUpperCase()} tours</p>
+                    <p className="text-sm mt-2">Please add meals in OPEX → Meals → {tourTypeCode.toUpperCase()} tab</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Eintritt Tab */}
           {tourServicesTab === 'eintritt' && (() => {
