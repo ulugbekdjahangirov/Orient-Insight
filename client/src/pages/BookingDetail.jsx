@@ -5252,12 +5252,19 @@ export default function BookingDetail() {
                       onChange={(e) => {
                         const selectedTrain = PREDEFINED_RAILWAYS.find(t => t.trainNumber === e.target.value);
                         if (selectedTrain) {
-                          // Auto-populate date: arrival date + 2 days
+                          // Auto-populate date: departure date + 3 days
+                          // (departureDate + 1 day = arrival in UZ, + 2 days = train date)
                           let autoDate = '';
                           if (booking && booking.departureDate) {
-                            const arrivalDate = new Date(booking.departureDate);
-                            const trainDate = addDays(arrivalDate, 2);
-                            autoDate = format(trainDate, 'yyyy-MM-dd');
+                            console.log('🔍 Railway Date Calculation:');
+                            console.log('  booking.departureDate:', booking.departureDate);
+
+                            const departureDate = new Date(booking.departureDate);
+                            departureDate.setDate(departureDate.getDate() + 3);
+
+                            console.log('  Train date (departure +3 days):', departureDate);
+                            autoDate = format(departureDate, 'yyyy-MM-dd');
+                            console.log('  autoDate (formatted):', autoDate);
                           }
 
                           // Default tariff to Economy
@@ -6332,7 +6339,8 @@ export default function BookingDetail() {
                         <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Departure</th>
                         <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Arrival</th>
                         <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">PAX</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold">Price (UZS)</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold border-r border-orange-400">Price (UZS)</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -6366,12 +6374,23 @@ export default function BookingDetail() {
                           <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
                             {railway.pax > 0 ? railway.pax : '-'}
                           </td>
-                          <td className="px-4 py-3 text-right font-bold">
+                          <td className="px-4 py-3 text-right font-bold border-r border-gray-200">
                             {railway.price > 0 ? (
                               <span className="text-orange-700">{Math.round(railway.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() => deleteRailway(railway.id)}
+                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                title="O'chirish"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -6381,11 +6400,12 @@ export default function BookingDetail() {
                         <td colSpan="8" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-orange-200">
                           Total:
                         </td>
-                        <td className="px-4 py-4 text-right font-black text-xl text-orange-700">
+                        <td className="px-4 py-4 text-right font-black text-xl text-orange-700 border-r border-orange-200">
                           {railways.reduce((sum, r) => sum + (r.price || 0), 0) > 0
                             ? Math.round(railways.reduce((sum, r) => sum + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
                             : '-'}
                         </td>
+                        <td></td>
                       </tr>
                     </tfoot>
                   </table>
