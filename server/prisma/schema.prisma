@@ -137,6 +137,8 @@ model Booking {
   // Гид
   guideId         Int?
   guide           Guide?    @relation(fields: [guideId], references: [id])
+  guideFullDays   Float?    @default(0)  // Количество полных дней работы гида
+  guideHalfDays   Float?    @default(0)  // Количество половинных дней работы гида
 
   // Дополнительные гиды (JSON)
   additionalGuides String?               // JSON массив дополнительных гидов

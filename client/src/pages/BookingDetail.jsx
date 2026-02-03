@@ -467,6 +467,16 @@ export default function BookingDetail() {
 
   const [tourTypes, setTourTypes] = useState([]);
   const [guides, setGuides] = useState([]);
+  const [guideModalOpen, setGuideModalOpen] = useState(false);
+  const [selectedGuide, setSelectedGuide] = useState(null);
+  const [guideDays, setGuideDays] = useState({ fullDays: 0, halfDays: 0 });
+  const [guideRates, setGuideRates] = useState({ dayRate: 110, halfDayRate: 55 });
+  const [guideType, setGuideType] = useState('main'); // 'main', 'second', 'bergreiseleiter'
+  const [manualGuideEntry, setManualGuideEntry] = useState(false);
+  const [manualGuideName, setManualGuideName] = useState('');
+  const [mainGuide, setMainGuide] = useState(null);
+  const [secondGuide, setSecondGuide] = useState(null);
+  const [bergreiseleiter, setBergreiseleiter] = useState(null);
   const [hotels, setHotels] = useState([]);
   const [bookingRooms, setBookingRooms] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
@@ -1091,6 +1101,28 @@ export default function BookingDetail() {
         setAccommodations(accommodationsRes.data.accommodations || []);
         setTourists(touristsRes.data.tourists || []);
         setRailways(railwaysRes.data.railways || []);
+
+        // Load guide assignment if exists
+        if (b.guide && b.guideId) {
+          const dayRate = b.guide.dayRate || 110;
+          const halfDayRate = b.guide.halfDayRate || 55;
+          const fullDays = b.guideFullDays || (b.tourType?.code === 'ER' ? 12 : 0);
+          const halfDays = b.guideHalfDays || (b.tourType?.code === 'ER' ? 1 : 0);
+          const totalPayment = (fullDays * dayRate) + (halfDays * halfDayRate);
+
+          setMainGuide({
+            guide: b.guide,
+            fullDays: fullDays,
+            halfDays: halfDays,
+            dayRate: dayRate,
+            halfDayRate: halfDayRate,
+            totalPayment: totalPayment
+          });
+        } else if (b.tourType?.code === 'ER') {
+          // For ER tours without a guide, show default values
+          // This will automatically display when the Guide tab is opened
+          // User can edit or remove if needed
+        }
 
         // CRITICAL FOR ER TOURS: Load rooming lists for all accommodations
         // This ensures card view displays correct costs using backend-adjusted dates
@@ -2174,6 +2206,150 @@ export default function BookingDetail() {
   };
 
   // ===================== END TOUR SERVICES FUNCTIONS =====================
+
+  // ===================== GUIDE FUNCTIONS =====================
+
+  // Open guide modal for specific guide type
+  const openGuideModal = (type = 'main') => {
+    setGuideType(type);
+
+    // Set defaults based on type and existing data
+    if (type === 'main' && mainGuide) {
+      // Check if it's a manual entry
+      if (mainGuide.guide && typeof mainGuide.guide === 'string') {
+        setManualGuideEntry(true);
+        setManualGuideName(mainGuide.guide);
+        setSelectedGuide(null);
+      } else {
+        setManualGuideEntry(false);
+        setSelectedGuide(mainGuide.guide);
+        setManualGuideName('');
+      }
+      setGuideDays({ fullDays: mainGuide.fullDays, halfDays: mainGuide.halfDays });
+      setGuideRates({ dayRate: mainGuide.dayRate, halfDayRate: mainGuide.halfDayRate });
+    } else if (type === 'second' && secondGuide) {
+      if (secondGuide.guide && typeof secondGuide.guide === 'string') {
+        setManualGuideEntry(true);
+        setManualGuideName(secondGuide.guide);
+        setSelectedGuide(null);
+      } else {
+        setManualGuideEntry(false);
+        setSelectedGuide(secondGuide.guide);
+        setManualGuideName('');
+      }
+      setGuideDays({ fullDays: secondGuide.fullDays, halfDays: secondGuide.halfDays });
+      setGuideRates({ dayRate: secondGuide.dayRate, halfDayRate: secondGuide.halfDayRate });
+    } else if (type === 'bergreiseleiter' && bergreiseleiter) {
+      if (bergreiseleiter.guide && typeof bergreiseleiter.guide === 'string') {
+        setManualGuideEntry(true);
+        setManualGuideName(bergreiseleiter.guide);
+        setSelectedGuide(null);
+      } else {
+        setManualGuideEntry(false);
+        setSelectedGuide(bergreiseleiter.guide);
+        setManualGuideName('');
+      }
+      setGuideDays({ fullDays: bergreiseleiter.fullDays, halfDays: bergreiseleiter.halfDays });
+      setGuideRates({ dayRate: bergreiseleiter.dayRate, halfDayRate: bergreiseleiter.halfDayRate });
+    } else {
+      // New guide - set defaults
+      setManualGuideEntry(false);
+      setManualGuideName('');
+      setSelectedGuide(null);
+      if (type === 'main') {
+        setGuideDays({ fullDays: 12, halfDays: 1 });
+      } else {
+        setGuideDays({ fullDays: 0, halfDays: 0 });
+      }
+      setGuideRates({ dayRate: 110, halfDayRate: 55 });
+    }
+
+    setGuideModalOpen(true);
+  };
+
+  // Save guide assignment
+  const saveGuideAssignment = async () => {
+    // Validate guide selection or manual entry
+    if (!manualGuideEntry && !selectedGuide) {
+      toast.error('Please select a guide or enter manually');
+      return;
+    }
+
+    if (manualGuideEntry && !manualGuideName.trim()) {
+      toast.error('Please enter guide name');
+      return;
+    }
+
+    if (guideDays.fullDays <= 0 && guideDays.halfDays <= 0) {
+      toast.error('Please enter working days');
+      return;
+    }
+
+    const totalPayment =
+      (parseFloat(guideDays.fullDays) || 0) * (parseFloat(guideRates.dayRate) ?? 110) +
+      (parseFloat(guideDays.halfDays) || 0) * (parseFloat(guideRates.halfDayRate) ?? 55);
+
+    const guideData = {
+      guide: manualGuideEntry ? manualGuideName.trim() : selectedGuide,
+      fullDays: parseFloat(guideDays.fullDays) || 0,
+      halfDays: parseFloat(guideDays.halfDays) || 0,
+      dayRate: parseFloat(guideRates.dayRate) ?? 110,
+      halfDayRate: parseFloat(guideRates.halfDayRate) ?? 55,
+      totalPayment: totalPayment
+    };
+
+    // Set the appropriate guide based on type
+    if (guideType === 'main') {
+      setMainGuide(guideData);
+      toast.success('Main guide assigned successfully');
+    } else if (guideType === 'second') {
+      // When adding second guide, automatically adjust main guide's days
+      if (mainGuide) {
+        const totalERDays = 12.5; // 12 full days + 1 half day for ER tours
+        const secondGuideTotalDays = guideData.fullDays + (guideData.halfDays * 0.5);
+        const remainingDays = totalERDays - secondGuideTotalDays;
+
+        // Split remaining days into full and half days
+        const newMainFullDays = Math.floor(remainingDays);
+        const newMainHalfDays = (remainingDays % 1) > 0 ? 1 : 0;
+
+        const newMainPayment =
+          (newMainFullDays * mainGuide.dayRate) +
+          (newMainHalfDays * mainGuide.halfDayRate);
+
+        setMainGuide({
+          ...mainGuide,
+          fullDays: newMainFullDays,
+          halfDays: newMainHalfDays,
+          totalPayment: newMainPayment
+        });
+      }
+
+      setSecondGuide(guideData);
+      toast.success('Second guide assigned successfully');
+    } else if (guideType === 'bergreiseleiter') {
+      setBergreiseleiter(guideData);
+      toast.success('Bergreiseleiter assigned successfully');
+    }
+
+    setGuideModalOpen(false);
+  };
+
+  // Remove guide by type
+  const removeGuide = (type) => {
+    if (type === 'main') {
+      setMainGuide(null);
+      toast.success('Main guide removed');
+    } else if (type === 'second') {
+      setSecondGuide(null);
+      toast.success('Second guide removed');
+    } else if (type === 'bergreiseleiter') {
+      setBergreiseleiter(null);
+      toast.success('Bergreiseleiter removed');
+    }
+  };
+
+  // ===================== END GUIDE FUNCTIONS =====================
 
   // Export Tourist List as PDF
   const exportTouristListPDF = () => {
@@ -6880,8 +7056,258 @@ export default function BookingDetail() {
           {tourServicesTab === 'guide' && (
             <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-rose-100 p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500"></div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Guide Services</h3>
-              <p className="text-gray-600">Guide costs and details will be displayed here</p>
+
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                  <Users className="w-7 h-7 text-rose-600" />
+                  Guide Services
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openGuideModal('main')}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    title="Add Main Guide (12 days + 1 half day)"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Main Guide
+                  </button>
+                  <button
+                    onClick={() => openGuideModal('second')}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    title="Add Second Guide"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Second Guide
+                  </button>
+                  <button
+                    onClick={() => openGuideModal('bergreiseleiter')}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    title="Add Bergreiseleiter"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Bergreiseleiter
+                  </button>
+                </div>
+              </div>
+
+              {(mainGuide || secondGuide || bergreiseleiter) ? (
+                <div className="space-y-6">
+                  {/* Main Guide Table */}
+                  {mainGuide && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
+                            <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-r border-blue-200">Guide name</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Type</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Full days</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Half days</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Day rate</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Half day rate</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Total payment</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900 border-r border-blue-200">
+                              {typeof mainGuide.guide === 'string' ? mainGuide.guide : mainGuide.guide.name}
+                            </td>
+                            <td className="px-4 py-3 text-center border-r border-blue-200">
+                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                                Main
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
+                              {mainGuide.fullDays}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
+                              {mainGuide.halfDays || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
+                              ${mainGuide.dayRate}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
+                              ${mainGuide.halfDayRate}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-blue-700 border-r border-blue-200">
+                              ${Math.round(mainGuide.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => openGuideModal('main')}
+                                  className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => removeGuide('main')}
+                                  className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Second Guide Table */}
+                  {secondGuide && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-green-50 to-green-100 border-b-2 border-green-200">
+                            <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-r border-green-200">Guide name</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Type</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Full days</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Half days</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Day rate</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Half day rate</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Total payment</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-green-200 hover:bg-green-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900 border-r border-green-200">
+                              {typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide.name}
+                            </td>
+                            <td className="px-4 py-3 text-center border-r border-green-200">
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                                Second
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
+                              {secondGuide.fullDays}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
+                              {secondGuide.halfDays || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
+                              ${secondGuide.dayRate}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
+                              ${secondGuide.halfDayRate}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-green-700 border-r border-green-200">
+                              ${Math.round(secondGuide.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => openGuideModal('second')}
+                                  className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => removeGuide('second')}
+                                  className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Bergreiseleiter Table */}
+                  {bergreiseleiter && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
+                            <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-r border-purple-200">Guide name</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Type</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Full days</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Half days</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Day rate</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Half day rate</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Total payment</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-purple-200 hover:bg-purple-50 transition-colors">
+                            <td className="px-4 py-3 font-medium text-gray-900 border-r border-purple-200">
+                              {typeof bergreiseleiter.guide === 'string' ? bergreiseleiter.guide : bergreiseleiter.guide.name}
+                            </td>
+                            <td className="px-4 py-3 text-center border-r border-purple-200">
+                              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+                                Bergreiseleiter
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
+                              {bergreiseleiter.fullDays}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
+                              {bergreiseleiter.halfDays || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
+                              ${bergreiseleiter.dayRate}
+                            </td>
+                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
+                              ${bergreiseleiter.halfDayRate}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-purple-700 border-r border-purple-200">
+                              ${Math.round(bergreiseleiter.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => openGuideModal('bergreiseleiter')}
+                                  className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => removeGuide('bergreiseleiter')}
+                                  className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Total Payment Summary */}
+                  <div className="mt-6 p-4 bg-gradient-to-r from-rose-100 to-pink-100 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-bold text-gray-900">Total Guide Payment:</span>
+                      <span className="text-2xl font-bold text-rose-700">
+                        ${Math.round(
+                          (mainGuide?.totalPayment || 0) +
+                          (secondGuide?.totalPayment || 0) +
+                          (bergreiseleiter?.totalPayment || 0)
+                        ).toLocaleString('en-US').replace(/,/g, ' ')} USD
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>No guides assigned yet</p>
+                  <p className="text-sm mt-2">Click buttons above to assign guides</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -10968,6 +11394,216 @@ export default function BookingDetail() {
           onSave={() => loadData()}
           onClose={() => { setAccommodationFormOpen(false); setEditingAccommodation(null); }}
         />
+      )}
+
+      {/* Guide Selection Modal */}
+      {guideModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Users className="w-6 h-6" />
+                  {guideType === 'main' ? 'Main Guide' : guideType === 'second' ? 'Second Guide' : 'Bergreiseleiter'}
+                </h2>
+                <button
+                  onClick={() => setGuideModalOpen(false)}
+                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Manual Entry Toggle */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="manualGuideEntry"
+                  checked={manualGuideEntry}
+                  onChange={(e) => {
+                    setManualGuideEntry(e.target.checked);
+                    if (e.target.checked) {
+                      setSelectedGuide(null);
+                    } else {
+                      setManualGuideName('');
+                    }
+                  }}
+                  className="w-4 h-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500"
+                />
+                <label htmlFor="manualGuideEntry" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Enter guide name manually
+                </label>
+              </div>
+
+              {/* Guide Selection */}
+              <div>
+                {manualGuideEntry ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Guide Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={manualGuideName}
+                      onChange={(e) => setManualGuideName(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                      placeholder="Enter guide name"
+                      required
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Guide *
+                    </label>
+                    <select
+                      value={selectedGuide?.id || ''}
+                      onChange={(e) => {
+                        const guide = guides.find(g => g.id === parseInt(e.target.value));
+                        setSelectedGuide(guide);
+                        // Auto-fill rates from Guides Payment module
+                        // Use ?? instead of || to properly handle 0 values
+                        if (guide) {
+                          setGuideRates({
+                            dayRate: guide.dayRate ?? 110,
+                            halfDayRate: guide.halfDayRate ?? 55
+                          });
+                        }
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">-- Select Guide --</option>
+                      {guides
+                        .filter(g => g.isActive)
+                        .map(guide => (
+                          <option key={guide.id} value={guide.id}>
+                            {guide.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Days Worked */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full days *
+                  </label>
+                  <input
+                    type="number"
+                    value={guideDays.fullDays}
+                    onChange={(e) => setGuideDays(prev => ({ ...prev, fullDays: parseFloat(e.target.value) || 0 }))}
+                    min="0"
+                    step="0.5"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    placeholder="e.g., 12"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Half days
+                  </label>
+                  <input
+                    type="number"
+                    value={guideDays.halfDays}
+                    onChange={(e) => setGuideDays(prev => ({ ...prev, halfDays: parseFloat(e.target.value) || 0 }))}
+                    min="0"
+                    step="0.5"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    placeholder="e.g., 0.5"
+                  />
+                </div>
+              </div>
+
+              {/* Rates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full day rate (USD) *
+                  </label>
+                  <input
+                    type="number"
+                    value={guideRates.dayRate}
+                    onChange={(e) => setGuideRates(prev => ({ ...prev, dayRate: parseFloat(e.target.value) || 110 }))}
+                    min="0"
+                    step="1"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    placeholder="110"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Half day rate (USD) *
+                  </label>
+                  <input
+                    type="number"
+                    value={guideRates.halfDayRate}
+                    onChange={(e) => setGuideRates(prev => ({ ...prev, halfDayRate: parseFloat(e.target.value) || 55 }))}
+                    min="0"
+                    step="1"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    placeholder="55"
+                  />
+                </div>
+              </div>
+
+              {/* Total Payment Calculation */}
+              {selectedGuide && (guideDays.fullDays > 0 || guideDays.halfDays > 0) && (
+                <div className="p-4 bg-gradient-to-r from-rose-100 to-pink-100 rounded-lg">
+                  <div className="space-y-2 text-sm">
+                    {guideDays.fullDays > 0 && (
+                      <p className="flex justify-between">
+                        <span>Full days: {guideDays.fullDays} × ${guideRates.dayRate}</span>
+                        <strong>${(guideDays.fullDays * guideRates.dayRate).toFixed(2)}</strong>
+                      </p>
+                    )}
+                    {guideDays.halfDays > 0 && (
+                      <p className="flex justify-between">
+                        <span>Half days: {guideDays.halfDays} × ${guideRates.halfDayRate}</span>
+                        <strong>${(guideDays.halfDays * guideRates.halfDayRate).toFixed(2)}</strong>
+                      </p>
+                    )}
+                    <div className="pt-2 mt-2 border-t-2 border-rose-300">
+                      <p className="flex justify-between text-lg font-bold text-rose-700">
+                        <span>Total payment:</span>
+                        <span>
+                          ${Math.round(
+                            (guideDays.fullDays * guideRates.dayRate) +
+                            (guideDays.halfDays * guideRates.halfDayRate)
+                          ).toLocaleString('en-US').replace(/,/g, ' ')} USD
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setGuideModalOpen(false)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveGuideAssignment}
+                  className="px-6 py-2 bg-gradient-to-r from-rose-600 to-pink-600 text-white rounded-lg hover:from-rose-700 hover:to-pink-700 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
