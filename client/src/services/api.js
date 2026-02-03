@@ -58,6 +58,10 @@ export const bookingsApi = {
   getAccommodationRoomTypes: () => api.get('/bookings/accommodation-room-types'),
   // Tourists
   getTourists: (bookingId) => api.get(`/bookings/${bookingId}/tourists`),
+  // Routes, Railways, Flights (for itinerary)
+  getRoutes: (bookingId) => api.get(`/bookings/${bookingId}/routes`),
+  getRailways: (bookingId) => api.get(`/bookings/${bookingId}/railways`),
+  getFlights: (bookingId) => api.get(`/bookings/${bookingId}/flights`),
   // Update all bookings' statuses based on PAX
   updateAllStatuses: () => api.post('/bookings/update-all-statuses'),
   // Recalculate room counts for all bookings
@@ -65,7 +69,9 @@ export const bookingsApi = {
   // Debug room preferences for a booking
   debugRooms: (id) => api.get(`/bookings/${id}/debug-rooms`),
   // Debug count bookings by type
-  debugCountByType: () => api.get('/bookings/debug/count-by-type')
+  debugCountByType: () => api.get('/bookings/debug/count-by-type'),
+  // Load accommodations from template (with PAX split logic)
+  loadFromTemplate: (id) => api.post(`/bookings/${id}/load-template`)
 };
 
 // API for tourists (also used by Rooming List module)
@@ -266,6 +272,14 @@ export const gmailApi = {
   // Settings
   getSettings: () => api.get('/gmail/settings'),
   updateSettings: (data) => api.post('/gmail/settings', data)
+};
+
+// API для Tour Services (Eintritt, Metro, Shou, Other)
+export const tourServicesApi = {
+  getAll: (bookingId, type) => api.get(`/bookings/${bookingId}/tour-services`, { params: { type } }),
+  create: (bookingId, data) => api.post(`/bookings/${bookingId}/tour-services`, data),
+  update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/tour-services/${id}`, data),
+  delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/tour-services/${id}`)
 };
 
 export default api;

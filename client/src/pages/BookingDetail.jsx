@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import ItineraryPreview from '../components/booking/ItineraryPreview';
@@ -429,6 +429,21 @@ export default function BookingDetail() {
     departureTime: '',
     arrivalTime: '',
     tariff: 'Economy',
+    pricePerPerson: 0,
+    pax: 0,
+    price: 0,
+    notes: ''
+  });
+
+  // Tour Services state (Eintritt, Metro, Shou, Other)
+  const [tourServices, setTourServices] = useState({ eintritt: [], metro: [], shou: [], other: [] });
+  const [loadingTourServices, setLoadingTourServices] = useState(false);
+  const [tourServiceModalOpen, setTourServiceModalOpen] = useState(false);
+  const [tourServiceType, setTourServiceType] = useState('EINTRITT'); // Current service type being edited
+  const [editingTourService, setEditingTourService] = useState(null);
+  const [tourServiceForm, setTourServiceForm] = useState({
+    name: '',
+    date: '',
     pricePerPerson: 0,
     pax: 0,
     price: 0,
@@ -1861,6 +1876,116 @@ export default function BookingDetail() {
       toast.error(error.response?.data?.error || 'Poezd o\'chirishda xatolik');
     }
   };
+
+  // ===================== TOUR SERVICES FUNCTIONS =====================
+
+  // Load tour services by type
+  const loadTourServices = async (type) => {
+    if (!id || isNew) return;
+
+    try {
+      setLoadingTourServices(true);
+      const res = await tourServicesApi.getAll(id, type);
+      const servicesData = Array.isArray(res.data?.services) ? res.data.services : [];
+
+      setTourServices(prev => ({
+        ...prev,
+        [type.toLowerCase()]: servicesData
+      }));
+      console.log(`✅ Loaded ${type} services:`, servicesData.length);
+    } catch (error) {
+      console.error(`Error loading ${type} services:`, error);
+      toast.error('Xizmatlarni yuklashda xatolik');
+    } finally {
+      setLoadingTourServices(false);
+    }
+  };
+
+  // Open tour service modal
+  const openTourServiceModal = (type) => {
+    setTourServiceType(type);
+    setEditingTourService(null);
+    setTourServiceForm({
+      name: '',
+      date: '',
+      pricePerPerson: 0,
+      pax: booking?.pax || 0,
+      price: 0,
+      notes: ''
+    });
+    setTourServiceModalOpen(true);
+  };
+
+  // Edit tour service
+  const editTourService = (service) => {
+    setTourServiceType(service.type);
+    setEditingTourService(service);
+
+    const pax = service.pax || 0;
+    const totalPrice = service.price || 0;
+    const pricePerPerson = pax > 0 ? totalPrice / pax : service.pricePerPerson || 0;
+
+    setTourServiceForm({
+      name: service.name || '',
+      date: service.date ? format(new Date(service.date), 'yyyy-MM-dd') : '',
+      pricePerPerson: pricePerPerson,
+      pax: pax,
+      price: totalPrice,
+      notes: service.notes || ''
+    });
+    setTourServiceModalOpen(true);
+  };
+
+  // Save tour service
+  const saveTourService = async (e) => {
+    e.preventDefault();
+    if (!id) return;
+
+    try {
+      const data = {
+        type: tourServiceType,
+        name: tourServiceForm.name,
+        date: tourServiceForm.date || null,
+        pricePerPerson: parseFloat(tourServiceForm.pricePerPerson) || 0,
+        pax: parseInt(tourServiceForm.pax) || 0,
+        notes: tourServiceForm.notes || null
+      };
+
+      if (editingTourService) {
+        await tourServicesApi.update(id, editingTourService.id, data);
+        toast.success('Xizmat yangilandi');
+      } else {
+        await tourServicesApi.create(id, data);
+        toast.success('Xizmat qo\'shildi');
+      }
+
+      setTourServiceModalOpen(false);
+      await loadTourServices(tourServiceType);
+    } catch (error) {
+      console.error('Error saving tour service:', error);
+      toast.error(error.response?.data?.error || 'Xizmatni saqlashda xatolik');
+    }
+  };
+
+  // Delete tour service
+  const deleteTourService = async (serviceId, type) => {
+    if (!id) return;
+
+    if (!window.confirm('Xizmatni o\'chirmoqchimisiz?')) {
+      return;
+    }
+
+    try {
+      await tourServicesApi.delete(id, serviceId);
+      toast.success('Xizmat o\'chirildi');
+      await loadTourServices(type);
+    } catch (error) {
+      console.error('Error deleting tour service:', error);
+      toast.error(error.response?.data?.error || 'Xizmatni o\'chirishda xatolik');
+    }
+  };
+
+  // ===================== END TOUR SERVICES FUNCTIONS =====================
 
   // Export Tourist List as PDF
   const exportTouristListPDF = () => {
@@ -6082,6 +6207,50 @@ export default function BookingDetail() {
                 <span className="text-lg">🍽️</span>
                 Meals
               </button>
+              <button
+                onClick={() => setTourServicesTab('eintritt')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'eintritt'
+                    ? 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 hover:from-cyan-600 hover:via-sky-600 hover:to-blue-600 text-white shadow-cyan-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <span className="text-lg">🎫</span>
+                Eintritt
+              </button>
+              <button
+                onClick={() => setTourServicesTab('metro')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'metro'
+                    ? 'bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500 hover:from-lime-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-lime-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <span className="text-lg">🚇</span>
+                Metro
+              </button>
+              <button
+                onClick={() => setTourServicesTab('shou')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'shou'
+                    ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 hover:from-pink-600 hover:via-rose-600 hover:to-red-600 text-white shadow-pink-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <span className="text-lg">🎭</span>
+                Shou
+              </button>
+              <button
+                onClick={() => setTourServicesTab('other')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'other'
+                    ? 'bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500 hover:from-slate-600 hover:via-gray-600 hover:to-zinc-600 text-white shadow-slate-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <span className="text-lg">📋</span>
+                Other
+              </button>
             </nav>
           </div>
 
@@ -6536,6 +6705,146 @@ export default function BookingDetail() {
               <p className="text-gray-600">Meal costs and details will be displayed here</p>
             </div>
           )}
+
+          {/* Eintritt Tab */}
+          {tourServicesTab === 'eintritt' && (() => {
+            React.useEffect(() => { loadTourServices('EINTRITT'); }, []);
+            const services = tourServices.eintritt || [];
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500"></div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span className="text-3xl">🎫</span>
+                    Eintritt (Entrance Fees)
+                  </h3>
+                  <button
+                    onClick={() => openTourServiceModal('EINTRITT')}
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg"
+                  >
+                    + Add Eintritt
+                  </button>
+                </div>
+                {services.length > 0 ? (
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
+                        <th className="px-4 py-3 text-left">Name</th>
+                        <th className="px-4 py-3 text-center">Date</th>
+                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
+                        <th className="px-4 py-3 text-center">PAX</th>
+                        <th className="px-4 py-3 text-right">Total (UZS)</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((s, idx) => (
+                        <tr key={s.id} className="border-b hover:bg-cyan-50">
+                          <td className="px-4 py-3">{s.name}</td>
+                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
+                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-cyan-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <button onClick={() => editTourService(s)} className="p-1.5 bg-cyan-100 hover:bg-cyan-200 text-cyan-600 rounded-lg mr-2">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => deleteTourService(s.id, 'EINTRITT')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-cyan-100 font-bold">
+                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
+                        <td className="px-4 py-3 text-right text-cyan-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No entrance fees added yet</p>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Metro Tab */}
+          {tourServicesTab === 'metro' && (() => {
+            React.useEffect(() => { loadTourServices('METRO'); }, []);
+            const services = tourServices.metro || [];
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-lime-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500"></div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span className="text-3xl">🚇</span>
+                    Metro
+                  </h3>
+                  <button onClick={() => openTourServiceModal('METRO')} className="px-6 py-3 bg-gradient-to-r from-lime-500 to-emerald-500 text-white font-bold rounded-xl hover:from-lime-600 hover:to-emerald-600 transition-all shadow-lg">+ Add Metro</button>
+                </div>
+                {services.length > 0 ? (
+                  <table className="w-full border-collapse">
+                    <thead><tr className="bg-gradient-to-r from-lime-600 to-emerald-600 text-white"><th className="px-4 py-3 text-left">Name</th><th className="px-4 py-3 text-center">Date</th><th className="px-4 py-3 text-right">Price/Person (UZS)</th><th className="px-4 py-3 text-center">PAX</th><th className="px-4 py-3 text-right">Total (UZS)</th><th className="px-4 py-3 text-center">Actions</th></tr></thead>
+                    <tbody>{services.map((s) => (<tr key={s.id} className="border-b hover:bg-lime-50"><td className="px-4 py-3">{s.name}</td><td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td><td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center">{s.pax || '-'}</td><td className="px-4 py-3 text-right font-bold text-lime-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center"><button onClick={() => editTourService(s)} className="p-1.5 bg-lime-100 hover:bg-lime-200 text-lime-600 rounded-lg mr-2"><Edit className="w-4 h-4" /></button><button onClick={() => deleteTourService(s.id, 'METRO')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody>
+                    <tfoot><tr className="bg-lime-100 font-bold"><td colSpan="4" className="px-4 py-3 text-right">Total:</td><td className="px-4 py-3 text-right text-lime-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td><td></td></tr></tfoot>
+                  </table>
+                ) : (<p className="text-gray-500 text-center py-8">No metro services added yet</p>)}
+              </div>
+            );
+          })()}
+
+          {/* Shou Tab */}
+          {tourServicesTab === 'shou' && (() => {
+            React.useEffect(() => { loadTourServices('SHOU'); }, []);
+            const services = tourServices.shou || [];
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-pink-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500"></div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span className="text-3xl">🎭</span>
+                    Shou (Shows)
+                  </h3>
+                  <button onClick={() => openTourServiceModal('SHOU')} className="px-6 py-3 bg-gradient-to-r from-pink-500 to-red-500 text-white font-bold rounded-xl hover:from-pink-600 hover:to-red-600 transition-all shadow-lg">+ Add Shou</button>
+                </div>
+                {services.length > 0 ? (
+                  <table className="w-full border-collapse">
+                    <thead><tr className="bg-gradient-to-r from-pink-600 to-red-600 text-white"><th className="px-4 py-3 text-left">Name</th><th className="px-4 py-3 text-center">Date</th><th className="px-4 py-3 text-right">Price/Person (UZS)</th><th className="px-4 py-3 text-center">PAX</th><th className="px-4 py-3 text-right">Total (UZS)</th><th className="px-4 py-3 text-center">Actions</th></tr></thead>
+                    <tbody>{services.map((s) => (<tr key={s.id} className="border-b hover:bg-pink-50"><td className="px-4 py-3">{s.name}</td><td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td><td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center">{s.pax || '-'}</td><td className="px-4 py-3 text-right font-bold text-pink-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center"><button onClick={() => editTourService(s)} className="p-1.5 bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-lg mr-2"><Edit className="w-4 h-4" /></button><button onClick={() => deleteTourService(s.id, 'SHOU')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody>
+                    <tfoot><tr className="bg-pink-100 font-bold"><td colSpan="4" className="px-4 py-3 text-right">Total:</td><td className="px-4 py-3 text-right text-pink-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td><td></td></tr></tfoot>
+                  </table>
+                ) : (<p className="text-gray-500 text-center py-8">No shows added yet</p>)}
+              </div>
+            );
+          })()}
+
+          {/* Other Tab */}
+          {tourServicesTab === 'other' && (() => {
+            React.useEffect(() => { loadTourServices('OTHER'); }, []);
+            const services = tourServices.other || [];
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500"></div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                    <span className="text-3xl">📋</span>
+                    Other Expenses
+                  </h3>
+                  <button onClick={() => openTourServiceModal('OTHER')} className="px-6 py-3 bg-gradient-to-r from-slate-500 to-zinc-500 text-white font-bold rounded-xl hover:from-slate-600 hover:to-zinc-600 transition-all shadow-lg">+ Add Other</button>
+                </div>
+                {services.length > 0 ? (
+                  <table className="w-full border-collapse">
+                    <thead><tr className="bg-gradient-to-r from-slate-600 to-zinc-600 text-white"><th className="px-4 py-3 text-left">Name</th><th className="px-4 py-3 text-center">Date</th><th className="px-4 py-3 text-right">Price/Person (UZS)</th><th className="px-4 py-3 text-center">PAX</th><th className="px-4 py-3 text-right">Total (UZS)</th><th className="px-4 py-3 text-center">Actions</th></tr></thead>
+                    <tbody>{services.map((s) => (<tr key={s.id} className="border-b hover:bg-slate-50"><td className="px-4 py-3">{s.name}</td><td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td><td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center">{s.pax || '-'}</td><td className="px-4 py-3 text-right font-bold text-slate-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center"><button onClick={() => editTourService(s)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg mr-2"><Edit className="w-4 h-4" /></button><button onClick={() => deleteTourService(s.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody>
+                    <tfoot><tr className="bg-slate-100 font-bold"><td colSpan="4" className="px-4 py-3 text-right">Total:</td><td className="px-4 py-3 text-right text-slate-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td><td></td></tr></tfoot>
+                  </table>
+                ) : (<p className="text-gray-500 text-center py-8">No other expenses added yet</p>)}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -9982,6 +10291,57 @@ export default function BookingDetail() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tour Service Modal (Eintritt, Metro, Shou, Other) */}
+      {tourServiceModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+            <div className="p-6 border-b">
+              <h2 className="text-2xl font-bold">{editingTourService ? 'Edit' : 'Add'} {tourServiceType}</h2>
+            </div>
+            <form onSubmit={saveTourService} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold mb-2">Name *</label>
+                <input type="text" required value={tourServiceForm.name} onChange={(e) => setTourServiceForm({...tourServiceForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-2">Date</label>
+                <input type="date" value={tourServiceForm.date} onChange={(e) => setTourServiceForm({...tourServiceForm, date: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-2">Price/Person (UZS)</label>
+                  <input type="number" value={tourServiceForm.pricePerPerson} onChange={(e) => {
+                    const pricePerPerson = parseFloat(e.target.value) || 0;
+                    const pax = parseInt(tourServiceForm.pax) || 0;
+                    setTourServiceForm({...tourServiceForm, pricePerPerson, price: pricePerPerson * pax});
+                  }} className="w-full px-4 py-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-2">PAX</label>
+                  <input type="number" value={tourServiceForm.pax} onChange={(e) => {
+                    const pax = parseInt(e.target.value) || 0;
+                    const pricePerPerson = parseFloat(tourServiceForm.pricePerPerson) || 0;
+                    setTourServiceForm({...tourServiceForm, pax, price: pricePerPerson * pax});
+                  }} className="w-full px-4 py-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-2">Total (UZS)</label>
+                  <input type="number" value={tourServiceForm.price} readOnly className="w-full px-4 py-2 border rounded-lg bg-gray-50" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-2">Notes</label>
+                <textarea value={tourServiceForm.notes} onChange={(e) => setTourServiceForm({...tourServiceForm, notes: e.target.value})} className="w-full px-4 py-2 border rounded-lg" rows="3"></textarea>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setTourServiceModalOpen(false)} className="px-6 py-2 border rounded-lg hover:bg-gray-100">Cancel</button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

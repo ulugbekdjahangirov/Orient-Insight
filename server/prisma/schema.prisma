@@ -86,6 +86,14 @@ model Guide {
   // Примечания
   notes       String?
 
+  // Payment rates (in USD)
+  dayRate     Float?    @default(110)   // Full day rate in USD
+  halfDayRate Float?    @default(55)    // Half day rate in USD
+
+  // City-specific rates
+  city        String?                   // City name for city-specific rate
+  cityRate    Float?    @default(0)     // City-specific rate in USD
+
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt @default(now())
@@ -130,6 +138,10 @@ model Booking {
   guideId         Int?
   guide           Guide?    @relation(fields: [guideId], references: [id])
 
+  // Дополнительные гиды (JSON)
+  additionalGuides String?               // JSON массив дополнительных гидов
+  bergreiseleiter  String?               // JSON объект для Bergreiseleiter
+
   // Транспорт
   trainTickets    String?   // ЖД Билеты
   avia            String?   // Авиабилеты
@@ -166,6 +178,9 @@ model Booking {
 
   // Маршруты транспорта
   routes          Route[]
+
+  // Tour services (Eintritt, Metro, Shou, Other)
+  tourServices    TourService[]
 
   // Дополнительные даты для ZA туров
   dateOlot        DateTime? // Olot
@@ -554,13 +569,22 @@ model Flight {
   // Информация о рейсе
   flightNumber    String?                  // Номер рейса (например, HY101)
   airline         String?                  // Авиакомпания
-  departure       String                   // Город вылета
-  arrival         String                   // Город прибытия
+  groupName       String?                  // Группа (например, ER-01)
+  route           String?                  // Маршрут
+  departure       String                   // Город вылета (используется для цены)
+  arrival         String                   // Город прибытия (используется для цены)
 
   // Дата и время
   date            DateTime?                // Дата рейса
   departureTime   String?                  // Время вылета (HH:MM)
   arrivalTime     String?                  // Время прибытия (HH:MM)
+
+  // Количество пассажиров
+  pax             Int?                     // Количество пассажиров
+
+  // Стоимость
+  price           Float     @default(0)    // Цена билетов (USD)
+  tariff          String?   @default("economy") // Тариф: economy или business
 
   // Дополнительная информация
   notes           String?
@@ -621,6 +645,7 @@ model Railway {
   // Информация о поезде
   trainNumber     String?                  // Номер поезда (например, 661)
   trainName       String?                  // Название поезда
+  groupName       String?                  // Группа (например, ER-01)
   departure       String                   // Город отправления
   arrival         String                   // Город прибытия
 
@@ -628,6 +653,12 @@ model Railway {
   date            DateTime?                // Дата отправления
   departureTime   String?                  // Время отправления (HH:MM)
   arrivalTime     String?                  // Время прибытия (HH:MM)
+
+  // Количество пассажиров
+  pax             Int?                     // Количество пассажиров
+
+  // Стоимость
+  price           Float     @default(0)    // Цена билетов (USD)
 
   // Дополнительная информация
   notes           String?
@@ -688,6 +719,7 @@ model Route {
   date            DateTime?                // Дата маршрута
   city            String?                  // Город (Tashkent, Samarkand, etc.)
   routeName       String                   // Название маршрута (Tashkent Airport PickUp, etc.)
+  itinerary       String?                  // Sayohat dasturi (описание маршрута)
 
   // Транспорт
   personCount     Int       @default(0)    // Количество человек
@@ -716,6 +748,7 @@ model RouteTemplate {
   dayOffset       Int       @default(1)    // Смещение дней от даты вылета
   city            String?                  // Город (Tashkent, Samarkand, etc.)
   routeName       String                   // Название маршрута
+  itinerary       String?                  // Sayohat dasturi (описание маршрута)
 
   // Транспорт (default values)
   provider        String?                  // Провайдер (xayrulla, sevil, etc.)
@@ -795,6 +828,7 @@ model TransportVehicle {
   businessPrice   String?                  // Business price
   departure       String?                  // Departure time
   arrival         String?                  // Arrival time
+  flightType      String?                  // Flight type: DOMESTIC or INTERNATIONAL (for planes only)
 
   sortOrder       Int       @default(0)
   isActive        Boolean   @default(true)
@@ -891,4 +925,33 @@ model SystemSetting {
   value     String   // Stored as TEXT in SQLite
   encrypted Boolean  @default(false)
   updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// Module: Tour Services (Eintritt, Metro, Shou, Other)
+// ============================================
+
+// Generic tour service entry (entrance fees, metro, shows, other expenses)
+model TourService {
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  // Service type
+  type            String                   // EINTRITT, METRO, SHOU, OTHER
+
+  // Basic data
+  name            String                   // Service name (Museum name, Show name, etc.)
+  date            DateTime?                // Service date
+  pricePerPerson  Float     @default(0)    // Price per person
+  pax             Int       @default(0)    // Number of passengers
+  price           Float     @default(0)    // Total price (pricePerPerson * pax)
+  notes           String?                  // Additional notes
+
+  sortOrder       Int       @default(0)    // Sort order
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([type])
 }

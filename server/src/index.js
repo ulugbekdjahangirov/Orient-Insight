@@ -15,6 +15,7 @@ const touristRoutes = require('./routes/tourist.routes');
 const routeRoutes = require('./routes/route.routes');
 const transportRoutes = require('./routes/transport.routes');
 const gmailRoutes = require('./routes/gmail.routes');
+const tourServiceRoutes = require('./routes/tourservice.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +35,7 @@ app.use('/api/bookings', (req, res, next) => {
 app.use('/api/bookings', touristRoutes); // Tourist routes MUST be before bookingRoutes to avoid :id catch-all
 app.use('/api/bookings', routeRoutes);  // Route routes for transport planning
 app.use('/api/routes', routeRoutes);     // Route template routes (standalone, not per booking)
+app.use('/api/bookings', tourServiceRoutes); // Tour service routes (Eintritt, Metro, Shou, Other)
 app.use('/api/accommodations', bookingRoutes); // Accommodation template routes
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/guides', guideRoutes);
@@ -76,3 +78,4 @@ app.listen(PORT, () => {
 const { startGmailPolling } = require('./jobs/gmailPoller.job');
 startGmailPolling();
 
+// restart
