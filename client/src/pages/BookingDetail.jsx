@@ -27,6 +27,7 @@ import {
   Wand2,
   FileDown,
   ChevronDown,
+  ChevronUp,
   Car,
   Database,
   Download,
@@ -441,6 +442,8 @@ export default function BookingDetail() {
   const [tourServiceModalOpen, setTourServiceModalOpen] = useState(false);
   const [tourServiceType, setTourServiceType] = useState('EINTRITT'); // Current service type being edited
   const [editingTourService, setEditingTourService] = useState(null);
+  const [editingEintrittDate, setEditingEintrittDate] = useState(null); // Track which Eintritt row date is being edited
+  const [hiddenTemplateIds, setHiddenTemplateIds] = useState([]); // Track hidden template entries
   const [tourServiceForm, setTourServiceForm] = useState({
     name: '',
     date: '',
@@ -884,6 +887,22 @@ export default function BookingDetail() {
     setDatesInitialized(false); // Reset when booking changes
     loadData();
   }, [id]);
+
+  // Load tour services when tab changes
+  useEffect(() => {
+    if (!isNew && id && activeTab === 'tour-services') {
+      const typeMap = {
+        'eintritt': 'EINTRITT',
+        'metro': 'METRO',
+        'shou': 'SHOU',
+        'other': 'OTHER'
+      };
+      const serviceType = typeMap[tourServicesTab];
+      if (serviceType) {
+        loadTourServices(serviceType);
+      }
+    }
+  }, [tourServicesTab, activeTab, id, isNew]);
 
   // Load accommodation-specific rooming lists for all accommodations
   useEffect(() => {
@@ -1982,6 +2001,175 @@ export default function BookingDetail() {
     } catch (error) {
       console.error('Error deleting tour service:', error);
       toast.error(error.response?.data?.error || 'Xizmatni o\'chirishda xatolik');
+    }
+  };
+
+  // Update Eintritt date
+  const updateEintrittDate = async (item, newDate) => {
+    if (!id) return;
+
+    try {
+      // Check if this is a template entry (from Opex) or saved entry
+      const isTemplate = item.isTemplate && item.id.startsWith('opex-');
+
+      const data = {
+        type: 'EINTRITT',
+        name: item.name,
+        date: newDate || null,
+        pricePerPerson: item.pricePerPerson || 0,
+        pax: item.pax || 0,
+        notes: item.city ? `City: ${item.city}` : null
+      };
+
+      if (isTemplate) {
+        // Create new entry in database
+        await tourServicesApi.create(id, data);
+        toast.success('Sana saqlandi');
+      } else {
+        // Update existing entry
+        const actualId = parseInt(item.id);
+        await tourServicesApi.update(id, actualId, data);
+        toast.success('Sana yangilandi');
+      }
+
+      await loadTourServices('EINTRITT');
+      setEditingEintrittDate(null);
+    } catch (error) {
+      console.error('Error updating Eintritt date:', error);
+      toast.error(error.response?.data?.error || 'Sanani saqlashda xatolik');
+    }
+  };
+
+  // Delete Eintritt entry
+  const deleteEintrittEntry = async (item) => {
+    if (!id) return;
+
+    if (!window.confirm(`"${item.name}" yozuvini o'chirmoqchimisiz?`)) {
+      return;
+    }
+
+    try {
+      if (item.isTemplate) {
+        // For template entries, just hide them from view
+        setHiddenTemplateIds(prev => [...prev, item.id]);
+        toast.success('Yozuv yashirildi');
+      } else {
+        // For saved entries, delete from database
+        await tourServicesApi.delete(id, item.id);
+        toast.success('Yozuv o\'chirildi');
+        await loadTourServices('EINTRITT');
+      }
+    } catch (error) {
+      console.error('Error deleting Eintritt entry:', error);
+      toast.error(error.response?.data?.error || 'O\'chirishda xatolik');
+    }
+  };
+
+  // Move Eintritt entry up/down
+  const moveEintrittEntry = async (item, direction) => {
+    if (!id) return;
+
+    try {
+      // If template, auto-save it first, then user needs to click again to move
+      if (item.isTemplate) {
+        const data = {
+          type: 'EINTRITT',
+          name: item.name,
+          date: item.date || null,
+          pricePerPerson: item.pricePerPerson || 0,
+          pax: item.pax || 0,
+          notes: item.city ? `City: ${item.city}` : null
+        };
+        await tourServicesApi.create(id, data);
+        await loadTourServices('EINTRITT');
+        toast.success('Yozuv saqlandi. Yana bosing tartibni o\'zgartirish uchun');
+        return;
+      }
+
+      const services = tourServices.eintritt || [];
+      const currentIndex = services.findIndex(s => s.id === item.id);
+
+      if (currentIndex === -1) {
+        console.error('Entry not found in services:', item.id);
+        return;
+      }
+
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+      if (newIndex < 0 || newIndex >= services.length) {
+        console.log('Cannot move beyond bounds');
+        return;
+      }
+
+      console.log('Moving entry:', currentIndex, '->', newIndex);
+
+      // Swap sortOrder values
+      const currentSortOrder = services[currentIndex].sortOrder || currentIndex;
+      const targetSortOrder = services[newIndex].sortOrder || newIndex;
+
+      // Update with only the necessary fields
+      await tourServicesApi.update(id, services[currentIndex].id, {
+        type: 'EINTRITT',
+        name: services[currentIndex].name,
+        date: services[currentIndex].date,
+        pricePerPerson: services[currentIndex].pricePerPerson,
+        pax: services[currentIndex].pax,
+        notes: services[currentIndex].notes,
+        sortOrder: targetSortOrder
+      });
+
+      await tourServicesApi.update(id, services[newIndex].id, {
+        type: 'EINTRITT',
+        name: services[newIndex].name,
+        date: services[newIndex].date,
+        pricePerPerson: services[newIndex].pricePerPerson,
+        pax: services[newIndex].pax,
+        notes: services[newIndex].notes,
+        sortOrder: currentSortOrder
+      });
+
+      await loadTourServices('EINTRITT');
+      toast.success('Tartib o\'zgartirildi');
+    } catch (error) {
+      console.error('Error moving Eintritt entry:', error);
+      toast.error(error.response?.data?.error || 'Tartibni o\'zgartirishda xatolik');
+    }
+  };
+
+  // Move tour service entry up/down (generic for Metro, Shou, Other)
+  const moveTourService = async (item, direction, type) => {
+    if (!id) return;
+
+    try {
+      const typeKey = type.toLowerCase();
+      const services = tourServices[typeKey] || [];
+      const currentIndex = services.findIndex(s => s.id === item.id);
+
+      if (currentIndex === -1) return;
+
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+      if (newIndex < 0 || newIndex >= services.length) return;
+
+      // Swap sortOrder values
+      const currentSortOrder = services[currentIndex].sortOrder || currentIndex;
+      const targetSortOrder = services[newIndex].sortOrder || newIndex;
+
+      await tourServicesApi.update(id, services[currentIndex].id, {
+        ...services[currentIndex],
+        sortOrder: targetSortOrder
+      });
+
+      await tourServicesApi.update(id, services[newIndex].id, {
+        ...services[newIndex],
+        sortOrder: currentSortOrder
+      });
+
+      await loadTourServices(type);
+      toast.success('Tartib o\'zgartirildi');
+    } catch (error) {
+      console.error(`Error moving ${type} entry:`, error);
+      toast.error(error.response?.data?.error || 'Tartibni o\'zgartirishda xatolik');
     }
   };
 
@@ -6708,29 +6896,238 @@ export default function BookingDetail() {
 
           {/* Eintritt Tab */}
           {tourServicesTab === 'eintritt' && (() => {
-            React.useEffect(() => { loadTourServices('EINTRITT'); }, []);
+            // Load sightseeing data from Opex based on tour type
+            const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+            const sightseeingKey = `${tourTypeCode}Sightseeing`;
+            let sightseeingData = [];
+            try {
+              const saved = localStorage.getItem(sightseeingKey);
+              if (saved) {
+                sightseeingData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading sightseeing from localStorage:', e);
+            }
+
             const services = tourServices.eintritt || [];
+
+            // Function to calculate date for ER tour attractions based on arrival date
+            const getERAttractionDate = (attractionName, arrivalDate) => {
+              if (!arrivalDate) return null;
+
+              const arrival = new Date(arrivalDate);
+              const name = attractionName.toLowerCase().trim().replace(/\s+/g, ' '); // Normalize spaces
+
+              console.log('🔍 Checking attraction:', attractionName, '→ normalized:', name);
+
+              // Day 1 (13.10): Tashkent - Hast Imam, Kukeldash
+              if (name.includes('hast') || name.includes('imam') ||
+                  name.includes('kukeldash') || name.includes('kukeldas') || name.includes('madrasah')) {
+                console.log('✅ Day 1 (13.10) - Tashkent');
+                return format(arrival, 'yyyy-MM-dd');
+              }
+
+              // Day 3 (15.10): Samarkand - Registan, Bibi-Khanum
+              if (name.includes('registan') || name.includes('bibi') || name.includes('khanum') || name.includes('khanym')) {
+                console.log('✅ Day 3 (15.10) - Samarkand');
+                return format(addDays(arrival, 2), 'yyyy-MM-dd');
+              }
+
+              // Day 4 (16.10): Samarkand - Amir Temur, Ulugbek, Daniel, Shah-i-Zinda
+              if (name.includes('amir') || name.includes('temur') ||
+                  name.includes('ulugbek') || name.includes('ulug bek') ||
+                  name.includes('daniel') || name.includes('shah') || name.includes('zinda')) {
+                console.log('✅ Day 4 (16.10) - Samarkand');
+                return format(addDays(arrival, 3), 'yyyy-MM-dd');
+              }
+
+              // Day 5 (17.10): Samarkand - Konigil Paper Workshop
+              if (name.includes('konigil') || name.includes('paper') || name.includes('workshop')) {
+                console.log('✅ Day 5 (17.10) - Samarkand');
+                return format(addDays(arrival, 4), 'yyyy-MM-dd');
+              }
+
+              // Day 7 (19.10): Nurata - Nurota Chashma
+              if (name.includes('nurata') || name.includes('nurota') ||
+                  (name.includes('chashma') && !name.includes('ayub'))) {
+                console.log('✅ Day 7 (19.10) - Nurata');
+                return format(addDays(arrival, 6), 'yyyy-MM-dd');
+              }
+
+              // Day 8 (20.10): Bukhara - Samanid, Chashma Ayub, Ark, Kalon, Magoki Attori
+              if (name.includes('samanid') ||
+                  (name.includes('chashma') && name.includes('ayub')) ||
+                  name.includes('ark') ||
+                  name.includes('kalon') || name.includes('kalyan') ||
+                  name.includes('magoki') || name.includes('attori') || name.includes('attor')) {
+                console.log('✅ Day 8 (20.10) - Bukhara');
+                return format(addDays(arrival, 7), 'yyyy-MM-dd');
+              }
+
+              // Day 9 (21.10): Bukhara - Mohi Khosa
+              if (name.includes('mohi') || name.includes('khosa') || name.includes('xosa')) {
+                console.log('✅ Day 9 (21.10) - Bukhara');
+                return format(addDays(arrival, 8), 'yyyy-MM-dd');
+              }
+
+              // Day 11 (23.10): Khiva - Itchan Kala, Pahlavon Mahmud
+              if (name.includes('itchan') || name.includes('ichan') || name.includes('kala') ||
+                  name.includes('pahlavon') || name.includes('pahlavan') || name.includes('mahmud') || name.includes('mahmood')) {
+                console.log('✅ Day 11 (23.10) - Khiva');
+                return format(addDays(arrival, 10), 'yyyy-MM-dd');
+              }
+
+              console.warn('⚠️ No date match for:', attractionName);
+              return null;
+            };
+
+            // Get arrival date - for ER tours, ALWAYS use departureDate + 1 (reliable calculation)
+            // Because tourist check-in dates may not be filled yet or include early arrivals
+            let arrivalDate = null;
+
+            if (booking?.tourType?.code === 'ER' && booking?.departureDate) {
+              // For ER tours: arrival is ALWAYS departureDate + 1 day (12.10 → 13.10)
+              // This is the main group arrival, excluding early arrivals like Baetgen
+              arrivalDate = format(addDays(new Date(booking.departureDate), 1), 'yyyy-MM-dd');
+              console.log('✈️ ER Tour - Using departureDate + 1:', arrivalDate);
+            } else if (tourists && tourists.length > 0) {
+              // For other tour types, use tourist check-in dates
+              const dateCounts = {};
+              tourists
+                .filter(t => t.checkInDate)
+                .forEach(t => {
+                  const dateStr = format(new Date(t.checkInDate), 'yyyy-MM-dd');
+                  dateCounts[dateStr] = (dateCounts[dateStr] || 0) + 1;
+                });
+
+              console.log('📊 Tourist check-in dates:', dateCounts);
+
+              if (Object.keys(dateCounts).length > 0) {
+                const sortedDates = Object.entries(dateCounts)
+                  .sort((a, b) => b[1] - a[1]);
+                arrivalDate = sortedDates[0][0];
+                console.log('✅ Most common arrival:', arrivalDate);
+              }
+            }
+
+            // Final fallback: use booking departure date
+            if (!arrivalDate && booking?.departureDate) {
+              arrivalDate = booking.departureDate;
+              console.log('🔄 Using booking departure date:', arrivalDate);
+            }
+
+            console.log('🔍 Final Eintritt Arrival Date:', arrivalDate);
+
+            // Create a map of saved entries by name for quick lookup
+            const savedEntriesMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s]));
+
+            // Merge template entries with saved entries (saved entries override templates)
+            const allEntries = sightseeingData.map(item => {
+              const itemName = item.name.toLowerCase().trim();
+              const savedEntry = savedEntriesMap.get(itemName);
+
+              // Calculate auto-date for ER tours
+              const autoDate = booking?.tourType?.code === 'ER'
+                ? getERAttractionDate(item.name, arrivalDate)
+                : null;
+
+              if (savedEntry) {
+                // Use saved entry data, but use auto-date if saved date is null/invalid
+                savedEntriesMap.delete(itemName); // Mark as used
+
+                // Check if saved date is valid (can be parsed and is in year 2024+)
+                let hasValidDate = false;
+                if (savedEntry.date && savedEntry.date !== 'null' && savedEntry.date !== 'undefined') {
+                  try {
+                    const parsedDate = new Date(savedEntry.date);
+                    const year = parsedDate.getFullYear();
+                    // Valid if it's a real date and year is 2024 or later
+                    hasValidDate = !isNaN(parsedDate.getTime()) && year >= 2024 && year <= 2030;
+                  } catch (e) {
+                    hasValidDate = false;
+                  }
+                }
+
+                return {
+                  id: savedEntry.id,
+                  name: savedEntry.name,
+                  city: item.city, // Keep city from template
+                  date: hasValidDate ? savedEntry.date : autoDate, // Use auto-date if no valid saved date
+                  pricePerPerson: savedEntry.pricePerPerson,
+                  pax: savedEntry.pax,
+                  price: savedEntry.price,
+                  isTemplate: false // This is a saved entry
+                };
+              } else {
+                // Use template data with auto-calculated date for ER tours
+                return {
+                  id: `opex-${item.id}`,
+                  name: item.name,
+                  city: item.city,
+                  date: autoDate || item.date || null,
+                  pricePerPerson: parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0,
+                  pax: booking?.pax || 0,
+                  price: (parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0) * (booking?.pax || 0),
+                  isTemplate: true
+                };
+              }
+            });
+
+            // Add any remaining saved entries that didn't match templates (custom entries)
+            savedEntriesMap.forEach(savedEntry => {
+              allEntries.push({
+                id: savedEntry.id,
+                name: savedEntry.name,
+                city: null,
+                date: savedEntry.date,
+                pricePerPerson: savedEntry.pricePerPerson,
+                pax: savedEntry.pax,
+                price: savedEntry.price,
+                isTemplate: false
+              });
+            });
+
+            // Filter out hidden template entries
+            const visibleEntries = allEntries
+              .filter(entry => {
+                if (entry.isTemplate && hiddenTemplateIds.includes(entry.id)) {
+                  return false; // Hide this template
+                }
+                return true; // Show all others
+              })
+              .sort((a, b) => {
+                // Sort by city in tour order: Tashkent → Samarkand → Nurota → Bukhara → Khiva
+                const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                const cityA = (a.city || '').toLowerCase().trim();
+                const cityB = (b.city || '').toLowerCase().trim();
+                const orderA = cityOrder[cityA] || 999;
+                const orderB = cityOrder[cityB] || 999;
+                return orderA - orderB;
+              });
+
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500"></div>
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
                     <span className="text-3xl">🎫</span>
-                    Eintritt (Entrance Fees)
+                    Eintritt (Entrance Fees) - {booking?.tourType?.code || 'ER'} Tour
                   </h3>
                   <button
                     onClick={() => openTourServiceModal('EINTRITT')}
                     className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg"
                   >
-                    + Add Eintritt
+                    + Add Custom
                   </button>
                 </div>
-                {services.length > 0 ? (
+                {visibleEntries.length > 0 ? (
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
-                        <th className="px-4 py-3 text-left">Name</th>
+                        <th className="px-4 py-3 text-center">#</th>
+                        <th className="px-4 py-3 text-left">City</th>
                         <th className="px-4 py-3 text-center">Date</th>
+                        <th className="px-4 py-3 text-left">Attraction</th>
                         <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
                         <th className="px-4 py-3 text-center">PAX</th>
                         <th className="px-4 py-3 text-right">Total (UZS)</th>
@@ -6738,34 +7135,75 @@ export default function BookingDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                      {services.map((s, idx) => (
-                        <tr key={s.id} className="border-b hover:bg-cyan-50">
-                          <td className="px-4 py-3">{s.name}</td>
-                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
-                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-cyan-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                      {visibleEntries.map((item, idx) => (
+                        <tr key={item.id} className="border-b hover:bg-cyan-50">
+                          <td className="px-4 py-3 text-center text-gray-600">{idx + 1}</td>
+                          <td className="px-4 py-3 text-gray-700">{item.city || '-'}</td>
                           <td className="px-4 py-3 text-center">
-                            <button onClick={() => editTourService(s)} className="p-1.5 bg-cyan-100 hover:bg-cyan-200 text-cyan-600 rounded-lg mr-2">
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => deleteTourService(s.id, 'EINTRITT')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {editingEintrittDate === item.id ? (
+                              <input
+                                type="date"
+                                defaultValue={item.date ? format(new Date(item.date), 'yyyy-MM-dd') : ''}
+                                onChange={(e) => updateEintrittDate(item, e.target.value)}
+                                onBlur={() => setEditingEintrittDate(null)}
+                                autoFocus
+                                className="px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => setEditingEintrittDate(item.id)}
+                                className="text-gray-600 hover:text-cyan-600 hover:bg-cyan-100 px-3 py-1 rounded transition-colors flex items-center gap-2 mx-auto"
+                                title="Click to select date"
+                              >
+                                <Calendar className="w-4 h-4" />
+                                {item.date ? new Date(item.date).toLocaleDateString('en-GB') : 'Select date'}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-medium">{item.name}</td>
+                          <td className="px-4 py-3 text-right">{item.pricePerPerson > 0 ? Math.round(item.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center font-semibold">{item.pax || '-'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-cyan-700">{item.price > 0 ? Math.round(item.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => moveEintrittEntry(item, 'up')}
+                                disabled={idx === 0}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`}
+                                title="Move up"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => moveEintrittEntry(item, 'down')}
+                                disabled={idx === visibleEntries.length - 1}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === visibleEntries.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`}
+                                title="Move down"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteEintrittEntry(item)}
+                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr className="bg-cyan-100 font-bold">
-                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
-                        <td className="px-4 py-3 text-right text-cyan-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                        <td colSpan="6" className="px-4 py-3 text-right">Total:</td>
+                        <td className="px-4 py-3 text-right text-cyan-700 text-lg">{Math.round(visibleEntries.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
                         <td></td>
                       </tr>
                     </tfoot>
                   </table>
                 ) : (
-                  <p className="text-gray-500 text-center py-8">No entrance fees added yet</p>
+                  <p className="text-gray-500 text-center py-8">No sightseeing data found for {booking?.tourType?.code || 'ER'} tour type. Please add data in Opex → Sightseeing.</p>
                 )}
               </div>
             );
@@ -6773,7 +7211,6 @@ export default function BookingDetail() {
 
           {/* Metro Tab */}
           {tourServicesTab === 'metro' && (() => {
-            React.useEffect(() => { loadTourServices('METRO'); }, []);
             const services = tourServices.metro || [];
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-lime-100 p-8">
@@ -6787,9 +7224,68 @@ export default function BookingDetail() {
                 </div>
                 {services.length > 0 ? (
                   <table className="w-full border-collapse">
-                    <thead><tr className="bg-gradient-to-r from-lime-600 to-emerald-600 text-white"><th className="px-4 py-3 text-left">Name</th><th className="px-4 py-3 text-center">Date</th><th className="px-4 py-3 text-right">Price/Person (UZS)</th><th className="px-4 py-3 text-center">PAX</th><th className="px-4 py-3 text-right">Total (UZS)</th><th className="px-4 py-3 text-center">Actions</th></tr></thead>
-                    <tbody>{services.map((s) => (<tr key={s.id} className="border-b hover:bg-lime-50"><td className="px-4 py-3">{s.name}</td><td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td><td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center">{s.pax || '-'}</td><td className="px-4 py-3 text-right font-bold text-lime-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center"><button onClick={() => editTourService(s)} className="p-1.5 bg-lime-100 hover:bg-lime-200 text-lime-600 rounded-lg mr-2"><Edit className="w-4 h-4" /></button><button onClick={() => deleteTourService(s.id, 'METRO')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody>
-                    <tfoot><tr className="bg-lime-100 font-bold"><td colSpan="4" className="px-4 py-3 text-right">Total:</td><td className="px-4 py-3 text-right text-lime-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td><td></td></tr></tfoot>
+                    <thead>
+                      <tr className="bg-gradient-to-r from-lime-600 to-emerald-600 text-white">
+                        <th className="px-4 py-3 text-left">Name</th>
+                        <th className="px-4 py-3 text-center">Date</th>
+                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
+                        <th className="px-4 py-3 text-center">PAX</th>
+                        <th className="px-4 py-3 text-right">Total (UZS)</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((s, idx) => (
+                        <tr key={s.id} className="border-b hover:bg-lime-50">
+                          <td className="px-4 py-3">{s.name}</td>
+                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
+                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-lime-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => moveTourService(s, 'up', 'METRO')}
+                                disabled={idx === 0}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-lime-100 hover:bg-lime-200 text-lime-600'}`}
+                                title="Move up"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => moveTourService(s, 'down', 'METRO')}
+                                disabled={idx === services.length - 1}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-lime-100 hover:bg-lime-200 text-lime-600'}`}
+                                title="Move down"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => editTourService(s)}
+                                className="p-1.5 bg-lime-100 hover:bg-lime-200 text-lime-600 rounded-lg"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteTourService(s.id, 'METRO')}
+                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-lime-100 font-bold">
+                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
+                        <td className="px-4 py-3 text-right text-lime-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   </table>
                 ) : (<p className="text-gray-500 text-center py-8">No metro services added yet</p>)}
               </div>
@@ -6798,7 +7294,6 @@ export default function BookingDetail() {
 
           {/* Shou Tab */}
           {tourServicesTab === 'shou' && (() => {
-            React.useEffect(() => { loadTourServices('SHOU'); }, []);
             const services = tourServices.shou || [];
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-pink-100 p-8">
@@ -6812,9 +7307,68 @@ export default function BookingDetail() {
                 </div>
                 {services.length > 0 ? (
                   <table className="w-full border-collapse">
-                    <thead><tr className="bg-gradient-to-r from-pink-600 to-red-600 text-white"><th className="px-4 py-3 text-left">Name</th><th className="px-4 py-3 text-center">Date</th><th className="px-4 py-3 text-right">Price/Person (UZS)</th><th className="px-4 py-3 text-center">PAX</th><th className="px-4 py-3 text-right">Total (UZS)</th><th className="px-4 py-3 text-center">Actions</th></tr></thead>
-                    <tbody>{services.map((s) => (<tr key={s.id} className="border-b hover:bg-pink-50"><td className="px-4 py-3">{s.name}</td><td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td><td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center">{s.pax || '-'}</td><td className="px-4 py-3 text-right font-bold text-pink-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center"><button onClick={() => editTourService(s)} className="p-1.5 bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-lg mr-2"><Edit className="w-4 h-4" /></button><button onClick={() => deleteTourService(s.id, 'SHOU')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody>
-                    <tfoot><tr className="bg-pink-100 font-bold"><td colSpan="4" className="px-4 py-3 text-right">Total:</td><td className="px-4 py-3 text-right text-pink-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td><td></td></tr></tfoot>
+                    <thead>
+                      <tr className="bg-gradient-to-r from-pink-600 to-red-600 text-white">
+                        <th className="px-4 py-3 text-left">Name</th>
+                        <th className="px-4 py-3 text-center">Date</th>
+                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
+                        <th className="px-4 py-3 text-center">PAX</th>
+                        <th className="px-4 py-3 text-right">Total (UZS)</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((s, idx) => (
+                        <tr key={s.id} className="border-b hover:bg-pink-50">
+                          <td className="px-4 py-3">{s.name}</td>
+                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
+                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-pink-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => moveTourService(s, 'up', 'SHOU')}
+                                disabled={idx === 0}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-pink-100 hover:bg-pink-200 text-pink-600'}`}
+                                title="Move up"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => moveTourService(s, 'down', 'SHOU')}
+                                disabled={idx === services.length - 1}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-pink-100 hover:bg-pink-200 text-pink-600'}`}
+                                title="Move down"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => editTourService(s)}
+                                className="p-1.5 bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-lg"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteTourService(s.id, 'SHOU')}
+                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-pink-100 font-bold">
+                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
+                        <td className="px-4 py-3 text-right text-pink-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   </table>
                 ) : (<p className="text-gray-500 text-center py-8">No shows added yet</p>)}
               </div>
@@ -6823,7 +7377,6 @@ export default function BookingDetail() {
 
           {/* Other Tab */}
           {tourServicesTab === 'other' && (() => {
-            React.useEffect(() => { loadTourServices('OTHER'); }, []);
             const services = tourServices.other || [];
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
@@ -6837,9 +7390,68 @@ export default function BookingDetail() {
                 </div>
                 {services.length > 0 ? (
                   <table className="w-full border-collapse">
-                    <thead><tr className="bg-gradient-to-r from-slate-600 to-zinc-600 text-white"><th className="px-4 py-3 text-left">Name</th><th className="px-4 py-3 text-center">Date</th><th className="px-4 py-3 text-right">Price/Person (UZS)</th><th className="px-4 py-3 text-center">PAX</th><th className="px-4 py-3 text-right">Total (UZS)</th><th className="px-4 py-3 text-center">Actions</th></tr></thead>
-                    <tbody>{services.map((s) => (<tr key={s.id} className="border-b hover:bg-slate-50"><td className="px-4 py-3">{s.name}</td><td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td><td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center">{s.pax || '-'}</td><td className="px-4 py-3 text-right font-bold text-slate-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td><td className="px-4 py-3 text-center"><button onClick={() => editTourService(s)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg mr-2"><Edit className="w-4 h-4" /></button><button onClick={() => deleteTourService(s.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody>
-                    <tfoot><tr className="bg-slate-100 font-bold"><td colSpan="4" className="px-4 py-3 text-right">Total:</td><td className="px-4 py-3 text-right text-slate-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td><td></td></tr></tfoot>
+                    <thead>
+                      <tr className="bg-gradient-to-r from-slate-600 to-zinc-600 text-white">
+                        <th className="px-4 py-3 text-left">Name</th>
+                        <th className="px-4 py-3 text-center">Date</th>
+                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
+                        <th className="px-4 py-3 text-center">PAX</th>
+                        <th className="px-4 py-3 text-right">Total (UZS)</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((s, idx) => (
+                        <tr key={s.id} className="border-b hover:bg-slate-50">
+                          <td className="px-4 py-3">{s.name}</td>
+                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
+                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-slate-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => moveTourService(s, 'up', 'OTHER')}
+                                disabled={idx === 0}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                title="Move up"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => moveTourService(s, 'down', 'OTHER')}
+                                disabled={idx === services.length - 1}
+                                className={`p-1.5 rounded-lg transition-colors ${idx === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                title="Move down"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => editTourService(s)}
+                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteTourService(s.id, 'OTHER')}
+                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-slate-100 font-bold">
+                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
+                        <td className="px-4 py-3 text-right text-slate-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
                   </table>
                 ) : (<p className="text-gray-500 text-center py-8">No other expenses added yet</p>)}
               </div>

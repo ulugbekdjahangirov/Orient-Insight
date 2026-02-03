@@ -490,6 +490,8 @@ export default function Opex() {
     choiceRate: '',
     price: '',
     // Person field for routes - reusing person field
+    // Flight type field
+    flightType: 'DOMESTIC' // DOMESTIC or INTERNATIONAL
   });
 
   // Sightseeing modal state
@@ -842,7 +844,8 @@ export default function Opex() {
       transportType: '',
       choiceTab: '',
       choiceRate: '',
-      price: ''
+      price: '',
+      flightType: 'DOMESTIC' // Default to Ichki reys
     });
     setShowVehicleModal(true);
   };
@@ -876,7 +879,8 @@ export default function Opex() {
       transportType: vehicle.transportType || '',
       choiceTab: vehicle.choiceTab || '',
       choiceRate: vehicle.choiceRate || '',
-      price: vehicle.price || ''
+      price: vehicle.price || '',
+      flightType: vehicle.flightType || 'DOMESTIC'
     });
     setShowVehicleModal(true);
   };
@@ -1609,13 +1613,22 @@ export default function Opex() {
               <thead>
                 <tr className="bg-gradient-to-r from-sky-500 via-blue-500 to-sky-600 border-b-3 border-sky-300">
                   <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Name
+                    Flight Number
+                  </th>
+                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
+                    Airline
+                  </th>
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    Type
                   </th>
                   <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
                     Route
                   </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider" colSpan="2">
-                    Preis
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    Econom
+                  </th>
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    Business
                   </th>
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Departure
@@ -1627,24 +1640,11 @@ export default function Opex() {
                     Действия
                   </th>
                 </tr>
-                <tr className="bg-gradient-to-r from-sky-400 via-blue-400 to-sky-500">
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Econom
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Business
-                  </th>
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3"></th>
-                  <th className="px-6 py-3"></th>
-                </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {planeVehicles.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-16 text-center">
+                    <td colSpan="9" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-20 h-20 bg-gradient-to-br from-sky-100 to-blue-200 rounded-full flex items-center justify-center shadow-lg">
                           <Plane className="w-10 h-10 text-sky-500" />
@@ -1668,8 +1668,22 @@ export default function Opex() {
                     <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
+                          {vehicle.trainNumber || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
                           {vehicle.name}
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
+                          vehicle.flightType === 'DOMESTIC'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-sky-100 text-sky-700'
+                        }`}>
+                          {vehicle.flightType === 'DOMESTIC' ? 'Ички' : 'Халқаро'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-600">
@@ -1717,7 +1731,7 @@ export default function Opex() {
                 )}
                 {planeVehicles.length > 0 && (
                   <tr>
-                    <td colSpan="7" className="px-6 py-4">
+                    <td colSpan="8" className="px-6 py-4">
                       <button
                         onClick={handleAddVehicle}
                         className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
@@ -2017,7 +2031,18 @@ export default function Opex() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-blue-100">
-                {erSightseeing.map((item, index) => (
+                {erSightseeing
+                  .slice()
+                  .sort((a, b) => {
+                    // ER tour city order: Tashkent → Samarkand → Nurota → Bukhara → Khiva
+                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                    const cityA = (a.city || '').toLowerCase().trim();
+                    const cityB = (b.city || '').toLowerCase().trim();
+                    const orderA = cityOrder[cityA] || 999;
+                    const orderB = cityOrder[cityB] || 999;
+                    return orderA - orderB;
+                  })
+                  .map((item, index) => (
                   <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
@@ -2119,7 +2144,18 @@ export default function Opex() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-emerald-100">
-                {coSightseeing.map((item, index) => (
+                {coSightseeing
+                  .slice()
+                  .sort((a, b) => {
+                    // CO tour city order: same as ER
+                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                    const cityA = (a.city || '').toLowerCase().trim();
+                    const cityB = (b.city || '').toLowerCase().trim();
+                    const orderA = cityOrder[cityA] || 999;
+                    const orderB = cityOrder[cityB] || 999;
+                    return orderA - orderB;
+                  })
+                  .map((item, index) => (
                   <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
@@ -2221,7 +2257,18 @@ export default function Opex() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-orange-100">
-                {kasSightseeing.map((item, index) => (
+                {kasSightseeing
+                  .slice()
+                  .sort((a, b) => {
+                    // KAS tour city order: same as ER
+                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                    const cityA = (a.city || '').toLowerCase().trim();
+                    const cityB = (b.city || '').toLowerCase().trim();
+                    const orderA = cityOrder[cityA] || 999;
+                    const orderB = cityOrder[cityB] || 999;
+                    return orderA - orderB;
+                  })
+                  .map((item, index) => (
                   <tr key={item.id} className="hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100/50 transition-all duration-300 group">
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
@@ -2323,7 +2370,18 @@ export default function Opex() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-purple-100">
-                {zaSightseeing.map((item, index) => (
+                {zaSightseeing
+                  .slice()
+                  .sort((a, b) => {
+                    // ZA tour city order: same as ER
+                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                    const cityA = (a.city || '').toLowerCase().trim();
+                    const cityB = (b.city || '').toLowerCase().trim();
+                    const orderA = cityOrder[cityA] || 999;
+                    const orderB = cityOrder[cityB] || 999;
+                    return orderA - orderB;
+                  })
+                  .map((item, index) => (
                   <tr key={item.id} className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100/50 transition-all duration-300 group">
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
@@ -3313,29 +3371,56 @@ export default function Opex() {
               </button>
             </div>
 
+            {/* Flight Type Tabs for Plane */}
+            {activeCategory === 'transport' && activeTransportTab === 'plane' && (
+              <div className="flex border-b border-gray-200 bg-gray-50 rounded-t-lg -mx-8 -mt-4 mb-4">
+                <button
+                  onClick={() => setVehicleForm({ ...vehicleForm, flightType: 'DOMESTIC' })}
+                  className={`flex-1 px-6 py-3 font-semibold transition-all ${
+                    vehicleForm.flightType === 'DOMESTIC'
+                      ? 'bg-white text-sky-600 border-b-2 border-sky-600'
+                      : 'text-gray-600 hover:text-sky-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Ички рейс
+                </button>
+                <button
+                  onClick={() => setVehicleForm({ ...vehicleForm, flightType: 'INTERNATIONAL' })}
+                  className={`flex-1 px-6 py-3 font-semibold transition-all ${
+                    vehicleForm.flightType === 'INTERNATIONAL'
+                      ? 'bg-white text-sky-600 border-b-2 border-sky-600'
+                      : 'text-gray-600 hover:text-sky-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Халқаро рейс
+                </button>
+              </div>
+            )}
+
             <div className="space-y-6">
-              {/* Train Number field (only for train) */}
-              {activeCategory === 'transport' && activeTransportTab === 'train' && (
+              {/* Train Number / Flight Number field (for train and plane) */}
+              {activeCategory === 'transport' && (activeTransportTab === 'train' || activeTransportTab === 'plane') && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Train Number
+                    {activeTransportTab === 'train' ? 'Train Number' : 'Flight Number'}
                   </label>
                   <input
                     type="text"
                     value={vehicleForm.trainNumber || ''}
                     onChange={(e) => setVehicleForm({ ...vehicleForm, trainNumber: e.target.value })}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
-                    placeholder="764Ф или Afrosiyob764Ф"
+                    placeholder={activeTransportTab === 'train' ? '764Ф или Afrosiyob764Ф' : 'HY-101'}
                   />
                 </div>
               )}
 
-              {/* Name / Train Name field */}
+              {/* Name / Train Name / Airline field */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   {activeCategory === 'route' ? 'Route *' :
                    (activeTransportTab === 'train' ? 'Train Name *' :
-                    ['plane', 'metro'].includes(activeTransportTab) ? 'Name *' : 'Название *')}
+                    activeTransportTab === 'plane' ? 'Airline *' :
+                    activeTransportTab === 'metro' ? 'Name *' : 'Название *')}
                 </label>
                 <input
                   type="text"
@@ -3345,7 +3430,7 @@ export default function Opex() {
                   placeholder={
                     activeCategory === 'route' ? 'Tashkent' :
                     activeTransportTab === 'train' ? 'Tashkent Central → Karshi' :
-                    activeTransportTab === 'plane' ? 'Uzbekistan Airways HY-101' :
+                    activeTransportTab === 'plane' ? 'Uzbekistan Airways' :
                     activeTransportTab === 'metro' ? 'Tashkent Metro Line 1' :
                     'Joylong'
                   }
