@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
+import ItineraryPreview from '../components/booking/ItineraryPreview';
 import {
   ArrowLeft,
   Edit,
@@ -143,6 +144,225 @@ const getTicketStatusIcon = (status) => {
   }
 })();
 
+// Predefined flight data for selection
+const PREDEFINED_FLIGHTS = {
+  INTERNATIONAL: [
+    {
+      flightNumber: 'TK 368',
+      airline: 'Turkish Airlines',
+      route: 'IST - TAS',
+      departure: 'IST',
+      arrival: 'TAS',
+      departureTime: '02:05',
+      arrivalTime: '09:10'
+    },
+    {
+      flightNumber: 'TK 371',
+      airline: 'Turkish Airlines',
+      route: 'TAS - IST',
+      departure: 'TAS',
+      arrival: 'IST',
+      departureTime: '15:00',
+      arrivalTime: '17:45'
+    },
+    {
+      flightNumber: 'HY 251',
+      airline: 'Uzbekistan Airways',
+      route: 'IST - TAS',
+      departure: 'IST',
+      arrival: 'TAS',
+      departureTime: '03:30',
+      arrivalTime: '10:20'
+    },
+    {
+      flightNumber: 'HY 252',
+      airline: 'Uzbekistan Airways',
+      route: 'TAS - IST',
+      departure: 'TAS',
+      arrival: 'IST',
+      departureTime: '16:30',
+      arrivalTime: '19:15'
+    }
+  ],
+  DOMESTIC: [
+    {
+      flightNumber: 'HY 1053',
+      airline: 'Uzbekistan Airways',
+      route: 'TAS - UGC',
+      departure: 'TAS',
+      arrival: 'UGC',
+      departureTime: '12:50',
+      arrivalTime: '14:30'
+    },
+    {
+      flightNumber: 'HY 1054',
+      airline: 'Uzbekistan Airways',
+      route: 'UGC - TAS',
+      departure: 'UGC',
+      arrival: 'TAS',
+      departureTime: '15:30',
+      arrivalTime: '17:10'
+    },
+    {
+      flightNumber: 'HY 1007',
+      airline: 'Uzbekistan Airways',
+      route: 'TAS - SKD',
+      departure: 'TAS',
+      arrival: 'SKD',
+      departureTime: '08:00',
+      arrivalTime: '08:50'
+    },
+    {
+      flightNumber: 'HY 1008',
+      airline: 'Uzbekistan Airways',
+      route: 'SKD - TAS',
+      departure: 'SKD',
+      arrival: 'TAS',
+      departureTime: '09:50',
+      arrivalTime: '10:40'
+    }
+  ]
+};
+
+// Predefined railway data for selection (Uzbekistan domestic trains)
+// Prices from Opex → Transport → Train tab (from database)
+const PREDEFINED_RAILWAYS = [
+  // Tashkent → Samarkand
+  {
+    trainNumber: '764Т',
+    trainName: 'Afrosiyob',
+    route: 'Tashkent - Samarkand',
+    departure: 'Tashkent',
+    arrival: 'Samarkand',
+    departureTime: '6:33',
+    arrivalTime: '8:46',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '766Т',
+    trainName: 'Afrosiyob',
+    route: 'Tashkent - Samarkand',
+    departure: 'Tashkent',
+    arrival: 'Samarkand',
+    departureTime: '7:30',
+    arrivalTime: '9:49',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '768Т',
+    trainName: 'Afrosiyob',
+    route: 'Tashkent - Samarkand',
+    departure: 'Tashkent',
+    arrival: 'Samarkand',
+    departureTime: '8:00',
+    arrivalTime: '10:25',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '770Т',
+    trainName: 'Afrosiyob',
+    route: 'Tashkent - Samarkand',
+    departure: 'Tashkent',
+    arrival: 'Samarkand',
+    departureTime: '8:30',
+    arrivalTime: '10:49',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '710Т',
+    trainName: 'Sharq',
+    route: 'Tashkent - Samarkand',
+    departure: 'Tashkent',
+    arrival: 'Samarkand',
+    departureTime: '8:37',
+    arrivalTime: '11:46',
+    priceEconomy: 200060,
+    priceBusiness: 300560
+  },
+  {
+    trainNumber: '716Т',
+    trainName: 'Nasaf',
+    route: 'Tashkent - Samarkand',
+    departure: 'Tashkent',
+    arrival: 'Samarkand',
+    departureTime: '8:55',
+    arrivalTime: '12:20',
+    priceEconomy: 200060,
+    priceBusiness: 300560
+  },
+  // Samarkand → Tashkent
+  {
+    trainNumber: '769S',
+    trainName: 'Afrosiyob',
+    route: 'Samarkand - Tashkent',
+    departure: 'Samarkand',
+    arrival: 'Tashkent',
+    departureTime: '16:56',
+    arrivalTime: '19:17',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '767S',
+    trainName: 'Afrosiyob',
+    route: 'Samarkand - Tashkent',
+    departure: 'Samarkand',
+    arrival: 'Tashkent',
+    departureTime: '17:40',
+    arrivalTime: '20:07',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '765S',
+    trainName: 'Afrosiyob',
+    route: 'Samarkand - Tashkent',
+    departure: 'Samarkand',
+    arrival: 'Tashkent',
+    departureTime: '18:15',
+    arrivalTime: '20:30',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '763S',
+    trainName: 'Afrosiyob',
+    route: 'Samarkand - Tashkent',
+    departure: 'Samarkand',
+    arrival: 'Tashkent',
+    departureTime: '18:49',
+    arrivalTime: '21:04',
+    priceEconomy: 270000,
+    priceBusiness: 396000
+  },
+  {
+    trainNumber: '709S',
+    trainName: 'Sharq',
+    route: 'Samarkand - Tashkent',
+    departure: 'Samarkand',
+    arrival: 'Tashkent',
+    departureTime: '19:23',
+    arrivalTime: '23:06',
+    priceEconomy: 179250,
+    priceBusiness: 266800
+  },
+  {
+    trainNumber: '715S',
+    trainName: 'Nasaf',
+    route: 'Samarkand - Tashkent',
+    departure: 'Samarkand',
+    arrival: 'Tashkent',
+    departureTime: '20:24',
+    arrivalTime: '23:54',
+    priceEconomy: 179250,
+    priceBusiness: 266800
+  }
+];
+
 export default function BookingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -170,6 +390,8 @@ export default function BookingDetail() {
   const [activeTab, setActiveTabState] = useState(getInitialTab());
   const [flyRailwayTab, setFlyRailwayTab] = useState('fly'); // Sub-tab for Fly&Railway module
   const [documentsTab, setDocumentsTab] = useState('hotel-requests'); // Sub-tab for Documents module
+  const [tourServicesTab, setTourServicesTab] = useState('hotels'); // Sub-tab for Tour Services module
+  const [costsTab, setCostsTab] = useState('rl'); // Sub-tab for Costs module (payment methods)
   const [flights, setFlights] = useState([]);
   const [flightSections, setFlightSections] = useState([]);
   const [loadingFlights, setLoadingFlights] = useState(false);
@@ -179,11 +401,15 @@ export default function BookingDetail() {
     type: 'INTERNATIONAL',
     flightNumber: '',
     airline: '',
+    route: '',
     departure: '',
     arrival: '',
     date: '',
     departureTime: '',
     arrivalTime: '',
+    pax: 0,
+    price: 0,
+    tariff: 'economy',
     notes: ''
   });
 
@@ -194,14 +420,18 @@ export default function BookingDetail() {
   const [railwayModalOpen, setRailwayModalOpen] = useState(false);
   const [editingRailway, setEditingRailway] = useState(null);
   const [railwayForm, setRailwayForm] = useState({
-    type: 'INTERNATIONAL',
     trainNumber: '',
     trainName: '',
+    route: '',
     departure: '',
     arrival: '',
     date: '',
     departureTime: '',
     arrivalTime: '',
+    tariff: 'Economy',
+    pricePerPerson: 0,
+    pax: 0,
+    price: 0,
     notes: ''
   });
 
@@ -224,6 +454,7 @@ export default function BookingDetail() {
   const [accommodations, setAccommodations] = useState([]);
   const [roomsTotalAmount, setRoomsTotalAmount] = useState(0);
   const [tourists, setTourists] = useState([]);
+  const [routes, setRoutes] = useState([]);
   const [guestDates, setGuestDates] = useState({}); // Track individual guest check-in/out dates for Total calculation
   const [expandedHotels, setExpandedHotels] = useState({});
   const [editingTouristId, setEditingTouristId] = useState(null);
@@ -444,8 +675,9 @@ export default function BookingDetail() {
         }
       });
 
-      // Store breakdown for debug
+      // Store breakdown with accommodation ID for proper matching
       hotelBreakdown.push({
+        accommodationId: acc.id,
         hotel: acc.hotel?.name,
         USD: hotelTotalUSD,
         UZS: hotelTotalUZS
@@ -493,7 +725,8 @@ export default function BookingDetail() {
       grandTotalUSD,
       grandTotalUZS,
       usdHotels,
-      uzsHotels
+      uzsHotels,
+      hotelBreakdown  // Include full breakdown with accommodation IDs
     };
   }, [accommodations, accommodationRoomingLists, tourists]);
 
@@ -811,17 +1044,19 @@ export default function BookingDetail() {
       setHotels(hotelsRes.data.hotels || []);
 
       if (!isNew) {
-        const [bookingRes, accommodationsRes, touristsRes, routesRes] = await Promise.all([
+        const [bookingRes, accommodationsRes, touristsRes, routesRes, railwaysRes] = await Promise.all([
           bookingsApi.getById(id),
           bookingsApi.getAccommodations(id),
           touristsApi.getAll(id),
-          routesApi.getAll(id)
+          routesApi.getAll(id),
+          railwaysApi.getAll(id)
         ]);
         const b = bookingRes.data.booking;
         setBooking(b);
         setBookingRooms(b.bookingRooms || []);
         setAccommodations(accommodationsRes.data.accommodations || []);
         setTourists(touristsRes.data.tourists || []);
+        setRailways(railwaysRes.data.railways || []);
 
         // CRITICAL FOR ER TOURS: Load rooming lists for all accommodations
         // This ensures card view displays correct costs using backend-adjusted dates
@@ -847,6 +1082,7 @@ export default function BookingDetail() {
 
         // Load routes from database
         const loadedRoutes = routesRes.data.routes || [];
+        setRoutes(loadedRoutes); // Store routes in state for Tour Services tab
         // For ER bookings: ALWAYS use template (ignore old database routes)
         // For non-ER bookings: use database if available
         if (loadedRoutes.length > 0 && b.tourType?.code !== 'ER') {
@@ -1392,11 +1628,15 @@ export default function BookingDetail() {
       type: 'INTERNATIONAL',
       flightNumber: '',
       airline: '',
+      route: '',
       departure: '',
       arrival: '',
       date: '',
       departureTime: '',
       arrivalTime: '',
+      pax: 0,
+      price: 0,
+      tariff: 'economy',
       notes: ''
     });
     setFlightModalOpen(true);
@@ -1409,11 +1649,15 @@ export default function BookingDetail() {
       type: flight.type || 'INTERNATIONAL',
       flightNumber: flight.flightNumber || '',
       airline: flight.airline || '',
+      route: flight.route || `${flight.departure || ''} - ${flight.arrival || ''}`.trim(),
       departure: flight.departure || '',
       arrival: flight.arrival || '',
       date: flight.date ? format(new Date(flight.date), 'yyyy-MM-dd') : '',
       departureTime: flight.departureTime || '',
       arrivalTime: flight.arrivalTime || '',
+      pax: flight.pax || 0,
+      price: flight.price || 0,
+      tariff: flight.tariff || 'economy',
       notes: flight.notes || ''
     });
     setFlightModalOpen(true);
@@ -1490,6 +1734,12 @@ export default function BookingDetail() {
       setRailways(railwaysData);
       setRailwaySections(sectionsData);
       console.log('🚂 Loaded railways:', railwaysData);
+      console.log('💰 Railway prices:', railwaysData.map(r => ({
+        trainNumber: r.trainNumber,
+        pax: r.pax,
+        price: r.price,
+        hasPrice: !!r.price && r.price > 0
+      })));
       console.log('📄 Loaded railway sections:', sectionsData);
     } catch (error) {
       console.error('Error loading railways:', error);
@@ -1505,14 +1755,18 @@ export default function BookingDetail() {
   const openRailwayModal = () => {
     setEditingRailway(null);
     setRailwayForm({
-      type: 'INTERNATIONAL',
       trainNumber: '',
       trainName: '',
+      route: '',
       departure: '',
       arrival: '',
       date: '',
       departureTime: '',
       arrivalTime: '',
+      tariff: 'Economy',
+      pricePerPerson: 0,
+      pax: 0,
+      price: 0,
       notes: ''
     });
     setRailwayModalOpen(true);
@@ -1521,15 +1775,25 @@ export default function BookingDetail() {
   // Open railway modal for editing
   const editRailway = (railway) => {
     setEditingRailway(railway);
+
+    // Calculate pricePerPerson from total price and pax
+    const pax = railway.pax || 0;
+    const totalPrice = railway.price || 0;
+    const pricePerPerson = pax > 0 ? totalPrice / pax : 0;
+
     setRailwayForm({
-      type: railway.type || 'INTERNATIONAL',
       trainNumber: railway.trainNumber || '',
       trainName: railway.trainName || '',
+      route: railway.route || `${railway.departure || ''} - ${railway.arrival || ''}`.trim(),
       departure: railway.departure || '',
       arrival: railway.arrival || '',
       date: railway.date ? format(new Date(railway.date), 'yyyy-MM-dd') : '',
       departureTime: railway.departureTime || '',
       arrivalTime: railway.arrivalTime || '',
+      tariff: 'Economy', // Default to Economy when editing
+      pricePerPerson: pricePerPerson,
+      pax: pax,
+      price: totalPrice,
       notes: railway.notes || ''
     });
     setRailwayModalOpen(true);
@@ -1551,21 +1815,31 @@ export default function BookingDetail() {
       return;
     }
 
+    console.log('🚂 Saving railway with data:', {
+      trainNumber: railwayForm.trainNumber,
+      pax: railwayForm.pax,
+      price: railwayForm.price,
+      pricePerPerson: railwayForm.pricePerPerson,
+      fullData: railwayForm
+    });
+
     try {
       if (editingRailway) {
         // Update existing railway
-        await railwaysApi.update(id, editingRailway.id, railwayForm);
+        const response = await railwaysApi.update(id, editingRailway.id, railwayForm);
+        console.log('✅ Railway updated, response:', response.data);
         toast.success('Poezd yangilandi');
       } else {
         // Create new railway
-        await railwaysApi.create(id, railwayForm);
+        const response = await railwaysApi.create(id, railwayForm);
+        console.log('✅ Railway created, response:', response.data);
         toast.success('Poezd qo\'shildi');
       }
 
       closeRailwayModal();
       await loadRailways();
     } catch (error) {
-      console.error('Error saving railway:', error);
+      console.error('❌ Error saving railway:', error);
       toast.error(error.response?.data?.error || 'Poezd saqlashda xatolik');
     }
   };
@@ -4223,6 +4497,7 @@ export default function BookingDetail() {
               { id: 'rooming', label: 'Fly&Railway', icon: Plane },
               { id: 'route', label: 'Route', icon: Car },
               { id: 'documents', label: 'Documents', icon: FileText },
+              { id: 'tour-services', label: 'Tour Services', icon: ClipboardList },
               { id: 'costs', label: 'Costs', icon: DollarSign }
             ].map((tab) => (
               <button
@@ -4353,14 +4628,6 @@ export default function BookingDetail() {
                           International Flights
                         </h3>
 
-                        {internationalSection && internationalSection.rawContent && (
-                          <div className="mb-4 p-4 bg-white rounded-xl border border-blue-200">
-                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
-                              {internationalSection.rawContent}
-                            </pre>
-                          </div>
-                        )}
-
                         {internationalFlights.length > 0 && (
                           <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
@@ -4371,37 +4638,48 @@ export default function BookingDetail() {
                                   <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
                                   <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {internationalFlights.map((flight, idx) => (
-                                  <tr key={flight.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                                    <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
-                                    <td className="px-4 py-3 font-medium text-gray-700">{flight.departure || '-'} → {flight.arrival || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          onClick={() => editFlight(flight)}
-                                          className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
-                                          title="Edit"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() => deleteFlight(flight.id)}
-                                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                          title="Delete"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
+                                {internationalFlights.map((flight, idx) => {
+                                  const pax = flight.pax || 0;
+                                  const totalPrice = flight.price || 0;
+                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                  return (
+                                    <tr key={flight.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                                      <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
+                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.departure || '-'} → {flight.arrival || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
+                                      <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
+                                      <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                      <td className="px-4 py-3 text-right text-blue-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center justify-center gap-2">
+                                          <button
+                                            onClick={() => editFlight(flight)}
+                                            className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
+                                            title="Edit"
+                                          >
+                                            <Edit className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => deleteFlight(flight.id)}
+                                            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                            title="Delete"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -4428,14 +4706,6 @@ export default function BookingDetail() {
                           Domestic Flights
                         </h3>
 
-                        {domesticSection && domesticSection.rawContent && (
-                          <div className="mb-4 p-4 bg-white rounded-xl border border-emerald-200">
-                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
-                              {domesticSection.rawContent}
-                            </pre>
-                          </div>
-                        )}
-
                         {domesticFlights.length > 0 && (
                           <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
@@ -4446,37 +4716,48 @@ export default function BookingDetail() {
                                   <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
                                   <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {domesticFlights.map((flight, idx) => (
-                                  <tr key={flight.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
-                                    <td className="px-4 py-3 font-bold text-emerald-900">{flight.flightNumber || '-'}</td>
-                                    <td className="px-4 py-3 font-medium text-gray-700">{flight.departure || '-'} → {flight.arrival || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          onClick={() => editFlight(flight)}
-                                          className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"
-                                          title="Edit"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() => deleteFlight(flight.id)}
-                                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                          title="Delete"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
+                                {domesticFlights.map((flight, idx) => {
+                                  const pax = flight.pax || 0;
+                                  const totalPrice = flight.price || 0;
+                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                  return (
+                                    <tr key={flight.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                      <td className="px-4 py-3 font-bold text-emerald-900">{flight.flightNumber || '-'}</td>
+                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.departure || '-'} → {flight.arrival || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
+                                      <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
+                                      <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                      <td className="px-4 py-3 text-right text-emerald-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                      <td className="px-4 py-3">
+                                        <div className="flex items-center justify-center gap-2">
+                                          <button
+                                            onClick={() => editFlight(flight)}
+                                            className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"
+                                            title="Edit"
+                                          >
+                                            <Edit className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => deleteFlight(flight.id)}
+                                            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                                            title="Delete"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -4555,14 +4836,6 @@ export default function BookingDetail() {
                           International Railways
                         </h3>
 
-                        {internationalSection && internationalSection.rawContent && (
-                          <div className="mb-4 p-4 bg-white rounded-xl border border-blue-200">
-                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
-                              {internationalSection.rawContent}
-                            </pre>
-                          </div>
-                        )}
-
                         {internationalRailways.length > 0 && (
                           <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
@@ -4573,18 +4846,33 @@ export default function BookingDetail() {
                                   <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
                                   <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {internationalRailways.map((railway, idx) => (
-                                  <tr key={railway.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                                    <td className="px-4 py-3 font-bold text-blue-900">{railway.trainNumber || railway.trainName || '-'}</td>
-                                    <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
-                                    <td className="px-4 py-3">
+                                {internationalRailways.map((railway, idx) => {
+                                  const pax = railway.pax || 0;
+                                  const totalPrice = railway.price || 0;
+                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+
+                                  return (
+                                    <tr key={railway.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                                      <td className="px-4 py-3 font-bold text-blue-900">{railway.trainNumber || railway.trainName || '-'}</td>
+                                      <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
+                                      <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
+                                      <td className="px-4 py-3 text-right font-medium text-gray-700">
+                                        {perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                                      </td>
+                                      <td className="px-4 py-3 text-right font-bold text-blue-700">
+                                        {totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                                      </td>
+                                      <td className="px-4 py-3">
                                       <div className="flex items-center justify-center gap-2">
                                         <button
                                           onClick={() => editRailway(railway)}
@@ -4603,7 +4891,8 @@ export default function BookingDetail() {
                                       </div>
                                     </td>
                                   </tr>
-                                ))}
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -4630,14 +4919,6 @@ export default function BookingDetail() {
                           Domestic Railways
                         </h3>
 
-                        {domesticSection && domesticSection.rawContent && (
-                          <div className="mb-4 p-4 bg-white rounded-xl border border-emerald-200">
-                            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
-                              {domesticSection.rawContent}
-                            </pre>
-                          </div>
-                        )}
-
                         {domesticRailways.length > 0 && (
                           <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
@@ -4648,18 +4929,33 @@ export default function BookingDetail() {
                                   <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
                                   <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
                                   <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {domesticRailways.map((railway, idx) => (
-                                  <tr key={railway.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
-                                    <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainNumber || railway.trainName || '-'}</td>
-                                    <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
-                                    <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
-                                    <td className="px-4 py-3">
+                                {domesticRailways.map((railway, idx) => {
+                                  const pax = railway.pax || 0;
+                                  const totalPrice = railway.price || 0;
+                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+
+                                  return (
+                                    <tr key={railway.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                      <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainNumber || railway.trainName || '-'}</td>
+                                      <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
+                                      <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
+                                      <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
+                                      <td className="px-4 py-3 text-right font-medium text-gray-700">
+                                        {perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                                      </td>
+                                      <td className="px-4 py-3 text-right font-bold text-emerald-700">
+                                        {totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                                      </td>
+                                      <td className="px-4 py-3">
                                       <div className="flex items-center justify-center gap-2">
                                         <button
                                           onClick={() => editRailway(railway)}
@@ -4678,7 +4974,8 @@ export default function BookingDetail() {
                                       </div>
                                     </td>
                                   </tr>
-                                ))}
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -4724,48 +5021,100 @@ export default function BookingDetail() {
                     </select>
                   </div>
 
-                  {/* Flight Number */}
+                  {/* Flight Number - Dropdown with auto-populate */}
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Flight Number
+                      Flight Number *
+                    </label>
+                    <select
+                      value={flightForm.flightNumber}
+                      onChange={(e) => {
+                        const selectedFlight = PREDEFINED_FLIGHTS[flightForm.type]?.find(f => f.flightNumber === e.target.value);
+                        if (selectedFlight) {
+                          // Auto-populate date based on flight type
+                          let autoDate = '';
+                          if (booking) {
+                            if (flightForm.type === 'INTERNATIONAL') {
+                              // International: arrival date (group arrives)
+                              autoDate = booking.departureDate ? format(new Date(booking.departureDate), 'yyyy-MM-dd') : '';
+                            } else if (flightForm.type === 'DOMESTIC') {
+                              // Domestic: 1 day before group departure
+                              if (booking.endDate) {
+                                const endDate = new Date(booking.endDate);
+                                const oneDayBefore = addDays(endDate, -1);
+                                autoDate = format(oneDayBefore, 'yyyy-MM-dd');
+                              }
+                            }
+                          }
+
+                          setFlightForm({
+                            ...flightForm,
+                            flightNumber: selectedFlight.flightNumber,
+                            airline: selectedFlight.airline,
+                            route: selectedFlight.route,
+                            departure: selectedFlight.departure,
+                            arrival: selectedFlight.arrival,
+                            departureTime: selectedFlight.departureTime,
+                            arrivalTime: selectedFlight.arrivalTime,
+                            date: autoDate,
+                            pax: booking?.pax || 0
+                          });
+                        } else {
+                          setFlightForm({ ...flightForm, flightNumber: e.target.value });
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                    >
+                      <option value="">Select flight number...</option>
+                      {PREDEFINED_FLIGHTS[flightForm.type]?.map(flight => (
+                        <option key={flight.flightNumber} value={flight.flightNumber}>
+                          {flight.flightNumber} - {flight.route}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Airline - Auto-populated, read-only */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Airline
                     </label>
                     <input
                       type="text"
-                      value={flightForm.flightNumber}
-                      onChange={(e) => setFlightForm({ ...flightForm, flightNumber: e.target.value })}
-                      placeholder="TK 368"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                      value={flightForm.airline}
+                      readOnly
+                      placeholder="Auto-populated from flight selection"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                     />
                   </div>
 
-                  {/* Departure and Arrival */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Departure *
-                      </label>
-                      <input
-                        type="text"
-                        value={flightForm.departure}
-                        onChange={(e) => setFlightForm({ ...flightForm, departure: e.target.value.toUpperCase() })}
-                        placeholder="IST"
-                        maxLength={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent uppercase"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Arrival *
-                      </label>
-                      <input
-                        type="text"
-                        value={flightForm.arrival}
-                        onChange={(e) => setFlightForm({ ...flightForm, arrival: e.target.value.toUpperCase() })}
-                        placeholder="TAS"
-                        maxLength={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent uppercase"
-                      />
-                    </div>
+                  {/* Route - Auto-populated, read-only */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Route
+                    </label>
+                    <input
+                      type="text"
+                      value={flightForm.route}
+                      readOnly
+                      placeholder="Auto-populated from flight selection"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                    />
+                  </div>
+
+                  {/* Tariff - Dropdown */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Tariff *
+                    </label>
+                    <select
+                      value={flightForm.tariff}
+                      onChange={(e) => setFlightForm({ ...flightForm, tariff: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                    >
+                      <option value="economy">Economy</option>
+                      <option value="business">Business</option>
+                    </select>
                   </div>
 
                   {/* Date */}
@@ -4781,17 +5130,18 @@ export default function BookingDetail() {
                     />
                   </div>
 
-                  {/* Departure and Arrival Times */}
+                  {/* Departure and Arrival Times - Auto-populated, read-only */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">
                         Departure Time
                       </label>
                       <input
-                        type="time"
+                        type="text"
                         value={flightForm.departureTime}
-                        onChange={(e) => setFlightForm({ ...flightForm, departureTime: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                        readOnly
+                        placeholder="Auto-populated"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                       />
                     </div>
                     <div>
@@ -4799,9 +5149,41 @@ export default function BookingDetail() {
                         Arrival Time
                       </label>
                       <input
-                        type="time"
+                        type="text"
                         value={flightForm.arrivalTime}
-                        onChange={(e) => setFlightForm({ ...flightForm, arrivalTime: e.target.value })}
+                        readOnly
+                        placeholder="Auto-populated"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* PAX and Price */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        PAX (Passengers) *
+                      </label>
+                      <input
+                        type="number"
+                        value={flightForm.pax}
+                        onChange={(e) => setFlightForm({ ...flightForm, pax: parseInt(e.target.value) || 0 })}
+                        min="0"
+                        placeholder="Number of passengers"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Price (UZS)
+                      </label>
+                      <input
+                        type="number"
+                        value={flightForm.price || ''}
+                        onChange={(e) => setFlightForm({ ...flightForm, price: parseFloat(e.target.value) || 0 })}
+                        min="0"
+                        step="1"
+                        placeholder="Enter price"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                       />
                     </div>
@@ -4860,75 +5242,116 @@ export default function BookingDetail() {
                 </div>
 
                 <div className="p-6 space-y-4">
-                  {/* Railway Type */}
+                  {/* Train Number - Dropdown with auto-populate */}
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Railway Type *
+                      Train Number *
                     </label>
                     <select
-                      value={railwayForm.type}
-                      onChange={(e) => setRailwayForm({ ...railwayForm, type: e.target.value })}
+                      value={railwayForm.trainNumber}
+                      onChange={(e) => {
+                        const selectedTrain = PREDEFINED_RAILWAYS.find(t => t.trainNumber === e.target.value);
+                        if (selectedTrain) {
+                          // Auto-populate date: arrival date + 2 days
+                          let autoDate = '';
+                          if (booking && booking.departureDate) {
+                            const arrivalDate = new Date(booking.departureDate);
+                            const trainDate = addDays(arrivalDate, 2);
+                            autoDate = format(trainDate, 'yyyy-MM-dd');
+                          }
+
+                          // Default tariff to Economy
+                          const defaultTariff = 'Economy';
+                          const pricePerPerson = defaultTariff === 'Economy' ? selectedTrain.priceEconomy : selectedTrain.priceBusiness;
+                          const paxCount = (booking?.pax || 0) + 1;
+                          const totalPrice = pricePerPerson * paxCount;
+
+                          setRailwayForm({
+                            ...railwayForm,
+                            trainNumber: selectedTrain.trainNumber,
+                            trainName: selectedTrain.trainName,
+                            route: selectedTrain.route,
+                            departure: selectedTrain.departure,
+                            arrival: selectedTrain.arrival,
+                            departureTime: selectedTrain.departureTime,
+                            arrivalTime: selectedTrain.arrivalTime,
+                            date: autoDate,
+                            tariff: defaultTariff,
+                            pricePerPerson: pricePerPerson,
+                            pax: paxCount,
+                            price: totalPrice
+                          });
+                        } else {
+                          setRailwayForm({ ...railwayForm, trainNumber: e.target.value });
+                        }
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     >
-                      <option value="INTERNATIONAL">International</option>
-                      <option value="DOMESTIC">Domestic (O'zbekiston ichida)</option>
+                      <option value="">Select train number...</option>
+                      {PREDEFINED_RAILWAYS.map(train => (
+                        <option key={train.trainNumber} value={train.trainNumber}>
+                          {train.trainNumber} - {train.trainName} - {train.route}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
-                  {/* Train Number and Name */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Train Number
-                      </label>
-                      <input
-                        type="text"
-                        value={railwayForm.trainNumber}
-                        onChange={(e) => setRailwayForm({ ...railwayForm, trainNumber: e.target.value })}
-                        placeholder="661"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Train Name
-                      </label>
-                      <input
-                        type="text"
-                        value={railwayForm.trainName}
-                        onChange={(e) => setRailwayForm({ ...railwayForm, trainName: e.target.value })}
-                        placeholder="Afrosiyob"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      />
-                    </div>
+                  {/* Train Name - Auto-populated, read-only */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Train Name
+                    </label>
+                    <input
+                      type="text"
+                      value={railwayForm.trainName}
+                      readOnly
+                      placeholder="Auto-populated from train selection"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                    />
                   </div>
 
-                  {/* Departure and Arrival */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Departure *
-                      </label>
-                      <input
-                        type="text"
-                        value={railwayForm.departure}
-                        onChange={(e) => setRailwayForm({ ...railwayForm, departure: e.target.value })}
-                        placeholder="Tashkent"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Arrival *
-                      </label>
-                      <input
-                        type="text"
-                        value={railwayForm.arrival}
-                        onChange={(e) => setRailwayForm({ ...railwayForm, arrival: e.target.value })}
-                        placeholder="Samarkand"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      />
-                    </div>
+                  {/* Route - Auto-populated, read-only */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Route
+                    </label>
+                    <input
+                      type="text"
+                      value={railwayForm.route}
+                      readOnly
+                      placeholder="Auto-populated from train selection"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                    />
+                  </div>
+
+                  {/* Tariff - Dropdown to select Economy or Business */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Tariff *
+                    </label>
+                    <select
+                      value={railwayForm.tariff || 'Economy'}
+                      onChange={(e) => {
+                        const selectedTrain = PREDEFINED_RAILWAYS.find(t => t.trainNumber === railwayForm.trainNumber);
+                        if (selectedTrain) {
+                          const newTariff = e.target.value;
+                          const pricePerPerson = newTariff === 'Economy' ? selectedTrain.priceEconomy : selectedTrain.priceBusiness;
+                          const totalPrice = pricePerPerson * (railwayForm.pax || 0);
+                          setRailwayForm({
+                            ...railwayForm,
+                            tariff: newTariff,
+                            pricePerPerson: pricePerPerson,
+                            price: totalPrice
+                          });
+                        } else {
+                          setRailwayForm({ ...railwayForm, tariff: e.target.value });
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    >
+                      <option value="Economy">Economy</option>
+                      <option value="Business">Business</option>
+                    </select>
                   </div>
 
                   {/* Date */}
@@ -4944,17 +5367,18 @@ export default function BookingDetail() {
                     />
                   </div>
 
-                  {/* Departure and Arrival Times */}
+                  {/* Departure and Arrival Times - Auto-populated, read-only */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">
                         Departure Time
                       </label>
                       <input
-                        type="time"
+                        type="text"
                         value={railwayForm.departureTime}
-                        onChange={(e) => setRailwayForm({ ...railwayForm, departureTime: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        readOnly
+                        placeholder="Auto-populated"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                       />
                     </div>
                     <div>
@@ -4962,12 +5386,64 @@ export default function BookingDetail() {
                         Arrival Time
                       </label>
                       <input
-                        type="time"
+                        type="text"
                         value={railwayForm.arrivalTime}
-                        onChange={(e) => setRailwayForm({ ...railwayForm, arrivalTime: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        readOnly
+                        placeholder="Auto-populated"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                       />
                     </div>
+                  </div>
+
+                  {/* PAX - Auto-calculated as booking.pax + 1 */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      PAX (Passengers) *
+                    </label>
+                    <input
+                      type="number"
+                      value={railwayForm.pax}
+                      onChange={(e) => {
+                        const newPax = parseInt(e.target.value) || 0;
+                        const totalPrice = (railwayForm.pricePerPerson || 0) * newPax;
+                        setRailwayForm({
+                          ...railwayForm,
+                          pax: newPax,
+                          price: totalPrice
+                        });
+                      }}
+                      min="0"
+                      placeholder="Number of passengers"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Price Per Person - Auto-populated, read-only */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Price Per Person (UZS)
+                    </label>
+                    <input
+                      type="text"
+                      value={railwayForm.pricePerPerson ? Math.round(railwayForm.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : ''}
+                      readOnly
+                      placeholder="Auto-calculated from tariff"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                    />
+                  </div>
+
+                  {/* Total Price - Auto-calculated */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Total Price (UZS)
+                    </label>
+                    <input
+                      type="text"
+                      value={railwayForm.price ? Math.round(railwayForm.price).toLocaleString('en-US').replace(/,/g, ' ') : ''}
+                      readOnly
+                      placeholder="Auto-calculated (per person × PAX)"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 font-bold"
+                    />
                   </div>
 
                   {/* Notes */}
@@ -5033,6 +5509,28 @@ export default function BookingDetail() {
               >
                 <Users className="w-5 h-5" />
                 Tourist List
+              </button>
+              <button
+                onClick={() => setDocumentsTab('marshrutiy')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  documentsTab === 'marshrutiy'
+                    ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-green-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <MapPin className="w-5 h-5" />
+                Marshrut varaqasi
+              </button>
+              <button
+                onClick={() => setDocumentsTab('hotelliste')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  documentsTab === 'hotelliste'
+                    ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 hover:from-pink-600 hover:via-rose-600 hover:to-red-600 text-white shadow-pink-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <Building2 className="w-5 h-5" />
+                Hotelliste
               </button>
             </nav>
           </div>
@@ -5441,13 +5939,692 @@ export default function BookingDetail() {
               )}
             </div>
           )}
+
+          {/* Marshrut varaqasi (Itinerary) Tab Content */}
+          {documentsTab === 'marshrutiy' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
+              <ItineraryPreview bookingId={parseInt(id)} booking={booking} />
+            </div>
+          )}
+
+          {/* Hotelliste Tab Content */}
+          {documentsTab === 'hotelliste' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-pink-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500"></div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent flex items-center gap-3">
+                  <Building2 className="w-8 h-8 text-pink-600" />
+                  Hotelliste
+                </h2>
+              </div>
+
+              {accommodations && accommodations.length > 0 ? (
+                <div className="space-y-4">
+                  {accommodations.map((acc, idx) => (
+                    <div key={acc.id} className="p-6 bg-gradient-to-r from-pink-50 to-rose-50 border-2 border-pink-200 rounded-2xl">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900">{acc.hotel?.name || 'Unknown Hotel'}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            <MapPin className="w-4 h-4 inline mr-1" />
+                            {acc.hotel?.city?.name || 'Unknown City'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-gray-600">Check-in</div>
+                          <div className="font-bold text-gray-900">
+                            {acc.checkInDate ? format(new Date(acc.checkInDate), 'dd.MM.yyyy') : '-'}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-gray-600">Check-out</div>
+                          <div className="font-bold text-gray-900">
+                            {acc.checkOutDate ? format(new Date(acc.checkOutDate), 'dd.MM.yyyy') : '-'}
+                          </div>
+                        </div>
+                      </div>
+                      {acc.hotel?.phone && (
+                        <div className="text-sm text-gray-700 mt-2">
+                          📞 {acc.hotel.phone}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>No hotels added yet</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tour Services Module */}
+      {!isNew && activeTab === 'tour-services' && (
+        <div className="space-y-6">
+          {/* Sub-tabs for Tour Services */}
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-purple-100 p-4">
+            <nav className="flex space-x-3 overflow-x-auto">
+              <button
+                onClick={() => setTourServicesTab('hotels')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'hotels'
+                    ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 hover:from-purple-600 hover:via-violet-600 hover:to-indigo-600 text-white shadow-purple-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <Building2 className="w-5 h-5" />
+                Hotels
+              </button>
+              <button
+                onClick={() => setTourServicesTab('transport')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'transport'
+                    ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 hover:from-blue-600 hover:via-cyan-600 hover:to-sky-600 text-white shadow-blue-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <Car className="w-5 h-5" />
+                Transport
+              </button>
+              <button
+                onClick={() => setTourServicesTab('railway')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'railway'
+                    ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600 text-white shadow-orange-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <Train className="w-5 h-5" />
+                Railway
+              </button>
+              <button
+                onClick={() => setTourServicesTab('flights')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'flights'
+                    ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-green-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <Plane className="w-5 h-5" />
+                Flights
+              </button>
+              <button
+                onClick={() => setTourServicesTab('guide')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'guide'
+                    ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 text-white shadow-rose-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <User className="w-5 h-5" />
+                Guide
+              </button>
+              <button
+                onClick={() => setTourServicesTab('meals')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  tourServicesTab === 'meals'
+                    ? 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 text-white shadow-red-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <span className="text-lg">🍽️</span>
+                Meals
+              </button>
+            </nav>
+          </div>
+
+          {/* Hotels Tab */}
+          {tourServicesTab === 'hotels' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500"></div>
+
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                <Building2 className="w-7 h-7 text-purple-600" />
+                Hotels Summary
+              </h3>
+
+              {grandTotalData ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">No.</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-purple-400">City</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-purple-400">Hotel</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">Dates</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">Nights</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold border-r border-purple-400">USD</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold">UZS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accommodations.map((acc, index) => {
+                        // Calculate nights
+                        let nights = acc.nights || 0;
+                        if (!nights && acc.checkInDate && acc.checkOutDate) {
+                          const checkIn = new Date(acc.checkInDate);
+                          const checkOut = new Date(acc.checkOutDate);
+                          nights = Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+                        }
+
+                        // Find hotel in grandTotalData by accommodation ID (not hotel name!)
+                        const hotelData = grandTotalData.hotelBreakdown?.find(h => h.accommodationId === acc.id);
+
+                        const totalUSD = hotelData?.USD || 0;
+                        const totalUZS = hotelData?.UZS || 0;
+
+                        return (
+                          <tr key={acc.id} className="border-b border-gray-200 hover:bg-purple-50 transition-colors">
+                            <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
+                              {index + 1}
+                            </td>
+                            <td className="px-4 py-3 text-gray-800 border-r border-gray-200">
+                              {acc.hotel?.city?.name || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
+                              {acc.hotel?.name || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                              {acc.checkInDate && acc.checkOutDate ? (
+                                <span>
+                                  {format(new Date(acc.checkInDate), 'dd.MM')}
+                                  <span className="text-gray-500 mx-1">-</span>
+                                  {format(new Date(acc.checkOutDate), 'dd.MM')}
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
+                              {nights > 0 ? nights : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold border-r border-gray-200">
+                              {totalUSD > 0 ? (
+                                <span className="text-green-700">{Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold">
+                              {totalUZS > 0 ? (
+                                <span className="text-blue-700">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gradient-to-r from-purple-100 to-indigo-100 border-t-2 border-purple-300">
+                        <td colSpan="4" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-purple-200">
+                          Total:
+                        </td>
+                        <td className="px-4 py-4 text-center font-black text-xl text-gray-900 border-r border-purple-200">
+                          {accommodations.reduce((sum, acc) => {
+                            let nights = acc.nights || 0;
+                            if (!nights && acc.checkInDate && acc.checkOutDate) {
+                              const checkIn = new Date(acc.checkInDate);
+                              const checkOut = new Date(acc.checkOutDate);
+                              nights = Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+                            }
+                            return sum + nights;
+                          }, 0)}
+                        </td>
+                        <td className="px-4 py-4 text-right font-black text-xl text-green-700 border-r border-purple-200">
+                          {grandTotalData.grandTotalUSD > 0
+                            ? `$${Math.round(grandTotalData.grandTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`
+                            : '-'}
+                        </td>
+                        <td className="px-4 py-4 text-right font-black text-xl text-blue-700">
+                          {grandTotalData.grandTotalUZS > 0
+                            ? Math.round(grandTotalData.grandTotalUZS).toLocaleString('en-US').replace(/,/g, ' ')
+                            : '-'}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>Hali hotel qo'shilmagan</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Transport Tab */}
+          {tourServicesTab === 'transport' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500"></div>
+
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                <Car className="w-7 h-7 text-blue-600" />
+                Transport Summary
+              </h3>
+
+              {routes && routes.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white">
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">No.</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Route</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">PAX</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Vehicle</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Provider</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold">Price (USD)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {routes.map((route, index) => (
+                        <tr key={route.id} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
+                          <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                            {route.date ? format(new Date(route.date), 'dd.MM.yyyy') : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
+                            {route.routeName || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
+                            {route.personCount > 0 ? route.personCount : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200">
+                            {route.transportType || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200 capitalize">
+                            {route.provider || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold">
+                            {route.price > 0 ? (
+                              <span className="text-blue-700">{Math.round(route.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      {/* Sevil Total */}
+                      <tr className="bg-gradient-to-r from-purple-50 to-pink-50 border-t border-gray-300">
+                        <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">
+                          Sevil Total:
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-lg text-purple-700">
+                          {(() => {
+                            const sevilTotal = routes
+                              .filter(r => r.provider?.toLowerCase() === 'sevil')
+                              .reduce((sum, r) => sum + (r.price || 0), 0);
+                            return sevilTotal > 0
+                              ? Math.round(sevilTotal).toLocaleString('en-US').replace(/,/g, ' ')
+                              : '-';
+                          })()}
+                        </td>
+                      </tr>
+                      {/* Xayrulla Total */}
+                      <tr className="bg-gradient-to-r from-green-50 to-emerald-50">
+                        <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">
+                          Xayrulla Total:
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-lg text-green-700">
+                          {(() => {
+                            const xayrullaTotal = routes
+                              .filter(r => r.provider?.toLowerCase() === 'xayrulla')
+                              .reduce((sum, r) => sum + (r.price || 0), 0);
+                            return xayrullaTotal > 0
+                              ? Math.round(xayrullaTotal).toLocaleString('en-US').replace(/,/g, ' ')
+                              : '-';
+                          })()}
+                        </td>
+                      </tr>
+                      {/* Grand Total */}
+                      <tr className="bg-gradient-to-r from-blue-100 to-cyan-100 border-t-2 border-blue-300">
+                        <td colSpan="6" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-blue-200">
+                          Grand Total:
+                        </td>
+                        <td className="px-4 py-4 text-right font-black text-xl text-blue-700">
+                          {routes.reduce((sum, r) => sum + (r.price || 0), 0) > 0
+                            ? Math.round(routes.reduce((sum, r) => sum + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
+                            : '-'}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Car className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>No transport routes added yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Railway Tab */}
+          {tourServicesTab === 'railway' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-orange-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
+
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                <Train className="w-7 h-7 text-orange-600" />
+                Railway Summary
+              </h3>
+
+              {railways && railways.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-orange-600 to-amber-600 text-white">
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">No.</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Train No.</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-orange-400">Train Name</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-orange-400">Route</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Date</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Departure</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Arrival</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">PAX</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold">Price (UZS)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {railways.map((railway, index) => (
+                        <tr key={railway.id} className="border-b border-gray-200 hover:bg-orange-50 transition-colors">
+                          <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
+                            {railway.trainNumber || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
+                            {railway.trainName || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{railway.departure}</span>
+                              <span className="text-gray-400">→</span>
+                              <span className="font-medium">{railway.arrival}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                            {railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
+                            {railway.departureTime || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
+                            {railway.arrivalTime || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
+                            {railway.pax > 0 ? railway.pax : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold">
+                            {railway.price > 0 ? (
+                              <span className="text-orange-700">{Math.round(railway.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gradient-to-r from-orange-100 to-amber-100 border-t-2 border-orange-300">
+                        <td colSpan="8" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-orange-200">
+                          Total:
+                        </td>
+                        <td className="px-4 py-4 text-right font-black text-xl text-orange-700">
+                          {railways.reduce((sum, r) => sum + (r.price || 0), 0) > 0
+                            ? Math.round(railways.reduce((sum, r) => sum + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
+                            : '-'}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Train className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>No railway tickets added yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Flights Tab */}
+          {tourServicesTab === 'flights' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
+
+              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                <Plane className="w-7 h-7 text-green-600" />
+                Flight Summary
+              </h3>
+
+              {flights && flights.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">No.</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Type</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Flight No.</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-green-400">Airline</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-green-400">Route</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Date</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Departure</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Arrival</th>
+                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">PAX</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold">Price (USD)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {flights.map((flight, index) => (
+                        <tr key={flight.id} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
+                          <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm border-r border-gray-200">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              flight.type === 'INTERNATIONAL'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}>
+                              {flight.type === 'INTERNATIONAL' ? 'International' : 'Domestic'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
+                            {flight.flightNumber || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
+                            {flight.airline || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{flight.departure}</span>
+                              <span className="text-gray-400">→</span>
+                              <span className="font-medium">{flight.arrival}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                            {flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
+                            {flight.departureTime || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
+                            {flight.arrivalTime || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
+                            {flight.pax > 0 ? flight.pax : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold">
+                            {flight.price > 0 ? (
+                              <span className="text-green-700">{Math.round(flight.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gradient-to-r from-green-100 to-teal-100 border-t-2 border-green-300">
+                        <td colSpan="9" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-green-200">
+                          Total:
+                        </td>
+                        <td className="px-4 py-4 text-right font-black text-xl text-green-700">
+                          {flights.reduce((sum, f) => sum + (f.price || 0), 0) > 0
+                            ? Math.round(flights.reduce((sum, f) => sum + (f.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
+                            : '-'}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <Plane className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p>No flights added yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Guide Tab */}
+          {tourServicesTab === 'guide' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-rose-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Guide Services</h3>
+              <p className="text-gray-600">Guide costs and details will be displayed here</p>
+            </div>
+          )}
+
+          {/* Meals Tab */}
+          {tourServicesTab === 'meals' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Meal Services</h3>
+              <p className="text-gray-600">Meal costs and details will be displayed here</p>
+            </div>
+          )}
         </div>
       )}
 
       {!isNew && activeTab === 'costs' && (
-        <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
-          <CostSummary bookingId={parseInt(id)} booking={booking} />
+        <div className="space-y-6">
+          {/* Sub-tabs for Costs (Payment Methods) */}
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-green-100 p-4">
+            <nav className="flex space-x-3 overflow-x-auto">
+              <button
+                onClick={() => setCostsTab('rl')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  costsTab === 'rl'
+                    ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-green-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <User className="w-5 h-5" />
+                RL
+              </button>
+              <button
+                onClick={() => setCostsTab('spater')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  costsTab === 'spater'
+                    ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 hover:from-blue-600 hover:via-cyan-600 hover:to-sky-600 text-white shadow-blue-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <Calendar className="w-5 h-5" />
+                Später
+              </button>
+              <button
+                onClick={() => setCostsTab('uberweisung')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  costsTab === 'uberweisung'
+                    ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 hover:from-purple-600 hover:via-violet-600 hover:to-indigo-600 text-white shadow-purple-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <DollarSign className="w-5 h-5" />
+                Überweisung
+              </button>
+              <button
+                onClick={() => setCostsTab('karta')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  costsTab === 'karta'
+                    ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600 text-white shadow-orange-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <span className="text-lg">💳</span>
+                Karta
+              </button>
+              <button
+                onClick={() => setCostsTab('total')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  costsTab === 'total'
+                    ? 'bg-gradient-to-r from-slate-700 via-gray-700 to-zinc-700 hover:from-slate-800 hover:via-gray-800 hover:to-zinc-800 text-white shadow-slate-700/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <DollarSign className="w-5 h-5" />
+                Total
+              </button>
+            </nav>
+          </div>
+
+          {/* RL Tab */}
+          {costsTab === 'rl' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">RL (Reiseleiter) Payments</h3>
+              <p className="text-gray-600">Tour leader payment details will be displayed here</p>
+            </div>
+          )}
+
+          {/* Spater Tab */}
+          {costsTab === 'spater' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Später (Deferred Payments)</h3>
+              <p className="text-gray-600">Deferred payment details will be displayed here</p>
+            </div>
+          )}
+
+          {/* Uberweisung Tab */}
+          {costsTab === 'uberweisung' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Überweisung (Bank Transfer)</h3>
+              <p className="text-gray-600">Bank transfer payment details will be displayed here</p>
+            </div>
+          )}
+
+          {/* Karta Tab */}
+          {costsTab === 'karta' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-orange-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-6">Karta (Card Payments)</h3>
+              <p className="text-gray-600">Card payment details will be displayed here</p>
+            </div>
+          )}
+
+          {/* Total Tab */}
+          {costsTab === 'total' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-700 via-gray-700 to-zinc-700"></div>
+              <CostSummary bookingId={parseInt(id)} booking={booking} />
+            </div>
+          )}
         </div>
       )}
 

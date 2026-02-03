@@ -1935,7 +1935,7 @@ router.get('/:bookingId/flights', authenticate, async (req, res) => {
 router.post('/:bookingId/flights', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { type, flightNumber, airline, departure, arrival, date, departureTime, arrivalTime, notes } = req.body;
+    const { type, flightNumber, airline, groupName, route, departure, arrival, date, departureTime, arrivalTime, pax, price, tariff, notes } = req.body;
 
     // Get max sortOrder for this type
     const maxSort = await prisma.flight.aggregate({
@@ -1943,17 +1943,40 @@ router.post('/:bookingId/flights', authenticate, async (req, res) => {
       _max: { sortOrder: true }
     });
 
+    // Parse PAX safely
+    let paxValue = null;
+    if (pax !== undefined && pax !== null && pax !== '') {
+      const paxNum = parseInt(pax);
+      if (!isNaN(paxNum)) {
+        paxValue = paxNum;
+      }
+    }
+
+    // Parse price safely
+    let priceValue = 0;
+    if (price !== undefined && price !== null && price !== '') {
+      const priceNum = parseFloat(price);
+      if (!isNaN(priceNum)) {
+        priceValue = priceNum;
+      }
+    }
+
     const flight = await prisma.flight.create({
       data: {
         bookingId: parseInt(bookingId),
         type: type || 'INTERNATIONAL',
         flightNumber: flightNumber || null,
         airline: airline || null,
+        groupName: groupName || null,
+        route: route || null,
         departure: departure || '',
         arrival: arrival || '',
         date: date ? new Date(date) : null,
         departureTime: departureTime || null,
         arrivalTime: arrivalTime || null,
+        pax: paxValue,
+        price: priceValue,
+        tariff: tariff || 'economy',
         notes: notes || null,
         sortOrder: (maxSort._max.sortOrder || 0) + 1
       }
@@ -1970,27 +1993,52 @@ router.post('/:bookingId/flights', authenticate, async (req, res) => {
 router.put('/:bookingId/flights/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, flightNumber, airline, departure, arrival, date, departureTime, arrivalTime, notes } = req.body;
+    const { type, flightNumber, airline, groupName, route, departure, arrival, date, departureTime, arrivalTime, pax, price, tariff, notes } = req.body;
+
+    const updateData = {};
+
+    // Only include fields that are provided
+    if (type !== undefined) updateData.type = type;
+    if (flightNumber !== undefined) updateData.flightNumber = flightNumber;
+    if (airline !== undefined) updateData.airline = airline;
+    if (groupName !== undefined) updateData.groupName = groupName;
+    if (route !== undefined) updateData.route = route;
+    if (departure !== undefined) updateData.departure = departure;
+    if (arrival !== undefined) updateData.arrival = arrival;
+    if (date !== undefined) updateData.date = date ? new Date(date) : null;
+    if (departureTime !== undefined) updateData.departureTime = departureTime;
+    if (arrivalTime !== undefined) updateData.arrivalTime = arrivalTime;
+    if (notes !== undefined) updateData.notes = notes;
+
+    // Handle PAX separately - parse as integer
+    if (pax !== undefined && pax !== null && pax !== '') {
+      const paxNum = parseInt(pax);
+      if (!isNaN(paxNum)) {
+        updateData.pax = paxNum;
+      }
+    }
+
+    // Handle price separately - parse as float
+    if (price !== undefined && price !== null && price !== '') {
+      const priceNum = parseFloat(price);
+      if (!isNaN(priceNum)) {
+        updateData.price = priceNum;
+      }
+    }
+
+    // Handle tariff
+    if (tariff !== undefined) updateData.tariff = tariff;
 
     const flight = await prisma.flight.update({
       where: { id: parseInt(id) },
-      data: {
-        type,
-        flightNumber,
-        airline,
-        departure,
-        arrival,
-        date: date ? new Date(date) : null,
-        departureTime,
-        arrivalTime,
-        notes
-      }
+      data: updateData
     });
 
     res.json({ flight });
   } catch (error) {
     console.error('Error updating flight:', error);
-    res.status(500).json({ error: 'Error updating flight' });
+    console.error('Error details:', error.message);
+    res.status(500).json({ error: 'Error updating flight', details: error.message });
   }
 });
 
@@ -2080,7 +2128,7 @@ router.get('/:bookingId/railways', authenticate, async (req, res) => {
 router.post('/:bookingId/railways', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { type, trainNumber, trainName, departure, arrival, date, departureTime, arrivalTime, notes } = req.body;
+    const { type, trainNumber, trainName, groupName, departure, arrival, date, departureTime, arrivalTime, pax, price, notes } = req.body;
 
     // Get max sortOrder for this type
     const maxSort = await prisma.railway.aggregate({
@@ -2088,17 +2136,38 @@ router.post('/:bookingId/railways', authenticate, async (req, res) => {
       _max: { sortOrder: true }
     });
 
+    // Parse PAX safely
+    let paxValue = null;
+    if (pax !== undefined && pax !== null && pax !== '') {
+      const paxNum = parseInt(pax);
+      if (!isNaN(paxNum)) {
+        paxValue = paxNum;
+      }
+    }
+
+    // Parse price safely
+    let priceValue = 0;
+    if (price !== undefined && price !== null && price !== '') {
+      const priceNum = parseFloat(price);
+      if (!isNaN(priceNum)) {
+        priceValue = priceNum;
+      }
+    }
+
     const railway = await prisma.railway.create({
       data: {
         bookingId: parseInt(bookingId),
         type: type || 'INTERNATIONAL',
         trainNumber: trainNumber || null,
         trainName: trainName || null,
+        groupName: groupName || null,
         departure: departure || '',
         arrival: arrival || '',
         date: date ? new Date(date) : null,
         departureTime: departureTime || null,
         arrivalTime: arrivalTime || null,
+        pax: paxValue,
+        price: priceValue,
         notes: notes || null,
         sortOrder: (maxSort._max.sortOrder || 0) + 1
       }
@@ -2115,27 +2184,48 @@ router.post('/:bookingId/railways', authenticate, async (req, res) => {
 router.put('/:bookingId/railways/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, trainNumber, trainName, departure, arrival, date, departureTime, arrivalTime, notes } = req.body;
+    const { type, trainNumber, trainName, groupName, departure, arrival, date, departureTime, arrivalTime, pax, price, notes } = req.body;
+
+    const updateData = {};
+
+    // Only include fields that are provided
+    if (type !== undefined) updateData.type = type;
+    if (trainNumber !== undefined) updateData.trainNumber = trainNumber;
+    if (trainName !== undefined) updateData.trainName = trainName;
+    if (groupName !== undefined) updateData.groupName = groupName;
+    if (departure !== undefined) updateData.departure = departure;
+    if (arrival !== undefined) updateData.arrival = arrival;
+    if (date !== undefined) updateData.date = date ? new Date(date) : null;
+    if (departureTime !== undefined) updateData.departureTime = departureTime;
+    if (arrivalTime !== undefined) updateData.arrivalTime = arrivalTime;
+    if (notes !== undefined) updateData.notes = notes;
+
+    // Handle PAX separately - parse as integer
+    if (pax !== undefined && pax !== null && pax !== '') {
+      const paxNum = parseInt(pax);
+      if (!isNaN(paxNum)) {
+        updateData.pax = paxNum;
+      }
+    }
+
+    // Handle price separately - parse as float
+    if (price !== undefined && price !== null && price !== '') {
+      const priceNum = parseFloat(price);
+      if (!isNaN(priceNum)) {
+        updateData.price = priceNum;
+      }
+    }
 
     const railway = await prisma.railway.update({
       where: { id: parseInt(id) },
-      data: {
-        type,
-        trainNumber,
-        trainName,
-        departure,
-        arrival,
-        date: date ? new Date(date) : null,
-        departureTime,
-        arrivalTime,
-        notes
-      }
+      data: updateData
     });
 
     res.json({ railway });
   } catch (error) {
     console.error('Error updating railway:', error);
-    res.status(500).json({ error: 'Error updating railway' });
+    console.error('Error details:', error.message);
+    res.status(500).json({ error: 'Error updating railway', details: error.message });
   }
 });
 
@@ -3565,7 +3655,19 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      return `${day}.${month}.${year}`;
+      const result = `${day}.${month}.${year}`;
+
+      // DEBUG: Log formatting for Oct 10 dates
+      const dateStrString = typeof dateStr === 'string' ? dateStr : dateStr?.toISOString?.() || '';
+      if (dateStrString && (dateStrString.includes('2025-10-10') || dateStrString.includes('2025-10-11'))) {
+        console.log(`\n🔍 formatDisplayDate:`);
+        console.log(`   Input type: ${typeof dateStr}`);
+        console.log(`   Input: ${dateStr}`);
+        console.log(`   Date obj: ${d.toISOString()}`);
+        console.log(`   Output: ${result}`);
+      }
+
+      return result;
     };
 
     const bookingNumber = booking.bookingNumber || 'N/A';
@@ -3658,18 +3760,22 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
           const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') || placement === 'uz';
           const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
 
-          // Get accommodation-specific dates if available
-          const roomingEntry = roomingListEntries.find(e => e.touristId === t.id);
-          const touristCheckInDate = roomingEntry?.checkInDate || t.checkInDate;
-          const touristCheckOutDate = roomingEntry?.checkOutDate || t.checkOutDate;
+          // Use the helper function to get correct dates
+          const dates = calculateTouristDates(t);
+          const touristCheckInDate = dates.checkInDate;
+          const touristCheckOutDate = dates.checkOutDate;
 
-          // Get remarks only from roomAssignments.notes and custom dates
+          const isBaetgen = t.lastName?.includes('Baetgen');
+          if (isBaetgen) {
+            console.log(`\n🎯 BAETGEN PDF DISPLAY (Hotel: ${accommodation.hotel?.name}):`);
+            console.log(`   Calculated dates: ${touristCheckInDate?.split('T')[0]} - ${touristCheckOutDate?.split('T')[0]}`);
+            console.log(`   Accommodation dates: ${accommodation.checkInDate?.split('T')[0]} - ${accommodation.checkOutDate?.split('T')[0]}`);
+          }
+
+          // Get remarks only from roomAssignments.notes
           const remarksLines = [];
 
-          // Add custom check-in date if exists
-          if (touristCheckInDate) {
-            remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
-          }
+          // Don't add check-in date to remarks - it's already in "Дата заезда" column
 
           // Add room assignment notes (from Rooming list tab)
           if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
@@ -3707,7 +3813,12 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
           }
 
           const remarks = remarksLines.filter(Boolean).join('\n');
-          const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
+
+          // Only highlight EARLY arrivals (tourist arrives before accommodation default)
+          const accCheckIn = new Date(accommodation.checkInDate);
+          const touristCheckIn = touristCheckInDate ? new Date(touristCheckInDate) : null;
+          const isEarlyArrival = touristCheckIn && touristCheckIn < accCheckIn;
+          const rowBgColor = isEarlyArrival ? '#fffacd' : '';
 
           touristRows += `
         <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
@@ -3739,16 +3850,32 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
 
         // Get accommodation-specific dates if available
         const roomingEntry = roomingListEntries.find(e => e.touristId === t.id);
-        const touristCheckInDate = roomingEntry?.checkInDate || t.checkInDate;
-        const touristCheckOutDate = roomingEntry?.checkOutDate || t.checkOutDate;
 
-        // Get remarks only from roomAssignments.notes and custom dates
-        const remarksLines = [];
-
-        // Add custom check-in date if exists
-        if (touristCheckInDate) {
-          remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
+        // Calculate dates using EXACT same logic as rooming list API
+        let touristCheckInDate, touristCheckOutDate;
+        if (roomingEntry?.checkInDate) {
+          touristCheckInDate = roomingEntry.checkInDate;
+        } else if (isFirstAccommodation) {
+          const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+          const year = tourStartDate.getUTCFullYear();
+          const month = tourStartDate.getUTCMonth();
+          const day = tourStartDate.getUTCDate();
+          const arrivalDate = new Date(Date.UTC(year, month, day + 1));
+          touristCheckInDate = arrivalDate.toISOString();
+        } else {
+          touristCheckInDate = accommodation.checkInDate;
         }
+
+        if (roomingEntry?.checkOutDate) {
+          touristCheckOutDate = roomingEntry.checkOutDate;
+        } else if (isLastAccommodation && t.checkOutDate) {
+          touristCheckOutDate = t.checkOutDate;
+        } else {
+          touristCheckOutDate = accommodation.checkOutDate;
+        }
+
+        // Get remarks only from roomAssignments.notes
+        const remarksLines = [];
 
         // Add room assignment notes (from Rooming list tab)
         if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
@@ -3786,7 +3913,15 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
         }
 
         const remarks = remarksLines.filter(Boolean).join('\n');
-        const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
+
+        // Only highlight if tourist has DIFFERENT dates from accommodation defaults
+        const accCheckIn = new Date(accommodation.checkInDate);
+        const accCheckOut = new Date(accommodation.checkOutDate);
+        const touristCheckIn = touristCheckInDate ? new Date(touristCheckInDate) : null;
+        const touristCheckOut = touristCheckOutDate ? new Date(touristCheckOutDate) : null;
+        const hasDifferentDates = (touristCheckIn && touristCheckIn.getTime() !== accCheckIn.getTime()) ||
+                                   (touristCheckOut && touristCheckOut.getTime() !== accCheckOut.getTime());
+        const rowBgColor = hasDifferentDates ? '#fffacd' : '';
 
         touristRows += `
         <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
@@ -4157,6 +4292,19 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       }
     });
 
+    // Fetch all accommodations for this booking (to determine if this is first/last hotel)
+    const allAccommodations = await prisma.accommodation.findMany({
+      where: { bookingId: bookingIdInt },
+      include: {
+        hotel: {
+          include: {
+            city: true
+          }
+        }
+      },
+      orderBy: { checkInDate: 'asc' }
+    });
+
     // Fetch all tourists for this booking
     const allTourists = await prisma.tourist.findMany({
       where: { bookingId: bookingIdInt },
@@ -4175,26 +4323,81 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       orderBy: [{ lastName: 'asc' }]
     });
 
+    // Check if this is the first accommodation (for arrival date adjustment)
+    const isFirstAccommodation = allAccommodations.length > 0 && allAccommodations[0].id === accommodationIdInt;
+
+    // Check if this is the last accommodation
+    const isLastAccommodation = allAccommodations.length > 0 &&
+                                 allAccommodations[allAccommodations.length - 1].id === accommodationIdInt;
+
+    // Calculate rooming list with hotel-specific dates using EXACT same logic as rooming list API
+    const calculateTouristDates = (tourist) => {
+      const entry = roomingListEntries.find(e => e.touristId === tourist.id);
+      let checkInDate, checkOutDate;
+
+      // Check-in date priority
+      if (entry?.checkInDate) {
+        checkInDate = entry.checkInDate;
+      } else if (isFirstAccommodation) {
+        const tourStartDate = tourist.checkInDate ? new Date(tourist.checkInDate) : new Date(booking.departureDate);
+        const year = tourStartDate.getUTCFullYear();
+        const month = tourStartDate.getUTCMonth();
+        const day = tourStartDate.getUTCDate();
+        const arrivalDate = new Date(Date.UTC(year, month, day + 1));
+        checkInDate = arrivalDate.toISOString();
+      } else {
+        checkInDate = accommodation.checkInDate;
+      }
+
+      // Check-out date priority
+      if (entry?.checkOutDate) {
+        checkOutDate = entry.checkOutDate;
+      } else if (isLastAccommodation && tourist.checkOutDate) {
+        checkOutDate = tourist.checkOutDate;
+      } else {
+        checkOutDate = accommodation.checkOutDate;
+      }
+
+      return { checkInDate, checkOutDate };
+    };
+
     // Filter tourists whose dates overlap with this accommodation's dates
     // A tourist overlaps if their checkIn/checkOut dates fall within the accommodation dates
+    console.log(`\n📋 Filtering ${allTourists.length} tourists for accommodation ${accommodationIdInt}`);
     const touristsFiltered = allTourists.filter(t => {
-      // Check for accommodation-specific dates first
-      const entry = roomingListEntries.find(e => e.touristId === t.id);
-      const hasAccommodationDates = entry?.checkInDate || entry?.checkOutDate;
+      const debug = t.lastName?.includes('Baetgen');
 
-      // If tourist has no specific dates (neither accommodation-specific nor global), include them
-      if (!hasAccommodationDates && !t.checkInDate && !t.checkOutDate) {
+      // If tourist has no dates at all, include them
+      const entry = roomingListEntries.find(e => e.touristId === t.id);
+      if (!entry?.checkInDate && !entry?.checkOutDate && !t.checkInDate && !t.checkOutDate) {
         return true;
       }
 
-      // Use accommodation-specific dates if available, otherwise fall back to global dates
-      const touristCheckIn = entry?.checkInDate || t.checkInDate || new Date(booking.departureDate);
-      const touristCheckOut = entry?.checkOutDate || t.checkOutDate || new Date(booking.endDate);
+      // Use the helper function to get correct dates
+      const dates = calculateTouristDates(t);
+      const touristCheckIn = new Date(dates.checkInDate);
+      const touristCheckOut = new Date(dates.checkOutDate);
       const accCheckIn = new Date(accommodation.checkInDate);
       const accCheckOut = new Date(accommodation.checkOutDate);
 
-      // Overlap logic: tourist checkout > acc checkin AND tourist checkin < acc checkout
-      return new Date(touristCheckOut) > accCheckIn && new Date(touristCheckIn) < accCheckOut;
+      // For first accommodation: include ALL tourists with room numbers (ignore date overlap)
+      // This ensures early arrivals like Baetgen are always included in first hotel PDF
+      if (isFirstAccommodation && t.roomNumber) {
+        if (debug) console.log(`   ✅ ${t.lastName}: Included (first acc + has room number: ${t.roomNumber})`);
+        return true;
+      }
+
+      // Overlap logic: tourist checkout >= acc checkin AND tourist checkin < acc checkout
+      // Use >= to include tourists checking out on the same day as hotel check-in (travel day)
+      const overlaps = touristCheckOut >= accCheckIn && touristCheckIn < accCheckOut;
+      if (debug) {
+        console.log(`   🔍 ${t.lastName} overlap check:`);
+        console.log(`      checkIn: ${touristCheckIn.toISOString().split('T')[0]} < accCheckOut: ${accCheckOut.toISOString().split('T')[0]} = ${touristCheckIn < accCheckOut}`);
+        console.log(`      checkOut: ${touristCheckOut.toISOString().split('T')[0]} >= accCheckIn: ${accCheckIn.toISOString().split('T')[0]} = ${touristCheckOut >= accCheckIn}`);
+        console.log(`      roomNumber: ${t.roomNumber}, isFirst: ${isFirstAccommodation}`);
+        console.log(`      Result: ${overlaps ? '✅ INCLUDED' : '❌ EXCLUDED'}`);
+      }
+      return overlaps;
     });
 
     // Sort tourists: Uzbekistan first, then Turkmenistan
@@ -4224,7 +4427,19 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      return `${day}.${month}.${year}`;
+      const result = `${day}.${month}.${year}`;
+
+      // DEBUG: Log formatting for Oct 10 dates
+      const dateStrString = typeof dateStr === 'string' ? dateStr : dateStr?.toISOString?.() || '';
+      if (dateStrString && (dateStrString.includes('2025-10-10') || dateStrString.includes('2025-10-11'))) {
+        console.log(`\n🔍 formatDisplayDate:`);
+        console.log(`   Input type: ${typeof dateStr}`);
+        console.log(`   Input: ${dateStr}`);
+        console.log(`   Date obj: ${d.toISOString()}`);
+        console.log(`   Output: ${result}`);
+      }
+
+      return result;
     };
 
     const bookingNumber = booking.bookingNumber || 'N/A';
@@ -4240,21 +4455,7 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
     const isTurkmenistanHotel = cityNameCheck.includes('хива') || cityNameCheck.includes('khiva') ||
                                  cityNameCheck.includes('туркмен') || cityNameCheck.includes('turkmen');
 
-    // Determine if this is the first Tashkent hotel
-    // Fetch all accommodations for this booking to check position
-    const allAccommodations = await prisma.accommodation.findMany({
-      where: { bookingId: bookingIdInt },
-      include: {
-        hotel: {
-          include: {
-            city: true
-          }
-        }
-      },
-      orderBy: { checkInDate: 'asc' }
-    });
-
-    // Filter Tashkent hotels
+    // Filter Tashkent hotels (allAccommodations already fetched above)
     const tashkentAccommodations = allAccommodations.filter(acc => {
       const cityName = acc.hotel?.city?.name?.toLowerCase() || '';
       return cityName.includes('ташкент') || cityName.includes('tashkent') || cityName.includes('toshkent');
@@ -4369,6 +4570,26 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       });
     });
 
+    // Sort entries: UZ groups/singles first, then TM
+    allEntries.sort((a, b) => {
+      const getPlacement = (entry) => {
+        const tourist = entry.type === 'group' ? entry.tourists[0] : entry.tourist;
+        const placement = (tourist.accommodation || '').toLowerCase();
+        const isTM = placement.includes('turkmen') || placement.includes('туркмен');
+        const isUZ = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
+        return isTM ? 'TM' : isUZ ? 'UZ' : 'OTHER';
+      };
+
+      const aPlace = getPlacement(a);
+      const bPlace = getPlacement(b);
+
+      if (aPlace === 'UZ' && bPlace !== 'UZ') return -1;
+      if (aPlace !== 'UZ' && bPlace === 'UZ') return 1;
+      if (aPlace === 'TM' && bPlace !== 'TM') return -1;
+      if (aPlace !== 'TM' && bPlace === 'TM') return 1;
+      return 0;
+    });
+
     let touristRows = '';
     let counter = 0;
 
@@ -4390,18 +4611,22 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
           const isUzbekistan = placement.toLowerCase().includes('uzbek') || placement.toLowerCase().includes('узбек') || placement === 'uz';
           const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
 
-          // Get accommodation-specific dates if available
-          const roomingEntry = roomingListEntries.find(e => e.touristId === t.id);
-          const touristCheckInDate = roomingEntry?.checkInDate || t.checkInDate;
-          const touristCheckOutDate = roomingEntry?.checkOutDate || t.checkOutDate;
+          // Use the helper function to get correct dates
+          const dates = calculateTouristDates(t);
+          const touristCheckInDate = dates.checkInDate;
+          const touristCheckOutDate = dates.checkOutDate;
 
-          // Get remarks only from roomAssignments.notes and custom dates
+          const isBaetgen = t.lastName?.includes('Baetgen');
+          if (isBaetgen) {
+            console.log(`\n🎯 BAETGEN PDF DISPLAY (Hotel: ${accommodation.hotel?.name}):`);
+            console.log(`   Calculated dates: ${touristCheckInDate?.split('T')[0]} - ${touristCheckOutDate?.split('T')[0]}`);
+            console.log(`   Accommodation dates: ${accommodation.checkInDate?.split('T')[0]} - ${accommodation.checkOutDate?.split('T')[0]}`);
+          }
+
+          // Get remarks only from roomAssignments.notes
           const remarksLines = [];
 
-          // Add custom check-in date if exists
-          if (touristCheckInDate) {
-            remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
-          }
+          // Don't add check-in date to remarks - it's already in "Дата заезда" column
 
           // Add room assignment notes (from Rooming list tab)
           if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
@@ -4439,7 +4664,12 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
           }
 
           const remarks = remarksLines.filter(Boolean).join('\n');
-          const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
+
+          // Only highlight EARLY arrivals (tourist arrives before accommodation default)
+          const accCheckIn = new Date(accommodation.checkInDate);
+          const touristCheckIn = touristCheckInDate ? new Date(touristCheckInDate) : null;
+          const isEarlyArrival = touristCheckIn && touristCheckIn < accCheckIn;
+          const rowBgColor = isEarlyArrival ? '#fffacd' : '';
 
           touristRows += `
         <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
@@ -4471,16 +4701,32 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 
         // Get accommodation-specific dates if available
         const roomingEntry = roomingListEntries.find(e => e.touristId === t.id);
-        const touristCheckInDate = roomingEntry?.checkInDate || t.checkInDate;
-        const touristCheckOutDate = roomingEntry?.checkOutDate || t.checkOutDate;
 
-        // Get remarks only from roomAssignments.notes and custom dates
-        const remarksLines = [];
-
-        // Add custom check-in date if exists
-        if (touristCheckInDate) {
-          remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
+        // Calculate dates using EXACT same logic as rooming list API
+        let touristCheckInDate, touristCheckOutDate;
+        if (roomingEntry?.checkInDate) {
+          touristCheckInDate = roomingEntry.checkInDate;
+        } else if (isFirstAccommodation) {
+          const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+          const year = tourStartDate.getUTCFullYear();
+          const month = tourStartDate.getUTCMonth();
+          const day = tourStartDate.getUTCDate();
+          const arrivalDate = new Date(Date.UTC(year, month, day + 1));
+          touristCheckInDate = arrivalDate.toISOString();
+        } else {
+          touristCheckInDate = accommodation.checkInDate;
         }
+
+        if (roomingEntry?.checkOutDate) {
+          touristCheckOutDate = roomingEntry.checkOutDate;
+        } else if (isLastAccommodation && t.checkOutDate) {
+          touristCheckOutDate = t.checkOutDate;
+        } else {
+          touristCheckOutDate = accommodation.checkOutDate;
+        }
+
+        // Get remarks only from roomAssignments.notes
+        const remarksLines = [];
 
         // Add room assignment notes (from Rooming list tab)
         if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
@@ -4518,7 +4764,15 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
         }
 
         const remarks = remarksLines.filter(Boolean).join('\n');
-        const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
+
+        // Only highlight if tourist has DIFFERENT dates from accommodation defaults
+        const accCheckIn = new Date(accommodation.checkInDate);
+        const accCheckOut = new Date(accommodation.checkOutDate);
+        const touristCheckIn = touristCheckInDate ? new Date(touristCheckInDate) : null;
+        const touristCheckOut = touristCheckOutDate ? new Date(touristCheckOutDate) : null;
+        const hasDifferentDates = (touristCheckIn && touristCheckIn.getTime() !== accCheckIn.getTime()) ||
+                                   (touristCheckOut && touristCheckOut.getTime() !== accCheckOut.getTime());
+        const rowBgColor = hasDifferentDates ? '#fffacd' : '';
 
         touristRows += `
         <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
@@ -4888,7 +5142,19 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      return `${day}.${month}.${year}`;
+      const result = `${day}.${month}.${year}`;
+
+      // DEBUG: Log formatting for Oct 10 dates
+      const dateStrString = typeof dateStr === 'string' ? dateStr : dateStr?.toISOString?.() || '';
+      if (dateStrString && (dateStrString.includes('2025-10-10') || dateStrString.includes('2025-10-11'))) {
+        console.log(`\n🔍 formatDisplayDate:`);
+        console.log(`   Input type: ${typeof dateStr}`);
+        console.log(`   Input: ${dateStr}`);
+        console.log(`   Date obj: ${d.toISOString()}`);
+        console.log(`   Output: ${result}`);
+      }
+
+      return result;
     };
 
     const bookingNumber = booking.bookingNumber || 'N/A';
@@ -4976,21 +5242,54 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
         include: { tourist: true }
       });
 
-      // Filter tourists for this accommodation
+      // Determine if this is the first/last accommodation (for arrival/departure date logic)
+      const isFirstAccommodation = allAccommodations.length > 0 && allAccommodations[0].id === accommodation.id;
+      const isLastAccommodation = allAccommodations.length > 0 &&
+                                   allAccommodations[allAccommodations.length - 1].id === accommodation.id;
+
+      // Filter tourists for this accommodation (using same logic as rooming list API)
       let tourists = allTourists.filter(t => {
         const entry = roomingListEntries.find(e => e.touristId === t.id);
-        const hasAccommodationDates = entry?.checkInDate || entry?.checkOutDate;
 
-        if (!hasAccommodationDates && !t.checkInDate && !t.checkOutDate) {
-          return true;
+        // Calculate tourist check-in date using EXACT same logic as rooming list API
+        let touristCheckInDate;
+        if (entry?.checkInDate) {
+          touristCheckInDate = new Date(entry.checkInDate);
+        } else if (isFirstAccommodation) {
+          // For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
+          // tourist.checkInDate is the tour start date for THIS tourist (e.g., Baetgen 09.10, others 12.10)
+          const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+          // CRITICAL: Use UTC date manipulation to avoid timezone issues
+          const year = tourStartDate.getUTCFullYear();
+          const month = tourStartDate.getUTCMonth();
+          const day = tourStartDate.getUTCDate();
+          touristCheckInDate = new Date(Date.UTC(year, month, day + 1));
+        } else {
+          // For OTHER hotels (not first), use accommodation default dates
+          touristCheckInDate = new Date(accommodation.checkInDate);
         }
 
-        const touristCheckIn = entry?.checkInDate || t.checkInDate || new Date(booking.departureDate);
-        const touristCheckOut = entry?.checkOutDate || t.checkOutDate || new Date(booking.endDate);
+        // Calculate tourist check-out date using EXACT same logic as rooming list API
+        let touristCheckOutDate;
+        if (entry?.checkOutDate) {
+          touristCheckOutDate = new Date(entry.checkOutDate);
+        } else if (isLastAccommodation && t.checkOutDate) {
+          // CRITICAL: Only use tourist's global checkout date for LAST hotel
+          touristCheckOutDate = new Date(t.checkOutDate);
+        } else {
+          touristCheckOutDate = new Date(accommodation.checkOutDate);
+        }
+
         const accCheckIn = new Date(accommodation.checkInDate);
         const accCheckOut = new Date(accommodation.checkOutDate);
 
-        return new Date(touristCheckOut) > accCheckIn && new Date(touristCheckIn) < accCheckOut;
+        // For first accommodation, include tourists with room numbers (early arrivals like Baetgen)
+        if (isFirstAccommodation && t.roomNumber) {
+          return true;
+        }
+
+        // Check overlap
+        return touristCheckOutDate > accCheckIn && touristCheckInDate < accCheckOut;
       });
 
       // Sort tourists: UZ first, then TM
@@ -5126,11 +5425,38 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
             const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
 
             const roomingEntry = roomingListEntries.find(e => e.touristId === t.id);
-            const touristCheckInDate = roomingEntry?.checkInDate || t.checkInDate;
-            const touristCheckOutDate = roomingEntry?.checkOutDate || t.checkOutDate;
+
+            // Calculate tourist check-in date using EXACT same logic as rooming list API
+            let touristCheckInDate;
+            if (roomingEntry?.checkInDate) {
+              touristCheckInDate = roomingEntry.checkInDate;
+            } else if (isFirstAccommodation) {
+              // For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
+              // CRITICAL: Use UTC date manipulation to avoid timezone issues
+              const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+              const year = tourStartDate.getUTCFullYear();
+              const month = tourStartDate.getUTCMonth();
+              const day = tourStartDate.getUTCDate();
+              const arrivalDate = new Date(Date.UTC(year, month, day + 1));
+              touristCheckInDate = arrivalDate.toISOString();
+            } else {
+              // For OTHER hotels (not first), use accommodation default dates
+              touristCheckInDate = accommodation.checkInDate;
+            }
+
+            // Calculate checkout date using EXACT same logic as rooming list API
+            let touristCheckOutDate;
+            if (roomingEntry?.checkOutDate) {
+              touristCheckOutDate = roomingEntry.checkOutDate;
+            } else if (isLastAccommodation && t.checkOutDate) {
+              // CRITICAL: Only use tourist's global checkout date for LAST hotel
+              touristCheckOutDate = t.checkOutDate;
+            } else {
+              touristCheckOutDate = accommodation.checkOutDate;
+            }
 
             const remarksLines = [];
-            if (touristCheckInDate) remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
+            // Don't add check-in date to remarks - it's already in "Дата заезда" column
             if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
               // Filter out "PAX booked half double room" messages
               const notes = t.roomAssignments[0].notes;
@@ -5156,7 +5482,12 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
             }
 
             const remarks = remarksLines.filter(Boolean).join('\n');
-            const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
+
+            // Only highlight EARLY arrivals (tourist arrives before accommodation default)
+            const accCheckIn = new Date(accommodation.checkInDate);
+            const touristCheckIn = touristCheckInDate ? new Date(touristCheckInDate) : null;
+            const isEarlyArrival = touristCheckIn && touristCheckIn < accCheckIn;
+            const rowBgColor = isEarlyArrival ? '#fffacd' : '';
 
             touristRows += `
           <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
@@ -5185,11 +5516,58 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
           const placementText = isTurkmenistan ? 'TM' : isUzbekistan ? 'UZ' : '-';
 
           const roomingEntry = roomingListEntries.find(e => e.touristId === t.id);
-          const touristCheckInDate = roomingEntry?.checkInDate || t.checkInDate;
-          const touristCheckOutDate = roomingEntry?.checkOutDate || t.checkOutDate;
+
+          // Calculate tourist check-in date using EXACT same logic as rooming list API
+          let touristCheckInDate;
+
+          // DEBUG: Log for ALL single tourists
+          console.log(`\n📋 Single Tourist: ${name}`);
+          console.log(`   lastName: "${t.lastName}"`);
+          console.log(`   firstName: "${t.firstName}"`);
+          console.log(`   fullName: "${t.fullName}"`);
+          console.log(`   roomingEntry?.checkInDate: ${roomingEntry?.checkInDate}`);
+          console.log(`   t.checkInDate: ${t.checkInDate}`);
+          console.log(`   booking.departureDate: ${booking.departureDate}`);
+          console.log(`   isFirstAccommodation: ${isFirstAccommodation}`);
+
+          if (roomingEntry?.checkInDate) {
+            touristCheckInDate = roomingEntry.checkInDate;
+            console.log(`   ✅ Using roomingEntry.checkInDate: ${touristCheckInDate}`);
+          } else if (isFirstAccommodation) {
+            // For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
+            // CRITICAL: Use UTC date manipulation to avoid timezone issues
+            const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+
+            // Extract UTC date components and add 1 day
+            const year = tourStartDate.getUTCFullYear();
+            const month = tourStartDate.getUTCMonth();
+            const day = tourStartDate.getUTCDate();
+
+            // Create new date with +1 day in UTC
+            const arrivalDate = new Date(Date.UTC(year, month, day + 1));
+            touristCheckInDate = arrivalDate.toISOString();
+
+            console.log(`   📅 tourStartDate UTC: ${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
+            console.log(`   ✅ Calculated arrival: ${touristCheckInDate.split('T')[0]}`);
+          } else {
+            // For OTHER hotels (not first), use accommodation default dates
+            touristCheckInDate = accommodation.checkInDate;
+            console.log(`   ✅ Using accommodation.checkInDate: ${touristCheckInDate}`);
+          }
+
+          // Calculate checkout date using EXACT same logic as rooming list API
+          let touristCheckOutDate;
+          if (roomingEntry?.checkOutDate) {
+            touristCheckOutDate = roomingEntry.checkOutDate;
+          } else if (isLastAccommodation && t.checkOutDate) {
+            // CRITICAL: Only use tourist's global checkout date for LAST hotel
+            touristCheckOutDate = t.checkOutDate;
+          } else {
+            touristCheckOutDate = accommodation.checkOutDate;
+          }
 
           const remarksLines = [];
-          if (touristCheckInDate) remarksLines.push(`Заезд: ${formatDisplayDate(touristCheckInDate)}`);
+          // Don't add check-in date to remarks - it's already in "Дата заезда" column
           if (t.roomAssignments && t.roomAssignments.length > 0 && t.roomAssignments[0].notes) {
             // Filter out "PAX booked half double room" messages
             const notes = t.roomAssignments[0].notes;
@@ -5215,7 +5593,12 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
           }
 
           const remarks = remarksLines.filter(Boolean).join('\n');
-          const rowBgColor = (touristCheckInDate || touristCheckOutDate || customDeparture) ? '#fffacd' : '';
+
+          // Only highlight EARLY arrivals (tourist arrives before accommodation default)
+          const accCheckIn = new Date(accommodation.checkInDate);
+          const touristCheckIn = touristCheckInDate ? new Date(touristCheckInDate) : null;
+          const isEarlyArrival = touristCheckIn && touristCheckIn < accCheckIn;
+          const rowBgColor = isEarlyArrival ? '#fffacd' : '';
 
           touristRows += `
           <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
