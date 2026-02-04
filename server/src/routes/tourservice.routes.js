@@ -35,7 +35,7 @@ router.get('/:bookingId/tour-services', async (req, res) => {
 router.post('/:bookingId/tour-services', async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { type, name, date, pricePerPerson, pax, notes } = req.body;
+    const { type, name, city, date, pricePerPerson, pax, notes } = req.body;
 
     if (!type || !name) {
       return res.status(400).json({ error: 'Type va Name majburiy' });
@@ -73,6 +73,7 @@ router.post('/:bookingId/tour-services', async (req, res) => {
         bookingId: parseInt(bookingId),
         type,
         name,
+        city: city || null,
         date: date ? new Date(date) : null,
         pricePerPerson: pricePerPersonValue,
         pax: paxValue,
@@ -94,12 +95,13 @@ router.post('/:bookingId/tour-services', async (req, res) => {
 router.put('/:bookingId/tour-services/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, name, date, pricePerPerson, pax, notes } = req.body;
+    const { type, name, city, date, pricePerPerson, pax, notes } = req.body;
 
     const updateData = {};
 
     if (type !== undefined) updateData.type = type;
     if (name !== undefined) updateData.name = name;
+    if (city !== undefined) updateData.city = city;
     if (date !== undefined) updateData.date = date ? new Date(date) : null;
     if (notes !== undefined) updateData.notes = notes;
 

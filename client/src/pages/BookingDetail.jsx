@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi } from '../services/api';
 import { format, addDays } from 'date-fns';
@@ -39,7 +39,6 @@ import html2pdf from 'html2pdf.js';
 import TouristsList from '../components/booking/TouristsList';
 import RoomingList from '../components/booking/RoomingList';
 import RoomingListModule from '../components/booking/RoomingListModule';
-import HotelRequestPreview from '../components/booking/HotelRequestPreview';
 import CostSummary from '../components/booking/CostSummary';
 import HotelAccommodationForm from '../components/booking/HotelAccommodationForm';
 
@@ -146,83 +145,50 @@ const getTicketStatusIcon = (status) => {
 })();
 
 // Predefined flight data for selection
-const PREDEFINED_FLIGHTS = {
-  INTERNATIONAL: [
-    {
-      flightNumber: 'TK 368',
-      airline: 'Turkish Airlines',
-      route: 'IST - TAS',
-      departure: 'IST',
-      arrival: 'TAS',
-      departureTime: '02:05',
-      arrivalTime: '09:10'
-    },
-    {
-      flightNumber: 'TK 371',
-      airline: 'Turkish Airlines',
-      route: 'TAS - IST',
-      departure: 'TAS',
-      arrival: 'IST',
-      departureTime: '15:00',
-      arrivalTime: '17:45'
-    },
-    {
-      flightNumber: 'HY 251',
-      airline: 'Uzbekistan Airways',
-      route: 'IST - TAS',
-      departure: 'IST',
-      arrival: 'TAS',
-      departureTime: '03:30',
-      arrivalTime: '10:20'
-    },
-    {
-      flightNumber: 'HY 252',
-      airline: 'Uzbekistan Airways',
-      route: 'TAS - IST',
-      departure: 'TAS',
-      arrival: 'IST',
-      departureTime: '16:30',
-      arrivalTime: '19:15'
+// Function to organize flight data from Opex database
+const getFlightsFromOpex = (planesData = []) => {
+  // Organize flights by type (INTERNATIONAL vs DOMESTIC)
+  const flightsByType = {
+    INTERNATIONAL: [],
+    DOMESTIC: []
+  };
+
+  planesData.forEach(plane => {
+    const flightType = (plane.type || plane.flightType || '').toUpperCase();
+    const isInternational = flightType.includes('INTERNATIONAL') || flightType.includes('XALQARO');
+    const isDomestic = flightType.includes('DOMESTIC') || flightType.includes('ICHKI') || flightType.includes("O'ZBEKISTON");
+
+    // CRITICAL: In OPEX, flight number is stored in 'trainNumber' field (shared with trains)
+    // name = airline name, trainNumber = flight number (e.g., HY-101, TK-1000)
+    const flightData = {
+      flightNumber: plane.trainNumber || plane.flightNumber || plane.number || '',
+      airline: plane.name || plane.airline || plane.airlineName || 'Unknown Airline',
+      route: plane.route || `${plane.departure || ''} - ${plane.arrival || ''}`,
+      departure: plane.departure || plane.from || '',
+      arrival: plane.arrival || plane.to || '',
+      departureTime: plane.departure || '',
+      arrivalTime: plane.arrival || ''
+    };
+
+    // Only add flights that have a flight number
+    if (flightData.flightNumber) {
+      if (isInternational) {
+        flightsByType.INTERNATIONAL.push(flightData);
+      } else if (isDomestic) {
+        flightsByType.DOMESTIC.push(flightData);
+      } else {
+        // Default to DOMESTIC if type not specified
+        flightsByType.DOMESTIC.push(flightData);
+      }
     }
-  ],
-  DOMESTIC: [
-    {
-      flightNumber: 'HY 1053',
-      airline: 'Uzbekistan Airways',
-      route: 'TAS - UGC',
-      departure: 'TAS',
-      arrival: 'UGC',
-      departureTime: '12:50',
-      arrivalTime: '14:30'
-    },
-    {
-      flightNumber: 'HY 1054',
-      airline: 'Uzbekistan Airways',
-      route: 'UGC - TAS',
-      departure: 'UGC',
-      arrival: 'TAS',
-      departureTime: '15:30',
-      arrivalTime: '17:10'
-    },
-    {
-      flightNumber: 'HY 1007',
-      airline: 'Uzbekistan Airways',
-      route: 'TAS - SKD',
-      departure: 'TAS',
-      arrival: 'SKD',
-      departureTime: '08:00',
-      arrivalTime: '08:50'
-    },
-    {
-      flightNumber: 'HY 1008',
-      airline: 'Uzbekistan Airways',
-      route: 'SKD - TAS',
-      departure: 'SKD',
-      arrival: 'TAS',
-      departureTime: '09:50',
-      arrivalTime: '10:40'
-    }
-  ]
+  });
+
+  console.log('✈️ Organized flights:', {
+    INTERNATIONAL: flightsByType.INTERNATIONAL.length,
+    DOMESTIC: flightsByType.DOMESTIC.length,
+    data: flightsByType
+  });
+  return flightsByType;
 };
 
 // Predefined railway data for selection (Uzbekistan domestic trains)
@@ -390,7 +356,7 @@ export default function BookingDetail() {
 
   const [activeTab, setActiveTabState] = useState(getInitialTab());
   const [flyRailwayTab, setFlyRailwayTab] = useState('fly'); // Sub-tab for Fly&Railway module
-  const [documentsTab, setDocumentsTab] = useState('hotel-requests'); // Sub-tab for Documents module
+  const [documentsTab, setDocumentsTab] = useState('tourist-list'); // Sub-tab for Documents module
   const [tourServicesTab, setTourServicesTab] = useState('hotels'); // Sub-tab for Tour Services module
   const [costsTab, setCostsTab] = useState('rl'); // Sub-tab for Costs module (payment methods)
   const [flights, setFlights] = useState([]);
@@ -398,6 +364,7 @@ export default function BookingDetail() {
   const [loadingFlights, setLoadingFlights] = useState(false);
   const [flightModalOpen, setFlightModalOpen] = useState(false);
   const [editingFlight, setEditingFlight] = useState(null);
+  const [planeVehicles, setPlaneVehicles] = useState([]); // Planes from OPEX database
   const [flightForm, setFlightForm] = useState({
     type: 'INTERNATIONAL',
     flightNumber: '',
@@ -446,6 +413,7 @@ export default function BookingDetail() {
   const [hiddenTemplateIds, setHiddenTemplateIds] = useState([]); // Track hidden template entries
   const [tourServiceForm, setTourServiceForm] = useState({
     name: '',
+    city: '',
     date: '',
     pricePerPerson: 0,
     pax: 0,
@@ -810,6 +778,7 @@ export default function BookingDetail() {
   const [sevilVehicles, setSevilVehicles] = useState(defaultSevilVehicles);
   const [xayrullaVehicles, setXayrullaVehicles] = useState(defaultXayrullaVehicles);
   const [nosirVehicles, setNosirVehicles] = useState(defaultNosirVehicles);
+  const [metroVehicles, setMetroVehicles] = useState([]);
 
   // Route data - ER
   // Default ER route template - used for all ER bookings
@@ -872,6 +841,11 @@ export default function BookingDetail() {
       if (grouped.sevil?.length > 0) setSevilVehicles(grouped.sevil);
       if (grouped.xayrulla?.length > 0) setXayrullaVehicles(grouped.xayrulla);
       if (grouped.nosir?.length > 0) setNosirVehicles(grouped.nosir);
+      if (grouped.metro?.length > 0) setMetroVehicles(grouped.metro);
+      if (grouped.plane?.length > 0) {
+        setPlaneVehicles(grouped.plane);
+        console.log('✈️ Loaded planes from OPEX:', grouped.plane.length, 'flights');
+      }
     } catch (error) {
       console.error('Error loading vehicle data from API:', error);
       // Keep default values on error
@@ -1958,6 +1932,7 @@ export default function BookingDetail() {
     setEditingTourService(null);
     setTourServiceForm({
       name: '',
+      city: '',
       date: '',
       pricePerPerson: 0,
       pax: booking?.pax || 0,
@@ -1978,6 +1953,7 @@ export default function BookingDetail() {
 
     setTourServiceForm({
       name: service.name || '',
+      city: service.city || '',
       date: service.date ? format(new Date(service.date), 'yyyy-MM-dd') : '',
       pricePerPerson: pricePerPerson,
       pax: pax,
@@ -1996,6 +1972,7 @@ export default function BookingDetail() {
       const data = {
         type: tourServiceType,
         name: tourServiceForm.name,
+        city: tourServiceForm.city || null,
         date: tourServiceForm.date || null,
         pricePerPerson: parseFloat(tourServiceForm.pricePerPerson) || 0,
         pax: parseInt(tourServiceForm.pax) || 0,
@@ -2700,14 +2677,29 @@ export default function BookingDetail() {
     });
   };
 
-  // Load flights and railways when Fly&Railway tab is accessed
+  // Load flights and railways when Fly&Railway or Tour Services tab is accessed
   useEffect(() => {
-    if (activeTab === 'rooming' && !isNew && id) {
+    if ((activeTab === 'rooming' || activeTab === 'tour-services') && !isNew && id) {
       loadFlights();
       loadRailways();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, id, isNew]);
+
+  // Reload all Tour Services data when Total tab is accessed
+  useEffect(() => {
+    if (activeTab === 'costs' && (costsTab === 'total' || costsTab === 'ausgaben') && !isNew && id) {
+      // Reload all data sources for Total and Ausgaben tabs
+      loadFlights();
+      loadRailways();
+      loadTourServices('EINTRITT');
+      loadTourServices('METRO');
+      loadTourServices('OTHER');
+      loadVehiclesFromApi(); // Reload metro and other transport
+      // Hotels and guides are already loaded via other mechanisms
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, costsTab, id, isNew]);
 
   // Auto-fill accommodations from tour itinerary
   const autoFillAccommodationsFromItinerary = async () => {
@@ -5141,7 +5133,7 @@ export default function BookingDetail() {
                                   return (
                                     <tr key={flight.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
                                       <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
-                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.departure || '-'} → {flight.arrival || '-'}</td>
+                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
                                       <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
@@ -5219,7 +5211,7 @@ export default function BookingDetail() {
                                   return (
                                     <tr key={flight.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
                                       <td className="px-4 py-3 font-bold text-emerald-900">{flight.flightNumber || '-'}</td>
-                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.departure || '-'} → {flight.arrival || '-'}</td>
+                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
                                       <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
@@ -5478,23 +5470,27 @@ export default function BookingDetail() {
           )}
 
           {/* Flight Add/Edit Modal */}
-          {flightModalOpen && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="sticky top-0 bg-gradient-to-r from-sky-500 to-blue-500 text-white px-6 py-4 flex items-center justify-between rounded-t-2xl">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <Plane className="w-6 h-6" />
-                    {editingFlight ? 'Edit Flight' : 'Add New Flight'}
-                  </h3>
-                  <button
-                    onClick={closeFlightModal}
-                    className="p-1 hover:bg-white/20 rounded-lg transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
+          {flightModalOpen && (() => {
+            // Load flights from Opex database (loaded from API on mount)
+            const opexFlights = getFlightsFromOpex(planeVehicles);
 
-                <div className="p-6 space-y-4">
+            return (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <div className="sticky top-0 bg-gradient-to-r from-sky-500 to-blue-500 text-white px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <Plane className="w-6 h-6" />
+                      {editingFlight ? 'Edit Flight' : 'Add New Flight'}
+                    </h3>
+                    <button
+                      onClick={closeFlightModal}
+                      className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-4">
                   {/* Flight Type */}
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -5518,7 +5514,7 @@ export default function BookingDetail() {
                     <select
                       value={flightForm.flightNumber}
                       onChange={(e) => {
-                        const selectedFlight = PREDEFINED_FLIGHTS[flightForm.type]?.find(f => f.flightNumber === e.target.value);
+                        const selectedFlight = opexFlights[flightForm.type]?.find(f => f.flightNumber === e.target.value);
                         if (selectedFlight) {
                           // Auto-populate date based on flight type
                           let autoDate = '';
@@ -5555,7 +5551,7 @@ export default function BookingDetail() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                     >
                       <option value="">Select flight number...</option>
-                      {PREDEFINED_FLIGHTS[flightForm.type]?.map(flight => (
+                      {opexFlights[flightForm.type]?.map(flight => (
                         <option key={flight.flightNumber} value={flight.flightNumber}>
                           {flight.flightNumber} - {flight.route}
                         </option>
@@ -5711,7 +5707,8 @@ export default function BookingDetail() {
                 </div>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Railway Add/Edit Modal */}
           {railwayModalOpen && (
@@ -5985,17 +5982,6 @@ export default function BookingDetail() {
           <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-amber-100 p-4">
             <nav className="flex space-x-3">
               <button
-                onClick={() => setDocumentsTab('hotel-requests')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
-                  documentsTab === 'hotel-requests'
-                    ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 text-white shadow-amber-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
-                }`}
-              >
-                <Building2 className="w-5 h-5" />
-                Hotel Requests
-              </button>
-              <button
                 onClick={() => setDocumentsTab('tourist-list')}
                 className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   documentsTab === 'tourist-list'
@@ -6030,14 +6016,6 @@ export default function BookingDetail() {
               </button>
             </nav>
           </div>
-
-          {/* Hotel Requests Tab Content */}
-          {documentsTab === 'hotel-requests' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-amber-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500"></div>
-              <HotelRequestPreview bookingId={parseInt(id)} booking={booking} />
-            </div>
-          )}
 
           {/* Tourist List Tab Content */}
           {documentsTab === 'tourist-list' && (
@@ -6976,7 +6954,7 @@ export default function BookingDetail() {
                         <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Departure</th>
                         <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Arrival</th>
                         <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">PAX</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold">Price (USD)</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold">Price (UZS)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -7326,7 +7304,7 @@ export default function BookingDetail() {
               console.error('Error loading meals from localStorage:', e);
             }
 
-            const pax = booking?.pax || 0;
+            const pax = tourists?.length || 0;
 
             // Calculate total
             const grandTotal = mealsData.reduce((sum, meal) => {
@@ -7568,26 +7546,33 @@ export default function BookingDetail() {
                   }
                 }
 
+                // Always use tourists count from Final List, not saved PAX
+                const currentPax = tourists?.length || 0;
+                const pricePerPerson = savedEntry.pricePerPerson || 0;
+                const totalPrice = pricePerPerson * currentPax;
+
                 return {
                   id: savedEntry.id,
                   name: savedEntry.name,
                   city: item.city, // Keep city from template
                   date: hasValidDate ? savedEntry.date : autoDate, // Use auto-date if no valid saved date
-                  pricePerPerson: savedEntry.pricePerPerson,
-                  pax: savedEntry.pax,
-                  price: savedEntry.price,
+                  pricePerPerson: pricePerPerson,
+                  pax: currentPax, // Use tourists count from Final List
+                  price: totalPrice, // Recalculate with current PAX
                   isTemplate: false // This is a saved entry
                 };
               } else {
                 // Use template data with auto-calculated date for ER tours
+                const currentPax = tourists?.length || 0;
+                const pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
                 return {
                   id: `opex-${item.id}`,
                   name: item.name,
                   city: item.city,
                   date: autoDate || item.date || null,
-                  pricePerPerson: parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0,
-                  pax: booking?.pax || 0,
-                  price: (parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0) * (booking?.pax || 0),
+                  pricePerPerson: pricePerPerson,
+                  pax: currentPax,
+                  price: pricePerPerson * currentPax,
                   isTemplate: true
                 };
               }
@@ -7595,14 +7580,19 @@ export default function BookingDetail() {
 
             // Add any remaining saved entries that didn't match templates (custom entries)
             savedEntriesMap.forEach(savedEntry => {
+              // Always use tourists count from Final List for custom entries too
+              const currentPax = tourists?.length || 0;
+              const pricePerPerson = savedEntry.pricePerPerson || 0;
+              const totalPrice = pricePerPerson * currentPax;
+
               allEntries.push({
                 id: savedEntry.id,
                 name: savedEntry.name,
                 city: null,
                 date: savedEntry.date,
-                pricePerPerson: savedEntry.pricePerPerson,
-                pax: savedEntry.pax,
-                price: savedEntry.price,
+                pricePerPerson: pricePerPerson,
+                pax: currentPax, // Use tourists count from Final List
+                price: totalPrice, // Recalculate with current PAX
                 isTemplate: false
               });
             });
@@ -7731,173 +7721,216 @@ export default function BookingDetail() {
 
           {/* Metro Tab */}
           {tourServicesTab === 'metro' && (() => {
-            const services = tourServices.metro || [];
+            // Use metro data from API (loaded in metroVehicles state)
+            const metroData = metroVehicles || [];
+            const pax = (tourists?.length || 0) + 1; // +1 for guide
+
+            // Calculate total
+            const grandTotal = metroData.reduce((sum, metro) => {
+              // Get price from API (metro uses economPrice field)
+              const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
+              const priceStr = rawPrice.toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              return sum + (pricePerPerson * pax);
+            }, 0);
+
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-lime-100 p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500"></div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <span className="text-3xl">🚇</span>
-                    Metro
-                  </h3>
-                  <button onClick={() => openTourServiceModal('METRO')} className="px-6 py-3 bg-gradient-to-r from-lime-500 to-emerald-500 text-white font-bold rounded-xl hover:from-lime-600 hover:to-emerald-600 transition-all shadow-lg">+ Add Metro</button>
-                </div>
-                {services.length > 0 ? (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-lime-600 to-emerald-600 text-white">
-                        <th className="px-4 py-3 text-left">Name</th>
-                        <th className="px-4 py-3 text-center">Date</th>
-                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
-                        <th className="px-4 py-3 text-center">PAX</th>
-                        <th className="px-4 py-3 text-right">Total (UZS)</th>
-                        <th className="px-4 py-3 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {services.map((s, idx) => (
-                        <tr key={s.id} className="border-b hover:bg-lime-50">
-                          <td className="px-4 py-3">{s.name}</td>
-                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
-                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-lime-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => moveTourService(s, 'up', 'METRO')}
-                                disabled={idx === 0}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-lime-100 hover:bg-lime-200 text-lime-600'}`}
-                                title="Move up"
-                              >
-                                <ChevronUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => moveTourService(s, 'down', 'METRO')}
-                                disabled={idx === services.length - 1}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-lime-100 hover:bg-lime-200 text-lime-600'}`}
-                                title="Move down"
-                              >
-                                <ChevronDown className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => editTourService(s)}
-                                className="p-1.5 bg-lime-100 hover:bg-lime-200 text-lime-600 rounded-lg"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteTourService(s.id, 'METRO')}
-                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <span className="text-3xl">🚇</span>
+                  Metro
+                </h3>
+
+                {metroData.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-lime-600 to-emerald-600 border-b-2 border-lime-700">
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-lime-400">#</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-lime-400">SERVICE</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-lime-400">PRICE (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-lime-400">PAX</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metroData.map((metro, index) => {
+                          // Get price from API (metro uses economPrice field)
+                          const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
+                          const priceStr = rawPrice.toString().replace(/\s/g, '');
+                          const pricePerPerson = parseFloat(priceStr) || 0;
+                          const total = pricePerPerson * pax;
+
+                          return (
+                            <tr key={index} className="border-b border-gray-200 hover:bg-lime-50 transition-colors">
+                              <td className="px-4 py-3 text-center border-r border-gray-200">
+                                <div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">
+                                  {index + 1}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
+                                {metro.name || metro.service || '-'}
+                              </td>
+                              <td className="px-4 py-3 text-right border-r border-gray-200">
+                                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-md font-medium">
+                                  {pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-bold text-lime-600 text-lg border-r border-gray-200">
+                                {pax}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">
+                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-lime-100 to-emerald-200 border-t-2 border-lime-300">
+                          <td colSpan="4" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                            Grand Total:
+                          </td>
+                          <td className="px-4 py-4 text-right font-bold text-lime-700 text-xl">
+                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-lime-100 font-bold">
-                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
-                        <td className="px-4 py-3 text-right text-lime-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                ) : (<p className="text-gray-500 text-center py-8">No metro services added yet</p>)}
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <span className="text-6xl mb-4 block">🚇</span>
+                    <p className="text-lg">No metro data found for {booking?.tourType?.code || 'ER'} tour type.</p>
+                    <p className="text-sm mt-2">Please add data in Opex → Transport → Metro.</p>
+                  </div>
+                )}
               </div>
             );
           })()}
 
           {/* Shou Tab */}
           {tourServicesTab === 'shou' && (() => {
-            const services = tourServices.shou || [];
+            // Load shows data from Opex based on tour type
+            const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+            const showsKey = `${tourTypeCode}Shows`;
+            let showsData = [];
+            try {
+              const saved = localStorage.getItem(showsKey);
+              if (saved) {
+                showsData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading shows from localStorage:', e);
+            }
+
+            const pax = tourists?.length || 0;
+
+            // Calculate total
+            const grandTotal = showsData.reduce((sum, show) => {
+              // Get price from Opex (can be string or number)
+              const rawPrice = show.price || show.pricePerPerson || 0;
+              const priceStr = rawPrice.toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              return sum + (pricePerPerson * pax);
+            }, 0);
+
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-pink-100 p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500"></div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <span className="text-3xl">🎭</span>
-                    Shou (Shows)
-                  </h3>
-                  <button onClick={() => openTourServiceModal('SHOU')} className="px-6 py-3 bg-gradient-to-r from-pink-500 to-red-500 text-white font-bold rounded-xl hover:from-pink-600 hover:to-red-600 transition-all shadow-lg">+ Add Shou</button>
-                </div>
-                {services.length > 0 ? (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-pink-600 to-red-600 text-white">
-                        <th className="px-4 py-3 text-left">Name</th>
-                        <th className="px-4 py-3 text-center">Date</th>
-                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
-                        <th className="px-4 py-3 text-center">PAX</th>
-                        <th className="px-4 py-3 text-right">Total (UZS)</th>
-                        <th className="px-4 py-3 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {services.map((s, idx) => (
-                        <tr key={s.id} className="border-b hover:bg-pink-50">
-                          <td className="px-4 py-3">{s.name}</td>
-                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
-                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-pink-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => moveTourService(s, 'up', 'SHOU')}
-                                disabled={idx === 0}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-pink-100 hover:bg-pink-200 text-pink-600'}`}
-                                title="Move up"
-                              >
-                                <ChevronUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => moveTourService(s, 'down', 'SHOU')}
-                                disabled={idx === services.length - 1}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-pink-100 hover:bg-pink-200 text-pink-600'}`}
-                                title="Move down"
-                              >
-                                <ChevronDown className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => editTourService(s)}
-                                className="p-1.5 bg-pink-100 hover:bg-pink-200 text-pink-600 rounded-lg"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteTourService(s.id, 'SHOU')}
-                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <span className="text-3xl">🎭</span>
+                  Shou (Shows)
+                </h3>
+
+                {showsData.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-pink-600 to-red-600 border-b-2 border-pink-700">
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">#</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">CITY</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">SERVICE</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-pink-400">PRICE (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">PAX</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {showsData.map((show, index) => {
+                          // Get price from Opex (can be string or number)
+                          const rawPrice = show.price || show.pricePerPerson || 0;
+                          const priceStr = rawPrice.toString().replace(/\s/g, '');
+                          const pricePerPerson = parseFloat(priceStr) || 0;
+                          const total = pricePerPerson * pax;
+
+                          return (
+                            <tr key={index} className="border-b border-gray-200 hover:bg-pink-50 transition-colors">
+                              <td className="px-4 py-3 text-center border-r border-gray-200">
+                                <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-semibold mx-auto">
+                                  {index + 1}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 border-r border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-pink-400"></div>
+                                  <span className="font-medium text-gray-900">{show.city || '-'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
+                                {show.name || show.service || '-'}
+                              </td>
+                              <td className="px-4 py-3 text-right border-r border-gray-200">
+                                <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-md font-medium">
+                                  {pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-bold text-pink-600 text-lg border-r border-gray-200">
+                                {pax}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">
+                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-pink-100 to-rose-200 border-t-2 border-pink-300">
+                          <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                            Grand Total:
+                          </td>
+                          <td className="px-4 py-4 text-right font-bold text-pink-700 text-xl">
+                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-pink-100 font-bold">
-                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
-                        <td className="px-4 py-3 text-right text-pink-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                ) : (<p className="text-gray-500 text-center py-8">No shows added yet</p>)}
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <span className="text-6xl mb-4 block">🎭</span>
+                    <p className="text-lg">No shows data found for {booking?.tourType?.code || 'ER'} tour type.</p>
+                    <p className="text-sm mt-2">Please add data in Opex → Shows.</p>
+                  </div>
+                )}
               </div>
             );
           })()}
 
           {/* Other Tab */}
           {tourServicesTab === 'other' && (() => {
+            // Use database services (manually added by user)
             const services = tourServices.other || [];
+
+            // Calculate total (using individual PAX for each item)
+            const grandTotal = services.reduce((sum, item) => {
+              const pricePerPerson = item.pricePerPerson || 0;
+              const itemPax = item.pax || 0;
+              return sum + (pricePerPerson * itemPax);
+            }, 0);
+
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500"></div>
@@ -7906,74 +7939,119 @@ export default function BookingDetail() {
                     <span className="text-3xl">📋</span>
                     Other Expenses
                   </h3>
-                  <button onClick={() => openTourServiceModal('OTHER')} className="px-6 py-3 bg-gradient-to-r from-slate-500 to-zinc-500 text-white font-bold rounded-xl hover:from-slate-600 hover:to-zinc-600 transition-all shadow-lg">+ Add Other</button>
+                  <button
+                    onClick={() => openTourServiceModal('OTHER')}
+                    className="px-6 py-3 bg-gradient-to-r from-slate-500 to-zinc-500 text-white font-bold rounded-xl hover:from-slate-600 hover:to-zinc-600 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                  >
+                    + Add Other
+                  </button>
                 </div>
+
                 {services.length > 0 ? (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-slate-600 to-zinc-600 text-white">
-                        <th className="px-4 py-3 text-left">Name</th>
-                        <th className="px-4 py-3 text-center">Date</th>
-                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
-                        <th className="px-4 py-3 text-center">PAX</th>
-                        <th className="px-4 py-3 text-right">Total (UZS)</th>
-                        <th className="px-4 py-3 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {services.map((s, idx) => (
-                        <tr key={s.id} className="border-b hover:bg-slate-50">
-                          <td className="px-4 py-3">{s.name}</td>
-                          <td className="px-4 py-3 text-center">{s.date ? format(new Date(s.date), 'dd.MM.yyyy') : '-'}</td>
-                          <td className="px-4 py-3 text-right">{s.pricePerPerson > 0 ? Math.round(s.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">{s.pax || '-'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-slate-700">{s.price > 0 ? Math.round(s.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => moveTourService(s, 'up', 'OTHER')}
-                                disabled={idx === 0}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                                title="Move up"
-                              >
-                                <ChevronUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => moveTourService(s, 'down', 'OTHER')}
-                                disabled={idx === services.length - 1}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                                title="Move down"
-                              >
-                                <ChevronDown className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => editTourService(s)}
-                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteTourService(s.id, 'OTHER')}
-                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-slate-600 to-zinc-600 border-b-2 border-slate-700">
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-slate-400">#</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-slate-400">CITY</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-slate-400">SERVICE</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-slate-400">PRICE (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-slate-400">PAX</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-slate-400">TOTAL (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white">ACTIONS</th>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-slate-100 font-bold">
-                        <td colSpan="4" className="px-4 py-3 text-right">Total:</td>
-                        <td className="px-4 py-3 text-right text-slate-700">{Math.round(services.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                ) : (<p className="text-gray-500 text-center py-8">No other expenses added yet</p>)}
+                      </thead>
+                      <tbody>
+                        {services.map((item, index) => {
+                          const pricePerPerson = item.pricePerPerson || 0;
+                          const itemPax = item.pax || 0;
+                          const total = pricePerPerson * itemPax;
+
+                          return (
+                            <tr key={item.id} className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3 text-center border-r border-gray-200">
+                                <div className="w-8 h-8 rounded-full bg-slate-500 text-white flex items-center justify-center font-semibold mx-auto">
+                                  {index + 1}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 border-r border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                                  <span className="font-medium text-gray-900">{item.city || '-'}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
+                                {item.name || '-'}
+                              </td>
+                              <td className="px-4 py-3 text-right border-r border-gray-200">
+                                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-md font-medium">
+                                  {Math.round(pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-bold text-slate-600 text-lg border-r border-gray-200">
+                                {itemPax}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => moveTourService(item, 'up', 'OTHER')}
+                                    disabled={index === 0}
+                                    className={`p-1.5 rounded-lg transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                    title="Move up"
+                                  >
+                                    <ChevronUp className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveTourService(item, 'down', 'OTHER')}
+                                    disabled={index === services.length - 1}
+                                    className={`p-1.5 rounded-lg transition-colors ${index === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                                    title="Move down"
+                                  >
+                                    <ChevronDown className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => editTourService(item)}
+                                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg"
+                                    title="Edit"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteTourService(item.id, 'OTHER')}
+                                    className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-slate-100 to-gray-200 border-t-2 border-slate-300">
+                          <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                            Grand Total:
+                          </td>
+                          <td className="px-4 py-4 text-right font-bold text-slate-700 text-xl">
+                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <span className="text-6xl mb-4 block">📋</span>
+                    <p className="text-lg">No other expenses added yet</p>
+                    <p className="text-sm mt-2">Click "+ Add Other" to add manual expenses</p>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -7985,6 +8063,17 @@ export default function BookingDetail() {
           {/* Sub-tabs for Costs (Payment Methods) */}
           <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-green-100 p-4">
             <nav className="flex space-x-3 overflow-x-auto">
+              <button
+                onClick={() => setCostsTab('ausgaben')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  costsTab === 'ausgaben'
+                    ? 'bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 hover:from-red-600 hover:via-rose-600 hover:to-pink-600 text-white shadow-red-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                Ausgaben
+              </button>
               <button
                 onClick={() => setCostsTab('rl')}
                 className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
@@ -8043,6 +8132,510 @@ export default function BookingDetail() {
             </nav>
           </div>
 
+          {/* Ausgaben Tab */}
+          {costsTab === 'ausgaben' && (() => {
+            // Get tour type code for Opex localStorage keys
+            const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+            const pax = tourists?.length || 0;
+
+            // Collect all expenses and organize by city
+            const expensesByCity = {};
+            const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+
+            // Initialize city sections
+            cityOrder.forEach(city => {
+              expensesByCity[city] = [];
+            });
+
+            // Add Transport section
+            expensesByCity['Transport'] = [];
+
+            // Add Reiseleiter section
+            expensesByCity['Reiseleiter'] = [];
+
+            // Add Railway & Flights section
+            expensesByCity['Railway & Flights'] = [];
+
+            // Add Extra Kosten section
+            expensesByCity['Extra Kosten'] = [];
+
+            // Helper function to map city names and attraction names to cities
+            const mapCityName = (text) => {
+              if (!text) return null;
+              const str = text.toLowerCase().trim();
+
+              // City name matching
+              if (str.includes('tashkent') || str.includes('тошкент')) return 'Tashkent';
+              if (str.includes('samarkand') || str.includes('samarqand') || str.includes('самарканд')) return 'Samarkand';
+              if (str.includes('asraf') || str.includes('асраф')) return 'Asraf';
+              if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
+              if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
+              if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+
+              // Tashkent landmarks
+              if (str.includes('hast imam') || str.includes('hazrat imam') || str.includes('хазрат имом')) return 'Tashkent';
+              if (str.includes('kukeldash') || str.includes('кукелдаш')) return 'Tashkent';
+              if (str.includes('chorsu') || str.includes('чорсу')) return 'Tashkent';
+              if (str.includes('amir temur') || str.includes('амир темур') || str.includes('amir timur')) return 'Tashkent';
+              if (str.includes('independence square') || str.includes('mustaqillik')) return 'Tashkent';
+
+              // Samarkand landmarks
+              if (str.includes('registan') || str.includes('регистан')) return 'Samarkand';
+              if (str.includes('gur-e') || str.includes('gur e') || str.includes('guri amir')) return 'Samarkand';
+              if (str.includes('shah-i-zinda') || str.includes('шахи зинда') || str.includes('shahi zinda')) return 'Samarkand';
+              if (str.includes('bibi') || str.includes('биби')) return 'Samarkand';
+              if (str.includes('ulugbek') || str.includes('улугбек')) return 'Samarkand';
+              if (str.includes('konigil') || str.includes('konigil')) return 'Samarkand';
+              if (str.includes('daniel') || str.includes('даниёр')) return 'Samarkand';
+              if (str.includes('afrasiab') || str.includes('афрасиаб')) return 'Samarkand';
+
+              // Bukhara landmarks
+              if (str.includes('ark fortress') || str.includes('арк') || str.includes('ark citadel')) return 'Bukhara';
+              if (str.includes('poi kalyan') || str.includes('kalon') || str.includes('калон')) return 'Bukhara';
+              if (str.includes('samanid') || str.includes('саманид')) return 'Bukhara';
+              if (str.includes('chashma') || str.includes('чашма')) return 'Bukhara';
+              if (str.includes('lyabi') || str.includes('лаби')) return 'Bukhara';
+              if (str.includes('magoki') || str.includes('магоки')) return 'Bukhara';
+              if (str.includes('chor minor') || str.includes('чор минор')) return 'Bukhara';
+              if (str.includes('mohi khosa') || str.includes('мохи хоса')) return 'Bukhara';
+              if (str.includes('nadir divan') || str.includes('надир диван')) return 'Bukhara';
+              if (str.includes('sitorai') || str.includes('ситораи')) return 'Bukhara';
+              if (str.includes('bolo hauz') || str.includes('боло хауз')) return 'Bukhara';
+
+              // Khiva landmarks
+              if (str.includes('itchan kala') || str.includes('ichan kala') || str.includes('ичан кала')) return 'Khiva';
+              if (str.includes('kunya ark') || str.includes('куня арк')) return 'Khiva';
+              if (str.includes('islam khodja') || str.includes('ислам ходжа')) return 'Khiva';
+              if (str.includes('juma mosque') || str.includes('жума')) return 'Khiva';
+              if (str.includes('pahlavon') || str.includes('пахлавон') || str.includes('pahlavan')) return 'Khiva';
+              if (str.includes('tash hauli') || str.includes('таш хаули')) return 'Khiva';
+              if (str.includes('mahmudjon') || str.includes('махмуджон')) return 'Khiva';
+
+              // Nurota landmarks
+              if (str.includes('chashma') && str.includes('nurota')) return 'Nurota';
+              if (str.includes('alexander') || str.includes('александр')) return 'Nurota';
+
+              return null;
+            };
+
+            // 1. Process Hotels (from grandTotalData.hotelBreakdown)
+            if (grandTotalData && grandTotalData.hotelBreakdown) {
+              grandTotalData.hotelBreakdown.forEach(hotelData => {
+                // Find the accommodation to get city info
+                const acc = accommodations.find(a => a.id === hotelData.accommodationId);
+                const hotelName = hotelData.hotel || 'Unknown Hotel';
+                const cityName = acc?.hotel?.city?.name || '';
+
+                // Map to standard city name
+                let targetCity = mapCityName(cityName) || mapCityName(hotelName);
+                if (!targetCity) targetCity = 'Extra Kosten';
+
+                // Use costs from grandTotalData
+                const totalUSD = hotelData.USD || 0;
+                const totalUZS = hotelData.UZS || 0;
+
+                expensesByCity[targetCity].push({
+                  name: hotelName,
+                  pricePerPerson: null,
+                  pax: null,
+                  usd: totalUSD,
+                  uzs: totalUZS
+                });
+              });
+            }
+
+            // 2. Process Metro (from metroVehicles)
+            if (metroVehicles && metroVehicles.length > 0) {
+              metroVehicles.forEach(metro => {
+                const name = metro.name || 'Metro';
+                const city = metro.city || '';
+                const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
+                const pricePerPerson = parseFloat(rawPrice.toString().replace(/\s/g, '')) || 0;
+                const metroPax = (tourists?.length || 0) + 1; // +1 for guide
+                const total = pricePerPerson * metroPax;
+
+                // Map to standard city name
+                let targetCity = mapCityName(city) || mapCityName(name);
+                if (!targetCity) targetCity = 'Extra Kosten';
+
+                expensesByCity[targetCity].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: metroPax,
+                  usd: 0,
+                  uzs: total
+                });
+              });
+            }
+
+            // 3. Process Meals (from Opex localStorage)
+            const mealsKey = `${tourTypeCode}Meals`;
+            let mealsData = [];
+            try {
+              const saved = localStorage.getItem(mealsKey);
+              if (saved) {
+                mealsData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading meals:', e);
+            }
+
+            mealsData.forEach(meal => {
+              const name = meal.name || 'Unknown Meal';
+              const city = meal.city || '';
+              const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              const pax = tourists?.length || 0;
+              const total = pricePerPerson * pax;
+
+              // Map to standard city name
+              let targetCity = mapCityName(city) || mapCityName(name);
+              if (!targetCity) targetCity = 'Extra Kosten';
+
+              if (total > 0) {
+                expensesByCity[targetCity].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: total
+                });
+              }
+            });
+
+            // 4. Process Shows (from Opex localStorage)
+            const showsKey = `${tourTypeCode}Shows`;
+            let showsData = [];
+            try {
+              const saved = localStorage.getItem(showsKey);
+              if (saved) {
+                showsData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading shows:', e);
+            }
+
+            showsData.forEach(show => {
+              const name = show.name || 'Unknown Show';
+              const city = show.city || '';
+              const rawPrice = show.price || show.pricePerPerson || 0;
+              const priceStr = rawPrice.toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              const pax = tourists?.length || 0;
+              const total = pricePerPerson * pax;
+
+              // Map to standard city name
+              let targetCity = mapCityName(city) || mapCityName(name);
+              if (!targetCity) targetCity = 'Extra Kosten';
+
+              if (total > 0) {
+                expensesByCity[targetCity].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: total
+                });
+              }
+            });
+
+            // 5. Process Eintritt (from Opex localStorage merged with tourServices.eintritt)
+            const sightseeingKey = `${tourTypeCode}Sightseeing`;
+            let sightseeingData = [];
+            try {
+              const saved = localStorage.getItem(sightseeingKey);
+              if (saved) {
+                sightseeingData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading sightseeing:', e);
+            }
+
+            const services = tourServices.eintritt || [];
+            const savedEntriesMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s]));
+
+            // Merge template entries with saved entries
+            sightseeingData.forEach(item => {
+              const name = item.name || 'Unknown Entry';
+              const itemName = name.toLowerCase().trim();
+              const city = item.city || '';
+              const savedEntry = savedEntriesMap.get(itemName);
+
+              let pricePerPerson;
+              if (savedEntry) {
+                // Use saved entry price
+                pricePerPerson = savedEntry.pricePerPerson || 0;
+                savedEntriesMap.delete(itemName);
+              } else {
+                // Use template price
+                pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
+              }
+
+              const pax = tourists?.length || 0;
+              const total = pricePerPerson * pax;
+
+              // Map to standard city name
+              let targetCity = mapCityName(city) || mapCityName(name);
+              if (!targetCity) targetCity = 'Extra Kosten';
+
+              if (total > 0) {
+                expensesByCity[targetCity].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: total
+                });
+              }
+            });
+
+            // Add remaining saved entries not in template
+            savedEntriesMap.forEach(savedEntry => {
+              const name = savedEntry.name || 'Unknown Entry';
+              const city = savedEntry.city || '';
+              const pricePerPerson = savedEntry.pricePerPerson || 0;
+              const pax = tourists?.length || 0;
+              const total = pricePerPerson * pax;
+
+              // Map to standard city name
+              let targetCity = mapCityName(city) || mapCityName(name);
+              if (!targetCity) targetCity = 'Extra Kosten';
+
+              if (total > 0) {
+                expensesByCity[targetCity].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: total
+                });
+              }
+            });
+
+            // 6. Process Transport (from routes) - aggregate by provider
+            if (routes && routes.length > 0) {
+              const transportByProvider = {};
+
+              routes.forEach(route => {
+                const providerName = route.provider || 'Unknown Provider';
+                const price = route.price || 0;
+
+                if (!transportByProvider[providerName]) {
+                  transportByProvider[providerName] = 0;
+                }
+                transportByProvider[providerName] += price;
+              });
+
+              // Helper function to capitalize first letter
+              const capitalizeFirstLetter = (str) => {
+                if (!str) return str;
+                return str.charAt(0).toUpperCase() + str.slice(1);
+              };
+
+              // Add aggregated transport costs
+              Object.entries(transportByProvider).forEach(([provider, total]) => {
+                expensesByCity['Transport'].push({
+                  name: capitalizeFirstLetter(provider),
+                  pricePerPerson: null,
+                  pax: null,
+                  usd: total,
+                  uzs: 0
+                });
+              });
+            }
+
+            // 7. Process Guides (mainGuide, secondGuide, bergreiseleiter)
+            if (mainGuide && mainGuide.totalPayment) {
+              const guideName = typeof mainGuide.guide === 'string' ? mainGuide.guide : mainGuide.guide?.name || 'Main Guide';
+              expensesByCity['Reiseleiter'].push({
+                name: guideName,
+                pricePerPerson: null,
+                pax: null,
+                usd: mainGuide.totalPayment || 0,
+                uzs: 0
+              });
+            }
+
+            if (secondGuide && secondGuide.totalPayment) {
+              const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
+              expensesByCity['Reiseleiter'].push({
+                name: guideName,
+                pricePerPerson: null,
+                pax: null,
+                usd: secondGuide.totalPayment || 0,
+                uzs: 0
+              });
+            }
+
+            if (bergreiseleiter && bergreiseleiter.totalPayment) {
+              const guideName = typeof bergreiseleiter.guide === 'string' ? bergreiseleiter.guide : bergreiseleiter.guide?.name || 'Bergreiseleiter';
+              expensesByCity['Reiseleiter'].push({
+                name: guideName,
+                pricePerPerson: null,
+                pax: null,
+                usd: bergreiseleiter.totalPayment || 0,
+                uzs: 0
+              });
+            }
+
+            // 8. Process Railways (from railways)
+            if (railways && railways.length > 0) {
+              railways.forEach(railway => {
+                const departure = railway.departure || railway.from || '';
+                const arrival = railway.arrival || railway.to || '';
+                const routeName = railway.route || `${departure}-${arrival}`.trim();
+                const name = routeName ? `Railway: ${routeName}` : 'Railway';
+                const pax = railway.pax || tourists?.length || 0;
+                const totalPrice = railway.price || 0;
+                const pricePerPerson = pax > 0 ? totalPrice / pax : 0;
+
+                expensesByCity['Railway & Flights'].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: totalPrice
+                });
+              });
+            }
+
+            // 9. Process Flights (from flights)
+            if (flights && flights.length > 0) {
+              flights.forEach(flight => {
+                const departure = flight.departure || flight.from || '';
+                const arrival = flight.arrival || flight.to || '';
+                const routeName = flight.route || `${departure}-${arrival}`.trim();
+                const name = routeName ? `Flight: ${routeName}` : 'Flight';
+                const pricePerPerson = flight.pricePerTicket || flight.price || 0;
+                const pax = flight.pax || 1;
+                const total = pricePerPerson * pax;
+
+                expensesByCity['Railway & Flights'].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: total
+                });
+              });
+            }
+
+            // 10. Process Other (from tourServices.other)
+            if (tourServices.other && tourServices.other.length > 0) {
+              tourServices.other.forEach(item => {
+                const name = item.name || 'Other';
+                const pricePerPerson = item.pricePerPerson || 0;
+                const pax = item.pax || 0;
+                const total = pricePerPerson * pax;
+
+                expensesByCity['Extra Kosten'].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: total
+                });
+              });
+            }
+
+            // Calculate totals
+            let totalUSD = 0;
+            let totalUZS = 0;
+
+            Object.values(expensesByCity).forEach(cityExpenses => {
+              cityExpenses.forEach(expense => {
+                totalUSD += expense.usd;
+                totalUZS += expense.uzs;
+              });
+            });
+
+            // Filter out empty sections for display
+            const sections = [
+              ...cityOrder,
+              'Transport',
+              'Reiseleiter',
+              'Railway & Flights',
+              'Extra Kosten'
+            ].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500"></div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Ausgaben (Expenses)</h3>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-300">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-green-600 to-emerald-600">
+                        <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Stadte</th>
+                        <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                        <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                        <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                        <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                        <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sections.map((section, sectionIdx) => {
+                        const sectionExpenses = expensesByCity[section];
+
+                        return (
+                          <React.Fragment key={section}>
+                            {/* Section Header Row */}
+                            <tr className="bg-gradient-to-r from-green-500 to-emerald-500">
+                              <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
+                                {section}
+                              </td>
+                            </tr>
+
+                            {/* Section Items */}
+                            {sectionExpenses.map((expense, expIdx) => (
+                              <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                <td className="border border-gray-300 px-4 py-2"></td>
+                                <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                <td className="border border-gray-300 px-4 py-2 text-right">
+                                  {expense.pricePerPerson ?
+                                    Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
+                                    : ''}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2 text-center">
+                                  {expense.pax || ''}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                  {expense.usd > 0 ?
+                                    Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
+                                    : ''}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                  {expense.uzs > 0 ?
+                                    Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
+                                    : ''}
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {/* Total Row */}
+                      <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
+                        <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                          TOTAL
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                          ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                          {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* RL Tab */}
           {costsTab === 'rl' && (
             <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
@@ -8080,12 +8673,324 @@ export default function BookingDetail() {
           )}
 
           {/* Total Tab */}
-          {costsTab === 'total' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-700 via-gray-700 to-zinc-700"></div>
-              <CostSummary bookingId={parseInt(id)} booking={booking} />
+          {costsTab === 'total' && (() => {
+            // Calculate all totals in their original currencies
+            const pax = tourists?.length || 0;
+            const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+
+            // 1. Hotels - has BOTH USD and UZS (from grandTotalData)
+            const hotelsUSD = grandTotalData?.grandTotalUSD || 0;
+            const hotelsUZS = grandTotalData?.grandTotalUZS || 0;
+
+            // 2. Transport & Routes - ONLY USD
+            const transportUSD = routes?.reduce((sum, r) => sum + (r.price || 0), 0) || 0;
+
+            // 3. Railway - ONLY UZS
+            const railwayUZS = railways?.reduce((sum, r) => sum + (r.price || 0), 0) || 0;
+
+            // 4. Flights - ONLY UZS
+            const flightsUZS = flights?.reduce((sum, f) => sum + (f.price || 0), 0) || 0;
+
+            // 5. Guide - ONLY USD
+            const guideUSD = (mainGuide?.totalPayment || 0) + (secondGuide?.totalPayment || 0) + (bergreiseleiter?.totalPayment || 0);
+
+            // 6. Meals - ONLY UZS (from Opex localStorage)
+            const mealsKey = `${tourTypeCode}Meal`;
+            let mealsData = [];
+            try {
+              const saved = localStorage.getItem(mealsKey);
+              if (saved) {
+                mealsData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading meals:', e);
+            }
+            const mealsUZS = mealsData.reduce((sum, meal) => {
+              const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              return sum + (pricePerPerson * pax);
+            }, 0);
+
+            // 7. Metro - ONLY UZS (from API)
+            const metroData = metroVehicles || [];
+            const metroUZS = metroData.reduce((sum, metro) => {
+              const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
+              const priceStr = rawPrice.toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              return sum + (pricePerPerson * pax);
+            }, 0);
+
+            // 8. Shows - ONLY UZS (from Opex localStorage)
+            const showsKey = `${tourTypeCode}Shows`;
+            let showsData = [];
+            try {
+              const saved = localStorage.getItem(showsKey);
+              if (saved) {
+                showsData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading shows:', e);
+            }
+            const showsUZS = showsData.reduce((sum, show) => {
+              const rawPrice = show.price || show.pricePerPerson || 0;
+              const priceStr = rawPrice.toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              return sum + (pricePerPerson * pax);
+            }, 0);
+
+            // 9. Eintritt (Entrance Fees) - ONLY UZS
+            const sightseeingKey = `${tourTypeCode}Sightseeing`;
+            let sightseeingData = [];
+            try {
+              const saved = localStorage.getItem(sightseeingKey);
+              if (saved) {
+                sightseeingData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading sightseeing:', e);
+            }
+            const services = tourServices.eintritt || [];
+            const savedEntriesMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s]));
+
+            // Merge template entries with saved entries (recalculate with current PAX)
+            const allEintrittEntries = sightseeingData.map(item => {
+              const itemName = item.name.toLowerCase().trim();
+              const savedEntry = savedEntriesMap.get(itemName);
+
+              if (savedEntry) {
+                savedEntriesMap.delete(itemName);
+                // Recalculate price with current tourists count
+                const currentPax = tourists?.length || 0;
+                const pricePerPerson = savedEntry.pricePerPerson || 0;
+                return {
+                  price: pricePerPerson * currentPax
+                };
+              } else {
+                // Template entry - use current tourists count
+                const currentPax = tourists?.length || 0;
+                const pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
+                return {
+                  price: pricePerPerson * currentPax
+                };
+              }
+            });
+
+            // Add remaining saved entries (recalculate with current PAX)
+            savedEntriesMap.forEach(savedEntry => {
+              const currentPax = tourists?.length || 0;
+              const pricePerPerson = savedEntry.pricePerPerson || 0;
+              allEintrittEntries.push({
+                price: pricePerPerson * currentPax
+              });
+            });
+
+            const eintrittUZS = allEintrittEntries.reduce((sum, s) => sum + (s.price || 0), 0);
+
+            // 10. Other Expenses - ONLY UZS
+            const otherUZS = tourServices.other ? tourServices.other.reduce((sum, item) => sum + ((item.pricePerPerson || 0) * (item.pax || 0)), 0) : 0;
+
+            // Grand Totals (sum only in their respective currencies)
+            const totalUZS = hotelsUZS + railwayUZS + flightsUZS + mealsUZS + metroUZS + showsUZS + eintrittUZS + otherUZS;
+            const totalUSD = hotelsUSD + transportUSD + guideUSD;
+
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-700 via-gray-700 to-zinc-700"></div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <span className="text-3xl">💰</span>
+                  Total
+                </h3>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-slate-700 to-zinc-700 border-b-2 border-slate-800">
+                        <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-slate-500">#</th>
+                        <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-slate-500">CATEGORY</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-slate-500">AMOUNT (UZS)</th>
+                        <th className="px-4 py-3 text-right text-sm font-bold text-white">AMOUNT ($)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            1
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Hotels
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {hotelsUZS > 0 ? Math.round(hotelsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          {hotelsUSD > 0 ? `$${Math.round(hotelsUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            2
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Transport & Routes
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          -
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          {transportUSD > 0 ? `$${Math.round(transportUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            3
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Railway
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {railwayUZS > 0 ? Math.round(railwayUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          -
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            4
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Flights
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {flightsUZS > 0 ? Math.round(flightsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          -
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            5
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Guide
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          -
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          {guideUSD > 0 ? `$${Math.round(guideUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            6
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Meals
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {mealsUZS > 0 ? Math.round(mealsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          -
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            7
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Metro
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {metroUZS > 0 ? Math.round(metroUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          -
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            8
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Shows
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {showsUZS > 0 ? Math.round(showsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          -
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            9
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Eintritt
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {eintrittUZS > 0 ? Math.round(eintrittUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          -
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 text-center border-r border-gray-200">
+                          <div className="w-8 h-8 rounded-full bg-slate-500 text-white flex items-center justify-center font-semibold mx-auto">
+                            10
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                          Other Expenses
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                          {otherUZS > 0 ? Math.round(otherUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                          -
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gradient-to-r from-slate-100 to-zinc-200 border-t-2 border-slate-300">
+                        <td colSpan="2" className="px-4 py-4 text-right font-bold text-gray-900 text-xl">
+                          Grand Total:
+                        </td>
+                        <td className="px-4 py-4 text-right font-bold text-slate-700 text-2xl border-r border-slate-300">
+                          {totalUZS > 0 ? `${Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} UZS` : '-'}
+                        </td>
+                        <td className="px-4 py-4 text-right font-bold text-green-700 text-2xl">
+                          {totalUSD > 0 ? `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
+                        </td>
+                      </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
-          )}
+          );
+        })()}
         </div>
       )}
 
@@ -10772,10 +11677,33 @@ export default function BookingDetail() {
             </h2>
 
             <div className="space-y-4">
+              {/* Info box about automatic calculation */}
+              <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm">
+                  <p className="font-semibold text-blue-700">Tourist counts</p>
+                  <p className="text-blue-600">
+                    Auto-calculated from Final List: <span className="font-bold">{tourists.filter(t => (t.accommodation || '').toLowerCase().includes('uzbek') || (t.accommodation || '').toLowerCase() === 'uz').length} Uzbekistan</span>
+                    {(() => {
+                      const selectedTourType = tourTypes.find(t => t.id === parseInt(formData.tourTypeId));
+                      return selectedTourType?.code === 'ER' ? (
+                        <span>, <span className="font-bold">{tourists.filter(t => {
+                          const acc = (t.accommodation || '').toLowerCase();
+                          return acc.includes('turkmen') || acc === 'tm' || acc === 'tkm';
+                        }).length} Turkmenistan</span></span>
+                      ) : null;
+                    })()}
+                  </p>
+                  <p className="text-xs text-blue-500 mt-1">You can edit these numbers manually below if needed</p>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Total (Pax)
-                  <span className="ml-1 text-xs font-normal text-gray-500">(automatic)</span>
+                  <span className="ml-1 text-xs font-normal text-gray-500">(automatic sum)</span>
                 </label>
                 <input
                   type="number"
@@ -10790,16 +11718,24 @@ export default function BookingDetail() {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Uzbekistan
-                  <span className="ml-1 text-xs font-normal text-gray-500">(from Final List)</span>
+                  <span className="ml-1 text-xs font-normal text-blue-500">(editable)</span>
                 </label>
                 <input
                   type="number"
                   name="paxUzbekistan"
                   value={formData.paxUzbekistan}
-                  onChange={handleChange}
-                  disabled={true}
+                  onChange={(e) => {
+                    const uzbekCount = parseInt(e.target.value) || 0;
+                    const turkCount = parseInt(formData.paxTurkmenistan) || 0;
+                    setFormData(prev => ({
+                      ...prev,
+                      paxUzbekistan: uzbekCount,
+                      pax: uzbekCount + turkCount
+                    }));
+                  }}
                   min="0"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 cursor-not-allowed font-bold text-gray-900"
+                  className="w-full px-4 py-3 border-2 border-blue-300 rounded-xl bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-bold text-gray-900 hover:border-blue-400"
+                  placeholder="0"
                 />
               </div>
 
@@ -10811,16 +11747,24 @@ export default function BookingDetail() {
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
                       Turkmenistan
-                      <span className="ml-1 text-xs font-normal text-gray-500">(from Final List)</span>
+                      <span className="ml-1 text-xs font-normal text-blue-500">(editable)</span>
                     </label>
                     <input
                       type="number"
                       name="paxTurkmenistan"
                       value={formData.paxTurkmenistan}
-                      onChange={handleChange}
-                      disabled={true}
+                      onChange={(e) => {
+                        const turkCount = parseInt(e.target.value) || 0;
+                        const uzbekCount = parseInt(formData.paxUzbekistan) || 0;
+                        setFormData(prev => ({
+                          ...prev,
+                          paxTurkmenistan: turkCount,
+                          pax: uzbekCount + turkCount
+                        }));
+                      }}
                       min="0"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 cursor-not-allowed font-bold text-gray-900"
+                      className="w-full px-4 py-3 border-2 border-blue-300 rounded-xl bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 font-bold text-gray-900 hover:border-blue-400"
+                      placeholder="0"
                     />
                   </div>
                 ) : null;
@@ -11437,7 +12381,11 @@ export default function BookingDetail() {
             <form onSubmit={saveTourService} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-bold mb-2">Name *</label>
-                <input type="text" required value={tourServiceForm.name} onChange={(e) => setTourServiceForm({...tourServiceForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg" />
+                <input type="text" required value={tourServiceForm.name} onChange={(e) => setTourServiceForm({...tourServiceForm, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg" placeholder="Service name" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-2">City</label>
+                <input type="text" value={tourServiceForm.city} onChange={(e) => setTourServiceForm({...tourServiceForm, city: e.target.value})} className="w-full px-4 py-2 border rounded-lg" placeholder="Tashkent, Samarkand, Bukhara, etc." />
               </div>
               <div>
                 <label className="block text-sm font-bold mb-2">Date</label>
