@@ -3,6 +3,8 @@ import { useParams, useNavigate, useSearchParams, useLocation } from 'react-rout
 import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import ItineraryPreview from '../components/booking/ItineraryPreview';
 import {
   ArrowLeft,
@@ -2327,6 +2329,387 @@ export default function BookingDetail() {
   };
 
   // ===================== END GUIDE FUNCTIONS =====================
+
+  // Export Ausgaben to PDF
+  const exportAusgabenToPDF = () => {
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+      const pax = tourists?.length || 0;
+
+      // Collect all expenses and organize by city (same logic as display)
+      const expensesByCity = {};
+      const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+
+      // Initialize sections
+      cityOrder.forEach(city => {
+        expensesByCity[city] = [];
+      });
+      expensesByCity['Transport'] = [];
+      expensesByCity['Reiseleiter'] = [];
+      expensesByCity['Railway & Flights'] = [];
+      expensesByCity['Extra Kosten'] = [];
+
+      // Helper function to map city names
+      const mapCityName = (text) => {
+        if (!text) return null;
+        const str = text.toLowerCase().trim();
+        if (str.includes('tashkent') || str.includes('toshkent')) return 'Tashkent';
+        if (str.includes('samarkand') || str.includes('samarqand')) return 'Samarkand';
+        if (str.includes('asraf')) return 'Asraf';
+        if (str.includes('nurota') || str.includes('nurata')) return 'Nurota';
+        if (str.includes('bukhara') || str.includes('buxoro')) return 'Bukhara';
+        if (str.includes('khiva') || str.includes('xiva')) return 'Khiva';
+        return null;
+      };
+
+      // Capitalize first letter
+      const capitalizeFirstLetter = (str) => {
+        if (!str) return str;
+        return str.charAt(0).toUpperCase() + str.slice(1);
+      };
+
+      // Process all data sources (same logic as Ausgaben tab)
+      // 1. Hotels (from grandTotalData.hotelBreakdown)
+      if (grandTotalData && grandTotalData.hotelBreakdown) {
+        grandTotalData.hotelBreakdown.forEach(hotelData => {
+          // Find the accommodation to get city info
+          const acc = accommodations.find(a => a.id === hotelData.accommodationId);
+          const hotelName = hotelData.hotel || 'Unknown Hotel';
+          const cityName = acc?.hotel?.city?.name || '';
+
+          let targetCity = mapCityName(cityName) || mapCityName(hotelName);
+          if (!targetCity) targetCity = 'Extra Kosten';
+
+          // Use costs from grandTotalData
+          const totalUSD = hotelData.USD || 0;
+          const totalUZS = hotelData.UZS || 0;
+
+          expensesByCity[targetCity].push({
+            name: hotelName,
+            pricePerPerson: null,
+            pax: null,
+            usd: totalUSD,
+            uzs: totalUZS
+          });
+        });
+      }
+
+      // 2. Process Eintritt (from Opex localStorage merged with tourServices.eintritt)
+      const sightseeingKey = `${tourTypeCode}Sightseeing`;
+      let sightseeingData = [];
+      try {
+        const saved = localStorage.getItem(sightseeingKey);
+        if (saved) {
+          sightseeingData = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Error loading sightseeing:', e);
+      }
+
+      const eintrittServices = tourServices.eintritt || [];
+      const savedEntriesMap = new Map(eintrittServices.map(s => [s.name.toLowerCase().trim(), s]));
+
+      // Merge template entries with saved entries
+      sightseeingData.forEach(item => {
+        const name = item.name || 'Unknown Entry';
+        const itemName = name.toLowerCase().trim();
+        const city = item.city || '';
+        const savedEntry = savedEntriesMap.get(itemName);
+
+        let pricePerPerson;
+        if (savedEntry) {
+          // Use saved entry price
+          pricePerPerson = savedEntry.pricePerPerson || 0;
+          savedEntriesMap.delete(itemName);
+        } else {
+          // Use template price
+          pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
+        }
+
+        const servicePax = tourists?.length || 0;
+        const total = pricePerPerson * servicePax;
+
+        // Map to standard city name
+        let targetCity = mapCityName(city) || mapCityName(name);
+        if (!targetCity) targetCity = 'Extra Kosten';
+
+        if (total > 0) {
+          expensesByCity[targetCity].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: servicePax,
+            usd: 0,
+            uzs: total
+          });
+        }
+      });
+
+      // Add any remaining saved entries not in template
+      savedEntriesMap.forEach((savedEntry, itemName) => {
+        const name = savedEntry.name || 'Unknown Entry';
+        const city = savedEntry.city || '';
+        const pricePerPerson = savedEntry.pricePerPerson || 0;
+        const servicePax = tourists?.length || 0;
+        const total = pricePerPerson * servicePax;
+
+        let targetCity = mapCityName(city) || mapCityName(name);
+        if (!targetCity) targetCity = 'Extra Kosten';
+
+        if (total > 0) {
+          expensesByCity[targetCity].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: servicePax,
+            usd: 0,
+            uzs: total
+          });
+        }
+      });
+
+      // 3-4. Process Metro and Shou
+      ['METRO', 'SHOU'].forEach(type => {
+        const services = tourServices[type.toLowerCase()];
+        if (services && services.length > 0) {
+          services.forEach(item => {
+            const city = item.city || '';
+            const name = item.name || type;
+            const pricePerPerson = item.pricePerPerson || 0;
+            const itemPax = item.pax || pax;
+            const total = pricePerPerson * itemPax;
+
+            let targetCity = mapCityName(city) || mapCityName(name);
+            if (!targetCity) targetCity = 'Extra Kosten';
+
+            if (total > 0) {
+              expensesByCity[targetCity].push({
+                name: name,
+                pricePerPerson: pricePerPerson,
+                pax: itemPax,
+                usd: 0,
+                uzs: total
+              });
+            }
+          });
+        }
+      });
+
+      // 6. Transport
+      if (routes && routes.length > 0) {
+        const transportByProvider = {};
+        routes.forEach(route => {
+          const providerName = route.provider || 'Unknown Provider';
+          const price = route.price || 0;
+          if (!transportByProvider[providerName]) {
+            transportByProvider[providerName] = 0;
+          }
+          transportByProvider[providerName] += price;
+        });
+
+        Object.entries(transportByProvider).forEach(([provider, total]) => {
+          expensesByCity['Transport'].push({
+            name: capitalizeFirstLetter(provider),
+            pricePerPerson: null,
+            pax: null,
+            usd: total,
+            uzs: 0
+          });
+        });
+      }
+
+      // 7. Guides
+      if (mainGuide && mainGuide.totalPayment) {
+        const guideName = typeof mainGuide.guide === 'string' ? mainGuide.guide : mainGuide.guide?.name || 'Main Guide';
+        expensesByCity['Reiseleiter'].push({
+          name: guideName,
+          pricePerPerson: null,
+          pax: null,
+          usd: mainGuide.totalPayment || 0,
+          uzs: 0
+        });
+      }
+
+      if (secondGuide && secondGuide.totalPayment) {
+        const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
+        expensesByCity['Reiseleiter'].push({
+          name: guideName,
+          pricePerPerson: null,
+          pax: null,
+          usd: secondGuide.totalPayment || 0,
+          uzs: 0
+        });
+      }
+
+      if (bergreiseleiter && bergreiseleiter.totalPayment) {
+        const guideName = typeof bergreiseleiter.guide === 'string' ? bergreiseleiter.guide : bergreiseleiter.guide?.name || 'Bergreiseleiter';
+        expensesByCity['Reiseleiter'].push({
+          name: guideName,
+          pricePerPerson: null,
+          pax: null,
+          usd: bergreiseleiter.totalPayment || 0,
+          uzs: 0
+        });
+      }
+
+      // 8. Railways
+      if (railways && railways.length > 0) {
+        railways.forEach(railway => {
+          const departure = railway.departure || railway.from || '';
+          const arrival = railway.arrival || railway.to || '';
+          const routeName = railway.route || `${departure}-${arrival}`.trim();
+          const name = routeName ? `Railway: ${routeName}` : 'Railway';
+          const railwayPax = railway.pax || tourists?.length || 0;
+          const totalPrice = railway.price || 0;
+          const pricePerPerson = railwayPax > 0 ? totalPrice / railwayPax : 0;
+
+          expensesByCity['Railway & Flights'].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: railwayPax,
+            usd: 0,
+            uzs: totalPrice
+          });
+        });
+      }
+
+      // 9. Flights
+      if (flights && flights.length > 0) {
+        flights.forEach(flight => {
+          const departure = flight.departure || flight.from || '';
+          const arrival = flight.arrival || flight.to || '';
+          const routeName = flight.route || `${departure}-${arrival}`.trim();
+          const name = routeName ? `Flight: ${routeName}` : 'Flight';
+          const pricePerPerson = flight.pricePerTicket || flight.price || 0;
+          const flightPax = flight.pax || 1;
+          const total = pricePerPerson * flightPax;
+
+          expensesByCity['Railway & Flights'].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: flightPax,
+            usd: 0,
+            uzs: total
+          });
+        });
+      }
+
+      // 10. Other
+      if (tourServices.other && tourServices.other.length > 0) {
+        tourServices.other.forEach(item => {
+          const name = item.name || 'Other';
+          const pricePerPerson = item.pricePerPerson || 0;
+          const itemPax = item.pax || 0;
+          const total = pricePerPerson * itemPax;
+
+          expensesByCity['Extra Kosten'].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: itemPax,
+            usd: 0,
+            uzs: total
+          });
+        });
+      }
+
+      // Calculate totals
+      let totalUSD = 0;
+      let totalUZS = 0;
+      Object.values(expensesByCity).forEach(cityExpenses => {
+        cityExpenses.forEach(expense => {
+          totalUSD += expense.usd;
+          totalUZS += expense.uzs;
+        });
+      });
+
+      // Filter out empty sections
+      const sections = [
+        ...cityOrder,
+        'Transport',
+        'Reiseleiter',
+        'Railway & Flights',
+        'Extra Kosten'
+      ].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+
+      // Build table data
+      const tableData = [];
+      sections.forEach(section => {
+        // Section header
+        tableData.push([
+          { content: section, colSpan: 6, styles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold' } }
+        ]);
+
+        // Section items
+        expensesByCity[section].forEach(expense => {
+          tableData.push([
+            '', // Empty Stadte column
+            expense.name,
+            expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            expense.pax !== null ? expense.pax : '',
+            expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''
+          ]);
+        });
+      });
+
+      // Total row
+      tableData.push([
+        { content: 'TOTAL', colSpan: 4, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
+      ]);
+
+      // Add title
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('Ausgaben (Expenses)', 105, 12, { align: 'center' });
+
+      // Add booking info
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
+      doc.text(bookingInfo, 105, 18, { align: 'center' });
+
+      // Generate table
+      autoTable(doc, {
+        startY: 22,
+        head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 7,
+          cellPadding: 1.5,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1
+        },
+        headStyles: {
+          fillColor: [22, 163, 74],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center',
+          fontSize: 8,
+          cellPadding: 2
+        },
+        columnStyles: {
+          0: { cellWidth: 22 }, // Stadte
+          1: { cellWidth: 58 }, // Item
+          2: { halign: 'right', cellWidth: 22 }, // Preis
+          3: { halign: 'center', cellWidth: 13 }, // PAX
+          4: { halign: 'right', cellWidth: 27 }, // Dollar
+          5: { halign: 'right', cellWidth: 32 }  // Som
+        },
+        margin: { top: 22, bottom: 8, left: 8, right: 8 }
+      });
+
+      // Save PDF
+      const fileName = `Ausgaben_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      doc.save(fileName);
+
+      toast.success('PDF muvaffaqiyatli yaratildi');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('PDF yaratishda xatolik');
+    }
+  };
 
   // Export Tourist List as PDF
   const exportTouristListPDF = () => {
@@ -8561,7 +8944,17 @@ export default function BookingDetail() {
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500"></div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Ausgaben (Expenses)</h3>
+
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben (Expenses)</h3>
+                  <button
+                    onClick={exportAusgabenToPDF}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl"
+                  >
+                    <Download className="w-5 h-5" />
+                    PDF saqlab olish
+                  </button>
+                </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse border border-gray-300">
