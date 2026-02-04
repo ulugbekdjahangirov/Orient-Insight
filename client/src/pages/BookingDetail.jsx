@@ -2494,6 +2494,41 @@ export default function BookingDetail() {
         }
       });
 
+      // 5. Process Meals (from Opex localStorage)
+      const mealsKey = `${tourTypeCode}Meal`; // Note: singular "Meal" not "Meals"
+      let mealsData = [];
+      try {
+        const saved = localStorage.getItem(mealsKey);
+        if (saved) {
+          mealsData = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Error loading meals:', e);
+      }
+
+      mealsData.forEach(meal => {
+        const name = meal.name || 'Unknown Meal';
+        const city = meal.city || '';
+        const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+        const pricePerPerson = parseFloat(priceStr) || 0;
+        const mealPax = tourists?.length || 0;
+        const total = pricePerPerson * mealPax;
+
+        // Map to standard city name
+        let targetCity = mapCityName(city) || mapCityName(name);
+        if (!targetCity) targetCity = 'Extra Kosten';
+
+        if (total > 0) {
+          expensesByCity[targetCity].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: mealPax,
+            usd: 0,
+            uzs: total
+          });
+        }
+      });
+
       // 6. Transport
       if (routes && routes.length > 0) {
         const transportByProvider = {};
@@ -2583,13 +2618,16 @@ export default function BookingDetail() {
           const flightPax = flight.pax || 1;
           const total = pricePerPerson * flightPax;
 
-          expensesByCity['Railway & Flights'].push({
-            name: name,
-            pricePerPerson: pricePerPerson,
-            pax: flightPax,
-            usd: 0,
-            uzs: total
-          });
+          // Only add if there's a price
+          if (total > 0) {
+            expensesByCity['Railway & Flights'].push({
+              name: name,
+              pricePerPerson: pricePerPerson,
+              pax: flightPax,
+              usd: 0,
+              uzs: total
+            });
+          }
         });
       }
 
@@ -2659,25 +2697,25 @@ export default function BookingDetail() {
       ]);
 
       // Add title
-      doc.setFontSize(14);
+      doc.setFontSize(13);
       doc.setFont(undefined, 'bold');
-      doc.text('Ausgaben (Expenses)', 105, 12, { align: 'center' });
+      doc.text('Ausgaben (Expenses)', 105, 11, { align: 'center' });
 
       // Add booking info
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setFont(undefined, 'normal');
       const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
-      doc.text(bookingInfo, 105, 18, { align: 'center' });
+      doc.text(bookingInfo, 105, 16, { align: 'center' });
 
       // Generate table
       autoTable(doc, {
-        startY: 22,
+        startY: 20,
         head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 7,
-          cellPadding: 1.5,
+          fontSize: 6.5,
+          cellPadding: 1.2,
           lineColor: [200, 200, 200],
           lineWidth: 0.1
         },
@@ -2686,18 +2724,18 @@ export default function BookingDetail() {
           textColor: 255,
           fontStyle: 'bold',
           halign: 'center',
-          fontSize: 8,
-          cellPadding: 2
+          fontSize: 7.5,
+          cellPadding: 1.7
         },
         columnStyles: {
-          0: { cellWidth: 22 }, // Stadte
-          1: { cellWidth: 58 }, // Item
-          2: { halign: 'right', cellWidth: 22 }, // Preis
-          3: { halign: 'center', cellWidth: 13 }, // PAX
-          4: { halign: 'right', cellWidth: 27 }, // Dollar
-          5: { halign: 'right', cellWidth: 32 }  // Som
+          0: { cellWidth: 21 }, // Stadte
+          1: { cellWidth: 57 }, // Item
+          2: { halign: 'right', cellWidth: 21 }, // Preis
+          3: { halign: 'center', cellWidth: 12 }, // PAX
+          4: { halign: 'right', cellWidth: 26 }, // Dollar
+          5: { halign: 'right', cellWidth: 31 }  // Som
         },
-        margin: { top: 22, bottom: 8, left: 8, right: 8 }
+        margin: { top: 20, bottom: 7, left: 7, right: 7 }
       });
 
       // Save PDF
@@ -8652,7 +8690,7 @@ export default function BookingDetail() {
             }
 
             // 3. Process Meals (from Opex localStorage)
-            const mealsKey = `${tourTypeCode}Meals`;
+            const mealsKey = `${tourTypeCode}Meal`; // Note: singular "Meal" not "Meals"
             let mealsData = [];
             try {
               const saved = localStorage.getItem(mealsKey);
@@ -8893,13 +8931,16 @@ export default function BookingDetail() {
                 const pax = flight.pax || 1;
                 const total = pricePerPerson * pax;
 
-                expensesByCity['Railway & Flights'].push({
-                  name: name,
-                  pricePerPerson: pricePerPerson,
-                  pax: pax,
-                  usd: 0,
-                  uzs: total
-                });
+                // Only add if there's a price
+                if (total > 0) {
+                  expensesByCity['Railway & Flights'].push({
+                    name: name,
+                    pricePerPerson: pricePerPerson,
+                    pax: pax,
+                    usd: 0,
+                    uzs: total
+                  });
+                }
               });
             }
 
