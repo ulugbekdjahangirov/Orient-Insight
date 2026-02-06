@@ -43,6 +43,8 @@ import RoomingList from '../components/booking/RoomingList';
 import RoomingListModule from '../components/booking/RoomingListModule';
 import CostSummary from '../components/booking/CostSummary';
 import HotelAccommodationForm from '../components/booking/HotelAccommodationForm';
+import HotellisteDocument from '../components/booking/HotellisteDocument';
+import RechnungDocument from '../components/booking/RechnungDocument';
 
 const statusLabels = {
   PENDING: 'Pending',
@@ -1100,6 +1102,34 @@ export default function BookingDetail() {
           // User can edit or remove if needed
         }
 
+        // Load additional guides (second guide) from additionalGuides JSON field
+        if (b.additionalGuides && b.additionalGuides.length > 0) {
+          // Load the first additional guide as second guide
+          const secondGuideData = b.additionalGuides[0];
+          if (secondGuideData) {
+            setSecondGuide({
+              guide: secondGuideData.guide,
+              fullDays: secondGuideData.fullDays || 0,
+              halfDays: secondGuideData.halfDays || 0,
+              dayRate: secondGuideData.dayRate || 110,
+              halfDayRate: secondGuideData.halfDayRate || 55,
+              totalPayment: secondGuideData.totalPayment || 0
+            });
+          }
+        }
+
+        // Load bergreiseleiter from bergreiseleiter JSON field
+        if (b.bergreiseleiter) {
+          setBergreiseleiter({
+            guide: b.bergreiseleiter.guide,
+            fullDays: b.bergreiseleiter.fullDays || 0,
+            halfDays: b.bergreiseleiter.halfDays || 0,
+            dayRate: b.bergreiseleiter.dayRate || 110,
+            halfDayRate: b.bergreiseleiter.halfDayRate || 55,
+            totalPayment: b.bergreiseleiter.totalPayment || 0
+          });
+        }
+
         // CRITICAL FOR ER TOURS: Load rooming lists for all accommodations
         // This ensures card view displays correct costs using backend-adjusted dates
         // Without this, Malika Khorazm and other hotels will show incorrect totals
@@ -1125,9 +1155,10 @@ export default function BookingDetail() {
         // Load routes from database
         const loadedRoutes = routesRes.data.routes || [];
         setRoutes(loadedRoutes); // Store routes in state for Tour Services tab
-        // For ER bookings: ALWAYS use template (ignore old database routes)
-        // For non-ER bookings: use database if available
-        if (loadedRoutes.length > 0 && b.tourType?.code !== 'ER') {
+
+        // Use database routes if available (for ALL tour types including ER!)
+        // Only load from template if no routes exist
+        if (loadedRoutes.length > 0) {
           // Helper to get vehicles by provider - use state values that match dropdown options
           // If localStorage has old data, use defaults
           const getVehiclesFromState = (provider) => {
@@ -1255,59 +1286,89 @@ export default function BookingDetail() {
           }
 
           // Map routes and sort by date
+          console.log('🔍 PAGE LOAD: Loading routes from database');
+          console.log('📊 Total routes:', routesToProcess.length, 'Total PAX:', totalPax);
+
           const mappedRoutes = routesToProcess.map((r, index) => {
             const provider = r.provider || '';
             // Use total PAX from tourists as person count
             const personCount = totalPax > 0 ? totalPax.toString() : (r.personCount?.toString() || '');
             const paxNum = parseInt(personCount) || 0;
-            const vehicles = getVehicles(provider);
-            const bestVehicle = findVehicle(vehicles, personCount, provider);
 
-            // Special handling for Chimgan routes: ALWAYS use Sprinter
-            const isChimganRoute = r.routeName === 'Tashkent - Chimgan' || r.routeName === 'Tashkent - Chimgan - Tashkent' || r.routeName === 'Chimgan Excursion';
+            console.log(`\n Route ${index + 1}: ${r.routeName || 'unnamed'}`);
+            console.log(`  DB: transportType="${r.transportType || 'NULL'}", provider="${r.provider || 'NULL'}", price=${r.price || 0}`);
+
+            // IMPORTANT: Check if route has saved transportType
+            // If transportType exists and valid, use it directly (don't recalculate!)
+            const hasSavedVehicle = r.transportType &&
+                                    r.transportType !== '' &&
+                                    r.transportType !== 'Select' &&
+                                    r.transportType !== null;
+
+            console.log(`  hasSavedVehicle = ${hasSavedVehicle}`);
+
             let transportType, finalProvider, finalRateType, finalPrice;
 
-            if (isChimganRoute) {
-              finalProvider = 'xayrulla';
-              transportType = 'Sprinter';
-              finalRateType = 'chimgan';
-              finalPrice = localGetPrice('xayrulla', 'Sprinter', 'chimgan');
+            if (hasSavedVehicle) {
+              // Route has saved vehicle - use ALL saved data directly!
+              transportType = r.transportType;
+              finalProvider = provider || r.provider;
+              finalRateType = r.optionRate || '';
+              finalPrice = r.price?.toString() || '';
+              console.log(`✅ Route ${index + 1}: Using saved vehicle - ${r.routeName}`);
+              console.log(`   DB: transportType="${r.transportType}", optionRate="${r.optionRate || 'NULL'}", price=${r.price}`);
+              console.log(`   UI: vehicle="${transportType}", rate="${finalRateType}", price=$${finalPrice}`);
             } else {
-              // Find all matching vehicles from localStorage data
-              const suitable = vehicles.filter(v => {
-                const personRange = v.person || '';
-                if (personRange.includes('-')) {
-                  const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
-                  return !isNaN(min) && !isNaN(max) && paxNum >= min && paxNum <= max;
-                }
-                return false;
-              });
+              // Route has no saved vehicle - calculate it
+              console.log(`🔧 Route ${index + 1}: No saved vehicle, calculating - ${r.routeName} (DB transportType: "${r.transportType || 'NULL'}"))`);
+              const vehicles = getVehicles(provider);
+              const bestVehicle = findVehicle(vehicles, personCount, provider);
 
-              if (suitable.length > 0) {
-                // For xayrulla and sevil: prefer Yutong 33 over Sprinter when both match
-                if (provider === 'xayrulla' || provider === 'sevil') {
-                  const yutong = suitable.find(v => v.name.toLowerCase().includes('yutong'));
-                  const sprinter = suitable.find(v => v.name.toLowerCase().includes('sprinter'));
-                  if (yutong && sprinter) {
-                    transportType = yutong.name;
+              // Special handling for Chimgan routes: ALWAYS use Sprinter
+              const isChimganRoute = r.routeName === 'Tashkent - Chimgan' || r.routeName === 'Tashkent - Chimgan - Tashkent' || r.routeName === 'Chimgan Excursion';
+
+              if (isChimganRoute) {
+                finalProvider = 'xayrulla';
+                transportType = 'Sprinter';
+                finalRateType = 'chimgan';
+                finalPrice = localGetPrice('xayrulla', 'Sprinter', 'chimgan');
+              } else {
+                // Find all matching vehicles from localStorage data
+                const suitable = vehicles.filter(v => {
+                  const personRange = v.person || '';
+                  if (personRange.includes('-')) {
+                    const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
+                    return !isNaN(min) && !isNaN(max) && paxNum >= min && paxNum <= max;
+                  }
+                  return false;
+                });
+
+                if (suitable.length > 0) {
+                  // For xayrulla and sevil: prefer Yutong 33 over Sprinter when both match
+                  if (provider === 'xayrulla' || provider === 'sevil') {
+                    const yutong = suitable.find(v => v.name.toLowerCase().includes('yutong'));
+                    const sprinter = suitable.find(v => v.name.toLowerCase().includes('sprinter'));
+                    if (yutong && sprinter) {
+                      transportType = yutong.name;
+                    } else {
+                      transportType = suitable[0].name;
+                    }
                   } else {
                     transportType = suitable[0].name;
                   }
                 } else {
-                  transportType = suitable[0].name;
+                  transportType = r.transportType || '';
                 }
-              } else {
-                transportType = r.transportType || '';
+                finalProvider = provider;
+                // Auto-calculate Rate Type if not saved
+                const savedRateType = r.optionRate || '';
+                finalRateType = savedRateType || localGetAutoRateType(r.routeName, finalProvider);
+                // Auto-calculate Price if not saved
+                const savedPrice = r.price?.toString() || '';
+                finalPrice = savedPrice || (finalRateType && transportType
+                  ? localGetPrice(finalProvider, transportType, finalRateType)
+                  : '');
               }
-              finalProvider = provider;
-              // Auto-calculate Rate Type if not saved
-              const savedRateType = r.optionRate || '';
-              finalRateType = savedRateType || localGetAutoRateType(r.routeName, finalProvider);
-              // Auto-calculate Price if not saved
-              const savedPrice = r.price?.toString() || '';
-              finalPrice = savedPrice || (finalRateType && transportType
-                ? localGetPrice(finalProvider, transportType, finalRateType)
-                : '');
             }
 
             // Calculate date: Arrival + dayOffset
@@ -1335,12 +1396,13 @@ export default function BookingDetail() {
               sana: routeDate,
               dayOffset: dayOffset,
               shahar: r.city || '',
+              sayohatDasturi: r.itinerary || '',  // Load itinerary for Marshrut varaqasi
               route: r.routeName || '',
               person: personCount,
-              transportType: transportType,
-              choiceTab: finalProvider,
-              choiceRate: finalRateType,
-              price: finalPrice
+              transportType: r.transportType || '',  // DIRECT from database!
+              choiceTab: r.provider || '',           // DIRECT from database!
+              choiceRate: r.optionRate || '',        // DIRECT from database!
+              price: r.price?.toString() || ''       // DIRECT from database!
             };
           });
           // Auto-sort routes by date after loading from database
@@ -2305,26 +2367,66 @@ export default function BookingDetail() {
       }
 
       setSecondGuide(guideData);
-      toast.success('Second guide assigned successfully');
+
+      // Save second guide to database
+      try {
+        await bookingsApi.update(id, {
+          additionalGuides: [guideData]
+        });
+        toast.success('Second guide assigned successfully');
+      } catch (error) {
+        console.error('Error saving second guide:', error);
+        toast.error('Failed to save second guide');
+      }
     } else if (guideType === 'bergreiseleiter') {
       setBergreiseleiter(guideData);
-      toast.success('Bergreiseleiter assigned successfully');
+
+      // Save bergreiseleiter to database
+      try {
+        await bookingsApi.update(id, {
+          bergreiseleiter: guideData
+        });
+        toast.success('Bergreiseleiter assigned successfully');
+      } catch (error) {
+        console.error('Error saving bergreiseleiter:', error);
+        toast.error('Failed to save bergreiseleiter');
+      }
     }
 
     setGuideModalOpen(false);
   };
 
   // Remove guide by type
-  const removeGuide = (type) => {
+  const removeGuide = async (type) => {
     if (type === 'main') {
       setMainGuide(null);
       toast.success('Main guide removed');
     } else if (type === 'second') {
       setSecondGuide(null);
-      toast.success('Second guide removed');
+
+      // Remove second guide from database
+      try {
+        await bookingsApi.update(id, {
+          additionalGuides: null
+        });
+        toast.success('Second guide removed');
+      } catch (error) {
+        console.error('Error removing second guide:', error);
+        toast.error('Failed to remove second guide');
+      }
     } else if (type === 'bergreiseleiter') {
       setBergreiseleiter(null);
-      toast.success('Bergreiseleiter removed');
+
+      // Remove bergreiseleiter from database
+      try {
+        await bookingsApi.update(id, {
+          bergreiseleiter: null
+        });
+        toast.success('Bergreiseleiter removed');
+      } catch (error) {
+        console.error('Error removing bergreiseleiter:', error);
+        toast.error('Failed to remove bergreiseleiter');
+      }
     }
   };
 
@@ -3016,6 +3118,477 @@ export default function BookingDetail() {
 
       // Save PDF
       const fileName = `Ausgaben_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      doc.save(fileName);
+
+      toast.success('PDF muvaffaqiyatli yaratildi');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('PDF yaratishda xatolik');
+    }
+  };
+
+  // Export Später to PDF
+  const exportSpaterToPDF = () => {
+    try {
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+
+      // Collect expenses for Später tab (same logic as display)
+      const expensesByCity = {};
+      expensesByCity['Samarkand'] = [];
+      expensesByCity['Transport'] = [];
+
+      // 1. Process Jahongir Hotel in Samarkand
+      if (grandTotalData && grandTotalData.hotelBreakdown) {
+        grandTotalData.hotelBreakdown.forEach(hotelData => {
+          const acc = accommodations.find(a => a.id === hotelData.accommodationId);
+          const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
+
+          const hotelNameLower = hotelName.toLowerCase();
+          const isJahongir = hotelNameLower.includes('jahongir') || hotelNameLower.includes('жахонгир');
+
+          if (isJahongir) {
+            const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+            const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+
+            expensesByCity['Samarkand'].push({
+              name: hotelName,
+              pricePerPerson: null,
+              pax: null,
+              usd: totalUSD,
+              uzs: totalUZS
+            });
+          }
+        });
+      }
+
+      // 2. Process Routes/Transport - Calculate totals by Provider
+      if (routes && routes.length > 0) {
+        const providerTotals = { xayrulla: 0, sevil: 0 };
+
+        routes.forEach(route => {
+          const price = route.price || 0;
+          const provider = route.provider || '';
+
+          if (price > 0) {
+            const providerLower = provider.toLowerCase().trim();
+            if (providerLower.includes('sevil')) {
+              providerTotals.sevil += price;
+            } else if (providerLower.includes('xayrulla') || providerLower.includes('hayrulla') || providerLower.includes('хайрулла')) {
+              providerTotals.xayrulla += price;
+            } else {
+              providerTotals.xayrulla += price;
+            }
+          }
+        });
+
+        if (providerTotals.xayrulla > 0) {
+          expensesByCity['Transport'].push({
+            name: 'Xayrulla',
+            pricePerPerson: null,
+            pax: null,
+            usd: providerTotals.xayrulla,
+            uzs: 0
+          });
+        }
+
+        if (providerTotals.sevil > 0) {
+          expensesByCity['Transport'].push({
+            name: 'Sevil',
+            pricePerPerson: null,
+            pax: null,
+            usd: providerTotals.sevil,
+            uzs: 0
+          });
+        }
+      }
+
+      // Calculate totals
+      let totalUSD = 0;
+      let totalUZS = 0;
+      Object.values(expensesByCity).forEach(cityExpenses => {
+        cityExpenses.forEach(expense => {
+          totalUSD += expense.usd;
+          totalUZS += expense.uzs;
+        });
+      });
+
+      // Filter out empty sections
+      const sections = ['Samarkand', 'Transport'].filter(section =>
+        expensesByCity[section] && expensesByCity[section].length > 0
+      );
+
+      // Build table data
+      const tableData = [];
+      sections.forEach(section => {
+        // Section header
+        tableData.push([
+          { content: section, colSpan: 6, styles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' } }
+        ]);
+
+        // Section items
+        expensesByCity[section].forEach(expense => {
+          tableData.push([
+            '', // Stadte column (empty)
+            expense.name, // Item
+            expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '', // Preis
+            expense.pax || '', // PAX
+            expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : '', // Dollar
+            expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : '' // Som
+          ]);
+        });
+      });
+
+      // Total row
+      tableData.push([
+        { content: 'TOTAL', colSpan: 4, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
+      ]);
+
+      // Add title
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('Spater (Deferred Payments)', 148.5, 13, { align: 'center' });
+
+      // Add booking info
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${tourists?.length || 0}`;
+      doc.text(bookingInfo, 148.5, 20, { align: 'center' });
+
+      // Generate table
+      autoTable(doc, {
+        startY: 25,
+        head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 2,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1
+        },
+        headStyles: {
+          fillColor: [59, 130, 246],
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 10,
+          cellPadding: 2.5
+        },
+        columnStyles: {
+          0: { cellWidth: 30 }, // Stadte
+          1: { cellWidth: 80 }, // Item
+          2: { halign: 'right', cellWidth: 30 }, // Preis
+          3: { halign: 'center', cellWidth: 20 }, // PAX
+          4: { halign: 'right', cellWidth: 35 }, // Dollar
+          5: { halign: 'right', cellWidth: 35 }  // Som
+        },
+        margin: { top: 20, bottom: 7, left: 7, right: 7 }
+      });
+
+      // Save PDF
+      const fileName = `Spater_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      doc.save(fileName);
+
+      toast.success('PDF muvaffaqiyatli yaratildi');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('PDF yaratishda xatolik');
+    }
+  };
+
+  // Export Überweisung to PDF
+  const exportUberweisungToPDF = () => {
+    try {
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+      const pax = tourists?.length || 0;
+
+      // Collect Eintritt expenses and organize by city
+      const expensesByCity = {};
+      const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+
+      // Initialize city sections
+      cityOrder.forEach(city => {
+        expensesByCity[city] = [];
+      });
+
+      // Helper function to map city names
+      const mapCityName = (text) => {
+        if (!text) return null;
+        const str = text.toLowerCase().trim();
+        if (str.includes('tashkent') || str.includes('тошкент')) return 'Tashkent';
+        if (str.includes('samarkand') || str.includes('samarqand') || str.includes('самарканд')) return 'Samarkand';
+        if (str.includes('asraf') || str.includes('асраф')) return 'Asraf';
+        if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
+        if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
+        if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+        return null;
+      };
+
+      // Process Entrance Fees (Eintritt)
+      const sightseeingKey = `${tourTypeCode}Sightseeing`;
+      let sightseeingData = [];
+      try {
+        const saved = localStorage.getItem(sightseeingKey);
+        if (saved) sightseeingData = JSON.parse(saved);
+      } catch (e) {
+        console.error('Error loading sightseeing:', e);
+      }
+
+      sightseeingData.forEach(sight => {
+        const name = sight.name || 'Unknown Entrance';
+        const city = sight.city || '';
+        const priceStr = (sight.price || sight.pricePerPerson || '0').toString().replace(/\s/g, '');
+        const pricePerPerson = parseFloat(priceStr) || 0;
+        const sightPax = pax;
+        const total = pricePerPerson * sightPax;
+
+        let targetCity = mapCityName(city) || mapCityName(name);
+        if (!targetCity) targetCity = cityOrder[0];
+
+        if (total > 0) {
+          expensesByCity[targetCity].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: sightPax,
+            usd: 0,
+            uzs: total
+          });
+        }
+      });
+
+      // Calculate totals
+      let totalUSD = 0;
+      let totalUZS = 0;
+      Object.values(expensesByCity).forEach(cityExpenses => {
+        cityExpenses.forEach(expense => {
+          totalUSD += expense.usd;
+          totalUZS += expense.uzs;
+        });
+      });
+
+      // Filter out empty sections
+      const sections = cityOrder.filter(section =>
+        expensesByCity[section] && expensesByCity[section].length > 0
+      );
+
+      // Build table data
+      const tableData = [];
+      sections.forEach(section => {
+        tableData.push([
+          { content: section, colSpan: 6, styles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold' } }
+        ]);
+
+        expensesByCity[section].forEach(expense => {
+          tableData.push([
+            '',
+            expense.name,
+            expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            expense.pax || '',
+            expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''
+          ]);
+        });
+      });
+
+      // Total row
+      tableData.push([
+        { content: 'TOTAL', colSpan: 4, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
+      ]);
+
+      // Add title
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('Uberweisung (Bank Transfer)', 148.5, 13, { align: 'center' });
+
+      // Add booking info
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
+      doc.text(bookingInfo, 148.5, 20, { align: 'center' });
+
+      // Generate table
+      autoTable(doc, {
+        startY: 25,
+        head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 2,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1
+        },
+        headStyles: {
+          fillColor: [168, 85, 247],
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 10,
+          cellPadding: 2.5
+        },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 80 },
+          2: { halign: 'right', cellWidth: 30 },
+          3: { halign: 'center', cellWidth: 20 },
+          4: { halign: 'right', cellWidth: 35 },
+          5: { halign: 'right', cellWidth: 35 }
+        },
+        margin: { top: 20, bottom: 7, left: 7, right: 7 }
+      });
+
+      // Save PDF
+      const fileName = `Uberweisung_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      doc.save(fileName);
+
+      toast.success('PDF muvaffaqiyatli yaratildi');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('PDF yaratishda xatolik');
+    }
+  };
+
+  // Export Karta to PDF
+  const exportKartaToPDF = () => {
+    try {
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+
+      // Collect Railway & Flights expenses only
+      const expensesByCity = {};
+      expensesByCity['Railway & Flights'] = [];
+
+      // Process Railways
+      if (railways && railways.length > 0) {
+        railways.forEach(railway => {
+          const from = railway.from || '';
+          const to = railway.to || '';
+          const name = `Railway: ${from}-${to}`.trim();
+          const pax = railway.pax || 1;
+          const total = railway.price || 0;
+          const pricePerTicket = railway.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
+
+          if (total > 0) {
+            expensesByCity['Railway & Flights'].push({
+              name: name,
+              pricePerPerson: pricePerTicket,
+              pax: pax,
+              usd: 0,
+              uzs: total
+            });
+          }
+        });
+      }
+
+      // Process Flights
+      if (flights && flights.length > 0) {
+        flights.forEach(flight => {
+          const departure = flight.departure || flight.from || '';
+          const arrival = flight.arrival || flight.to || '';
+          const routeName = flight.route || `${departure}-${arrival}`.trim();
+          const name = routeName ? `Flight: ${routeName}` : 'Flight';
+          const pax = flight.pax || 1;
+          const total = flight.price || 0;
+          const pricePerTicket = flight.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
+
+          if (total > 0) {
+            expensesByCity['Railway & Flights'].push({
+              name: name,
+              pricePerPerson: pricePerTicket,
+              pax: pax,
+              usd: 0,
+              uzs: total
+            });
+          }
+        });
+      }
+
+      // Calculate totals
+      let totalUSD = 0;
+      let totalUZS = 0;
+      Object.values(expensesByCity).forEach(cityExpenses => {
+        cityExpenses.forEach(expense => {
+          totalUSD += expense.usd;
+          totalUZS += expense.uzs;
+        });
+      });
+
+      // Filter out empty sections
+      const sections = ['Railway & Flights'].filter(section =>
+        expensesByCity[section] && expensesByCity[section].length > 0
+      );
+
+      // Build table data
+      const tableData = [];
+      sections.forEach(section => {
+        tableData.push([
+          { content: section, colSpan: 6, styles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: 'bold' } }
+        ]);
+
+        expensesByCity[section].forEach(expense => {
+          tableData.push([
+            '',
+            expense.name,
+            expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            expense.pax || '',
+            expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''
+          ]);
+        });
+      });
+
+      // Total row
+      tableData.push([
+        { content: 'TOTAL', colSpan: 4, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
+        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
+      ]);
+
+      // Add title
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.text('Karta (Card Payments)', 148.5, 13, { align: 'center' });
+
+      // Add booking info
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${tourists?.length || 0}`;
+      doc.text(bookingInfo, 148.5, 20, { align: 'center' });
+
+      // Generate table
+      autoTable(doc, {
+        startY: 25,
+        head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 2,
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1
+        },
+        headStyles: {
+          fillColor: [249, 115, 22],
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 10,
+          cellPadding: 2.5
+        },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 80 },
+          2: { halign: 'right', cellWidth: 30 },
+          3: { halign: 'center', cellWidth: 20 },
+          4: { halign: 'right', cellWidth: 35 },
+          5: { halign: 'right', cellWidth: 35 }
+        },
+        margin: { top: 20, bottom: 7, left: 7, right: 7 }
+      });
+
+      // Save PDF
+      const fileName = `Karta_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
       doc.save(fileName);
 
       toast.success('PDF muvaffaqiyatli yaratildi');
@@ -4645,7 +5218,8 @@ export default function BookingDetail() {
 
   const handleAddRoute = () => {
     const lastRoute = erRoutes[erRoutes.length - 1];
-    const newId = lastRoute ? lastRoute.id + 1 : 1;
+    // FIX: Use Math.max to find highest ID, not last route's ID (routes may be sorted by date)
+    const newId = erRoutes.length > 0 ? Math.max(...erRoutes.map(r => r.id)) + 1 : 1;
 
     // Calculate next dayOffset and date
     const newDayOffset = lastRoute?.dayOffset != null ? lastRoute.dayOffset + 1 : erRoutes.length;
@@ -5085,6 +5659,12 @@ export default function BookingDetail() {
         return;
       }
 
+      // ONLY allow template saving for ER tours
+      if (tourTypeCode !== 'ER') {
+        toast.error('Шаблон фақат ER групалари учун ишлатилади');
+        return;
+      }
+
       const routesToSave = erRoutes.map((r, index) => ({
         dayNumber: index + 1,
         dayOffset: r.dayOffset || index,
@@ -5121,6 +5701,12 @@ export default function BookingDetail() {
 
       if (!tourTypeCode) {
         toast.error('Тип тура не определён');
+        return;
+      }
+
+      // ONLY allow template loading for ER tours
+      if (tourTypeCode !== 'ER') {
+        toast.error('Шаблон фақат ER групалари учун ишлатилади');
         return;
       }
 
@@ -5322,6 +5908,32 @@ export default function BookingDetail() {
       setSaving(true);
       toast.loading('Fixing all routes...', { id: 'auto-fix' });
 
+      // IMPORTANT: Reload routes from database to get latest data
+      // This ensures user-edited text (city and itinerary) is preserved when fixing vehicles
+      const routesRes = await bookingsApi.getRoutes(id);
+      const freshRoutes = routesRes.data.routes || [];
+
+      // Map database routes to erRoutes format, preserving city and itinerary fields
+      const freshErRoutes = freshRoutes.map((dbRoute, index) => {
+        const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
+        return {
+          ...existingRoute,
+          id: dbRoute.id,
+          nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
+          sana: dbRoute.date,
+          shahar: dbRoute.city || existingRoute.shahar || '', // city field for Route module
+          sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '', // itinerary field for Marshrut varaqasi
+          route: dbRoute.routeName || existingRoute.route || '',
+          person: dbRoute.personCount?.toString() || existingRoute.person || '0',
+          transportType: dbRoute.transportType || existingRoute.transportType || '',
+          choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
+          choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
+          price: dbRoute.price?.toString() || existingRoute.price || ''
+        };
+      });
+
+      console.log('📋 Reloaded routes from database with city and itinerary (Sayohat dasturi) preserved');
+
       // Calculate PAX counts
       const paxUzb = tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length;
       const paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length;
@@ -5330,11 +5942,11 @@ export default function BookingDetail() {
       console.log(`🔧 Auto-fixing routes: PAX Total=${totalPax}, UZB=${paxUzb}, TKM=${paxTkm}`);
 
       // Find split point
-      const urgenchIndex = erRoutes.findIndex(r => r.route === 'Khiva - Urgench');
-      const hasShovotRoute = erRoutes.some(r => r.route === 'Khiva - Shovot');
+      const urgenchIndex = freshErRoutes.findIndex(r => r.route === 'Khiva - Urgench');
+      const hasShovotRoute = freshErRoutes.some(r => r.route === 'Khiva - Shovot');
 
-      // Fix each route
-      const fixedRoutes = erRoutes.map((route, index) => {
+      // Fix each route (using fresh data with Sayohat dasturi preserved)
+      const fixedRoutes = freshErRoutes.map((route, index) => {
         // Determine PAX for this route
         let routePax = totalPax;
 
@@ -5419,11 +6031,12 @@ export default function BookingDetail() {
       // Update state
       setErRoutes(fixedRoutes);
 
-      // Save to database
+      // Save to database (preserve both city and itinerary fields!)
       const routesToSave = fixedRoutes.map((r, index) => ({
         dayNumber: index + 1,
         date: r.sana || null,
         city: r.shahar || null,
+        itinerary: r.sayohatDasturi || null,  // Preserve Sayohat dasturi!
         routeName: r.route || '',
         personCount: parseInt(r.person) || 0,
         transportType: r.transportType || null,
@@ -5432,10 +6045,41 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
+      console.log('💾 Saving routes to database:', routesToSave.map((r, i) =>
+        `${i+1}. ${r.routeName} → vehicle=${r.transportType}, price=$${r.price}`
+      ));
+
       await routesApi.bulkUpdate(id, routesToSave);
 
-      toast.success('All routes auto-fixed!', { id: 'auto-fix' });
-      console.log('✅ All routes fixed and saved');
+      // IMPORTANT: Reload routes from database to ensure state matches database
+      console.log('🔄 Reloading routes from database...');
+      const reloadedRes = await bookingsApi.getRoutes(id);
+      const reloadedRoutes = reloadedRes.data.routes || [];
+
+      console.log('📥 Reloaded routes:', reloadedRoutes.map((r, i) =>
+        `${i+1}. ${r.routeName} → vehicle=${r.transportType || 'NULL'}, price=$${r.price}`
+      ));
+
+      // Map reloaded routes to erRoutes format
+      const mappedReloaded = reloadedRoutes.map((r, index) => ({
+        id: r.id,
+        nomer: r.dayNumber?.toString() || (index + 1).toString(),
+        sana: r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '',
+        dayOffset: index,
+        shahar: r.city || '',
+        sayohatDasturi: r.itinerary || '',
+        route: r.routeName || '',
+        person: r.personCount?.toString() || '0',
+        transportType: r.transportType || '',
+        choiceTab: r.provider || '',
+        choiceRate: r.optionRate || '',
+        price: r.price?.toString() || ''
+      }));
+
+      setErRoutes(mappedReloaded);
+
+      toast.success('All routes auto-fixed and reloaded!', { id: 'auto-fix' });
+      console.log('✅ All routes fixed, saved, and reloaded from database');
     } catch (error) {
       console.error('Error auto-fixing routes:', error);
       toast.error('Error auto-fixing routes', { id: 'auto-fix' });
@@ -6711,6 +7355,17 @@ export default function BookingDetail() {
                 <Building2 className="w-5 h-5" />
                 Hotelliste
               </button>
+              <button
+                onClick={() => setDocumentsTab('rechnung')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  documentsTab === 'rechnung'
+                    ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 text-white shadow-amber-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <DollarSign className="w-5 h-5" />
+                Rechnung
+              </button>
             </nav>
           </div>
 
@@ -7121,55 +7776,20 @@ export default function BookingDetail() {
 
           {/* Hotelliste Tab Content */}
           {documentsTab === 'hotelliste' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-pink-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500"></div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 bg-clip-text text-transparent flex items-center gap-3">
-                  <Building2 className="w-8 h-8 text-pink-600" />
-                  Hotelliste
-                </h2>
-              </div>
+            <HotellisteDocument
+              booking={booking}
+              tourists={tourists}
+              accommodations={accommodations}
+              guide={booking?.guide}
+            />
+          )}
 
-              {accommodations && accommodations.length > 0 ? (
-                <div className="space-y-4">
-                  {accommodations.map((acc, idx) => (
-                    <div key={acc.id} className="p-6 bg-gradient-to-r from-pink-50 to-rose-50 border-2 border-pink-200 rounded-2xl">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900">{acc.hotel?.name || 'Unknown Hotel'}</h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            <MapPin className="w-4 h-4 inline mr-1" />
-                            {acc.hotel?.city?.name || 'Unknown City'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-gray-600">Check-in</div>
-                          <div className="font-bold text-gray-900">
-                            {acc.checkInDate ? format(new Date(acc.checkInDate), 'dd.MM.yyyy') : '-'}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-gray-600">Check-out</div>
-                          <div className="font-bold text-gray-900">
-                            {acc.checkOutDate ? format(new Date(acc.checkOutDate), 'dd.MM.yyyy') : '-'}
-                          </div>
-                        </div>
-                      </div>
-                      {acc.hotel?.phone && (
-                        <div className="text-sm text-gray-700 mt-2">
-                          📞 {acc.hotel.phone}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p>No hotels added yet</p>
-                </div>
-              )}
-            </div>
+          {/* Rechnung Tab Content */}
+          {documentsTab === 'rechnung' && (
+            <RechnungDocument
+              booking={booking}
+              tourists={tourists}
+            />
           )}
         </div>
       )}
@@ -9388,6 +10008,13 @@ export default function BookingDetail() {
                 const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
                 const cityName = acc?.hotel?.city?.name || '';
 
+                // Skip Jahongir hotel in RL tab
+                const hotelNameLower = hotelName.toLowerCase();
+                const isJahongir = hotelNameLower.includes('jahongir') || hotelNameLower.includes('жахонгир');
+                if (isJahongir) {
+                  return; // Skip this hotel
+                }
+
                 // Map to standard city name
                 let targetCity = mapCityName(cityName) || mapCityName(hotelName);
                 if (!targetCity) targetCity = cityOrder[0]; // Default to first city if unknown
@@ -9669,31 +10296,554 @@ export default function BookingDetail() {
           })()}
 
           {/* Spater Tab */}
-          {costsTab === 'spater' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500"></div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Später (Deferred Payments)</h3>
-              <p className="text-gray-600">Deferred payment details will be displayed here</p>
-            </div>
-          )}
+          {costsTab === 'spater' && (() => {
+            // Collect expenses for Später tab
+            const expensesByCity = {};
+            expensesByCity['Samarkand'] = [];
+            expensesByCity['Transport'] = [];
+
+            // 1. Process Jahongir Hotel in Samarkand
+            if (grandTotalData && grandTotalData.hotelBreakdown) {
+              grandTotalData.hotelBreakdown.forEach(hotelData => {
+                const acc = accommodations.find(a => a.id === hotelData.accommodationId);
+                const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
+                const cityName = acc?.hotel?.city?.name || '';
+
+                // Only include Jahongir hotel
+                const hotelNameLower = hotelName.toLowerCase();
+                const isJahongir = hotelNameLower.includes('jahongir') || hotelNameLower.includes('жахонгир');
+
+                if (isJahongir) {
+                  const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+                  const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+
+                  expensesByCity['Samarkand'].push({
+                    name: hotelName,
+                    pricePerPerson: null,
+                    pax: null,
+                    usd: totalUSD,
+                    uzs: totalUZS
+                  });
+                }
+              });
+            }
+
+            // 2. Process Routes/Transport - Calculate totals by Provider
+            if (routes && routes.length > 0) {
+              const providerTotals = {
+                xayrulla: 0,
+                sevil: 0
+              };
+
+              routes.forEach(route => {
+                const price = route.price || 0;
+                const provider = route.provider || '';
+
+                if (price > 0) {
+                  const providerLower = provider.toLowerCase().trim();
+                  if (providerLower.includes('sevil')) {
+                    providerTotals.sevil += price;
+                  } else if (providerLower.includes('xayrulla') || providerLower.includes('hayrulla') || providerLower.includes('хайрулла')) {
+                    providerTotals.xayrulla += price;
+                  } else {
+                    // Default to xayrulla if provider not specified
+                    providerTotals.xayrulla += price;
+                  }
+                }
+              });
+
+              // Add provider totals as single rows
+              if (providerTotals.xayrulla > 0) {
+                expensesByCity['Transport'].push({
+                  name: 'Xayrulla',
+                  pricePerPerson: null,
+                  pax: null,
+                  usd: providerTotals.xayrulla,
+                  uzs: 0
+                });
+              }
+
+              if (providerTotals.sevil > 0) {
+                expensesByCity['Transport'].push({
+                  name: 'Sevil',
+                  pricePerPerson: null,
+                  pax: null,
+                  usd: providerTotals.sevil,
+                  uzs: 0
+                });
+              }
+            }
+
+            // Calculate totals
+            let totalUSD = 0;
+            let totalUZS = 0;
+
+            Object.values(expensesByCity).forEach(cityExpenses => {
+              cityExpenses.forEach(expense => {
+                totalUSD += expense.usd;
+                totalUZS += expense.uzs;
+              });
+            });
+
+            // Filter out empty sections for display
+            const sections = ['Samarkand', 'Transport'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+
+            const hasData = sections.length > 0;
+
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500"></div>
+
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Später (Deferred Payments)</h3>
+                  {hasData && (
+                    <button
+                      onClick={exportSpaterToPDF}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      <Download className="w-5 h-5" />
+                      PDF saqlab olish
+                    </button>
+                  )}
+                </div>
+
+                {hasData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-600 to-cyan-600">
+                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
+                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                          <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sections.map((section, sectionIdx) => {
+                          const sectionExpenses = expensesByCity[section];
+
+                          return (
+                            <React.Fragment key={section}>
+                              {/* Section Header Row */}
+                              <tr className="bg-gradient-to-r from-blue-500 to-cyan-500">
+                                <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
+                                  {section}
+                                </td>
+                              </tr>
+
+                              {/* Section Items */}
+                              {sectionExpenses.map((expense, expIdx) => (
+                                <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                  <td className="border border-gray-300 px-4 py-2"></td>
+                                  <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right">
+                                    {expense.pricePerPerson ?
+                                      Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-center">
+                                    {expense.pax || ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                    {expense.usd > 0 ?
+                                      Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                    {expense.uzs > 0 ?
+                                      Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+
+                        {/* Total Row */}
+                        <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
+                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            TOTAL
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <User className="w-16 h-16 mx-auto" />
+                    </div>
+                    <p className="text-gray-600 text-lg font-medium">Ma'lumot topilmadi</p>
+                    <p className="text-gray-500 text-sm mt-2">Kirish to'lovlari, ko'rsatuvlar, transport yoki parvozlarni qo'shing</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Uberweisung Tab */}
-          {costsTab === 'uberweisung' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500"></div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Überweisung (Bank Transfer)</h3>
-              <p className="text-gray-600">Bank transfer payment details will be displayed here</p>
-            </div>
-          )}
+          {costsTab === 'uberweisung' && (() => {
+            // Get tour type code for Opex localStorage keys
+            const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+            const pax = tourists?.length || 0;
+
+            // Collect Eintritt expenses and organize by city
+            const expensesByCity = {};
+            const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+
+            // Initialize city sections
+            cityOrder.forEach(city => {
+              expensesByCity[city] = [];
+            });
+
+            // Helper function to map city names
+            const mapCityName = (text) => {
+              if (!text) return null;
+              const str = text.toLowerCase().trim();
+
+              // City name matching
+              if (str.includes('tashkent') || str.includes('тошкент')) return 'Tashkent';
+              if (str.includes('samarkand') || str.includes('samarqand') || str.includes('самарканд')) return 'Samarkand';
+              if (str.includes('asraf') || str.includes('асраф')) return 'Asraf';
+              if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
+              if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
+              if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+
+              return null;
+            };
+
+            // Process Entrance Fees (Eintritt) - from localStorage
+            const sightseeingKey = `${tourTypeCode}Sightseeing`;
+            let sightseeingData = [];
+            try {
+              const saved = localStorage.getItem(sightseeingKey);
+              if (saved) {
+                sightseeingData = JSON.parse(saved);
+              }
+            } catch (e) {
+              console.error('Error loading sightseeing:', e);
+            }
+
+            sightseeingData.forEach(sight => {
+              const name = sight.name || 'Unknown Entrance';
+              const city = sight.city || '';
+              const priceStr = (sight.price || sight.pricePerPerson || '0').toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              const sightPax = pax;
+              const total = pricePerPerson * sightPax;
+
+              // Map to standard city name
+              let targetCity = mapCityName(city) || mapCityName(name);
+              if (!targetCity) targetCity = cityOrder[0];
+
+              if (total > 0) {
+                expensesByCity[targetCity].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: sightPax,
+                  usd: 0,
+                  uzs: total
+                });
+              }
+            });
+
+            // Calculate totals
+            let totalUSD = 0;
+            let totalUZS = 0;
+
+            Object.values(expensesByCity).forEach(cityExpenses => {
+              cityExpenses.forEach(expense => {
+                totalUSD += expense.usd;
+                totalUZS += expense.uzs;
+              });
+            });
+
+            // Filter out empty sections for display
+            const sections = cityOrder.filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+
+            const hasData = sections.length > 0;
+
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500"></div>
+
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Überweisung (Bank Transfer)</h3>
+                  {hasData && (
+                    <button
+                      onClick={exportUberweisungToPDF}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      <Download className="w-5 h-5" />
+                      PDF saqlab olish
+                    </button>
+                  )}
+                </div>
+
+                {hasData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-purple-600 to-violet-600">
+                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
+                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                          <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sections.map((section, sectionIdx) => {
+                          const sectionExpenses = expensesByCity[section];
+
+                          return (
+                            <React.Fragment key={section}>
+                              {/* Section Header Row */}
+                              <tr className="bg-gradient-to-r from-purple-500 to-violet-500">
+                                <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
+                                  {section}
+                                </td>
+                              </tr>
+
+                              {/* Section Items */}
+                              {sectionExpenses.map((expense, expIdx) => (
+                                <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                  <td className="border border-gray-300 px-4 py-2"></td>
+                                  <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right">
+                                    {expense.pricePerPerson ?
+                                      Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-center">
+                                    {expense.pax || ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                    {expense.usd > 0 ?
+                                      Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                    {expense.uzs > 0 ?
+                                      Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+
+                        {/* Total Row */}
+                        <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
+                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            TOTAL
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <User className="w-16 h-16 mx-auto" />
+                    </div>
+                    <p className="text-gray-600 text-lg font-medium">Ma'lumot topilmadi</p>
+                    <p className="text-gray-500 text-sm mt-2">Kirish to'lovlarini (Eintritt) qo'shing</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Karta Tab */}
-          {costsTab === 'karta' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-orange-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Karta (Card Payments)</h3>
-              <p className="text-gray-600">Card payment details will be displayed here</p>
-            </div>
-          )}
+          {costsTab === 'karta' && (() => {
+            // Collect Railway & Flights expenses only
+            const expensesByCity = {};
+            expensesByCity['Railway & Flights'] = [];
+
+            // 1. Process Railways
+            if (railways && railways.length > 0) {
+              railways.forEach(railway => {
+                const from = railway.from || '';
+                const to = railway.to || '';
+                const name = `Railway: ${from}-${to}`.trim();
+                const pax = railway.pax || 1;
+
+                // railway.price is the TOTAL price, not per ticket
+                // Calculate price per ticket by dividing total by pax
+                const total = railway.price || 0;
+                const pricePerTicket = railway.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
+
+                if (total > 0) {
+                  expensesByCity['Railway & Flights'].push({
+                    name: name,
+                    pricePerPerson: pricePerTicket,
+                    pax: pax,
+                    usd: 0,
+                    uzs: total
+                  });
+                }
+              });
+            }
+
+            // 2. Process Flights
+            if (flights && flights.length > 0) {
+              flights.forEach(flight => {
+                const departure = flight.departure || flight.from || '';
+                const arrival = flight.arrival || flight.to || '';
+                const routeName = flight.route || `${departure}-${arrival}`.trim();
+                const name = routeName ? `Flight: ${routeName}` : 'Flight';
+                const pax = flight.pax || 1;
+
+                // flight.price is the TOTAL price, not per ticket
+                // Calculate price per ticket by dividing total by pax
+                const total = flight.price || 0;
+                const pricePerTicket = flight.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
+
+                if (total > 0) {
+                  expensesByCity['Railway & Flights'].push({
+                    name: name,
+                    pricePerPerson: pricePerTicket,
+                    pax: pax,
+                    usd: 0,
+                    uzs: total
+                  });
+                }
+              });
+            }
+
+            // Calculate totals
+            let totalUSD = 0;
+            let totalUZS = 0;
+
+            Object.values(expensesByCity).forEach(cityExpenses => {
+              cityExpenses.forEach(expense => {
+                totalUSD += expense.usd;
+                totalUZS += expense.uzs;
+              });
+            });
+
+            // Filter out empty sections for display
+            const sections = ['Railway & Flights'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+
+            const hasData = sections.length > 0;
+
+            return (
+              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-orange-100 p-8">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
+
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">Karta (Card Payments)</h3>
+                  {hasData && (
+                    <button
+                      onClick={exportKartaToPDF}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg hover:shadow-xl"
+                    >
+                      <Download className="w-5 h-5" />
+                      PDF saqlab olish
+                    </button>
+                  )}
+                </div>
+
+                {hasData ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-orange-600 to-amber-600">
+                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
+                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                          <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sections.map((section, sectionIdx) => {
+                          const sectionExpenses = expensesByCity[section];
+
+                          return (
+                            <React.Fragment key={section}>
+                              {/* Section Header Row */}
+                              <tr className="bg-gradient-to-r from-orange-500 to-amber-500">
+                                <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
+                                  {section}
+                                </td>
+                              </tr>
+
+                              {/* Section Items */}
+                              {sectionExpenses.map((expense, expIdx) => (
+                                <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                  <td className="border border-gray-300 px-4 py-2"></td>
+                                  <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right">
+                                    {expense.pricePerPerson ?
+                                      Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-center">
+                                    {expense.pax || ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                    {expense.usd > 0 ?
+                                      Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
+                                    {expense.uzs > 0 ?
+                                      Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
+                                      : ''}
+                                  </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+
+                        {/* Total Row */}
+                        <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
+                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            TOTAL
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <User className="w-16 h-16 mx-auto" />
+                    </div>
+                    <p className="text-gray-600 text-lg font-medium">Ma'lumot topilmadi</p>
+                    <p className="text-gray-500 text-sm mt-2">Temir yo'l yoki parvozlarni qo'shing</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Total Tab */}
           {costsTab === 'total' && (() => {

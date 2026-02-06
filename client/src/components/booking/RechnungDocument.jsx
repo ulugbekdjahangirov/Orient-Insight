@@ -1,0 +1,771 @@
+import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { Download, Printer, Plus, Trash2, Edit2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import api from '../../services/api';
+
+const RechnungDocument = ({ booking, tourists }) => {
+  const [roomingListData, setRoomingListData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load rooming list data for the first accommodation (arrival hotel)
+  useEffect(() => {
+    const loadRoomingListData = async () => {
+      if (!booking?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('🔄 Loading accommodations for booking', booking.id);
+
+        // 1. Get all accommodations
+        const accommodationsResponse = await api.get(`/bookings/${booking.id}/accommodations`);
+        console.log('📦 Raw API response:', accommodationsResponse);
+
+        // API returns { accommodations: [...] }, not directly an array
+        const accommodations = accommodationsResponse.data.accommodations || accommodationsResponse.data;
+        console.log('🏨 Accommodations data:', accommodations);
+        console.log('🔍 Is array?', Array.isArray(accommodations));
+        console.log('🔍 Type:', typeof accommodations);
+
+        if (!accommodations || !Array.isArray(accommodations) || accommodations.length === 0) {
+          console.log('⚠️ No accommodations found or not an array');
+          setLoading(false);
+          return;
+        }
+
+        // 2. Sort by checkInDate to find the first/arrival hotel
+        console.log('📊 Sorting accommodations...');
+        const sortedAccommodations = accommodations.slice().sort((a, b) => {
+          const dateA = new Date(a.checkInDate);
+          const dateB = new Date(b.checkInDate);
+          return dateA - dateB;
+        });
+        console.log('✅ Sorted accommodations:', sortedAccommodations);
+
+        const firstAccommodation = sortedAccommodations[0];
+        console.log('🏨 First accommodation (arrival hotel):', firstAccommodation);
+
+        // 3. Get rooming list for the first accommodation
+        const roomingListResponse = await api.get(
+          `/bookings/${booking.id}/accommodations/${firstAccommodation.id}/rooming-list`
+        );
+
+        console.log('📋 Rooming list data:', roomingListResponse.data);
+        setRoomingListData(roomingListResponse.data);
+
+      } catch (error) {
+        console.error('❌ Error loading rooming list:', error);
+        toast.error('Rooming list yuklanmadi');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRoomingListData();
+  }, [booking?.id]);
+
+  // Helper function to determine PAX tier (matching Price.jsx paxTiers)
+  const getPaxTier = (touristCount) => {
+    if (touristCount <= 4) return { id: '4', name: '4 PAX', count: 4 };
+    if (touristCount === 5) return { id: '5', name: '5 PAX', count: 5 };
+    if (touristCount >= 6 && touristCount <= 7) return { id: '6-7', name: '6-7 PAX', count: 6 };
+    if (touristCount >= 8 && touristCount <= 9) return { id: '8-9', name: '8-9 PAX', count: 8 };
+    if (touristCount >= 10 && touristCount <= 11) return { id: '10-11', name: '10-11 PAX', count: 10 };
+    if (touristCount >= 12 && touristCount <= 13) return { id: '12-13', name: '12-13 PAX', count: 12 };
+    if (touristCount >= 14 && touristCount <= 15) return { id: '14-15', name: '14-15 PAX', count: 14 };
+    return { id: '16', name: '16 PAX', count: 16 };
+  };
+
+  // Get ER price from saved Total Prices in localStorage
+  const calculateERPrice = () => {
+    const touristCount = tourists?.length || booking?.pax || 0;
+    const tier = getPaxTier(touristCount);
+
+    console.log('🔵 Rechnung: Getting ER price for', touristCount, 'tourists, tier:', tier);
+
+    // Load saved Total Prices from localStorage
+    const savedTotalPrices = JSON.parse(localStorage.getItem('er-total-prices') || '{}');
+
+    console.log('📦 Loaded Total Prices from localStorage:', savedTotalPrices);
+
+    // Get prices for this tier
+    const tierPrices = savedTotalPrices[tier.id] || { totalPrice: 0, ezZuschlag: 0 };
+
+    console.log('💰 Prices for tier', tier.id, ':', tierPrices);
+
+    return {
+      einzelpreis: tierPrices.totalPrice,
+      ezZuschlag: tierPrices.ezZuschlag,
+      anzahl: touristCount
+    };
+  };
+
+  // Get count of EZ rooms from tourists
+  const getEZCount = () => {
+    if (!tourists || tourists.length === 0) return 5;
+    return tourists.filter(t => {
+      const room = (t.roomPreference || '').toUpperCase();
+      return room === 'EZ' || room === 'SNGL' || room === 'SINGLE';
+    }).length;
+  };
+
+  // Calculate birthdays during tour
+  const calculateBirthdayCount = () => {
+    console.log('🎂 calculateBirthdayCount called');
+    console.log('📋 Booking dates:', booking?.departureDate, 'to', booking?.endDate);
+    console.log('👥 Tourists count:', tourists?.length);
+
+    if (!tourists || tourists.length === 0) {
+      console.log('⚠️ No tourists');
+      return 0;
+    }
+
+    if (!booking?.departureDate || !booking?.endDate) {
+      console.log('⚠️ No booking dates');
+      return 0;
+    }
+
+    const tourStart = new Date(booking.departureDate);
+    const tourEnd = new Date(booking.endDate);
+
+    let birthdayCount = 0;
+
+    tourists.forEach((tourist, index) => {
+      console.log(`👤 Tourist ${index + 1}:`, tourist);
+      console.log(`  - firstName: ${tourist.firstName}`);
+      console.log(`  - dateOfBirth: ${tourist.dateOfBirth}`);
+      console.log(`  - remarks: ${tourist.remarks}`);
+
+      // Method 1: Check if dateOfBirth exists and falls within tour
+      const birthDateField = tourist.dateOfBirth || tourist.birthDate || tourist.birthday;
+
+      if (birthDateField) {
+        const birthDate = new Date(birthDateField);
+
+        // Get the birthday in the tour year
+        const tourYear = tourStart.getFullYear();
+        const birthdayThisYear = new Date(tourYear, birthDate.getMonth(), birthDate.getDate());
+
+        console.log(`🎂 ${tourist.firstName || 'Unknown'}: dateOfBirth=${birthDateField}, birthdayThisYear=${birthdayThisYear.toDateString()}`);
+
+        // Check if birthday falls within tour dates
+        if (birthdayThisYear >= tourStart && birthdayThisYear <= tourEnd) {
+          birthdayCount++;
+          console.log(`🎉 Birthday during tour (from dateOfBirth)! ${tourist.firstName}`);
+        }
+      }
+      // Method 2: Check remarks field for "Geburtstag" keyword
+      else if (tourist.remarks && tourist.remarks.includes('Geburtstag')) {
+        birthdayCount++;
+        console.log(`🎉 Birthday during tour (from remarks)! ${tourist.firstName}`);
+      }
+    });
+
+    console.log(`🎂 Total birthdays during tour: ${birthdayCount}`);
+    return birthdayCount;
+  };
+
+  // Calculate early arrivals (Zusatznacht)
+  const calculateEarlyArrivals = () => {
+    console.log('🔍 calculateEarlyArrivals called');
+    console.log('📋 Rooming list data:', roomingListData);
+
+    // API returns { roomingList: [...] }, not directly an array
+    const roomingList = roomingListData?.roomingList || roomingListData;
+    console.log('📋 Rooming list array:', roomingList);
+
+    if (!roomingList || !Array.isArray(roomingList) || roomingList.length === 0) {
+      console.log('⚠️ No rooming list data found or not an array');
+      return { ezNights: 0, dzNights: 0 };
+    }
+
+    // Find the group's actual check-in date (most common check-in date among tourists in rooming list)
+    const checkInDates = {};
+    roomingList.forEach(entry => {
+      const touristName = entry.tourist?.firstName || 'Unknown';
+      console.log(`📋 Full entry for ${touristName}:`, entry);
+      console.log(`  - checkInDate: ${entry.checkInDate}`);
+      console.log(`  - checkOutDate: ${entry.checkOutDate}`);
+      console.log(`  - tourist.roomPreference: ${entry.tourist?.roomPreference}`);
+      console.log(`  - roomType: ${entry.roomType}`);
+      console.log(`  - assignedRoomType: ${entry.assignedRoomType}`);
+
+      if (entry.checkInDate) {
+        const dateStr = entry.checkInDate.split('T')[0]; // Get date part only
+        checkInDates[dateStr] = (checkInDates[dateStr] || 0) + 1;
+      }
+    });
+
+    console.log('📅 Check-in dates found:', checkInDates);
+
+    // Find the most common check-in date (this is the group's arrival date)
+    let groupCheckInDate = null;
+    let maxCount = 0;
+    Object.entries(checkInDates).forEach(([date, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        groupCheckInDate = date;
+      }
+    });
+
+    if (!groupCheckInDate) {
+      console.log('⚠️ No group check-in date found');
+      return { ezNights: 0, dzNights: 0 };
+    }
+
+    console.log(`📅 Group check-in date: ${groupCheckInDate} (${maxCount} tourists)`);
+
+    const groupArrival = new Date(groupCheckInDate);
+    let ezNights = 0; // Single room early nights
+    let dzNights = 0; // Double room early nights
+
+    roomingList.forEach(entry => {
+      if (entry.checkInDate) {
+        const touristArrival = new Date(entry.checkInDate);
+        const daysDiff = Math.floor((groupArrival - touristArrival) / (1000 * 60 * 60 * 24));
+
+        const touristName = entry.tourist?.firstName || 'Unknown';
+        console.log(`📆 ${touristName}: touristArrival=${touristArrival}, groupArrival=${groupArrival}, daysDiff=${daysDiff}`);
+
+        if (daysDiff > 0) {
+          // Tourist arrived earlier than group
+          // Get room preference from tourists array (since rooming list doesn't include it)
+          const touristId = entry.id || entry.touristId;
+          const fullTourist = tourists?.find(t => t.id === touristId);
+          const roomPreference = fullTourist?.roomPreference || entry.tourist?.roomPreference || entry.roomPreference || '';
+          const room = roomPreference.toUpperCase();
+          const isEZ = room === 'EZ' || room === 'SNGL' || room === 'SINGLE';
+
+          console.log(`👤 Entry ID: ${entry.id}, Tourist ID: ${touristId}`);
+          console.log(`👤 Found in tourists array:`, fullTourist);
+          console.log(`🛏️ Room preference: ${roomPreference}, isEZ: ${isEZ}`);
+
+          if (isEZ) {
+            ezNights += daysDiff;
+          } else {
+            dzNights += daysDiff;
+          }
+
+          console.log(`🏨 Early arrival: ${touristName}, ${daysDiff} nights, room: ${room}, isEZ: ${isEZ}`);
+        }
+      }
+    });
+
+    console.log(`📊 Total early arrivals: EZ=${ezNights} nights, DZ=${dzNights} nights`);
+    return { ezNights, dzNights };
+  };
+
+  // Initialize invoice items with calculated prices for ER
+  const initializeInvoiceItems = () => {
+    // tourType can be either a string 'ER' or an object { code: 'ER', ... }
+    const tourTypeCode = typeof booking?.tourType === 'string'
+      ? booking?.tourType
+      : booking?.tourType?.code;
+    const isER = tourTypeCode === 'ER';
+    console.log('🟢 Rechnung: Initializing invoice items, tourType:', booking?.tourType, 'tourTypeCode:', tourTypeCode, 'isER:', isER);
+
+    if (isER) {
+      console.log('✅ Rechnung: This is an ER booking, calculating prices...');
+      const { einzelpreis, ezZuschlag, anzahl } = calculateERPrice();
+      const ezCount = getEZCount();
+      const { ezNights, dzNights } = calculateEarlyArrivals();
+      const birthdayCount = calculateBirthdayCount();
+
+      // Load Zusatzkosten prices from localStorage
+      const zusatzkosten = JSON.parse(localStorage.getItem('er_zusatzkosten') || '[]');
+      const zusatznachtEZ = zusatzkosten.find(item => item.name === 'Zusatznacht EZ');
+      const zusatznachtDZ = zusatzkosten.find(item => item.name === 'Zusatznacht DZ');
+      const geburtstagsgeschenk = zusatzkosten.find(item => item.name === 'Geburtstagsgeschenk');
+      const extraTransferTaschkent = zusatzkosten.find(item => item.name === 'Extra Transfer in Taschkent');
+
+      console.log('📋 Rechnung: Final values - Einzelpreis:', einzelpreis, 'EZ Zuschlag:', ezZuschlag, 'Anzahl:', anzahl, 'EZ Count:', ezCount);
+      console.log('🏨 Early arrivals: EZ nights:', ezNights, 'DZ nights:', dzNights);
+      console.log('🎂 Birthdays during tour:', birthdayCount);
+      console.log('💰 Zusatzkosten prices:', { zusatznachtEZ, zusatznachtDZ, geburtstagsgeschenk, extraTransferTaschkent });
+
+      const items = [
+        {
+          id: 1,
+          description: 'Usbekistan Teil',
+          einzelpreis: einzelpreis,
+          anzahl: anzahl,
+          currency: 'USD'
+        },
+        {
+          id: 2,
+          description: 'EZ Zuschlag',
+          einzelpreis: ezZuschlag,
+          anzahl: ezCount,
+          currency: 'USD'
+        }
+      ];
+
+      let nextId = 3;
+
+      // Add Zusatznacht EZ if there are early EZ arrivals
+      if (ezNights > 0 && zusatznachtEZ) {
+        items.push({
+          id: nextId++,
+          description: 'Zusatznacht EZ',
+          einzelpreis: zusatznachtEZ.price || 60,
+          anzahl: ezNights,
+          currency: 'USD'
+        });
+      }
+
+      // Add Zusatznacht DZ if there are early DZ arrivals
+      if (dzNights > 0 && zusatznachtDZ) {
+        items.push({
+          id: nextId++,
+          description: 'Zusatznacht DZ',
+          einzelpreis: zusatznachtDZ.price || 80,
+          anzahl: dzNights,
+          currency: 'USD'
+        });
+      }
+
+      // Add Geburtstagsgeschenk if there are birthdays during tour
+      if (birthdayCount > 0 && geburtstagsgeschenk) {
+        items.push({
+          id: nextId++,
+          description: 'Geburtstagsgeschenk',
+          einzelpreis: geburtstagsgeschenk.price || 10,
+          anzahl: birthdayCount,
+          currency: 'USD'
+        });
+      }
+
+      // Add other Zusatzkosten items
+      if (extraTransferTaschkent) {
+        items.push({
+          id: nextId++,
+          description: 'Extra Transfer in Taschke',
+          einzelpreis: extraTransferTaschkent.price || 25,
+          anzahl: 1,
+          currency: 'USD'
+        });
+      }
+
+      return items;
+    } else {
+      // Default for non-ER tours
+      return [
+        {
+          id: 1,
+          description: 'Usbekistan Teil',
+          einzelpreis: 1125,
+          anzahl: tourists?.length || 11,
+          currency: 'USD'
+        },
+        {
+          id: 2,
+          description: 'EZ Zuschlag',
+          einzelpreis: 240,
+          anzahl: 5,
+          currency: 'USD'
+        },
+        {
+          id: 3,
+          description: 'Zusatznacht fuer3 Naechte',
+          einzelpreis: 50,
+          anzahl: 3,
+          currency: 'USD'
+        },
+        {
+          id: 4,
+          description: 'Extra Transfer in Taschkent',
+          einzelpreis: 25,
+          anzahl: 1,
+          currency: 'USD'
+        },
+        {
+          id: 5,
+          description: 'Geburtstagsgeschenk',
+          einzelpreis: 10,
+          anzahl: 1,
+          currency: 'USD'
+        }
+      ];
+    }
+  };
+
+  const [invoiceItems, setInvoiceItems] = useState([]);
+
+  // Update invoice items when booking, tourists, or rooming list changes
+  useEffect(() => {
+    if (booking && !loading) {
+      const tourTypeCode = typeof booking?.tourType === 'string'
+        ? booking?.tourType
+        : booking?.tourType?.code;
+      const isER = tourTypeCode === 'ER';
+
+      if (isER) {
+        console.log('🔄 Updating invoice items (ER booking)');
+        setInvoiceItems(initializeInvoiceItems());
+      } else {
+        console.log('🔄 Updating invoice items (non-ER booking)');
+        setInvoiceItems(initializeInvoiceItems());
+      }
+    }
+  }, [booking, tourists, roomingListData, loading]);
+
+  // Calculate total
+  const calculateTotal = () => {
+    return invoiceItems.reduce((sum, item) => {
+      return sum + (item.einzelpreis * item.anzahl);
+    }, 0);
+  };
+
+  // Get tour description
+  const getTourDescription = () => {
+    if (booking?.departureDate && booking?.endDate) {
+      const pax = tourists?.length || booking?.pax || 0;
+      const startDate = format(new Date(booking.departureDate), 'dd.MM');
+      const endDate = format(new Date(booking.endDate), 'dd.MM.yyyy');
+      return `für die Erlebnisreisen Usbekistan mit Turkmenistan (${pax} Personen) ${startDate}- ${endDate} (Usbekistan Teil)`;
+    }
+    return 'für die Erlebnisreisen Usbekistan mit Turkmenistan';
+  };
+
+  // Generate PDF
+  const generatePDF = () => {
+    console.log('📄 Generating Rechnung PDF...');
+
+    try {
+      const doc = new jsPDF();
+      let yPos = 30;
+
+      // Title
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Rechnung', 105, yPos, { align: 'center' });
+      yPos += 15;
+
+      // Tour description
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const tourDesc = getTourDescription();
+      doc.text(tourDesc, 105, yPos, { align: 'center', maxWidth: 180 });
+      yPos += 20;
+
+      // Rechnung Nr and Datum
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Rechnung Nr: ${booking?.bookingNumber || '36/25'}`, 15, yPos);
+      doc.text(`Datum: ${format(new Date(), 'dd.MM.yyyy')}`, 150, yPos);
+      yPos += 20;
+
+      // Invoice table
+      const tableData = invoiceItems.map((item, index) => [
+        (index + 1).toString(),
+        item.description,
+        item.einzelpreis.toString(),
+        item.anzahl.toString(),
+        (item.einzelpreis * item.anzahl).toString(),
+        item.currency
+      ]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['№', 'Beschreibung', 'Einzelpreis', 'Anzahl', 'Gesamtpreis', 'Währung']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 11,
+          cellPadding: 4,
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          halign: 'center',
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 15 },
+          1: { halign: 'left', cellWidth: 80 },
+          2: { halign: 'right', cellWidth: 25 },
+          3: { halign: 'center', cellWidth: 20 },
+          4: { halign: 'right', cellWidth: 30 },
+          5: { halign: 'center', cellWidth: 20 }
+        }
+      });
+
+      yPos = doc.lastAutoTable.finalY + 2;
+
+      // Total row
+      autoTable(doc, {
+        startY: yPos,
+        body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+        theme: 'grid',
+        styles: {
+          fontSize: 12,
+          cellPadding: 4,
+          fontStyle: 'bold',
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0]
+        },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { halign: 'left', cellWidth: 80 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 20 },
+          4: { halign: 'right', cellWidth: 30 },
+          5: { halign: 'center', cellWidth: 20 }
+        }
+      });
+
+      // Save PDF
+      const filename = `Rechnung_${booking?.bookingNumber || 'invoice'}.pdf`;
+      doc.save(filename);
+      toast.success('PDF сақланди!');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('PDF экспорт хатолиги');
+    }
+  };
+
+  // Print function
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Add new item
+  const addItem = () => {
+    const newItem = {
+      id: Math.max(...invoiceItems.map(i => i.id), 0) + 1,
+      description: 'New Item',
+      einzelpreis: 0,
+      anzahl: 1,
+      currency: 'USD'
+    };
+    setInvoiceItems([...invoiceItems, newItem]);
+  };
+
+  // Delete item
+  const deleteItem = (id) => {
+    setInvoiceItems(invoiceItems.filter(item => item.id !== id));
+  };
+
+  // Update item
+  const updateItem = (id, field, value) => {
+    setInvoiceItems(invoiceItems.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-amber-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Action buttons */}
+        <div className="flex gap-3 justify-end print:hidden">
+          <button
+            onClick={addItem}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+          >
+            <Plus className="w-5 h-5" />
+            Add Item
+          </button>
+          <button
+            onClick={generatePDF}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+          >
+            <Download className="w-5 h-5" />
+            Скачать PDF
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl hover:from-gray-800 hover:to-gray-900 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+          >
+            <Printer className="w-5 h-5" />
+            Печать
+          </button>
+        </div>
+
+        {/* Document preview */}
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none border border-gray-100">
+          <div className="p-16 print:p-12" style={{ minHeight: '297mm', fontFamily: 'Georgia, serif' }}>
+            {/* Decorative header line */}
+            <div className="w-full h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 rounded-full mb-8"></div>
+
+            {/* Title */}
+            <h1 className="text-5xl font-bold text-center mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">
+              Rechnung
+            </h1>
+
+            {/* Tour description */}
+            <p className="text-center text-base text-gray-700 mb-8 leading-relaxed px-8">
+              {getTourDescription()}
+            </p>
+
+            {/* Rechnung Nr and Datum with styled boxes */}
+            <div className="flex justify-between mb-12 text-base gap-4">
+              <div className="flex-1 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border-2 border-amber-200 shadow-md">
+                <div className="text-sm text-gray-600 mb-1">Rechnung Nr:</div>
+                <div className="font-bold text-xl text-gray-900">{booking?.bookingNumber || 'ER-07'}</div>
+              </div>
+              <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200 shadow-md text-right">
+                <div className="text-sm text-gray-600 mb-1">Datum:</div>
+                <div className="font-bold text-xl text-gray-900">{format(new Date(), 'dd.MM.yyyy')}</div>
+              </div>
+            </div>
+
+            {/* Invoice table */}
+            <div className="shadow-xl rounded-xl overflow-hidden mb-4">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gradient-to-r from-amber-100 via-orange-100 to-amber-100">
+                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">№</th>
+                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Beschreibung</th>
+                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Einzelpreis</th>
+                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Anzahl</th>
+                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Gesamtpreis</th>
+                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Währung</th>
+                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm print:hidden">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceItems.map((item, index) => (
+                    <tr key={item.id} className="bg-white hover:bg-amber-50 transition-colors duration-150">
+                      <td className="border-2 border-gray-300 px-4 py-4 text-center text-gray-900 font-medium">{index + 1}</td>
+                      <td className="border-2 border-gray-300 px-4 py-4 text-gray-900">
+                        <input
+                          id={`desc-${item.id}`}
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                          className="w-full bg-transparent border-none focus:outline-none focus:bg-amber-50 focus:ring-2 focus:ring-amber-300 rounded px-2 py-1 print:bg-transparent transition-all"
+                        />
+                      </td>
+                      <td className="border-2 border-gray-300 px-4 py-4 text-right text-gray-900">
+                        <input
+                          id={`price-${item.id}`}
+                          type="number"
+                          value={item.einzelpreis}
+                          onChange={(e) => updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-blue-50 focus:ring-2 focus:ring-blue-300 rounded px-2 py-1 print:bg-transparent transition-all font-semibold hover:bg-blue-50 cursor-pointer"
+                          title="Click to edit price"
+                        />
+                      </td>
+                      <td className="border-2 border-gray-300 px-4 py-4 text-center text-gray-900">
+                        <input
+                          id={`quantity-${item.id}`}
+                          type="number"
+                          value={item.anzahl}
+                          onChange={(e) => updateItem(item.id, 'anzahl', parseInt(e.target.value) || 0)}
+                          className="w-full bg-transparent border-none focus:outline-none text-center focus:bg-green-50 focus:ring-2 focus:ring-green-300 rounded px-2 py-1 print:bg-transparent transition-all font-semibold hover:bg-green-50 cursor-pointer"
+                          title="Click to edit quantity"
+                        />
+                      </td>
+                      <td className="border-2 border-gray-300 px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                        {item.einzelpreis * item.anzahl}
+                      </td>
+                      <td className="border-2 border-gray-300 px-4 py-4 text-center text-gray-900 font-semibold">{item.currency}</td>
+                      <td className="border-2 border-gray-300 px-4 py-4 text-center print:hidden">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              const input = document.getElementById(`desc-${item.id}`);
+                              if (input) input.focus();
+                            }}
+                            className="text-blue-600 hover:text-white hover:bg-blue-600 p-2 rounded-lg transition-all duration-200 transform hover:scale-110"
+                            title="Edit description"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all duration-200 transform hover:scale-110"
+                            title="Delete item"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Total row */}
+            <div className="shadow-xl rounded-xl overflow-hidden">
+              <table className="w-full border-collapse">
+                <tbody>
+                  <tr className="bg-gradient-to-r from-emerald-100 via-green-100 to-emerald-100">
+                    <td className="border-2 border-gray-300 px-4 py-5 text-center" style={{ width: '5%' }}></td>
+                    <td className="border-2 border-gray-300 px-4 py-5 font-bold text-gray-900 text-lg" style={{ width: '40%' }}>
+                      Gesamtbetrag:
+                    </td>
+                    <td className="border-2 border-gray-300 px-4 py-5" style={{ width: '15%' }}></td>
+                    <td className="border-2 border-gray-300 px-4 py-5" style={{ width: '10%' }}></td>
+                    <td className="border-2 border-gray-300 px-4 py-5 text-right font-bold text-emerald-700 text-2xl" style={{ width: '20%' }}>
+                      {calculateTotal()}
+                    </td>
+                    <td className="border-2 border-gray-300 px-4 py-5 text-center font-bold text-gray-900 text-lg" style={{ width: '10%' }}>
+                      USD
+                    </td>
+                    <td className="border-2 border-gray-300 px-4 py-5 print:hidden"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Print styles */}
+      <style>{`
+        @media print {
+          body {
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+          @page {
+            size: A4;
+            margin: 20mm;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          .print\\:shadow-none {
+            box-shadow: none !important;
+          }
+          .print\\:rounded-none {
+            border-radius: 0 !important;
+          }
+          .print\\:p-12 {
+            padding: 3rem !important;
+          }
+          input {
+            border: none !important;
+            background: transparent !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default RechnungDocument;
