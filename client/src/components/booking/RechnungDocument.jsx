@@ -158,10 +158,13 @@ const RechnungDocument = ({ booking, tourists }) => {
           console.log(`🎉 Birthday during tour (from dateOfBirth)! ${tourist.firstName}`);
         }
       }
-      // Method 2: Check remarks field for "Geburtstag" keyword
-      else if (tourist.remarks && tourist.remarks.includes('Geburtstag')) {
-        birthdayCount++;
-        console.log(`🎉 Birthday during tour (from remarks)! ${tourist.firstName}`);
+      // Method 2: Check remarks field for "Birthday" or "Geburtstag" keyword
+      else if (tourist.remarks) {
+        const remarksLower = tourist.remarks.toLowerCase();
+        if (remarksLower.includes('birthday') || remarksLower.includes('geburtstag')) {
+          birthdayCount++;
+          console.log(`🎉 Birthday during tour (from remarks: ${tourist.remarks})! ${tourist.firstName}`);
+        }
       }
     });
 
@@ -276,16 +279,49 @@ const RechnungDocument = ({ booking, tourists }) => {
       const birthdayCount = calculateBirthdayCount();
 
       // Load Zusatzkosten prices from localStorage
-      const zusatzkosten = JSON.parse(localStorage.getItem('er_zusatzkosten') || '[]');
-      const zusatznachtEZ = zusatzkosten.find(item => item.name === 'Zusatznacht EZ');
+      const zusatzkostenRaw = localStorage.getItem('er_zusatzkosten') || '[]';
+      console.log('📦 Raw er_zusatzkosten from localStorage:', zusatzkostenRaw);
+
+      const zusatzkosten = JSON.parse(zusatzkostenRaw);
+      console.log('📋 Parsed zusatzkosten array:', zusatzkosten);
+      console.log('📋 Zusatzkosten items count:', zusatzkosten.length);
+
+      // Log each item
+      zusatzkosten.forEach((item, index) => {
+        console.log(`  Item ${index + 1}: name="${item.name}", price=${item.price}, pax=${item.pax}`);
+      });
+
+      // Find items - using exact match
+      console.log('🔍 Searching for specific items...');
+
+      const zusatznachtEZ = zusatzkosten.find(item => {
+        const match = item.name === 'Zusatznacht EZ';
+        console.log(`  Checking "${item.name}" === "Zusatznacht EZ": ${match}`);
+        return match;
+      });
+
       const zusatznachtDZ = zusatzkosten.find(item => item.name === 'Zusatznacht DZ');
-      const geburtstagsgeschenk = zusatzkosten.find(item => item.name === 'Geburtstagsgeschenk');
+
+      // Search for birthday gift - use flexible matching
+      const geburtstagsgeschenk = zusatzkosten.find(item => {
+        const nameLower = item.name.toLowerCase();
+        // Match names containing "geburt" and "geschenk" (handles typos like missing 't')
+        const match = nameLower.includes('gebur') && nameLower.includes('geschenk');
+        console.log(`  Checking "${item.name}" contains birthday gift: ${match}`);
+        return match;
+      });
+
       const extraTransferTaschkent = zusatzkosten.find(item => item.name === 'Extra Transfer in Taschkent');
 
       console.log('📋 Rechnung: Final values - Einzelpreis:', einzelpreis, 'EZ Zuschlag:', ezZuschlag, 'Anzahl:', anzahl, 'EZ Count:', ezCount);
       console.log('🏨 Early arrivals: EZ nights:', ezNights, 'DZ nights:', dzNights);
       console.log('🎂 Birthdays during tour:', birthdayCount);
-      console.log('💰 Zusatzkosten prices:', { zusatznachtEZ, zusatznachtDZ, geburtstagsgeschenk, extraTransferTaschkent });
+      console.log('💰 Found items:', {
+        zusatznachtEZ: zusatznachtEZ ? 'FOUND' : 'NOT FOUND',
+        zusatznachtDZ: zusatznachtDZ ? 'FOUND' : 'NOT FOUND',
+        geburtstagsgeschenk: geburtstagsgeschenk ? `FOUND (price: ${geburtstagsgeschenk.price})` : 'NOT FOUND',
+        extraTransferTaschkent: extraTransferTaschkent ? 'FOUND' : 'NOT FOUND'
+      });
 
       const items = [
         {
@@ -329,14 +365,23 @@ const RechnungDocument = ({ booking, tourists }) => {
       }
 
       // Add Geburtstagsgeschenk if there are birthdays during tour
+      console.log('🎁 Checking Geburtstagsgeschenk condition:');
+      console.log('  - birthdayCount:', birthdayCount, '(> 0?', birthdayCount > 0, ')');
+      console.log('  - geburtstagsgeschenk:', geburtstagsgeschenk);
+      console.log('  - Both conditions met?', birthdayCount > 0 && geburtstagsgeschenk);
+
       if (birthdayCount > 0 && geburtstagsgeschenk) {
-        items.push({
+        const birthdayItem = {
           id: nextId++,
           description: 'Geburtstagsgeschenk',
           einzelpreis: geburtstagsgeschenk.price || 10,
           anzahl: birthdayCount,
           currency: 'USD'
-        });
+        };
+        console.log('✅ ADDING Geburtstagsgeschenk item:', birthdayItem);
+        items.push(birthdayItem);
+      } else {
+        console.log('❌ NOT adding Geburtstagsgeschenk (condition not met)');
       }
 
       // Add other Zusatzkosten items
@@ -350,6 +395,8 @@ const RechnungDocument = ({ booking, tourists }) => {
         });
       }
 
+      console.log('📋 Final invoice items array:', items);
+      console.log('📋 Total items count:', items.length);
       return items;
     } else {
       // Default for non-ER tours
