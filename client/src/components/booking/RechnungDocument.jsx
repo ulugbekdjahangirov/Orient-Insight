@@ -484,27 +484,70 @@ const RechnungDocument = ({ booking, tourists }) => {
 
     try {
       const doc = new jsPDF();
-      let yPos = 30;
+      let yPos = 20;
 
-      // Title
-      doc.setFontSize(24);
+      // Load and add logo
+      const logoImg = new Image();
+      logoImg.src = '/logo.png';
+
+      // Add logo at top center (if available)
+      try {
+        doc.addImage(logoImg, 'PNG', 85, yPos, 40, 40);
+        yPos += 45;
+      } catch (e) {
+        console.log('Logo could not be added:', e);
+        yPos += 10;
+      }
+
+      // Company addresses side by side
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+
+      // Left side - INFUTURESTORM PTE. LTD.
+      doc.text('INFUTURESTORM PTE. LTD.', 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('6 EU TONG SEN STREET #11-10I', 15, yPos + 5);
+      doc.text('059817 THE CENTRAL SINGAPORE', 15, yPos + 10);
+      doc.text('SINGAPORE', 15, yPos + 15);
+      doc.text('Telefon:  +998933484208', 15, yPos + 20);
+      doc.text('Telefon:  +998979282814', 15, yPos + 25);
+      doc.text('E-Mail:orientinsightreisen@gmail.com', 15, yPos + 30);
+      doc.text('Web: www.orient-insight.uz', 15, yPos + 35);
+
+      // Right side - WORLD INSIGHT Erlebnisreisen GmbH
+      doc.setFont('helvetica', 'bold');
+      doc.text('WORLD INSIGHT Erlebnisreisen GmbH', 195, yPos, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.text('Alter Deutzer Postweg 99', 195, yPos + 5, { align: 'right' });
+      doc.text('51149 Köln', 195, yPos + 10, { align: 'right' });
+      doc.text('Deutschland', 195, yPos + 15, { align: 'right' });
+      doc.text('Telefon:  02203 - 9255700', 195, yPos + 20, { align: 'right' });
+      doc.text('Telefax: 02203 - 9255777', 195, yPos + 25, { align: 'right' });
+      doc.text('E-Mail: info@world-insight.de', 195, yPos + 30, { align: 'right' });
+      doc.text('Web: www.world-insight.de', 195, yPos + 35, { align: 'right' });
+
+      yPos += 50;
+
+      // Title "Rechnung"
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
       doc.text('Rechnung', 105, yPos, { align: 'center' });
-      yPos += 15;
+      yPos += 10;
 
       // Tour description
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       const tourDesc = getTourDescription();
       doc.text(tourDesc, 105, yPos, { align: 'center', maxWidth: 180 });
-      yPos += 20;
+      yPos += 15;
 
-      // Rechnung Nr and Datum
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
+      // Rechnung Nr and Datum on same line
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
       doc.text(`Rechnung Nr: ${booking?.bookingNumber || '36/25'}`, 15, yPos);
-      doc.text(`Datum: ${format(new Date(), 'dd.MM.yyyy')}`, 150, yPos);
-      yPos += 20;
+      doc.text(`Datum:`, 155, yPos);
+      doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
+      yPos += 15;
 
       // Invoice table
       const tableData = invoiceItems.map((item, index) => [
@@ -522,8 +565,8 @@ const RechnungDocument = ({ booking, tourists }) => {
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 11,
-          cellPadding: 4,
+          fontSize: 10,
+          cellPadding: 3,
           lineWidth: 0.5,
           lineColor: [0, 0, 0]
         },
@@ -542,25 +585,25 @@ const RechnungDocument = ({ booking, tourists }) => {
           lineColor: [0, 0, 0]
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 15 },
-          1: { halign: 'left', cellWidth: 80 },
-          2: { halign: 'right', cellWidth: 25 },
+          0: { halign: 'center', cellWidth: 12 },
+          1: { halign: 'left', cellWidth: 75 },
+          2: { halign: 'right', cellWidth: 28 },
           3: { halign: 'center', cellWidth: 20 },
           4: { halign: 'right', cellWidth: 30 },
-          5: { halign: 'center', cellWidth: 20 }
+          5: { halign: 'center', cellWidth: 25 }
         }
       });
 
-      yPos = doc.lastAutoTable.finalY + 2;
+      yPos = doc.lastAutoTable.finalY;
 
-      // Total row
+      // Total row (Gesamtbetrag)
       autoTable(doc, {
         startY: yPos,
         body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
         theme: 'grid',
         styles: {
-          fontSize: 12,
-          cellPadding: 4,
+          fontSize: 11,
+          cellPadding: 3,
           fontStyle: 'bold',
           lineWidth: 0.5,
           lineColor: [0, 0, 0]
@@ -570,14 +613,54 @@ const RechnungDocument = ({ booking, tourists }) => {
           textColor: [0, 0, 0]
         },
         columnStyles: {
-          0: { cellWidth: 15 },
-          1: { halign: 'left', cellWidth: 80 },
-          2: { cellWidth: 25 },
-          3: { cellWidth: 20 },
+          0: { halign: 'center', cellWidth: 12 },
+          1: { halign: 'left', cellWidth: 75 },
+          2: { halign: 'right', cellWidth: 28 },
+          3: { halign: 'center', cellWidth: 20 },
           4: { halign: 'right', cellWidth: 30 },
-          5: { halign: 'center', cellWidth: 20 }
+          5: { halign: 'center', cellWidth: 25 }
         }
       });
+
+      yPos = doc.lastAutoTable.finalY + 10;
+
+      // Bank details section
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Company Name: INFUTURESTORM PTE. LTD.', 15, yPos);
+      yPos += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('Bank details:', 15, yPos);
+      yPos += 5;
+      doc.text('OCBC (Oversea-Chinese Banking Corporation) Limited Singapore', 15, yPos);
+      yPos += 5;
+      doc.text('Bank address: OCBC Bank, 65 Chulia Street, OCBC Centre, Singapore 049513', 15, yPos);
+      yPos += 5;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Business Accounts: 601365554201(USD)', 15, yPos);
+      yPos += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('SWIFT BIC code: (for TT in USD) Intermediary Bank JP Morgan Chase Bank,', 15, yPos);
+      yPos += 5;
+      doc.text('New York, USA – CHASUS33', 15, yPos);
+      yPos += 5;
+      doc.text('BANK CODE: 7339', 15, yPos);
+      yPos += 5;
+      doc.text('BRANCH CODE: 601', 15, yPos);
+      yPos += 5;
+      doc.text('www.ocbc.com', 15, yPos);
+      yPos += 15;
+
+      // Closing
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('mit freundlichen Grüßen', 15, yPos);
+      yPos += 7;
+      doc.setFont('helvetica', 'bold');
+      doc.text('INFUTURESTORM PTE. LTD', 15, yPos);
 
       // Save PDF
       const filename = `Rechnung_${booking?.bookingNumber || 'invoice'}.pdf`;
