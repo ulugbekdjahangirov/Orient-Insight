@@ -14,7 +14,8 @@ import {
   Bell,
   Wallet,
   Mail,
-  Settings
+  Settings,
+  DollarSign
 } from 'lucide-react';
 
 const navItems = [
@@ -25,6 +26,7 @@ const navItems = [
   { path: '/tour-types', icon: MapPin, label: 'Tours' },
   { path: '/hotels', icon: Building2, label: 'Hotels' },
   { path: '/opex', icon: Wallet, label: 'OPEX' },
+  { path: '/price', icon: DollarSign, label: 'Price' },
   { path: '/email-imports', icon: Mail, label: 'Email Imports' },
 ];
 

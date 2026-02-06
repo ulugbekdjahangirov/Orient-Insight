@@ -200,7 +200,11 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       bankCardNumber,
       bankName,
       address,
-      notes
+      notes,
+      dayRate,
+      halfDayRate,
+      city,
+      cityRate
     } = req.body;
 
     if (!name) {
@@ -236,7 +240,11 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         bankCardNumber: encryptedData.bankCardNumber,
         bankName,
         address,
-        notes
+        notes,
+        dayRate: dayRate ? parseFloat(dayRate) : 110,
+        halfDayRate: halfDayRate ? parseFloat(halfDayRate) : 55,
+        city: city || null,
+        cityRate: cityRate ? parseFloat(cityRate) : 0
       }
     });
 
@@ -257,6 +265,9 @@ router.put('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const isAdmin = req.user.role === 'ADMIN';
 
+    console.log('📝 Updating guide:', id);
+    console.log('📦 Request body:', req.body);
+
     const {
       name,
       firstName,
@@ -273,7 +284,11 @@ router.put('/:id', authenticate, async (req, res) => {
       bankName,
       address,
       notes,
-      isActive
+      isActive,
+      dayRate,
+      halfDayRate,
+      city,
+      cityRate
     } = req.body;
 
     // Базовые поля могут редактировать все авторизованные
@@ -288,6 +303,12 @@ router.put('/:id', authenticate, async (req, res) => {
     if (address !== undefined) updateData.address = address;
     if (notes !== undefined) updateData.notes = notes;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
+    if (dayRate !== undefined) updateData.dayRate = parseFloat(dayRate);
+    if (halfDayRate !== undefined) updateData.halfDayRate = parseFloat(halfDayRate);
+    if (city !== undefined) updateData.city = city;
+    if (cityRate !== undefined) updateData.cityRate = parseFloat(cityRate);
+
+    console.log('💾 Update data prepared:', updateData);
 
     // Конфиденциальные поля - только для админа
     if (isAdmin) {

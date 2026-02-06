@@ -97,6 +97,7 @@ router.put('/:bookingId/routes/bulk', authenticate, async (req, res) => {
             date: route.date ? new Date(route.date) : null,
             city: route.city || null,
             routeName: route.routeName || route.route || '',
+            itinerary: route.itinerary || null,
             personCount: route.personCount || parseInt(route.person) || 0,
             transportType: route.transportType || null,
             provider: route.provider || route.choiceTab || null,
@@ -122,7 +123,7 @@ router.put('/:bookingId/routes/bulk', authenticate, async (req, res) => {
 router.put('/:bookingId/routes/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { dayNumber, date, city, routeName, personCount, transportType, provider, optionRate, price, sortOrder } = req.body;
+    const { dayNumber, date, city, routeName, itinerary, personCount, transportType, provider, optionRate, price, sortOrder } = req.body;
 
     const route = await prisma.route.update({
       where: { id: parseInt(id) },
@@ -131,6 +132,7 @@ router.put('/:bookingId/routes/:id', authenticate, async (req, res) => {
         date: date !== undefined ? (date ? new Date(date) : null) : undefined,
         city: city !== undefined ? city : undefined,
         routeName: routeName !== undefined ? routeName : undefined,
+        itinerary: itinerary !== undefined ? itinerary : undefined,
         personCount: personCount !== undefined ? personCount : undefined,
         transportType: transportType !== undefined ? transportType : undefined,
         provider: provider !== undefined ? provider : undefined,
@@ -217,6 +219,7 @@ router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
             dayOffset: route.dayOffset || index,
             city: route.city || route.shahar || null,
             routeName: route.routeName || route.route || '',
+            itinerary: route.itinerary || null,
             provider: route.provider || route.choiceTab || null,
             optionRate: route.optionRate || route.choiceRate || null,
             sortOrder: index

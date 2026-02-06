@@ -1029,11 +1029,14 @@ router.post('/:bookingId/tourists/import/preview', authenticate, (req, res, next
 router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { tourists, createOnly, replaceAll } = req.body;
+    const { tourists, createOnly, replaceAll, replaceAccommodationType } = req.body;
 
     console.log(`\n🔵 [BACKEND] Import API called for booking ${bookingId}`);
     console.log(`📥 Received ${tourists?.length || 0} tourists`);
     console.log(`⚙️ Mode: ${replaceAll ? 'REPLACE ALL' : createOnly ? 'CREATE ONLY' : 'MERGE'}`);
+    if (replaceAccommodationType) {
+      console.log(`🏨 Replace Accommodation Type: ${replaceAccommodationType}`);
+    }
 
     if (!Array.isArray(tourists) || tourists.length === 0) {
       return res.status(400).json({ error: 'Tourist list is empty' });
@@ -1055,36 +1058,91 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'No tourists selected for import' });
     }
 
-    // REPLACE ALL mode: Delete all existing tourists first
-    if (replaceAll) {
-      const existingTourists = await prisma.tourist.findMany({
-        where: { bookingId: bookingIdInt },
-        select: { id: true }
-      });
+    // REPLACE mode: Delete existing tourists
+    if (replaceAll || replaceAccommodationType) {
+      // Build filter for tourists to delete
+      const deleteFilter = { bookingId: bookingIdInt };
 
-      if (existingTourists.length > 0) {
-        const touristIds = existingTourists.map(t => t.id);
-        console.log(`🗑️ REPLACE ALL: Deleting ${existingTourists.length} existing tourists...`);
+      // If replaceAccommodationType is specified, only delete tourists of that type
+      if (replaceAccommodationType) {
+        // Match both exact string and variations
+        const accommodationLower = replaceAccommodationType.toLowerCase();
 
-        // Delete related data first (foreign key constraints)
-        await prisma.accommodationRoomingList.deleteMany({
-          where: { touristId: { in: touristIds } }
-        });
-        await prisma.touristRoomAssignment.deleteMany({
-          where: { touristId: { in: touristIds } }
+        const existingTourists = await prisma.tourist.findMany({
+          where: { bookingId: bookingIdInt },
+          select: { id: true, accommodation: true, fullName: true }
         });
 
-        // Delete tourists
-        await prisma.tourist.deleteMany({
-          where: { bookingId: bookingIdInt }
+        // Filter tourists by accommodation type (flexible matching)
+        const touristsToDelete = existingTourists.filter(t => {
+          const tourAccommodation = (t.accommodation || '').toLowerCase();
+
+          // Match Uzbekistan variations
+          if (accommodationLower.includes('uzbek') || accommodationLower === 'uz') {
+            return tourAccommodation.includes('uzbek') || tourAccommodation === 'uz';
+          }
+          // Match Turkmenistan variations
+          if (accommodationLower.includes('turkmen') || accommodationLower === 'tm' || accommodationLower === 'tkm') {
+            return tourAccommodation.includes('turkmen') || tourAccommodation === 'tm' || tourAccommodation === 'tkm';
+          }
+
+          return false;
         });
-        console.log(`✅ Deleted ${existingTourists.length} existing tourists`);
+
+        if (touristsToDelete.length > 0) {
+          const touristIds = touristsToDelete.map(t => t.id);
+          console.log(`🗑️ REPLACE BY TYPE (${replaceAccommodationType}): Deleting ${touristsToDelete.length} existing tourists...`);
+          touristsToDelete.forEach(t => {
+            console.log(`   - ${t.fullName} (${t.accommodation})`);
+          });
+
+          // Delete related data first (foreign key constraints)
+          await prisma.accommodationRoomingList.deleteMany({
+            where: { touristId: { in: touristIds } }
+          });
+          await prisma.touristRoomAssignment.deleteMany({
+            where: { touristId: { in: touristIds } }
+          });
+
+          // Delete tourists
+          await prisma.tourist.deleteMany({
+            where: { id: { in: touristIds } }
+          });
+          console.log(`✅ Deleted ${touristsToDelete.length} ${replaceAccommodationType} tourists`);
+        } else {
+          console.log(`ℹ️ No ${replaceAccommodationType} tourists found to delete`);
+        }
+      } else {
+        // replaceAll: Delete ALL tourists regardless of accommodation type
+        const existingTourists = await prisma.tourist.findMany({
+          where: deleteFilter,
+          select: { id: true }
+        });
+
+        if (existingTourists.length > 0) {
+          const touristIds = existingTourists.map(t => t.id);
+          console.log(`🗑️ REPLACE ALL: Deleting ${existingTourists.length} existing tourists...`);
+
+          // Delete related data first (foreign key constraints)
+          await prisma.accommodationRoomingList.deleteMany({
+            where: { touristId: { in: touristIds } }
+          });
+          await prisma.touristRoomAssignment.deleteMany({
+            where: { touristId: { in: touristIds } }
+          });
+
+          // Delete tourists
+          await prisma.tourist.deleteMany({
+            where: deleteFilter
+          });
+          console.log(`✅ Deleted ${existingTourists.length} existing tourists`);
+        }
       }
     }
 
     // MERGE MODE: Update existing tourists or create new ones
     // This preserves room assignments set by Rooming List PDF import
-    const existingTourists = replaceAll ? [] : await prisma.tourist.findMany({
+    const existingTourists = (replaceAll || replaceAccommodationType) ? [] : await prisma.tourist.findMany({
       where: { bookingId: bookingIdInt }
     });
 
@@ -3373,11 +3431,30 @@ async function updateBookingPaxCount(bookingId) {
     where: { bookingId }
   });
 
-  // Get all tourists to calculate room counts
+  // Get all tourists to calculate room counts and accommodation split
   const tourists = await prisma.tourist.findMany({
     where: { bookingId },
-    select: { id: true, roomPreference: true, roomNumber: true }
+    select: { id: true, roomPreference: true, roomNumber: true, accommodation: true }
   });
+
+  // Calculate PAX split by accommodation type
+  let paxUzbekistan = 0;
+  let paxTurkmenistan = 0;
+
+  tourists.forEach(tourist => {
+    const accommodationLower = (tourist.accommodation || '').toLowerCase().trim();
+
+    // Match Uzbekistan variations
+    if (accommodationLower.includes('uzbek') || accommodationLower === 'uz') {
+      paxUzbekistan++;
+    }
+    // Match Turkmenistan variations
+    else if (accommodationLower.includes('turkmen') || accommodationLower === 'tm' || accommodationLower === 'tkm') {
+      paxTurkmenistan++;
+    }
+  });
+
+  console.log(`📊 PAX Split: Total=${count}, Uzbekistan=${paxUzbekistan}, Turkmenistan=${paxTurkmenistan}`);
 
   // Check if any tourist has roomNumber set (not null and not "null" string)
   const hasRoomNumbers = tourists.some(t => t.roomNumber && t.roomNumber !== 'null');
@@ -3462,6 +3539,8 @@ async function updateBookingPaxCount(bookingId) {
     where: { id: bookingId },
     data: {
       pax: count,
+      paxUzbekistan: paxUzbekistan,
+      paxTurkmenistan: paxTurkmenistan,
       status: status,
       roomsDbl: roomsDbl,
       roomsTwn: roomsTwn,

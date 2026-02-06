@@ -10,6 +10,7 @@ import Guides from './pages/Guides';
 import TourTypes from './pages/TourTypes';
 import Hotels from './pages/Hotels';
 import Opex from './pages/Opex';
+import Price from './pages/Price';
 import Import from './pages/Import';
 import Users from './pages/Users';
 import GmailSettings from './pages/GmailSettings';
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="tour-types" element={<TourTypes />} />
         <Route path="hotels" element={<Hotels />} />
         <Route path="opex" element={<Opex />} />
+        <Route path="price" element={<Price />} />
         <Route
           path="import"
           element={

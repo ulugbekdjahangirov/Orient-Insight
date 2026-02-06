@@ -944,6 +944,7 @@ model TourService {
 
   // Basic data
   name            String                   // Service name (Museum name, Show name, etc.)
+  city            String?                  // City name (Tashkent, Samarkand, etc.)
   date            DateTime?                // Service date
   pricePerPerson  Float     @default(0)    // Price per person
   pax             Int       @default(0)    // Number of passengers

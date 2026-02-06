@@ -77,6 +77,7 @@ router.post('/', authenticate, async (req, res) => {
       margilan, qoqon, dostlik, toshkent, extra,
       // Train/Plane
       trainNumber, route, economPrice, businessPrice, departure, arrival,
+      flightType,
       sortOrder
     } = req.body;
 
@@ -111,6 +112,7 @@ router.post('/', authenticate, async (req, res) => {
         businessPrice,
         departure,
         arrival,
+        flightType: flightType || null,
         sortOrder: sortOrder || 0
       }
     });
@@ -132,6 +134,7 @@ router.put('/:id', authenticate, async (req, res) => {
       vstrecha, chimgan, tag, oybek, chernyayevka, cityTour,
       margilan, qoqon, dostlik, toshkent, extra,
       trainNumber, route, economPrice, businessPrice, departure, arrival,
+      flightType,
       sortOrder, isActive
     } = req.body;
 
@@ -169,6 +172,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (businessPrice !== undefined) updateData.businessPrice = businessPrice;
     if (departure !== undefined) updateData.departure = departure;
     if (arrival !== undefined) updateData.arrival = arrival;
+    if (flightType !== undefined) updateData.flightType = flightType;
 
     if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
@@ -245,6 +249,7 @@ router.post('/bulk', authenticate, async (req, res) => {
             businessPrice: v.businessPrice,
             departure: v.departure,
             arrival: v.arrival,
+            flightType: v.flightType || null, // DOMESTIC or INTERNATIONAL for planes
             sortOrder: index
           }
         })

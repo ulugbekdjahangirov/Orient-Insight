@@ -242,6 +242,223 @@ If Prisma Client generation fails with "EPERM" (file locked by server):
 3. Run `npm run db:generate`
 4. Restart server with `npm run dev`
 
+### Marshrutiy (Itinerary) Tab - Route Template & Auto-loading
+
+**CRITICAL: ER Template System**
+
+The ER tour type uses a **template system** stored in the `RouteTemplate` table. This ensures ALL ER groups have consistent itineraries.
+
+**Template Auto-Save (Database Persistence):**
+- When opening an ER booking without saved routes, the system first checks for templates in the database
+- If no database template exists, the hardcoded `defaultERRoutesTemplate` is automatically saved to the database
+- This happens once per tour type (ER, CO, KAS, ZA) and ensures templates persist across sessions
+- **File**: `client/src/pages/BookingDetail.jsx` (lines ~1277-1315)
+- **API**: `routesApi.saveTemplate(tourTypeCode, routes)` → `PUT /api/routes/templates/:tourTypeCode`
+- **Important**: This auto-save ensures ER logic remains stable when adding CO/KAS/ZA templates in the future
+
+**Default ER Template (16 days):**
+1. Istanbul -Tashkent
+2. Tashkent - Chimgan - Tashkent
+3. Hotel-Toshkent sevemiy vokzali
+4. Samarqand vokzali
+5. Samarqand
+6. Samarqand
+7. Samarkand - Asraf
+8. Asraf - Buxoro
+9. Buxoro
+10. Buxoro
+11. Buxoro-Xiva
+12. Xiva
+13. Xiva-Urgench
+14. Xiva-Shovot
+15. Tashkent mahalliy Aeroporti-Hotel
+16. Hotel-Tashkent xalqoro aeroporti
+
+**Auto-loading Behavior:**
+- When opening Marshrutiy tab, if routes are empty or incomplete (less than expected days - 2), routes are automatically loaded from template
+- **CRITICAL: Route dates are calculated from Final List (tourists' check-in/out dates), NOT from booking.departureDate/endDate**
+- Earliest check-in date becomes Day 1, latest check-out date becomes last day
+- If no tourists with dates exist, falls back to booking dates
+- This ensures routes match actual group travel dates from Final List
+- Template routes are mapped to these calculated dates in order (Day 1 = template route 1, Day 2 = template route 2, etc.)
+
+**Template Storage:**
+- Templates stored in `RouteTemplate` table with `tourTypeCode = 'ER'`
+- Each template has: dayNumber, dayOffset, routeName (Yo'nalish), city (Sayohat dasturi), provider, sortOrder
+- **routeName**: Short route name (e.g., "Istanbul -Tashkent")
+- **city**: Detailed program description (e.g., "Toshkentga tashrif. Aeroportda kutib olish...")
+- Frontend: `client/src/components/booking/ItineraryPreview.jsx` - `loadItineraryData()` function
+- Backend: `server/src/routes/route.routes.js` - GET/PUT `/api/routes/templates/:tourTypeCode`
+
+**Display Mapping:**
+- "Yo'nalish" column → `route.routeName`
+- "Sayohat dasturi" column → `route.city`
+
+**DO NOT:**
+- ❌ Delete or modify ER template without backing up
+- ❌ Change auto-loading logic without testing on ER-03
+- ❌ Override route dates manually - they sync with booking.departureDate/endDate
+
+**Marshrutiy Route Sorting**
+
+**CRITICAL: DO NOT MODIFY THIS SORTING LOGIC**
+
+The Marshrutiy tab uses **custom sorting logic** for route display. This is used for **ALL ER groups** and must remain stable.
+
+**File**: `client/src/components/booking/ItineraryPreview.jsx`
+
+**Custom Sorting Rules**:
+Routes are sorted chronologically by date, EXCEPT for specific routes that need interleaved ordering:
+
+1. **24.10 and 25.10 routes** (interleaved):
+   - Row 13: 24.10 Xiva-Urganch (index 1)
+   - Row 14: 25.10 Xiva-Shovot (index 2)
+   - Row 15: 24.10 Mahalliy Aeroport-Hotel (index 3)
+   - Row 16: 25.10 Hotel-Xalqoro Aeroport (index 4)
+
+2. **15.10 and 16.10 routes** (swapped order):
+   - Row 14: 16.10 Xiva-Shovot (displayed BEFORE 15.10)
+   - Row 15: 15.10 Tashkent mahalliy Aeroporti-Hotel (displayed AFTER 16.10)
+
+**Implementation**: The `getCustomIndex()` function in the sorting logic assigns specific index values to these routes, overriding chronological order. Pattern matching is case-insensitive.
+
+**Why This Matters**: This sorting reflects the actual tour logistics where certain routes need to be viewed in a specific order regardless of their dates.
+
+**PDF Export**: The PDF export function uses the same sorting logic, so the printed itinerary matches the on-screen display.
+
+### Marshrutiy PDF Export Features
+
+**File**: `client/src/components/booking/ItineraryPreview.jsx`
+
+The "Скачать PDF" button exports the itinerary with the following features:
+
+**1. Cyrillic to Latin Transliteration**:
+- All Cyrillic text (city names, route names, contact info) is automatically transliterated to Latin for PDF compatibility
+- Uses comprehensive transliteration map including Uzbek-specific characters (Ғ, Қ, Ў, Ҳ)
+- Example: Тошкент → Toshkent, Самарқанд → Samarqand
+
+**2. Color Coding** (preserved in PDF):
+- **Toshkent routes**: Yellow background (RGB: 254, 243, 199) for all routes containing "Tashkent" or "Toshkent"
+- **Xayrulla contact row**: Yellow background in header table
+- Matches the on-screen display colors
+
+**3. Content Sections**:
+- Header table: Transport contacts (Nosir, Sevil, Xayrulla) + Group info (Gruppa, Davlat, Turistlar soni, gid)
+- Main routes table: Date, Direction, Time, Travel program
+- Poyezd bileti: Railway tickets with hotel info
+- Ichki aviareys: Domestic flights with hotel info
+- Xalqaro aviareys: International flights (no hotel info)
+- Hotels: Unique list of all hotels (Shahar, Hotel, Telefon)
+
+**4. Formatting**:
+- Font sizes: Title 14px, Section headers 10px, Table content 7-8px
+- Cell padding: 1.5mm for readability
+- Grid theme with borders
+- Optimized to fit on single A4 page (portrait)
+
+**5. Data Sources**:
+- Routes from `Route` table
+- Railways from `Railway` table
+- Flights from `Flight` table (filtered by type: DOMESTIC/INTERNATIONAL)
+- Hotels from `Accommodation` table (via bookingRooms)
+- Tourists count from `Tourist` table
+
+**Important**: This PDF export is used for ALL ER groups. Do not modify the layout, colors, or content structure without testing with actual ER tour data.
+
+### Route Module - "Fix Vehicles" Auto-Calculation
+
+**CRITICAL: ER Route Auto-Fix Logic**
+
+The Route tab has a "Fix Vehicles" button that automatically generates/fixes all routes for ER groups based on the template system.
+
+**File**: `client/src/pages/BookingDetail.jsx` - `autoFixAllRoutes()` function (lines ~4418-4620)
+
+**What it does:**
+1. Calculates UZB and TKM tourist counts from `tourist.accommodation` field
+2. Generates routes from ER template with dates calculated from `departureDate + 1` (arrival date)
+3. Auto-selects vehicles and prices based on PAX count and provider
+4. Handles special cases: Chimgan routes, UZB/TKM route splitting
+5. Filters out routes with 0 PAX
+6. Saves routes to database via bulk update
+
+**PAX Calculation:**
+```javascript
+// UZB tourists: accommodation contains "uzbek", "узбек", or equals "uz"
+const paxUzb = tourists.filter(t => {
+  const placement = (t.accommodation || '').toLowerCase().trim();
+  return placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
+}).length;
+
+// TKM tourists: accommodation contains "turkmen", "туркмен", "tm", "tkm", or "turkmeni"
+const paxTkm = tourists.filter(t => {
+  const placement = (t.accommodation || '').toLowerCase().trim();
+  return placement.includes('turkmen') || placement.includes('туркмен') ||
+         placement === 'tm' || placement === 'tkm' || placement.includes('turkmeni');
+}).length;
+```
+
+**Chimgan Route - Special Vehicle Logic:**
+- **5-8 people**: Joylong
+- **9+ people**: Sprinter
+- Chimgan routes always use Xayrulla provider with 'chimgan' rate
+
+**UZB/TKM Route Splitting (3 Variants):**
+
+**Variant 1 - All UZB (TKM = 0):**
+- Khiva-Urgench → paxUzb (to Urgench airport)
+- Mahalliy Aeroport-Hotel → paxUzb (domestic flight to Tashkent)
+- Hotel-Xalqaro Aeroport → paxUzb (international departure)
+- Khiva-Shovot → Skipped (0 PAX)
+
+**Variant 2 - Mixed (UZB > 0 AND TKM > 0):**
+- Khiva-Urgench → paxUzb (UZB to airport)
+- Mahalliy Aeroport-Hotel → paxUzb (UZB domestic flight)
+- Hotel-Xalqaro Aeroport → paxUzb (UZB international departure)
+- Khiva-Shovot → paxTkm (TKM to border)
+
+**Variant 3 - All TKM (UZB = 0):**
+- Khiva-Urgench → Skipped (0 PAX) - TKM don't go to Urgench airport
+- Khiva-Shovot → paxTkm (TKM go directly to border)
+- Mahalliy Aeroport-Hotel → Skipped (0 PAX)
+- Hotel-Xalqaro Aeroport → Skipped (0 PAX)
+
+**Route Name Matching:**
+Uses `.includes()` for flexible matching to handle spacing/formatting variations:
+- Khiva-Urgench: `routeName.includes('Khiva') && routeName.includes('Urgench')`
+- Khiva-Shovot: `routeName.includes('Shovot') || routeName.includes('Shoʻvot') || routeName.includes('Shavat')`
+- Mahalliy Aeroport: `routeName.includes('Mahalliy') && routeName.includes('Aeroport')`
+- Xalqaro Aeroport: `routeName.includes('Xalqaro') && routeName.includes('Aeroport')`
+
+**Safety Check - Khiva-Shovot Auto-Add:**
+If TKM tourists exist but Khiva-Shovot route is missing after template processing, it's automatically added with:
+- Date: Same as Hotel-Xalqaro Aeroport route (day 13)
+- PAX: paxTkm
+- Provider: sevil
+- Vehicle: Auto-selected based on PAX count
+- Rate: shovotRate
+- Price: Auto-calculated
+
+**Console Logging:**
+- `🔧 Auto-fixing routes: PAX Total=X, UZB=Y, TKM=Z`
+- `📋 Tourist accommodations: [array of tourist names and accommodation values]`
+- `✅ Route N: [routeName] → Date=DD.MM.YYYY, PAX=X, Vehicle=Y, Price=$Z`
+- `⏭️ Route N: [routeName] → Skipped (PAX = 0)`
+- `🟣 TKM border route found: [routeName], TKM PAX = X, routePax = Y`
+- `⚠️ TKM tourists exist (X) but Khiva-Shovot route missing. Adding it...`
+
+**DO NOT:**
+- ❌ Modify UZB/TKM counting logic without testing with real ER groups
+- ❌ Change Chimgan vehicle selection logic (9-16 people use Sprinter, NOT Yutong)
+- ❌ Remove safety check for Khiva-Shovot auto-add
+- ❌ Use exact string matching instead of `.includes()` for route names
+
+**Testing:**
+Always test with ER groups that have:
+1. All UZB tourists (Variant 1)
+2. Mixed UZB+TKM tourists (Variant 2)
+3. All TKM tourists (Variant 3)
+4. Various PAX counts for Chimgan (5-8 for Joylong, 9+ for Sprinter)
+
 ## UI/UX Patterns
 
 ### Tour Type Modules

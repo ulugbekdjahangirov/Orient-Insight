@@ -206,35 +206,17 @@ export default function Hotels() {
     if (room) {
       setEditingRoom(room);
 
-      // Calculate total price from base price (for display in edit mode)
-      let displayPrice = room.pricePerNight;
-      console.log('🔍 Base price:', displayPrice, room.currency);
+      // Show BASE price (no tax calculation needed)
+      console.log('🔍 Loading room for edit - Base price:', room.pricePerNight, room.currency);
       console.log('🔍 VAT included:', room.vatIncluded);
       console.log('🔍 Tourist tax enabled:', room.touristTaxEnabled);
       console.log('🔍 Hotel totalRooms:', hotel?.totalRooms);
-
-      const vatAmount = room.vatIncluded ? displayPrice * 0.12 : 0;
-      displayPrice += vatAmount;
-      console.log('🔍 After VAT:', displayPrice);
-
-      if (room.touristTaxEnabled && room.brvValue > 0) {
-        const totalRooms = hotel?.totalRooms || 0;
-        const percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
-        const tax = room.brvValue * percentage * (room.maxGuests || 1);
-        console.log('🔍 Tourist tax (UZS):', tax, 'Percentage:', percentage);
-
-        if (room.currency === 'USD') displayPrice += tax / 12700;
-        else if (room.currency === 'EUR') displayPrice += tax / 13500;
-        else displayPrice += tax;
-      }
-
-      console.log('🔍 Final display price:', displayPrice);
 
       setRoomForm({
         name: room.name,
         displayName: room.displayName || '',
         roomCount: room.roomCount,
-        pricePerNight: displayPrice, // Show total price (incl. tax)
+        pricePerNight: room.pricePerNight, // Show BASE price directly
         currency: room.currency,
         description: room.description || '',
         maxGuests: room.maxGuests,
@@ -260,27 +242,8 @@ export default function Hotels() {
     }
 
     try {
-      let basePrice = roomForm.pricePerNight;
-
-      // If editing existing room, convert total price back to base price
-      if (editingRoom) {
-        // Remove tourist tax first
-        if (roomForm.touristTaxEnabled && roomForm.brvValue > 0) {
-          const totalRooms = currentHotel?.totalRooms || 0;
-          const percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
-          const tax = roomForm.brvValue * percentage * (roomForm.maxGuests || 1);
-
-          if (roomForm.currency === 'USD') basePrice -= tax / 12700;
-          else if (roomForm.currency === 'EUR') basePrice -= tax / 13500;
-          else basePrice -= tax;
-        }
-
-        // Remove VAT (12%)
-        if (roomForm.vatIncluded) {
-          basePrice = basePrice / 1.12;
-        }
-      }
-      // For new rooms, user enters base price directly, no conversion needed
+      // User enters BASE price directly - no conversion needed for new or existing rooms
+      const basePrice = roomForm.pricePerNight;
 
       const dataToSave = {
         ...roomForm,
@@ -823,7 +786,7 @@ export default function Hotels() {
                                         <span className={`font-black text-lg ${roomStyle.color}`}>{room.name}</span>
                                         <span className="text-lg font-black text-slate-800">
                                           {symbol}{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                          {room.currency === 'UZS' && ' ₿'}
+                                          {room.currency === 'UZS' && ' UZS'}
                                         </span>
                                       </div>
                                       {/* Hover actions */}
@@ -1029,7 +992,7 @@ export default function Hotels() {
                   </select>
                 </div>
 
-                <div className="col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Category</label>
                   <select
                     value={hotelForm.stars}
@@ -1043,6 +1006,25 @@ export default function Hotels() {
                     <option value="Guesthouse">Guesthouse</option>
                     <option value="Yurta">Yurta</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Total Rooms
+                    <span className="text-xs text-slate-500 ml-1">(for tourist tax %)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={hotelForm.totalRooms || ''}
+                    onChange={(e) => setHotelForm({ ...hotelForm, totalRooms: parseInt(e.target.value) || 0 })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
+                    min={0}
+                    step={1}
+                    placeholder="30"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    ≤10: 5% | ≤40: 10% | &gt;40: 15%
+                  </p>
                 </div>
 
                 <div className="col-span-2">
@@ -1205,7 +1187,7 @@ export default function Hotels() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    {editingRoom ? 'Total Price/Night (incl. tax)' : 'Base Price per Night'}
+                    Base Price per Night
                   </label>
                   <input
                     type="number"
@@ -1216,9 +1198,7 @@ export default function Hotels() {
                     step={0.01}
                     placeholder="0.00"
                   />
-                  {editingRoom && (
-                    <p className="text-xs text-slate-500 mt-1">Includes VAT and tourist tax</p>
-                  )}
+                  <p className="text-xs text-slate-500 mt-1">Taxes will be calculated below</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Currency</label>
@@ -1296,7 +1276,8 @@ export default function Hotels() {
                         {roomForm.brvValue > 0 && (() => {
                           const totalRooms = currentHotel?.totalRooms || 0;
                           const percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
-                          const tax = roomForm.brvValue * percentage * (roomForm.maxGuests || 1);
+                          const maxGuests = parseInt(roomForm.maxGuests) || 1;
+                          const tax = roomForm.brvValue * percentage * maxGuests;
                           return (
                             <span className="text-xs text-emerald-600 font-medium">
                               = {tax.toLocaleString()} UZS
@@ -1309,9 +1290,9 @@ export default function Hotels() {
                 </label>
               </div>
 
-              {/* Price Summary - Only show when adding new room */}
-              {!editingRoom && roomForm.pricePerNight > 0 && (
-                <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
+              {/* Price Summary - Show total calculation with taxes */}
+              {parseFloat(roomForm.pricePerNight) > 0 && (
+                <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 space-y-2">
                   {(() => {
                     const basePrice = parseFloat(roomForm.pricePerNight) || 0;
                     const currencySymbol = roomForm.currency === 'USD' ? '$' : roomForm.currency === 'EUR' ? '€' : '';
@@ -1334,15 +1315,59 @@ export default function Hotels() {
                     }
 
                     return (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-600">
-                          Total per {roomForm.name === 'PAX' ? 'person' : 'room'}/night:
-                        </span>
-                        <span className="text-xl font-bold text-emerald-600">
-                          {currencySymbol}{roomForm.currency === 'UZS' ? totalPrice.toLocaleString() : totalPrice.toFixed(2)}
-                          {roomForm.currency === 'UZS' ? ' UZS' : ` ${roomForm.currency}`}
-                        </span>
-                      </div>
+                      <>
+                        <div className="text-xs font-semibold text-slate-600 mb-2">Price Breakdown:</div>
+
+                        {/* Base Price */}
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600">
+                            {editingRoom ? 'Current Price' : 'Base Price'}:
+                          </span>
+                          <span className="font-medium text-slate-800">
+                            {currencySymbol}{roomForm.currency === 'UZS' ? basePrice.toLocaleString() : basePrice.toFixed(2)}
+                            {roomForm.currency === 'UZS' ? ' UZS' : ` ${roomForm.currency}`}
+                          </span>
+                        </div>
+
+                        {/* VAT */}
+                        {roomForm.vatIncluded && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">+ VAT 12%:</span>
+                            <span className="font-medium text-emerald-600">
+                              +{currencySymbol}{roomForm.currency === 'UZS' ? vatAmount.toLocaleString() : vatAmount.toFixed(2)}
+                              {roomForm.currency === 'UZS' ? ' UZS' : ` ${roomForm.currency}`}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Tourist Tax */}
+                        {roomForm.touristTaxEnabled && touristTax > 0 && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-600">+ Tourist Tax:</span>
+                            <span className="font-medium text-emerald-600">
+                              {roomForm.currency === 'UZS' ? (
+                                `+${touristTax.toLocaleString()} UZS`
+                              ) : (
+                                `+${currencySymbol}${(touristTax / (roomForm.currency === 'USD' ? 12700 : 13500)).toFixed(2)} ${roomForm.currency}`
+                              )}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Divider */}
+                        <div className="border-t border-emerald-200 my-1"></div>
+
+                        {/* Total */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-700">
+                            Total per {roomForm.name === 'PAX' ? 'person' : 'room'}/night:
+                          </span>
+                          <span className="text-xl font-bold text-emerald-600">
+                            {currencySymbol}{roomForm.currency === 'UZS' ? totalPrice.toLocaleString() : totalPrice.toFixed(2)}
+                            {roomForm.currency === 'UZS' ? ' UZS' : ` ${roomForm.currency}`}
+                          </span>
+                        </div>
+                      </>
                     );
                   })()}
                 </div>

@@ -189,33 +189,51 @@ export default function Updates() {
       // Import each booking group
       const results = [];
       for (const [bookingId, group] of Object.entries(bookingGroups)) {
-        const allTourists = [...group.uzbekistan, ...group.turkmenistan];
         const uzbekCount = group.uzbekistan.length;
         const turkCount = group.turkmenistan.length;
 
-        console.log(`\n🚀 Importing to ${group.booking.bookingNumber}: ${uzbekCount} Uzbekistan + ${turkCount} Turkmenistan = ${allTourists.length} total`);
+        console.log(`\n🚀 Importing to ${group.booking.bookingNumber}: ${uzbekCount} Uzbekistan + ${turkCount} Turkmenistan = ${uzbekCount + turkCount} total`);
+
+        let totalCreated = 0;
+        let totalSkipped = 0;
 
         try {
-          const importResponse = await touristsApi.import(group.booking.id, allTourists, { replaceAll: true });
-          const { created, skipped } = importResponse.data;
+          // Import Uzbekistan tourists separately (only replace Uzbekistan tourists)
+          if (uzbekCount > 0) {
+            console.log(`  📥 Importing ${uzbekCount} Uzbekistan tourists...`);
+            const uzbekResponse = await touristsApi.import(group.booking.id, group.uzbekistan, {
+              replaceAccommodationType: 'Uzbekistan'
+            });
+            totalCreated += uzbekResponse.data.created || 0;
+            totalSkipped += uzbekResponse.data.skipped || 0;
+            console.log(`  ✅ Uzbekistan: ${uzbekResponse.data.created} created, ${uzbekResponse.data.skipped || 0} skipped`);
+          }
 
-          // Update booking PAX
-          await bookingsApi.update(group.booking.id, {
-            paxUzbekistan: uzbekCount,
-            paxTurkmenistan: turkCount
-          });
+          // Import Turkmenistan tourists separately (only replace Turkmenistan tourists)
+          if (turkCount > 0) {
+            console.log(`  📥 Importing ${turkCount} Turkmenistan tourists...`);
+            const turkResponse = await touristsApi.import(group.booking.id, group.turkmenistan, {
+              replaceAccommodationType: 'Turkmenistan'
+            });
+            totalCreated += turkResponse.data.created || 0;
+            totalSkipped += turkResponse.data.skipped || 0;
+            console.log(`  ✅ Turkmenistan: ${turkResponse.data.created} created, ${turkResponse.data.skipped || 0} skipped`);
+          }
+
+          // Backend automatically recalculates PAX counts via updateBookingPaxCount()
+          // No need to manually trigger update
 
           totalSuccess++;
           results.push({
             bookingNumber: group.booking.bookingNumber,
             uzbekCount,
             turkCount,
-            total: allTourists.length,
-            created: created || 0,
-            skipped: skipped || 0
+            total: uzbekCount + turkCount,
+            created: totalCreated,
+            skipped: totalSkipped
           });
 
-          console.log(`✅ Successfully imported to ${group.booking.bookingNumber}: ${created} created${skipped > 0 ? `, ${skipped} skipped (already exist)` : ''}`);
+          console.log(`✅ Successfully imported to ${group.booking.bookingNumber}: ${totalCreated} created${totalSkipped > 0 ? `, ${totalSkipped} skipped (already exist)` : ''}`);
         } catch (importError) {
           totalErrors++;
           errors.push({

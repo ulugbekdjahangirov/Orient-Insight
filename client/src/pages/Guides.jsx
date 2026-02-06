@@ -60,6 +60,10 @@ export default function Guides() {
   const [activeTab, setActiveTab] = useState('information'); // 'information', 'tours', 'payment', 'city-payment'
   const [allBookings, setAllBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null); // ID of guide being edited in Payment tab
+  const [paymentFormData, setPaymentFormData] = useState({ dayRate: 0, halfDayRate: 0 });
+  const [editingCityPayment, setEditingCityPayment] = useState(null); // ID of guide being edited in City Payment tab
+  const [cityPaymentFormData, setCityPaymentFormData] = useState({ city: '', cityRate: 0 });
 
   function getEmptyFormData() {
     return {
@@ -77,6 +81,10 @@ export default function Guides() {
       bankAccountNumber: '',
       bankCardNumber: '',
       bankName: '',
+      dayRate: 110,
+      halfDayRate: 55,
+      city: '',
+      cityRate: 0,
       notes: ''
     };
   }
@@ -124,6 +132,10 @@ export default function Guides() {
         bankAccountNumber: guide.bankAccountNumber || '',
         bankCardNumber: guide.bankCardNumber || '',
         bankName: guide.bankName || '',
+        dayRate: guide.dayRate ?? 110,
+        halfDayRate: guide.halfDayRate ?? 55,
+        city: guide.city || '',
+        cityRate: guide.cityRate ?? 0,
         notes: guide.notes || ''
       });
     } else {
@@ -247,6 +259,106 @@ export default function Guides() {
     } catch (error) {
       toast.error('Error deleting booking');
     }
+  };
+
+  const handleEditPayment = (guide) => {
+    console.log('✏️ [EDIT] Starting edit mode for guide:', guide.id, guide.name);
+    console.log('✏️ [EDIT] Current rates:', {
+      dayRate: guide.dayRate,
+      halfDayRate: guide.halfDayRate
+    });
+
+    setEditingPayment(guide.id);
+    setPaymentFormData({
+      dayRate: guide.dayRate ?? 110,
+      halfDayRate: guide.halfDayRate ?? 55
+    });
+
+    console.log('✏️ [EDIT] Form data set to:', {
+      dayRate: guide.dayRate ?? 110,
+      halfDayRate: guide.halfDayRate ?? 55
+    });
+  };
+
+  const handleSavePayment = async (guideId) => {
+    try {
+      console.log('🔵 [SAVE] Starting save operation');
+      console.log('🔵 [SAVE] Guide ID:', guideId);
+      console.log('🔵 [SAVE] Payment form data:', paymentFormData);
+      console.log('🔵 [SAVE] Data types:', {
+        dayRate: typeof paymentFormData.dayRate,
+        halfDayRate: typeof paymentFormData.halfDayRate
+      });
+
+      const response = await guidesApi.update(guideId, paymentFormData);
+
+      console.log('🟢 [SAVE] Response received:', response);
+      console.log('🟢 [SAVE] Updated guide data:', response.data?.guide);
+
+      toast.success('Ставки оплаты обновлены');
+      setEditingPayment(null);
+
+      console.log('🔵 [SAVE] Reloading guides...');
+      await loadGuides();
+      console.log('🟢 [SAVE] Guides reloaded successfully');
+    } catch (error) {
+      console.error('🔴 [SAVE] Error occurred:', error);
+      console.error('🔴 [SAVE] Error response:', error.response);
+      console.error('🔴 [SAVE] Error data:', error.response?.data);
+      console.error('🔴 [SAVE] Error status:', error.response?.status);
+      toast.error(error.response?.data?.error || 'Ошибка обновления ставок оплаты');
+    }
+  };
+
+  const handleCancelPaymentEdit = () => {
+    setEditingPayment(null);
+    setPaymentFormData({ dayRate: 0, halfDayRate: 0 });
+  };
+
+  const handleEditCityPayment = (guide) => {
+    console.log('✏️ [CITY EDIT] Starting edit mode for guide:', guide.id, guide.name);
+    console.log('✏️ [CITY EDIT] Current city rate:', guide.cityRate);
+
+    setEditingCityPayment(guide.id);
+    setCityPaymentFormData({
+      city: guide.city || '',
+      cityRate: guide.cityRate ?? 0
+    });
+
+    console.log('✏️ [CITY EDIT] Form data set to:', {
+      city: guide.city || '',
+      cityRate: guide.cityRate ?? 0
+    });
+  };
+
+  const handleSaveCityPayment = async (guideId) => {
+    try {
+      console.log('🔵 [CITY SAVE] Starting save operation');
+      console.log('🔵 [CITY SAVE] Guide ID:', guideId);
+      console.log('🔵 [CITY SAVE] City payment form data:', cityPaymentFormData);
+
+      const response = await guidesApi.update(guideId, cityPaymentFormData);
+
+      console.log('🟢 [CITY SAVE] Response received:', response);
+      console.log('🟢 [CITY SAVE] Updated guide data:', response.data?.guide);
+
+      toast.success('Городская ставка обновлена');
+      setEditingCityPayment(null);
+
+      console.log('🔵 [CITY SAVE] Reloading guides...');
+      await loadGuides();
+      console.log('🟢 [CITY SAVE] Guides reloaded successfully');
+    } catch (error) {
+      console.error('🔴 [CITY SAVE] Error occurred:', error);
+      console.error('🔴 [CITY SAVE] Error response:', error.response);
+      console.error('🔴 [CITY SAVE] Error data:', error.response?.data);
+      toast.error(error.response?.data?.error || 'Ошибка обновления городской ставки');
+    }
+  };
+
+  const handleCancelCityPaymentEdit = () => {
+    setEditingCityPayment(null);
+    setCityPaymentFormData({ city: '', cityRate: 0 });
   };
 
   const getPassportStatusBadge = (status) => {
@@ -783,8 +895,8 @@ export default function Guides() {
               <thead className="bg-gradient-to-r from-green-600 to-green-700">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Half Price</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Price</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Half Day</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Day</th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
                 </tr>
               </thead>
@@ -807,31 +919,77 @@ export default function Guides() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-bold text-sm shadow-sm">
-                        <CreditCard className="w-4 h-4" />
-                        $55
-                      </span>
+                      {editingPayment === guide.id ? (
+                        <input
+                          type="number"
+                          value={paymentFormData.halfDayRate}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+                            const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
+                            console.log('🟡 [INPUT] Half Day Rate changed:', rawValue, '→', newValue);
+                            setPaymentFormData({ ...paymentFormData, halfDayRate: newValue });
+                          }}
+                          className="w-28 px-3 py-2 border-2 border-yellow-300 rounded-lg focus:border-yellow-500 focus:outline-none font-bold"
+                          step="0.01"
+                          min="0"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-bold text-sm shadow-sm">
+                          <CreditCard className="w-4 h-4" />
+                          ${guide.halfDayRate ?? 55}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-bold text-sm shadow-md">
-                        <CreditCard className="w-4 h-4" />
-                        $110
-                      </span>
+                      {editingPayment === guide.id ? (
+                        <input
+                          type="number"
+                          value={paymentFormData.dayRate}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+                            const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
+                            console.log('🟢 [INPUT] Day Rate changed:', rawValue, '→', newValue);
+                            setPaymentFormData({ ...paymentFormData, dayRate: newValue });
+                          }}
+                          className="w-28 px-3 py-2 border-2 border-green-300 rounded-lg focus:border-green-500 focus:outline-none font-bold"
+                          step="0.01"
+                          min="0"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-bold text-sm shadow-md">
+                          <CreditCard className="w-4 h-4" />
+                          ${guide.dayRate ?? 110}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {editingPayment === guide.id ? (
+                          <>
+                            <button
+                              onClick={() => handleSavePayment(guide.id)}
+                              className="p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              title="Save"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleCancelPaymentEdit}
+                              className="p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleEditPayment(guide)}
+                            className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -889,31 +1047,76 @@ export default function Guides() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-medium">
-                        <MapPin className="w-4 h-4" />
-                        —
-                      </span>
+                      {editingCityPayment === guide.id ? (
+                        <input
+                          type="text"
+                          value={cityPaymentFormData.city}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            console.log('🟣 [CITY INPUT] City changed:', newValue);
+                            setCityPaymentFormData({ ...cityPaymentFormData, city: newValue });
+                          }}
+                          className="w-40 px-3 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium"
+                          placeholder="Город"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-medium">
+                          <MapPin className="w-4 h-4" />
+                          {guide.city || '—'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-bold text-sm shadow-md">
-                        <CreditCard className="w-4 h-4" />
-                        $0
-                      </span>
+                      {editingCityPayment === guide.id ? (
+                        <input
+                          type="number"
+                          value={cityPaymentFormData.cityRate}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+                            const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
+                            console.log('🟣 [CITY INPUT] City Rate changed:', rawValue, '→', newValue);
+                            setCityPaymentFormData({ ...cityPaymentFormData, cityRate: newValue });
+                          }}
+                          className="w-28 px-3 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-bold"
+                          step="0.01"
+                          min="0"
+                          placeholder="0"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-bold text-sm shadow-md">
+                          <CreditCard className="w-4 h-4" />
+                          ${guide.cityRate ?? 0}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {editingCityPayment === guide.id ? (
+                          <>
+                            <button
+                              onClick={() => handleSaveCityPayment(guide.id)}
+                              className="p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              title="Save"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleCancelCityPaymentEdit}
+                              className="p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleEditCityPayment(guide)}
+                            className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1019,6 +1222,84 @@ export default function Guides() {
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Rates */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Ставки оплаты
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Полный день (USD)</label>
+                    <input
+                      type="number"
+                      value={formData.dayRate}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
+                        setFormData({ ...formData, dayRate: newValue });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="110"
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Полдня (USD)</label>
+                    <input
+                      type="number"
+                      value={formData.halfDayRate}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
+                        setFormData({ ...formData, halfDayRate: newValue });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="55"
+                      step="0.01"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* City Rates */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Городские ставки
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Город</label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Самарканд"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ставка (USD)</label>
+                    <input
+                      type="number"
+                      value={formData.cityRate}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
+                        setFormData({ ...formData, cityRate: newValue });
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="0"
+                      step="0.01"
+                      min="0"
                     />
                   </div>
                 </div>

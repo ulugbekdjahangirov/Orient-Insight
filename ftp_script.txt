@@ -1,0 +1,5 @@
+open 95.46.96.65
+user discovery-insight Jaha@1987
+cd www/booking-calendar/client
+ls
+bye

@@ -95,7 +95,9 @@ router.get('/stats', authenticate, async (req, res) => {
       thisMonthBookings,
       upcomingBookings,
       guidesCount,
-      tourTypesCount
+      tourTypesCount,
+      hotelsCount,
+      opexCount
     ] = await Promise.all([
       // Всего туристов
       prisma.booking.aggregate({ _sum: { pax: true } }),
@@ -127,7 +129,13 @@ router.get('/stats', authenticate, async (req, res) => {
       prisma.guide.count({ where: { isActive: true } }),
 
       // Количество типов туров
-      prisma.tourType.count({ where: { isActive: true } })
+      prisma.tourType.count({ where: { isActive: true } }),
+
+      // Количество отелей
+      prisma.hotel.count({ where: { isActive: true } }),
+
+      // Количество OPEX записей (транспорт)
+      prisma.transportVehicle.count({ where: { isActive: true } })
     ]);
 
     // Получаем названия типов туров
@@ -148,7 +156,9 @@ router.get('/stats', authenticate, async (req, res) => {
         thisMonthBookings,
         upcomingBookings,
         guidesCount,
-        tourTypesCount
+        tourTypesCount,
+        hotelsCount,
+        opexCount
       },
       bookingsByStatus,
       bookingsByTourType: bookingsByTourTypeWithNames

@@ -66,7 +66,11 @@ export default function TouristsList({ bookingId, onUpdate }) {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('ru-RU');
+    // Use UTC methods to avoid timezone issues
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}.${month}.${year}`;
   };
 
   const isPassportExpired = (dateStr) => {

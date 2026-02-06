@@ -11,7 +11,10 @@ import {
   ArrowRight,
   Clock,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Hotel,
+  Wallet,
+  DollarSign
 } from 'lucide-react';
 import {
   BarChart,
@@ -183,6 +186,18 @@ export default function Dashboard() {
           label="Активных гидов"
           value={stats?.overview.guidesCount || 0}
           color="amber"
+        />
+        <StatCard
+          icon={Hotel}
+          label="Hotels"
+          value={stats?.overview.hotelsCount || 0}
+          color="blue"
+        />
+        <StatCard
+          icon={Wallet}
+          label="OPEX"
+          value={stats?.overview.opexCount || 0}
+          color="green"
         />
       </div>
 

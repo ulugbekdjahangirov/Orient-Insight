@@ -1,0 +1,6 @@
+mkdir /www/booking-calendar/client
+mkdir /www/booking-calendar/client/dist
+mkdir /www/booking-calendar/client/dist/assets
+mkdir /www/booking-calendar/server/uploads
+mkdir /www/booking-calendar/server/uploads/hotels
+bye

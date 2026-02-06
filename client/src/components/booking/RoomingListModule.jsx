@@ -98,7 +98,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    // Use UTC methods to avoid timezone issues
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}.${month}.${year}`;
   };
 
   // ============================================
@@ -756,8 +760,17 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             }
           }
 
-          // Yellow background if has custom dates
-          const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+          // Yellow background if tourist has DIFFERENT dates from booking (early/late arrival)
+          // CRITICAL: Compare tour start dates to check if tourist arrives before/after group
+          let hasEarlyLateDates = false;
+          if (t.checkInDate && booking?.departureDate) {
+            const touristTourStart = new Date(t.checkInDate);
+            const bookingTourStart = new Date(booking.departureDate);
+            touristTourStart.setUTCHours(0, 0, 0, 0);
+            bookingTourStart.setUTCHours(0, 0, 0, 0);
+            hasEarlyLateDates = touristTourStart.getTime() !== bookingTourStart.getTime();
+          }
+          const rowBgColor = hasEarlyLateDates ? '#fffacd' : '';
 
           touristRows += `
             <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
@@ -1254,8 +1267,17 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             }
           }
 
-          // Yellow background if has custom dates
-          const rowBgColor = (t.checkInDate || t.checkOutDate) ? '#fffacd' : '';
+          // Yellow background if tourist has DIFFERENT dates from booking (early/late arrival)
+          // CRITICAL: Compare tour start dates to check if tourist arrives before/after group
+          let hasEarlyLateDates = false;
+          if (t.checkInDate && booking?.departureDate) {
+            const touristTourStart = new Date(t.checkInDate);
+            const bookingTourStart = new Date(booking.departureDate);
+            touristTourStart.setUTCHours(0, 0, 0, 0);
+            bookingTourStart.setUTCHours(0, 0, 0, 0);
+            hasEarlyLateDates = touristTourStart.getTime() !== bookingTourStart.getTime();
+          }
+          const rowBgColor = hasEarlyLateDates ? '#fffacd' : '';
 
           touristRows += `
             <tr style="${rowBgColor ? `background-color:${rowBgColor}` : ''}">
@@ -1815,7 +1837,20 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 // Check if this is the first hotel - only show custom dates for first hotel
                 const isFirstHotel = hotelName === firstAccommodationHotel;
 
-                // Check if tourist has custom arrival/departure dates
+                // Check if tourist has DIFFERENT dates from booking (early/late arrival)
+                // CRITICAL: Compare tour start dates, not arrival dates
+                // Tourist arrives 1 day after their tour start date
+                let hasEarlyLateArrival = false;
+                if (isFirstHotel && t.checkInDate && booking?.departureDate) {
+                  const touristTourStart = new Date(t.checkInDate);
+                  const bookingTourStart = new Date(booking.departureDate);
+                  // Normalize to UTC midnight to avoid timezone issues
+                  touristTourStart.setUTCHours(0, 0, 0, 0);
+                  bookingTourStart.setUTCHours(0, 0, 0, 0);
+                  hasEarlyLateArrival = touristTourStart.getTime() !== bookingTourStart.getTime();
+                }
+
+                // Check if tourist has custom dates (for backwards compatibility)
                 const hasCustomDates = isFirstHotel && (t.checkInDate || t.checkOutDate);
                 const customCheckIn = isFirstHotel && t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
                 const customCheckOut = isFirstHotel && t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
@@ -1872,8 +1907,26 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 const displayTourStart = displayFlightDate || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
 
                 // Yellow background if tourist has custom/different dates
-                const hasSpecialDates = displayArrivalDate || displayFlightDate || hasCustomDates;
+                // CRITICAL: Include hasEarlyLateArrival to highlight tourists arriving before/after group
+                const hasSpecialDates = displayArrivalDate || displayFlightDate || hasCustomDates || hasEarlyLateArrival;
                 const rowBgClass = hasSpecialDates ? 'bg-yellow-50 border-2 border-yellow-300' : '';
+
+                // Debug logging for Baetgen
+                if (t.fullName?.includes('Baetgen') || t.lastName?.includes('Baetgen')) {
+                  console.log('🔍 Baetgen RoomingListModule highlight:', {
+                    name: t.fullName,
+                    hotel: hotelName,
+                    isFirstHotel,
+                    touristCheckIn: t.checkInDate,
+                    bookingDeparture: booking?.departureDate,
+                    hasEarlyLateArrival,
+                    displayArrivalDate,
+                    displayFlightDate,
+                    hasCustomDates,
+                    hasSpecialDates,
+                    rowBgClass
+                  });
+                }
 
                 return (
                   <div key={t.id} className={`grid grid-cols-12 gap-4 items-center rounded-xl p-2 ${rowBgClass}`}>
@@ -1947,39 +2000,132 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       )}
                     </div>
 
-                    {/* Additional Information */}
+                    {/* Additional Information / Примечание */}
                     <div className="col-span-2">
-                      {(() => {
-                        // Show important information from remarks (Vegetarian, Birthday, Flight/Arrival)
-                        const remarksLines = [];
-
-                        // Get remarks from tourist (contains Vegetarian, Birthday, Flight info from PDF import)
-                        const remarks = t.remarks || '';
-                        if (remarks && remarks !== '-') {
-                          // Split by newline and filter important info only
-                          const lines = remarks.split('\n').filter(line => {
-                            const lower = line.toLowerCase();
-                            // Include only important information
-                            return lower.includes('vegetarian') ||
-                                   lower.includes('birthday') ||
-                                   lower.includes('flight') ||
-                                   lower.includes('arrival') ||
-                                   lower.includes('заезд') ||
-                                   lower.includes('book extra nights');
-                          });
-                          remarksLines.push(...lines);
-                        }
-
-                        return remarksLines.length > 0 ? (
-                          <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl px-4 py-3 shadow-sm">
-                            {remarksLines.map((line, i) => (
-                              <div key={i} className="text-xs leading-relaxed font-medium">{line}</div>
+                      {editingRemarksId === t.id ? (
+                        // Edit mode - show textarea with quick select options
+                        <div className="space-y-2">
+                          <div className="flex gap-2 flex-wrap">
+                            {/* Quick select buttons for common phrases */}
+                            {[
+                              'Ранний заезд',
+                              'Поздний выезд',
+                              'Ранний заезд, поздний выезд',
+                              'Vegetarian',
+                              'Birthday',
+                              'Extra nights',
+                              'VIP'
+                            ].map(phrase => (
+                              <button
+                                key={phrase}
+                                onClick={() => {
+                                  const current = remarksValue ? remarksValue + '\n' + phrase : phrase;
+                                  setRemarksValue(current);
+                                }}
+                                className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                              >
+                                {phrase}
+                              </button>
                             ))}
+                            {/* Button to insert current date */}
+                            <button
+                              onClick={() => {
+                                const today = new Date();
+                                const dateStr = formatDisplayDate(today.toISOString());
+                                const current = remarksValue ? remarksValue + ' ' + dateStr : dateStr;
+                                setRemarksValue(current);
+                              }}
+                              className="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                              title="Вставить сегодняшнюю дату"
+                            >
+                              📅 Сегодня
+                            </button>
+                            {/* Date picker for custom date */}
+                            <input
+                              type="date"
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const dateStr = formatDisplayDate(e.target.value);
+                                  const current = remarksValue ? remarksValue + ' ' + dateStr : dateStr;
+                                  setRemarksValue(current);
+                                  e.target.value = ''; // Reset after selection
+                                }
+                              }}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:border-blue-400 transition-colors"
+                              title="Выбрать дату"
+                            />
                           </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        );
-                      })()}
+                          <textarea
+                            value={remarksValue}
+                            onChange={(e) => setRemarksValue(e.target.value)}
+                            onBlur={() => saveRemarks(t.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && e.ctrlKey) {
+                                saveRemarks(t.id);
+                              }
+                              if (e.key === 'Escape') {
+                                setEditingRemarksId(null);
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-xs border-2 border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                            rows="3"
+                            placeholder="Добавить примечание... (Ctrl+Enter для сохранения, Esc для отмены)"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        // View mode - show remarks with click to edit
+                        <div
+                          onClick={() => startEditRemarks(t)}
+                          className="cursor-pointer hover:bg-blue-50 rounded-xl px-3 py-2 transition-colors group"
+                          title="Нажмите, чтобы редактировать"
+                        >
+                          {(() => {
+                            // Show important information from remarks (Vegetarian, Birthday, Flight/Arrival)
+                            const remarksLines = [];
+
+                            // Get remarks from tourist (contains Vegetarian, Birthday, Flight info from PDF import)
+                            const remarks = t.remarks || '';
+                            if (remarks && remarks !== '-') {
+                              // Split by newline and filter important info only
+                              const lines = remarks.split('\n').filter(line => {
+                                const lower = line.toLowerCase();
+                                // Include only important information
+                                return lower.includes('vegetarian') ||
+                                       lower.includes('birthday') ||
+                                       lower.includes('flight') ||
+                                       lower.includes('arrival') ||
+                                       lower.includes('заезд') ||
+                                       lower.includes('выезд') ||
+                                       lower.includes('ранний') ||
+                                       lower.includes('поздний') ||
+                                       lower.includes('book extra nights');
+                              });
+                              remarksLines.push(...lines);
+                            }
+
+                            return remarksLines.length > 0 ? (
+                              <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl px-4 py-3 shadow-sm">
+                                {remarksLines.map((line, i) => (
+                                  <div key={i} className="text-xs leading-relaxed font-medium">{line}</div>
+                                ))}
+                                <div className="mt-2 text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Edit className="w-3 h-3 inline mr-1" />
+                                  Нажмите для редактирования
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                <span>-</span>
+                                <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Edit className="w-3 h-3 inline mr-1" />
+                                  Добавить
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
 
                     {/* Actions */}
