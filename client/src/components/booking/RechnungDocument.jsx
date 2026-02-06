@@ -622,55 +622,59 @@ const RechnungDocument = ({ booking, tourists }) => {
         }
       });
 
-      yPos = doc.lastAutoTable.finalY + 10;
+      yPos = doc.lastAutoTable.finalY + 8;
+
+      // Check if we need a new page for bank details
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
 
       // Bank details section
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.text('Beneficiary: LLC "ORIENT INSIGHT"', 15, yPos);
-      yPos += 5;
+      yPos += 4;
 
       doc.setFont('helvetica', 'normal');
       doc.text('Address: SHOTA RUSTAVELLI, 45  SAMARKAND CITY, UZBEKISTAN', 15, yPos);
-      yPos += 8;
+      yPos += 6;
 
       doc.setFont('helvetica', 'bold');
       doc.text("Beneficiary's Account:", 15, yPos);
       doc.setFont('helvetica', 'normal');
       doc.text('20208840905364923001 (USD)', 65, yPos);
-      yPos += 8;
+      yPos += 6;
 
       doc.setFont('helvetica', 'bold');
       doc.text('Beneficiary Bank:', 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH,', 15, yPos + 5);
-      doc.text('SAMARKAND, UZBEKISTAN', 15, yPos + 10);
-      yPos += 15;
+      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH, SAMARKAND, UZBEKISTAN', 15, yPos + 4);
+      yPos += 10;
 
       doc.setFont('helvetica', 'bold');
       doc.text('S.W.I.F.T. CODE:', 15, yPos);
       doc.setFont('helvetica', 'normal');
       doc.text('ORFBUZ22', 50, yPos);
-      yPos += 8;
+      yPos += 6;
 
       doc.setFont('helvetica', 'bold');
       doc.text("Beneficiary's Bank correspondent:", 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('National Bank of Uzbekistan', 15, yPos + 5);
-      yPos += 10;
+      doc.text('National Bank of Uzbekistan', 15, yPos + 4);
+      yPos += 8;
 
       doc.setFont('helvetica', 'bold');
       doc.text("Bank correspondent's account:", 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('21002840200010071001 (USD)', 15, yPos + 5);
-      doc.text('21002978100010071001 (EUR)', 15, yPos + 10);
-      yPos += 15;
+      doc.text('21002840200010071001 (USD)  /  21002978100010071001 (EUR)', 15, yPos + 4);
+      yPos += 8;
 
       doc.setFont('helvetica', 'bold');
       doc.text('S.W.I.F.T. CODE:', 15, yPos);
       doc.setFont('helvetica', 'normal');
       doc.text('NBFAUZ2X', 50, yPos);
-      yPos += 12;
+      yPos += 10;
 
       // Closing
       doc.setFontSize(10);
