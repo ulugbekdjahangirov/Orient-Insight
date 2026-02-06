@@ -503,14 +503,16 @@ const RechnungDocument = ({ booking, tourists }) => {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
 
-      // Left side - Orient Insight
-      doc.text('Orient Insight', 15, yPos);
+      // Left side - ORIENT INSIGHT GmbH
+      doc.text('ORIENT INSIGHT GmbH', 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('Tashkent, Uzbekistan', 15, yPos + 5);
-      doc.text('Telefon:  +998933484208', 15, yPos + 10);
-      doc.text('Telefon:  +998979282814', 15, yPos + 15);
-      doc.text('E-Mail:orientinsightreisen@gmail.com', 15, yPos + 20);
-      doc.text('Web: www.orient-insight.uz', 15, yPos + 25);
+      doc.text('Shota Rustavelli, 45', 15, yPos + 5);
+      doc.text('140100 Samarkand', 15, yPos + 10);
+      doc.text('Usbekistan', 15, yPos + 15);
+      doc.text('Telefon:  +998933484208', 15, yPos + 20);
+      doc.text('Telefon:  +998979282814', 15, yPos + 25);
+      doc.text('E-Mail:orientinsightreisen@gmail.com', 15, yPos + 30);
+      doc.text('Web: www.orient-insight.uz', 15, yPos + 35);
 
       // Right side - WORLD INSIGHT Erlebnisreisen GmbH
       doc.setFont('helvetica', 'bold');
@@ -622,13 +624,61 @@ const RechnungDocument = ({ booking, tourists }) => {
 
       yPos = doc.lastAutoTable.finalY + 10;
 
+      // Bank details section
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Beneficiary: LLC "ORIENT INSIGHT"', 15, yPos);
+      yPos += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('Address: SHOTA RUSTAVELLI, 45  SAMARKAND CITY, UZBEKISTAN', 15, yPos);
+      yPos += 8;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text("Beneficiary's Account:", 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('20208840905364923001 (USD)', 65, yPos);
+      yPos += 8;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Beneficiary Bank:', 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH,', 15, yPos + 5);
+      doc.text('SAMARKAND, UZBEKISTAN', 15, yPos + 10);
+      yPos += 15;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('S.W.I.F.T. CODE:', 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('ORFBUZ22', 50, yPos);
+      yPos += 8;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text("Beneficiary's Bank correspondent:", 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('National Bank of Uzbekistan', 15, yPos + 5);
+      yPos += 10;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text("Bank correspondent's account:", 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('21002840200010071001 (USD)', 15, yPos + 5);
+      doc.text('21002978100010071001 (EUR)', 15, yPos + 10);
+      yPos += 15;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('S.W.I.F.T. CODE:', 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('NBFAUZ2X', 50, yPos);
+      yPos += 12;
+
       // Closing
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text('mit freundlichen Grüßen', 15, yPos);
       yPos += 7;
       doc.setFont('helvetica', 'bold');
-      doc.text('Orient Insight', 15, yPos);
+      doc.text('ORIENT INSIGHT GmbH', 15, yPos);
 
       // Save PDF
       const filename = `Rechnung_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
