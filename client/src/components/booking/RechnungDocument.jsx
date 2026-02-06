@@ -622,51 +622,55 @@ const RechnungDocument = ({ booking, tourists }) => {
         }
       });
 
-      yPos = doc.lastAutoTable.finalY + 5;
+      yPos = doc.lastAutoTable.finalY + 10;
 
-      // Bank details section (very compact)
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Beneficiary:', 15, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.text('LLC "ORIENT INSIGHT", SHOTA RUSTAVELLI, 45  SAMARKAND CITY, UZBEKISTAN', 40, yPos);
-      yPos += 4;
+      // Bank details section (single line format with proper alignment)
+      const leftCol = 15;
+      const rightCol = 85;
+
+      doc.setFontSize(8);
 
       doc.setFont('helvetica', 'bold');
-      doc.text("Beneficiary's Account:", 15, yPos);
+      doc.text('Beneficiary:', leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('20208840905364923001 (USD)', 55, yPos);
-      yPos += 4;
+      doc.text('LLC "ORIENT INSIGHT", SHOTA RUSTAVELLI, 45  SAMARKAND CITY, UZBEKISTAN', rightCol, yPos);
+      yPos += 5;
 
       doc.setFont('helvetica', 'bold');
-      doc.text('Beneficiary Bank:', 15, yPos);
+      doc.text("Beneficiary's Account:", leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH, SAMARKAND, UZBEKISTAN', 50, yPos);
-      yPos += 4;
+      doc.text('20208840905364923001 (USD)', rightCol, yPos);
+      yPos += 5;
 
       doc.setFont('helvetica', 'bold');
-      doc.text('S.W.I.F.T. CODE:', 15, yPos);
+      doc.text('Beneficiary Bank:', leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('ORFBUZ22', 45, yPos);
-      yPos += 4;
+      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH, SAMARKAND, UZBEKISTAN', rightCol, yPos);
+      yPos += 5;
 
       doc.setFont('helvetica', 'bold');
-      doc.text("Beneficiary's Bank correspondent:", 15, yPos);
+      doc.text('S.W.I.F.T. CODE:', leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('National Bank of Uzbekistan', 70, yPos);
-      yPos += 4;
+      doc.text('ORFBUZ22', rightCol, yPos);
+      yPos += 5;
 
       doc.setFont('helvetica', 'bold');
-      doc.text("Correspondent's account:", 15, yPos);
+      doc.text("Beneficiary's Bank correspondent:", leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('21002840200010071001 (USD)  /  21002978100010071001 (EUR)', 60, yPos);
-      yPos += 4;
+      doc.text('National Bank of Uzbekistan', rightCol, yPos);
+      yPos += 5;
 
       doc.setFont('helvetica', 'bold');
-      doc.text('S.W.I.F.T. CODE:', 15, yPos);
+      doc.text("Correspondent's account:", leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('NBFAUZ2X', 45, yPos);
-      yPos += 8;
+      doc.text('21002840200010071001 (USD)  /  21002978100010071001 (EUR)', rightCol, yPos);
+      yPos += 5;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('S.W.I.F.T. CODE:', leftCol, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('NBFAUZ2X', rightCol, yPos);
+      yPos += 10;
 
       // Closing
       doc.setFontSize(9);
