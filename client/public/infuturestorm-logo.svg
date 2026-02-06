@@ -1,0 +1,29 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Orange circular background with brush stroke effect -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#FF8C42" stroke-width="15" opacity="0.8"/>
+  <circle cx="100" cy="100" r="75" fill="white"/>
+
+  <!-- Inner circle with text -->
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#FF8C42" stroke-width="2"/>
+
+  <!-- INFUTURESTORM text in circle -->
+  <path id="circlePath" d="M 100,100 m -65,0 a 65,65 0 1,1 130,0 a 65,65 0 1,1 -130,0" fill="none"/>
+  <text font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#FF8C42" letter-spacing="2">
+    <textPath href="#circlePath" startOffset="50%" text-anchor="middle">
+      INFUTURESTORM
+    </textPath>
+  </text>
+
+  <!-- Clock icon in center -->
+  <circle cx="100" cy="100" r="20" fill="none" stroke="#FF8C42" stroke-width="2"/>
+  <line x1="100" y1="100" x2="100" y2="85" stroke="#FF8C42" stroke-width="2"/>
+  <line x1="100" y1="100" x2="110" y2="100" stroke="#FF8C42" stroke-width="2"/>
+
+  <!-- Bottom text -->
+  <path id="bottomCircle" d="M 100,100 m -65,0 a 65,65 0 0,0 130,0" fill="none"/>
+  <text font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#FF8C42" letter-spacing="2">
+    <textPath href="#bottomCircle" startOffset="50%" text-anchor="middle">
+      INFUTURESTORM
+    </textPath>
+  </text>
+</svg>

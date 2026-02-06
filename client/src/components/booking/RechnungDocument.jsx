@@ -478,15 +478,15 @@ const RechnungDocument = ({ booking, tourists }) => {
     return 'für die Erlebnisreisen Usbekistan mit Turkmenistan';
   };
 
-  // Generate PDF
-  const generatePDF = () => {
-    console.log('📄 Generating Rechnung PDF...');
+  // Generate Orient Insight PDF
+  const generateOrientInsightPDF = () => {
+    console.log('📄 Generating Orient Insight Rechnung PDF...');
 
     try {
       const doc = new jsPDF();
       let yPos = 20;
 
-      // Load and add logo
+      // Load and add Orient Insight logo
       const logoImg = new Image();
       logoImg.src = '/logo.png';
 
@@ -497,6 +497,176 @@ const RechnungDocument = ({ booking, tourists }) => {
       } catch (e) {
         console.log('Logo could not be added:', e);
         yPos += 10;
+      }
+
+      // Company addresses side by side
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+
+      // Left side - Orient Insight
+      doc.text('Orient Insight', 15, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Tashkent, Uzbekistan', 15, yPos + 5);
+      doc.text('Telefon:  +998933484208', 15, yPos + 10);
+      doc.text('Telefon:  +998979282814', 15, yPos + 15);
+      doc.text('E-Mail:orientinsightreisen@gmail.com', 15, yPos + 20);
+      doc.text('Web: www.orient-insight.uz', 15, yPos + 25);
+
+      // Right side - WORLD INSIGHT Erlebnisreisen GmbH
+      doc.setFont('helvetica', 'bold');
+      doc.text('WORLD INSIGHT Erlebnisreisen GmbH', 195, yPos, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.text('Alter Deutzer Postweg 99', 195, yPos + 5, { align: 'right' });
+      doc.text('51149 Köln', 195, yPos + 10, { align: 'right' });
+      doc.text('Deutschland', 195, yPos + 15, { align: 'right' });
+      doc.text('Telefon:  02203 - 9255700', 195, yPos + 20, { align: 'right' });
+      doc.text('Telefax: 02203 - 9255777', 195, yPos + 25, { align: 'right' });
+      doc.text('E-Mail: info@world-insight.de', 195, yPos + 30, { align: 'right' });
+      doc.text('Web: www.world-insight.de', 195, yPos + 35, { align: 'right' });
+
+      yPos += 50;
+
+      // Title "Rechnung"
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Rechnung', 105, yPos, { align: 'center' });
+      yPos += 10;
+
+      // Tour description
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const tourDesc = getTourDescription();
+      doc.text(tourDesc, 105, yPos, { align: 'center', maxWidth: 180 });
+      yPos += 15;
+
+      // Rechnung Nr and Datum on same line
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Rechnung Nr: ${booking?.bookingNumber || '36/25'}`, 15, yPos);
+      doc.text(`Datum:`, 155, yPos);
+      doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
+      yPos += 15;
+
+      // Invoice table
+      const tableData = invoiceItems.map((item, index) => [
+        (index + 1).toString(),
+        item.description,
+        item.einzelpreis.toString(),
+        item.anzahl.toString(),
+        (item.einzelpreis * item.anzahl).toString(),
+        item.currency
+      ]);
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['№', 'Beschreibung', 'Einzelpreis', 'Anzahl', 'Gesamtpreis', 'Währung']],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        headStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          halign: 'center',
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0],
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 12 },
+          1: { halign: 'left', cellWidth: 75 },
+          2: { halign: 'right', cellWidth: 28 },
+          3: { halign: 'center', cellWidth: 20 },
+          4: { halign: 'right', cellWidth: 30 },
+          5: { halign: 'center', cellWidth: 25 }
+        }
+      });
+
+      yPos = doc.lastAutoTable.finalY;
+
+      // Total row (Gesamtbetrag)
+      autoTable(doc, {
+        startY: yPos,
+        body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+        theme: 'grid',
+        styles: {
+          fontSize: 11,
+          cellPadding: 3,
+          fontStyle: 'bold',
+          lineWidth: 0.5,
+          lineColor: [0, 0, 0]
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255],
+          textColor: [0, 0, 0]
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 12 },
+          1: { halign: 'left', cellWidth: 75 },
+          2: { halign: 'right', cellWidth: 28 },
+          3: { halign: 'center', cellWidth: 20 },
+          4: { halign: 'right', cellWidth: 30 },
+          5: { halign: 'center', cellWidth: 25 }
+        }
+      });
+
+      yPos = doc.lastAutoTable.finalY + 10;
+
+      // Closing
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('mit freundlichen Grüßen', 15, yPos);
+      yPos += 7;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Orient Insight', 15, yPos);
+
+      // Save PDF
+      const filename = `Rechnung_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
+      doc.save(filename);
+      toast.success('Orient Insight PDF сақланди!');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('PDF экспорт хатолиги');
+    }
+  };
+
+  // Generate INFUTURESTORM PDF
+  const generateInfuturestormPDF = () => {
+    console.log('📄 Generating INFUTURESTORM Rechnung PDF...');
+
+    try {
+      const doc = new jsPDF();
+      let yPos = 20;
+
+      // Load and add INFUTURESTORM logo
+      const logoImg = new Image();
+      // Try PNG first, fallback to SVG
+      logoImg.src = '/infuturestorm-logo.png';
+
+      // Add logo at top center (if available)
+      try {
+        doc.addImage(logoImg, 'PNG', 85, yPos, 40, 40);
+        yPos += 45;
+      } catch (e) {
+        // Try SVG if PNG fails
+        try {
+          logoImg.src = '/infuturestorm-logo.svg';
+          doc.addImage(logoImg, 'SVG', 85, yPos, 40, 40);
+          yPos += 45;
+        } catch (e2) {
+          console.log('INFUTURESTORM logo could not be added:', e2);
+          yPos += 10;
+        }
       }
 
       // Company addresses side by side
@@ -663,9 +833,9 @@ const RechnungDocument = ({ booking, tourists }) => {
       doc.text('INFUTURESTORM PTE. LTD', 15, yPos);
 
       // Save PDF
-      const filename = `Rechnung_${booking?.bookingNumber || 'invoice'}.pdf`;
+      const filename = `Rechnung_INFUTURESTORM_${booking?.bookingNumber || 'invoice'}.pdf`;
       doc.save(filename);
-      toast.success('PDF сақланди!');
+      toast.success('INFUTURESTORM PDF сақланди!');
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('PDF экспорт хатолиги');
@@ -717,11 +887,18 @@ const RechnungDocument = ({ booking, tourists }) => {
             Add Item
           </button>
           <button
-            onClick={generatePDF}
+            onClick={generateOrientInsightPDF}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
           >
             <Download className="w-5 h-5" />
-            Скачать PDF
+            PDF (Orient Insight)
+          </button>
+          <button
+            onClick={generateInfuturestormPDF}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+          >
+            <Download className="w-5 h-5" />
+            PDF (INFUTURESTORM)
           </button>
           <button
             onClick={handlePrint}
