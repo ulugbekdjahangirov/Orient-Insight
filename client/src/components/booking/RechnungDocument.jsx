@@ -484,72 +484,72 @@ const RechnungDocument = ({ booking, tourists }) => {
 
     try {
       const doc = new jsPDF();
-      let yPos = 20;
+      let yPos = 15;
 
-      // Load and add Orient Insight logo
+      // Load and add Orient Insight logo (smaller)
       const logoImg = new Image();
       logoImg.src = '/logo.png';
 
-      // Add logo at top center (if available)
+      // Add logo at top center (smaller size)
       try {
-        doc.addImage(logoImg, 'PNG', 85, yPos, 40, 40);
-        yPos += 45;
+        doc.addImage(logoImg, 'PNG', 90, yPos, 30, 30);
+        yPos += 33;
       } catch (e) {
         console.log('Logo could not be added:', e);
-        yPos += 10;
+        yPos += 8;
       }
 
-      // Company addresses side by side
-      doc.setFontSize(9);
+      // Company addresses side by side (more compact)
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
 
       // Left side - ORIENT INSIGHT GmbH
       doc.text('ORIENT INSIGHT GmbH', 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('Shota Rustavelli, 45', 15, yPos + 5);
-      doc.text('140100 Samarkand', 15, yPos + 10);
-      doc.text('Usbekistan', 15, yPos + 15);
-      doc.text('Telefon:  +998933484208', 15, yPos + 20);
-      doc.text('Telefon:  +998979282814', 15, yPos + 25);
-      doc.text('E-Mail:orientinsightreisen@gmail.com', 15, yPos + 30);
-      doc.text('Web: www.orient-insight.uz', 15, yPos + 35);
+      doc.text('Shota Rustavelli, 45', 15, yPos + 4);
+      doc.text('140100 Samarkand', 15, yPos + 8);
+      doc.text('Usbekistan', 15, yPos + 12);
+      doc.text('Tel: +998933484208', 15, yPos + 16);
+      doc.text('Tel: +998979282814', 15, yPos + 20);
+      doc.text('E-Mail:orientinsightreisen@gmail.com', 15, yPos + 24);
+      doc.text('Web: www.orient-insight.uz', 15, yPos + 28);
 
       // Right side - WORLD INSIGHT Erlebnisreisen GmbH
       doc.setFont('helvetica', 'bold');
       doc.text('WORLD INSIGHT Erlebnisreisen GmbH', 195, yPos, { align: 'right' });
       doc.setFont('helvetica', 'normal');
-      doc.text('Alter Deutzer Postweg 99', 195, yPos + 5, { align: 'right' });
-      doc.text('51149 Köln', 195, yPos + 10, { align: 'right' });
-      doc.text('Deutschland', 195, yPos + 15, { align: 'right' });
-      doc.text('Telefon:  02203 - 9255700', 195, yPos + 20, { align: 'right' });
-      doc.text('Telefax: 02203 - 9255777', 195, yPos + 25, { align: 'right' });
-      doc.text('E-Mail: info@world-insight.de', 195, yPos + 30, { align: 'right' });
-      doc.text('Web: www.world-insight.de', 195, yPos + 35, { align: 'right' });
+      doc.text('Alter Deutzer Postweg 99', 195, yPos + 4, { align: 'right' });
+      doc.text('51149 Köln', 195, yPos + 8, { align: 'right' });
+      doc.text('Deutschland', 195, yPos + 12, { align: 'right' });
+      doc.text('Tel: 02203 - 9255700', 195, yPos + 16, { align: 'right' });
+      doc.text('Fax: 02203 - 9255777', 195, yPos + 20, { align: 'right' });
+      doc.text('E-Mail: info@world-insight.de', 195, yPos + 24, { align: 'right' });
+      doc.text('Web: www.world-insight.de', 195, yPos + 28, { align: 'right' });
 
-      yPos += 50;
+      yPos += 35;
 
       // Title "Rechnung"
-      doc.setFontSize(20);
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text('Rechnung', 105, yPos, { align: 'center' });
-      yPos += 10;
+      yPos += 8;
 
       // Tour description
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       const tourDesc = getTourDescription();
       doc.text(tourDesc, 105, yPos, { align: 'center', maxWidth: 180 });
-      yPos += 15;
+      yPos += 10;
 
       // Rechnung Nr and Datum on same line
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Rechnung Nr: ${booking?.bookingNumber || '36/25'}`, 15, yPos);
       doc.text(`Datum:`, 155, yPos);
       doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
-      yPos += 15;
+      yPos += 10;
 
-      // Invoice table
+      // Invoice table (more compact)
       const tableData = invoiceItems.map((item, index) => [
         (index + 1).toString(),
         item.description,
@@ -565,8 +565,8 @@ const RechnungDocument = ({ booking, tourists }) => {
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 10,
-          cellPadding: 3,
+          fontSize: 9,
+          cellPadding: 2,
           lineWidth: 0.5,
           lineColor: [0, 0, 0]
         },
@@ -602,8 +602,8 @@ const RechnungDocument = ({ booking, tourists }) => {
         body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
         theme: 'grid',
         styles: {
-          fontSize: 11,
-          cellPadding: 3,
+          fontSize: 10,
+          cellPadding: 2,
           fontStyle: 'bold',
           lineWidth: 0.5,
           lineColor: [0, 0, 0]
@@ -622,65 +622,57 @@ const RechnungDocument = ({ booking, tourists }) => {
         }
       });
 
-      yPos = doc.lastAutoTable.finalY + 8;
+      yPos = doc.lastAutoTable.finalY + 5;
 
-      // Check if we need a new page for bank details
-      if (yPos > 200) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      // Bank details section
-      doc.setFontSize(8);
+      // Bank details section (very compact)
+      doc.setFontSize(7);
       doc.setFont('helvetica', 'bold');
-      doc.text('Beneficiary: LLC "ORIENT INSIGHT"', 15, yPos);
-      yPos += 4;
-
+      doc.text('Beneficiary:', 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('Address: SHOTA RUSTAVELLI, 45  SAMARKAND CITY, UZBEKISTAN', 15, yPos);
-      yPos += 6;
+      doc.text('LLC "ORIENT INSIGHT", SHOTA RUSTAVELLI, 45  SAMARKAND CITY, UZBEKISTAN', 40, yPos);
+      yPos += 4;
 
       doc.setFont('helvetica', 'bold');
       doc.text("Beneficiary's Account:", 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('20208840905364923001 (USD)', 65, yPos);
-      yPos += 6;
+      doc.text('20208840905364923001 (USD)', 55, yPos);
+      yPos += 4;
 
       doc.setFont('helvetica', 'bold');
       doc.text('Beneficiary Bank:', 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH, SAMARKAND, UZBEKISTAN', 15, yPos + 4);
-      yPos += 10;
+      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH, SAMARKAND, UZBEKISTAN', 50, yPos);
+      yPos += 4;
 
       doc.setFont('helvetica', 'bold');
       doc.text('S.W.I.F.T. CODE:', 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('ORFBUZ22', 50, yPos);
-      yPos += 6;
+      doc.text('ORFBUZ22', 45, yPos);
+      yPos += 4;
 
       doc.setFont('helvetica', 'bold');
       doc.text("Beneficiary's Bank correspondent:", 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('National Bank of Uzbekistan', 15, yPos + 4);
-      yPos += 8;
+      doc.text('National Bank of Uzbekistan', 70, yPos);
+      yPos += 4;
 
       doc.setFont('helvetica', 'bold');
-      doc.text("Bank correspondent's account:", 15, yPos);
+      doc.text("Correspondent's account:", 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('21002840200010071001 (USD)  /  21002978100010071001 (EUR)', 15, yPos + 4);
-      yPos += 8;
+      doc.text('21002840200010071001 (USD)  /  21002978100010071001 (EUR)', 60, yPos);
+      yPos += 4;
 
       doc.setFont('helvetica', 'bold');
       doc.text('S.W.I.F.T. CODE:', 15, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('NBFAUZ2X', 50, yPos);
-      yPos += 10;
+      doc.text('NBFAUZ2X', 45, yPos);
+      yPos += 8;
 
       // Closing
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.text('mit freundlichen Grüßen', 15, yPos);
-      yPos += 7;
+      yPos += 5;
       doc.setFont('helvetica', 'bold');
       doc.text('ORIENT INSIGHT GmbH', 15, yPos);
 
