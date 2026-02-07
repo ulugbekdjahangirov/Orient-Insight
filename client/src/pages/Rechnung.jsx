@@ -9,10 +9,7 @@ const modules = [
   { id: 'gutschrift', name: 'Gutschrift', color: 'emerald', icon: Receipt },
   { id: 'orient', name: 'Orient', color: 'blue', icon: Building },
   { id: 'infuturestorm', name: 'INFUTURESTORM', color: 'orange', icon: Globe },
-  { id: 'er', name: 'ER', color: 'blue', icon: FileText },
-  { id: 'co', name: 'CO', color: 'emerald', icon: FileText },
-  { id: 'kas', name: 'KAS', color: 'orange', icon: FileText },
-  { id: 'za', name: 'ZA', color: 'purple', icon: FileText },
+  { id: 'shamixon', name: 'Shamixon', color: 'purple', icon: Building },
 ];
 
 const colorClasses = {
@@ -56,9 +53,24 @@ export default function Rechnung() {
   const [gutschriftItems, setGutschriftItems] = useState([]);
   const [orientItems, setOrientItems] = useState([]);
   const [infuturestormItems, setInfuturestormItems] = useState([]);
+  const [shamixonItems, setShamixonItems] = useState([]);
 
   const activeModuleData = modules.find(m => m.id === activeModule);
   const Icon = activeModuleData?.icon || FileText;
+
+  // Format number with space as thousands separator
+  const formatNumber = (num) => {
+    if (num === null || num === undefined || num === '') return '';
+    const number = parseFloat(num);
+    if (isNaN(number)) return num;
+    const rounded = Number.isInteger(number) ? number : number.toFixed(2);
+    const [integer, decimal] = rounded.toString().split('.');
+    const formattedInteger = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    if (decimal && decimal !== '00') {
+      return `${formattedInteger}.${decimal}`;
+    }
+    return formattedInteger;
+  };
 
   // Load invoices from API when activeModule changes
   useEffect(() => {
@@ -68,6 +80,18 @@ export default function Rechnung() {
   const loadInvoices = async () => {
     try {
       setLoading(true);
+
+      // Special handling for Shamixon module - load from localStorage
+      if (activeModule === 'shamixon') {
+        const savedItems = localStorage.getItem('shamixonItems');
+        if (savedItems) {
+          setShamixonItems(JSON.parse(savedItems));
+        } else {
+          setShamixonItems([]);
+        }
+        setLoading(false);
+        return;
+      }
 
       // Determine filter params based on activeModule
       const params = {};
@@ -186,63 +210,44 @@ export default function Rechnung() {
     }));
   };
 
-  // Add new item - Orient
-  const handleAddOrientItem = () => {
-    const newId = Math.max(...orientItems.map(i => i.id), 0) + 1;
+  // Add new item - Shamixon
+  const handleAddShamixonItem = () => {
+    const newId = Math.max(...shamixonItems.map(i => i.id), 0) + 1;
     const newItem = {
       id: newId,
       nummer: newId.toString(),
-      name: 'Neue Orient',
-      gruppe: 'ER',
+      name: '',
+      gruppe: '',
       firma: '',
-      summe: 0.00
+      summe: 0.00,
+      transferFee: 0.00,
+      incomingPayment: 0.00,
+      serviceFee: 0.00
     };
-    setOrientItems([...orientItems, newItem]);
+    const updatedItems = [...shamixonItems, newItem];
+    setShamixonItems(updatedItems);
+    localStorage.setItem('shamixonItems', JSON.stringify(updatedItems));
   };
 
-  // Delete item - Orient
-  const handleDeleteOrientItem = (id) => {
-    setOrientItems(orientItems.filter(item => item.id !== id));
+  // Delete item - Shamixon
+  const handleDeleteShamixonItem = (id) => {
+    const updatedItems = shamixonItems.filter(item => item.id !== id);
+    setShamixonItems(updatedItems);
+    localStorage.setItem('shamixonItems', JSON.stringify(updatedItems));
   };
 
-  // Update item - Orient
-  const handleUpdateOrientItem = (id, field, value) => {
-    setOrientItems(orientItems.map(item => {
+  // Update item - Shamixon
+  const handleUpdateShamixonItem = (id, field, value) => {
+    const updatedItems = shamixonItems.map(item => {
       if (item.id === id) {
         return { ...item, [field]: value };
       }
       return item;
-    }));
+    });
+    setShamixonItems(updatedItems);
+    localStorage.setItem('shamixonItems', JSON.stringify(updatedItems));
   };
 
-  // Add new item - INFUTURESTORM
-  const handleAddInfuturestormItem = () => {
-    const newId = Math.max(...infuturestormItems.map(i => i.id), 0) + 1;
-    const newItem = {
-      id: newId,
-      nummer: newId.toString(),
-      name: 'Neue INFUTURESTORM',
-      gruppe: 'ER',
-      firma: '',
-      summe: 0.00
-    };
-    setInfuturestormItems([...infuturestormItems, newItem]);
-  };
-
-  // Delete item - INFUTURESTORM
-  const handleDeleteInfuturestormItem = (id) => {
-    setInfuturestormItems(infuturestormItems.filter(item => item.id !== id));
-  };
-
-  // Update item - INFUTURESTORM
-  const handleUpdateInfuturestormItem = (id, field, value) => {
-    setInfuturestormItems(infuturestormItems.map(item => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
-      }
-      return item;
-    }));
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
@@ -326,7 +331,7 @@ export default function Rechnung() {
                             {item.firma || '-'}
                           </td>
                           <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
-                            {item.summe.toFixed(2)}
+                            {formatNumber(item.summe)}
                           </td>
                           <td className="border border-gray-300 px-6 py-4 text-center">
                             <button
@@ -356,7 +361,7 @@ export default function Rechnung() {
                             TOTAL
                           </td>
                           <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
-                            {rechnungItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
+                            {formatNumber(rechnungItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0))}
                           </td>
                           <td className="border border-gray-300 px-6 py-4"></td>
                         </tr>
@@ -408,7 +413,7 @@ export default function Rechnung() {
                           {item.firma}
                         </td>
                         <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-bold">
-                          {(parseFloat(item.summe) || 0).toFixed(2)}
+                          {formatNumber(item.summe)}
                         </td>
                         <td className="border border-gray-300 px-6 py-4 text-center">
                           <button
@@ -429,7 +434,7 @@ export default function Rechnung() {
                         TOTAL
                       </td>
                       <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
-                        {gutschriftItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
+                        {formatNumber(gutschriftItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0))}
                       </td>
                       <td className="border border-gray-300 px-6 py-4"></td>
                     </tr>
@@ -439,216 +444,344 @@ export default function Rechnung() {
             </>
           ) : activeModule === 'orient' ? (
             <>
-              {/* Add Item button */}
-              <div className="p-6 border-b border-gray-200">
-                <button
-                  onClick={handleAddOrientItem}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Item
-                </button>
-              </div>
-
-              {/* Table */}
+              {/* Table - Read-only view matching Invoice module */}
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-blue-100 to-indigo-100">
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
-                      <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
-                      <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orientItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.nummer}
-                            onChange={(e) => handleUpdateOrientItem(item.id, 'nummer', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.name}
-                            onChange={(e) => handleUpdateOrientItem(item.id, 'name', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <select
-                            value={item.gruppe}
-                            onChange={(e) => handleUpdateOrientItem(item.id, 'gruppe', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          >
-                            <option value="ER">ER</option>
-                            <option value="CO">CO</option>
-                            <option value="KAS">KAS</option>
-                            <option value="ZA">ZA</option>
-                          </select>
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.firma}
-                            onChange={(e) => handleUpdateOrientItem(item.id, 'firma', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
-                          <input
-                            type="number"
-                            value={item.summe}
-                            onChange={(e) => handleUpdateOrientItem(item.id, 'summe', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
-                            step="0.01"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => {/* Edit action - cells are already editable */}}
-                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteOrientItem(item.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </td>
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-blue-100 to-indigo-100">
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Rechnung</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Gutschrift</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Total</th>
                       </tr>
-                    ))}
-                    {/* Total row */}
-                    <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 font-bold">
-                      <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
-                        TOTAL
-                      </td>
-                      <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
-                        {orientItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
-                      </td>
-                      <td className="border border-gray-300 px-6 py-4"></td>
-                    </tr>
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {orientItems.map((item, index) => {
+                        const rechnungAmount = (item.name === 'Rechnung' || item.name === 'Neue Rechnung') ? (parseFloat(item.summe) || 0) : 0;
+                        const gutschriftAmount = item.name === 'Gutschrift' ? (parseFloat(item.summe) || 0) : 0;
+                        const totalAmount = rechnungAmount - gutschriftAmount;
+
+                        return (
+                          <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                              {index + 1}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                              {item.name}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                              {item.gruppe}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                              {item.firma || '-'}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                              {rechnungAmount > 0 ? formatNumber(rechnungAmount) : '-'}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                              {gutschriftAmount > 0 ? formatNumber(gutschriftAmount) : '-'}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-bold">
+                              {formatNumber(totalAmount)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {orientItems.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                            Ma'lumot topilmadi
+                          </td>
+                        </tr>
+                      )}
+                      {/* Total row */}
+                      {orientItems.length > 0 && (() => {
+                        const totalRechnung = orientItems.filter(item => item.name === 'Rechnung' || item.name === 'Neue Rechnung').reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0);
+                        const totalGutschrift = orientItems.filter(item => item.name === 'Gutschrift').reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0);
+                        const grandTotal = totalRechnung - totalGutschrift;
+
+                        return (
+                          <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 font-bold">
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
+                              TOTAL
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                              {formatNumber(totalRechnung)}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                              {formatNumber(totalGutschrift)}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                              {formatNumber(grandTotal)}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </>
           ) : activeModule === 'infuturestorm' ? (
             <>
+              {/* Table - Read-only view matching Invoice module */}
+              <div className="overflow-x-auto">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+                  </div>
+                ) : (
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-orange-100 to-red-100">
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Rechnung</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Gutschrift</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {infuturestormItems.map((item, index) => {
+                        const rechnungAmount = (item.name === 'Rechnung' || item.name === 'Neue Rechnung') ? (parseFloat(item.summe) || 0) : 0;
+                        const gutschriftAmount = item.name === 'Gutschrift' ? (parseFloat(item.summe) || 0) : 0;
+                        const totalAmount = rechnungAmount - gutschriftAmount;
+
+                        return (
+                          <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                              {index + 1}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                              {item.name}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                              {item.gruppe}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                              {item.firma || '-'}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                              {rechnungAmount > 0 ? formatNumber(rechnungAmount) : '-'}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                              {gutschriftAmount > 0 ? formatNumber(gutschriftAmount) : '-'}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-bold">
+                              {formatNumber(totalAmount)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {infuturestormItems.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                            Ma'lumot topilmadi
+                          </td>
+                        </tr>
+                      )}
+                      {/* Total row */}
+                      {infuturestormItems.length > 0 && (() => {
+                        const totalRechnung = infuturestormItems.filter(item => item.name === 'Rechnung' || item.name === 'Neue Rechnung').reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0);
+                        const totalGutschrift = infuturestormItems.filter(item => item.name === 'Gutschrift').reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0);
+                        const grandTotal = totalRechnung - totalGutschrift;
+
+                        return (
+                          <tr className="bg-gradient-to-r from-orange-100 to-red-100 font-bold">
+                            <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
+                              TOTAL
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                              {formatNumber(totalRechnung)}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                              {formatNumber(totalGutschrift)}
+                            </td>
+                            <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                              {formatNumber(grandTotal)}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </>
+          ) : activeModule === 'shamixon' ? (
+            <>
               {/* Add Item button */}
               <div className="p-6 border-b border-gray-200">
                 <button
-                  onClick={handleAddInfuturestormItem}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
+                  onClick={handleAddShamixonItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
                 >
                   <Plus className="w-5 h-5" />
                   Add Item
                 </button>
               </div>
 
-              {/* Table */}
+              {/* Table - Editable */}
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-gradient-to-r from-orange-100 to-red-100">
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
-                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
-                      <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
-                      <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
+                    <tr className="bg-gradient-to-r from-purple-100 to-pink-100">
+                      <th className="border border-gray-300 px-3 py-4 text-left font-bold text-gray-900 w-16">№</th>
+                      <th className="border border-gray-300 px-3 py-4 text-left font-bold text-gray-900 w-32">Date</th>
+                      <th className="border border-gray-300 px-3 py-4 text-left font-bold text-gray-900 w-32">Payment</th>
+                      <th className="border border-gray-300 px-3 py-4 text-left font-bold text-gray-900 w-28">Commission</th>
+                      <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-28">Transfer fee</th>
+                      <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-32">Incoming payment</th>
+                      <th className="border border-gray-300 px-3 py-4 text-left font-bold text-gray-900 w-32">Income date</th>
+                      <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-24">Service fee</th>
+                      <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-28">Total</th>
+                      <th className="border border-gray-300 px-3 py-4 text-center font-bold text-gray-900 w-24">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {infuturestormItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.nummer}
-                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'nummer', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.name}
-                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'name', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <select
-                            value={item.gruppe}
-                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'gruppe', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          >
-                            <option value="ER">ER</option>
-                            <option value="CO">CO</option>
-                            <option value="KAS">KAS</option>
-                            <option value="ZA">ZA</option>
-                          </select>
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.firma}
-                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'firma', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
-                          <input
-                            type="number"
-                            value={item.summe}
-                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'summe', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
-                            step="0.01"
-                          />
-                        </td>
-                        <td className="border border-gray-300 px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => {/* Edit action - cells are already editable */}}
-                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteInfuturestormItem(item.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {shamixonItems.map((item, index) => {
+                      const paymentAmount = parseFloat(item.gruppe) || 0;
+                      const commission = paymentAmount * 0.01;
+                      const transferFee = 50;
+                      const incomingPayment = paymentAmount - commission - transferFee;
+                      const serviceFee = parseFloat(item.serviceFee) || 0;
+                      const totalAmount = incomingPayment - serviceFee;
+
+                      return (
+                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900 font-semibold">
+                            {index + 1}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900">
+                            <input
+                              type="date"
+                              value={item.name || ''}
+                              onChange={(e) => handleUpdateShamixonItem(item.id, 'name', e.target.value)}
+                              className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900">
+                            <input
+                              type="text"
+                              value={item.gruppe ? formatNumber(parseFloat(item.gruppe)) : ''}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/\s/g, '');
+                                if (value === '' || !isNaN(value)) {
+                                  handleUpdateShamixonItem(item.id, 'gruppe', value);
+                                }
+                              }}
+                              className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                              placeholder="Enter payment amount"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900 font-semibold bg-gray-50">
+                            {formatNumber(commission)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900 font-semibold bg-gray-50">
+                            {formatNumber(transferFee)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900 font-semibold bg-gray-50">
+                            {formatNumber(incomingPayment)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900">
+                            <input
+                              type="date"
+                              value={item.firma || ''}
+                              onChange={(e) => handleUpdateShamixonItem(item.id, 'firma', e.target.value)}
+                              className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900 font-semibold">
+                            <input
+                              type="number"
+                              value={item.serviceFee || ''}
+                              onChange={(e) => handleUpdateShamixonItem(item.id, 'serviceFee', parseFloat(e.target.value) || 0)}
+                              className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
+                              step="0.01"
+                            />
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900 font-bold">
+                            {formatNumber(totalAmount)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => {/* Cells are already editable */}}
+                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                title="Edit"
+                              >
+                                <Edit className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteShamixonItem(item.id)}
+                                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {/* Total row */}
-                    <tr className="bg-gradient-to-r from-orange-100 to-red-100 font-bold">
-                      <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
-                        TOTAL
-                      </td>
-                      <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
-                        {infuturestormItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
-                      </td>
-                      <td className="border border-gray-300 px-6 py-4"></td>
-                    </tr>
+                    {shamixonItems.length > 0 && (() => {
+                      let totalCommission = 0;
+                      let totalTransferFee = 0;
+                      let totalIncomingPayment = 0;
+                      let totalServiceFee = 0;
+                      let grandTotal = 0;
+
+                      shamixonItems.forEach(item => {
+                        const paymentAmount = parseFloat(item.gruppe) || 0;
+                        const commission = paymentAmount * 0.01;
+                        const transferFee = 50;
+                        const incomingPayment = paymentAmount - commission - transferFee;
+                        const serviceFee = parseFloat(item.serviceFee) || 0;
+                        const total = incomingPayment - serviceFee;
+
+                        totalCommission += commission;
+                        totalTransferFee += transferFee;
+                        totalIncomingPayment += incomingPayment;
+                        totalServiceFee += serviceFee;
+                        grandTotal += total;
+                      });
+
+                      return (
+                        <tr className="bg-gradient-to-r from-purple-100 to-pink-100 font-bold">
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900" colSpan="3">
+                            TOTAL
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
+                            {formatNumber(totalCommission)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
+                            {formatNumber(totalTransferFee)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
+                            {formatNumber(totalIncomingPayment)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900"></td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
+                            {formatNumber(totalServiceFee)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
+                            {formatNumber(grandTotal)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4"></td>
+                        </tr>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
