@@ -81,10 +81,23 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'bookingId и invoiceType обязательны' });
     }
 
-    // Get the next invoice number (sequential across all invoices)
-    const lastInvoice = await prisma.invoice.findFirst({
-      orderBy: { id: 'desc' }
-    });
+    // Get the next invoice number (sequential per invoice type)
+    let lastInvoice;
+    if (invoiceType === 'Gutschrift') {
+      // Gutschrift has its own separate numbering sequence
+      lastInvoice = await prisma.invoice.findFirst({
+        where: { invoiceType: 'Gutschrift' },
+        orderBy: { id: 'desc' }
+      });
+    } else {
+      // Rechnung and Neue Rechnung share the same numbering sequence
+      lastInvoice = await prisma.invoice.findFirst({
+        where: {
+          invoiceType: { in: ['Rechnung', 'Neue Rechnung'] }
+        },
+        orderBy: { id: 'desc' }
+      });
+    }
     const invoiceNumber = lastInvoice ? (parseInt(lastInvoice.invoiceNumber) + 1).toString() : '1';
 
     const invoice = await prisma.invoice.create({

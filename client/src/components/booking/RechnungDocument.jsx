@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import api, { invoicesApi } from '../../services/api';
 
-const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '' }) => {
+const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0 }) => {
   const [roomingListData, setRoomingListData] = useState(null);
   const [loading, setLoading] = useState(true);
   const lockedInvoiceIdRef = React.useRef(null); // Track which invoice ID is locked
@@ -738,7 +738,8 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       // Rechnung Nr and Datum on same line
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Rechnung Nr: ${invoice?.invoiceNumber || booking?.bookingNumber || 'N/A'}`, 15, yPos);
+      const displayNumber = sequentialNumber > 0 ? sequentialNumber : (invoice?.invoiceNumber || booking?.bookingNumber || 'N/A');
+      doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
       doc.text(`Datum:`, 155, yPos);
       doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
       yPos += 10;
@@ -960,7 +961,8 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       // Rechnung Nr and Datum on same line
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Rechnung Nr: ${invoice?.invoiceNumber || booking?.bookingNumber || 'N/A'}`, 15, yPos);
+      const displayNumber = sequentialNumber > 0 ? sequentialNumber : (invoice?.invoiceNumber || booking?.bookingNumber || 'N/A');
+      doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
       doc.text(`Datum:`, 155, yPos);
       doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
       yPos += 15;
@@ -1193,7 +1195,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
               <div className="flex-1 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border-2 border-amber-200 shadow-md">
                 <div className="text-sm text-gray-600 mb-1">Rechnung Nr:</div>
                 <div className="font-bold text-xl text-gray-900">
-                  {invoice?.invoiceNumber && invoice?.firma ? invoice.invoiceNumber : ''}
+                  {invoice?.firma && sequentialNumber > 0 ? sequentialNumber : ''}
                 </div>
               </div>
               <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200 shadow-md text-right">

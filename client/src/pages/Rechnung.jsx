@@ -53,18 +53,9 @@ export default function Rechnung() {
   const [activeModule, setActiveModule] = useState('rechnung');
   const [rechnungItems, setRechnungItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [gutschriftItems, setGutschriftItems] = useState([
-    { id: 1, nummer: '1', name: 'Beispiel Gutschrift 1', gruppe: 'ER', firma: '', summe: 500.00 },
-    { id: 2, nummer: '2', name: 'Beispiel Gutschrift 2', gruppe: 'CO', firma: '', summe: 750.00 },
-  ]);
-  const [orientItems, setOrientItems] = useState([
-    { id: 1, nummer: '1', name: 'Beispiel Orient 1', gruppe: 'ER', firma: '', summe: 800.00 },
-    { id: 2, nummer: '2', name: 'Beispiel Orient 2', gruppe: 'KAS', firma: '', summe: 950.00 },
-  ]);
-  const [infuturestormItems, setInfuturestormItems] = useState([
-    { id: 1, nummer: '1', name: 'Beispiel INFUTURESTORM 1', gruppe: 'ER', firma: '', summe: 600.00 },
-    { id: 2, nummer: '2', name: 'Beispiel INFUTURESTORM 2', gruppe: 'ZA', firma: '', summe: 850.00 },
-  ]);
+  const [gutschriftItems, setGutschriftItems] = useState([]);
+  const [orientItems, setOrientItems] = useState([]);
+  const [infuturestormItems, setInfuturestormItems] = useState([]);
 
   const activeModuleData = modules.find(m => m.id === activeModule);
   const Icon = activeModuleData?.icon || FileText;
@@ -105,7 +96,7 @@ export default function Rechnung() {
         invoices = invoices.filter(inv => inv.firma);
       }
 
-      // Transform invoices to rechnung items
+      // Transform invoices to items
       const items = invoices
         .map((invoice) => ({
           id: invoice.id,
@@ -118,7 +109,17 @@ export default function Rechnung() {
         }))
         .sort((a, b) => parseInt(a.nummer) - parseInt(b.nummer)); // Sort by invoice number ascending
 
-      setRechnungItems(items);
+      // Set items to the appropriate state based on activeModule
+      if (activeModule === 'gutschrift') {
+        setGutschriftItems(items);
+      } else if (activeModule === 'orient') {
+        setOrientItems(items);
+      } else if (activeModule === 'infuturestorm') {
+        setInfuturestormItems(items);
+      } else {
+        // Default: rechnung module
+        setRechnungItems(items);
+      }
     } catch (error) {
       console.error('Error loading invoices:', error);
       toast.error('Ma\'lumotlarni yuklashda xatolik');
@@ -310,10 +311,10 @@ export default function Rechnung() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rechnungItems.map((item) => (
+                      {rechnungItems.map((item, index) => (
                         <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                           <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
-                            {item.nummer}
+                            {index + 1}
                           </td>
                           <td className="border border-gray-300 px-6 py-4 text-gray-900">
                             {item.name}
@@ -392,70 +393,33 @@ export default function Rechnung() {
                     </tr>
                   </thead>
                   <tbody>
-                    {gutschriftItems.map((item) => (
+                    {gutschriftItems.map((item, index) => (
                       <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.nummer}
-                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'nummer', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                          {index + 1}
                         </td>
                         <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.name}
-                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'name', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
+                          {item.name}
                         </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <select
-                            value={item.gruppe}
-                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'gruppe', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          >
-                            <option value="ER">ER</option>
-                            <option value="CO">CO</option>
-                            <option value="KAS">KAS</option>
-                            <option value="ZA">ZA</option>
-                          </select>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                          {item.gruppe}
                         </td>
-                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
-                          <input
-                            type="text"
-                            value={item.firma}
-                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'firma', e.target.value)}
-                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
-                          />
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                          {item.firma}
                         </td>
-                        <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
-                          <input
-                            type="number"
-                            value={item.summe}
-                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'summe', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
-                            step="0.01"
-                          />
+                        <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-bold">
+                          {(parseFloat(item.summe) || 0).toFixed(2)}
                         </td>
                         <td className="border border-gray-300 px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => {/* Edit action - cells are already editable */}}
-                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteGutschriftItem(item.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => {
+                              navigate(`/bookings/${item.bookingId}?tab=documents&docTab=gutschrift`);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="View Booking"
+                          >
+                            <ExternalLink className="w-5 h-5" />
+                          </button>
                         </td>
                       </tr>
                     ))}
