@@ -7816,46 +7816,18 @@ export default function BookingDetail() {
 
           {/* Neue Rechnung Tab Content */}
           {documentsTab === 'neue-rechnung' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500"></div>
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-cyan-400/10 to-indigo-400/10 rounded-full blur-3xl"></div>
-
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                  Neue Rechnung
-                </h2>
-              </div>
-
-              <div className="text-center py-20">
-                <FileText className="w-24 h-24 mx-auto text-cyan-300 mb-4" />
-                <p className="text-gray-500 text-lg">Neue Rechnung modul tez orada qo'shiladi...</p>
-              </div>
-            </div>
+            <RechnungDocument
+              booking={booking}
+              tourists={tourists}
+            />
           )}
 
           {/* Gutschrift Tab Content */}
           {documentsTab === 'gutschrift' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-emerald-100 p-8">
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500"></div>
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-emerald-400/10 to-lime-400/10 rounded-full blur-3xl"></div>
-
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-green-600 to-lime-600 bg-clip-text text-transparent flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-lime-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                  Gutschrift
-                </h2>
-              </div>
-
-              <div className="text-center py-20">
-                <FileText className="w-24 h-24 mx-auto text-emerald-300 mb-4" />
-                <p className="text-gray-500 text-lg">Gutschrift modul tez orada qo'shiladi...</p>
-              </div>
-            </div>
+            <RechnungDocument
+              booking={booking}
+              tourists={tourists}
+            />
           )}
         </div>
       )}
