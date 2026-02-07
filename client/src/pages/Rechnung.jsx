@@ -96,16 +96,54 @@ export default function Rechnung() {
         </div>
 
         {/* Content area */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <div className="text-center py-16">
-            <Icon className="w-24 h-24 mx-auto text-gray-300 mb-6" />
-            <h2 className="text-2xl font-bold text-gray-700 mb-2">
-              {activeModuleData?.name} Modul
-            </h2>
-            <p className="text-gray-500">
-              Dieser Bereich wird bald verfügbar sein
-            </p>
-          </div>
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
+          {activeModule === 'rechnung' ? (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gradient-to-r from-amber-100 to-orange-100">
+                    <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
+                    <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
+                    <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
+                    <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Sample data - replace with real data later */}
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">1</td>
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">Beispiel Rechnung 1</td>
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">ER</td>
+                    <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">€ 1,250.00</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">2</td>
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">Beispiel Rechnung 2</td>
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">CO</td>
+                    <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">€ 2,150.00</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">3</td>
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">Beispiel Rechnung 3</td>
+                    <td className="border border-gray-300 px-6 py-4 text-gray-900">KAS</td>
+                    <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">€ 3,450.00</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-8">
+              <div className="text-center py-16">
+                <Icon className="w-24 h-24 mx-auto text-gray-300 mb-6" />
+                <h2 className="text-2xl font-bold text-gray-700 mb-2">
+                  {activeModuleData?.name} Modul
+                </h2>
+                <p className="text-gray-500">
+                  Dieser Bereich wird bald verfügbar sein
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
