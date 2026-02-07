@@ -974,7 +974,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
 
             {/* Title */}
             <h1 className="text-5xl font-bold text-center mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">
-              Neue Rechnung
+              {showThreeRows ? 'Neue Rechnung' : 'Rechnung'}
             </h1>
 
             {/* Tour description */}
