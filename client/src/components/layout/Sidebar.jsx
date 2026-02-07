@@ -15,7 +15,8 @@ import {
   Wallet,
   Mail,
   Settings,
-  DollarSign
+  DollarSign,
+  FileText
 } from 'lucide-react';
 
 const navItems = [
@@ -27,6 +28,7 @@ const navItems = [
   { path: '/hotels', icon: Building2, label: 'Hotels' },
   { path: '/opex', icon: Wallet, label: 'OPEX' },
   { path: '/price', icon: DollarSign, label: 'Price' },
+  { path: '/rechnung', icon: FileText, label: 'Rechnung' },
   { path: '/email-imports', icon: Mail, label: 'Email Imports' },
 ];
 
