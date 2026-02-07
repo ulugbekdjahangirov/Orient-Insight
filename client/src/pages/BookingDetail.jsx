@@ -1122,26 +1122,16 @@ export default function BookingDetail() {
           const neueRechnung = invoices.find(inv => inv.invoiceType === 'Neue Rechnung');
           const gutschrift = invoices.find(inv => inv.invoiceType === 'Gutschrift');
 
-          // Calculate sequential numbers for Rechnung/Neue Rechnung (shared sequence)
-          const rechnungTypeInvoices = invoices
-            .filter(inv => inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung')
-            .sort((a, b) => a.id - b.id); // Sort by ID for chronological order
-
-          const rechnungSeqNumber = rechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === rechnung.id) + 1 : 0;
-          const neueRechnungSeqNumber = neueRechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === neueRechnung.id) + 1 : 0;
-
-          // Calculate sequential number for Gutschrift (separate sequence)
-          const gutschriftTypeInvoices = invoices
-            .filter(inv => inv.invoiceType === 'Gutschrift')
-            .sort((a, b) => a.id - b.id);
-
-          const gutschriftSeqNumber = gutschrift ? gutschriftTypeInvoices.findIndex(inv => inv.id === gutschrift.id) + 1 : 0;
+          // Use invoiceNumber from database (already global sequential)
+          const rechnungSeqNumber = rechnung ? parseInt(rechnung.invoiceNumber) : 0;
+          const neueRechnungSeqNumber = neueRechnung ? parseInt(neueRechnung.invoiceNumber) : 0;
+          const gutschriftSeqNumber = gutschrift ? parseInt(gutschrift.invoiceNumber) : 0;
 
           setRechnungInvoice(rechnung || null);
           setNeueRechnungInvoice(neueRechnung || null);
           setGutschriftInvoice(gutschrift || null);
 
-          // Store sequential numbers
+          // Store sequential numbers (from database)
           setRechnungSequentialNumber(rechnungSeqNumber);
           setNeueRechnungSequentialNumber(neueRechnungSeqNumber);
           setGutschriftSequentialNumber(gutschriftSeqNumber);
@@ -4722,29 +4712,13 @@ export default function BookingDetail() {
         setGutschriftInvoice(updatedInvoice);
       }
 
-      // Recalculate sequential numbers for all invoices
-      const allInvoicesRes = await invoicesApi.getAll({ bookingId: id });
-      const allInvoices = allInvoicesRes.data.invoices || [];
-
-      // Rechnung/Neue Rechnung sequence
-      const rechnungTypeInvoices = allInvoices
-        .filter(inv => inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung')
-        .sort((a, b) => a.id - b.id);
-
-      // Gutschrift sequence (separate)
-      const gutschriftTypeInvoices = allInvoices
-        .filter(inv => inv.invoiceType === 'Gutschrift')
-        .sort((a, b) => a.id - b.id);
-
+      // Use invoiceNumber from database (already global sequential)
       if (invoiceType === 'Rechnung' && updatedInvoice) {
-        const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
-        setRechnungSequentialNumber(seqNum);
+        setRechnungSequentialNumber(parseInt(updatedInvoice.invoiceNumber));
       } else if (invoiceType === 'Neue Rechnung' && updatedInvoice) {
-        const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
-        setNeueRechnungSequentialNumber(seqNum);
+        setNeueRechnungSequentialNumber(parseInt(updatedInvoice.invoiceNumber));
       } else if (invoiceType === 'Gutschrift' && updatedInvoice) {
-        const seqNum = gutschriftTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
-        setGutschriftSequentialNumber(seqNum);
+        setGutschriftSequentialNumber(parseInt(updatedInvoice.invoiceNumber));
       }
 
       toast.success('Firma saqlandi');
