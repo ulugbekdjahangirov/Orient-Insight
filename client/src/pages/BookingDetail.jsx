@@ -1130,6 +1130,8 @@ export default function BookingDetail() {
           const allInvoicesRes = await invoicesApi.getAll({});
           const allInvoices = allInvoicesRes.data.invoices || [];
 
+          console.log('🔍 All invoices:', allInvoices);
+
           // Calculate sequential numbers based on global list (matching Rechnung module logic)
           // Rechnung module only shows invoices with firma selected
           const rechnungTypeInvoices = allInvoices
@@ -1139,6 +1141,14 @@ export default function BookingDetail() {
             )
             .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber)); // Sort by invoiceNumber ascending
 
+          console.log('📋 Filtered Rechnung invoices:', rechnungTypeInvoices.map(inv => ({
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            firma: inv.firma,
+            bookingNumber: inv.booking?.bookingNumber,
+            invoiceType: inv.invoiceType
+          })));
+
           const gutschriftTypeInvoices = allInvoices
             .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
             .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber));
@@ -1147,6 +1157,12 @@ export default function BookingDetail() {
           const rechnungSeqNumber = rechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === rechnung.id) + 1 : 0;
           const neueRechnungSeqNumber = neueRechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === neueRechnung.id) + 1 : 0;
           const gutschriftSeqNumber = gutschrift ? gutschriftTypeInvoices.findIndex(inv => inv.id === gutschrift.id) + 1 : 0;
+
+          console.log('🔢 Sequential numbers calculated:', {
+            rechnung: { id: rechnung?.id, seqNum: rechnungSeqNumber },
+            neueRechnung: { id: neueRechnung?.id, seqNum: neueRechnungSeqNumber },
+            gutschrift: { id: gutschrift?.id, seqNum: gutschriftSeqNumber }
+          });
 
           // Store sequential numbers
           setRechnungSequentialNumber(rechnungSeqNumber);
