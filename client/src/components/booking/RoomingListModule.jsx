@@ -155,10 +155,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     return groups;
   };
 
-  // Filter tourists by search query and room assignment
-  // IMPORTANT: Only show tourists with room numbers (from rooming list PDF)
+  // Filter tourists by search query
+  // Show ALL tourists (with or without room numbers)
   const filteredTourists = tourists
-    .filter(p => p.roomNumber) // Only show tourists assigned to rooms
     .filter(p => {
       const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
       return fullName.includes(searchQuery.toLowerCase());
@@ -472,8 +471,15 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       await touristsApi.create(bookingId, touristData);
       toast.success('Tourist added successfully');
       setAddTouristModalOpen(false);
-      loadData();
-      onUpdate?.();
+
+      // Reload data and notify parent
+      console.log('🔄 Reloading local tourist data...');
+      await loadData(); // Wait for local data to reload
+      console.log('✅ Local data reloaded, calling parent onUpdate...');
+      if (onUpdate) {
+        await onUpdate(); // Wait for parent to reload
+        console.log('✅ Parent data reloaded');
+      }
     } catch (error) {
       console.error('Error adding tourist:', error);
       toast.error(error.response?.data?.error || 'Error adding tourist');

@@ -184,6 +184,9 @@ model Booking {
   // Tour services (Eintritt, Metro, Shou, Other)
   tourServices    TourService[]
 
+  // Invoices (Rechnung, Neue Rechnung, Gutschrift)
+  invoices        Invoice[]
+
   // Дополнительные даты для ZA туров
   dateOlot        DateTime? // Olot
   dateJartepa     DateTime? // Jartepa
@@ -193,6 +196,9 @@ model Booking {
   // Статус и примечания
   status          String    @default("PENDING") // PENDING, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
   notes           String?
+
+  // Rechnung firma (Orient Insight / INFUTURESTORM)
+  rechnungFirma   String?   // Orient Insight, INFUTURESTORM
 
   // Метаданные
   createdById     Int?
@@ -224,34 +230,31 @@ model Request {
   updatedAt     DateTime @updatedAt
 }
 
-// Будущий модуль: Счета
+// Invoices (Rechnung, Neue Rechnung, Gutschrift)
 model Invoice {
-  id            Int       @id @default(autoincrement())
-  invoiceNumber String    @unique
-  bookingId     Int?
-  clientName    String
-  amount        Float
-  currency      String    @default("USD")
-  status        String    @default("DRAFT") // DRAFT, SENT, PAID, OVERDUE, CANCELLED
-  dueDate       DateTime?
-  issuedAt      DateTime  @default(now())
-  paidAt        DateTime?
-  notes         String?
+  id              Int       @id @default(autoincrement())
+  bookingId       Int
+  booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  payments      Payment[]
+  invoiceNumber   String    // Sequential: "1", "2", "3"...
+  invoiceType     String    // "Rechnung", "Neue Rechnung", "Gutschrift"
+  firma           String?   // "Orient Insight", "INFUTURESTORM"
+
+  // Invoice items (JSON array from RechnungDocument)
+  items           String?   // JSON array of invoice line items
+
+  totalAmount     Float     @default(0)
+  currency        String    @default("USD")
+
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([bookingId])
+  @@index([invoiceType])
+  @@index([firma])
 }
 
-// Будущий модуль: Платежи
-model Payment {
-  id            Int      @id @default(autoincrement())
-  invoiceId     Int
-  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
-  amount        Float
-  paymentMethod String?
-  reference     String?
-  paidAt        DateTime @default(now())
-  notes         String?
-}
 
 // ============================================
 // Модуль: Отели

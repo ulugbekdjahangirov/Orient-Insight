@@ -3456,42 +3456,45 @@ async function updateBookingPaxCount(bookingId) {
 
   console.log(`📊 PAX Split: Total=${count}, Uzbekistan=${paxUzbekistan}, Turkmenistan=${paxTurkmenistan}`);
 
-  // Check if any tourist has roomNumber set (not null and not "null" string)
-  const hasRoomNumbers = tourists.some(t => t.roomNumber && t.roomNumber !== 'null');
+  // Split tourists into two groups: with and without room numbers
+  const touristsWithRoomNumbers = tourists.filter(t => t.roomNumber && t.roomNumber !== 'null');
+  const touristsWithoutRoomNumbers = tourists.filter(t => !t.roomNumber || t.roomNumber === 'null');
 
-  let roomsDbl, roomsTwn, roomsSngl;
+  let roomsDbl = 0, roomsTwn = 0, roomsSngl = 0;
 
-  if (hasRoomNumbers) {
-    // Count unique room numbers
+  // Count tourists WITH room numbers (unique rooms)
+  if (touristsWithRoomNumbers.length > 0) {
     const uniqueRooms = {
       DBL: new Set(),
       TWN: new Set(),
       SNGL: new Set()
     };
 
-    tourists.forEach(tourist => {
-      if (tourist.roomNumber && tourist.roomNumber !== 'null') {
-        const room = tourist.roomNumber.toUpperCase();
-        if (room.startsWith('DBL')) {
-          uniqueRooms.DBL.add(room);
-        } else if (room.startsWith('SNGL') || room.startsWith('SGL')) {
-          uniqueRooms.SNGL.add(room);
-        } else if (room.startsWith('TWN')) {
-          uniqueRooms.TWN.add(room);
-        }
+    touristsWithRoomNumbers.forEach(tourist => {
+      const room = tourist.roomNumber.toUpperCase();
+      if (room.startsWith('DBL')) {
+        uniqueRooms.DBL.add(room);
+      } else if (room.startsWith('SNGL') || room.startsWith('SGL')) {
+        uniqueRooms.SNGL.add(room);
+      } else if (room.startsWith('TWN')) {
+        uniqueRooms.TWN.add(room);
       }
     });
 
-    roomsDbl = uniqueRooms.DBL.size;
-    roomsTwn = uniqueRooms.TWN.size;
-    roomsSngl = uniqueRooms.SNGL.size;
-  } else {
-    // Fallback: count by roomPreference
+    roomsDbl += uniqueRooms.DBL.size;
+    roomsTwn += uniqueRooms.TWN.size;
+    roomsSngl += uniqueRooms.SNGL.size;
+    console.log(`✅ Rooms from tourists WITH roomNumber: DBL=${uniqueRooms.DBL.size}, TWN=${uniqueRooms.TWN.size}, SNGL=${uniqueRooms.SNGL.size}`);
+  }
+
+  // Count tourists WITHOUT room numbers (by roomPreference)
+  if (touristsWithoutRoomNumbers.length > 0) {
+    // Count by roomPreference for tourists without room numbers
     let dblCount = 0;
     let twnCount = 0;
     let snglCount = 0;
 
-    tourists.forEach(tourist => {
+    touristsWithoutRoomNumbers.forEach(tourist => {
       const roomPref = (tourist.roomPreference || '').toUpperCase().trim();
 
       // DZ or DBL = Double room
@@ -3510,22 +3513,24 @@ async function updateBookingPaxCount(bookingId) {
 
     // Calculate actual room numbers
     // If there's an odd number of DZ (single DZ without pair), count it as 0.5 TWN
-    console.log(`📊 Room calculation: dblCount=${dblCount}, twnCount=${twnCount}, snglCount=${snglCount}`);
+    console.log(`📊 Room calculation (without roomNumber): dblCount=${dblCount}, twnCount=${twnCount}, snglCount=${snglCount}`);
 
     if (dblCount % 2 === 1) {
       // Odd number of DZ: one person alone, rest in pairs
-      roomsDbl = Math.floor(dblCount / 2); // Full DBL rooms for pairs
-      roomsTwn = Math.ceil(twnCount / 2) + 0.5; // Regular TWN rooms + 0.5 for single DZ
-      console.log(`✅ ODD DZ count: roomsDbl=${roomsDbl}, roomsTwn=${roomsTwn} (includes 0.5 for single DZ)`);
+      roomsDbl += Math.floor(dblCount / 2); // Full DBL rooms for pairs
+      roomsTwn += Math.ceil(twnCount / 2) + 0.5; // Regular TWN rooms + 0.5 for single DZ
+      console.log(`✅ ODD DZ count: +${Math.floor(dblCount / 2)} DBL, +${Math.ceil(twnCount / 2) + 0.5} TWN`);
     } else {
       // Even number of DZ: all in pairs
-      roomsDbl = dblCount / 2;
-      roomsTwn = Math.ceil(twnCount / 2);
-      console.log(`✅ EVEN DZ count: roomsDbl=${roomsDbl}, roomsTwn=${roomsTwn}`);
+      roomsDbl += dblCount / 2;
+      roomsTwn += Math.ceil(twnCount / 2);
+      console.log(`✅ EVEN DZ count: +${dblCount / 2} DBL, +${Math.ceil(twnCount / 2)} TWN`);
     }
-    roomsSngl = snglCount;
-    console.log(`📌 Final rooms: DBL=${roomsDbl}, TWN=${roomsTwn}, SNGL=${roomsSngl}`);
+    roomsSngl += snglCount;
+    console.log(`✅ Rooms from tourists WITHOUT roomNumber: DBL=+${dblCount / 2}, TWN=+?, SNGL=+${snglCount}`);
   }
+
+  console.log(`📌 TOTAL rooms (combined): DBL=${roomsDbl}, TWN=${roomsTwn}, SNGL=${roomsSngl}`);
 
   // Auto-set status based on PAX count
   let status = 'PENDING';

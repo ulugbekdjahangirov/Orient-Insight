@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { FileText, Receipt, Building, Globe } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Receipt, Building, Globe, Plus, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { invoicesApi } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 const modules = [
   { id: 'rechnung', name: 'Rechnung', color: 'amber', icon: FileText },
@@ -46,10 +49,199 @@ const colorClasses = {
 };
 
 export default function Rechnung() {
+  const navigate = useNavigate();
   const [activeModule, setActiveModule] = useState('rechnung');
+  const [rechnungItems, setRechnungItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [gutschriftItems, setGutschriftItems] = useState([
+    { id: 1, nummer: '1', name: 'Beispiel Gutschrift 1', gruppe: 'ER', firma: '', summe: 500.00 },
+    { id: 2, nummer: '2', name: 'Beispiel Gutschrift 2', gruppe: 'CO', firma: '', summe: 750.00 },
+  ]);
+  const [orientItems, setOrientItems] = useState([
+    { id: 1, nummer: '1', name: 'Beispiel Orient 1', gruppe: 'ER', firma: '', summe: 800.00 },
+    { id: 2, nummer: '2', name: 'Beispiel Orient 2', gruppe: 'KAS', firma: '', summe: 950.00 },
+  ]);
+  const [infuturestormItems, setInfuturestormItems] = useState([
+    { id: 1, nummer: '1', name: 'Beispiel INFUTURESTORM 1', gruppe: 'ER', firma: '', summe: 600.00 },
+    { id: 2, nummer: '2', name: 'Beispiel INFUTURESTORM 2', gruppe: 'ZA', firma: '', summe: 850.00 },
+  ]);
 
   const activeModuleData = modules.find(m => m.id === activeModule);
   const Icon = activeModuleData?.icon || FileText;
+
+  // Load invoices from API when activeModule changes
+  useEffect(() => {
+    loadInvoices();
+  }, [activeModule]);
+
+  const loadInvoices = async () => {
+    try {
+      setLoading(true);
+
+      // Determine filter params based on activeModule
+      const params = {};
+      if (activeModule === 'orient') {
+        params.firma = 'Orient Insight';
+      } else if (activeModule === 'infuturestorm') {
+        params.firma = 'INFUTURESTORM';
+      } else if (activeModule === 'gutschrift') {
+        params.invoiceType = 'Gutschrift';
+      }
+      // For 'rechnung' module: load all invoices, then filter client-side
+
+      const response = await invoicesApi.getAll(params);
+      let invoices = response.data.invoices || [];
+
+      // Client-side filtering for Rechnung module
+      if (activeModule === 'rechnung') {
+        // Show only "Rechnung" and "Neue Rechnung" types (not Gutschrift)
+        // AND only invoices with firma selected
+        invoices = invoices.filter(inv =>
+          (inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung') &&
+          inv.firma // Only show if firma is selected
+        );
+      } else {
+        // For other modules, also filter out invoices without firma
+        invoices = invoices.filter(inv => inv.firma);
+      }
+
+      // Transform invoices to rechnung items
+      const items = invoices
+        .map((invoice) => ({
+          id: invoice.id,
+          bookingId: invoice.bookingId,
+          nummer: invoice.invoiceNumber, // Sequential number from DB
+          name: invoice.invoiceType, // "Rechnung", "Neue Rechnung", "Gutschrift"
+          gruppe: invoice.booking?.bookingNumber || '', // Booking code: ER-07, CO-01, etc.
+          firma: invoice.firma || '',
+          summe: invoice.totalAmount || 0
+        }))
+        .sort((a, b) => parseInt(a.nummer) - parseInt(b.nummer)); // Sort by invoice number ascending
+
+      setRechnungItems(items);
+    } catch (error) {
+      console.error('Error loading invoices:', error);
+      toast.error('Ma\'lumotlarni yuklashda xatolik');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add new item - Rechnung
+  const handleAddItem = () => {
+    const newId = Math.max(...rechnungItems.map(i => i.id), 0) + 1;
+    const newItem = {
+      id: newId,
+      nummer: newId.toString(),
+      name: 'Neue Rechnung',
+      gruppe: 'ER',
+      firma: '',
+      summe: 0.00
+    };
+    setRechnungItems([...rechnungItems, newItem]);
+  };
+
+  // Delete item - Rechnung
+  const handleDeleteItem = (id) => {
+    setRechnungItems(rechnungItems.filter(item => item.id !== id));
+  };
+
+  // Update item - Rechnung
+  const handleUpdateItem = (id, field, value) => {
+    setRechnungItems(rechnungItems.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  // Add new item - Gutschrift
+  const handleAddGutschriftItem = () => {
+    const newId = Math.max(...gutschriftItems.map(i => i.id), 0) + 1;
+    const newItem = {
+      id: newId,
+      nummer: newId.toString(),
+      name: 'Neue Gutschrift',
+      gruppe: 'ER',
+      firma: '',
+      summe: 0.00
+    };
+    setGutschriftItems([...gutschriftItems, newItem]);
+  };
+
+  // Delete item - Gutschrift
+  const handleDeleteGutschriftItem = (id) => {
+    setGutschriftItems(gutschriftItems.filter(item => item.id !== id));
+  };
+
+  // Update item - Gutschrift
+  const handleUpdateGutschriftItem = (id, field, value) => {
+    setGutschriftItems(gutschriftItems.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  // Add new item - Orient
+  const handleAddOrientItem = () => {
+    const newId = Math.max(...orientItems.map(i => i.id), 0) + 1;
+    const newItem = {
+      id: newId,
+      nummer: newId.toString(),
+      name: 'Neue Orient',
+      gruppe: 'ER',
+      firma: '',
+      summe: 0.00
+    };
+    setOrientItems([...orientItems, newItem]);
+  };
+
+  // Delete item - Orient
+  const handleDeleteOrientItem = (id) => {
+    setOrientItems(orientItems.filter(item => item.id !== id));
+  };
+
+  // Update item - Orient
+  const handleUpdateOrientItem = (id, field, value) => {
+    setOrientItems(orientItems.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  // Add new item - INFUTURESTORM
+  const handleAddInfuturestormItem = () => {
+    const newId = Math.max(...infuturestormItems.map(i => i.id), 0) + 1;
+    const newItem = {
+      id: newId,
+      nummer: newId.toString(),
+      name: 'Neue INFUTURESTORM',
+      gruppe: 'ER',
+      firma: '',
+      summe: 0.00
+    };
+    setInfuturestormItems([...infuturestormItems, newItem]);
+  };
+
+  // Delete item - INFUTURESTORM
+  const handleDeleteInfuturestormItem = (id) => {
+    setInfuturestormItems(infuturestormItems.filter(item => item.id !== id));
+  };
+
+  // Update item - INFUTURESTORM
+  const handleUpdateInfuturestormItem = (id, field, value) => {
+    setInfuturestormItems(infuturestormItems.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
@@ -98,39 +290,405 @@ export default function Rechnung() {
         {/* Content area */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
           {activeModule === 'rechnung' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gradient-to-r from-amber-100 to-orange-100">
-                    <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
-                    <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
-                    <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
-                    <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Sample data - replace with real data later */}
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">1</td>
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">Beispiel Rechnung 1</td>
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">ER</td>
-                    <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">€ 1,250.00</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">2</td>
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">Beispiel Rechnung 2</td>
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">CO</td>
-                    <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">€ 2,150.00</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">3</td>
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">Beispiel Rechnung 3</td>
-                    <td className="border border-gray-300 px-6 py-4 text-gray-900">KAS</td>
-                    <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">€ 3,450.00</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <>
+              {/* Table - Read-only view of bookings */}
+              <div className="overflow-x-auto">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                  </div>
+                ) : (
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-amber-100 to-orange-100">
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
+                        <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rechnungItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                            {item.nummer}
+                          </td>
+                          <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                            {item.name}
+                          </td>
+                          <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
+                            {item.gruppe}
+                          </td>
+                          <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                            {item.firma || '-'}
+                          </td>
+                          <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                            {item.summe.toFixed(2)}
+                          </td>
+                          <td className="border border-gray-300 px-6 py-4 text-center">
+                            <button
+                              onClick={() => {
+                                const docTab = item.name === 'Rechnung' ? 'rechnung' : item.name === 'Neue Rechnung' ? 'neue-rechnung' : 'gutschrift';
+                                navigate(`/bookings/${item.bookingId}?tab=documents&docTab=${docTab}`);
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="View Booking"
+                            >
+                              <ExternalLink className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {rechnungItems.length === 0 && (
+                        <tr>
+                          <td colSpan="6" className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                            Ma'lumot topilmadi
+                          </td>
+                        </tr>
+                      )}
+                      {/* Total row */}
+                      {rechnungItems.length > 0 && (
+                        <tr className="bg-gradient-to-r from-amber-100 to-orange-100 font-bold">
+                          <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
+                            TOTAL
+                          </td>
+                          <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                            {rechnungItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
+                          </td>
+                          <td className="border border-gray-300 px-6 py-4"></td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </>
+          ) : activeModule === 'gutschrift' ? (
+            <>
+              {/* Add Item button */}
+              <div className="p-6 border-b border-gray-200">
+                <button
+                  onClick={handleAddGutschriftItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Item
+                </button>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
+                      <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
+                      <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gutschriftItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.nummer}
+                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'nummer', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'name', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <select
+                            value={item.gruppe}
+                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'gruppe', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          >
+                            <option value="ER">ER</option>
+                            <option value="CO">CO</option>
+                            <option value="KAS">KAS</option>
+                            <option value="ZA">ZA</option>
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.firma}
+                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'firma', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                          <input
+                            type="number"
+                            value={item.summe}
+                            onChange={(e) => handleUpdateGutschriftItem(item.id, 'summe', parseFloat(e.target.value) || 0)}
+                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
+                            step="0.01"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {/* Edit action - cells are already editable */}}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteGutschriftItem(item.id)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Total row */}
+                    <tr className="bg-gradient-to-r from-emerald-100 to-green-100 font-bold">
+                      <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
+                        TOTAL
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                        {gutschriftItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : activeModule === 'orient' ? (
+            <>
+              {/* Add Item button */}
+              <div className="p-6 border-b border-gray-200">
+                <button
+                  onClick={handleAddOrientItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Item
+                </button>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-blue-100 to-indigo-100">
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
+                      <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
+                      <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orientItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.nummer}
+                            onChange={(e) => handleUpdateOrientItem(item.id, 'nummer', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => handleUpdateOrientItem(item.id, 'name', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <select
+                            value={item.gruppe}
+                            onChange={(e) => handleUpdateOrientItem(item.id, 'gruppe', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          >
+                            <option value="ER">ER</option>
+                            <option value="CO">CO</option>
+                            <option value="KAS">KAS</option>
+                            <option value="ZA">ZA</option>
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.firma}
+                            onChange={(e) => handleUpdateOrientItem(item.id, 'firma', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                          <input
+                            type="number"
+                            value={item.summe}
+                            onChange={(e) => handleUpdateOrientItem(item.id, 'summe', parseFloat(e.target.value) || 0)}
+                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
+                            step="0.01"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {/* Edit action - cells are already editable */}}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOrientItem(item.id)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Total row */}
+                    <tr className="bg-gradient-to-r from-blue-100 to-indigo-100 font-bold">
+                      <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
+                        TOTAL
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                        {orientItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : activeModule === 'infuturestorm' ? (
+            <>
+              {/* Add Item button */}
+              <div className="p-6 border-b border-gray-200">
+                <button
+                  onClick={handleAddInfuturestormItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Item
+                </button>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-orange-100 to-red-100">
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Nummer</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Name</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
+                      <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
+                      <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
+                      <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {infuturestormItems.map((item) => (
+                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.nummer}
+                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'nummer', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'name', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <select
+                            value={item.gruppe}
+                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'gruppe', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          >
+                            <option value="ER">ER</option>
+                            <option value="CO">CO</option>
+                            <option value="KAS">KAS</option>
+                            <option value="ZA">ZA</option>
+                          </select>
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.firma}
+                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'firma', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
+                          <input
+                            type="number"
+                            value={item.summe}
+                            onChange={(e) => handleUpdateInfuturestormItem(item.id, 'summe', parseFloat(e.target.value) || 0)}
+                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
+                            step="0.01"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {/* Edit action - cells are already editable */}}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteInfuturestormItem(item.id)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Total row */}
+                    <tr className="bg-gradient-to-r from-orange-100 to-red-100 font-bold">
+                      <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
+                        TOTAL
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
+                        {infuturestormItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="border border-gray-300 px-6 py-4"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
           ) : (
             <div className="p-8">
               <div className="text-center py-16">

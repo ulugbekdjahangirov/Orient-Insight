@@ -4,11 +4,13 @@ import { Download, Printer, Plus, Trash2, Edit2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import api from '../../services/api';
+import api, { invoicesApi } from '../../services/api';
 
-const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
+const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '' }) => {
   const [roomingListData, setRoomingListData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const lockedInvoiceIdRef = React.useRef(null); // Track which invoice ID is locked
+  const lockedItemsRef = React.useRef(null); // Store locked items
 
   // Load rooming list data for the first accommodation (arrival hotel)
   useEffect(() => {
@@ -441,30 +443,176 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
   };
 
   const [invoiceItems, setInvoiceItems] = useState([]);
-  const [rechnungNr, setRechnungNr] = useState('11/25');
+  const [rechnungNr, setRechnungNr] = useState(invoice?.invoiceNumber || '11/25');
+  const [bezahlteRechnungNr, setBezahlteRechnungNr] = useState(previousInvoiceNumber); // Bereits bezahlte Rechnung Nr.
   const [bezahlteRechnung, setBezahlteRechnung] = useState(0);
+  const [manualInvoiceNr, setManualInvoiceNr] = useState(previousInvoiceNumber); // Manual invoice number for Gutschrift
+
+  // Update rechnungNr when invoice changes
+  useEffect(() => {
+    if (invoice?.invoiceNumber) {
+      setRechnungNr(invoice.invoiceNumber);
+    }
+  }, [invoice]);
+
+  // Auto-fill Bereits bezahlte Rechnung Nr from previous invoice (Neue Rechnung)
+  useEffect(() => {
+    if (invoiceType === 'Neue Rechnung' && previousInvoiceNumber && !bezahlteRechnungNr) {
+      setBezahlteRechnungNr(previousInvoiceNumber);
+    }
+  }, [previousInvoiceNumber, invoiceType]);
+
+  // Auto-fill manual invoice number from previous invoice (Gutschrift)
+  useEffect(() => {
+    if (invoiceType === 'Gutschrift' && previousInvoiceNumber && !manualInvoiceNr) {
+      setManualInvoiceNr(previousInvoiceNumber);
+    }
+  }, [previousInvoiceNumber, invoiceType]);
+
+  // Fetch already paid invoice amount when bezahlteRechnungNr changes
+  useEffect(() => {
+    const fetchBezahlteRechnung = async () => {
+      if (!bezahlteRechnungNr || bezahlteRechnungNr.trim() === '') {
+        setBezahlteRechnung(0);
+        return;
+      }
+
+      try {
+        // Fetch invoice by invoice number
+        const response = await invoicesApi.getAll({ invoiceNumber: bezahlteRechnungNr.trim() });
+        const invoices = response.data.invoices || [];
+
+        if (invoices.length > 0) {
+          const foundInvoice = invoices[0];
+          console.log('✅ Found already paid invoice:', foundInvoice);
+          setBezahlteRechnung(foundInvoice.totalAmount || 0);
+        } else {
+          console.log('⚠️ No invoice found with number:', bezahlteRechnungNr);
+          setBezahlteRechnung(0);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching already paid invoice:', error);
+        setBezahlteRechnung(0);
+      }
+    };
+
+    // Debounce to avoid too many API calls
+    const timer = setTimeout(fetchBezahlteRechnung, 500);
+    return () => clearTimeout(timer);
+  }, [bezahlteRechnungNr]);
 
   // Update invoice items when booking, tourists, or rooming list changes
+  // CRITICAL: If firma is selected, invoice is LOCKED - use saved items, don't recalculate
   useEffect(() => {
     if (booking && !loading) {
-      const tourTypeCode = typeof booking?.tourType === 'string'
-        ? booking?.tourType
-        : booking?.tourType?.code;
-      const isER = tourTypeCode === 'ER';
+      const invoiceId = invoice?.id;
+      const hasFirma = invoice?.firma ? true : false;
 
-      if (isER) {
-        console.log('🔄 Updating invoice items (ER booking)');
-        setInvoiceItems(initializeInvoiceItems());
-      } else {
-        console.log('🔄 Updating invoice items (non-ER booking)');
-        setInvoiceItems(initializeInvoiceItems());
+      // Try to load locked state from localStorage
+      const lockKey = `invoice_lock_${invoiceId}`;
+      const storedLock = localStorage.getItem(lockKey);
+      let lockedData = null;
+
+      if (storedLock) {
+        try {
+          lockedData = JSON.parse(storedLock);
+        } catch (e) {
+          console.error('Error parsing locked data:', e);
+        }
+      }
+
+      console.log('📊 Invoice useEffect:', {
+        invoiceId,
+        firma: invoice?.firma,
+        touristsCount: tourists?.length,
+        hasStoredLock: !!lockedData,
+        storedLock: lockedData
+      });
+
+      // CRITICAL: If this invoice is locked in localStorage (firma selected), use locked items
+      if (hasFirma && lockedData && lockedData.items && lockedData.items.length > 0) {
+        console.log('🔒 INVOICE LOCKED (from localStorage) - using saved items, ignoring all changes');
+        console.log('   Locked items:', lockedData.items);
+        setInvoiceItems(lockedData.items);
+
+        // Update refs
+        lockedInvoiceIdRef.current = invoiceId;
+        lockedItemsRef.current = lockedData.items;
+        return; // Don't recalculate!
+      }
+
+      // If firma is selected but not locked yet, LOCK IT NOW
+      if (hasFirma && !lockedData) {
+        console.log('🔐 LOCKING INVOICE - firma selected, saving current values to localStorage');
+
+        // Try to load from database first
+        if (invoice?.items) {
+          try {
+            let savedItems;
+            if (typeof invoice.items === 'string') {
+              savedItems = JSON.parse(invoice.items);
+            } else if (Array.isArray(invoice.items)) {
+              savedItems = invoice.items;
+            }
+
+            if (Array.isArray(savedItems) && savedItems.length > 0) {
+              console.log('📥 Loaded items from database:', savedItems);
+              setInvoiceItems(savedItems);
+
+              // Save lock to localStorage
+              localStorage.setItem(lockKey, JSON.stringify({ items: savedItems, firma: invoice.firma }));
+              lockedInvoiceIdRef.current = invoiceId;
+              lockedItemsRef.current = savedItems;
+              return;
+            }
+          } catch (error) {
+            console.error('❌ Error parsing saved items:', error);
+          }
+        }
+
+        // Calculate and lock current values
+        const items = initializeInvoiceItems();
+        console.log('💾 Calculated items to lock:', items);
+        setInvoiceItems(items);
+
+        // Save lock to localStorage
+        localStorage.setItem(lockKey, JSON.stringify({ items, firma: invoice.firma }));
+        lockedInvoiceIdRef.current = invoiceId;
+        lockedItemsRef.current = items;
+
+        // Save to database immediately
+        if (invoiceId) {
+          invoicesApi.update(invoiceId, {
+            items: JSON.stringify(items),
+            totalAmount: items.reduce((sum, item) => sum + (item.einzelpreis * item.anzahl), 0)
+          }).then(() => {
+            console.log('✅ Invoice locked and saved to database + localStorage');
+          }).catch(err => {
+            console.error('❌ Error saving:', err);
+          });
+        }
+        return;
+      }
+
+      // No firma - unlock and auto-calculate
+      if (!hasFirma) {
+        console.log('🔓 No firma - unlocking and auto-calculating');
+
+        // Clear lock from localStorage
+        localStorage.removeItem(lockKey);
+        lockedInvoiceIdRef.current = null;
+        lockedItemsRef.current = null;
+
+        const items = initializeInvoiceItems();
+        setInvoiceItems(items);
       }
     }
-  }, [booking, tourists, roomingListData, loading]);
+  }, [booking, tourists, roomingListData, loading, invoice?.id, invoice?.firma, invoice?.items]);
 
   // Calculate total
   const calculateTotal = () => {
-    return invoiceItems.reduce((sum, item) => {
+    const items = Array.isArray(invoiceItems) ? invoiceItems : [];
+    return items.reduce((sum, item) => {
       return sum + (item.einzelpreis * item.anzahl);
     }, 0);
   };
@@ -474,8 +622,41 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
     return calculateTotal() - bezahlteRechnung;
   };
 
+  // Update invoice totalAmount and items when items change
+  useEffect(() => {
+    if (invoice?.id && invoiceItems.length > 0) {
+      // For Neue Rechnung (showThreeRows), save Gesamtbetrag (Total - Already Paid)
+      // For regular Rechnung, save Total
+      const amountToSave = showThreeRows ? calculateGesamtbetrag() : calculateTotal();
+
+      // Debounce the update to avoid too many API calls
+      const timer = setTimeout(async () => {
+        try {
+          // Save both totalAmount AND items (items as JSON string)
+          await invoicesApi.update(invoice.id, {
+            totalAmount: amountToSave,
+            items: JSON.stringify(invoiceItems)
+          });
+          console.log(`✅ Invoice updated: totalAmount=${amountToSave}, items saved (${invoiceItems.length} items)`);
+        } catch (error) {
+          console.error('Error updating invoice:', error);
+        }
+      }, 1000); // Wait 1 second after last change
+
+      return () => clearTimeout(timer);
+    }
+  }, [invoiceItems, invoice?.id, bezahlteRechnung, showThreeRows]);
+
   // Get tour description
   const getTourDescription = () => {
+    // For Gutschrift, show special message with invoice number
+    if (invoiceType === 'Gutschrift') {
+      // Use manual input if available, otherwise use invoice number, otherwise 'N/A'
+      const invoiceNumber = manualInvoiceNr || invoice?.invoiceNumber || 'N/A';
+      return `Hiermit ist eine Gutschrift zu unserer Rechnung Nr: ${invoiceNumber}`;
+    }
+
+    // For regular Rechnung and Neue Rechnung, show tour info
     if (booking?.departureDate && booking?.endDate) {
       const pax = tourists?.length || booking?.pax || 0;
       const startDate = format(new Date(booking.departureDate), 'dd.MM');
@@ -535,10 +716,11 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
 
       yPos += 35;
 
-      // Title "Rechnung"
+      // Title "Rechnung" or "Gutschrift"
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('Rechnung', 105, yPos, { align: 'center' });
+      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
+      doc.text(pdfTitle, 105, yPos, { align: 'center' });
       yPos += 8;
 
       // Tour description
@@ -551,13 +733,13 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
       // Rechnung Nr and Datum on same line
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Rechnung Nr: ${booking?.bookingNumber || '36/25'}`, 15, yPos);
+      doc.text(`Rechnung Nr: ${invoice?.invoiceNumber || booking?.bookingNumber || 'N/A'}`, 15, yPos);
       doc.text(`Datum:`, 155, yPos);
       doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
       yPos += 10;
 
       // Invoice table (more compact)
-      const tableData = invoiceItems.map((item, index) => [
+      const tableData = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
         (index + 1).toString(),
         item.description,
         item.einzelpreis.toString(),
@@ -688,7 +870,8 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
       doc.text('ORIENT INSIGHT GmbH', 15, yPos);
 
       // Save PDF
-      const filename = `Rechnung_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
+      const docType = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
+      const filename = `${docType}_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
       doc.save(filename);
       toast.success('Orient Insight PDF сақланди!');
     } catch (error) {
@@ -755,10 +938,11 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
 
       yPos += 50;
 
-      // Title "Rechnung"
+      // Title "Rechnung" or "Gutschrift"
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('Rechnung', 105, yPos, { align: 'center' });
+      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
+      doc.text(pdfTitle, 105, yPos, { align: 'center' });
       yPos += 10;
 
       // Tour description
@@ -771,13 +955,13 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
       // Rechnung Nr and Datum on same line
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Rechnung Nr: ${booking?.bookingNumber || '36/25'}`, 15, yPos);
+      doc.text(`Rechnung Nr: ${invoice?.invoiceNumber || booking?.bookingNumber || 'N/A'}`, 15, yPos);
       doc.text(`Datum:`, 155, yPos);
       doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
       yPos += 15;
 
       // Invoice table
-      const tableData = invoiceItems.map((item, index) => [
+      const tableData = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
         (index + 1).toString(),
         item.description,
         item.einzelpreis.toString(),
@@ -890,7 +1074,8 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
       doc.text('INFUTURESTORM PTE. LTD', 15, yPos);
 
       // Save PDF
-      const filename = `Rechnung_INFUTURESTORM_${booking?.bookingNumber || 'invoice'}.pdf`;
+      const docType = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
+      const filename = `${docType}_INFUTURESTORM_${booking?.bookingNumber || 'invoice'}.pdf`;
       doc.save(filename);
       toast.success('INFUTURESTORM PDF сақланди!');
     } catch (error) {
@@ -906,24 +1091,27 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
 
   // Add new item
   const addItem = () => {
+    const items = Array.isArray(invoiceItems) ? invoiceItems : [];
     const newItem = {
-      id: Math.max(...invoiceItems.map(i => i.id), 0) + 1,
+      id: Math.max(...items.map(i => i.id), 0) + 1,
       description: 'New Item',
       einzelpreis: 0,
       anzahl: 1,
       currency: 'USD'
     };
-    setInvoiceItems([...invoiceItems, newItem]);
+    setInvoiceItems([...items, newItem]);
   };
 
   // Delete item
   const deleteItem = (id) => {
-    setInvoiceItems(invoiceItems.filter(item => item.id !== id));
+    const items = Array.isArray(invoiceItems) ? invoiceItems : [];
+    setInvoiceItems(items.filter(item => item.id !== id));
   };
 
   // Update item
   const updateItem = (id, field, value) => {
-    setInvoiceItems(invoiceItems.map(item => {
+    const items = Array.isArray(invoiceItems) ? invoiceItems : [];
+    setInvoiceItems(items.map(item => {
       if (item.id === id) {
         return { ...item, [field]: value };
       }
@@ -974,19 +1162,34 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
 
             {/* Title */}
             <h1 className="text-5xl font-bold text-center mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">
-              {showThreeRows ? 'Neue Rechnung' : 'Rechnung'}
+              {invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung')}
             </h1>
 
             {/* Tour description */}
-            <p className="text-center text-base text-gray-700 mb-8 leading-relaxed px-8">
-              {getTourDescription()}
-            </p>
+            {invoiceType === 'Gutschrift' ? (
+              <p className="text-center text-base text-gray-700 mb-8 leading-relaxed px-8">
+                Hiermit ist eine Gutschrift zu unserer Rechnung Nr:{' '}
+                <input
+                  type="text"
+                  value={manualInvoiceNr}
+                  onChange={(e) => setManualInvoiceNr(e.target.value)}
+                  placeholder="N/A"
+                  className="inline-block w-24 px-2 py-1 border-b-2 border-gray-400 focus:border-blue-500 focus:outline-none text-center font-semibold bg-transparent print:border-none"
+                />
+              </p>
+            ) : (
+              <p className="text-center text-base text-gray-700 mb-8 leading-relaxed px-8">
+                {getTourDescription()}
+              </p>
+            )}
 
             {/* Rechnung Nr and Datum with styled boxes */}
             <div className="flex justify-between mb-12 text-base gap-4">
               <div className="flex-1 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border-2 border-amber-200 shadow-md">
                 <div className="text-sm text-gray-600 mb-1">Rechnung Nr:</div>
-                <div className="font-bold text-xl text-gray-900">{booking?.bookingNumber || 'ER-07'}</div>
+                <div className="font-bold text-xl text-gray-900">
+                  {invoice?.invoiceNumber && invoice?.firma ? invoice.invoiceNumber : ''}
+                </div>
               </div>
               <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200 shadow-md text-right">
                 <div className="text-sm text-gray-600 mb-1">Datum:</div>
@@ -1010,7 +1213,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
                 </thead>
                 <tbody>
                   {/* Item rows */}
-                  {invoiceItems.map((item, index) => (
+                  {(Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => (
                     <tr key={item.id} className="bg-white hover:bg-gray-50 transition-colors duration-150">
                       <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-medium">{index + 1}</td>
                       <td className="border border-gray-300 px-4 py-3 text-gray-900">
@@ -1097,20 +1300,16 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false }) => {
                           Bereits bezahlte Rechnung Nr.{' '}
                           <input
                             type="text"
-                            value={rechnungNr}
-                            onChange={(e) => setRechnungNr(e.target.value)}
+                            value={bezahlteRechnungNr}
+                            onChange={(e) => setBezahlteRechnungNr(e.target.value)}
                             className="w-16 border-b border-gray-300 focus:border-emerald-500 outline-none print:border-none font-semibold"
+                            placeholder="1"
                           />
                         </td>
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3"></td>
-                        <td className="border border-gray-300 px-4 py-3 text-right font-semibold text-gray-900">
-                          <input
-                            type="number"
-                            value={bezahlteRechnung}
-                            onChange={(e) => setBezahlteRechnung(parseFloat(e.target.value) || 0)}
-                            className="w-full bg-yellow-100 border-none focus:outline-none text-right focus:bg-yellow-200 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
-                          />
+                        <td className="border border-gray-300 px-4 py-3 text-right font-semibold text-gray-900 bg-yellow-100">
+                          {bezahlteRechnung > 0 ? bezahlteRechnung.toFixed(2) : '0'}
                         </td>
                         <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">USD</td>
                         <td className="border border-gray-300 px-4 py-3 print:hidden"></td>

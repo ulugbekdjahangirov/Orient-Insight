@@ -367,7 +367,8 @@ router.put('/:id', authenticate, async (req, res) => {
       dateChernyaevka,
       status,
       notes,
-      assignedToId
+      assignedToId,
+      rechnungFirma
     } = req.body;
 
     const updateData = {};
@@ -429,6 +430,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (status) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
     if (assignedToId !== undefined) updateData.assignedToId = assignedToId ? parseInt(assignedToId) : null;
+    if (rechnungFirma !== undefined) updateData.rechnungFirma = rechnungFirma || null;
 
     const booking = await prisma.booking.update({
       where: { id: parseInt(id) },

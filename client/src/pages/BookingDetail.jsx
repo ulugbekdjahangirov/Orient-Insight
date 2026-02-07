@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
@@ -348,6 +348,11 @@ export default function BookingDetail() {
   const [editing, setEditing] = useState(isNew || startEditing);
   const [saving, setSaving] = useState(false);
 
+  // Invoice states for different document types
+  const [rechnungInvoice, setRechnungInvoice] = useState(null);
+  const [neueRechnungInvoice, setNeueRechnungInvoice] = useState(null);
+  const [gutschriftInvoice, setGutschriftInvoice] = useState(null);
+
   // Initialize activeTab from localStorage or default to 'info'
   const getInitialTab = () => {
     if (isNew) return 'info';
@@ -560,13 +565,11 @@ export default function BookingDetail() {
       // Use accommodation-specific rooming list if available
       let accTourists = accommodationRoomingLists[acc.id];
 
-      // IMPORTANT: Filter to only show tourists with room numbers
-      if (accTourists) {
-        accTourists = accTourists.filter(t => t.roomNumber);
-      }
+      // NOTE: Include all tourists (with or without room numbers)
+      // Room numbers are optional - tourists added manually won't have them
 
       // Fallback: filter tourists by hotel name and date overlap if rooming list not loaded
-      if (!accTourists) {
+      if (!accTourists || accTourists.length === 0) {
         accTourists = tourists.filter(t => {
           if (!t.hotelName || !acc.hotel?.name) return false;
 
@@ -877,6 +880,20 @@ export default function BookingDetail() {
     loadData();
   }, [id]);
 
+  // Handle URL parameters for tab navigation
+  useEffect(() => {
+    const urlTab = searchParams.get('tab');
+    const urlDocTab = searchParams.get('docTab');
+
+    if (urlTab) {
+      setActiveTab(urlTab);
+    }
+
+    if (urlDocTab && urlTab === 'documents') {
+      setDocumentsTab(urlDocTab);
+    }
+  }, [searchParams]);
+
   // Load tour services when tab changes
   useEffect(() => {
     if (!isNew && id && activeTab === 'tour-services') {
@@ -1024,6 +1041,7 @@ export default function BookingDetail() {
   // Count tourists by accommodation (Uzbekistan vs Turkmenistan)
   useEffect(() => {
     if (tourists.length > 0) {
+      console.log('🧮 Auto-calculating PAX from', tourists.length, 'tourists');
       // Filter tourists by accommodation
       const uzbekistanTourists = tourists.filter(t => {
         const acc = (t.accommodation || '').toLowerCase();
@@ -1039,24 +1057,30 @@ export default function BookingDetail() {
       const turkmenCount = turkmenistanTourists.length;
       const totalCount = tourists.length;
 
+      console.log(`📊 PAX breakdown: Total=${totalCount}, UZB=${uzbekCount}, TKM=${turkmenCount}`);
+
       // Only update if values have changed
       if (
         parseInt(formData.paxUzbekistan) !== uzbekCount ||
         parseInt(formData.paxTurkmenistan) !== turkmenCount ||
         parseInt(formData.pax) !== totalCount
       ) {
+        console.log('✅ Updating formData.pax from', formData.pax, 'to', totalCount);
         setFormData(prev => ({
           ...prev,
           paxUzbekistan: uzbekCount.toString(),
           paxTurkmenistan: turkmenCount.toString(),
           pax: totalCount
         }));
+      } else {
+        console.log('ℹ️ PAX values unchanged, skipping update');
       }
     }
   }, [tourists]);
 
   const loadData = async () => {
     try {
+      console.log('📊 BookingDetail loadData called for booking', id);
       const [tourTypesRes, guidesRes, hotelsRes] = await Promise.all([
         tourTypesApi.getAll(),
         guidesApi.getAll(),
@@ -1075,11 +1099,30 @@ export default function BookingDetail() {
           railwaysApi.getAll(id)
         ]);
         const b = bookingRes.data.booking;
+        console.log('📊 Booking loaded:', b.bookingNumber, 'PAX:', b.pax);
+        console.log('👥 Tourists loaded:', touristsRes.data.tourists?.length, 'tourists');
         setBooking(b);
         setBookingRooms(b.bookingRooms || []);
         setAccommodations(accommodationsRes.data.accommodations || []);
         setTourists(touristsRes.data.tourists || []);
         setRailways(railwaysRes.data.railways || []);
+
+        // Load invoices for this booking
+        try {
+          const invoicesRes = await invoicesApi.getAll({ bookingId: id });
+          const invoices = invoicesRes.data.invoices || [];
+
+          // Set invoices by type
+          const rechnung = invoices.find(inv => inv.invoiceType === 'Rechnung');
+          const neueRechnung = invoices.find(inv => inv.invoiceType === 'Neue Rechnung');
+          const gutschrift = invoices.find(inv => inv.invoiceType === 'Gutschrift');
+
+          setRechnungInvoice(rechnung || null);
+          setNeueRechnungInvoice(neueRechnung || null);
+          setGutschriftInvoice(gutschrift || null);
+        } catch (error) {
+          console.error('Error loading invoices:', error);
+        }
 
         // Load guide assignment if exists
         if (b.guide && b.guideId) {
@@ -4404,10 +4447,9 @@ export default function BookingDetail() {
             const accCheckOut = new Date(acc.checkOutDate);
             accCheckOut.setHours(0, 0, 0, 0);
 
-            // Filter tourists for this hotel (by date overlap and room number)
+            // Filter tourists for this hotel (by date overlap)
+            // NOTE: Room number is optional - manually added tourists won't have it
             const accTourists = allTourists.filter(t => {
-              if (!t.roomNumber) return false;
-
               // Check date overlap if tourist has custom dates
               if (t.checkInDate && t.checkOutDate) {
                 const touristCheckIn = new Date(t.checkInDate);
@@ -4594,6 +4636,68 @@ export default function BookingDetail() {
       navigate('/bookings');
     } catch (error) {
       toast.error('Ошибка удаления');
+    }
+  };
+
+  // Update Rechnung Firma and create/update invoice
+  const handleRechnungFirmaChange = async (firma, invoiceType = 'Rechnung') => {
+    try {
+      // Check if invoice already exists for this booking and type
+      const invoicesResponse = await invoicesApi.getAll({
+        bookingId: id,
+        invoiceType: invoiceType
+      });
+      const existingInvoice = invoicesResponse.data.invoices?.[0];
+
+      // If firma is empty, delete the invoice if it exists
+      if (!firma || firma === '') {
+        if (existingInvoice) {
+          await invoicesApi.delete(existingInvoice.id);
+        }
+
+        // Clear state based on invoice type
+        if (invoiceType === 'Rechnung') {
+          setRechnungInvoice(null);
+        } else if (invoiceType === 'Neue Rechnung') {
+          setNeueRechnungInvoice(null);
+        } else if (invoiceType === 'Gutschrift') {
+          setGutschriftInvoice(null);
+        }
+
+        toast.success('Invoice o\'chirildi');
+        return;
+      }
+
+      let updatedInvoice;
+      if (existingInvoice) {
+        // Update existing invoice
+        const response = await invoicesApi.update(existingInvoice.id, { firma });
+        updatedInvoice = response.data.invoice;
+      } else {
+        // Create new invoice only if firma is selected
+        const response = await invoicesApi.create({
+          bookingId: parseInt(id),
+          invoiceType: invoiceType,
+          firma: firma,
+          totalAmount: 0, // TODO: Calculate from document items
+          currency: 'USD'
+        });
+        updatedInvoice = response.data.invoice;
+      }
+
+      // Update state based on invoice type
+      if (invoiceType === 'Rechnung') {
+        setRechnungInvoice(updatedInvoice);
+      } else if (invoiceType === 'Neue Rechnung') {
+        setNeueRechnungInvoice(updatedInvoice);
+      } else if (invoiceType === 'Gutschrift') {
+        setGutschriftInvoice(updatedInvoice);
+      }
+
+      toast.success('Firma saqlandi');
+    } catch (error) {
+      console.error('Error updating firma:', error);
+      toast.error('Xatolik yuz berdi');
     }
   };
 
@@ -7809,27 +7913,89 @@ export default function BookingDetail() {
 
           {/* Rechnung Tab Content */}
           {documentsTab === 'rechnung' && (
-            <RechnungDocument
-              booking={booking}
-              tourists={tourists}
-            />
+            <div className="space-y-4">
+              {/* Firma Selector */}
+              <div className="bg-white p-4 rounded-xl shadow border border-gray-200">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Firma auswählen:
+                </label>
+                <select
+                  value={rechnungInvoice?.firma || ''}
+                  onChange={(e) => handleRechnungFirmaChange(e.target.value, 'Rechnung')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Firma wählen...</option>
+                  <option value="Orient Insight">Orient Insight</option>
+                  <option value="INFUTURESTORM">INFUTURESTORM</option>
+                </select>
+              </div>
+
+              <RechnungDocument
+                booking={booking}
+                tourists={tourists}
+                invoice={rechnungInvoice}
+              />
+            </div>
           )}
 
           {/* Neue Rechnung Tab Content */}
           {documentsTab === 'neue-rechnung' && (
-            <RechnungDocument
-              booking={booking}
-              tourists={tourists}
-              showThreeRows={true}
-            />
+            <div className="space-y-4">
+              {/* Firma Selector */}
+              <div className="bg-white p-4 rounded-xl shadow border border-gray-200">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Firma auswählen:
+                </label>
+                <select
+                  value={neueRechnungInvoice?.firma || ''}
+                  onChange={(e) => handleRechnungFirmaChange(e.target.value, 'Neue Rechnung')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Firma wählen...</option>
+                  <option value="Orient Insight">Orient Insight</option>
+                  <option value="INFUTURESTORM">INFUTURESTORM</option>
+                </select>
+              </div>
+
+              <RechnungDocument
+                booking={booking}
+                tourists={tourists}
+                showThreeRows={true}
+                invoice={neueRechnungInvoice}
+                invoiceType="Neue Rechnung"
+                previousInvoiceNumber={rechnungInvoice?.invoiceNumber || ''}
+              />
+            </div>
           )}
 
           {/* Gutschrift Tab Content */}
           {documentsTab === 'gutschrift' && (
-            <GutschriftDocument
-              booking={booking}
-              tourists={tourists}
-            />
+            <div className="space-y-4">
+              {/* Firma Selector */}
+              <div className="bg-white p-4 rounded-xl shadow border border-gray-200">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Firma auswählen:
+                </label>
+                <select
+                  value={gutschriftInvoice?.firma || ''}
+                  onChange={(e) => handleRechnungFirmaChange(e.target.value, 'Gutschrift')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Firma wählen...</option>
+                  <option value="Orient Insight">Orient Insight</option>
+                  <option value="INFUTURESTORM">INFUTURESTORM</option>
+                </select>
+              </div>
+
+              <RechnungDocument
+                booking={booking}
+                tourists={tourists}
+                showThreeRows={true}
+                invoice={gutschriftInvoice}
+                invoiceType="Gutschrift"
+                previousInvoiceNumber={rechnungInvoice?.invoiceNumber || ''}
+              />
+            </div>
           )}
         </div>
       )}
@@ -12281,9 +12447,9 @@ export default function BookingDetail() {
               {/* Statistics Cards */}
               {(() => {
                 // Calculate statistics from tourists
-                // IMPORTANT: Only count tourists with room numbers (from rooming list PDF)
-                const touristsWithRooms = tourists.filter(t => t.roomNumber);
-                const totalGuests = touristsWithRooms.length;
+                // Include ALL tourists (with or without room numbers)
+                const touristsWithRooms = tourists; // Use all tourists, not just those with roomNumbers
+                const totalGuests = tourists.length;
 
                 // Count unique rooms by type
                 const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
@@ -12348,13 +12514,13 @@ export default function BookingDetail() {
                 roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
                 roomCounts.SNGL += touristsWithoutRoom.SNGL;
 
-                // Count by placement (only tourists with room numbers)
-                const uzbekCount = touristsWithRooms.filter(t => {
+                // Count by placement (all tourists)
+                const uzbekCount = tourists.filter(t => {
                   const acc = (t.accommodation || '').toLowerCase();
                   return acc.includes('uzbek') || acc.includes('узбек');
                 }).length;
 
-                const turkmCount = touristsWithRooms.filter(t => {
+                const turkmCount = tourists.filter(t => {
                   const acc = (t.accommodation || '').toLowerCase();
                   return acc.includes('turkmen') || acc.includes('туркмен');
                 }).length;
@@ -12517,10 +12683,8 @@ export default function BookingDetail() {
                               // Use accommodation-specific rooming list if available
                               let accTourists = accommodationRoomingLists[acc.id];
 
-                              // IMPORTANT: Filter to only show tourists with room numbers
-                              if (accTourists) {
-                                accTourists = accTourists.filter(t => t.roomNumber);
-                              }
+                              // NOTE: Include all tourists (with or without room numbers)
+                              // Room numbers are optional - manually added tourists won't have them
 
                               // Debug log
                               console.log(`\n🏨 [${acc.hotel?.name} ID:${acc.id}]`);
@@ -12532,7 +12696,7 @@ export default function BookingDetail() {
                               }
 
                               // Fallback: filter tourists by hotel name and date overlap if rooming list not loaded
-                              if (!accTourists) {
+                              if (!accTourists || accTourists.length === 0) {
                                 console.log(`  → Using fallback filtering`);
                                 accTourists = tourists.filter(t => {
                                   if (!t.hotelName || !acc.hotel?.name) return false;
