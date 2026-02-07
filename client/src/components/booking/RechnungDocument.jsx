@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import api, { invoicesApi } from '../../services/api';
 
-const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0 }) => {
+const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0 }) => {
   const [roomingListData, setRoomingListData] = useState(null);
   const [loading, setLoading] = useState(true);
   const lockedInvoiceIdRef = React.useRef(null); // Track which invoice ID is locked
@@ -445,7 +445,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [rechnungNr, setRechnungNr] = useState(invoice?.invoiceNumber || '11/25');
   const [bezahlteRechnungNr, setBezahlteRechnungNr] = useState(previousInvoiceNumber); // Bereits bezahlte Rechnung Nr.
-  const [bezahlteRechnung, setBezahlteRechnung] = useState(0);
+  const [bezahlteRechnung, setBezahlteRechnung] = useState(previousInvoiceAmount); // Use prop value initially
   const [manualInvoiceNr, setManualInvoiceNr] = useState(previousInvoiceNumber); // Manual invoice number for Gutschrift
 
   // Update rechnungNr when invoice changes
@@ -469,37 +469,16 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
     }
   }, [previousInvoiceNumber, invoiceType]);
 
-  // Fetch already paid invoice amount when bezahlteRechnungNr changes
+  // Update bezahlteRechnung when previousInvoiceAmount prop changes
   useEffect(() => {
-    const fetchBezahlteRechnung = async () => {
-      if (!bezahlteRechnungNr || bezahlteRechnungNr.trim() === '') {
-        setBezahlteRechnung(0);
-        return;
-      }
-
-      try {
-        // Fetch invoice by invoice number
-        const response = await invoicesApi.getAll({ invoiceNumber: bezahlteRechnungNr.trim() });
-        const invoices = response.data.invoices || [];
-
-        if (invoices.length > 0) {
-          const foundInvoice = invoices[0];
-          console.log('✅ Found already paid invoice:', foundInvoice);
-          setBezahlteRechnung(foundInvoice.totalAmount || 0);
-        } else {
-          console.log('⚠️ No invoice found with number:', bezahlteRechnungNr);
-          setBezahlteRechnung(0);
-        }
-      } catch (error) {
-        console.error('❌ Error fetching already paid invoice:', error);
-        setBezahlteRechnung(0);
-      }
-    };
-
-    // Debounce to avoid too many API calls
-    const timer = setTimeout(fetchBezahlteRechnung, 500);
-    return () => clearTimeout(timer);
-  }, [bezahlteRechnungNr]);
+    // If previousInvoiceAmount prop is provided (from parent), use it directly
+    if (previousInvoiceAmount > 0) {
+      console.log('✅ Using previousInvoiceAmount from prop:', previousInvoiceAmount);
+      setBezahlteRechnung(previousInvoiceAmount);
+    } else if (!bezahlteRechnungNr || bezahlteRechnungNr.trim() === '') {
+      setBezahlteRechnung(0);
+    }
+  }, [previousInvoiceAmount, bezahlteRechnungNr]);
 
   // Update invoice items when booking, tourists, or rooming list changes
   // CRITICAL: If firma is selected, invoice is LOCKED - use saved items, don't recalculate
