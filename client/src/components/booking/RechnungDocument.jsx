@@ -1305,6 +1305,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         <td className="border border-gray-300 px-4 py-3 text-gray-900 text-sm">
                           Bereits bezahlte Rechnung Nr.{' '}
                           <input
+                            id="bezahlte-rechnung-nr"
                             type="text"
                             value={bezahlteRechnungNr}
                             onChange={(e) => setBezahlteRechnungNr(e.target.value)}
@@ -1315,10 +1316,28 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3 text-right font-semibold text-gray-900 bg-yellow-100">
-                          {formatNumber(bezahlteRechnung)}
+                          <input
+                            id="bezahlte-rechnung-amount"
+                            type="number"
+                            value={bezahlteRechnung}
+                            onChange={(e) => setBezahlteRechnung(parseFloat(e.target.value) || 0)}
+                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-yellow-50 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
+                            title="Click to edit amount"
+                          />
                         </td>
                         <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">USD</td>
-                        <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
+                        <td className="border border-gray-300 px-4 py-3 text-center print:hidden">
+                          <button
+                            onClick={() => {
+                              const input = document.getElementById('bezahlte-rechnung-nr');
+                              if (input) input.focus();
+                            }}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title="Edit invoice number"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                        </td>
                       </tr>
 
                       {/* Final amount row */}
@@ -1335,7 +1354,18 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
                           USD
                         </td>
-                        <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
+                        <td className="border border-gray-300 px-4 py-3 text-center print:hidden">
+                          <button
+                            onClick={() => {
+                              const input = document.getElementById('bezahlte-rechnung-amount');
+                              if (input) input.focus();
+                            }}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title="Edit amount"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                        </td>
                       </tr>
                     </>
                   ) : (
