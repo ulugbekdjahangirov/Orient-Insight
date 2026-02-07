@@ -1130,14 +1130,14 @@ export default function BookingDetail() {
           const allInvoicesRes = await invoicesApi.getAll({});
           const allInvoices = allInvoicesRes.data.invoices || [];
 
-          // Calculate sequential numbers based on global list (sorted by createdAt descending)
+          // Calculate sequential numbers based on global list (sorted by createdAt ascending - oldest first)
           const rechnungTypeInvoices = allInvoices
             .filter(inv => inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung')
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Descending (newest first)
+            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
 
           const gutschriftTypeInvoices = allInvoices
             .filter(inv => inv.invoiceType === 'Gutschrift')
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
 
           // Find index in sorted list (1-based for display)
           const rechnungSeqNumber = rechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === rechnung.id) + 1 : 0;
@@ -4731,11 +4731,11 @@ export default function BookingDetail() {
 
       const rechnungTypeInvoices = allInvoices
         .filter(inv => inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung')
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
 
       const gutschriftTypeInvoices = allInvoices
         .filter(inv => inv.invoiceType === 'Gutschrift')
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
 
       if (invoiceType === 'Rechnung' && updatedInvoice) {
         const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
