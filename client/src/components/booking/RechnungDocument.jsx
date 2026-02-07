@@ -7,6 +7,26 @@ import autoTable from 'jspdf-autotable';
 import api, { invoicesApi } from '../../services/api';
 
 const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0 }) => {
+  // Format number with space as thousands separator (1234 → 1 234)
+  const formatNumber = (num) => {
+    if (num === null || num === undefined || num === '') return '';
+    const number = parseFloat(num);
+    if (isNaN(number)) return num;
+
+    // Remove decimals if they are .00
+    const rounded = Number.isInteger(number) ? number : number.toFixed(2);
+    const [integer, decimal] = rounded.toString().split('.');
+
+    // Add space every 3 digits from right
+    const formattedInteger = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+    // Return without decimals if they are .00
+    if (decimal && decimal !== '00') {
+      return `${formattedInteger}.${decimal}`;
+    }
+    return formattedInteger;
+  };
+
   const [roomingListData, setRoomingListData] = useState(null);
   const [loading, setLoading] = useState(true);
   const lockedInvoiceIdRef = React.useRef(null); // Track which invoice ID is locked
@@ -1232,7 +1252,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         />
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-base">
-                        {item.einzelpreis * item.anzahl}
+                        {formatNumber(item.einzelpreis * item.anzahl)}
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-semibold">{item.currency}</td>
                       <td className="border border-gray-300 px-4 py-3 text-center print:hidden">
@@ -1271,7 +1291,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
-                          {calculateTotal()}
+                          {formatNumber(calculateTotal())}
                         </td>
                         <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
                           USD
@@ -1295,7 +1315,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3 text-right font-semibold text-gray-900 bg-yellow-100">
-                          {bezahlteRechnung > 0 ? bezahlteRechnung.toFixed(2) : '0'}
+                          {formatNumber(bezahlteRechnung)}
                         </td>
                         <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">USD</td>
                         <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
@@ -1310,7 +1330,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
-                          {calculateGesamtbetrag()}
+                          {formatNumber(calculateGesamtbetrag())}
                         </td>
                         <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
                           USD
@@ -1329,7 +1349,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3"></td>
                         <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
-                          {calculateTotal()}
+                          {formatNumber(calculateTotal())}
                         </td>
                         <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
                           USD
