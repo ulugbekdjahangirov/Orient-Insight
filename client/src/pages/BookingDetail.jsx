@@ -7366,6 +7366,28 @@ export default function BookingDetail() {
                 <DollarSign className="w-5 h-5" />
                 Rechnung
               </button>
+              <button
+                onClick={() => setDocumentsTab('neue-rechnung')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  documentsTab === 'neue-rechnung'
+                    ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-600 hover:via-blue-600 hover:to-indigo-600 text-white shadow-cyan-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                Neue Rechnung
+              </button>
+              <button
+                onClick={() => setDocumentsTab('gutschrift')}
+                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  documentsTab === 'gutschrift'
+                    ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500 hover:from-emerald-600 hover:via-green-600 hover:to-lime-600 text-white shadow-emerald-500/30 scale-110 -translate-y-0.5'
+                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                Gutschrift
+              </button>
             </nav>
           </div>
 
@@ -7790,6 +7812,50 @@ export default function BookingDetail() {
               booking={booking}
               tourists={tourists}
             />
+          )}
+
+          {/* Neue Rechnung Tab Content */}
+          {documentsTab === 'neue-rechnung' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500"></div>
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-cyan-400/10 to-indigo-400/10 rounded-full blur-3xl"></div>
+
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                  Neue Rechnung
+                </h2>
+              </div>
+
+              <div className="text-center py-20">
+                <FileText className="w-24 h-24 mx-auto text-cyan-300 mb-4" />
+                <p className="text-gray-500 text-lg">Neue Rechnung modul tez orada qo'shiladi...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Gutschrift Tab Content */}
+          {documentsTab === 'gutschrift' && (
+            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-emerald-100 p-8">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500"></div>
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-emerald-400/10 to-lime-400/10 rounded-full blur-3xl"></div>
+
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-green-600 to-lime-600 bg-clip-text text-transparent flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-lime-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                  Gutschrift
+                </h2>
+              </div>
+
+              <div className="text-center py-20">
+                <FileText className="w-24 h-24 mx-auto text-emerald-300 mb-4" />
+                <p className="text-gray-500 text-lg">Gutschrift modul tez orada qo'shiladi...</p>
+              </div>
+            </div>
           )}
         </div>
       )}
