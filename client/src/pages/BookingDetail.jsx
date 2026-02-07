@@ -7997,7 +7997,7 @@ export default function BookingDetail() {
                 showThreeRows={true}
                 invoice={neueRechnungInvoice}
                 invoiceType="Neue Rechnung"
-                previousInvoiceNumber={rechnungInvoice?.invoiceNumber || ''}
+                previousInvoiceNumber={rechnungSequentialNumber > 0 ? rechnungSequentialNumber.toString() : ''}
                 sequentialNumber={neueRechnungSequentialNumber}
               />
             </div>
@@ -8028,7 +8028,7 @@ export default function BookingDetail() {
                 showThreeRows={true}
                 invoice={gutschriftInvoice}
                 invoiceType="Gutschrift"
-                previousInvoiceNumber={rechnungInvoice?.invoiceNumber || ''}
+                previousInvoiceNumber={rechnungSequentialNumber > 0 ? rechnungSequentialNumber.toString() : ''}
               />
             </div>
           )}
