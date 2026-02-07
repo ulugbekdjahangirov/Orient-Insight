@@ -5,7 +5,7 @@ import { invoicesApi } from '../services/api';
 import { toast } from 'react-hot-toast';
 
 const modules = [
-  { id: 'rechnung', name: 'Rechnung', color: 'amber', icon: FileText },
+  { id: 'rechnung', name: 'Invoice', color: 'amber', icon: FileText },
   { id: 'gutschrift', name: 'Gutschrift', color: 'emerald', icon: Receipt },
   { id: 'orient', name: 'Orient', color: 'blue', icon: Building },
   { id: 'infuturestorm', name: 'INFUTURESTORM', color: 'orange', icon: Globe },
@@ -255,10 +255,10 @@ export default function Rechnung() {
             </div>
             <div>
               <h1 className={`text-4xl font-bold bg-gradient-to-r ${colorClasses[activeModuleData?.color || 'amber'].text} bg-clip-text text-transparent`}>
-                Rechnung - {activeModuleData?.name}
+                Invoice - {activeModuleData?.name}
               </h1>
               <p className="text-gray-600 mt-1">
-                Rechnungsverwaltung und Übersicht
+                Invoice Management and Overview
               </p>
             </div>
           </div>

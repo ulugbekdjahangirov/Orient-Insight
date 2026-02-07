@@ -28,7 +28,7 @@ const navItems = [
   { path: '/hotels', icon: Building2, label: 'Hotels' },
   { path: '/opex', icon: Wallet, label: 'OPEX' },
   { path: '/price', icon: DollarSign, label: 'Price' },
-  { path: '/rechnung', icon: FileText, label: 'Rechnung' },
+  { path: '/rechnung', icon: FileText, label: 'Invoice' },
   { path: '/email-imports', icon: Mail, label: 'Email Imports' },
 ];
 
