@@ -45,6 +45,7 @@ import CostSummary from '../components/booking/CostSummary';
 import HotelAccommodationForm from '../components/booking/HotelAccommodationForm';
 import HotellisteDocument from '../components/booking/HotellisteDocument';
 import RechnungDocument from '../components/booking/RechnungDocument';
+import GutschriftDocument from '../components/booking/GutschriftDocument';
 
 const statusLabels = {
   PENDING: 'Pending',
@@ -7824,7 +7825,7 @@ export default function BookingDetail() {
 
           {/* Gutschrift Tab Content */}
           {documentsTab === 'gutschrift' && (
-            <RechnungDocument
+            <GutschriftDocument
               booking={booking}
               tourists={tourists}
             />
