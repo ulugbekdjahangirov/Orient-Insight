@@ -967,7 +967,7 @@ const RechnungDocument = ({ booking, tourists }) => {
 
             {/* Title */}
             <h1 className="text-5xl font-bold text-center mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">
-              Rechnung
+              Neue Rechnung
             </h1>
 
             {/* Tour description */}
