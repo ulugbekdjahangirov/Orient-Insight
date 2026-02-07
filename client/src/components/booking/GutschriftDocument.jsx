@@ -328,8 +328,8 @@ const GutschriftDocument = ({ booking, tourists }) => {
               </span>
             </p>
 
-            {/* Gutschrift table */}
-            <div className="shadow-lg rounded-lg overflow-hidden mb-0">
+            {/* Gutschrift table with summary rows */}
+            <div className="shadow-lg rounded-lg overflow-hidden">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-emerald-100">
@@ -343,6 +343,7 @@ const GutschriftDocument = ({ booking, tourists }) => {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Item rows */}
                   {gutschriftItems.map((item, index) => (
                     <tr key={item.id} className="bg-white hover:bg-gray-50 transition-colors duration-150">
                       <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-medium">{index + 1}</td>
@@ -384,32 +385,25 @@ const GutschriftDocument = ({ booking, tourists }) => {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
 
-            {/* Summary rows */}
-            <div className="shadow-lg rounded-lg overflow-hidden">
-              <table className="w-full border-collapse">
-                <tbody>
-                  {/* TOTAL */}
+                  {/* TOTAL row */}
                   <tr className="bg-blue-100">
-                    <td className="border border-gray-300 px-4 py-3 text-center" style={{ width: '5%' }}></td>
-                    <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900 text-base" style={{ width: '40%' }}>
+                    <td className="border border-gray-300 px-4 py-3 text-center"></td>
+                    <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900 text-base">
                       TOTAL
                     </td>
-                    <td className="border border-gray-300 px-4 py-3" style={{ width: '15%' }}></td>
-                    <td className="border border-gray-300 px-4 py-3" style={{ width: '10%' }}></td>
-                    <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg" style={{ width: '20%' }}>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
                       {calculateTotal()}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900" style={{ width: '10%' }}>
+                    <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
                       USD
                     </td>
                     <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
                   </tr>
 
-                  {/* Already paid invoice */}
+                  {/* Already paid invoice row */}
                   <tr className="bg-white">
                     <td className="border border-gray-300 px-4 py-3 text-center"></td>
                     <td className="border border-gray-300 px-4 py-3 text-gray-900 text-sm">
@@ -435,7 +429,7 @@ const GutschriftDocument = ({ booking, tourists }) => {
                     <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
                   </tr>
 
-                  {/* Final amount */}
+                  {/* Final amount row */}
                   <tr className="bg-emerald-100">
                     <td className="border border-gray-300 px-4 py-3 text-center"></td>
                     <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900 text-base">
