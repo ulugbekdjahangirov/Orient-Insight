@@ -617,8 +617,13 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
     }, 0);
   };
 
-  // Calculate final amount (Total - Already Paid)
+  // Calculate final amount
+  // Neue Rechnung: Total - Already Paid
+  // Gutschrift: Already Paid - Total (reversed, shows negative for credit)
   const calculateGesamtbetrag = () => {
+    if (invoiceType === 'Gutschrift') {
+      return bezahlteRechnung - calculateTotal();
+    }
     return calculateTotal() - bezahlteRechnung;
   };
 
