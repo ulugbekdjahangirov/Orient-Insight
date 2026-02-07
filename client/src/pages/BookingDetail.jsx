@@ -1130,39 +1130,24 @@ export default function BookingDetail() {
           const allInvoicesRes = await invoicesApi.getAll({});
           const allInvoices = allInvoicesRes.data.invoices || [];
 
-          console.log('🔍 All invoices:', allInvoices);
-
-          // Calculate sequential numbers based on global list (matching Rechnung module logic)
-          // Rechnung module only shows invoices with firma selected
+          // EXACT logic from Rechnung.jsx:
+          // Filter: Rechnung/Neue Rechnung + firma selected
+          // Sort: by ID ascending (creation order)
           const rechnungTypeInvoices = allInvoices
             .filter(inv =>
               (inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung') &&
-              inv.firma // Only invoices with firma selected
+              inv.firma
             )
-            .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber)); // Sort by invoiceNumber ascending
-
-          console.log('📋 Filtered Rechnung invoices:', rechnungTypeInvoices.map(inv => ({
-            id: inv.id,
-            invoiceNumber: inv.invoiceNumber,
-            firma: inv.firma,
-            bookingNumber: inv.booking?.bookingNumber,
-            invoiceType: inv.invoiceType
-          })));
+            .sort((a, b) => a.id - b.id); // Sort by ID (creation order)
 
           const gutschriftTypeInvoices = allInvoices
             .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
-            .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber));
+            .sort((a, b) => a.id - b.id);
 
           // Find index in sorted list (1-based for display)
           const rechnungSeqNumber = rechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === rechnung.id) + 1 : 0;
           const neueRechnungSeqNumber = neueRechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === neueRechnung.id) + 1 : 0;
           const gutschriftSeqNumber = gutschrift ? gutschriftTypeInvoices.findIndex(inv => inv.id === gutschrift.id) + 1 : 0;
-
-          console.log('🔢 Sequential numbers calculated:', {
-            rechnung: { id: rechnung?.id, seqNum: rechnungSeqNumber },
-            neueRechnung: { id: neueRechnung?.id, seqNum: neueRechnungSeqNumber },
-            gutschrift: { id: gutschrift?.id, seqNum: gutschriftSeqNumber }
-          });
 
           // Store sequential numbers
           setRechnungSequentialNumber(rechnungSeqNumber);
@@ -4752,13 +4737,13 @@ export default function BookingDetail() {
       const rechnungTypeInvoices = allInvoices
         .filter(inv =>
           (inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung') &&
-          inv.firma // Only invoices with firma selected
+          inv.firma
         )
-        .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber));
+        .sort((a, b) => a.id - b.id); // Sort by ID (creation order)
 
       const gutschriftTypeInvoices = allInvoices
         .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
-        .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber));
+        .sort((a, b) => a.id - b.id);
 
       if (invoiceType === 'Rechnung' && updatedInvoice) {
         const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
