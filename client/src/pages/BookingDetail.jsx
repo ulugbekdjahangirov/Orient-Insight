@@ -7820,6 +7820,7 @@ export default function BookingDetail() {
             <RechnungDocument
               booking={booking}
               tourists={tourists}
+              showThreeRows={true}
             />
           )}
 
