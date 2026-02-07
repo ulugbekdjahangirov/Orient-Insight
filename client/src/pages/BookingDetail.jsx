@@ -1130,14 +1130,18 @@ export default function BookingDetail() {
           const allInvoicesRes = await invoicesApi.getAll({});
           const allInvoices = allInvoicesRes.data.invoices || [];
 
-          // Calculate sequential numbers based on global list (sorted by createdAt ascending - oldest first)
+          // Calculate sequential numbers based on global list (matching Rechnung module logic)
+          // Rechnung module only shows invoices with firma selected
           const rechnungTypeInvoices = allInvoices
-            .filter(inv => inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung')
-            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
+            .filter(inv =>
+              (inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung') &&
+              inv.firma // Only invoices with firma selected
+            )
+            .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber)); // Sort by invoiceNumber ascending
 
           const gutschriftTypeInvoices = allInvoices
-            .filter(inv => inv.invoiceType === 'Gutschrift')
-            .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
+            .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
+            .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber));
 
           // Find index in sorted list (1-based for display)
           const rechnungSeqNumber = rechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === rechnung.id) + 1 : 0;
@@ -4730,12 +4734,15 @@ export default function BookingDetail() {
       const allInvoices = allInvoicesRes.data.invoices || [];
 
       const rechnungTypeInvoices = allInvoices
-        .filter(inv => inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung')
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
+        .filter(inv =>
+          (inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung') &&
+          inv.firma // Only invoices with firma selected
+        )
+        .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber));
 
       const gutschriftTypeInvoices = allInvoices
-        .filter(inv => inv.invoiceType === 'Gutschrift')
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Ascending (oldest first)
+        .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
+        .sort((a, b) => parseInt(a.invoiceNumber) - parseInt(b.invoiceNumber));
 
       if (invoiceType === 'Rechnung' && updatedInvoice) {
         const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
