@@ -356,6 +356,7 @@ export default function BookingDetail() {
   // Sequential numbers for Rechnung module display
   const [rechnungSequentialNumber, setRechnungSequentialNumber] = useState(0);
   const [neueRechnungSequentialNumber, setNeueRechnungSequentialNumber] = useState(0);
+  const [gutschriftSequentialNumber, setGutschriftSequentialNumber] = useState(0);
 
   // Initialize activeTab from localStorage or default to 'info'
   const getInitialTab = () => {
@@ -1129,6 +1130,13 @@ export default function BookingDetail() {
           const rechnungSeqNumber = rechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === rechnung.id) + 1 : 0;
           const neueRechnungSeqNumber = neueRechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === neueRechnung.id) + 1 : 0;
 
+          // Calculate sequential number for Gutschrift (separate sequence)
+          const gutschriftTypeInvoices = invoices
+            .filter(inv => inv.invoiceType === 'Gutschrift')
+            .sort((a, b) => a.id - b.id);
+
+          const gutschriftSeqNumber = gutschrift ? gutschriftTypeInvoices.findIndex(inv => inv.id === gutschrift.id) + 1 : 0;
+
           setRechnungInvoice(rechnung || null);
           setNeueRechnungInvoice(neueRechnung || null);
           setGutschriftInvoice(gutschrift || null);
@@ -1136,6 +1144,7 @@ export default function BookingDetail() {
           // Store sequential numbers
           setRechnungSequentialNumber(rechnungSeqNumber);
           setNeueRechnungSequentialNumber(neueRechnungSeqNumber);
+          setGutschriftSequentialNumber(gutschriftSeqNumber);
         } catch (error) {
           console.error('Error loading invoices:', error);
         }
@@ -4680,6 +4689,7 @@ export default function BookingDetail() {
           setNeueRechnungSequentialNumber(0);
         } else if (invoiceType === 'Gutschrift') {
           setGutschriftInvoice(null);
+          setGutschriftSequentialNumber(0);
         }
 
         toast.success('Invoice o\'chirildi');
@@ -4712,11 +4722,18 @@ export default function BookingDetail() {
         setGutschriftInvoice(updatedInvoice);
       }
 
-      // Recalculate sequential numbers for all Rechnung/Neue Rechnung invoices
+      // Recalculate sequential numbers for all invoices
       const allInvoicesRes = await invoicesApi.getAll({ bookingId: id });
       const allInvoices = allInvoicesRes.data.invoices || [];
+
+      // Rechnung/Neue Rechnung sequence
       const rechnungTypeInvoices = allInvoices
         .filter(inv => inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung')
+        .sort((a, b) => a.id - b.id);
+
+      // Gutschrift sequence (separate)
+      const gutschriftTypeInvoices = allInvoices
+        .filter(inv => inv.invoiceType === 'Gutschrift')
         .sort((a, b) => a.id - b.id);
 
       if (invoiceType === 'Rechnung' && updatedInvoice) {
@@ -4725,6 +4742,9 @@ export default function BookingDetail() {
       } else if (invoiceType === 'Neue Rechnung' && updatedInvoice) {
         const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
         setNeueRechnungSequentialNumber(seqNum);
+      } else if (invoiceType === 'Gutschrift' && updatedInvoice) {
+        const seqNum = gutschriftTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
+        setGutschriftSequentialNumber(seqNum);
       }
 
       toast.success('Firma saqlandi');
@@ -8031,6 +8051,7 @@ export default function BookingDetail() {
                 invoiceType="Gutschrift"
                 previousInvoiceNumber={rechnungSequentialNumber > 0 ? rechnungSequentialNumber.toString() : ''}
                 previousInvoiceAmount={rechnungInvoice?.totalAmount || 0}
+                sequentialNumber={gutschriftSequentialNumber}
               />
             </div>
           )}
