@@ -987,72 +987,73 @@ const RechnungDocument = ({ booking, tourists }) => {
               </div>
             </div>
 
-            {/* Invoice table */}
-            <div className="shadow-xl rounded-xl overflow-hidden mb-4">
+            {/* Invoice table with total row */}
+            <div className="shadow-lg rounded-lg overflow-hidden">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="bg-gradient-to-r from-amber-100 via-orange-100 to-amber-100">
-                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">№</th>
-                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Beschreibung</th>
-                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Einzelpreis</th>
-                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Anzahl</th>
-                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Gesamtpreis</th>
-                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm">Währung</th>
-                    <th className="border-2 border-gray-300 px-4 py-4 text-center font-bold text-gray-800 text-sm print:hidden">Actions</th>
+                  <tr className="bg-amber-100">
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">№</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Beschreibung</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Einzelpreis</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Anzahl</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Gesamtpreis</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Währung</th>
+                    <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm print:hidden">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Item rows */}
                   {invoiceItems.map((item, index) => (
-                    <tr key={item.id} className="bg-white hover:bg-amber-50 transition-colors duration-150">
-                      <td className="border-2 border-gray-300 px-4 py-4 text-center text-gray-900 font-medium">{index + 1}</td>
-                      <td className="border-2 border-gray-300 px-4 py-4 text-gray-900">
+                    <tr key={item.id} className="bg-white hover:bg-gray-50 transition-colors duration-150">
+                      <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-medium">{index + 1}</td>
+                      <td className="border border-gray-300 px-4 py-3 text-gray-900">
                         <input
                           id={`desc-${item.id}`}
                           type="text"
                           value={item.description}
                           onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                          className="w-full bg-transparent border-none focus:outline-none focus:bg-amber-50 focus:ring-2 focus:ring-amber-300 rounded px-2 py-1 print:bg-transparent transition-all"
+                          className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all"
                         />
                       </td>
-                      <td className="border-2 border-gray-300 px-4 py-4 text-right text-gray-900">
+                      <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-semibold">
                         <input
                           id={`price-${item.id}`}
                           type="number"
                           value={item.einzelpreis}
                           onChange={(e) => updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
-                          className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-blue-50 focus:ring-2 focus:ring-blue-300 rounded px-2 py-1 print:bg-transparent transition-all font-semibold hover:bg-blue-50 cursor-pointer"
+                          className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
                           title="Click to edit price"
                         />
                       </td>
-                      <td className="border-2 border-gray-300 px-4 py-4 text-center text-gray-900">
+                      <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-semibold">
                         <input
                           id={`quantity-${item.id}`}
                           type="number"
                           value={item.anzahl}
                           onChange={(e) => updateItem(item.id, 'anzahl', parseInt(e.target.value) || 0)}
-                          className="w-full bg-transparent border-none focus:outline-none text-center focus:bg-green-50 focus:ring-2 focus:ring-green-300 rounded px-2 py-1 print:bg-transparent transition-all font-semibold hover:bg-green-50 cursor-pointer"
+                          className="w-full bg-transparent border-none focus:outline-none text-center focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
                           title="Click to edit quantity"
                         />
                       </td>
-                      <td className="border-2 border-gray-300 px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                      <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-base">
                         {item.einzelpreis * item.anzahl}
                       </td>
-                      <td className="border-2 border-gray-300 px-4 py-4 text-center text-gray-900 font-semibold">{item.currency}</td>
-                      <td className="border-2 border-gray-300 px-4 py-4 text-center print:hidden">
+                      <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-semibold">{item.currency}</td>
+                      <td className="border border-gray-300 px-4 py-3 text-center print:hidden">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => {
                               const input = document.getElementById(`desc-${item.id}`);
                               if (input) input.focus();
                             }}
-                            className="text-blue-600 hover:text-white hover:bg-blue-600 p-2 rounded-lg transition-all duration-200 transform hover:scale-110"
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
                             title="Edit description"
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button
                             onClick={() => deleteItem(item.id)}
-                            className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all duration-200 transform hover:scale-110"
+                            className="text-red-500 hover:text-red-700 transition-colors"
                             title="Delete item"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -1061,28 +1062,22 @@ const RechnungDocument = ({ booking, tourists }) => {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
 
-            {/* Total row */}
-            <div className="shadow-xl rounded-xl overflow-hidden">
-              <table className="w-full border-collapse">
-                <tbody>
-                  <tr className="bg-gradient-to-r from-emerald-100 via-green-100 to-emerald-100">
-                    <td className="border-2 border-gray-300 px-4 py-5 text-center" style={{ width: '5%' }}></td>
-                    <td className="border-2 border-gray-300 px-4 py-5 font-bold text-gray-900 text-lg" style={{ width: '40%' }}>
+                  {/* Total row */}
+                  <tr className="bg-emerald-100">
+                    <td className="border border-gray-300 px-4 py-3 text-center"></td>
+                    <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900 text-base">
                       Gesamtbetrag:
                     </td>
-                    <td className="border-2 border-gray-300 px-4 py-5" style={{ width: '15%' }}></td>
-                    <td className="border-2 border-gray-300 px-4 py-5" style={{ width: '10%' }}></td>
-                    <td className="border-2 border-gray-300 px-4 py-5 text-right font-bold text-emerald-700 text-2xl" style={{ width: '20%' }}>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
                       {calculateTotal()}
                     </td>
-                    <td className="border-2 border-gray-300 px-4 py-5 text-center font-bold text-gray-900 text-lg" style={{ width: '10%' }}>
+                    <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
                       USD
                     </td>
-                    <td className="border-2 border-gray-300 px-4 py-5 print:hidden"></td>
+                    <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
                   </tr>
                 </tbody>
               </table>
