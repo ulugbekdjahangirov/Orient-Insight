@@ -441,6 +441,8 @@ const RechnungDocument = ({ booking, tourists }) => {
   };
 
   const [invoiceItems, setInvoiceItems] = useState([]);
+  const [rechnungNr, setRechnungNr] = useState('11/25');
+  const [bezahlteRechnung, setBezahlteRechnung] = useState(0);
 
   // Update invoice items when booking, tourists, or rooming list changes
   useEffect(() => {
@@ -465,6 +467,11 @@ const RechnungDocument = ({ booking, tourists }) => {
     return invoiceItems.reduce((sum, item) => {
       return sum + (item.einzelpreis * item.anzahl);
     }, 0);
+  };
+
+  // Calculate final amount (Total - Already Paid)
+  const calculateGesamtbetrag = () => {
+    return calculateTotal() - bezahlteRechnung;
   };
 
   // Get tour description
@@ -1063,7 +1070,50 @@ const RechnungDocument = ({ booking, tourists }) => {
                     </tr>
                   ))}
 
-                  {/* Total row */}
+                  {/* TOTAL row */}
+                  <tr className="bg-blue-100">
+                    <td className="border border-gray-300 px-4 py-3 text-center"></td>
+                    <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900 text-base">
+                      TOTAL
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
+                      {calculateTotal()}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
+                      USD
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
+                  </tr>
+
+                  {/* Already paid invoice row */}
+                  <tr className="bg-white">
+                    <td className="border border-gray-300 px-4 py-3 text-center"></td>
+                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-sm">
+                      Bereits bezahlte Rechnung Nr.{' '}
+                      <input
+                        type="text"
+                        value={rechnungNr}
+                        onChange={(e) => setRechnungNr(e.target.value)}
+                        className="w-16 border-b border-gray-300 focus:border-emerald-500 outline-none print:border-none font-semibold"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3"></td>
+                    <td className="border border-gray-300 px-4 py-3 text-right font-semibold text-gray-900">
+                      <input
+                        type="number"
+                        value={bezahlteRechnung}
+                        onChange={(e) => setBezahlteRechnung(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-yellow-100 border-none focus:outline-none text-right focus:bg-yellow-200 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">USD</td>
+                    <td className="border border-gray-300 px-4 py-3 print:hidden"></td>
+                  </tr>
+
+                  {/* Final amount row */}
                   <tr className="bg-emerald-100">
                     <td className="border border-gray-300 px-4 py-3 text-center"></td>
                     <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900 text-base">
@@ -1072,7 +1122,7 @@ const RechnungDocument = ({ booking, tourists }) => {
                     <td className="border border-gray-300 px-4 py-3"></td>
                     <td className="border border-gray-300 px-4 py-3"></td>
                     <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
-                      {calculateTotal()}
+                      {calculateGesamtbetrag()}
                     </td>
                     <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">
                       USD
