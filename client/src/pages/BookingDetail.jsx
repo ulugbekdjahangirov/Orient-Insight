@@ -1158,7 +1158,10 @@ export default function BookingDetail() {
         }
 
         // Load guide assignment if exists
-        if (b.guide && b.guideId) {
+        // Priority: mainGuideData (JSON) > guide + guideId (database relation)
+        if (b.mainGuideData) {
+          setMainGuide(b.mainGuideData);
+        } else if (b.guide && b.guideId) {
           const dayRate = b.guide.dayRate || 110;
           const halfDayRate = b.guide.halfDayRate || 55;
           const fullDays = b.guideFullDays || (b.tourType?.code === 'ER' ? 12 : 0);
@@ -2419,7 +2422,20 @@ export default function BookingDetail() {
     // Set the appropriate guide based on type
     if (guideType === 'main') {
       setMainGuide(guideData);
-      toast.success('Main guide assigned successfully');
+
+      // Save main guide to database
+      try {
+        await bookingsApi.update(id, {
+          guideId: manualGuideEntry ? null : selectedGuide,
+          guideFullDays: parseFloat(guideDays.fullDays) || 0,
+          guideHalfDays: parseFloat(guideDays.halfDays) || 0,
+          mainGuideData: guideData
+        });
+        toast.success('Main guide assigned successfully');
+      } catch (error) {
+        console.error('Error saving main guide:', error);
+        toast.error('Failed to save main guide');
+      }
     } else if (guideType === 'second') {
       // When adding second guide, automatically adjust main guide's days
       if (mainGuide) {
@@ -2477,7 +2493,20 @@ export default function BookingDetail() {
   const removeGuide = async (type) => {
     if (type === 'main') {
       setMainGuide(null);
-      toast.success('Main guide removed');
+
+      // Remove main guide from database
+      try {
+        await bookingsApi.update(id, {
+          guideId: null,
+          guideFullDays: 0,
+          guideHalfDays: 0,
+          mainGuideData: null
+        });
+        toast.success('Main guide removed');
+      } catch (error) {
+        console.error('Error removing main guide:', error);
+        toast.error('Failed to remove main guide');
+      }
     } else if (type === 'second') {
       setSecondGuide(null);
 
@@ -8679,7 +8708,9 @@ export default function BookingDetail() {
                         <tbody>
                           <tr className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
                             <td className="px-4 py-3 font-medium text-gray-900 border-r border-blue-200">
-                              {typeof mainGuide.guide === 'string' ? mainGuide.guide : mainGuide.guide.name}
+                              {typeof mainGuide.guide === 'string'
+                                ? mainGuide.guide
+                                : mainGuide.guide?.name || mainGuide.name || '-'}
                             </td>
                             <td className="px-4 py-3 text-center border-r border-blue-200">
                               <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
@@ -8744,7 +8775,9 @@ export default function BookingDetail() {
                         <tbody>
                           <tr className="border-b border-green-200 hover:bg-green-50 transition-colors">
                             <td className="px-4 py-3 font-medium text-gray-900 border-r border-green-200">
-                              {typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide.name}
+                              {typeof secondGuide.guide === 'string'
+                                ? secondGuide.guide
+                                : secondGuide.guide?.name || secondGuide.name || '-'}
                             </td>
                             <td className="px-4 py-3 text-center border-r border-green-200">
                               <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
@@ -8809,7 +8842,9 @@ export default function BookingDetail() {
                         <tbody>
                           <tr className="border-b border-purple-200 hover:bg-purple-50 transition-colors">
                             <td className="px-4 py-3 font-medium text-gray-900 border-r border-purple-200">
-                              {typeof bergreiseleiter.guide === 'string' ? bergreiseleiter.guide : bergreiseleiter.guide.name}
+                              {typeof bergreiseleiter.guide === 'string'
+                                ? bergreiseleiter.guide
+                                : bergreiseleiter.guide?.name || bergreiseleiter.name || '-'}
                             </td>
                             <td className="px-4 py-3 text-center border-r border-purple-200">
                               <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
@@ -11159,11 +11194,12 @@ export default function BookingDetail() {
 
             // 7. Metro - ONLY UZS (from API)
             const metroData = metroVehicles || [];
+            const metroPax = pax + 1; // +1 for guide (tourists + guide)
             const metroUZS = metroData.reduce((sum, metro) => {
               const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
               const priceStr = rawPrice.toString().replace(/\s/g, '');
               const pricePerPerson = parseFloat(priceStr) || 0;
-              return sum + (pricePerPerson * pax);
+              return sum + (pricePerPerson * metroPax);
             }, 0);
 
             // 8. Shows - ONLY UZS (from Opex localStorage)

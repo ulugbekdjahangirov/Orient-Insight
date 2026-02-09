@@ -12,6 +12,7 @@ import Hotels from './pages/Hotels';
 import Opex from './pages/Opex';
 import Price from './pages/Price';
 import Rechnung from './pages/Rechnung';
+import Ausgaben from './pages/Ausgaben';
 import Import from './pages/Import';
 import Users from './pages/Users';
 import GmailSettings from './pages/GmailSettings';
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="opex" element={<Opex />} />
         <Route path="price" element={<Price />} />
         <Route path="rechnung" element={<Rechnung />} />
+        <Route path="ausgaben" element={<Ausgaben />} />
         <Route
           path="import"
           element={
