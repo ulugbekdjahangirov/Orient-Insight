@@ -16,7 +16,8 @@ import {
   Mail,
   Settings,
   DollarSign,
-  FileText
+  FileText,
+  Receipt
 } from 'lucide-react';
 
 const navItems = [
@@ -29,6 +30,7 @@ const navItems = [
   { path: '/opex', icon: Wallet, label: 'OPEX' },
   { path: '/price', icon: DollarSign, label: 'Price' },
   { path: '/rechnung', icon: FileText, label: 'Invoice' },
+  { path: '/ausgaben', icon: Receipt, label: 'Ausgaben' },
   { path: '/email-imports', icon: Mail, label: 'Email Imports' },
 ];
 

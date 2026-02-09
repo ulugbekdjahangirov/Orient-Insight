@@ -720,10 +720,10 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
       yPos += 35;
 
-      // Title "Rechnung" or "Gutschrift"
+      // Title "Rechnung", "Neue Rechnung", or "Gutschrift"
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
+      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung');
       doc.text(pdfTitle, 105, yPos, { align: 'center' });
       yPos += 8;
 
@@ -737,8 +737,11 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       // Rechnung Nr and Datum on same line
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      const displayNumber = sequentialNumber > 0 ? sequentialNumber : (invoice?.invoiceNumber || booking?.bookingNumber || 'N/A');
-      doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
+      // Only show invoice number if firma is selected and sequential number exists
+      const displayNumber = (invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '';
+      if (displayNumber) {
+        doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
+      }
       doc.text(`Datum:`, 155, yPos);
       doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
       yPos += 10;
@@ -790,31 +793,64 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
       yPos = doc.lastAutoTable.finalY;
 
-      // Total row (Gesamtbetrag)
-      autoTable(doc, {
-        startY: yPos,
-        body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
-        theme: 'grid',
-        styles: {
-          fontSize: 10,
-          cellPadding: 2,
-          fontStyle: 'bold',
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        bodyStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0]
-        },
-        columnStyles: {
-          0: { halign: 'center', cellWidth: 12 },
-          1: { halign: 'left', cellWidth: 75 },
-          2: { halign: 'right', cellWidth: 28 },
-          3: { halign: 'center', cellWidth: 20 },
-          4: { halign: 'right', cellWidth: 30 },
-          5: { halign: 'center', cellWidth: 25 }
-        }
-      });
+      // Total rows - conditional based on showThreeRows (Neue Rechnung vs regular Rechnung)
+      if (showThreeRows) {
+        // For Neue Rechnung: show 3 rows (TOTAL, Already Paid, Final Amount)
+        autoTable(doc, {
+          startY: yPos,
+          body: [
+            ['', 'TOTAL:', '', '', calculateTotal().toString(), 'USD'],
+            ['', `Bereits bezahlte Rechnung Nr. ${bezahlteRechnungNr || ''}`, '', '', bezahlteRechnung.toString(), 'USD'],
+            ['', 'Gesamtbetrag:', '', '', calculateGesamtbetrag().toString(), 'USD']
+          ],
+          theme: 'grid',
+          styles: {
+            fontSize: 10,
+            cellPadding: 2,
+            lineWidth: 0.5,
+            lineColor: [0, 0, 0]
+          },
+          bodyStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold'
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 12 },
+            1: { halign: 'left', cellWidth: 75 },
+            2: { halign: 'right', cellWidth: 28 },
+            3: { halign: 'center', cellWidth: 20 },
+            4: { halign: 'right', cellWidth: 30 },
+            5: { halign: 'center', cellWidth: 25 }
+          }
+        });
+      } else {
+        // For regular Rechnung: show single Gesamtbetrag row
+        autoTable(doc, {
+          startY: yPos,
+          body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+          theme: 'grid',
+          styles: {
+            fontSize: 10,
+            cellPadding: 2,
+            fontStyle: 'bold',
+            lineWidth: 0.5,
+            lineColor: [0, 0, 0]
+          },
+          bodyStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0]
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 12 },
+            1: { halign: 'left', cellWidth: 75 },
+            2: { halign: 'right', cellWidth: 28 },
+            3: { halign: 'center', cellWidth: 20 },
+            4: { halign: 'right', cellWidth: 30 },
+            5: { halign: 'center', cellWidth: 25 }
+          }
+        });
+      }
 
       yPos = doc.lastAutoTable.finalY + 10;
 
@@ -943,10 +979,10 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
       yPos += 50;
 
-      // Title "Rechnung" or "Gutschrift"
+      // Title "Rechnung", "Neue Rechnung", or "Gutschrift"
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
+      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung');
       doc.text(pdfTitle, 105, yPos, { align: 'center' });
       yPos += 10;
 
@@ -960,8 +996,11 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       // Rechnung Nr and Datum on same line
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      const displayNumber = sequentialNumber > 0 ? sequentialNumber : (invoice?.invoiceNumber || booking?.bookingNumber || 'N/A');
-      doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
+      // Only show invoice number if firma is selected and sequential number exists
+      const displayNumber = (invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '';
+      if (displayNumber) {
+        doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
+      }
       doc.text(`Datum:`, 155, yPos);
       doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
       yPos += 15;
@@ -1013,31 +1052,64 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
       yPos = doc.lastAutoTable.finalY;
 
-      // Total row (Gesamtbetrag)
-      autoTable(doc, {
-        startY: yPos,
-        body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
-        theme: 'grid',
-        styles: {
-          fontSize: 11,
-          cellPadding: 3,
-          fontStyle: 'bold',
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        bodyStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0]
-        },
-        columnStyles: {
-          0: { halign: 'center', cellWidth: 12 },
-          1: { halign: 'left', cellWidth: 75 },
-          2: { halign: 'right', cellWidth: 28 },
-          3: { halign: 'center', cellWidth: 20 },
-          4: { halign: 'right', cellWidth: 30 },
-          5: { halign: 'center', cellWidth: 25 }
-        }
-      });
+      // Total rows - conditional based on showThreeRows (Neue Rechnung vs regular Rechnung)
+      if (showThreeRows) {
+        // For Neue Rechnung: show 3 rows (TOTAL, Already Paid, Final Amount)
+        autoTable(doc, {
+          startY: yPos,
+          body: [
+            ['', 'TOTAL:', '', '', calculateTotal().toString(), 'USD'],
+            ['', `Bereits bezahlte Rechnung Nr. ${bezahlteRechnungNr || ''}`, '', '', bezahlteRechnung.toString(), 'USD'],
+            ['', 'Gesamtbetrag:', '', '', calculateGesamtbetrag().toString(), 'USD']
+          ],
+          theme: 'grid',
+          styles: {
+            fontSize: 11,
+            cellPadding: 3,
+            lineWidth: 0.5,
+            lineColor: [0, 0, 0]
+          },
+          bodyStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold'
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 12 },
+            1: { halign: 'left', cellWidth: 75 },
+            2: { halign: 'right', cellWidth: 28 },
+            3: { halign: 'center', cellWidth: 20 },
+            4: { halign: 'right', cellWidth: 30 },
+            5: { halign: 'center', cellWidth: 25 }
+          }
+        });
+      } else {
+        // For regular Rechnung: show single Gesamtbetrag row
+        autoTable(doc, {
+          startY: yPos,
+          body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+          theme: 'grid',
+          styles: {
+            fontSize: 11,
+            cellPadding: 3,
+            fontStyle: 'bold',
+            lineWidth: 0.5,
+            lineColor: [0, 0, 0]
+          },
+          bodyStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0]
+          },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 12 },
+            1: { halign: 'left', cellWidth: 75 },
+            2: { halign: 'right', cellWidth: 28 },
+            3: { halign: 'center', cellWidth: 20 },
+            4: { halign: 'right', cellWidth: 30 },
+            5: { halign: 'center', cellWidth: 25 }
+          }
+        });
+      }
 
       yPos = doc.lastAutoTable.finalY + 10;
 
