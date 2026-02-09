@@ -26,6 +26,9 @@ export default function Ausgaben() {
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]); // Store all booking data with calculations
   const [metroVehicles, setMetroVehicles] = useState([]); // Metro data from Opex Transport API
 
+  // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
+  const [cache, setCache] = useState({});
+
   useEffect(() => {
     loadVehiclesFromApi();
   }, []);
@@ -46,8 +49,24 @@ export default function Ausgaben() {
   };
 
   const loadBookingsAndExpenses = async () => {
+    // Check cache first
+    const cacheKey = activeTourType;
+    const needsDetailedData = activeExpenseTab === 'general' || activeExpenseTab === 'hotels';
+
+    if (cache[cacheKey]?.bookings && (!needsDetailedData || cache[cacheKey]?.detailedData)) {
+      console.log(`✅ Using cached data for ${cacheKey}`);
+      setBookings(cache[cacheKey].bookings);
+      if (cache[cacheKey].detailedData) {
+        setBookingsDetailedData(cache[cacheKey].detailedData);
+      }
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
+      console.log(`🔄 Loading fresh data for ${cacheKey}`);
+
       // Load bookings for active tour type
       const response = await bookingsApi.getAll();
       const allBookings = response.data.bookings;
@@ -60,9 +79,19 @@ export default function Ausgaben() {
       setBookings(filteredBookings);
 
       // Load detailed data with hotel calculations for general and hotels tabs
-      if (activeExpenseTab === 'general' || activeExpenseTab === 'hotels') {
-        await loadDetailedBookingsData(filteredBookings);
+      let detailedData = null;
+      if (needsDetailedData) {
+        detailedData = await loadDetailedBookingsData(filteredBookings);
       }
+
+      // Cache the results
+      setCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          bookings: filteredBookings,
+          detailedData: detailedData || prev[cacheKey]?.detailedData || null
+        }
+      }));
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Error loading data');
@@ -84,68 +113,65 @@ export default function Ausgaben() {
         console.error('Error loading metro vehicles:', error);
       }
 
-      const detailedData = [];
-
-      // Load data for each booking - USING SAME LOGIC AS COSTS → TOTAL TAB
-      for (const booking of bookingsData) {
+      // Load data for all bookings in parallel (OPTIMIZED)
+      const detailedData = await Promise.all(bookingsData.map(async (booking) => {
         try {
-          // Load accommodations
-          const accResponse = await bookingsApi.getAccommodations(booking.id);
+          // Load all data in parallel for this booking
+          const [accResponse, touristsResponse, routesResponse, railwaysResponse, flightsResponse, tourServicesResponse] = await Promise.all([
+            bookingsApi.getAccommodations(booking.id).catch(() => ({ data: { accommodations: [] } })),
+            touristsApi.getAll(booking.id).catch(() => ({ data: { tourists: [] } })),
+            routesApi.getAll(booking.id).catch(() => ({ data: { routes: [] } })),
+            railwaysApi.getAll(booking.id).catch(() => ({ data: { railways: [] } })),
+            flightsApi.getAll(booking.id).catch(() => ({ data: { flights: [] } })),
+            tourServicesApi.getAll(booking.id).catch(() => ({ data: { services: [] } }))
+          ]);
+
           const accommodations = accResponse.data.accommodations || [];
-
-          // Load tourists
-          const touristsResponse = await touristsApi.getAll(booking.id);
           const tourists = touristsResponse.data.tourists || [];
+          const routes = routesResponse.data.routes || [];
+          const railways = railwaysResponse.data.railways || [];
+          const flights = flightsResponse.data.flights || [];
+          const tourServices = tourServicesResponse.data.services || [];
 
-          // Load rooming lists
+          // Load rooming lists in parallel
           const accommodationRoomingLists = {};
-          for (const acc of accommodations) {
+          const roomingPromises = accommodations.map(async (acc) => {
             try {
               const roomingResponse = await bookingsApi.getAccommodationRoomingList(booking.id, acc.id);
               accommodationRoomingLists[acc.id] = roomingResponse.data.roomingList || [];
             } catch (err) {
               accommodationRoomingLists[acc.id] = [];
             }
-          }
+          });
+          await Promise.all(roomingPromises);
 
           // Calculate hotels total
           const grandTotalData = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
 
-          // Load routes
-          const routesResponse = await routesApi.getAll(booking.id).catch(() => ({ data: { routes: [] } }));
-          const routes = routesResponse.data.routes || [];
-
-          // Load railways
-          const railwaysResponse = await railwaysApi.getAll(booking.id).catch(() => ({ data: { railways: [] } }));
-          const railways = railwaysResponse.data.railways || [];
-
-          // Load flights
-          const flightsResponse = await flightsApi.getAll(booking.id).catch(() => ({ data: { flights: [] } }));
-          const flights = flightsResponse.data.flights || [];
-
-          // Load tour services (Metro, Eintritt, Shou, Other)
-          const tourServicesResponse = await tourServicesApi.getAll(booking.id).catch(() => ({ data: { services: [] } }));
-          const tourServices = tourServicesResponse.data.services || []; // Backend returns "services" not "tourServices"
-
           // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab
           const expenses = calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
 
-          console.log(`💰 ${booking.bookingNumber || booking.id} expenses:`, expenses);
-
-          detailedData.push({
+          return {
             bookingId: booking.id,
             bookingName: booking.bookingNumber || `${booking.tourType?.code || 'Tour'}-${booking.id}`,
             grandTotalData,
             expenses
-          });
+          };
         } catch (err) {
           console.error(`Error loading data for booking ${booking.id}:`, err);
+          return null;
         }
-      }
+      }));
 
-      setBookingsDetailedData(detailedData);
+      // Filter out null results (failed bookings)
+      const validData = detailedData.filter(d => d !== null);
+      console.log(`✅ Loaded ${validData.length} bookings in parallel`);
+
+      setBookingsDetailedData(validData);
+      return validData;
     } catch (error) {
       console.error('Error loading detailed bookings data:', error);
+      return [];
     }
   };
 
