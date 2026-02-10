@@ -6148,7 +6148,7 @@ export default function BookingDetail() {
           await autoFixRoutesCO();
           break;
         case 'KAS':
-          toast.info('KAS fix logic coming soon', { id: 'auto-fix' });
+          await autoFixRoutesKAS();
           break;
         case 'ZA':
           toast.info('ZA fix logic coming soon', { id: 'auto-fix' });
@@ -6873,6 +6873,209 @@ export default function BookingDetail() {
       console.log('✅ CO routes fixed, saved, and reloaded from database');
     } catch (error) {
       console.error('Error auto-fixing CO routes:', error);
+      throw error; // Re-throw to be caught by main dispatcher
+    }
+  };
+
+  // ==================== KAS FIX FUNCTION ====================
+  const autoFixRoutesKAS = async () => {
+    console.log('🟡 Running KAS fix logic...');
+
+    try {
+      // Reload routes from database
+      const routesRes = await bookingsApi.getRoutes(id);
+      const freshRoutes = routesRes.data.routes || [];
+
+      // Map database routes
+      const freshErRoutes = freshRoutes.map((dbRoute, index) => {
+        const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
+        return {
+          ...existingRoute,
+          id: dbRoute.id,
+          nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
+          sana: dbRoute.date,
+          shahar: dbRoute.city || existingRoute.shahar || '',
+          sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
+          route: dbRoute.routeName || existingRoute.route || '',
+          person: dbRoute.personCount?.toString() || existingRoute.person || '0',
+          transportType: dbRoute.transportType || existingRoute.transportType || '',
+          choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
+          choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
+          price: dbRoute.price?.toString() || existingRoute.price || ''
+        };
+      });
+
+      console.log(`📋 KAS: Reloaded ${freshErRoutes.length} routes from database`);
+      freshErRoutes.forEach((r, i) => {
+        console.log(`  Route ${i+1}: ${r.route} (date: ${r.sana}, city: ${r.shahar})`);
+      });
+
+      // Calculate PAX (KAS groups: all tourists go together, no split)
+      const totalPax = tourists.length;
+      console.log(`🔧 KAS Auto-fixing routes: PAX Total=${totalPax} (no UZB/TKM split)`);
+
+      // Fix each route
+      const fixedRoutes = freshErRoutes.map((route, index) => {
+        let routePax = totalPax; // KAS: all tourists go together
+
+        if (routePax <= 0) {
+          console.log(`  KAS Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
+          return route;
+        }
+
+        const provider = route.choiceTab || getProviderByCity(route.shahar);
+
+        // Get best vehicle for route
+        const vehicle = getBestVehicleForRoute(provider, routePax);
+
+        // Get rate type
+        let rate = '';
+        const routeLower = route.route.toLowerCase();
+        if (routeLower.includes('city tour')) {
+          rate = provider === 'xayrulla' ? 'cityTour' : 'tagRate';
+        } else if (routeLower.includes('dostlik') || routeLower.includes('fergana')) {
+          // Dostlik-Fergana and Fergana-Qoqon use Nosir
+          rate = 'toshkent';
+        } else if (routeLower.includes('airport') || routeLower.includes('pickup') || routeLower.includes('drop')) {
+          rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
+        } else if (routeLower.includes('train station')) {
+          rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
+        } else {
+          // Inter-city routes
+          if (provider === 'sevil') rate = 'tagRate';
+          else if (provider === 'xayrulla') rate = 'tag';
+          else if (provider === 'nosir') rate = 'toshkent';
+        }
+
+        const price = getPriceFromOpex(provider, vehicle, rate);
+        console.log(`  KAS Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
+
+        return {
+          ...route,
+          person: routePax.toString(),
+          choiceTab: provider,
+          transportType: vehicle || route.transportType,
+          choiceRate: rate || route.choiceRate,
+          price: price || route.price
+        };
+      });
+
+      console.log(`📊 KAS: Fixed ${fixedRoutes.length} routes`);
+      fixedRoutes.forEach((r, i) => {
+        console.log(`  Fixed ${i+1}: ${r.route} → ${r.person} PAX, ${r.transportType}, ${r.choiceTab}, $${r.price}`);
+      });
+
+      // Sort routes by date
+      const sortedRoutes = fixedRoutes.sort((a, b) => {
+        const dateA = a.sana ? new Date(a.sana) : new Date(0);
+        const dateB = b.sana ? new Date(b.sana) : new Date(0);
+        return dateA - dateB;
+      });
+
+      // KAS DATE FILLING RULES
+      console.log('===== KAS AUTO DATE FILLING START =====');
+
+      // Set first route date to ARRIVAL date
+      if (sortedRoutes.length > 0) {
+        const arrivalDate = formData.arrivalDate || booking?.arrivalDate;
+
+        console.log('🔍 KAS: Checking arrival date sources:');
+        console.log('  - formData.arrivalDate:', formData.arrivalDate);
+        console.log('  - booking.arrivalDate:', booking?.arrivalDate);
+
+        if (arrivalDate) {
+          const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
+          sortedRoutes[0].sana = arrivalFormatted;
+          console.log(`0. KAS: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
+        } else {
+          console.warn('⚠️ KAS: No arrival date found, using existing date for first route');
+        }
+      }
+
+      // Fill remaining dates
+      for (let i = 1; i < sortedRoutes.length; i++) {
+        const prevRoute = sortedRoutes[i - 1];
+        const currentRoute = sortedRoutes[i];
+        const prevRouteName = (prevRoute.route || '').toLowerCase();
+        const currentRouteName = (currentRoute.route || '').toLowerCase();
+
+        const prevDate = new Date(prevRoute.sana);
+        const nextDay = new Date(prevDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
+
+        // RULE 1: Day 7 - Samarkand City Tour + Train Station (SAME DAY)
+        // If previous route is Samarkand City Tour and current is Train Station, same day
+        if (prevRouteName.includes('samarkand') && prevRouteName.includes('city') &&
+            currentRouteName.includes('train station')) {
+          currentRoute.sana = prevRoute.sana;
+          console.log(`${i}. KAS: ${currentRoute.route} → ${prevRoute.sana} (same day as Samarkand City Tour)`);
+        }
+        // RULE 2: Train Station + next route (SAME DAY if it's pickup/hotel)
+        else if (prevRouteName.includes('train station') &&
+                 (currentRouteName.includes('pickup') || currentRouteName.includes('hotel'))) {
+          currentRoute.sana = prevRoute.sana;
+          console.log(`${i}. KAS: ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
+        }
+        // DEFAULT: Next day (+1)
+        else {
+          currentRoute.sana = nextDayFormatted;
+          console.log(`${i}. KAS: ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
+        }
+      }
+
+      console.log('===== KAS AUTO DATE FILLING END =====');
+
+      // Re-assign row numbers
+      const numberedRoutes = sortedRoutes.map((route, index) => ({
+        ...route,
+        nomer: (index + 1).toString(),
+        id: route.id || index + 1
+      }));
+
+      // Save to database
+      const routesToSave = numberedRoutes.map((r, index) => ({
+        dayNumber: index + 1,
+        date: r.sana || null,
+        city: r.shahar || null,
+        itinerary: r.sayohatDasturi || null,
+        routeName: r.route || '',
+        personCount: parseInt(r.person) || 0,
+        transportType: r.transportType || null,
+        provider: r.choiceTab || null,
+        optionRate: r.choiceRate || null,
+        price: parseFloat(r.price) || 0
+      }));
+
+      console.log(`💾 KAS: Saving ${routesToSave.length} routes to database`);
+      await routesApi.bulkUpdate(id, routesToSave);
+
+      // Reload from database
+      console.log('🔄 KAS: Reloading routes from database...');
+      const reloadedRes = await bookingsApi.getRoutes(id);
+      const reloadedRoutes = reloadedRes.data.routes || [];
+
+      const mappedReloaded = reloadedRoutes.map((r, index) => ({
+        id: r.id,
+        nomer: r.dayNumber?.toString() || (index + 1).toString(),
+        sana: r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '',
+        dayOffset: index,
+        shahar: r.city || '',
+        sayohatDasturi: r.itinerary || '',
+        route: r.routeName || '',
+        person: r.personCount?.toString() || '0',
+        transportType: r.transportType || '',
+        choiceTab: r.provider || '',
+        choiceRate: r.optionRate || '',
+        price: r.price?.toString() || ''
+      }));
+
+      setErRoutes(mappedReloaded);
+
+      toast.success('KAS routes auto-fixed!', { id: 'auto-fix' });
+      console.log('✅ KAS routes fixed, saved, and reloaded from database');
+    } catch (error) {
+      console.error('Error auto-fixing KAS routes:', error);
       throw error; // Re-throw to be caught by main dispatcher
     }
   };
