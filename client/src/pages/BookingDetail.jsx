@@ -1083,6 +1083,27 @@ export default function BookingDetail() {
     }
   }, [tourists]);
 
+  // Auto-populate route PAX when Route tab is opened and PAX is 0
+  useEffect(() => {
+    if (activeTab === 'route' && erRoutes.length > 0 && tourists.length > 0) {
+      // Check if any route has PAX = 0
+      const hasZeroPax = erRoutes.some(r => !r.person || r.person === '0');
+
+      if (hasZeroPax) {
+        console.log('🔄 Auto-populating route PAX from', tourists.length, 'tourists');
+        const totalPax = tourists.length.toString();
+
+        const updatedRoutes = erRoutes.map(route => ({
+          ...route,
+          person: totalPax
+        }));
+
+        setErRoutes(updatedRoutes);
+        console.log('✅ Route PAX auto-updated to', totalPax);
+      }
+    }
+  }, [activeTab, erRoutes.length, tourists.length]);
+
   const loadData = async () => {
     try {
       console.log('📊 BookingDetail loadData called for booking', id);
@@ -5413,21 +5434,37 @@ export default function BookingDetail() {
   };
 
   const handleAddRoute = () => {
-    const lastRoute = erRoutes[erRoutes.length - 1];
-    // FIX: Use Math.max to find highest ID, not last route's ID (routes may be sorted by date)
+    // FIX: Find route with LATEST date, not just last array element
+    const routesWithDates = erRoutes.filter(r => r.sana && r.sana !== 'Invalid Date');
+    let lastRoute = null;
+
+    if (routesWithDates.length > 0) {
+      // Sort by date and get the latest one
+      const sortedByDate = [...routesWithDates].sort((a, b) => {
+        const dateA = new Date(a.sana);
+        const dateB = new Date(b.sana);
+        return dateB - dateA; // Descending order (latest first)
+      });
+      lastRoute = sortedByDate[0];
+    } else {
+      lastRoute = erRoutes[erRoutes.length - 1];
+    }
+
+    // Use Math.max to find highest ID
     const newId = erRoutes.length > 0 ? Math.max(...erRoutes.map(r => r.id)) + 1 : 1;
 
     // Calculate next dayOffset and date
     const newDayOffset = lastRoute?.dayOffset != null ? lastRoute.dayOffset + 1 : erRoutes.length;
     let nextDate = '';
 
-    // Calculate date from Arrival + dayOffset
-    if (formData.departureDate) {
-      const arrivalDate = addDays(new Date(formData.departureDate), 1);
-      nextDate = format(addDays(arrivalDate, newDayOffset), 'yyyy-MM-dd');
-    } else if (lastRoute?.sana) {
+    // Calculate date: latest route date + 1 day
+    if (lastRoute?.sana) {
       const lastDate = new Date(lastRoute.sana);
       nextDate = format(addDays(lastDate, 1), 'yyyy-MM-dd');
+      console.log(`📅 New route date: ${nextDate} (latest route was ${lastRoute.sana})`);
+    } else if (formData.departureDate) {
+      const arrivalDate = addDays(new Date(formData.departureDate), 1);
+      nextDate = format(addDays(arrivalDate, newDayOffset), 'yyyy-MM-dd');
     }
 
     const newRoute = {
@@ -5832,7 +5869,7 @@ export default function BookingDetail() {
     }
   };
 
-  // Save current routes as template for ER tour type
+  // Save current routes as template for any tour type (ER, CO, KAS, ZA)
   const handleSaveAsTemplate = async () => {
     console.log('💾 Save as Template clicked');
 
@@ -5855,11 +5892,8 @@ export default function BookingDetail() {
         return;
       }
 
-      // ONLY allow template saving for ER tours
-      if (tourTypeCode !== 'ER') {
-        toast.error('Шаблон фақат ER групалари учун ишлатилади');
-        return;
-      }
+      // Allow template saving for all tour types (ER, CO, KAS, ZA)
+      // Each tour type can have its own template
 
       const routesToSave = erRoutes.map((r, index) => ({
         dayNumber: index + 1,
@@ -5900,11 +5934,8 @@ export default function BookingDetail() {
         return;
       }
 
-      // ONLY allow template loading for ER tours
-      if (tourTypeCode !== 'ER') {
-        toast.error('Шаблон фақат ER групалари учун ишлатилади');
-        return;
-      }
+      // Allow template loading for all tour types (ER, CO, KAS, ZA)
+      // Each tour type has its own template in the database
 
       console.log(`📥 Loading template for ${tourTypeCode}...`);
       const response = await routesApi.getTemplate(tourTypeCode);
@@ -5954,7 +5985,7 @@ export default function BookingDetail() {
     }
   };
 
-  // Save current accommodations as template for ER tour type
+  // Save current accommodations as template for any tour type (ER, CO, KAS, ZA)
   const handleSaveAccommodationsAsTemplate = async () => {
     console.log('💾 Save Accommodations as Template clicked');
 
@@ -6141,8 +6172,64 @@ export default function BookingDetail() {
       const urgenchIndex = freshErRoutes.findIndex(r => r.route === 'Khiva - Urgench');
       const hasShovotRoute = freshErRoutes.some(r => r.route === 'Khiva - Shovot');
 
+      // Helper function to calculate Fergana vehicle split
+      const calculateFerganaVehicles = (totalPax) => {
+        const stariaCapacity = 5;
+        const pkwCapacity = 3;
+
+        // Maximize Staria usage (more efficient)
+        const stariaCount = Math.floor(totalPax / stariaCapacity);
+        const remaining = totalPax % stariaCapacity;
+
+        // Add PKW for remaining passengers
+        const pkwCount = remaining > 0 ? Math.ceil(remaining / pkwCapacity) : 0;
+
+        return {
+          staria: stariaCount,
+          pkw: pkwCount,
+          stariaPassengers: stariaCount * stariaCapacity,
+          pkwPassengers: remaining
+        };
+      };
+
+      // Consolidate duplicate Fergana routes before processing
+      // For Fergana routes: merge ALL into ONE (regardless of date)
+      // For other routes: keep each one
+      const consolidatedRoutes = [];
+      let ferganaRouteFound = false;
+      let firstFerganaRoute = null;
+
+      for (const route of freshErRoutes) {
+        const isFergana = route.route === 'Tashkent - Fergana' || route.route === 'Fergana - Tashkent';
+
+        // Skip routes without valid date
+        if (!route.sana || route.sana === 'Invalid Date') {
+          console.log(`⏭️ Skipping route without valid date: ${route.route}`);
+          continue;
+        }
+
+        if (isFergana) {
+          if (!ferganaRouteFound) {
+            // Keep the FIRST Fergana route (earliest date)
+            firstFerganaRoute = route;
+            ferganaRouteFound = true;
+            console.log(`✅ Keeping first Fergana route: ${route.route} on ${route.sana}`);
+            consolidatedRoutes.push(route);
+          } else {
+            // Skip duplicate Fergana routes
+            console.log(`⏭️ Skipping duplicate Fergana route: ${route.route} on ${route.sana}`);
+          }
+        } else {
+          // Keep all non-Fergana routes
+          consolidatedRoutes.push(route);
+        }
+      }
+
+      console.log(`📋 Consolidated routes: ${freshErRoutes.length} → ${consolidatedRoutes.length} (removed ${freshErRoutes.length - consolidatedRoutes.length} duplicates)`);
+
       // Fix each route (using fresh data with Sayohat dasturi preserved)
-      const fixedRoutes = freshErRoutes.map((route, index) => {
+      // Use flatMap to allow splitting Fergana routes into multiple rows
+      const fixedRoutes = consolidatedRoutes.flatMap((route, index) => {
         // Determine PAX for this route
         let routePax = totalPax;
 
@@ -6161,7 +6248,7 @@ export default function BookingDetail() {
 
         if (routePax <= 0) {
           console.log(`  Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
-          return route;
+          return [route];
         }
 
         // Get provider
@@ -6175,14 +6262,81 @@ export default function BookingDetail() {
         if (isChimganRoute) {
           const chimganPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
           console.log(`  Route ${index + 1}: ${route.route} → Chimgan (Sprinter, $${chimganPrice})`);
-          return {
+          return [{
             ...route,
             person: routePax.toString(),
             choiceTab: 'xayrulla',
             transportType: 'Sprinter',
             choiceRate: 'chimgan',
             price: chimganPrice || route.price
-          };
+          }];
+        }
+
+        // Special handling for Fergana routes (Tashkent-Fergana or Fergana-Tashkent)
+        const isFerganaRoute = route.route === 'Tashkent - Fergana' ||
+                               route.route === 'Fergana - Tashkent';
+
+        if (isFerganaRoute) {
+          const provider = route.choiceTab || 'nosir'; // Fergana routes use Nosir
+          const rateType = 'toshkent'; // Nosir's Fergana rate
+
+          // Add +1 for guide (Fergana routes include guide)
+          const ferganaPax = routePax + 1;
+          console.log(`  Route ${index + 1}: ${route.route} → Adding guide: ${routePax} tourists + 1 guide = ${ferganaPax} total`);
+
+          // For PAX ≤ 5: use single vehicle (Staria for 4-5, PKW for 1-3)
+          if (ferganaPax <= 5) {
+            const vehicle = ferganaPax <= 3 ? 'PKW' : 'Staria';
+            const price = getPriceFromOpex(provider, vehicle, rateType);
+            console.log(`  Route ${index + 1}: ${route.route} → Fergana (${ferganaPax} PAX) → ${vehicle}, $${price}`);
+
+            return [{
+              ...route,
+              person: ferganaPax.toString(),
+              choiceTab: provider,
+              transportType: vehicle,
+              choiceRate: rateType,
+              price: price || route.price
+            }];
+          }
+
+          // For PAX > 5: split into multiple vehicles (only Staria 5 PAX and PKW 3 PAX)
+          console.log(`  Route ${index + 1}: ${route.route} → Fergana route with ${ferganaPax} PAX, splitting...`);
+
+          const vehicles = calculateFerganaVehicles(ferganaPax);
+          const stariaPrice = getPriceFromOpex(provider, 'Staria', rateType);
+          const pkwPrice = getPriceFromOpex(provider, 'PKW', rateType);
+
+          console.log(`    → ${vehicles.staria}× Staria (${vehicles.stariaPassengers} pax) + ${vehicles.pkw}× PKW (${vehicles.pkwPassengers} pax)`);
+          console.log(`    → Prices: Staria=$${stariaPrice}, PKW=$${pkwPrice}`);
+
+          const splitRoutes = [];
+
+          // Add Staria routes
+          for (let i = 0; i < vehicles.staria; i++) {
+            splitRoutes.push({
+              ...route,
+              person: '5', // Each Staria carries 5 passengers
+              choiceTab: provider,
+              transportType: 'Staria',
+              choiceRate: rateType,
+              price: stariaPrice || route.price
+            });
+          }
+
+          // Add PKW routes
+          for (let i = 0; i < vehicles.pkw; i++) {
+            splitRoutes.push({
+              ...route,
+              person: vehicles.pkwPassengers.toString(), // Remaining passengers
+              choiceTab: provider,
+              transportType: 'PKW',
+              choiceRate: rateType,
+              price: pkwPrice || route.price
+            });
+          }
+
+          return splitRoutes;
         }
 
         // Get best vehicle
@@ -6214,21 +6368,102 @@ export default function BookingDetail() {
 
         console.log(`  Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
-        return {
+        return [{
           ...route,
           person: routePax.toString(),
           choiceTab: provider,
           transportType: vehicle || route.transportType,
           choiceRate: rate || route.choiceRate,
           price: price || route.price
-        };
+        }];
       });
 
-      // Update state
-      setErRoutes(fixedRoutes);
+      // Sort routes by date to maintain correct order after splitting
+      const sortedRoutes = fixedRoutes.sort((a, b) => {
+        const dateA = a.sana ? new Date(a.sana) : new Date(0);
+        const dateB = b.sana ? new Date(b.sana) : new Date(0);
+        return dateA - dateB;
+      });
+
+      // SINGLE PASS: Fill dates sequentially with same-day rules applied inline
+      console.log('===== AUTO DATE FILLING START =====');
+
+      for (let i = 1; i < sortedRoutes.length; i++) {
+        const prevRoute = sortedRoutes[i - 1];
+        const currentRoute = sortedRoutes[i];
+        const prevRouteName = (prevRoute.route || '').toLowerCase();
+        const currentRouteName = (currentRoute.route || '').toLowerCase();
+
+        // Calculate next day from previous route
+        const prevDate = new Date(prevRoute.sana);
+        const nextDay = new Date(prevDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
+
+        // RULE 1: Train Station Drop-off + Samarkand City Tour (SAME DAY)
+        if (prevRouteName.includes('train station') && prevRouteName.includes('drop') &&
+            (currentRouteName.includes('samarkand') || currentRouteName.includes('samarqand'))) {
+          currentRoute.sana = prevRoute.sana; // Same day
+          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
+        }
+        // RULE 2: Train Station Drop-off + Qoqon-Fergana (SAME DAY)
+        else if (prevRouteName.includes('train station') && prevRouteName.includes('drop') &&
+                 (currentRouteName.includes('qoqon') || (currentRouteName.includes('fergana') && !currentRouteName.includes('tashkent')))) {
+          currentRoute.sana = prevRoute.sana; // Same day
+          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
+        }
+        // RULE 3: Fergana-Tashkent routes (ALL SAME DAY as first Fergana-Tashkent)
+        else if (currentRouteName.includes('fergana') && currentRouteName.includes('tashkent')) {
+          // Find the date from previous Fergana-Tashkent or set from Qoqon-Fergana + 1
+          if (prevRouteName.includes('fergana') && prevRouteName.includes('tashkent')) {
+            // Same day as previous Fergana-Tashkent
+            currentRoute.sana = prevRoute.sana;
+            console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as prev Fergana-Tashkent)`);
+          } else {
+            // Next day after Qoqon-Fergana or previous route
+            currentRoute.sana = nextDayFormatted;
+            console.log(`${i}. ${currentRoute.route} → ${nextDayFormatted} (next day)`);
+          }
+        }
+        // RULE 4: Khiva-Urgench + Airport Pickup (SAME DAY)
+        else if (prevRouteName.includes('khiva') && prevRouteName.includes('urgench') &&
+                 (currentRouteName.includes('airport') || currentRouteName.includes('pickup'))) {
+          currentRoute.sana = prevRoute.sana; // Same day
+          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Khiva-Urgench)`);
+        }
+        // RULE 5: Before Khiva-Urgench → +2 days (rest day)
+        else if (currentRouteName.includes('khiva') && currentRouteName.includes('urgench')) {
+          const twoDaysLater = new Date(prevDate);
+          twoDaysLater.setDate(twoDaysLater.getDate() + 2);
+          const twoDaysFormatted = format(twoDaysLater, 'yyyy-MM-dd');
+          currentRoute.sana = twoDaysFormatted;
+          console.log(`${i}. ${currentRoute.route} → ${twoDaysFormatted} (rest day +2)`);
+        }
+        // DEFAULT: Next day (+1)
+        else {
+          currentRoute.sana = nextDayFormatted;
+          console.log(`${i}. ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
+        }
+      }
+
+      console.log('===== AUTO DATE FILLING END =====');
+
+      // Re-assign row numbers sequentially
+      const numberedRoutes = sortedRoutes.map((route, index) => ({
+        ...route,
+        nomer: (index + 1).toString(),
+        id: route.id || index + 1
+      }));
+
+      console.log('✅ Routes sorted and re-numbered:', numberedRoutes.map((r, i) =>
+        `${i+1}. ${r.sana} ${r.route} → ${r.person} PAX, ${r.transportType || '?'}`
+      ));
+
+      // DO NOT update state here - wait for database reload
+      // setErRoutes(numberedRoutes); ← REMOVED to prevent duplicates
 
       // Save to database (preserve both city and itinerary fields!)
-      const routesToSave = fixedRoutes.map((r, index) => ({
+      const routesToSave = numberedRoutes.map((r, index) => ({
         dayNumber: index + 1,
         date: r.sana || null,
         city: r.shahar || null,
@@ -6241,9 +6476,10 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
-      console.log('💾 Saving routes to database:', routesToSave.map((r, i) =>
-        `${i+1}. ${r.routeName} → vehicle=${r.transportType}, price=$${r.price}`
-      ));
+      console.log(`💾 Saving ${routesToSave.length} routes to database:`);
+      routesToSave.forEach((r, i) => {
+        console.log(`  ${i+1}. [Day ${r.dayNumber}] ${r.date} - ${r.routeName} → ${r.personCount} PAX, ${r.transportType || 'NULL'}, $${r.price}`);
+      });
 
       await routesApi.bulkUpdate(id, routesToSave);
 
@@ -6252,9 +6488,10 @@ export default function BookingDetail() {
       const reloadedRes = await bookingsApi.getRoutes(id);
       const reloadedRoutes = reloadedRes.data.routes || [];
 
-      console.log('📥 Reloaded routes:', reloadedRoutes.map((r, i) =>
-        `${i+1}. ${r.routeName} → vehicle=${r.transportType || 'NULL'}, price=$${r.price}`
-      ));
+      console.log(`📥 Reloaded ${reloadedRoutes.length} routes from database:`);
+      reloadedRoutes.forEach((r, i) => {
+        console.log(`  ${i+1}. [Day ${r.dayNumber}] ${r.date} - ${r.routeName} → ${r.personCount} PAX, ${r.transportType || 'NULL'}, $${r.price}`);
+      });
 
       // Map reloaded routes to erRoutes format
       const mappedReloaded = reloadedRoutes.map((r, index) => ({
@@ -11572,7 +11809,7 @@ export default function BookingDetail() {
                 <button
                   onClick={handleSaveAsTemplate}
                   className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-xs rounded-xl transition-all duration-200 font-bold shadow-lg hover:shadow-xl hover:scale-105"
-                  title="Save current routes as default template for ER tours"
+                  title="Save current routes as default template for this tour type"
                 >
                   <Database className="w-4 h-4" />
                   Save as Template
@@ -11686,6 +11923,9 @@ export default function BookingDetail() {
                             <option value="Khiva - Shovot">Khiva - Shovot</option>
                             <option value="Tashkent - Fergana">Tashkent - Fergana</option>
                             <option value="Fergana - Tashkent">Fergana - Tashkent</option>
+                            <option value="Qoqon - Fergana">Qoqon - Fergana</option>
+                            <option value="Fergana - Margilan">Fergana - Margilan</option>
+                            <option value="Dostlik - Fergana">Dostlik - Fergana</option>
                             <option value="Tashkent - Chimgan - Tashkent">Tashkent - Chimgan - Tashkent</option>
                           </optgroup>
                         </select>
@@ -12523,13 +12763,13 @@ export default function BookingDetail() {
                     <Plus className="w-5 h-5" />
                     Добавить отель
                   </button>
-                  {booking?.tourType?.code === 'ER' && (
+                  {booking?.tourType?.code && (
                     <>
                       <div className="border-l border-gray-300 h-8"></div>
                       <button
                         onClick={handleSaveAccommodationsAsTemplate}
                         className="inline-flex items-center gap-2 px-3 py-2 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-                        title="Сохранить текущие размещения как шаблон по умолчанию для ER туров"
+                        title={`Сохранить текущие размещения как шаблон для ${booking.tourType.code} туров`}
                       >
                         <Database className="w-4 h-4" />
                         Save as Template

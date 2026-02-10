@@ -107,9 +107,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
       if (actualStartDate && actualEndDate && shouldReload) {
         console.log(`Routes are ${loadedRoutes.length === 0 ? 'empty' : 'incomplete'}, loading from template...`);
 
-        // Try to load from template first (ONLY for ER groups!)
+        // Try to load from template first (for all tour types: ER, CO, KAS, ZA)
         let templateLoaded = false;
-        if (booking?.tourType === 'ER') {
+        if (booking?.tourType) {
           try {
             const templateRes = await routesApi.getTemplate(booking.tourType);
             const templates = templateRes.data.templates || [];
