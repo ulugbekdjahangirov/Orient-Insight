@@ -6125,15 +6125,50 @@ export default function BookingDetail() {
   };
 
   // Auto-fix all routes: set correct PAX, vehicle, and price
+  // Main dispatcher function - calls appropriate fix function based on tour type
   const autoFixAllRoutes = async () => {
     if (!erRoutes || erRoutes.length === 0) {
       toast.error('No routes to fix');
       return;
     }
 
+    const tourTypeCode = booking?.tourType?.code;
+    console.log(`🎯 Fix Vehicle clicked for tour type: ${tourTypeCode}`);
+
     try {
       setSaving(true);
       toast.loading('Fixing all routes...', { id: 'auto-fix' });
+
+      // Call appropriate function based on tour type
+      switch(tourTypeCode) {
+        case 'ER':
+          await autoFixRoutesER();
+          break;
+        case 'CO':
+          await autoFixRoutesCO();
+          break;
+        case 'KAS':
+          toast.info('KAS fix logic coming soon', { id: 'auto-fix' });
+          break;
+        case 'ZA':
+          toast.info('ZA fix logic coming soon', { id: 'auto-fix' });
+          break;
+        default:
+          toast.error(`Unknown tour type: ${tourTypeCode}`, { id: 'auto-fix' });
+      }
+    } catch (error) {
+      console.error('Error auto-fixing routes:', error);
+      toast.error('Error auto-fixing routes', { id: 'auto-fix' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ==================== ER FIX FUNCTION ====================
+  const autoFixRoutesER = async () => {
+    console.log('🔵 Running ER fix logic...');
+
+    try {
 
       // IMPORTANT: Reload routes from database to get latest data
       // This ensures user-edited text (city and itinerary) is preserved when fixing vehicles
@@ -6388,6 +6423,24 @@ export default function BookingDetail() {
       // SINGLE PASS: Fill dates sequentially with same-day rules applied inline
       console.log('===== AUTO DATE FILLING START =====');
 
+      // IMPORTANT: Set first route date to ARRIVAL date
+      if (sortedRoutes.length > 0) {
+        // Try multiple sources for arrival date
+        const arrivalDate = formData.arrivalDate || booking?.arrivalDate;
+
+        console.log('🔍 ER: Checking arrival date sources:');
+        console.log('  - formData.arrivalDate:', formData.arrivalDate);
+        console.log('  - booking.arrivalDate:', booking?.arrivalDate);
+
+        if (arrivalDate) {
+          const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
+          sortedRoutes[0].sana = arrivalFormatted;
+          console.log(`0. ER: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
+        } else {
+          console.warn('⚠️ ER: No arrival date found, using existing date for first route');
+        }
+      }
+
       for (let i = 1; i < sortedRoutes.length; i++) {
         const prevRoute = sortedRoutes[i - 1];
         const currentRoute = sortedRoutes[i];
@@ -6511,13 +6564,316 @@ export default function BookingDetail() {
 
       setErRoutes(mappedReloaded);
 
-      toast.success('All routes auto-fixed and reloaded!', { id: 'auto-fix' });
-      console.log('✅ All routes fixed, saved, and reloaded from database');
+      toast.success('ER routes auto-fixed!', { id: 'auto-fix' });
+      console.log('✅ ER routes fixed, saved, and reloaded from database');
     } catch (error) {
-      console.error('Error auto-fixing routes:', error);
-      toast.error('Error auto-fixing routes', { id: 'auto-fix' });
-    } finally {
-      setSaving(false);
+      console.error('Error auto-fixing ER routes:', error);
+      throw error; // Re-throw to be caught by main dispatcher
+    }
+  };
+
+  // ==================== CO FIX FUNCTION ====================
+  const autoFixRoutesCO = async () => {
+    console.log('🟢 Running CO fix logic...');
+
+    try {
+      // Reload routes from database
+      const routesRes = await bookingsApi.getRoutes(id);
+      const freshRoutes = routesRes.data.routes || [];
+
+      // Map database routes to erRoutes format
+      const freshErRoutes = freshRoutes.map((dbRoute, index) => {
+        const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
+        return {
+          ...existingRoute,
+          id: dbRoute.id,
+          nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
+          sana: dbRoute.date,
+          shahar: dbRoute.city || existingRoute.shahar || '',
+          sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
+          route: dbRoute.routeName || existingRoute.route || '',
+          person: dbRoute.personCount?.toString() || existingRoute.person || '0',
+          transportType: dbRoute.transportType || existingRoute.transportType || '',
+          choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
+          choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
+          price: dbRoute.price?.toString() || existingRoute.price || ''
+        };
+      });
+
+      console.log('📋 CO: Reloaded routes from database');
+
+      // Calculate PAX (CO groups have NO TKM split - all tourists go together)
+      const totalPax = tourists.length;
+      console.log(`🔧 CO Auto-fixing routes: PAX Total=${totalPax} (no UZB/TKM split)`);
+
+      // Consolidate Fergana routes (CO groups ALWAYS have Fergana)
+      const consolidatedRoutes = [];
+      let ferganaRouteFound = false;
+
+      for (const route of freshErRoutes) {
+        const isFergana = route.route === 'Fergana - Tashkent';
+
+        if (!route.sana || route.sana === 'Invalid Date') {
+          console.log(`⏭️ Skipping route without valid date: ${route.route}`);
+          continue;
+        }
+
+        if (isFergana) {
+          if (!ferganaRouteFound) {
+            ferganaRouteFound = true;
+            console.log(`✅ CO: Keeping first Fergana-Tashkent route: ${route.sana}`);
+            consolidatedRoutes.push(route);
+          } else {
+            console.log(`⏭️ CO: Skipping duplicate Fergana-Tashkent: ${route.sana}`);
+          }
+        } else {
+          consolidatedRoutes.push(route);
+        }
+      }
+
+      console.log(`📋 CO: Consolidated ${freshErRoutes.length} → ${consolidatedRoutes.length} routes`);
+
+      // Fix each route
+      const fixedRoutes = consolidatedRoutes.flatMap((route, index) => {
+        let routePax = totalPax; // CO: all tourists go together (no split)
+
+        if (routePax <= 0) {
+          console.log(`  CO Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
+          return [route];
+        }
+
+        const provider = route.choiceTab || getProviderByCity(route.shahar);
+
+        // Chimgan routes
+        const isChimganRoute = route.route === 'Tashkent - Chimgan - Tashkent';
+        if (isChimganRoute) {
+          const chimganPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
+          console.log(`  CO Route ${index + 1}: ${route.route} → Chimgan (Sprinter, $${chimganPrice})`);
+          return [{
+            ...route,
+            person: routePax.toString(),
+            choiceTab: 'xayrulla',
+            transportType: 'Sprinter',
+            choiceRate: 'chimgan',
+            price: chimganPrice || route.price
+          }];
+        }
+
+        // Fergana-Tashkent routes (DYNAMIC split based on PAX)
+        const isFerganaRoute = route.route === 'Fergana - Tashkent';
+        if (isFerganaRoute) {
+          const provider = 'nosir';
+          const rateType = 'toshkent';
+          const ferganaPax = routePax + 1; // +1 for guide
+
+          console.log(`  CO Route ${index + 1}: ${route.route} → Fergana with guide: ${routePax} + 1 = ${ferganaPax}`);
+
+          // CO: DYNAMIC split - calculate optimal Staria + PKW combination
+          const stariaCapacity = 5;
+          const pkwCapacity = 3;
+
+          // Maximize Staria usage (more efficient)
+          const stariaCount = Math.floor(ferganaPax / stariaCapacity);
+          const remaining = ferganaPax % stariaCapacity;
+
+          // Calculate PKWs for remaining passengers
+          const pkwCount = remaining > 0 ? Math.ceil(remaining / pkwCapacity) : 0;
+
+          console.log(`    → CO: ${ferganaPax} PAX → ${stariaCount}× Staria (${stariaCount * 5} PAX) + ${pkwCount}× PKW (${remaining} PAX)`);
+
+          const stariaPrice = getPriceFromOpex(provider, 'Staria', rateType);
+          const pkwPrice = getPriceFromOpex(provider, 'PKW', rateType);
+          const splitRoutes = [];
+
+          // Add Staria routes
+          for (let i = 0; i < stariaCount; i++) {
+            splitRoutes.push({
+              ...route,
+              person: '5',
+              choiceTab: provider,
+              transportType: 'Staria',
+              choiceRate: rateType,
+              price: stariaPrice || route.price
+            });
+          }
+
+          // Add PKW routes
+          for (let i = 0; i < pkwCount; i++) {
+            splitRoutes.push({
+              ...route,
+              person: remaining.toString(),
+              choiceTab: provider,
+              transportType: 'PKW',
+              choiceRate: rateType,
+              price: pkwPrice || route.price
+            });
+          }
+
+          console.log(`    → CO: Split result: ${stariaCount}× Staria ($${stariaPrice} each) + ${pkwCount}× PKW ($${pkwPrice} each)`);
+          return splitRoutes;
+        }
+
+        // Get best vehicle for route
+        const vehicle = getBestVehicleForRoute(provider, routePax);
+
+        // Get rate type
+        let rate = '';
+        const routeLower = route.route.toLowerCase();
+        if (routeLower.includes('city tour')) {
+          rate = provider === 'xayrulla' ? 'cityTour' : 'tagRate';
+        } else if (routeLower.includes('urgench')) {
+          rate = 'urgenchRate';
+        } else if (routeLower.includes('airport') || routeLower.includes('pickup') || routeLower.includes('drop')) {
+          rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
+        } else if (routeLower.includes('train station')) {
+          rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
+        } else {
+          if (provider === 'sevil') rate = 'tagRate';
+          else if (provider === 'xayrulla') rate = 'tag';
+          else if (provider === 'nosir') rate = 'toshkent';
+        }
+
+        const price = getPriceFromOpex(provider, vehicle, rate);
+        console.log(`  CO Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
+
+        return [{
+          ...route,
+          person: routePax.toString(),
+          choiceTab: provider,
+          transportType: vehicle || route.transportType,
+          choiceRate: rate || route.choiceRate,
+          price: price || route.price
+        }];
+      });
+
+      // Sort routes by date
+      const sortedRoutes = fixedRoutes.sort((a, b) => {
+        const dateA = a.sana ? new Date(a.sana) : new Date(0);
+        const dateB = b.sana ? new Date(b.sana) : new Date(0);
+        return dateA - dateB;
+      });
+
+      // CO DATE FILLING RULES (similar to ER but no UZB/TKM split)
+      console.log('===== CO AUTO DATE FILLING START =====');
+
+      // IMPORTANT: Set first route date to ARRIVAL date
+      if (sortedRoutes.length > 0) {
+        // Try multiple sources for arrival date
+        const arrivalDate = formData.arrivalDate || booking?.arrivalDate;
+
+        console.log('🔍 CO: Checking arrival date sources:');
+        console.log('  - formData.arrivalDate:', formData.arrivalDate);
+        console.log('  - booking.arrivalDate:', booking?.arrivalDate);
+
+        if (arrivalDate) {
+          const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
+          sortedRoutes[0].sana = arrivalFormatted;
+          console.log(`0. CO: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
+        } else {
+          console.warn('⚠️ CO: No arrival date found, using existing date for first route');
+        }
+      }
+
+      for (let i = 1; i < sortedRoutes.length; i++) {
+        const prevRoute = sortedRoutes[i - 1];
+        const currentRoute = sortedRoutes[i];
+        const prevRouteName = (prevRoute.route || '').toLowerCase();
+        const currentRouteName = (currentRoute.route || '').toLowerCase();
+
+        const prevDate = new Date(prevRoute.sana);
+        const nextDay = new Date(prevDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
+
+        // RULE 1: Train Station Drop-off + next route (SAME DAY)
+        if (prevRouteName.includes('train station') && prevRouteName.includes('drop')) {
+          currentRoute.sana = prevRoute.sana;
+          console.log(`${i}. CO: ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
+        }
+        // RULE 2: Fergana-Tashkent routes (ALL SAME DAY as first)
+        else if (currentRouteName.includes('fergana') && currentRouteName.includes('tashkent')) {
+          if (prevRouteName.includes('fergana') && prevRouteName.includes('tashkent')) {
+            currentRoute.sana = prevRoute.sana;
+            console.log(`${i}. CO: ${currentRoute.route} → ${prevRoute.sana} (same day as prev Fergana)`);
+          } else {
+            currentRoute.sana = nextDayFormatted;
+            console.log(`${i}. CO: ${currentRoute.route} → ${nextDayFormatted} (next day)`);
+          }
+        }
+        // RULE 3: Before Khiva-Urgench → +2 days (rest day)
+        else if (currentRouteName.includes('khiva') && currentRouteName.includes('urgench')) {
+          const twoDaysLater = new Date(prevDate);
+          twoDaysLater.setDate(twoDaysLater.getDate() + 2);
+          const twoDaysFormatted = format(twoDaysLater, 'yyyy-MM-dd');
+          currentRoute.sana = twoDaysFormatted;
+          console.log(`${i}. CO: ${currentRoute.route} → ${twoDaysFormatted} (rest day +2)`);
+        }
+        // RULE 4: Khiva-Urgench + Airport Pickup (SAME DAY)
+        else if (prevRouteName.includes('khiva') && prevRouteName.includes('urgench') &&
+                 (currentRouteName.includes('airport') || currentRouteName.includes('pickup'))) {
+          currentRoute.sana = prevRoute.sana;
+          console.log(`${i}. CO: ${currentRoute.route} → ${prevRoute.sana} (same day as Khiva-Urgench)`);
+        }
+        // DEFAULT: Next day (+1)
+        else {
+          currentRoute.sana = nextDayFormatted;
+          console.log(`${i}. CO: ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
+        }
+      }
+
+      console.log('===== CO AUTO DATE FILLING END =====');
+
+      // Re-assign row numbers
+      const numberedRoutes = sortedRoutes.map((route, index) => ({
+        ...route,
+        nomer: (index + 1).toString(),
+        id: route.id || index + 1
+      }));
+
+      // Save to database
+      const routesToSave = numberedRoutes.map((r, index) => ({
+        dayNumber: index + 1,
+        date: r.sana || null,
+        city: r.shahar || null,
+        itinerary: r.sayohatDasturi || null,
+        routeName: r.route || '',
+        personCount: parseInt(r.person) || 0,
+        transportType: r.transportType || null,
+        provider: r.choiceTab || null,
+        optionRate: r.choiceRate || null,
+        price: parseFloat(r.price) || 0
+      }));
+
+      console.log(`💾 CO: Saving ${routesToSave.length} routes to database`);
+      await routesApi.bulkUpdate(id, routesToSave);
+
+      // Reload from database
+      console.log('🔄 CO: Reloading routes from database...');
+      const reloadedRes = await bookingsApi.getRoutes(id);
+      const reloadedRoutes = reloadedRes.data.routes || [];
+
+      const mappedReloaded = reloadedRoutes.map((r, index) => ({
+        id: r.id,
+        nomer: r.dayNumber?.toString() || (index + 1).toString(),
+        sana: r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '',
+        dayOffset: index,
+        shahar: r.city || '',
+        sayohatDasturi: r.itinerary || '',
+        route: r.routeName || '',
+        person: r.personCount?.toString() || '0',
+        transportType: r.transportType || '',
+        choiceTab: r.provider || '',
+        choiceRate: r.optionRate || '',
+        price: r.price?.toString() || ''
+      }));
+
+      setErRoutes(mappedReloaded);
+
+      toast.success('CO routes auto-fixed!', { id: 'auto-fix' });
+      console.log('✅ CO routes fixed, saved, and reloaded from database');
+    } catch (error) {
+      console.error('Error auto-fixing CO routes:', error);
+      throw error; // Re-throw to be caught by main dispatcher
     }
   };
 
