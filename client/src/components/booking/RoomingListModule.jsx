@@ -548,10 +548,13 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             else if (rt === 'SNGL' || rt === 'SINGLE') roomTypeCounts.SNGL++;
           });
 
-          // ARRIVAL = TOUR START + 1 day
+          // ARRIVAL = TOUR START + days (1 day for ER/CO, 14 days for KAS)
           const arrivalDate = booking?.departureDate ? (() => {
             const arrival = new Date(booking.departureDate);
-            arrival.setDate(arrival.getDate() + 1);
+            const tourType = booking?.tourType?.code;
+            // KAS tours start in Kazakhstan/Kyrgyzstan, arrive in Uzbekistan after 14 days
+            const daysToAdd = tourType === 'KAS' ? 14 : 1;
+            arrival.setDate(arrival.getDate() + daysToAdd);
             return formatDisplayDate(arrival);
           })() : '';
 
@@ -680,10 +683,13 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         const totalPax = filteredTourists.length;
 
         // Calculate arrival/departure dates from booking
-        // ARRIVAL = TOUR START + 1 day
+        // ARRIVAL = TOUR START + days (1 day for ER/CO, 14 days for KAS)
         const arrivalDate = booking?.departureDate ? (() => {
           const arrival = new Date(booking.departureDate);
-          arrival.setDate(arrival.getDate() + 1);
+          const tourType = booking?.tourType?.code;
+          // KAS tours start in Kazakhstan/Kyrgyzstan, arrive in Uzbekistan after 14 days
+          const daysToAdd = tourType === 'KAS' ? 14 : 1;
+          arrival.setDate(arrival.getDate() + daysToAdd);
           return formatDisplayDate(arrival);
         })() : '';
         const departureDate = booking?.endDate ? formatDisplayDate(booking.endDate) : '';
@@ -1053,10 +1059,12 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       const totalPax = hotelTourists.length;
 
       // Calculate arrival/departure dates from booking
-      // ARRIVAL = TOUR START + 1 day
+      // ARRIVAL = TOUR START + days (1 day for ER/CO, 14 days for KAS)
       const arrivalDate = booking?.departureDate ? (() => {
         const arrival = new Date(booking.departureDate);
-        arrival.setDate(arrival.getDate() + 1);
+        const tourType = booking?.tourType?.code;
+        const daysToAdd = tourType === 'KAS' ? 14 : 1;
+        arrival.setDate(arrival.getDate() + daysToAdd);
         return formatDisplayDate(arrival);
       })() : '';
       const departureDate = booking?.endDate ? formatDisplayDate(booking.endDate) : '';
@@ -1901,10 +1909,12 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 }
 
                 // Use extracted dates, then custom dates from database, then booking dates as fallback
-                // IMPORTANT: ARRIVAL is ALWAYS Tour Start + 1 day (departureDate + 1)
+                // IMPORTANT: ARRIVAL is Tour Start + days (1 day for ER/CO, 14 days for KAS)
                 const arrivalDateFallback = booking?.departureDate ? (() => {
                   const arrivalDate = new Date(booking.departureDate);
-                  arrivalDate.setDate(arrivalDate.getDate() + 1); // ARRIVAL = TOUR START + 1 day
+                  const tourType = booking?.tourType?.code;
+                  const daysToAdd = tourType === 'KAS' ? 14 : 1;
+                  arrivalDate.setDate(arrivalDate.getDate() + daysToAdd); // KAS: +14 days, others: +1 day
                   return formatDisplayDate(arrivalDate);
                 })() : '-';
 

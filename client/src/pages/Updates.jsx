@@ -474,11 +474,17 @@ export default function Updates() {
          // Just "Turkmenistan" without "Uzbekistan" is also extension
          (!tourNameLower.includes('usbekistan') && tourNameLower.includes('turkmenistan')));
 
-      // Adjust date for ZA tours (Excel shows entry date, actual tour starts 4 days later)
-      // Example: Excel shows 08.04, but ZA-01 actually arrives on 12.04
+      // Adjust date for special tour types
       let actualDepartureDate = departureDate;
+      // ZA tours: Excel shows entry date, actual tour starts 4 days later
+      // Example: Excel shows 08.04, but ZA-01 actually arrives on 12.04
       if (tourTypeCode === 'ZA' && departureDate) {
         actualDepartureDate = addDays(departureDate, 4);
+      }
+      // KAS tours: Start in Kazakhstan/Kyrgyzstan, arrive in Uzbekistan 14 days later
+      // Example: Tour starts 02.06, arrive in Uzbekistan on 16.06
+      else if (tourTypeCode === 'KAS' && departureDate) {
+        actualDepartureDate = addDays(departureDate, 14);
       }
 
       console.log(`\n=== Excel File Analysis ===`);

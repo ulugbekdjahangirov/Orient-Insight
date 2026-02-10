@@ -3172,6 +3172,38 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
     let createdCount = 0;
     let deletedCount = 0;
 
+    // Fetch booking to get tour type and default dates
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingIdInt },
+      include: { tourType: true }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Set default dates for tourists without custom dates
+    // KAS tours: arrival = departureDate + 14 days
+    // ER/CO/ZA tours: arrival = departureDate + 1 day
+    const tourTypeCode = booking.tourType?.code;
+    const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+
+    tourists.forEach(tourist => {
+      // Only set default dates if tourist doesn't have custom dates
+      if (!tourist.checkInDate && booking.departureDate) {
+        const departureDate = new Date(booking.departureDate);
+        const arrivalDate = new Date(departureDate);
+        arrivalDate.setDate(arrivalDate.getDate() + daysToAdd);
+        tourist.checkInDate = arrivalDate;
+        console.log(`   📅 ${tourist.fullName} using default arrival: departureDate + ${daysToAdd} days = ${arrivalDate.toISOString().split('T')[0]}`);
+      }
+
+      if (!tourist.checkOutDate && booking.endDate) {
+        tourist.checkOutDate = new Date(booking.endDate);
+        console.log(`   📅 ${tourist.fullName} using default checkout: ${booking.endDate.toISOString().split('T')[0]}`);
+      }
+    });
+
     // Fetch all existing tourists for this booking
     const existingTourists = await prisma.tourist.findMany({
       where: { bookingId: bookingIdInt }

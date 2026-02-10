@@ -1022,12 +1022,14 @@ export default function BookingDetail() {
     }
   }, [tourists.length, formData.departureDate, sevilVehicles, xayrullaVehicles, nosirVehicles]);
 
-  // Auto-sync Arrival date with Tour Start date (departureDate + 1 day)
+  // Auto-sync Arrival date with Tour Start date (departureDate + 1 day for ER/CO, +14 days for KAS)
   // Updates arrivalDate when departureDate changes
   useEffect(() => {
     if (formData.departureDate) {
       const departureDate = new Date(formData.departureDate);
-      const expectedArrivalDate = addDays(departureDate, 1);
+      const tourTypeCode = booking?.tourType?.code;
+      const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+      const expectedArrivalDate = addDays(departureDate, daysToAdd);
       const expectedArrivalDateStr = format(expectedArrivalDate, 'yyyy-MM-dd');
 
       // Auto-update if departureDate has changed (comparing with previous value)
@@ -1040,7 +1042,7 @@ export default function BookingDetail() {
         prevDepartureDateRef.current = formData.departureDate;
       }
     }
-  }, [formData.departureDate]);
+  }, [formData.departureDate, booking?.tourType?.code]);
 
   // Auto-calculate PAX from tourists (Final List)
   // Count tourists by accommodation (Uzbekistan vs Turkmenistan)
@@ -1486,7 +1488,9 @@ export default function BookingDetail() {
             else if (index === 14) dayOffset = 12;    // Row 15 (same as row 14!)
             else dayOffset = index - 2;               // Row 16+
 
-            const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, 1) : null;
+            const tourTypeCode = b.tourType?.code;
+            const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+            const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
             const routeDate = arrivalDate
               ? format(addDays(arrivalDate, dayOffset), 'yyyy-MM-dd')
               : (r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '');
@@ -1522,7 +1526,9 @@ export default function BookingDetail() {
               const totalPax = touristsRes.data.tourists?.length || 0;
 
               const loadedRoutes = templates.map((template, index) => {
-                const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, 1) : null;
+                const tourTypeCode = b.tourType?.code;
+                const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+                const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
                 const routeDate = arrivalDate ? format(addDays(arrivalDate, template.dayOffset), 'yyyy-MM-dd') : '';
 
                 return {
@@ -1644,7 +1650,9 @@ export default function BookingDetail() {
             const isChimganRoute = template.route === 'Tashkent - Chimgan' || template.route === 'Tashkent - Chimgan - Tashkent' || template.route === 'Chimgan Excursion';
             if (isChimganRoute) {
               const chimganPrice = localGetPrice('xayrulla', 'Sprinter', 'chimgan');
-              const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, 1) : null;
+              const tourTypeCode = b.tourType?.code;
+              const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+              const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
               let dayOffset;
               if (index === 0) dayOffset = 0;
               else if (index === 1) dayOffset = 1;
@@ -1720,7 +1728,9 @@ export default function BookingDetail() {
             else if (index === 14) dayOffset = 12;    // Row 15 (same as row 14!)
             else dayOffset = index - 2;
 
-            const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, 1) : null;
+            const tourTypeCode = b.tourType?.code;
+            const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+            const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
             const routeDate = arrivalDate
               ? format(addDays(arrivalDate, dayOffset), 'yyyy-MM-dd')
               : '';
@@ -1750,16 +1760,18 @@ export default function BookingDetail() {
         const isER = b.tourType?.code === 'ER';
         const calculatedPax = isER ? (uzbek + turkmen) : uzbek;
 
-        // Calculate arrivalDate as departureDate + 1 day
+        // Calculate arrivalDate: +1 day for ER/CO, +14 days for KAS
         const departureDateStr = b.departureDate ? format(new Date(b.departureDate), 'yyyy-MM-dd') : '';
-        const arrivalDateStr = b.departureDate ? format(addDays(new Date(b.departureDate), 1), 'yyyy-MM-dd') : '';
+        const tourTypeCode = b.tourType?.code;
+        const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+        const arrivalDateStr = b.departureDate ? format(addDays(new Date(b.departureDate), daysToAdd), 'yyyy-MM-dd') : '';
 
         setFormData({
           bookingNumber: b.bookingNumber,
           tourTypeId: b.tourTypeId?.toString() || '',
           country: b.country || '',
           departureDate: departureDateStr,
-          arrivalDate: arrivalDateStr, // Always departureDate + 1 day
+          arrivalDate: arrivalDateStr, // +1 day for ER/CO, +14 days for KAS
           endDate: b.endDate ? format(new Date(b.endDate), 'yyyy-MM-dd') : '',
           pax: calculatedPax, // Auto-calculated from Uzbekistan + Turkmenistan
           paxUzbekistan: b.paxUzbekistan?.toString() || '',
