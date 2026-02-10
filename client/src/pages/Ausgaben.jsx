@@ -823,7 +823,7 @@ export default function Ausgaben() {
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: module.color }}
                   />
-                  {module.name}
+                  {module.code}
                 </span>
               </button>
             ))}
