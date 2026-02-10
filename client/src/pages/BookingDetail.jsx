@@ -12313,7 +12313,11 @@ export default function BookingDetail() {
                 <div className="flex items-center gap-1 text-sm">
                   <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Arrival</span>
                   <span className="font-semibold text-green-700">
-                    {formData.departureDate ? format(addDays(new Date(formData.departureDate), 1), 'dd.MM.yyyy') : '-'}
+                    {formData.departureDate ? (() => {
+                      const tourTypeCode = booking?.tourType?.code;
+                      const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+                      return format(addDays(new Date(formData.departureDate), daysToAdd), 'dd.MM.yyyy');
+                    })() : '-'}
                   </span>
                 </div>
 
