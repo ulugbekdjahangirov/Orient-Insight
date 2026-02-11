@@ -1203,7 +1203,7 @@ export default function BookingDetail() {
             defaultHalfDays = 1;
           } else if (b.tourType?.code === 'ZA') {
             defaultFullDays = 5;
-            defaultHalfDays = 0.5;
+            defaultHalfDays = 1;
           }
           const fullDays = b.guideFullDays || defaultFullDays;
           const halfDays = b.guideHalfDays || defaultHalfDays;
@@ -1237,6 +1237,16 @@ export default function BookingDetail() {
               totalPayment: secondGuideData.totalPayment || 0
             });
           }
+        } else if (b.tourType?.code === 'ZA') {
+          // For ZA tours without second guide, set default values
+          setSecondGuide({
+            guide: null,
+            fullDays: 1,
+            halfDays: 0,
+            dayRate: 110,
+            halfDayRate: 55,
+            totalPayment: 110
+          });
         }
 
         // Load bergreiseleiter from bergreiseleiter JSON field
@@ -2432,12 +2442,17 @@ export default function BookingDetail() {
         if (booking?.tourType?.code === 'ER') {
           setGuideDays({ fullDays: 12, halfDays: 1 });
         } else if (booking?.tourType?.code === 'ZA') {
-          setGuideDays({ fullDays: 5, halfDays: 0.5 });
+          setGuideDays({ fullDays: 5, halfDays: 1 });
         } else {
           setGuideDays({ fullDays: 0, halfDays: 0 });
         }
       } else {
-        setGuideDays({ fullDays: 0, halfDays: 0 });
+        // For second guide in ZA tours, default to 1 full day
+        if (type === 'second' && booking?.tourType?.code === 'ZA') {
+          setGuideDays({ fullDays: 1, halfDays: 0 });
+        } else {
+          setGuideDays({ fullDays: 0, halfDays: 0 });
+        }
       }
       setGuideRates({ dayRate: 110, halfDayRate: 55 });
     }
