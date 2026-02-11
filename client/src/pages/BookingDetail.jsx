@@ -1286,6 +1286,11 @@ export default function BookingDetail() {
 
         // Load routes from database
         const loadedRoutes = routesRes.data.routes || [];
+        console.log(`📋 PAGE LOAD - Routes from API: ${loadedRoutes.length} routes`);
+        console.log('   routesRes.data:', routesRes.data);
+        if (loadedRoutes.length > 0) {
+          console.log('   First route:', loadedRoutes[0]);
+        }
         setRoutes(loadedRoutes); // Store routes in state for Tour Services tab
 
         // Use database routes if available (for ALL tour types including ER!)
@@ -1540,6 +1545,7 @@ export default function BookingDetail() {
             };
           });
           // Auto-sort routes by date after loading from database
+          console.log(`✅ PAGE LOAD - Setting erRoutes state with ${mappedRoutes.length} routes`);
           setErRoutes(sortRoutesByDate(mappedRoutes));
         } else if (b.tourType?.code === 'ER') {
           // No saved routes - try loading from database template first
