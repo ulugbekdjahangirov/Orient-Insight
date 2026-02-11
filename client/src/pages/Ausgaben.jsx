@@ -252,6 +252,10 @@ export default function Ausgaben() {
           fullDays = 12;  // ER default: 12 full days
           halfDays = 1;   // ER default: 1 half day
           console.log(`  🤖 AUTO: ER guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
+        } else if (tourTypeCode === 'za') {
+          fullDays = 5;   // ZA default: 5 full days
+          halfDays = 1;   // ZA default: 1 half day
+          console.log(`  🤖 AUTO: ZA guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
         }
         // Add defaults for other tour types here if needed
         // else if (tourTypeCode === 'co') { fullDays = 10; halfDays = 0; }
@@ -276,8 +280,8 @@ export default function Ausgaben() {
       hotelsUZS: grandTotalData?.grandTotalUZS || 0,
 
       // 2. Transport & Routes - from routes array
-      transportSevil: routes.filter(r => r.provider?.toLowerCase() === 'sevil').reduce((sum, r) => sum + (r.price || 0), 0),
-      transportXayrulla: routes.filter(r => r.provider?.toLowerCase() === 'xayrulla').reduce((sum, r) => sum + (r.price || 0), 0),
+      transportSevil: routes.filter(r => r.provider?.toLowerCase().includes('sevil')).reduce((sum, r) => sum + (r.price || 0), 0),
+      transportXayrulla: routes.filter(r => r.provider?.toLowerCase().includes('xayrulla')).reduce((sum, r) => sum + (r.price || 0), 0),
 
       // 3. Railway - from railways array
       railway: railways.reduce((sum, r) => sum + (r.price || 0), 0),
@@ -291,8 +295,14 @@ export default function Ausgaben() {
       // 6. Meals - from localStorage
       meals: 0,
 
-      // 7. Metro - from Opex Transport API (same as BookingDetail.jsx Metro tab)
+      // 7. Metro - from Opex Transport API (skip for ZA tours)
       metro: (() => {
+        // Skip Metro for ZA tours
+        if (booking.tourType?.code === 'ZA') {
+          console.log(`  🚇 Metro: Skipped for ZA tour`);
+          return 0;
+        }
+
         const metroData = metroVehicles || [];
         const metroPax = pax + 1; // +1 for guide (tourists + guide)
         const metroTotal = metroData.reduce((sum, metro) => {
@@ -672,7 +682,12 @@ export default function Ausgaben() {
       if (type === 'EINTRITT') {
         expenses.eintritt += price;
       } else if (type === 'METRO') {
-        expenses.metro += price;
+        // Skip Metro for ZA tours
+        if (booking.tourType?.code !== 'ZA') {
+          expenses.metro += price;
+        } else {
+          console.log(`  🚇 Metro skipped for ZA tour`);
+        }
       } else if (type === 'SHOU') {
         expenses.shou += price;
       } else if (type === 'OTHER') {
@@ -736,8 +751,21 @@ export default function Ausgaben() {
       if (booking.guide) {
         const dayRate = booking.guide.dayRate || 110;
         const halfDayRate = booking.guide.halfDayRate || 55;
-        const fullDays = booking.guideFullDays || 0;
-        const halfDays = booking.guideHalfDays || 0;
+        let fullDays = booking.guideFullDays || 0;
+        let halfDays = booking.guideHalfDays || 0;
+
+        // AUTO-CALCULATE: Use tour type defaults if days are 0
+        if (fullDays === 0 && halfDays === 0) {
+          if (tourTypeCode === 'er') {
+            fullDays = 12;
+            halfDays = 1;
+            console.log(`  🤖 AUTO: ER guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
+          } else if (tourTypeCode === 'za') {
+            fullDays = 5;
+            halfDays = 1;
+            console.log(`  🤖 AUTO: ZA guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
+          }
+        }
 
         // Calculate from days
         let mainGuidePayment = (fullDays * dayRate) + (halfDays * halfDayRate);
