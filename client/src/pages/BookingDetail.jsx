@@ -6017,7 +6017,14 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
+      console.log(`💾 Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
+      console.log('✅ Routes saved successfully to database');
+
+      // Reload routes from database to verify persistence
+      const reloadedRes = await routesApi.getAll(id);
+      console.log(`🔄 Reloaded ${reloadedRes.data.routes?.length || 0} routes from database`);
+
       toast.success('Маршруты сохранены');
     } catch (error) {
       console.error('Error saving routes:', error);
