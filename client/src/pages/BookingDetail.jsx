@@ -5418,10 +5418,10 @@ export default function BookingDetail() {
   };
 
   // Determine provider based on city
-  const getProviderByCity = (city) => {
+  const getProviderByCity = (city, explicitTourTypeCode = null) => {
     if (!city) return '';
     const cityLower = city.toLowerCase().trim();
-    const tourTypeCode = booking?.tourType?.code;
+    const tourTypeCode = explicitTourTypeCode || booking?.tourType?.code;
 
     // Tashkent -> Xayrulla
     if (cityLower.includes('tashkent') || cityLower.includes('toshkent') || cityLower.includes('ташкент')) {
@@ -6745,6 +6745,18 @@ export default function BookingDetail() {
   // ==================== CO FIX FUNCTION ====================
   const autoFixRoutesCO = async () => {
     console.log('🟢 Running CO fix logic...');
+    console.log('📊 CO: Loaded vehicles:', {
+      'sevil-co': sevilCoVehicles.length,
+      'sevil-kas': sevilKasVehicles.length,
+      'sevil-er': sevilErVehicles.length,
+      'xayrulla': xayrullaVehicles.length,
+      'nosir': nosirVehicles.length
+    });
+    if (sevilCoVehicles.length > 0) {
+      console.log('  Sevil CO vehicles:', sevilCoVehicles.map(v => `${v.name} (${v.person})`));
+    } else {
+      console.warn('⚠️ WARNING: sevilCoVehicles is EMPTY! This will cause pricing issues.');
+    }
 
     try {
       // Reload routes from database
@@ -6812,7 +6824,16 @@ export default function BookingDetail() {
           return [route];
         }
 
-        const provider = route.choiceTab || getProviderByCity(route.shahar);
+        // Get provider - upgrade generic 'sevil' to 'sevil-co' for CO groups
+        let provider = route.choiceTab || getProviderByCity(route.shahar, 'CO');
+        if (provider === 'sevil') {
+          provider = 'sevil-co';  // Upgrade to CO-specific Sevil
+          console.log(`  ⬆️ CO: Upgraded generic 'sevil' to 'sevil-co' for route: ${route.route}`);
+        }
+
+        // DEBUG: Check provider and available vehicles
+        const availableVehicles = getVehiclesByProvider(provider);
+        console.log(`  🔍 CO Route ${index + 1}: City="${route.shahar}", Provider="${provider}", Available vehicles:`, availableVehicles.length, availableVehicles.map(v => v.name));
 
         // Chimgan routes
         const isChimganRoute = route.route === 'Tashkent - Chimgan - Tashkent';
@@ -6885,6 +6906,7 @@ export default function BookingDetail() {
 
         // Get best vehicle for route
         const vehicle = getBestVehicleForRoute(provider, routePax);
+        console.log(`  🚗 CO Route ${index + 1}: Best vehicle for ${routePax} PAX = "${vehicle}"`);
 
         // Get rate type
         let rate = '';
@@ -6904,7 +6926,8 @@ export default function BookingDetail() {
         }
 
         const price = getPriceFromOpex(provider, vehicle, rate);
-        console.log(`  CO Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
+        console.log(`  💰 CO Route ${index + 1}: getPriceFromOpex(provider="${provider}", vehicle="${vehicle}", rate="${rate}") = $${price || '?'}`);
+        console.log(`  ✅ CO Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
         return [{
           ...route,
