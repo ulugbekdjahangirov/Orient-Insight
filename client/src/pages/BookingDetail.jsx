@@ -6337,13 +6337,32 @@ export default function BookingDetail() {
   // ==================== ER FIX FUNCTION ====================
   const autoFixRoutesER = async () => {
     console.log('🔵 Running ER fix logic...');
+    console.log('📊 ER: Loaded vehicles:', {
+      'sevil-er': sevilErVehicles.length,
+      'sevil-co': sevilCoVehicles.length,
+      'sevil-kas': sevilKasVehicles.length,
+      'xayrulla': xayrullaVehicles.length,
+      'nosir': nosirVehicles.length
+    });
+    if (sevilErVehicles.length > 0) {
+      console.log('  Sevil ER vehicles:', sevilErVehicles.map(v => `${v.name} (${v.person})`));
+    } else {
+      console.warn('⚠️ WARNING: sevilErVehicles is EMPTY! This will cause pricing issues.');
+    }
 
     try {
-
-      // IMPORTANT: Reload routes from database to get latest data
-      // This ensures user-edited text (city and itinerary) is preserved when fixing vehicles
+      // Load existing routes from database (user's manually corrected structure)
+      // We PRESERVE the structure and only update vehicle/provider/price
       const routesRes = await bookingsApi.getRoutes(id);
       const freshRoutes = routesRes.data.routes || [];
+
+      console.log(`📋 ER: Loaded ${freshRoutes.length} existing routes from database`);
+
+      // Check if routes exist and have proper structure
+      if (freshRoutes.length === 0) {
+        toast.error('No routes found! Please load template or create routes first.', { id: 'auto-fix' });
+        return;
+      }
 
       // Map database routes to erRoutes format, preserving city and itinerary fields
       const freshErRoutes = freshRoutes.map((dbRoute, index) => {
@@ -6397,40 +6416,36 @@ export default function BookingDetail() {
         };
       };
 
-      // Consolidate duplicate Fergana routes before processing
-      // For Fergana routes: merge ALL into ONE (regardless of date)
-      // For other routes: keep each one
+      // Smart consolidation: Remove exact duplicates while preserving legitimate splits
+      // Duplicate = same route name + same date + same vehicle type
+      // Split = same route name + same date + DIFFERENT vehicle types (keep all)
       const consolidatedRoutes = [];
-      let ferganaRouteFound = false;
-      let firstFerganaRoute = null;
+      const seenRoutes = new Map(); // Track "routeName|date|vehicle" -> true
 
       for (const route of freshErRoutes) {
-        const isFergana = route.route === 'Tashkent - Fergana' || route.route === 'Fergana - Tashkent';
-
         // Skip routes without valid date
         if (!route.sana || route.sana === 'Invalid Date') {
-          console.log(`⏭️ Skipping route without valid date: ${route.route}`);
+          console.log(`⏭️ ER: Skipping route without valid date: ${route.route}`);
           continue;
         }
 
-        if (isFergana) {
-          if (!ferganaRouteFound) {
-            // Keep the FIRST Fergana route (earliest date)
-            firstFerganaRoute = route;
-            ferganaRouteFound = true;
-            console.log(`✅ Keeping first Fergana route: ${route.route} on ${route.sana}`);
-            consolidatedRoutes.push(route);
-          } else {
-            // Skip duplicate Fergana routes
-            console.log(`⏭️ Skipping duplicate Fergana route: ${route.route} on ${route.sana}`);
-          }
-        } else {
-          // Keep all non-Fergana routes
-          consolidatedRoutes.push(route);
+        const routeName = route.route || '';
+        const routeDate = route.sana;
+        const routeVehicle = route.transportType || 'NONE'; // Use 'NONE' if no vehicle set
+        const routeKey = `${routeName}|${routeDate}|${routeVehicle}`; // Unique key including vehicle
+
+        // Check if this exact combination already exists
+        if (seenRoutes.has(routeKey)) {
+          console.log(`⏭️ ER: Skipping EXACT DUPLICATE: ${routeName} on ${routeDate} with ${routeVehicle}`);
+          continue;
         }
+
+        // Mark this combination as seen
+        seenRoutes.set(routeKey, true);
+        consolidatedRoutes.push(route);
       }
 
-      console.log(`📋 Consolidated routes: ${freshErRoutes.length} → ${consolidatedRoutes.length} (removed ${freshErRoutes.length - consolidatedRoutes.length} duplicates)`);
+      console.log(`📋 ER: Consolidated routes: ${freshErRoutes.length} → ${consolidatedRoutes.length} (removed ${freshErRoutes.length - consolidatedRoutes.length} exact duplicates)`);
 
       // Fix each route (using fresh data with Sayohat dasturi preserved)
       // Use flatMap to allow splitting Fergana routes into multiple rows
@@ -6456,8 +6471,13 @@ export default function BookingDetail() {
           return [route];
         }
 
-        // Get provider
-        const provider = route.choiceTab || getProviderByCity(route.shahar);
+        // Get provider - upgrade generic 'sevil' to 'sevil-er' for ER groups
+        let provider = route.choiceTab || getProviderByCity(route.shahar, 'ER');
+        if (provider === 'sevil') {
+          provider = 'sevil-er';  // Upgrade to ER-specific Sevil
+          console.log(`  ⬆️ ER: Upgraded generic 'sevil' to 'sevil-er' for route: ${route.route}`);
+        }
+        console.log(`  🔍 ER Route ${index + 1}: ${route.route} → Provider="${provider}", PAX=${routePax}`);
 
         // Special handling for Chimgan routes
         const isChimganRoute = route.route === 'Tashkent - Chimgan' ||
@@ -6546,6 +6566,7 @@ export default function BookingDetail() {
 
         // Get best vehicle
         const vehicle = getBestVehicleForRoute(provider, routePax);
+        console.log(`  🚗 ER Route ${index + 1}: Best vehicle for ${routePax} PAX = "${vehicle}"`);
 
         // Get rate type based on route and provider
         let rate = '';
@@ -6570,8 +6591,8 @@ export default function BookingDetail() {
 
         // Get price
         const price = getPriceFromOpex(provider, vehicle, rate);
-
-        console.log(`  Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
+        console.log(`  💰 ER Route ${index + 1}: getPriceFromOpex(provider="${provider}", vehicle="${vehicle}", rate="${rate}") = $${price || '?'}`);
+        console.log(`  ✅ ER Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
         return [{
           ...route,
@@ -6623,11 +6644,12 @@ export default function BookingDetail() {
         nextDay.setDate(nextDay.getDate() + 1);
         const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
 
-        // RULE 1: Train Station Drop-off + Samarkand City Tour (SAME DAY)
-        if (prevRouteName.includes('train station') && prevRouteName.includes('drop') &&
+        // RULE 1: Airport Pickup (to train station) + Samarkand City Tour (SAME DAY)
+        // Also handles "Train Station Drop-off" name variant
+        if ((prevRouteName.includes('airport pickup') || (prevRouteName.includes('train station') && prevRouteName.includes('drop'))) &&
             (currentRouteName.includes('samarkand') || currentRouteName.includes('samarqand'))) {
           currentRoute.sana = prevRoute.sana; // Same day
-          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
+          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as train to Samarkand)`);
         }
         // RULE 2: Train Station Drop-off + Qoqon-Fergana (SAME DAY)
         else if (prevRouteName.includes('train station') && prevRouteName.includes('drop') &&
@@ -6661,6 +6683,12 @@ export default function BookingDetail() {
           const twoDaysFormatted = format(twoDaysLater, 'yyyy-MM-dd');
           currentRoute.sana = twoDaysFormatted;
           console.log(`${i}. ${currentRoute.route} → ${twoDaysFormatted} (rest day +2)`);
+        }
+        // RULE 6: Airport Drop-off + Khiva-Shovot (SAME DAY) - Final split day
+        else if ((prevRouteName.includes('airport') && prevRouteName.includes('drop')) &&
+                 (currentRouteName.includes('khiva') && currentRouteName.includes('shovot'))) {
+          currentRoute.sana = prevRoute.sana; // Same day
+          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Airport Drop-off - final split)`);
         }
         // DEFAULT: Next day (+1)
         else {
