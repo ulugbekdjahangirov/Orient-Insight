@@ -5331,7 +5331,19 @@ export default function BookingDetail() {
 
   const handleOpenProviderModal = (route) => {
     setEditingRouteForProvider(route);
-    const providerTab = route.choiceTab || 'sevil';
+
+    // Determine default Sevil variant based on tour type
+    let defaultProvider = 'sevil';
+    if (!route.choiceTab) {
+      // If no provider set, default to tour-type-specific Sevil
+      const tourCode = tourTypeCode || booking?.tourType?.code;
+      if (tourCode === 'KAS') defaultProvider = 'sevil-kas';
+      else if (tourCode === 'CO') defaultProvider = 'sevil-co';
+      else if (tourCode === 'ZA') defaultProvider = 'sevil-za';
+      else if (tourCode === 'ER') defaultProvider = 'sevil-er';
+    }
+
+    const providerTab = route.choiceTab || defaultProvider;
     setSelectedProviderTab(providerTab);
     setShowProviderModal(true);
   };
@@ -7081,7 +7093,12 @@ export default function BookingDetail() {
           return route;
         }
 
-        const provider = route.choiceTab || getProviderByCity(route.shahar);
+        // Get provider - upgrade generic 'sevil' to 'sevil-kas'
+        let provider = route.choiceTab || getProviderByCity(route.shahar);
+        if (provider === 'sevil') {
+          provider = 'sevil-kas';  // Upgrade to KAS-specific Sevil
+          console.log(`  ⬆️ Upgraded generic 'sevil' to 'sevil-kas' for route: ${route.route}`);
+        }
 
         // Get best vehicle for route
         const vehicle = getBestVehicleForRoute(provider, routePax);
@@ -13238,11 +13255,22 @@ export default function BookingDetail() {
             {/* Provider Tabs */}
             <div className="mb-6">
               <div className="flex gap-2">
-                {[
-                  { id: 'sevil', name: 'Sevil', color: 'blue' },
-                  { id: 'xayrulla', name: 'Xayrulla', color: 'cyan' },
-                  { id: 'nosir', name: 'Nosir', color: 'teal' },
-                ].map((tab) => (
+                {(() => {
+                  // Determine Sevil tab based on tour type
+                  const tourCode = booking?.tourType?.code;
+                  let sevilTab = { id: 'sevil', name: 'Sevil', color: 'blue' };
+
+                  if (tourCode === 'KAS') sevilTab = { id: 'sevil-kas', name: 'Sevil KAS', color: 'orange' };
+                  else if (tourCode === 'CO') sevilTab = { id: 'sevil-co', name: 'Sevil CO', color: 'emerald' };
+                  else if (tourCode === 'ZA') sevilTab = { id: 'sevil-za', name: 'Sevil ZA', color: 'purple' };
+                  else if (tourCode === 'ER') sevilTab = { id: 'sevil-er', name: 'Sevil ER', color: 'blue' };
+
+                  return [
+                    sevilTab,
+                    { id: 'xayrulla', name: 'Xayrulla', color: 'cyan' },
+                    { id: 'nosir', name: 'Nosir', color: 'teal' },
+                  ];
+                })().map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setSelectedProviderTab(tab.id)}
@@ -13266,7 +13294,7 @@ export default function BookingDetail() {
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                       Vehicle Name
                     </th>
-                    {selectedProviderTab === 'sevil' && (
+                    {(selectedProviderTab === 'sevil' || selectedProviderTab.startsWith('sevil-')) && (
                       <>
                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                           TAG Rate
@@ -13313,7 +13341,11 @@ export default function BookingDetail() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {(() => {
                     let vehicles = [];
-                    if (selectedProviderTab === 'sevil') vehicles = sevilVehicles;
+                    if (selectedProviderTab === 'sevil-er') vehicles = sevilErVehicles;
+                    else if (selectedProviderTab === 'sevil-co') vehicles = sevilCoVehicles;
+                    else if (selectedProviderTab === 'sevil-kas') vehicles = sevilKasVehicles;
+                    else if (selectedProviderTab === 'sevil-za') vehicles = sevilZaVehicles;
+                    else if (selectedProviderTab === 'sevil') vehicles = sevilVehicles;
                     else if (selectedProviderTab === 'xayrulla') vehicles = xayrullaVehicles;
                     else if (selectedProviderTab === 'nosir') vehicles = nosirVehicles;
 
@@ -13354,7 +13386,7 @@ export default function BookingDetail() {
                               )}
                             </div>
                           </td>
-                          {selectedProviderTab === 'sevil' && (
+                          {(selectedProviderTab === 'sevil' || selectedProviderTab.startsWith('sevil-')) && (
                             <>
                               <td className="px-6 py-4 whitespace-nowrap text-center">
                                 <button
