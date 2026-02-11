@@ -1844,6 +1844,10 @@ export default function Price() {
         saveGuideItems();
       } else if (selectedERSubTab === 'shou') {
         saveShouItems();
+      } else if (selectedERSubTab === 'zusatzkosten') {
+        saveZusatzkosten();
+      } else if (selectedERSubTab === 'total') {
+        saveTotalPrices();
       }
     } else if (selectedTourType === 'co') {
       if (selectedCOSubTab === 'hotels') {
@@ -1862,6 +1866,10 @@ export default function Price() {
         saveCoGuideItems();
       } else if (selectedCOSubTab === 'shou') {
         saveCoShouItems();
+      } else if (selectedCOSubTab === 'zusatzkosten') {
+        saveCoZusatzkosten();
+      } else if (selectedCOSubTab === 'total') {
+        saveTotalPrices();
       }
     } else if (selectedTourType === 'kas') {
       if (selectedKASSubTab === 'hotels') {
@@ -1880,6 +1888,10 @@ export default function Price() {
         saveKasGuideItems();
       } else if (selectedKASSubTab === 'shou') {
         saveKasShouItems();
+      } else if (selectedKASSubTab === 'zusatzkosten') {
+        saveKasZusatzkosten();
+      } else if (selectedKASSubTab === 'total') {
+        saveTotalPrices();
       }
     } else if (selectedTourType === 'za') {
       if (selectedZASubTab === 'hotels') {
@@ -1898,6 +1910,10 @@ export default function Price() {
         saveZaGuideItems();
       } else if (selectedZASubTab === 'shou') {
         saveZaShouItems();
+      } else if (selectedZASubTab === 'zusatzkosten') {
+        saveZaZusatzkosten();
+      } else if (selectedZASubTab === 'total') {
+        saveTotalPrices();
       }
     } else if (selectedTourType === 'preis2026') {
       if (selectedPreis2026SubTab === 'hotels') {
@@ -2080,16 +2096,17 @@ export default function Price() {
       return;
     }
 
-    // Save to localStorage
-    localStorage.setItem('er-total-prices', JSON.stringify(pricesToSave));
+    // Save to localStorage with tour-specific key
+    const storageKey = `${selectedTour.id.toLowerCase()}-total-prices`;
+    localStorage.setItem(storageKey, JSON.stringify(pricesToSave));
 
-    console.log('✅ Total Prices saved to localStorage!');
+    console.log(`✅ Total Prices saved to localStorage (${storageKey})!`);
     Object.keys(pricesToSave).forEach(tierId => {
       const tierData = pricesToSave[tierId];
       console.log(`   ${tierId}: Total=${tierData.totalPrice}$, EZ=${tierData.ezZuschlag}$`);
     });
 
-    toast.success('Narxlar saqlandi! Endi Rechnung to\'g\'ri ko\'rinadi.');
+    toast.success(`${selectedTour.id} narxlar saqlandi! Endi Rechnung to'g'ri ko'rinadi.`);
   };
 
   return (
@@ -6087,6 +6104,9 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
           <div className="overflow-x-auto">{(() => {
+              // Clear previous calculations
+              calculatedTotalPrices.current = {};
+
               const hotelTotal = calculateZaHotelTotals().totalPerTraveler / 2;
               const transportTotals = paxTiers.map(tier => calculateZaTransportTotals().grandTotal / tier.count);
               const railwayTotal = zaRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -6219,6 +6239,13 @@ export default function Price() {
                     const commissionPercent = zaCommissionValues[tier.id] || 0;
                     const commissionAmount = (price * commissionPercent) / 100;
                     const totalPrice = price + commissionAmount;
+
+                    // Store calculated values for saving later
+                    calculatedTotalPrices.current[tier.id] = {
+                      totalPrice: Math.round(totalPrice),
+                      ezZuschlag: 125  // ZA EZ Zuschlag is 125$ (from screenshot)
+                    };
+
                     return (
                       <td key={tier.id} className="border border-green-600 px-4 py-4 text-center font-black text-xl text-gray-900">
                         {formatPrice(totalPrice)} $

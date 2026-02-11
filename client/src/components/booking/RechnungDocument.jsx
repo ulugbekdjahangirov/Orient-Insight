@@ -126,6 +126,31 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
     };
   };
 
+  // Calculate price for any tour type (ZA, CO, KAS, etc.)
+  const calculateTourPrice = (tourTypeCode) => {
+    const touristCount = tourists?.length || booking?.pax || 0;
+    const tier = getPaxTier(touristCount);
+
+    console.log(`🔵 Rechnung: Getting ${tourTypeCode} price for`, touristCount, 'tourists, tier:', tier);
+
+    // Load saved Total Prices from localStorage with tour-specific key
+    const storageKey = `${tourTypeCode.toLowerCase()}-total-prices`;
+    const savedTotalPrices = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+    console.log(`📦 Loaded Total Prices from localStorage (${storageKey}):`, savedTotalPrices);
+
+    // Get prices for this tier
+    const tierPrices = savedTotalPrices[tier.id] || { totalPrice: 0, ezZuschlag: 0 };
+
+    console.log('💰 Prices for tier', tier.id, ':', tierPrices);
+
+    return {
+      einzelpreis: tierPrices.totalPrice,
+      ezZuschlag: tierPrices.ezZuschlag,
+      anzahl: touristCount
+    };
+  };
+
   // Get count of EZ rooms from tourists
   const getEZCount = () => {
     if (!tourists || tourists.length === 0) return 5;
@@ -421,44 +446,38 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       console.log('📋 Total items count:', items.length);
       return items;
     } else {
-      // Default for non-ER tours
-      return [
+      // For non-ER tours (ZA, CO, KAS), use tour-specific pricing
+      console.log(`✅ Rechnung: This is a ${tourTypeCode} booking, calculating prices...`);
+      const { einzelpreis, ezZuschlag, anzahl } = calculateTourPrice(tourTypeCode);
+      const ezCount = getEZCount();
+
+      // Load Zusatzkosten prices from localStorage (tour-specific)
+      const zusatzkostenKey = `${tourTypeCode.toLowerCase()}_zusatzkosten`;
+      const zusatzkostenRaw = localStorage.getItem(zusatzkostenKey) || '[]';
+      const zusatzkosten = JSON.parse(zusatzkostenRaw);
+      console.log(`📦 Loaded ${tourTypeCode} zusatzkosten:`, zusatzkosten);
+
+      const items = [
         {
           id: 1,
           description: 'Usbekistan Teil',
-          einzelpreis: 1125,
-          anzahl: tourists?.length || 11,
+          einzelpreis: einzelpreis,
+          anzahl: anzahl,
           currency: 'USD'
         },
         {
           id: 2,
           description: 'EZ Zuschlag',
-          einzelpreis: 240,
-          anzahl: 5,
-          currency: 'USD'
-        },
-        {
-          id: 3,
-          description: 'Zusatznacht fuer3 Naechte',
-          einzelpreis: 50,
-          anzahl: 3,
-          currency: 'USD'
-        },
-        {
-          id: 4,
-          description: 'Extra Transfer in Taschkent',
-          einzelpreis: 25,
-          anzahl: 1,
-          currency: 'USD'
-        },
-        {
-          id: 5,
-          description: 'Geburtstagsgeschenk',
-          einzelpreis: 10,
-          anzahl: 1,
+          einzelpreis: ezZuschlag,
+          anzahl: ezCount,
           currency: 'USD'
         }
       ];
+
+      // Note: For now, we only handle basic items for non-ER tours
+      // Additional items can be added manually or we can extend this logic later
+      console.log(`📋 Final ${tourTypeCode} invoice items:`, items);
+      return items;
     }
   };
 
