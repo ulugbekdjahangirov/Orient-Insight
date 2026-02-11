@@ -961,12 +961,6 @@ export default function BookingDetail() {
 
   // Auto-update route person count and dates when tourists change (from Rooming List import)
   useEffect(() => {
-    console.log('🔄 Auto-update useEffect triggered:', {
-      touristsLength: tourists.length,
-      erRoutesLength: erRoutes.length,
-      hasDepartureDate: !!formData.departureDate
-    });
-
     if (tourists.length > 0 && erRoutes.length > 0) {
       const newPersonCount = tourists.length.toString();
       const departureDate = formData.departureDate ? new Date(formData.departureDate) : null;
@@ -979,8 +973,6 @@ export default function BookingDetail() {
           const expectedDate = format(addDays(departureDate, idx + 1), 'yyyy-MM-dd');
           return r.sana !== expectedDate;
         }));
-
-      console.log('   needsUpdate?', needsUpdate, 'newPersonCount:', newPersonCount);
 
       if (needsUpdate) {
         const updatedRoutes = erRoutes.map((route, index) => {
@@ -1308,11 +1300,6 @@ export default function BookingDetail() {
 
         // Load routes from database
         const loadedRoutes = routesRes.data.routes || [];
-        console.log(`📋 PAGE LOAD - Routes from API: ${loadedRoutes.length} routes`);
-        console.log('   routesRes.data:', routesRes.data);
-        if (loadedRoutes.length > 0) {
-          console.log('   First route:', loadedRoutes[0]);
-        }
         setRoutes(loadedRoutes); // Store routes in state for Tour Services tab
 
         // Use database routes if available (for ALL tour types including ER!)
@@ -1568,7 +1555,6 @@ export default function BookingDetail() {
             };
           });
           // Auto-sort routes by date after loading from database
-          console.log(`✅ PAGE LOAD - Setting erRoutes state with ${mappedRoutes.length} routes`);
           setErRoutes(sortRoutesByDate(mappedRoutes));
         } else if (b.tourType?.code === 'ER') {
           // No saved routes - try loading from database template first
@@ -6040,14 +6026,7 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
-      console.log(`💾 Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
-      console.log('✅ Routes saved successfully to database');
-
-      // Reload routes from database to verify persistence
-      const reloadedRes = await routesApi.getAll(id);
-      console.log(`🔄 Reloaded ${reloadedRes.data.routes?.length || 0} routes from database`);
-
       toast.success('Маршруты сохранены');
     } catch (error) {
       console.error('Error saving routes:', error);
