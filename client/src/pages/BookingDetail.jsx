@@ -9285,17 +9285,20 @@ export default function BookingDetail() {
                 <span className="text-lg">🎫</span>
                 Eintritt
               </button>
-              <button
-                onClick={() => setTourServicesTab('metro')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
-                  tourServicesTab === 'metro'
-                    ? 'bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500 hover:from-lime-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-lime-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
-                }`}
-              >
-                <span className="text-lg">🚇</span>
-                Metro
-              </button>
+              {/* Hide Metro tab for ZA tours */}
+              {booking?.tourType?.code !== 'ZA' && (
+                <button
+                  onClick={() => setTourServicesTab('metro')}
+                  className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                    tourServicesTab === 'metro'
+                      ? 'bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500 hover:from-lime-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-lime-500/30 scale-110 -translate-y-0.5'
+                      : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                  }`}
+                >
+                  <span className="text-lg">🚇</span>
+                  Metro
+                </button>
+              )}
               <button
                 onClick={() => setTourServicesTab('shou')}
                 className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
@@ -10450,8 +10453,8 @@ export default function BookingDetail() {
             );
           })()}
 
-          {/* Metro Tab */}
-          {tourServicesTab === 'metro' && (() => {
+          {/* Metro Tab - Hidden for ZA tours */}
+          {tourServicesTab === 'metro' && booking?.tourType?.code !== 'ZA' && (() => {
             // Use metro data from API (loaded in metroVehicles state)
             const metroData = metroVehicles || [];
             const pax = (tourists?.length || 0) + 1; // +1 for guide
@@ -12298,8 +12301,8 @@ export default function BookingDetail() {
               return sum + (pricePerPerson * pax);
             }, 0);
 
-            // 7. Metro - ONLY UZS (from API)
-            const metroData = metroVehicles || [];
+            // 7. Metro - ONLY UZS (from API) - Skip for ZA tours
+            const metroData = (booking?.tourType?.code !== 'ZA') ? (metroVehicles || []) : [];
             const metroPax = pax + 1; // +1 for guide (tourists + guide)
             const metroUZS = metroData.reduce((sum, metro) => {
               const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
@@ -12496,22 +12499,25 @@ export default function BookingDetail() {
                           -
                         </td>
                       </tr>
-                      <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            7
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Metro
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {metroUZS > 0 ? Math.round(metroUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          -
-                        </td>
-                      </tr>
+                      {/* Hide Metro row for ZA tours */}
+                      {booking?.tourType?.code !== 'ZA' && (
+                        <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-center border-r border-gray-200">
+                            <div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">
+                              7
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
+                            Metro
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                            {metroUZS > 0 ? Math.round(metroUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
+                            -
+                          </td>
+                        </tr>
+                      )}
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-center border-r border-gray-200">
                           <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-semibold mx-auto">
