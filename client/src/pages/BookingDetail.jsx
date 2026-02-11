@@ -965,28 +965,30 @@ export default function BookingDetail() {
       const newPersonCount = tourists.length.toString();
       const departureDate = formData.departureDate ? new Date(formData.departureDate) : null;
 
-      // IMPORTANT: Only auto-update routes that have MISSING person counts (0 or empty)
-      // DO NOT override routes with saved person counts (like UZB/TKM splits: 5, 8)
-      // Check if any route needs updating (only routes with missing PAX or wrong dates)
-      const needsUpdate = erRoutes.some(r => !r.person || r.person === '0' || r.person === 0) ||
-        (departureDate && erRoutes.some((r, idx) => {
-          const expectedDate = format(addDays(departureDate, idx + 1), 'yyyy-MM-dd');
-          return r.sana !== expectedDate;
-        }));
+      // IMPORTANT: Check separately for PAX updates and date updates
+      // DO NOT mix them - date updates should NOT trigger PAX recalculation!
+      const hasMissingPax = erRoutes.some(r => !r.person || r.person === '0' || r.person === 0);
+      const hasWrongDates = departureDate && erRoutes.some((r, idx) => {
+        const expectedDate = format(addDays(departureDate, idx + 1), 'yyyy-MM-dd');
+        return r.sana !== expectedDate;
+      });
+
+      const needsUpdate = hasMissingPax || hasWrongDates;
 
       if (needsUpdate) {
         const updatedRoutes = erRoutes.map((route, index) => {
-          // CRITICAL: Check if route has saved data from database
-          // If route has saved person count AND vehicle, preserve ALL saved data
-          const hasSavedData = route.person && route.person !== '0' && route.transportType;
-
           // Calculate date using dayOffset from route or template
           const template = defaultERRoutesTemplate[index];
           const dayOffset = route.dayOffset ?? template?.dayOffset ?? index;
           const routeDate = departureDate ? format(addDays(departureDate, dayOffset + 1), 'yyyy-MM-dd') : route.sana;
 
-          // If route has saved data, preserve it completely (don't recalculate vehicle/rate/price)
-          if (hasSavedData) {
+          // CRITICAL: Preserve saved route data (person, vehicle, rate, price)
+          // Only update if route is NEW (no saved data)
+          const hasSavedPax = route.person && route.person !== '0' && route.person !== 0;
+          const hasSavedVehicle = route.transportType && route.transportType !== '';
+
+          // If route has saved PAX and vehicle, only update dates (preserve everything else)
+          if (hasSavedPax && hasSavedVehicle) {
             return {
               ...route,
               sana: routeDate,
@@ -995,7 +997,7 @@ export default function BookingDetail() {
             };
           }
 
-          // Only for NEW routes without saved data: calculate vehicle
+          // Only for NEW routes without saved data: calculate vehicle and PAX
           const count = parseInt(newPersonCount);
           let newTransportType = route.transportType;
 
