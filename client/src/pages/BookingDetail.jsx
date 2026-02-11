@@ -1238,9 +1238,10 @@ export default function BookingDetail() {
             });
           }
         } else if (b.tourType?.code === 'ZA') {
-          // For ZA tours without second guide, set default values
+          // For ZA tours without second guide, auto-select Feruz
+          const feruzGuide = guidesRes.data.guides.find(g => g.name === 'Feruz' || g.name === 'Феруз');
           setSecondGuide({
-            guide: null,
+            guide: feruzGuide || null,
             fullDays: 1,
             halfDays: 0,
             dayRate: 110,
@@ -2437,7 +2438,15 @@ export default function BookingDetail() {
       // New guide - set defaults
       setManualGuideEntry(false);
       setManualGuideName('');
-      setSelectedGuide(null);
+
+      // Auto-select Feruz for ZA second guide
+      if (type === 'second' && booking?.tourType?.code === 'ZA') {
+        const feruzGuide = guides.find(g => g.name === 'Feruz' || g.name === 'Феруз');
+        setSelectedGuide(feruzGuide || null);
+      } else {
+        setSelectedGuide(null);
+      }
+
       if (type === 'main') {
         if (booking?.tourType?.code === 'ER') {
           setGuideDays({ fullDays: 12, halfDays: 1 });
