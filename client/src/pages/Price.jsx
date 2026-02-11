@@ -4415,6 +4415,9 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
           <div className="overflow-x-auto">{(() => {
+              // Clear previous calculations
+              calculatedTotalPrices.current = {};
+
               const hotelTotal = calculateCoHotelTotals().totalPerTraveler / 2;
               const transportTotals = paxTiers.map(tier => calculateCoTransportTotals().grandTotal / tier.count);
               const railwayTotal = coRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -4558,6 +4561,16 @@ export default function Price() {
                     const commissionPercent = coCommissionValues[tier.id] || 0;
                     const commissionAmount = (price * commissionPercent) / 100;
                     const totalPrice = price + commissionAmount;
+
+                    // Calculate EZ Zuschlag dynamically
+                    const ezZuschlag = Math.round(calculateCoHotelTotals().totalEZZimmer - (calculateCoHotelTotals().totalPerTraveler / 2));
+
+                    // Store calculated values for saving later
+                    calculatedTotalPrices.current[tier.id] = {
+                      totalPrice: Math.round(totalPrice),
+                      ezZuschlag: ezZuschlag
+                    };
+
                     return (
                       <td key={tier.id} className="border border-green-600 px-4 py-4 text-center font-black text-xl text-gray-900">
                         {formatPrice(totalPrice)} $
@@ -5266,6 +5279,9 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
           <div className="overflow-x-auto">{(() => {
+              // Clear previous calculations
+              calculatedTotalPrices.current = {};
+
               const hotelTotal = calculateKasHotelTotals().totalPerTraveler / 2;
               const transportTotals = paxTiers.map(tier => calculateKasTransportTotals().grandTotal / tier.count);
               const railwayTotal = kasRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -5398,6 +5414,13 @@ export default function Price() {
                     const commissionPercent = kasCommissionValues[tier.id] || 0;
                     const commissionAmount = (price * commissionPercent) / 100;
                     const totalPrice = price + commissionAmount;
+
+                    // Store calculated values for saving later
+                    calculatedTotalPrices.current[tier.id] = {
+                      totalPrice: Math.round(totalPrice),
+                      ezZuschlag: 140  // KAS EZ Zuschlag is 140$ (from screenshot)
+                    };
+
                     return (
                       <td key={tier.id} className="border border-green-600 px-4 py-4 text-center font-black text-xl text-gray-900">
                         {formatPrice(totalPrice)} $
