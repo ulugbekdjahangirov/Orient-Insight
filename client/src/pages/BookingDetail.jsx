@@ -789,6 +789,10 @@ export default function BookingDetail() {
 
   // Vehicle data from API (initialized with defaults)
   const [sevilVehicles, setSevilVehicles] = useState(defaultSevilVehicles);
+  const [sevilErVehicles, setSevilErVehicles] = useState(defaultSevilVehicles);
+  const [sevilCoVehicles, setSevilCoVehicles] = useState(defaultSevilVehicles);
+  const [sevilKasVehicles, setSevilKasVehicles] = useState(defaultSevilVehicles);
+  const [sevilZaVehicles, setSevilZaVehicles] = useState(defaultSevilVehicles);
   const [xayrullaVehicles, setXayrullaVehicles] = useState(defaultXayrullaVehicles);
   const [nosirVehicles, setNosirVehicles] = useState(defaultNosirVehicles);
   const [metroVehicles, setMetroVehicles] = useState([]);
@@ -852,6 +856,10 @@ export default function BookingDetail() {
       const { grouped } = response.data;
 
       if (grouped.sevil?.length > 0) setSevilVehicles(grouped.sevil);
+      if (grouped['sevil-er']?.length > 0) setSevilErVehicles(grouped['sevil-er']);
+      if (grouped['sevil-co']?.length > 0) setSevilCoVehicles(grouped['sevil-co']);
+      if (grouped['sevil-kas']?.length > 0) setSevilKasVehicles(grouped['sevil-kas']);
+      if (grouped['sevil-za']?.length > 0) setSevilZaVehicles(grouped['sevil-za']);
       if (grouped.xayrulla?.length > 0) setXayrullaVehicles(grouped.xayrulla);
       if (grouped.nosir?.length > 0) setNosirVehicles(grouped.nosir);
       if (grouped.metro?.length > 0) setMetroVehicles(grouped.metro);
@@ -1022,13 +1030,13 @@ export default function BookingDetail() {
     }
   }, [tourists.length, formData.departureDate, sevilVehicles, xayrullaVehicles, nosirVehicles]);
 
-  // Auto-sync Arrival date with Tour Start date (departureDate + 1 day for ER/CO, +14 days for KAS)
+  // Auto-sync Arrival date with Tour Start date (departureDate + 1 day for ER/CO, +4 days for ZA, +14 days for KAS)
   // Updates arrivalDate when departureDate changes
   useEffect(() => {
     if (formData.departureDate) {
       const departureDate = new Date(formData.departureDate);
       const tourTypeCode = booking?.tourType?.code;
-      const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+      const daysToAdd = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 1);
       const expectedArrivalDate = addDays(departureDate, daysToAdd);
       const expectedArrivalDateStr = format(expectedArrivalDate, 'yyyy-MM-dd');
 
@@ -4199,6 +4207,19 @@ export default function BookingDetail() {
 
       // Step 3: Build accommodation list from itinerary
       const departureDate = new Date(booking.departureDate);
+
+      // CRITICAL: For ZA tours, add 4 days to get actual arrival in Uzbekistan
+      // ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
+      // Example: Excel 23.08 → departureDate 27.08 → arrival 31.08
+      const tourTypeCode = booking?.tourType?.code;
+      const baseDate = tourTypeCode === 'ZA'
+        ? new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000)) // +4 days
+        : departureDate;
+
+      if (tourTypeCode === 'ZA') {
+        console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
+      }
+
       const accommodationsToCreate = [];
 
       // Group consecutive days by hotel
@@ -4363,11 +4384,11 @@ export default function BookingDetail() {
       for (const accData of accommodationsToCreate) {
         const { hotel, startDay, endDay, tourists: groupTourists, groupName } = accData;
 
-        // Calculate dates
-        const checkInDate = new Date(departureDate);
+        // Calculate dates using baseDate (adjusted for ZA tours)
+        const checkInDate = new Date(baseDate);
         checkInDate.setDate(checkInDate.getDate() + (startDay - 1));
 
-        const checkOutDate = new Date(departureDate);
+        const checkOutDate = new Date(baseDate);
         checkOutDate.setDate(checkOutDate.getDate() + (endDay - 1) + 1); // endDay is the last night, checkout is next morning
 
         // Validation: don't create accommodation if checkout is after tour end date
@@ -5060,6 +5081,7 @@ export default function BookingDetail() {
       'tagRate': 'tagRate',
       'urgenchRate': 'urgenchRate',
       'shovotRate': 'shovotRate2',
+      'jartepaRate': 'jartepaRate',
       // Xayrulla
       'vstrecha': 'vstrecha',
       'chimgan': 'chimgan',
@@ -5077,11 +5099,29 @@ export default function BookingDetail() {
     rateField = rateFieldMap[rateType] || rateType;
 
     // Select the right vehicle list based on provider
-    if (provider === 'sevil' || ['pickupDropoff', 'tagRate', 'urgenchRate', 'shovotRate'].includes(rateType)) {
+    // IMPORTANT: Check specific provider variants first, before fallback logic
+    if (provider === 'sevil-er') {
+      vehicles = sevilErVehicles;
+    } else if (provider === 'sevil-co') {
+      vehicles = sevilCoVehicles;
+    } else if (provider === 'sevil-kas') {
+      vehicles = sevilKasVehicles;
+    } else if (provider === 'sevil-za') {
+      vehicles = sevilZaVehicles;
+    } else if (provider === 'sevil') {
       vehicles = sevilVehicles;
-    } else if (provider === 'xayrulla' || ['vstrecha', 'chimgan', 'tag', 'oybek', 'chernyayevka', 'cityTour'].includes(rateType)) {
+    } else if (provider === 'xayrulla') {
       vehicles = xayrullaVehicles;
-    } else if (provider === 'nosir' || ['margilan', 'qoqon', 'dostlik', 'toshkent'].includes(rateType)) {
+    } else if (provider === 'nosir') {
+      vehicles = nosirVehicles;
+    } else if (['pickupDropoff', 'tagRate', 'urgenchRate', 'shovotRate'].includes(rateType)) {
+      // Fallback: if no provider set, guess from rate type (Sevil rates)
+      vehicles = sevilVehicles;
+    } else if (['vstrecha', 'chimgan', 'tag', 'oybek', 'chernyayevka', 'cityTour'].includes(rateType)) {
+      // Fallback: Xayrulla rates
+      vehicles = xayrullaVehicles;
+    } else if (['margilan', 'qoqon', 'dostlik', 'toshkent'].includes(rateType)) {
+      // Fallback: Nosir rates
       vehicles = nosirVehicles;
     }
 
@@ -5147,6 +5187,10 @@ export default function BookingDetail() {
   // Get vehicles list by provider
   const getVehiclesByProvider = (provider) => {
     if (provider === 'sevil') return sevilVehicles;
+    if (provider === 'sevil-er') return sevilErVehicles;
+    if (provider === 'sevil-co') return sevilCoVehicles;
+    if (provider === 'sevil-kas') return sevilKasVehicles;
+    if (provider === 'sevil-za') return sevilZaVehicles;
     if (provider === 'xayrulla') return xayrullaVehicles;
     if (provider === 'nosir') return nosirVehicles;
     return [];
@@ -5173,8 +5217,8 @@ export default function BookingDetail() {
     });
 
     if (suitable.length > 0) {
-      // For xayrulla and sevil: prefer Yutong 33 over Sprinter when both match
-      if (provider === 'xayrulla' || provider === 'sevil') {
+      // For xayrulla and sevil: prefer Yutong over Sprinter when both match
+      if (provider === 'xayrulla' || provider === 'sevil' || provider?.startsWith('sevil-')) {
         const yutong = suitable.find(v => v.name.toLowerCase().includes('yutong'));
         const sprinter = suitable.find(v => v.name.toLowerCase().includes('sprinter'));
         if (yutong && sprinter) {
@@ -5305,6 +5349,7 @@ export default function BookingDetail() {
   const getProviderByCity = (city) => {
     if (!city) return '';
     const cityLower = city.toLowerCase().trim();
+    const tourTypeCode = booking?.tourType?.code;
 
     // Tashkent -> Xayrulla
     if (cityLower.includes('tashkent') || cityLower.includes('toshkent') || cityLower.includes('ташкент')) {
@@ -5318,6 +5363,12 @@ export default function BookingDetail() {
         cityLower.includes('margilan') || cityLower.includes('margʻilon') || cityLower.includes('маргилан')) {
       return 'nosir';
     }
+
+    // For ZA tours: Samarkand and Bukhara -> Sevil-Za
+    if (tourTypeCode === 'ZA') {
+      return 'sevil-za';
+    }
+
     // Other cities (Samarkand, Bukhara, Khiva, etc.) -> Sevil
     return 'sevil';
   };
@@ -5965,11 +6016,18 @@ export default function BookingDetail() {
       const totalPax = tourists.length || 0;
 
       const loadedRoutes = templates.map((template, index) => {
-        const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, 1) : null;
+        // ZA tours: arrival = departure + 4 days. Other tours: arrival = departure + 1
+        const daysToAdd = tourTypeCode === 'ZA' ? 4 : 1;
+        const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
         const routeDate = arrivalDate ? format(addDays(arrivalDate, template.dayOffset), 'yyyy-MM-dd') : '';
 
         // Auto-select vehicle based on PAX
         const autoVehicle = template.provider ? getBestVehicleForRoute(template.provider, totalPax) : '';
+
+        // Auto-calculate price from Opex
+        const autoPrice = (template.provider && autoVehicle && template.optionRate)
+          ? getPriceFromOpex(template.provider, autoVehicle, template.optionRate)
+          : '';
 
         return {
           id: index + 1,
@@ -5982,7 +6040,7 @@ export default function BookingDetail() {
           transportType: autoVehicle,
           choiceTab: template.provider || '',
           choiceRate: template.optionRate || '',
-          price: ''
+          price: autoPrice
         };
       });
 
@@ -6098,17 +6156,28 @@ export default function BookingDetail() {
         return;
       }
 
+      // CRITICAL: For ZA tours, add 4 days to get actual arrival in Uzbekistan
+      // ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
+      // Example: Excel 23.08 → departureDate 27.08 → arrival 31.08
+      const baseDate = tourTypeCode === 'ZA'
+        ? new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000)) // +4 days
+        : departureDate;
+
+      if (tourTypeCode === 'ZA') {
+        console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
+      }
+
       // Create accommodations from templates
       console.log(`🏨 Creating ${templates.length} accommodations from template...`);
       setSaving(true);
 
       const createdAccommodations = [];
       for (const template of templates) {
-        // Calculate actual dates from offsets
-        const checkInDate = new Date(departureDate);
+        // Calculate actual dates from offsets using baseDate (adjusted for ZA)
+        const checkInDate = new Date(baseDate);
         checkInDate.setDate(checkInDate.getDate() + template.checkInOffset);
 
-        const checkOutDate = new Date(departureDate);
+        const checkOutDate = new Date(baseDate);
         checkOutDate.setDate(checkOutDate.getDate() + template.checkOutOffset);
 
         const accommodationData = {
@@ -6128,11 +6197,13 @@ export default function BookingDetail() {
       toast.success(`✅ Загружено ${createdAccommodations.length} размещений из шаблона ${tourTypeCode}`);
 
       // Reload accommodations list
-      await fetchAccommodations();
+      const accResponse = await bookingsApi.getAccommodations(booking.id);
+      setAccommodations(accResponse.data.accommodations || []);
     } catch (error) {
       console.error('❌ Error loading accommodation template:', error);
       console.error('Error details:', error.response?.data);
       toast.error('Ошибка загрузки шаблона: ' + (error.response?.data?.error || error.message));
+      setSaving(false);
     }
   };
 
@@ -6163,7 +6234,7 @@ export default function BookingDetail() {
           await autoFixRoutesKAS();
           break;
         case 'ZA':
-          toast.info('ZA fix logic coming soon', { id: 'auto-fix' });
+          await autoFixRoutesZA();
           break;
         default:
           toast.error(`Unknown tour type: ${tourTypeCode}`, { id: 'auto-fix' });
@@ -7088,6 +7159,193 @@ export default function BookingDetail() {
       console.log('✅ KAS routes fixed, saved, and reloaded from database');
     } catch (error) {
       console.error('Error auto-fixing KAS routes:', error);
+      throw error; // Re-throw to be caught by main dispatcher
+    }
+  };
+
+  // ==================== ZA FIX FUNCTION ====================
+  const autoFixRoutesZA = async () => {
+    console.log('🟣 Running ZA fix logic...');
+
+    try {
+      // Reload routes from database
+      const routesRes = await bookingsApi.getRoutes(id);
+      const freshRoutes = routesRes.data.routes || [];
+
+      let freshErRoutes;
+
+      if (freshRoutes.length === 0) {
+        // Database has no routes yet - use current state (from Load Template)
+        console.log('📋 ZA: No routes in database, using current state');
+        freshErRoutes = [...erRoutes];
+      } else {
+        // Map database routes
+        freshErRoutes = freshRoutes.map((dbRoute, index) => {
+          const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
+          return {
+            ...existingRoute,
+            id: dbRoute.id,
+            nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
+            sana: dbRoute.date,
+            shahar: dbRoute.city || existingRoute.shahar || '',
+            sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
+            route: dbRoute.routeName || existingRoute.route || '',
+            person: dbRoute.personCount?.toString() || existingRoute.person || '0',
+            transportType: dbRoute.transportType || existingRoute.transportType || '',
+            choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
+            choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
+            price: dbRoute.price?.toString() || existingRoute.price || ''
+          };
+        });
+      }
+
+      console.log(`📋 ZA: Working with ${freshErRoutes.length} routes`);
+
+      // Calculate PAX (ZA groups: all tourists go together, no split)
+      const totalPax = tourists.length;
+      console.log(`🔧 ZA Auto-fixing routes: PAX Total=${totalPax}`);
+
+      // Fix each route
+      const fixedRoutes = freshErRoutes.map((route, index) => {
+        let routePax = totalPax;
+
+        if (routePax <= 0) {
+          console.log(`  ZA Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
+          return route;
+        }
+
+        const routeLower = (route.route || '').toLowerCase();
+        let provider = route.choiceTab || 'sevil-za';
+        let rate = '';
+
+        // Determine provider and rate based on route name
+        if (routeLower.includes('olot') || routeLower.includes('buxoro') || routeLower.includes('bukhara')) {
+          // Olot → Bukhara: use sevil-za with tagRate
+          provider = 'sevil-za';
+          rate = 'tagRate';
+        } else if (routeLower.includes('jartepa') || routeLower.includes('jarteppa')) {
+          // Samarkand → Jartepa: use sevil-za with jartepaRate
+          provider = 'sevil-za';
+          rate = 'jartepaRate';
+        } else if (routeLower.includes('samarqand') || routeLower.includes('samarkand')) {
+          // Inter-city to Samarkand: use sevil-za with tagRate
+          provider = 'sevil-za';
+          rate = 'tagRate';
+        } else if (routeLower.includes('oybek') || routeLower.includes('toshkent') || routeLower.includes('tashkent')) {
+          // Oybek → Tashkent or Tashkent city: use xayrulla
+          provider = 'xayrulla';
+          if (routeLower.includes('oybek')) {
+            rate = 'oybek';
+          } else if (routeLower.includes('chernyayevka') || routeLower.includes('city') || routeLower.includes('shahar')) {
+            rate = 'chernyayevka';
+          } else {
+            rate = 'tag'; // Default for Tashkent routes
+          }
+        } else {
+          // Default: sevil-za with tagRate
+          provider = 'sevil-za';
+          rate = 'tagRate';
+        }
+
+        // Get best vehicle for route
+        const vehicle = getBestVehicleForRoute(provider, routePax);
+        const price = getPriceFromOpex(provider, vehicle, rate);
+
+        console.log(`  ZA Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
+
+        return {
+          ...route,
+          person: routePax.toString(),
+          choiceTab: provider,
+          transportType: vehicle || route.transportType,
+          choiceRate: rate || route.choiceRate,
+          price: price || route.price
+        };
+      });
+
+      console.log(`📊 ZA: Fixed ${fixedRoutes.length} routes`);
+
+      // Sort routes by date
+      const sortedRoutes = fixedRoutes.sort((a, b) => {
+        const dateA = a.sana ? new Date(a.sana) : new Date(0);
+        const dateB = b.sana ? new Date(b.sana) : new Date(0);
+        return dateA - dateB;
+      });
+
+      // Set first route date to ARRIVAL date (arrival = departure + 4 days for ZA)
+      if (sortedRoutes.length > 0) {
+        const arrivalDate = formData.arrivalDate || booking?.arrivalDate;
+        if (arrivalDate) {
+          const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
+          sortedRoutes[0].sana = arrivalFormatted;
+          console.log(`  ZA: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
+        }
+      }
+
+      // Fill remaining dates sequentially
+      for (let i = 1; i < sortedRoutes.length; i++) {
+        const prevRoute = sortedRoutes[i - 1];
+        const currentRoute = sortedRoutes[i];
+
+        const prevDate = new Date(prevRoute.sana);
+        const nextDay = new Date(prevDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
+
+        currentRoute.sana = nextDayFormatted;
+        console.log(`  ZA: ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
+      }
+
+      // Re-assign row numbers
+      const numberedRoutes = sortedRoutes.map((route, index) => ({
+        ...route,
+        nomer: (index + 1).toString(),
+        id: route.id || index + 1
+      }));
+
+      // Save to database
+      const routesToSave = numberedRoutes.map((r, index) => ({
+        dayNumber: index + 1,
+        date: r.sana || null,
+        city: r.shahar || null,
+        itinerary: r.sayohatDasturi || null,
+        routeName: r.route || '',
+        personCount: parseInt(r.person) || 0,
+        transportType: r.transportType || null,
+        provider: r.choiceTab || null,
+        optionRate: r.choiceRate || null,
+        price: parseFloat(r.price) || 0
+      }));
+
+      console.log(`💾 ZA: Saving ${routesToSave.length} routes to database`);
+      await routesApi.bulkUpdate(id, routesToSave);
+
+      // Reload from database
+      console.log('🔄 ZA: Reloading routes from database...');
+      const reloadedRes = await bookingsApi.getRoutes(id);
+      const reloadedRoutes = reloadedRes.data.routes || [];
+
+      const mappedReloaded = reloadedRoutes.map((r, index) => ({
+        id: r.id,
+        nomer: r.dayNumber?.toString() || (index + 1).toString(),
+        sana: r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '',
+        dayOffset: index,
+        shahar: r.city || '',
+        sayohatDasturi: r.itinerary || '',
+        route: r.routeName || '',
+        person: r.personCount?.toString() || '0',
+        transportType: r.transportType || '',
+        choiceTab: r.provider || '',
+        choiceRate: r.optionRate || '',
+        price: r.price?.toString() || ''
+      }));
+
+      setErRoutes(mappedReloaded);
+
+      toast.success('ZA routes auto-fixed!', { id: 'auto-fix' });
+      console.log('✅ ZA routes fixed, saved, and reloaded from database');
+    } catch (error) {
+      console.error('Error auto-fixing ZA routes:', error);
       throw error; // Re-throw to be caught by main dispatcher
     }
   };
@@ -12315,7 +12573,7 @@ export default function BookingDetail() {
                   <span className="font-semibold text-green-700">
                     {formData.departureDate ? (() => {
                       const tourTypeCode = booking?.tourType?.code;
-                      const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+                      const daysToAdd = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 1);
                       return format(addDays(new Date(formData.departureDate), daysToAdd), 'dd.MM.yyyy');
                     })() : '-'}
                   </span>
@@ -12453,19 +12711,35 @@ export default function BookingDetail() {
                           className="w-full px-2 py-1.5 bg-emerald-50 text-emerald-800 rounded-md text-xs font-medium border border-emerald-200 focus:ring-1 focus:ring-emerald-400 cursor-pointer"
                         >
                           <option value="">Select</option>
-                          <optgroup label="Tashkent (Xayrulla)">
-                            <option value="Tashkent">Tashkent</option>
-                          </optgroup>
-                          <optgroup label="Fergana (Nosir)">
-                            <option value="Fergana">Fergana</option>
-                          </optgroup>
-                          <optgroup label="Other (Sevil)">
-                            <option value="Samarkand">Samarkand</option>
-                            <option value="Bukhara">Bukhara</option>
-                            <option value="Khiva">Khiva</option>
-                            <option value="Urgench">Urgench</option>
-                            <option value="Asraf">Asraf</option>
-                          </optgroup>
+                          {booking?.tourType?.code === 'ZA' ? (
+                            // ZA tours: Only Tashkent, Samarkand, Bukhara
+                            <>
+                              <optgroup label="Tashkent (Xayrulla)">
+                                <option value="Tashkent">Tashkent</option>
+                              </optgroup>
+                              <optgroup label="Samarkand & Bukhara (Sevil-Za)">
+                                <option value="Samarkand">Samarkand</option>
+                                <option value="Bukhara">Bukhara</option>
+                              </optgroup>
+                            </>
+                          ) : (
+                            // Other tours: All cities
+                            <>
+                              <optgroup label="Tashkent (Xayrulla)">
+                                <option value="Tashkent">Tashkent</option>
+                              </optgroup>
+                              <optgroup label="Fergana (Nosir)">
+                                <option value="Fergana">Fergana</option>
+                              </optgroup>
+                              <optgroup label="Other (Sevil)">
+                                <option value="Samarkand">Samarkand</option>
+                                <option value="Bukhara">Bukhara</option>
+                                <option value="Khiva">Khiva</option>
+                                <option value="Urgench">Urgench</option>
+                                <option value="Asraf">Asraf</option>
+                              </optgroup>
+                            </>
+                          )}
                         </select>
                       </td>
                       <td className="px-3 py-2.5">
@@ -12475,34 +12749,60 @@ export default function BookingDetail() {
                           className="w-full px-2 py-1.5 bg-violet-50 text-violet-800 rounded-md text-xs font-medium border border-violet-200 focus:ring-1 focus:ring-violet-400 cursor-pointer min-w-[160px]"
                         >
                           <option value="">Select Route</option>
-                          <optgroup label="Pickup / Drop-off">
-                            <option value="Airport Pickup">Airport Pickup</option>
-                            <option value="Airport Drop-off">Airport Drop-off</option>
-                            <option value="Train Station Pickup">Train Station Pickup</option>
-                            <option value="Train Station Drop-off">Train Station Drop-off</option>
-                          </optgroup>
-                          <optgroup label="City Tour">
-                            <option value="Tashkent City Tour">Tashkent City Tour</option>
-                            <option value="Samarkand City Tour">Samarkand City Tour</option>
-                            <option value="Bukhara City Tour">Bukhara City Tour</option>
-                          </optgroup>
-                          <optgroup label="Transfer">
-                            <option value="Tashkent - Samarkand">Tashkent - Samarkand</option>
-                            <option value="Samarkand - Asraf">Samarkand - Asraf</option>
-                            <option value="Asraf - Bukhara">Asraf - Bukhara</option>
-                            <option value="Samarkand - Bukhara">Samarkand - Bukhara</option>
-                            <option value="Bukhara - Samarkand">Bukhara - Samarkand</option>
-                            <option value="Bukhara - Khiva">Bukhara - Khiva</option>
-                            <option value="Olot - Bukhara">Olot - Bukhara</option>
-                            <option value="Khiva - Urgench">Khiva - Urgench</option>
-                            <option value="Khiva - Shovot">Khiva - Shovot</option>
-                            <option value="Tashkent - Fergana">Tashkent - Fergana</option>
-                            <option value="Fergana - Tashkent">Fergana - Tashkent</option>
-                            <option value="Qoqon - Fergana">Qoqon - Fergana</option>
-                            <option value="Fergana - Margilan">Fergana - Margilan</option>
-                            <option value="Dostlik - Fergana">Dostlik - Fergana</option>
-                            <option value="Tashkent - Chimgan - Tashkent">Tashkent - Chimgan - Tashkent</option>
-                          </optgroup>
+                          {booking?.tourType?.code === 'ZA' ? (
+                            // ZA tours: Simplified route list
+                            <>
+                              <optgroup label="Pickup / Drop-off">
+                                <option value="Airport Pickup">Airport Pickup</option>
+                                <option value="Airport Drop-off">Airport Drop-off</option>
+                                <option value="Train Station Pickup">Train Station Pickup</option>
+                                <option value="Train Station Drop-off">Train Station Drop-off</option>
+                              </optgroup>
+                              <optgroup label="City Tour">
+                                <option value="Samarkand City Tour">Samarkand City Tour</option>
+                                <option value="Bukhara City Tour">Bukhara City Tour</option>
+                              </optgroup>
+                              <optgroup label="Transfer">
+                                <option value="Olot - Bukhara">Olot - Bukhara</option>
+                                <option value="Bukhara - Samarkand">Bukhara - Samarkand</option>
+                                <option value="Samarkand - Jartepa">Samarkand - Jartepa</option>
+                                <option value="Oybek - Tashkent">Oybek - Tashkent</option>
+                                <option value="Tashkent - Chernyayevka">Tashkent - Chernyayevka</option>
+                              </optgroup>
+                            </>
+                          ) : (
+                            // Other tours: Full route list
+                            <>
+                              <optgroup label="Pickup / Drop-off">
+                                <option value="Airport Pickup">Airport Pickup</option>
+                                <option value="Airport Drop-off">Airport Drop-off</option>
+                                <option value="Train Station Pickup">Train Station Pickup</option>
+                                <option value="Train Station Drop-off">Train Station Drop-off</option>
+                              </optgroup>
+                              <optgroup label="City Tour">
+                                <option value="Tashkent City Tour">Tashkent City Tour</option>
+                                <option value="Samarkand City Tour">Samarkand City Tour</option>
+                                <option value="Bukhara City Tour">Bukhara City Tour</option>
+                              </optgroup>
+                              <optgroup label="Transfer">
+                                <option value="Tashkent - Samarkand">Tashkent - Samarkand</option>
+                                <option value="Samarkand - Asraf">Samarkand - Asraf</option>
+                                <option value="Asraf - Bukhara">Asraf - Bukhara</option>
+                                <option value="Samarkand - Bukhara">Samarkand - Bukhara</option>
+                                <option value="Bukhara - Samarkand">Bukhara - Samarkand</option>
+                                <option value="Bukhara - Khiva">Bukhara - Khiva</option>
+                                <option value="Olot - Bukhara">Olot - Bukhara</option>
+                                <option value="Khiva - Urgench">Khiva - Urgench</option>
+                                <option value="Khiva - Shovot">Khiva - Shovot</option>
+                                <option value="Tashkent - Fergana">Tashkent - Fergana</option>
+                                <option value="Fergana - Tashkent">Fergana - Tashkent</option>
+                                <option value="Qoqon - Fergana">Qoqon - Fergana</option>
+                                <option value="Fergana - Margilan">Fergana - Margilan</option>
+                                <option value="Dostlik - Fergana">Dostlik - Fergana</option>
+                                <option value="Tashkent - Chimgan - Tashkent">Tashkent - Chimgan - Tashkent</option>
+                              </optgroup>
+                            </>
+                          )}
                         </select>
                       </td>
                       <td className="px-3 py-2.5">
@@ -12609,6 +12909,18 @@ export default function BookingDetail() {
                           {route.choiceTab === 'sevil' && sevilVehicles.map(v => (
                             <option key={v.id} value={v.name}>{v.name}</option>
                           ))}
+                          {route.choiceTab === 'sevil-er' && sevilErVehicles.map(v => (
+                            <option key={v.id} value={v.name}>{v.name}</option>
+                          ))}
+                          {route.choiceTab === 'sevil-co' && sevilCoVehicles.map(v => (
+                            <option key={v.id} value={v.name}>{v.name}</option>
+                          ))}
+                          {route.choiceTab === 'sevil-kas' && sevilKasVehicles.map(v => (
+                            <option key={v.id} value={v.name}>{v.name}</option>
+                          ))}
+                          {route.choiceTab === 'sevil-za' && sevilZaVehicles.map(v => (
+                            <option key={v.id} value={v.name}>{v.name}</option>
+                          ))}
                           {route.choiceTab === 'xayrulla' && (
                             <>
                               {xayrullaVehicles.map(v => (
@@ -12646,6 +12958,37 @@ export default function BookingDetail() {
                               <option value="tagRate">TAG Rate</option>
                               <option value="urgenchRate">Urgench</option>
                               <option value="shovotRate">Shovot</option>
+                            </>
+                          )}
+                          {route.choiceTab === 'sevil-er' && (
+                            <>
+                              <option value="pickupDropoff">Pickup/Drop-off</option>
+                              <option value="tagRate">TAG Rate</option>
+                              <option value="urgenchRate">Urgench</option>
+                              <option value="shovotRate">Shovot</option>
+                            </>
+                          )}
+                          {route.choiceTab === 'sevil-co' && (
+                            <>
+                              <option value="pickupDropoff">Pickup/Drop-off</option>
+                              <option value="tagRate">TAG Rate</option>
+                              <option value="urgenchRate">Urgench</option>
+                              <option value="shovotRate">Shovot</option>
+                            </>
+                          )}
+                          {route.choiceTab === 'sevil-kas' && (
+                            <>
+                              <option value="pickupDropoff">Pickup/Drop-off</option>
+                              <option value="tagRate">TAG Rate</option>
+                              <option value="urgenchRate">Urgench</option>
+                              <option value="shovotRate">Shovot</option>
+                            </>
+                          )}
+                          {route.choiceTab === 'sevil-za' && (
+                            <>
+                              <option value="pickupDropoff">Pickup/Drop-off</option>
+                              <option value="tagRate">TAG Rate</option>
+                              <option value="jartepaRate">Jartepa Rate</option>
                             </>
                           )}
                           {route.choiceTab === 'xayrulla' && (
@@ -15459,19 +15802,35 @@ export default function BookingDetail() {
                     className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-300 text-gray-900 font-medium"
                   >
                     <option value="">Select City</option>
-                    <optgroup label="Tashkent (Xayrulla)">
-                      <option value="Tashkent">Tashkent</option>
-                    </optgroup>
-                    <optgroup label="Fergana (Nosir)">
-                      <option value="Fergana">Fergana</option>
-                    </optgroup>
-                    <optgroup label="Other (Sevil)">
-                      <option value="Samarkand">Samarkand</option>
-                      <option value="Bukhara">Bukhara</option>
-                      <option value="Khiva">Khiva</option>
-                      <option value="Urgench">Urgench</option>
-                      <option value="Asraf">Asraf</option>
-                    </optgroup>
+                    {booking?.tourType?.code === 'ZA' ? (
+                      // ZA tours: Only Tashkent, Samarkand, Bukhara
+                      <>
+                        <optgroup label="Tashkent (Xayrulla)">
+                          <option value="Tashkent">Tashkent</option>
+                        </optgroup>
+                        <optgroup label="Samarkand & Bukhara (Sevil-Za)">
+                          <option value="Samarkand">Samarkand</option>
+                          <option value="Bukhara">Bukhara</option>
+                        </optgroup>
+                      </>
+                    ) : (
+                      // Other tours: All cities
+                      <>
+                        <optgroup label="Tashkent (Xayrulla)">
+                          <option value="Tashkent">Tashkent</option>
+                        </optgroup>
+                        <optgroup label="Fergana (Nosir)">
+                          <option value="Fergana">Fergana</option>
+                        </optgroup>
+                        <optgroup label="Other (Sevil)">
+                          <option value="Samarkand">Samarkand</option>
+                          <option value="Bukhara">Bukhara</option>
+                          <option value="Khiva">Khiva</option>
+                          <option value="Urgench">Urgench</option>
+                          <option value="Asraf">Asraf</option>
+                        </optgroup>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -15534,6 +15893,18 @@ export default function BookingDetail() {
                     {routeForm.choiceTab === 'sevil' && sevilVehicles.map(v => (
                       <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
                     ))}
+                    {routeForm.choiceTab === 'sevil-er' && sevilErVehicles.map(v => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
+                    ))}
+                    {routeForm.choiceTab === 'sevil-co' && sevilCoVehicles.map(v => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
+                    ))}
+                    {routeForm.choiceTab === 'sevil-kas' && sevilKasVehicles.map(v => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
+                    ))}
+                    {routeForm.choiceTab === 'sevil-za' && sevilZaVehicles.map(v => (
+                      <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
+                    ))}
                     {routeForm.choiceTab === 'xayrulla' && xayrullaVehicles.map(v => (
                       <option key={v.id} value={v.name}>{v.name} ({v.person} pax)</option>
                     ))}
@@ -15587,6 +15958,37 @@ export default function BookingDetail() {
                         <option value="tagRate">TAG Rate</option>
                         <option value="urgenchRate">Urgench Rate</option>
                         <option value="shovotRate">Shovot Rate</option>
+                      </>
+                    )}
+                    {routeForm.choiceTab === 'sevil-er' && (
+                      <>
+                        <option value="pickupDropoff">Pickup / Drop-off</option>
+                        <option value="tagRate">TAG Rate</option>
+                        <option value="urgenchRate">Urgench Rate</option>
+                        <option value="shovotRate">Shovot Rate</option>
+                      </>
+                    )}
+                    {routeForm.choiceTab === 'sevil-co' && (
+                      <>
+                        <option value="pickupDropoff">Pickup / Drop-off</option>
+                        <option value="tagRate">TAG Rate</option>
+                        <option value="urgenchRate">Urgench Rate</option>
+                        <option value="shovotRate">Shovot Rate</option>
+                      </>
+                    )}
+                    {routeForm.choiceTab === 'sevil-kas' && (
+                      <>
+                        <option value="pickupDropoff">Pickup / Drop-off</option>
+                        <option value="tagRate">TAG Rate</option>
+                        <option value="urgenchRate">Urgench Rate</option>
+                        <option value="shovotRate">Shovot Rate</option>
+                      </>
+                    )}
+                    {routeForm.choiceTab === 'sevil-za' && (
+                      <>
+                        <option value="pickupDropoff">Pickup / Drop-off</option>
+                        <option value="tagRate">TAG Rate</option>
+                        <option value="jartepaRate">Jartepa Rate</option>
                       </>
                     )}
                     {routeForm.choiceTab === 'xayrulla' && (

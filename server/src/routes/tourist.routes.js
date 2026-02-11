@@ -1183,9 +1183,11 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
             passportExpiryDate: excelTourist.passportExpiryDate ? new Date(excelTourist.passportExpiryDate) : existing.passportExpiryDate,
             country: excelTourist.country || existing.country,
             isGroupLeader: excelTourist.isGroupLeader || existing.isGroupLeader,
-            notes: excelTourist.notes || existing.notes
+            notes: excelTourist.notes || existing.notes,
+            checkInDate: excelTourist.checkInDate ? new Date(excelTourist.checkInDate) : existing.checkInDate,
+            checkOutDate: excelTourist.checkOutDate ? new Date(excelTourist.checkOutDate) : existing.checkOutDate
           });
-          console.log(`   🔄 Updating personal data: ${existing.fullName}`);
+          console.log(`   🔄 Updating personal data: ${existing.fullName} (CheckIn: ${excelTourist.checkInDate ? new Date(excelTourist.checkInDate).toLocaleDateString() : 'unchanged'})`);
         }
       } else {
         // Create new tourist
@@ -1204,9 +1206,11 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
           country: excelTourist.country || NOT_PROVIDED,
           isGroupLeader: excelTourist.isGroupLeader || false,
           notes: excelTourist.notes || null,
-          remarks: null  // Excel import should not set remarks
+          remarks: null,  // Excel import should not set remarks
+          checkInDate: excelTourist.checkInDate ? new Date(excelTourist.checkInDate) : null,
+          checkOutDate: excelTourist.checkOutDate ? new Date(excelTourist.checkOutDate) : null
         });
-        console.log(`   ➕ Creating new tourist: ${excelTourist.firstName} ${excelTourist.lastName}`);
+        console.log(`   ➕ Creating new tourist: ${excelTourist.firstName} ${excelTourist.lastName} (CheckIn: ${excelTourist.checkInDate ? new Date(excelTourist.checkInDate).toLocaleDateString() : 'N/A'})`);
       }
     });
 
@@ -1221,7 +1225,9 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
           passportExpiryDate: update.passportExpiryDate,
           country: update.country,
           isGroupLeader: update.isGroupLeader,
-          notes: update.notes
+          notes: update.notes,
+          checkInDate: update.checkInDate,
+          checkOutDate: update.checkOutDate
         }
       });
     }
@@ -2367,6 +2373,19 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
 
     const bookingIdInt = parseInt(bookingId);
 
+    // Fetch booking to check tour type FIRST
+    const bookingForType = await prisma.booking.findUnique({
+      where: { id: bookingIdInt },
+      include: { tourType: true }
+    });
+
+    if (!bookingForType) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const tourTypeCode = bookingForType.tourType?.code?.toUpperCase() || '';
+    console.log(`📋 PDF Import - Tour Type: ${tourTypeCode}`);
+
     // Parse PDF
     const pdfData = await pdfParse(req.file.buffer);
     const text = pdfData.text;
@@ -2406,12 +2425,22 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       const lowerLine = line.toLowerCase();
 
       // Detect tour sections (IMPORTANT: Order matters - check Turkmenistan first!)
+      // BUSINESS RULE: Only ER tours can have Uzbekistan/Turkmenistan split
+      // ZA, CO, KAS tours are ALWAYS Uzbekistan only
       if (lowerLine.includes('tour:')) {
         // Check for "Tour: Usbekistan mit Verlängerung Turkmenistan"
         if (lowerLine.includes('turkmenistan') || lowerLine.includes('turkmen')) {
-          inTurkmenistanSection = true;
-          currentTourType = 'Turkmenistan';
-          console.log(`📍 Detected Turkmenistan section: ${line}`);
+          // Only allow Turkmenistan section for ER tours
+          if (tourTypeCode === 'ER') {
+            inTurkmenistanSection = true;
+            currentTourType = 'Turkmenistan';
+            console.log(`📍 Detected Turkmenistan section (ER tour): ${line}`);
+          } else {
+            // For non-ER tours (ZA, CO, KAS), ignore Turkmenistan and keep Uzbekistan
+            inTurkmenistanSection = false;
+            currentTourType = 'Uzbekistan';
+            console.log(`📍 Ignoring Turkmenistan section (${tourTypeCode} tour - always Uzbekistan): ${line}`);
+          }
         }
         // Check for "Tour: Usbekistan" (without Turkmenistan)
         else if (lowerLine.includes('usbekistan') || lowerLine.includes('uzbekistan')) {
@@ -2663,6 +2692,21 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         } else {
           lastName = nameParts[0];
         }
+
+        // Clean firstName and lastName: remove unwanted patterns
+        // 1. Remove date of birth patterns like "(17.09.1956)" or "(DD.MM.YYYY)"
+        // 2. Remove academic titles like "Dr.", "Prof.", "Dipl.", etc.
+        // This prevents duplicates when PDF is re-imported with titles/DOB in name
+        if (firstName) {
+          firstName = firstName.replace(/\s*\(\d{2}\.\d{2}\.\d{4}\)\s*/g, '').trim();
+          firstName = firstName.replace(/^(Dr\.|Prof\.|Dipl\.|Ing\.)\s+/gi, '').trim();
+        }
+        if (lastName) {
+          lastName = lastName.replace(/\s*\(\d{2}\.\d{2}\.\d{4}\)\s*/g, '').trim();
+          lastName = lastName.replace(/^(Dr\.|Prof\.|Dipl\.|Ing\.)\s+/gi, '').trim();
+        }
+        // Rebuild fullName without DOB and academic titles
+        fullName = `${nameMatch[1]} ${lastName}, ${firstName}`.trim();
 
         // 🔍 Check if name ends with asterisk (*) - means "half double room, no roommate found"
         const hasAsterisk = firstName.endsWith('*') || lastName.endsWith('*') || fullName.endsWith('*');
@@ -3172,35 +3216,77 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
     let createdCount = 0;
     let deletedCount = 0;
 
-    // Fetch booking to get tour type and default dates
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingIdInt },
-      include: { tourType: true }
-    });
+    // ⚠️ CRITICAL: Deduplicate tourists by full name before processing
+    // PDF parser may extract same tourist multiple times from different sections
+    const uniqueTourists = [];
+    const seenNames = new Set();
 
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
+    for (const tourist of tourists) {
+      const nameKey = `${tourist.lastName}|${tourist.firstName}`.toLowerCase().trim();
+      if (!seenNames.has(nameKey)) {
+        seenNames.add(nameKey);
+        uniqueTourists.push(tourist);
+      } else {
+        console.log(`⚠️ Skipping duplicate: ${tourist.fullName} (Room: ${tourist.roomNumber})`);
+      }
     }
 
+    console.log(`📋 Deduplicated: ${tourists.length} tourists → ${uniqueTourists.length} unique tourists`);
+
+    // Replace tourists array with unique list
+    tourists.splice(0, tourists.length, ...uniqueTourists);
+
+    // Use booking already fetched at the beginning (bookingForType)
+    const booking = bookingForType;
+
     // Set default dates for tourists without custom dates
-    // KAS tours: arrival = departureDate + 14 days
-    // ER/CO/ZA tours: arrival = departureDate + 1 day
-    const tourTypeCode = booking.tourType?.code;
-    const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
+    // ZA tours: booking.departureDate is when tour arrives in Uzbekistan (Excel + 4)
+    // Tourist checkInDate should be +4 days after that (hotel check-in)
+    // Example: Excel 23.08 → booking.departureDate 27.08 → tourist checkInDate 31.08 (+4)
+    // tourTypeCode already declared at the beginning of the function
+    let daysToAdd = 0; // Default for ER/CO
+
+    if (tourTypeCode === 'ZA') {
+      daysToAdd = 4; // ZA: ARRIVAL = TOUR START + 4 days
+    } else if (tourTypeCode === 'KAS') {
+      daysToAdd = 0; // KAS: use booking date as is
+    } else {
+      daysToAdd = 0; // ER/CO: use booking date as is
+    }
+
+    console.log(`🔍 PDF Import - Tour Type: ${tourTypeCode}, Days to add: ${daysToAdd} (booking.departureDate: ${booking.departureDate?.toISOString().split('T')[0]})`);
+
+    // CRITICAL: Use tour dates from PDF (tourStartDate/tourEndDate), not booking.departureDate
+    // booking.departureDate might be old/incorrect until updated below
+    let pdfDepartureDate = null;
+    let pdfEndDate = null;
+
+    if (tourStartDate && tourEndDate) {
+      try {
+        const [startDay, startMonth, startYear] = tourStartDate.split('.');
+        const [endDay, endMonth, endYear] = tourEndDate.split('.');
+        pdfDepartureDate = new Date(`${startYear}-${startMonth}-${startDay}`);
+        pdfEndDate = new Date(`${endYear}-${endMonth}-${endDay}`);
+        console.log(`📅 Using PDF dates: ${tourStartDate} (departure) → ${tourEndDate} (end)`);
+      } catch (e) {
+        console.error('Error parsing PDF dates:', e);
+      }
+    }
 
     tourists.forEach(tourist => {
       // Only set default dates if tourist doesn't have custom dates
-      if (!tourist.checkInDate && booking.departureDate) {
-        const departureDate = new Date(booking.departureDate);
-        const arrivalDate = new Date(departureDate);
+      if (!tourist.checkInDate) {
+        const baseDepartureDate = pdfDepartureDate || new Date(booking.departureDate);
+        const arrivalDate = new Date(baseDepartureDate);
         arrivalDate.setDate(arrivalDate.getDate() + daysToAdd);
         tourist.checkInDate = arrivalDate;
-        console.log(`   📅 ${tourist.fullName} using default arrival: departureDate + ${daysToAdd} days = ${arrivalDate.toISOString().split('T')[0]}`);
+        console.log(`   📅 ${tourist.fullName} using arrival: ${baseDepartureDate.toISOString().split('T')[0]} + ${daysToAdd} days = ${arrivalDate.toISOString().split('T')[0]}`);
       }
 
-      if (!tourist.checkOutDate && booking.endDate) {
-        tourist.checkOutDate = new Date(booking.endDate);
-        console.log(`   📅 ${tourist.fullName} using default checkout: ${booking.endDate.toISOString().split('T')[0]}`);
+      if (!tourist.checkOutDate) {
+        const baseEndDate = pdfEndDate || new Date(booking.endDate);
+        tourist.checkOutDate = baseEndDate;
+        console.log(`   📅 ${tourist.fullName} using checkout: ${baseEndDate.toISOString().split('T')[0]}`);
       }
     });
 
@@ -3244,12 +3330,21 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
           roomPreference: pdfTourist.roomType
         };
 
-        // Only update checkIn/checkOut dates if they are provided in PDF
+        // CRITICAL FIX: Always update checkIn/checkOut dates for ZA tours
+        // pdfTourist.checkInDate is already calculated with correct logic (booking.departureDate + daysToAdd)
+        // For ZA tours, daysToAdd = 0, so checkInDate = booking.departureDate
         if (pdfTourist.checkInDate) {
           updateData.checkInDate = new Date(pdfTourist.checkInDate);
+          console.log(`   ✅ ${existingTourist.fullName} - Updated checkInDate: ${pdfTourist.checkInDate.toISOString().split('T')[0]}`);
+        } else {
+          console.log(`   ⚠️ ${existingTourist.fullName} - No checkInDate in pdfTourist! Keeping existing: ${existingTourist.checkInDate?.toISOString().split('T')[0]}`);
         }
+
         if (pdfTourist.checkOutDate) {
           updateData.checkOutDate = new Date(pdfTourist.checkOutDate);
+          console.log(`   ✅ ${existingTourist.fullName} - Updated checkOutDate: ${pdfTourist.checkOutDate.toISOString().split('T')[0]}`);
+        } else {
+          console.log(`   ⚠️ ${existingTourist.fullName} - No checkOutDate in pdfTourist! Keeping existing: ${existingTourist.checkOutDate?.toISOString().split('T')[0]}`);
         }
 
         // Append PDF remarks to existing remarks (don't overwrite)
@@ -4592,10 +4687,15 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
     let arrivalHeader = 'Заезд';
     let departureHeader = 'Выезд';
 
-    if (isFirstTashkentHotel) {
+    // CRITICAL: Only ER tours use "Первый/Второй" labels
+    // ZA/CO/KAS tours come to Tashkent only once, so use simple "Заезд/Выезд"
+    const tourTypeCode = booking?.tourType?.code;
+    const isERTour = tourTypeCode === 'ER';
+
+    if (isERTour && isFirstTashkentHotel) {
       arrivalHeader = 'Первый<br>заезд';
       departureHeader = 'Первый<br>выезд';
-    } else if (isSecondVisitSameHotel) {
+    } else if (isERTour && isSecondVisitSameHotel) {
       arrivalHeader = 'Второй<br>заезд';
       departureHeader = 'Второй<br>выезд';
 
@@ -5332,7 +5432,12 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
       let arrivalHeader = 'Заезд';
       let departureHeader = 'Выезд';
 
-      if (hotelAccommodations.length > 1) {
+      // CRITICAL: Only ER tours use "Первый/Второй" labels for multiple visits
+      // ZA/CO/KAS tours come to Tashkent only once, so use simple "Заезд/Выезд"
+      const tourTypeCode = booking?.tourType?.code;
+      const isERTour = tourTypeCode === 'ER';
+
+      if (isERTour && hotelAccommodations.length > 1) {
         if (isFirstVisit) {
           visitLabel = ' (Первый заезд)';
           arrivalHeader = 'Первый<br>заезд';

@@ -27,6 +27,10 @@ router.get('/', authenticate, async (req, res) => {
     // Group by provider
     const grouped = {
       sevil: vehicles.filter(v => v.provider === 'sevil'),
+      'sevil-er': vehicles.filter(v => v.provider === 'sevil-er'),
+      'sevil-co': vehicles.filter(v => v.provider === 'sevil-co'),
+      'sevil-kas': vehicles.filter(v => v.provider === 'sevil-kas'),
+      'sevil-za': vehicles.filter(v => v.provider === 'sevil-za'),
       xayrulla: vehicles.filter(v => v.provider === 'xayrulla'),
       nosir: vehicles.filter(v => v.provider === 'nosir'),
       train: vehicles.filter(v => v.provider === 'train'),
@@ -70,7 +74,7 @@ router.post('/', authenticate, async (req, res) => {
     const {
       provider, name, seats, person,
       // Sevil
-      pickupDropoff, tagRate, urgenchRate, shovotRate2,
+      pickupDropoff, tagRate, urgenchRate, shovotRate2, olotRate, jartepaRate,
       // Xayrulla
       vstrecha, chimgan, tag, oybek, chernyayevka, cityTour,
       // Nosir
@@ -95,6 +99,8 @@ router.post('/', authenticate, async (req, res) => {
         tagRate: tagRate ? parseFloat(tagRate) : null,
         urgenchRate: urgenchRate ? parseFloat(urgenchRate) : null,
         shovotRate2: shovotRate2 ? parseFloat(shovotRate2) : null,
+        olotRate: olotRate ? parseFloat(olotRate) : null,
+        jartepaRate: jartepaRate ? parseFloat(jartepaRate) : null,
         vstrecha: vstrecha ? parseFloat(vstrecha) : null,
         chimgan: chimgan ? parseFloat(chimgan) : null,
         tag: tag ? parseFloat(tag) : null,
@@ -130,7 +136,7 @@ router.put('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const {
       name, seats, person,
-      pickupDropoff, tagRate, urgenchRate, shovotRate2,
+      pickupDropoff, tagRate, urgenchRate, shovotRate2, olotRate, jartepaRate,
       vstrecha, chimgan, tag, oybek, chernyayevka, cityTour,
       margilan, qoqon, dostlik, toshkent, extra,
       trainNumber, route, economPrice, businessPrice, departure, arrival,
@@ -149,6 +155,8 @@ router.put('/:id', authenticate, async (req, res) => {
     if (tagRate !== undefined) updateData.tagRate = tagRate ? parseFloat(tagRate) : null;
     if (urgenchRate !== undefined) updateData.urgenchRate = urgenchRate ? parseFloat(urgenchRate) : null;
     if (shovotRate2 !== undefined) updateData.shovotRate2 = shovotRate2 ? parseFloat(shovotRate2) : null;
+    if (olotRate !== undefined) updateData.olotRate = olotRate ? parseFloat(olotRate) : null;
+    if (jartepaRate !== undefined) updateData.jartepaRate = jartepaRate ? parseFloat(jartepaRate) : null;
 
     // Xayrulla
     if (vstrecha !== undefined) updateData.vstrecha = vstrecha ? parseFloat(vstrecha) : null;
@@ -232,6 +240,8 @@ router.post('/bulk', authenticate, async (req, res) => {
             tagRate: v.tagRate ? parseFloat(v.tagRate) : null,
             urgenchRate: v.urgenchRate ? parseFloat(v.urgenchRate) : null,
             shovotRate2: v.shovotRate2 ? parseFloat(v.shovotRate2) : null,
+            olotRate: v.olotRate ? parseFloat(v.olotRate) : null,
+            jartepaRate: v.jartepaRate ? parseFloat(v.jartepaRate) : null,
             vstrecha: v.vstrecha ? parseFloat(v.vstrecha) : null,
             chimgan: v.chimgan ? parseFloat(v.chimgan) : null,
             tag: v.tag ? parseFloat(v.tag) : null,

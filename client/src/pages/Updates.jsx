@@ -480,11 +480,13 @@ export default function Updates() {
       // Example: Excel shows 08.04, but ZA-01 actually arrives on 12.04
       if (tourTypeCode === 'ZA' && departureDate) {
         actualDepartureDate = addDays(departureDate, 4);
+        console.log(`🔍 ZA Excel Import - Original: ${departureDate?.toLocaleDateString()}, Adjusted (+4): ${actualDepartureDate?.toLocaleDateString()}`);
       }
       // KAS tours: Start in Kazakhstan/Kyrgyzstan, arrive in Uzbekistan 14 days later
       // Example: Tour starts 02.06, arrive in Uzbekistan on 16.06
       else if (tourTypeCode === 'KAS' && departureDate) {
         actualDepartureDate = addDays(departureDate, 14);
+        console.log(`🔍 KAS Excel Import - Original: ${departureDate?.toLocaleDateString()}, Adjusted (+14): ${actualDepartureDate?.toLocaleDateString()}`);
       }
 
       console.log(`\n=== Excel File Analysis ===`);
@@ -707,7 +709,9 @@ export default function Updates() {
           remarks: remarks,
           selected: true,
           // Set default check-in/out dates from booking (for calculating extra nights)
-          checkInDate: actualDepartureDate,
+          // ZA tours: Tourist arrival is +4 days after tour arrival in Uzbekistan
+          // Example: Excel 23.08 → actualDepartureDate 27.08 → checkInDate 31.08 (+4)
+          checkInDate: tourTypeCode === 'ZA' ? addDays(actualDepartureDate, 4) : actualDepartureDate,
           checkOutDate: endDate
         });
       }

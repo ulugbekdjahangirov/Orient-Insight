@@ -811,6 +811,8 @@ model TransportVehicle {
   tagRate         Float?                   // Tag rate
   urgenchRate     Float?                   // Urgench rate
   shovotRate2     Float?                   // Shovot rate 2
+  olotRate        Float?                   // Olot rate (for ZA tours)
+  jartepaRate     Float?                   // Jartepa rate (for ZA tours)
 
   // Xayrulla rates
   vstrecha        Float?                   // Vstrecha rate

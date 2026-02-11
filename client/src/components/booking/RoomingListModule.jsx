@@ -553,7 +553,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             const arrival = new Date(booking.departureDate);
             const tourType = booking?.tourType?.code;
             // KAS tours start in Kazakhstan/Kyrgyzstan, arrive in Uzbekistan after 14 days
-            const daysToAdd = tourType === 'KAS' ? 14 : 1;
+            const daysToAdd = tourType === 'KAS' ? 14 : (tourType === 'ZA' ? 4 : 1);
             arrival.setDate(arrival.getDate() + daysToAdd);
             return formatDisplayDate(arrival);
           })() : '';
@@ -688,7 +688,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           const arrival = new Date(booking.departureDate);
           const tourType = booking?.tourType?.code;
           // KAS tours start in Kazakhstan/Kyrgyzstan, arrive in Uzbekistan after 14 days
-          const daysToAdd = tourType === 'KAS' ? 14 : 1;
+          const daysToAdd = tourType === 'KAS' ? 14 : (tourType === 'ZA' ? 4 : 1);
           arrival.setDate(arrival.getDate() + daysToAdd);
           return formatDisplayDate(arrival);
         })() : '';
@@ -1063,7 +1063,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       const arrivalDate = booking?.departureDate ? (() => {
         const arrival = new Date(booking.departureDate);
         const tourType = booking?.tourType?.code;
-        const daysToAdd = tourType === 'KAS' ? 14 : 1;
+        const daysToAdd = tourType === 'KAS' ? 14 : (tourType === 'ZA' ? 4 : 1);
         arrival.setDate(arrival.getDate() + daysToAdd);
         return formatDisplayDate(arrival);
       })() : '';
@@ -1913,7 +1913,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 const arrivalDateFallback = booking?.departureDate ? (() => {
                   const arrivalDate = new Date(booking.departureDate);
                   const tourType = booking?.tourType?.code;
-                  const daysToAdd = tourType === 'KAS' ? 14 : 1;
+                  const daysToAdd = tourType === 'KAS' ? 14 : (tourType === 'ZA' ? 4 : 1);
                   arrivalDate.setDate(arrivalDate.getDate() + daysToAdd); // KAS: +14 days, others: +1 day
                   return formatDisplayDate(arrivalDate);
                 })() : '-';

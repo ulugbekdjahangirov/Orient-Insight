@@ -1609,9 +1609,12 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
       return res.status(404).json({ error: 'Accommodation not found' });
     }
 
-    // Get booking details for departureDate
+    // Get booking details for departureDate and tour type
     const booking = await prisma.booking.findUnique({
-      where: { id: bookingIdInt }
+      where: { id: bookingIdInt },
+      include: {
+        tourType: true
+      }
     });
 
     if (!booking) {
@@ -1701,6 +1704,9 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
     const roomingList = tourists.map(tourist => {
       const entry = roomingListEntries.find(e => e.touristId === tourist.id);
 
+      // Get tour type code once for all logic
+      const tourTypeCode = booking?.tourType?.code;
+
       // Priority:
       // 1) AccommodationRoomingList entry (explicitly set dates)
       // 2) For FIRST hotel: tourist's global checkInDate (for early arrivals like Mrs. Baetgen)
@@ -1712,15 +1718,25 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
         // Priority 1: Explicitly saved date in AccommodationRoomingList
         checkInDate = entry.checkInDate;
       } else if (isFirstAccommodation) {
-        // Priority 2: For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
-        // Each tourist has their own tour start date (e.g., Baetgen 09.10, others 12.10)
-        // ARRIVAL in Uzbekistan = their tour start + 1 day (e.g., Baetgen 10.10, others 13.10)
+        // Priority 2: For FIRST hotel, use tourist's arrival date
+        //
+        // For ER tours: Tour start date in PDF = departure from Germany
+        //               Arrival in Uzbekistan = tour start + 1 day
+        //
+        // For ZA tours: Tourist checkInDate already represents ARRIVAL in Uzbekistan
+        //               (calculated as booking.departureDate + 4 days during PDF import)
+        //               Do NOT add another +1 day!
+        //
         // CRITICAL: Use UTC date manipulation to avoid timezone issues
         const tourStartDate = tourist.checkInDate ? new Date(tourist.checkInDate) : new Date(booking.departureDate);
         const year = tourStartDate.getUTCFullYear();
         const month = tourStartDate.getUTCMonth();
         const day = tourStartDate.getUTCDate();
-        const arrivalDate = new Date(Date.UTC(year, month, day + 1));
+
+        // For ZA tours: tourist.checkInDate is already arrival date, don't add +1
+        // For ER tours: add +1 day to get arrival date
+        const daysToAdd = (tourTypeCode === 'ZA' || tourTypeCode === 'CO' || tourTypeCode === 'KAS') ? 0 : 1;
+        const arrivalDate = new Date(Date.UTC(year, month, day + daysToAdd));
         checkInDate = arrivalDate.toISOString();
       } else {
         // Priority 3: Use accommodation default dates
@@ -1729,11 +1745,14 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
 
       if (entry?.checkOutDate) {
         checkOutDate = entry.checkOutDate;
-      } else if (isLastAccommodation && tourist.checkOutDate) {
-        // CRITICAL: Only use tourist's global checkout date for LAST hotel
+      } else if (isLastAccommodation && tourist.checkOutDate && tourTypeCode === 'ER') {
+        // CRITICAL: Only use tourist's global checkout date for LAST hotel in ER tours
+        // For ZA/CO/KAS tours: tour continues to other countries after last hotel,
+        // so tourist.checkOutDate is END of tour (including Kazakhstan/etc), not hotel checkout
         // For first/middle hotels, ALWAYS use accommodation checkout date
         checkOutDate = tourist.checkOutDate;
       } else {
+        // For all hotels in ZA/CO/KAS tours, and for first/middle hotels in ER tours
         checkOutDate = accommodation.checkOutDate;
       }
 
@@ -1964,6 +1983,18 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
 
     // STEP 4: Create accommodations with PAX split logic
     const departureDate = new Date(booking.departureDate);
+
+    // CRITICAL: For ZA tours, add 4 days to get actual arrival in Uzbekistan
+    // ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
+    // Example: Excel 23.08 → departureDate 27.08 → arrival 31.08
+    const baseDate = tourTypeCode === 'ZA'
+      ? new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000)) // +4 days
+      : departureDate;
+
+    if (tourTypeCode === 'ZA') {
+      console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
+    }
+
     const createdAccommodations = [];
 
     for (let i = 0; i < templates.length; i++) {
@@ -1977,8 +2008,8 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
         continue;
       }
 
-      // Calculate check-in date from template
-      const checkInDate = new Date(departureDate);
+      // Calculate check-in date from base date (arrival in Uzbekistan for ZA tours)
+      const checkInDate = new Date(baseDate);
       checkInDate.setDate(checkInDate.getDate() + template.checkInOffset);
 
       // CRITICAL: Adjust nights for Malika Khorazm based on group composition
@@ -2168,6 +2199,23 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
     }
 
     console.log(`\n✅ Created ${createdAccommodations.length} accommodations for ${booking.bookingNumber}\n`);
+
+    // STEP 5: Update tourist check-in/check-out dates to match first accommodation
+    // This ensures rooming list calculations use correct hotel dates, not tour-wide dates
+    if (createdAccommodations.length > 0 && booking.tourists.length > 0) {
+      const firstAccommodation = createdAccommodations[0];
+      console.log(`📅 Updating ${booking.tourists.length} tourists' dates to match first hotel (${firstAccommodation.checkInDate.toISOString().split('T')[0]} - ${firstAccommodation.checkOutDate.toISOString().split('T')[0]})`);
+
+      await prisma.tourist.updateMany({
+        where: { bookingId: bookingId },
+        data: {
+          checkInDate: firstAccommodation.checkInDate,
+          checkOutDate: firstAccommodation.checkOutDate
+        }
+      });
+
+      console.log(`✅ Updated tourist dates for accurate rooming list calculations\n`);
+    }
 
     res.json({
       accommodations: createdAccommodations,

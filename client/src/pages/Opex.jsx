@@ -11,7 +11,10 @@ const categories = [
 ];
 
 const transportSubTabs = [
-  { id: 'sevil', name: 'Sevil', icon: Car, color: 'blue' },
+  { id: 'sevil-er', name: 'Sevil ER', icon: Car, color: 'blue' },
+  { id: 'sevil-co', name: 'Sevil CO', icon: Car, color: 'emerald' },
+  { id: 'sevil-kas', name: 'Sevil KAS', icon: Car, color: 'orange' },
+  { id: 'sevil-za', name: 'Sevil ZA', icon: Car, color: 'purple' },
   { id: 'xayrulla', name: 'Xayrulla', icon: Car, color: 'cyan' },
   { id: 'nosir', name: 'Nosir', icon: Car, color: 'teal' },
   { id: 'train', name: 'Train', icon: Train, color: 'violet' },
@@ -80,7 +83,7 @@ const defaultPlaneVehicles = [
 
 export default function Opex() {
   const [activeCategory, setActiveCategory] = useState('transport');
-  const [activeTransportTab, setActiveTransportTab] = useState('sevil');
+  const [activeTransportTab, setActiveTransportTab] = useState('sevil-er');
   const [activeSightseeingTab, setActiveSightseeingTab] = useState('er');
   const [activeMealTab, setActiveMealTab] = useState('er');
   const [activeShowsTab, setActiveShowsTab] = useState('er');
@@ -89,7 +92,11 @@ export default function Opex() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Vehicle data from API
-  const [sevilVehicles, setSevilVehicles] = useState([]);
+  const [sevilVehicles, setSevilVehicles] = useState([]); // Legacy - kept for backward compatibility
+  const [sevilErVehicles, setSevilErVehicles] = useState([]);
+  const [sevilCoVehicles, setSevilCoVehicles] = useState([]);
+  const [sevilKasVehicles, setSevilKasVehicles] = useState([]);
+  const [sevilZaVehicles, setSevilZaVehicles] = useState([]);
   const [xayrullaVehicles, setXayrullaVehicles] = useState([]);
   const [nosirVehicles, setNosirVehicles] = useState([]);
   const [metroVehicles, setMetroVehicles] = useState([]);
@@ -367,7 +374,11 @@ export default function Opex() {
       const { grouped } = response.data;
 
       // Set data from API or use defaults if empty
-      setSevilVehicles(grouped.sevil?.length > 0 ? grouped.sevil : defaultSevilVehicles);
+      setSevilErVehicles(grouped['sevil-er']?.length > 0 ? grouped['sevil-er'] : defaultSevilVehicles);
+      setSevilCoVehicles(grouped['sevil-co']?.length > 0 ? grouped['sevil-co'] : defaultSevilVehicles);
+      setSevilKasVehicles(grouped['sevil-kas']?.length > 0 ? grouped['sevil-kas'] : defaultSevilVehicles);
+      setSevilZaVehicles(grouped['sevil-za']?.length > 0 ? grouped['sevil-za'] : defaultSevilVehicles);
+      setSevilVehicles(grouped.sevil?.length > 0 ? grouped.sevil : []); // Legacy fallback
       setXayrullaVehicles(grouped.xayrulla?.length > 0 ? grouped.xayrulla : defaultXayrullaVehicles);
       setNosirVehicles(grouped.nosir?.length > 0 ? grouped.nosir : defaultNosirVehicles);
       setMetroVehicles(grouped.metro?.length > 0 ? grouped.metro : defaultMetroVehicles);
@@ -379,7 +390,10 @@ export default function Opex() {
     } catch (error) {
       console.error('Error loading transport data:', error);
       // Fallback to defaults on error
-      setSevilVehicles(defaultSevilVehicles);
+      setSevilErVehicles(defaultSevilVehicles);
+      setSevilCoVehicles(defaultSevilVehicles);
+      setSevilKasVehicles(defaultSevilVehicles);
+      setSevilZaVehicles(defaultSevilVehicles);
       setXayrullaVehicles(defaultXayrullaVehicles);
       setNosirVehicles(defaultNosirVehicles);
       setMetroVehicles(defaultMetroVehicles);
@@ -466,6 +480,8 @@ export default function Opex() {
     tagRate: '',
     urgenchRate: '',
     shovotRate2: '',
+    olotRate: '',
+    jartepaRate: '',
     // Xayrulla fields
     vstrecha: '',
     chimgan: '',
@@ -826,6 +842,8 @@ export default function Opex() {
       tagRate: '',
       urgenchRate: '',
       shovotRate2: '',
+      olotRate: '',
+      jartepaRate: '',
       vstrecha: '',
       chimgan: '',
       tag: '',
@@ -861,6 +879,8 @@ export default function Opex() {
       tagRate: vehicle.tagRate || '',
       urgenchRate: vehicle.urgenchRate || '',
       shovotRate2: vehicle.shovotRate2 || '',
+      olotRate: vehicle.olotRate || '',
+      jartepaRate: vehicle.jartepaRate || '',
       vstrecha: vehicle.vstrecha || '',
       chimgan: vehicle.chimgan || '',
       tag: vehicle.tag || '',
@@ -911,10 +931,27 @@ export default function Opex() {
           updatedVehicles = nosirVehicles.filter(v => v.id !== vehicleId);
           setNosirVehicles(updatedVehicles);
           provider = 'nosir';
+        } else if (activeTransportTab === 'sevil-er') {
+          updatedVehicles = sevilErVehicles.filter(v => v.id !== vehicleId);
+          setSevilErVehicles(updatedVehicles);
+          provider = 'sevil-er';
+        } else if (activeTransportTab === 'sevil-co') {
+          updatedVehicles = sevilCoVehicles.filter(v => v.id !== vehicleId);
+          setSevilCoVehicles(updatedVehicles);
+          provider = 'sevil-co';
+        } else if (activeTransportTab === 'sevil-kas') {
+          updatedVehicles = sevilKasVehicles.filter(v => v.id !== vehicleId);
+          setSevilKasVehicles(updatedVehicles);
+          provider = 'sevil-kas';
+        } else if (activeTransportTab === 'sevil-za') {
+          updatedVehicles = sevilZaVehicles.filter(v => v.id !== vehicleId);
+          setSevilZaVehicles(updatedVehicles);
+          provider = 'sevil-za';
         } else {
-          updatedVehicles = sevilVehicles.filter(v => v.id !== vehicleId);
-          setSevilVehicles(updatedVehicles);
-          provider = 'sevil';
+          // Fallback for legacy tabs
+          updatedVehicles = sevilErVehicles.filter(v => v.id !== vehicleId);
+          setSevilErVehicles(updatedVehicles);
+          provider = 'sevil-er';
         }
 
         // Auto-save to database
@@ -958,10 +995,27 @@ export default function Opex() {
         vehicles = nosirVehicles;
         setVehicles = setNosirVehicles;
         provider = 'nosir';
+      } else if (activeTransportTab === 'sevil-er') {
+        vehicles = sevilErVehicles;
+        setVehicles = setSevilErVehicles;
+        provider = 'sevil-er';
+      } else if (activeTransportTab === 'sevil-co') {
+        vehicles = sevilCoVehicles;
+        setVehicles = setSevilCoVehicles;
+        provider = 'sevil-co';
+      } else if (activeTransportTab === 'sevil-kas') {
+        vehicles = sevilKasVehicles;
+        setVehicles = setSevilKasVehicles;
+        provider = 'sevil-kas';
+      } else if (activeTransportTab === 'sevil-za') {
+        vehicles = sevilZaVehicles;
+        setVehicles = setSevilZaVehicles;
+        provider = 'sevil-za';
       } else {
-        vehicles = sevilVehicles;
-        setVehicles = setSevilVehicles;
-        provider = 'sevil';
+        // Fallback for legacy 'sevil' tab (should not happen)
+        vehicles = sevilErVehicles;
+        setVehicles = setSevilErVehicles;
+        provider = 'sevil-er';
       }
     }
 
@@ -1002,9 +1056,24 @@ export default function Opex() {
     const provider = providerName.toLowerCase();
     try {
       let vehicles;
+      let apiProvider = provider; // Provider name for API
+
       switch (provider) {
-        case 'sevil':
-          vehicles = sevilVehicles;
+        case 'sevil-er':
+          vehicles = sevilErVehicles;
+          apiProvider = 'sevil-er';
+          break;
+        case 'sevil-co':
+          vehicles = sevilCoVehicles;
+          apiProvider = 'sevil-co';
+          break;
+        case 'sevil-kas':
+          vehicles = sevilKasVehicles;
+          apiProvider = 'sevil-kas';
+          break;
+        case 'sevil-za':
+          vehicles = sevilZaVehicles;
+          apiProvider = 'sevil-za';
           break;
         case 'xayrulla':
           vehicles = xayrullaVehicles;
@@ -1025,7 +1094,7 @@ export default function Opex() {
           return;
       }
 
-      await transportApi.bulkUpdate(provider, vehicles);
+      await transportApi.bulkUpdate(apiProvider, vehicles);
       toast.success(`${providerName} ma'lumotlari saqlandi!`);
       window.dispatchEvent(new Event('vehiclesUpdated'));
     } catch (error) {
@@ -1039,6 +1108,24 @@ export default function Opex() {
   );
 
   const activeTab = categories.find(c => c.id === activeCategory);
+
+  // Get current Sevil vehicles based on active tab
+  const getCurrentSevilVehicles = () => {
+    switch (activeTransportTab) {
+      case 'sevil-er':
+        return sevilErVehicles;
+      case 'sevil-co':
+        return sevilCoVehicles;
+      case 'sevil-kas':
+        return sevilKasVehicles;
+      case 'sevil-za':
+        return sevilZaVehicles;
+      default:
+        return sevilErVehicles; // Fallback
+    }
+  };
+
+  const currentSevilVehicles = getCurrentSevilVehicles();
 
   if (loading) {
     return (
@@ -1076,7 +1163,7 @@ export default function Opex() {
 
           <button
             onClick={() => {
-              if (activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) {
+              if (activeCategory === 'transport' && ['sevil-er', 'sevil-co', 'sevil-kas', 'sevil-za', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) {
                 handleAddVehicle();
               } else {
                 toast.success('Функционал в разработке');
@@ -1086,7 +1173,7 @@ export default function Opex() {
           >
             <Plus className="w-5 h-5" />
             <span>
-              {activeCategory === 'transport' && ['sevil', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab) ? 'Добавить транспорт' : 'Добавить расход'}
+              {activeCategory === 'transport' && ['sevil-er', 'sevil-co', 'sevil-kas', 'sevil-za', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab) ? 'Добавить транспорт' : 'Добавить расход'}
             </span>
           </button>
         </div>
@@ -1166,6 +1253,18 @@ export default function Opex() {
                   shadow: 'shadow-violet-500/30',
                   ring: 'ring-violet-200',
                   hover: 'hover:from-violet-600 hover:to-violet-700'
+                },
+                purple: {
+                  gradient: 'from-purple-500 to-purple-600',
+                  shadow: 'shadow-purple-500/30',
+                  ring: 'ring-purple-200',
+                  hover: 'hover:from-purple-600 hover:to-purple-700'
+                },
+                orange: {
+                  gradient: 'from-orange-500 to-orange-600',
+                  shadow: 'shadow-orange-500/30',
+                  ring: 'ring-orange-200',
+                  hover: 'hover:from-orange-600 hover:to-orange-700'
                 },
                 sky: {
                   gradient: 'from-sky-500 to-sky-600',
@@ -1895,7 +1994,7 @@ export default function Opex() {
               </button>
             </div>
           </div>
-        ) : activeCategory === 'transport' && activeTransportTab === 'sevil' ? (
+        ) : activeCategory === 'transport' && activeTransportTab.startsWith('sevil-') ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -1912,11 +2011,13 @@ export default function Opex() {
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     TAG Rate
                   </th>
+                  {activeTransportTab !== 'sevil-za' && (
+                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                      Urgench Rate
+                    </th>
+                  )}
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Urgench Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Shovot Rate
+                    {activeTransportTab === 'sevil-za' ? 'Jartepa Rate' : 'Shovot Rate'}
                   </th>
                   <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
                     Действия
@@ -1924,7 +2025,7 @@ export default function Opex() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {sevilVehicles.map((vehicle) => (
+                {currentSevilVehicles.map((vehicle) => (
                   <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 border-b border-gray-100 group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -1946,14 +2047,16 @@ export default function Opex() {
                         {vehicle.tagRate || '-'}
                       </div>
                     </td>
+                    {activeTransportTab !== 'sevil-za' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">
+                          {vehicle.urgenchRate || '-'}
+                        </div>
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="text-sm font-medium text-gray-900">
-                        {vehicle.urgenchRate || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.shovotRate2 || '-'}
+                        {activeTransportTab === 'sevil-za' ? (vehicle.jartepaRate || '-') : (vehicle.shovotRate2 || '-')}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -1975,7 +2078,7 @@ export default function Opex() {
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan="7" className="px-6 py-4">
+                  <td colSpan={activeTransportTab === 'sevil-za' ? "6" : "7"} className="px-6 py-4">
                     <button
                       onClick={handleAddVehicle}
                       className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
@@ -1992,7 +2095,7 @@ export default function Opex() {
             {/* Save Button for Sevil */}
             <div className="mt-4 flex justify-end">
               <button
-                onClick={() => handleSaveTransportData('Sevil')}
+                onClick={() => handleSaveTransportData(activeTransportTab)}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
               >
                 <Save className="w-5 h-5" />
@@ -3451,7 +3554,7 @@ export default function Opex() {
                 </div>
               )}
 
-              {activeCategory === 'transport' && activeTransportTab === 'sevil' && (
+              {activeCategory === 'transport' && activeTransportTab.startsWith('sevil-') && (
                 <>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -3480,28 +3583,33 @@ export default function Opex() {
 
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Urgench Rate
+                        {activeTransportTab === 'sevil-za' ? 'Jartepa Rate' : 'Urgench Rate'}
                       </label>
                       <input
                         type="number"
-                        value={vehicleForm.urgenchRate}
-                        onChange={(e) => setVehicleForm({ ...vehicleForm, urgenchRate: e.target.value })}
+                        value={activeTransportTab === 'sevil-za' ? vehicleForm.jartepaRate : vehicleForm.urgenchRate}
+                        onChange={(e) => setVehicleForm({
+                          ...vehicleForm,
+                          [activeTransportTab === 'sevil-za' ? 'jartepaRate' : 'urgenchRate']: e.target.value
+                        })}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Shovot Rate
-                    </label>
-                    <input
-                      type="number"
-                      value={vehicleForm.shovotRate2}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, shovotRate2: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
-                    />
-                  </div>
+                  {activeTransportTab !== 'sevil-za' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Shovot Rate
+                      </label>
+                      <input
+                        type="number"
+                        value={vehicleForm.shovotRate2}
+                        onChange={(e) => setVehicleForm({ ...vehicleForm, shovotRate2: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
+                      />
+                    </div>
+                  )}
                 </>
               )}
 
@@ -3749,7 +3857,10 @@ export default function Opex() {
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300 bg-white"
                       >
                         <option value="">Выберите транспорт</option>
-                        <option value="sevil">Sevil</option>
+                        <option value="sevil-er">Sevil ER</option>
+                        <option value="sevil-co">Sevil CO</option>
+                        <option value="sevil-kas">Sevil KAS</option>
+                        <option value="sevil-za">Sevil ZA</option>
                         <option value="xayrulla">Xayrulla</option>
                         <option value="nosir">Nosir</option>
                       </select>
@@ -3766,7 +3877,11 @@ export default function Opex() {
                         disabled={!vehicleForm.choiceTab}
                       >
                         <option value="">Выберите rate</option>
-                        {vehicleForm.choiceTab === 'sevil' && [
+                        {vehicleForm.choiceTab === 'sevil-za' && [
+                          <option key="tagRate" value="tagRate">TAG Rate</option>,
+                          <option key="jartepaRate" value="jartepaRate">Jartepa Rate</option>
+                        ]}
+                        {vehicleForm.choiceTab?.startsWith('sevil-') && vehicleForm.choiceTab !== 'sevil-za' && [
                           <option key="tagRate" value="tagRate">TAG Rate</option>,
                           <option key="urgenchRate" value="urgenchRate">Urgench Rate</option>,
                           <option key="shovotRate2" value="shovotRate2">Shovot Rate</option>
