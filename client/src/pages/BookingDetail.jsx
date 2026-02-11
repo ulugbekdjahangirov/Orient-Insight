@@ -984,7 +984,26 @@ export default function BookingDetail() {
 
       if (needsUpdate) {
         const updatedRoutes = erRoutes.map((route, index) => {
-          // Get best vehicle for this provider and new person count from localStorage data
+          // CRITICAL: Check if route has saved data from database
+          // If route has saved person count AND vehicle, preserve ALL saved data
+          const hasSavedData = route.person && route.person !== '0' && route.transportType;
+
+          // Calculate date using dayOffset from route or template
+          const template = defaultERRoutesTemplate[index];
+          const dayOffset = route.dayOffset ?? template?.dayOffset ?? index;
+          const routeDate = departureDate ? format(addDays(departureDate, dayOffset + 1), 'yyyy-MM-dd') : route.sana;
+
+          // If route has saved data, preserve it completely (don't recalculate vehicle/rate/price)
+          if (hasSavedData) {
+            return {
+              ...route,
+              sana: routeDate,
+              dayOffset: dayOffset
+              // Preserve: person, transportType, choiceRate, price
+            };
+          }
+
+          // Only for NEW routes without saved data: calculate vehicle
           const count = parseInt(newPersonCount);
           let newTransportType = route.transportType;
 
@@ -1017,19 +1036,11 @@ export default function BookingDetail() {
             }
           }
 
-          // Calculate date using dayOffset from route or template
-          // Arrival date = departure + 1, so we add 1 to dayOffset
-          const template = defaultERRoutesTemplate[index];
-          const dayOffset = route.dayOffset ?? template?.dayOffset ?? index;
-          const routeDate = departureDate ? format(addDays(departureDate, dayOffset + 1), 'yyyy-MM-dd') : route.sana;
-
           return {
             ...route,
             sana: routeDate,
             dayOffset: dayOffset,
-            // IMPORTANT: Preserve saved person count (UZB/TKM splits)
-            // Only update if route has no person count (0 or empty)
-            person: (route.person && route.person !== '0') ? route.person : newPersonCount,
+            person: newPersonCount,
             transportType: newTransportType,
             // Clear rate and price if transport type changed
             choiceRate: newTransportType !== route.transportType ? '' : route.choiceRate,
