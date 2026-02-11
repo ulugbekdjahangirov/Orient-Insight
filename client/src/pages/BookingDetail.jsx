@@ -961,6 +961,12 @@ export default function BookingDetail() {
 
   // Auto-update route person count and dates when tourists change (from Rooming List import)
   useEffect(() => {
+    console.log('🔄 Auto-update useEffect triggered:', {
+      touristsLength: tourists.length,
+      erRoutesLength: erRoutes.length,
+      hasDepartureDate: !!formData.departureDate
+    });
+
     if (tourists.length > 0 && erRoutes.length > 0) {
       const newPersonCount = tourists.length.toString();
       const departureDate = formData.departureDate ? new Date(formData.departureDate) : null;
@@ -972,6 +978,8 @@ export default function BookingDetail() {
           const expectedDate = format(addDays(departureDate, idx + 1), 'yyyy-MM-dd');
           return r.sana !== expectedDate;
         }));
+
+      console.log('   needsUpdate?', needsUpdate, 'newPersonCount:', newPersonCount);
 
       if (needsUpdate) {
         const updatedRoutes = erRoutes.map((route, index) => {
