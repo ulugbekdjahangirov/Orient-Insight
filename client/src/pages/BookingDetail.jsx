@@ -1436,8 +1436,9 @@ export default function BookingDetail() {
 
           const mappedRoutes = routesToProcess.map((r, index) => {
             const provider = r.provider || '';
-            // Use total PAX from tourists as person count
-            const personCount = totalPax > 0 ? totalPax.toString() : (r.personCount?.toString() || '');
+            // IMPORTANT: Use saved personCount from database (for UZB/TKM splits)
+            // Only fallback to totalPax if no saved personCount exists
+            const personCount = r.personCount?.toString() || (totalPax > 0 ? totalPax.toString() : '');
             const paxNum = parseInt(personCount) || 0;
 
             console.log(`\n Route ${index + 1}: ${r.routeName || 'unnamed'}`);
