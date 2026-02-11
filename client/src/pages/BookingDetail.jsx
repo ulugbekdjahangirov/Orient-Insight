@@ -5429,7 +5429,22 @@ export default function BookingDetail() {
       return 'sevil-za';
     }
 
-    // Other cities (Samarkand, Bukhara, Khiva, etc.) -> Sevil
+    // For KAS tours: Samarkand and Bukhara -> Sevil-KAS
+    if (tourTypeCode === 'KAS') {
+      return 'sevil-kas';
+    }
+
+    // For CO tours: Samarkand and Bukhara -> Sevil-CO
+    if (tourTypeCode === 'CO') {
+      return 'sevil-co';
+    }
+
+    // For ER tours: Samarkand and Bukhara -> Sevil-ER
+    if (tourTypeCode === 'ER') {
+      return 'sevil-er';
+    }
+
+    // Fallback: generic Sevil (should not reach here if tour type is set)
     return 'sevil';
   };
 
