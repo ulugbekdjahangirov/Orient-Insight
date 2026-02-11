@@ -6551,7 +6551,7 @@ export default function BookingDetail() {
           rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
         } else {
           // Inter-city routes
-          if (provider === 'sevil') rate = 'tagRate';
+          if (provider.includes('sevil')) rate = 'tagRate';  // Changed to .includes() for sevil-er, sevil-co, etc.
           else if (provider === 'xayrulla') rate = 'tag';
           else if (provider === 'nosir') rate = 'toshkent';
         }
@@ -6886,7 +6886,7 @@ export default function BookingDetail() {
         } else if (routeLower.includes('train station')) {
           rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
         } else {
-          if (provider === 'sevil') rate = 'tagRate';
+          if (provider.includes('sevil')) rate = 'tagRate';  // Changed to .includes() for sevil-co, sevil-er, etc.
           else if (provider === 'xayrulla') rate = 'tag';
           else if (provider === 'nosir') rate = 'toshkent';
         }
@@ -7100,7 +7100,7 @@ export default function BookingDetail() {
           rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
         } else {
           // Inter-city routes
-          if (provider === 'sevil') rate = 'tagRate';
+          if (provider.includes('sevil')) rate = 'tagRate';  // Changed to .includes() for sevil-kas, sevil-er, etc.
           else if (provider === 'xayrulla') rate = 'tag';
           else if (provider === 'nosir') rate = 'toshkent';
         }
