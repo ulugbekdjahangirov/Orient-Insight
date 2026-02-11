@@ -2772,19 +2772,20 @@ export default function BookingDetail() {
         }
       }
 
-      if (secondGuide && secondGuide.guide) {
-        const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
-        const totalPayment = secondGuide.totalPayment || 0;
-        if (totalPayment > 0) {
-          expensesByCity['Reiseleiter'].push({
-            name: guideName,
-            pricePerPerson: null,
-            pax: null,
-            usd: totalPayment,
-            uzs: 0
-          });
-        }
-      }
+      // Second Guide - Moved to Später PDF
+      // if (secondGuide && secondGuide.guide) {
+      //   const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
+      //   const totalPayment = secondGuide.totalPayment || 0;
+      //   if (totalPayment > 0) {
+      //     expensesByCity['Reiseleiter'].push({
+      //       name: guideName,
+      //       pricePerPerson: null,
+      //       pax: null,
+      //       usd: totalPayment,
+      //       uzs: 0
+      //     });
+      //   }
+      // }
 
       if (bergreiseleiter && bergreiseleiter.guide) {
         const guideName = typeof bergreiseleiter.guide === 'string' ? bergreiseleiter.guide : bergreiseleiter.guide?.name || 'Bergreiseleiter';
@@ -3326,6 +3327,7 @@ export default function BookingDetail() {
       const expensesByCity = {};
       expensesByCity['Samarkand'] = [];
       expensesByCity['Transport'] = [];
+      expensesByCity['Reiseleiter'] = [];
 
       // 1. Process Jahongir Hotel in Samarkand
       if (grandTotalData && grandTotalData.hotelBreakdown) {
@@ -3392,6 +3394,21 @@ export default function BookingDetail() {
         }
       }
 
+      // 3. Process Second Guide (moved from RL PDF)
+      if (secondGuide && secondGuide.guide) {
+        const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
+        const totalPayment = secondGuide.totalPayment || 0;
+        if (totalPayment > 0) {
+          expensesByCity['Reiseleiter'].push({
+            name: guideName,
+            pricePerPerson: null,
+            pax: null,
+            usd: totalPayment,
+            uzs: 0
+          });
+        }
+      }
+
       // Calculate totals
       let totalUSD = 0;
       let totalUZS = 0;
@@ -3403,7 +3420,7 @@ export default function BookingDetail() {
       });
 
       // Filter out empty sections
-      const sections = ['Samarkand', 'Transport'].filter(section =>
+      const sections = ['Samarkand', 'Transport', 'Reiseleiter'].filter(section =>
         expensesByCity[section] && expensesByCity[section].length > 0
       );
 
@@ -11564,21 +11581,21 @@ export default function BookingDetail() {
               }
             }
 
-            // Second Guide
-            if (secondGuide && secondGuide.guide) {
-              const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
-              const totalPayment = secondGuide.totalPayment || 0;
+            // Second Guide - Moved to Später tab
+            // if (secondGuide && secondGuide.guide) {
+            //   const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
+            //   const totalPayment = secondGuide.totalPayment || 0;
 
-              if (totalPayment > 0) {
-                expensesByCity['Reiseleiter'].push({
-                  name: guideName,
-                  pricePerPerson: null,
-                  pax: null,
-                  usd: totalPayment,
-                  uzs: 0
-                });
-              }
-            }
+            //   if (totalPayment > 0) {
+            //     expensesByCity['Reiseleiter'].push({
+            //       name: guideName,
+            //       pricePerPerson: null,
+            //       pax: null,
+            //       usd: totalPayment,
+            //       uzs: 0
+            //     });
+            //   }
+            // }
 
             // Bergreiseleiter
             if (bergreiseleiter && bergreiseleiter.guide) {
@@ -11721,6 +11738,7 @@ export default function BookingDetail() {
             const expensesByCity = {};
             expensesByCity['Samarkand'] = [];
             expensesByCity['Transport'] = [];
+            expensesByCity['Reiseleiter'] = [];
 
             // 1. Process Jahongir Hotel in Samarkand
             if (grandTotalData && grandTotalData.hotelBreakdown) {
@@ -11794,6 +11812,22 @@ export default function BookingDetail() {
               }
             }
 
+            // 3. Process Second Guide (moved from RL tab)
+            if (secondGuide && secondGuide.guide) {
+              const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
+              const totalPayment = secondGuide.totalPayment || 0;
+
+              if (totalPayment > 0) {
+                expensesByCity['Reiseleiter'].push({
+                  name: guideName,
+                  pricePerPerson: null,
+                  pax: null,
+                  usd: totalPayment,
+                  uzs: 0
+                });
+              }
+            }
+
             // Calculate totals
             let totalUSD = 0;
             let totalUZS = 0;
@@ -11806,7 +11840,7 @@ export default function BookingDetail() {
             });
 
             // Filter out empty sections for display
-            const sections = ['Samarkand', 'Transport'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+            const sections = ['Samarkand', 'Transport', 'Reiseleiter'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
 
             const hasData = sections.length > 0;
 
