@@ -2703,8 +2703,8 @@ export default function BookingDetail() {
         }
       });
 
-      // 3. Process Metro
-      if (metroVehicles && metroVehicles.length > 0) {
+      // 3. Process Metro - Skip for ZA tours
+      if (metroVehicles && metroVehicles.length > 0 && booking?.tourType?.code !== 'ZA') {
         metroVehicles.forEach(metro => {
           const name = metro.name || 'Metro';
           const city = metro.city || '';
@@ -3032,8 +3032,11 @@ export default function BookingDetail() {
         }
       });
 
-      // 3-4. Process Metro and Shou
+      // 3-4. Process Metro and Shou (skip Metro for ZA tours)
       ['METRO', 'SHOU'].forEach(type => {
+        // Skip Metro for ZA tours
+        if (type === 'METRO' && booking?.tourType?.code === 'ZA') return;
+
         const services = tourServices[type.toLowerCase()];
         if (services && services.length > 0) {
           services.forEach(item => {
@@ -10978,8 +10981,8 @@ export default function BookingDetail() {
               });
             }
 
-            // 2. Process Metro (from metroVehicles)
-            if (metroVehicles && metroVehicles.length > 0) {
+            // 2. Process Metro (from metroVehicles) - Skip for ZA tours
+            if (metroVehicles && metroVehicles.length > 0 && booking?.tourType?.code !== 'ZA') {
               metroVehicles.forEach(metro => {
                 const name = metro.name || 'Metro';
                 const city = metro.city || '';
@@ -11485,8 +11488,8 @@ export default function BookingDetail() {
               }
             });
 
-            // 3. Process Metro (from metroVehicles)
-            if (metroVehicles && metroVehicles.length > 0) {
+            // 3. Process Metro (from metroVehicles) - Skip for ZA tours
+            if (metroVehicles && metroVehicles.length > 0 && booking?.tourType?.code !== 'ZA') {
               metroVehicles.forEach(metro => {
                 const name = metro.name || 'Metro';
                 const city = metro.city || '';
