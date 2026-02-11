@@ -1195,8 +1195,18 @@ export default function BookingDetail() {
         } else if (b.guide && b.guideId) {
           const dayRate = b.guide.dayRate || 110;
           const halfDayRate = b.guide.halfDayRate || 55;
-          const fullDays = b.guideFullDays || (b.tourType?.code === 'ER' ? 12 : 0);
-          const halfDays = b.guideHalfDays || (b.tourType?.code === 'ER' ? 1 : 0);
+          // Auto-calculate days based on tour type
+          let defaultFullDays = 0;
+          let defaultHalfDays = 0;
+          if (b.tourType?.code === 'ER') {
+            defaultFullDays = 12;
+            defaultHalfDays = 1;
+          } else if (b.tourType?.code === 'ZA') {
+            defaultFullDays = 5;
+            defaultHalfDays = 0.5;
+          }
+          const fullDays = b.guideFullDays || defaultFullDays;
+          const halfDays = b.guideHalfDays || defaultHalfDays;
           const totalPayment = (fullDays * dayRate) + (halfDays * halfDayRate);
 
           setMainGuide({
@@ -2419,7 +2429,13 @@ export default function BookingDetail() {
       setManualGuideName('');
       setSelectedGuide(null);
       if (type === 'main') {
-        setGuideDays({ fullDays: 12, halfDays: 1 });
+        if (booking?.tourType?.code === 'ER') {
+          setGuideDays({ fullDays: 12, halfDays: 1 });
+        } else if (booking?.tourType?.code === 'ZA') {
+          setGuideDays({ fullDays: 5, halfDays: 0.5 });
+        } else {
+          setGuideDays({ fullDays: 0, halfDays: 0 });
+        }
       } else {
         setGuideDays({ fullDays: 0, halfDays: 0 });
       }
@@ -9465,7 +9481,7 @@ export default function BookingDetail() {
                         <td className="px-4 py-3 text-right font-bold text-lg text-purple-700">
                           {(() => {
                             const sevilTotal = routes
-                              .filter(r => r.provider?.toLowerCase() === 'sevil')
+                              .filter(r => r.provider?.toLowerCase().includes('sevil'))
                               .reduce((sum, r) => sum + (r.price || 0), 0);
                             return sevilTotal > 0
                               ? Math.round(sevilTotal).toLocaleString('en-US').replace(/,/g, ' ')
@@ -13065,11 +13081,11 @@ export default function BookingDetail() {
                 <div className="flex items-center justify-between gap-8">
                   {/* Provider Totals */}
                   <div className="flex items-center gap-5">
-                    {erRoutes.some(r => r.choiceTab === 'sevil' && parseFloat(r.price) > 0) && (
+                    {erRoutes.some(r => r.choiceTab?.includes('sevil') && parseFloat(r.price) > 0) && (
                       <div className="flex items-center gap-3 px-5 py-3 bg-blue-100 rounded-xl border border-blue-200">
                         <span className="text-sm font-semibold text-blue-700">Sevil</span>
                         <span className="text-xl font-bold text-blue-800">
-                          ${erRoutes.filter(r => r.choiceTab === 'sevil').reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
+                          ${erRoutes.filter(r => r.choiceTab?.includes('sevil')).reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
                         </span>
                       </div>
                     )}
