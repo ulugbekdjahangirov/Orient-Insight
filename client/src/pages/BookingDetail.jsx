@@ -971,9 +971,10 @@ export default function BookingDetail() {
       const newPersonCount = tourists.length.toString();
       const departureDate = formData.departureDate ? new Date(formData.departureDate) : null;
 
-      // Check if any route needs updating (person count or dates)
-      // Arrival = departure + 1 day
-      const needsUpdate = erRoutes.some(r => r.person !== newPersonCount) ||
+      // IMPORTANT: Only auto-update routes that have MISSING person counts (0 or empty)
+      // DO NOT override routes with saved person counts (like UZB/TKM splits: 5, 8)
+      // Check if any route needs updating (only routes with missing PAX or wrong dates)
+      const needsUpdate = erRoutes.some(r => !r.person || r.person === '0' || r.person === 0) ||
         (departureDate && erRoutes.some((r, idx) => {
           const expectedDate = format(addDays(departureDate, idx + 1), 'yyyy-MM-dd');
           return r.sana !== expectedDate;
@@ -1026,7 +1027,9 @@ export default function BookingDetail() {
             ...route,
             sana: routeDate,
             dayOffset: dayOffset,
-            person: newPersonCount,
+            // IMPORTANT: Preserve saved person count (UZB/TKM splits)
+            // Only update if route has no person count (0 or empty)
+            person: (route.person && route.person !== '0') ? route.person : newPersonCount,
             transportType: newTransportType,
             // Clear rate and price if transport type changed
             choiceRate: newTransportType !== route.transportType ? '' : route.choiceRate,
