@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi } from '../services/api';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO } from 'date-fns';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14348,7 +14348,7 @@ export default function BookingDetail() {
                                   <Calendar className="w-5 h-5 text-white" />
                                 </div>
                                 <span className="text-lg font-bold text-blue-900">
-                                  {format(new Date(acc.checkInDate), 'dd.MM.yy')} — {format(new Date(acc.checkOutDate), 'dd.MM.yy')}
+                                  {format(parseISO(acc.checkInDate), 'dd.MM.yy')} — {format(parseISO(acc.checkOutDate), 'dd.MM.yy')}
                                 </span>
                               </div>
                               <div className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-2xl shadow-md">

@@ -3277,9 +3277,13 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       try {
         const [startDay, startMonth, startYear] = tourStartDate.split('.');
         const [endDay, endMonth, endYear] = tourEndDate.split('.');
-        pdfDepartureDate = new Date(`${startYear}-${startMonth}-${startDay}`);
-        pdfEndDate = new Date(`${endYear}-${endMonth}-${endDay}`);
+        // CRITICAL: Use Date.UTC to avoid timezone issues (+1 day bug)
+        // new Date("2025-10-04") creates local midnight, which can shift to next day
+        // Date.UTC creates proper UTC midnight
+        pdfDepartureDate = new Date(Date.UTC(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay)));
+        pdfEndDate = new Date(Date.UTC(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay)));
         console.log(`📅 Using PDF dates: ${tourStartDate} (departure) → ${tourEndDate} (end)`);
+        console.log(`   ✓ Parsed as UTC: ${pdfDepartureDate.toISOString().split('T')[0]} → ${pdfEndDate.toISOString().split('T')[0]}`);
       } catch (e) {
         console.error('Error parsing PDF dates:', e);
       }

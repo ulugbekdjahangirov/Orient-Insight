@@ -973,9 +973,18 @@ router.get('/:id/accommodations', authenticate, async (req, res) => {
 
     console.log(`📋 GET /accommodations: Found ${accommodations.length} accommodations for booking ${id}:`, accommodations.map(a => ({ id: a.id, hotel: a.hotel?.name, totalCost: a.totalCost })));
 
-    // Simply return database values
+    // Format dates as YYYY-MM-DD strings to avoid timezone issues
+    const formattedAccommodations = accommodations.map(acc => ({
+      ...acc,
+      checkInDate: acc.checkInDate ? acc.checkInDate.toISOString().split('T')[0] : null,
+      checkOutDate: acc.checkOutDate ? acc.checkOutDate.toISOString().split('T')[0] : null
+    }));
+
+    console.log(`   📅 First accommodation dates: ${formattedAccommodations[0]?.checkInDate} → ${formattedAccommodations[0]?.checkOutDate}`);
+
+    // Simply return database values with formatted dates
     // Edit modal auto-saves calculated totals when opened
-    res.json({ accommodations });
+    res.json({ accommodations: formattedAccommodations });
   } catch (error) {
     console.error('Get accommodations error:', error);
     res.status(500).json({ error: 'Ошибка получения размещений' });
@@ -995,8 +1004,13 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Отель и даты обязательны' });
     }
 
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
+    // CRITICAL: Parse dates as UTC to avoid timezone shift (+1 day bug)
+    // new Date("2025-10-04") creates local midnight, which shifts to next day in some timezones
+    // Solution: append "T00:00:00.000Z" to force UTC interpretation
+    const checkIn = new Date(checkInDate + 'T00:00:00.000Z');
+    const checkOut = new Date(checkOutDate + 'T00:00:00.000Z');
+
+    console.log(`   ✓ Parsed dates as UTC: ${checkIn.toISOString().split('T')[0]} → ${checkOut.toISOString().split('T')[0]}`);
 
     // Валидация: дата выезда > дата заезда
     if (checkOut <= checkIn) {
