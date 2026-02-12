@@ -4470,58 +4470,26 @@ export default function BookingDetail() {
           const hotelNameLower = hotel.name.toLowerCase();
           const isMalikaKhorazm = hotelNameLower.includes('malika') && hotelNameLower.includes('khorazm');
 
-          if (hasSplit && isMalikaKhorazm && isKhiva && uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0) {
-            console.log(`🏨 SPLIT LOGIC for Malika Khorazm: UZ tourists 2 nights, TM tourists 3 nights`);
+          // SPECIAL CASE: Malika Khorazm with split group
+          // Don't create separate accommodations - rooming list handles the split
+          // TM tourists: 3 nights (full duration)
+          // UZ tourists: 2 nights (check out 1 day earlier via rooming list logic)
+          const isMalikaKhorazmSplit = hasSplit && isMalikaKhorazm && isKhiva &&
+                                        uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
 
-            // CRITICAL: TM tourists stay 3 nights, UZ tourists stay 2 nights
-            // Itinerary shows Malika for 2 nights, so we ADD +1 night for TM
-
-            // 1. Create Malika Khorazm for TM tourists (+1 night = 3 nights total)
-            accommodationsToCreate.push({
-              hotel,
-              startDay: stay.startDay,
-              endDay: stay.endDay + 1, // ADD 1 night (itinerary 2 nights → 3 nights for TM)
-              tourists: turkmenistanTourists,
-              groupName: 'Turkmenistan'
-            });
-
-            // 2. Create Malika Khorazm for UZ tourists (2 nights = use itinerary duration)
-            accommodationsToCreate.push({
-              hotel,
-              startDay: stay.startDay,
-              endDay: stay.endDay, // Use itinerary duration (2 nights)
-              tourists: uzbekistanTourists,
-              groupName: 'Uzbekistan'
-            });
-
-            // 3. Create Tashkent accommodation for UZ tourists (1 night after Malika)
-            const tashkentHotel = hotels.find(h =>
-              h.name.toLowerCase().includes('arien') ||
-              (h.city?.name?.toLowerCase().includes('ташкент') || h.city?.name?.toLowerCase().includes('tashkent'))
-            );
-
-            if (tashkentHotel) {
-              accommodationsToCreate.push({
-                hotel: tashkentHotel,
-                startDay: stay.endDay + 1, // UZ tourists go to Tashkent after 2 nights at Malika
-                endDay: stay.endDay + 1,   // 1 night in Tashkent
-                tourists: uzbekistanTourists,
-                groupName: 'Uzbekistan'
-              });
-              console.log(`  ✅ Created Tashkent accommodation for UZ group (day ${stay.endDay + 1})`);
-            } else {
-              console.warn('  ⚠️ Tashkent hotel not found for UZ tourists');
-            }
-          } else {
-            // Normal case: all tourists together
-            accommodationsToCreate.push({
-              hotel,
-              startDay: stay.startDay,
-              endDay: stay.endDay,
-              tourists: [...uzbekistanTourists, ...turkmenistanTourists],
-              groupName: 'All'
-            });
+          if (isMalikaKhorazmSplit) {
+            console.log(`ℹ️ Malika Khorazm with split group: Creating single accommodation, rooming list will handle UZ early checkout`);
           }
+
+          // Create single accommodation for all tourists
+          // Rooming list logic (line 15251-15265) already handles UZ tourists checking out 1 day earlier
+          accommodationsToCreate.push({
+            hotel,
+            startDay: stay.startDay,
+            endDay: stay.endDay,
+            tourists: [...uzbekistanTourists, ...turkmenistanTourists],
+            groupName: 'All'
+          });
         }
       }
 
