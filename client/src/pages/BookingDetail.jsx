@@ -4980,6 +4980,16 @@ export default function BookingDetail() {
         const checkOutDate = new Date(currentDate);
         checkOutDate.setDate(checkOutDate.getDate() + nights);
 
+        // CRITICAL: Backend automatically adds +1 day to checkout for Khiva/Turkmenistan hotels
+        // To compensate, we subtract 1 day here so final result is correct
+        // Backend logic: if (cityName.includes('хива')) checkOut.setDate(checkOut.getDate() + 1)
+        // Example: We send 15.09-18.09 (3 nights) → Backend makes it 15.09-19.09 (4 nights)
+        // Solution: We send 15.09-17.09 (2 nights) → Backend makes it 15.09-18.09 (3 nights) ✓
+        if (erHotel.type === 'split') {
+          checkOutDate.setDate(checkOutDate.getDate() - 1);
+          console.log(`   🔧 Malika Khorazm: Adjusted checkout -1 day to compensate for backend +1`);
+        }
+
         // Determine which tourists to include
         let hotelTourists = allTourists;
         if (erHotel.type === 'return') {
