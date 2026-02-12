@@ -938,11 +938,19 @@ export default function BookingDetail() {
 
   useEffect(() => {
     if (formData.departureDate && erRoutes.length > 0 && !datesInitialized) {
-      const departureDate = new Date(formData.departureDate);
-      const firstExpectedDate = format(addDays(departureDate, 1), 'yyyy-MM-dd');
+      // IMPORTANT: Only update dates for NEW routes (from template)
+      // DO NOT recalculate dates for routes loaded from database (they have saved dates!)
+      const hasRoutesFromDatabase = erRoutes.some(r => r.id);
 
-      // Always update dates on first load to match template dayOffset
-      // Arrival date = departure + 1, so we add 1 to dayOffset
+      if (hasRoutesFromDatabase) {
+        // Routes loaded from database - preserve their saved dates!
+        console.log('✅ Routes loaded from database, preserving saved dates');
+        setDatesInitialized(true);
+        return;
+      }
+
+      // Only NEW routes from template - calculate dates
+      const departureDate = new Date(formData.departureDate);
       const updatedRoutes = erRoutes.map((route, index) => {
         // Use dayOffset from route if available, otherwise use template or default
         const template = defaultERRoutesTemplate[index];
@@ -961,19 +969,32 @@ export default function BookingDetail() {
 
   // Auto-update route person count and dates when tourists change (from Rooming List import)
   useEffect(() => {
+    console.log('🔄 AUTO-UPDATE useEffect triggered');
+    console.log('   erRoutes.length:', erRoutes.length);
+    console.log('   tourists.length:', tourists.length);
+
     if (tourists.length > 0 && erRoutes.length > 0) {
       const newPersonCount = tourists.length.toString();
       const departureDate = formData.departureDate ? new Date(formData.departureDate) : null;
 
+      // Log first 5 routes PAX
+      console.log('   First 5 routes PAX:', erRoutes.slice(0, 5).map(r => `${r.route}=${r.person}`));
+
       // IMPORTANT: Check separately for PAX updates and date updates
       // DO NOT mix them - date updates should NOT trigger PAX recalculation!
       const hasMissingPax = erRoutes.some(r => !r.person || r.person === '0' || r.person === 0);
+      // Only check dates for NEW routes (without database ID) - preserve saved routes' dates
       const hasWrongDates = departureDate && erRoutes.some((r, idx) => {
+        if (r.id) return false; // Skip routes loaded from database - their dates are correct!
         const expectedDate = format(addDays(departureDate, idx + 1), 'yyyy-MM-dd');
         return r.sana !== expectedDate;
       });
 
+      console.log('   hasMissingPax:', hasMissingPax);
+      console.log('   hasWrongDates:', hasWrongDates);
+
       const needsUpdate = hasMissingPax || hasWrongDates;
+      console.log('   needsUpdate:', needsUpdate);
 
       if (needsUpdate) {
         const updatedRoutes = erRoutes.map((route, index) => {
@@ -982,19 +1003,15 @@ export default function BookingDetail() {
           const dayOffset = route.dayOffset ?? template?.dayOffset ?? index;
           const routeDate = departureDate ? format(addDays(departureDate, dayOffset + 1), 'yyyy-MM-dd') : route.sana;
 
-          // CRITICAL: Preserve saved route data (person, vehicle, rate, price)
+          // CRITICAL: Preserve saved route data (person, vehicle, rate, price, dates)
           // Only update if route is NEW (no saved data)
           const hasSavedPax = route.person && route.person !== '0' && route.person !== 0;
           const hasSavedVehicle = route.transportType && route.transportType !== '';
 
-          // If route has saved PAX and vehicle, only update dates (preserve everything else)
-          if (hasSavedPax && hasSavedVehicle) {
-            return {
-              ...route,
-              sana: routeDate,
-              dayOffset: dayOffset
-              // Preserve: person, transportType, choiceRate, price
-            };
+          // If route has saved PAX, vehicle, AND database ID, preserve EVERYTHING including dates
+          // This prevents overwriting manually edited dates that were saved to database
+          if (hasSavedPax && hasSavedVehicle && route.id) {
+            return route; // Don't touch routes loaded from database!
           }
 
           // Only for NEW routes without saved data: calculate vehicle and PAX
@@ -1537,9 +1554,11 @@ export default function BookingDetail() {
             const tourTypeCode = b.tourType?.code;
             const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
             const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
-            const routeDate = arrivalDate
-              ? format(addDays(arrivalDate, dayOffset), 'yyyy-MM-dd')
-              : (r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '');
+            // IMPORTANT: Prioritize saved date from database over calculated date
+            // This preserves manually edited dates after save
+            const routeDate = r.date
+              ? format(new Date(r.date), 'yyyy-MM-dd')
+              : (arrivalDate ? format(addDays(arrivalDate, dayOffset), 'yyyy-MM-dd') : '');
 
             return {
               id: r.id,
@@ -4284,17 +4303,21 @@ export default function BookingDetail() {
 
       // Step 3: Build accommodation list from itinerary
       const departureDate = new Date(booking.departureDate);
+      const arrivalDate = new Date(booking.arrivalDate);
 
-      // CRITICAL: For ZA tours, add 4 days to get actual arrival in Uzbekistan
-      // ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
+      // CRITICAL: Use arrivalDate as base for tourist dates
+      // - ER/CO/KAS tours: tourists' Tour Start = arrivalDate (day they arrive in Uzbekistan)
+      // - ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
       // Example: Excel 23.08 → departureDate 27.08 → arrival 31.08
       const tourTypeCode = booking?.tourType?.code;
       const baseDate = tourTypeCode === 'ZA'
         ? new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000)) // +4 days
-        : departureDate;
+        : arrivalDate; // Use arrivalDate for ER/CO/KAS tours
 
       if (tourTypeCode === 'ZA') {
         console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
+      } else {
+        console.log(`📅 ${tourTypeCode} tour: Base date = ${baseDate.toISOString().split('T')[0]} (arrival date)`);
       }
 
       const accommodationsToCreate = [];
@@ -5550,6 +5573,37 @@ export default function BookingDetail() {
     const updatedRoutes = [...erRoutes];
     updatedRoutes[routeIndex].sana = newDate;
 
+    // 🚀 AUTO-ADJUST NEXT ROUTE DATE (same-day rules)
+    const currentRoute = updatedRoutes[routeIndex];
+    const nextRoute = updatedRoutes[routeIndex + 1];
+
+    if (currentRoute && nextRoute && newDate) {
+      const currentRouteName = (currentRoute.route || '').toLowerCase();
+      const nextRouteName = (nextRoute.route || '').toLowerCase();
+
+      // RULE 1: Train Station Drop-off → Samarkand City Tour (SAME DAY)
+      if ((currentRouteName.includes('train station') && currentRouteName.includes('drop')) &&
+          (nextRouteName.includes('samarkand') || nextRouteName.includes('samarqand'))) {
+        updatedRoutes[routeIndex + 1].sana = newDate;
+        console.log(`✅ Auto-adjusted: ${nextRoute.route} → ${newDate} (same day as Train Station)`);
+        toast.success('Next route date auto-adjusted to same day', { duration: 2000 });
+      }
+      // RULE 2: Train Station Drop-off → Qoqon/Fergana (SAME DAY)
+      else if ((currentRouteName.includes('train station') && currentRouteName.includes('drop')) &&
+               (nextRouteName.includes('qoqon') || (nextRouteName.includes('fergana') && !nextRouteName.includes('tashkent')))) {
+        updatedRoutes[routeIndex + 1].sana = newDate;
+        console.log(`✅ Auto-adjusted: ${nextRoute.route} → ${newDate} (same day as Train Station)`);
+        toast.success('Next route date auto-adjusted to same day', { duration: 2000 });
+      }
+      // RULE 3: Airport Pickup → Samarkand City Tour (SAME DAY)
+      else if (currentRouteName.includes('airport pickup') &&
+               (nextRouteName.includes('samarkand') || nextRouteName.includes('samarqand'))) {
+        updatedRoutes[routeIndex + 1].sana = newDate;
+        console.log(`✅ Auto-adjusted: ${nextRoute.route} → ${newDate} (same day as Airport Pickup)`);
+        toast.success('Next route date auto-adjusted to same day', { duration: 2000 });
+      }
+    }
+
     // Auto-sort routes by date after changing date
     // This will move the route to its correct chronological position
     const sortedRoutes = sortRoutesByDate(updatedRoutes);
@@ -6020,6 +6074,7 @@ export default function BookingDetail() {
         dayNumber: index + 1,
         date: r.sana || null,
         city: r.shahar || null,
+        itinerary: r.sayohatDasturi || null,  // Save itinerary field
         routeName: r.route || '',
         personCount: parseInt(r.person) || 0,
         transportType: r.transportType || null,
@@ -6028,7 +6083,31 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
+      console.log(`💾 Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
+
+      // IMPORTANT: Reload routes from database to ensure state matches database
+      console.log('🔄 Reloading routes from database...');
+      const reloadedRes = await bookingsApi.getRoutes(id);
+      const reloadedRoutes = reloadedRes.data.routes || [];
+
+      const mappedReloaded = reloadedRoutes.map((r, index) => ({
+        id: r.id,
+        nomer: r.dayNumber?.toString() || (index + 1).toString(),
+        sana: r.date ? format(new Date(r.date), 'yyyy-MM-dd') : '',
+        dayOffset: index,
+        shahar: r.city || '',
+        sayohatDasturi: r.itinerary || '',
+        route: r.routeName || '',
+        person: r.personCount?.toString() || '0',
+        transportType: r.transportType || '',
+        choiceTab: r.provider || '',
+        choiceRate: r.optionRate || '',
+        price: r.price?.toString() || ''
+      }));
+
+      setErRoutes(mappedReloaded);
+      console.log('✅ Routes saved and reloaded from database');
       toast.success('Маршруты сохранены');
     } catch (error) {
       console.error('Error saving routes:', error);
@@ -6254,21 +6333,30 @@ export default function BookingDetail() {
 
       // Calculate actual dates from offsets
       const departureDate = booking?.departureDate ? new Date(booking.departureDate) : formData.departureDate ? new Date(formData.departureDate) : null;
+      const arrivalDate = booking?.arrivalDate ? new Date(booking.arrivalDate) : formData.arrivalDate ? new Date(formData.arrivalDate) : null;
 
       if (!departureDate) {
         toast.error('Дата вылета не установлена');
         return;
       }
 
-      // CRITICAL: For ZA tours, add 4 days to get actual arrival in Uzbekistan
-      // ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
+      if (!arrivalDate) {
+        toast.error('Дата прибытия не установлена');
+        return;
+      }
+
+      // CRITICAL: Use arrivalDate as base for tourist dates
+      // - ER/CO/KAS tours: tourists' Tour Start = arrivalDate (day they arrive in Uzbekistan)
+      // - ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
       // Example: Excel 23.08 → departureDate 27.08 → arrival 31.08
       const baseDate = tourTypeCode === 'ZA'
         ? new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000)) // +4 days
-        : departureDate;
+        : arrivalDate; // Use arrivalDate for ER/CO/KAS tours
 
       if (tourTypeCode === 'ZA') {
         console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
+      } else {
+        console.log(`📅 ${tourTypeCode} tour: Base date = ${baseDate.toISOString().split('T')[0]} (arrival date)`);
       }
 
       // Create accommodations from templates
@@ -6409,9 +6497,159 @@ export default function BookingDetail() {
 
       console.log(`🔧 Auto-fixing routes: PAX Total=${totalPax}, UZB=${paxUzb}, TKM=${paxTkm}`);
 
-      // Find split point
-      const urgenchIndex = freshErRoutes.findIndex(r => r.route === 'Khiva - Urgench');
-      const hasShovotRoute = freshErRoutes.some(r => r.route === 'Khiva - Shovot');
+      // 🎯 DETERMINE SPLIT SCENARIO
+      let splitScenario = 'MIXED'; // Default: both UZB and TKM
+      if (paxUzb > 0 && paxTkm === 0) {
+        splitScenario = 'UZB_ONLY';
+        console.log('📍 Scenario: UZB ONLY - All go to Urgench → Tashkent (no Shovot)');
+      } else if (paxUzb === 0 && paxTkm > 0) {
+        splitScenario = 'TKM_ONLY';
+        console.log('📍 Scenario: TKM ONLY - All stay in Khiva → Shovot (no Urgench, no Tashkent)');
+      } else if (paxUzb > 0 && paxTkm > 0) {
+        splitScenario = 'MIXED';
+        console.log('📍 Scenario: MIXED - UZB to Urgench/Tashkent, TKM to Shovot');
+      }
+
+      // 🚀 FILTER/MODIFY ROUTES based on scenario BEFORE processing
+      let routesToProcess = [...freshErRoutes];
+
+      // 🚂 ENSURE TRAIN STATION DROP-OFF exists (required for ALL ER tours)
+      const hasTrainStation = routesToProcess.some(r => {
+        const routeLower = (r.route || '').toLowerCase();
+        return routeLower.includes('train station') && routeLower.includes('drop');
+      });
+      const hasSamarkandTour = routesToProcess.some(r => {
+        const routeLower = (r.route || '').toLowerCase();
+        return routeLower.includes('samarkand') && routeLower.includes('city tour');
+      });
+
+      if (!hasTrainStation && hasSamarkandTour) {
+        // Train Station Drop-off is missing - create it before Samarkand City Tour
+        const samarkandIndex = routesToProcess.findIndex(r => {
+          const routeLower = (r.route || '').toLowerCase();
+          return routeLower.includes('samarkand') && routeLower.includes('city tour');
+        });
+
+        if (samarkandIndex !== -1) {
+          const samarkandRoute = routesToProcess[samarkandIndex];
+          const nextId = Math.max(...routesToProcess.map(r => r.id || 0), 0) + 1;
+
+          const trainStationRoute = {
+            ...samarkandRoute,
+            id: nextId,
+            route: 'Train Station Drop-off',
+            shahar: 'Tashkent',
+            person: totalPax.toString(),
+            choiceTab: 'xayrulla',
+            transportType: null,
+            choiceRate: 'vstrecha',
+            price: '0'
+          };
+
+          // Insert BEFORE first Samarkand City Tour
+          routesToProcess.splice(samarkandIndex, 0, trainStationRoute);
+          console.log(`✅ ER: Auto-created Train Station Drop-off route (${totalPax} PAX)`);
+        }
+      }
+
+      if (splitScenario === 'UZB_ONLY') {
+        // Remove Shovot route (UZB tourists don't need it)
+        routesToProcess = routesToProcess.filter(r => r.route !== 'Khiva - Shovot');
+        console.log(`❌ UZB_ONLY: Removed Shovot route`);
+      } else if (splitScenario === 'TKM_ONLY') {
+        // Remove Urgench route (TKM tourists don't go to Urgench)
+        routesToProcess = routesToProcess.filter(r => r.route !== 'Khiva - Urgench');
+        console.log(`❌ TKM_ONLY: Removed Urgench route`);
+
+        // Remove Tashkent flight routes (TKM tourists don't fly to Tashkent)
+        routesToProcess = routesToProcess.filter(r => {
+          const routeLower = (r.route || '').toLowerCase();
+          const cityLower = (r.shahar || '').toLowerCase();
+          const isTashkentFlight = (routeLower.includes('airport') && cityLower.includes('tashkent'));
+          if (isTashkentFlight) {
+            console.log(`❌ TKM_ONLY: Removed Tashkent flight route: ${r.route}`);
+          }
+          return !isTashkentFlight;
+        });
+      } else if (splitScenario === 'MIXED') {
+        // For MIXED scenario, ensure UZB routes exist (Urgench + Tashkent Airport routes)
+        const hasUrgenchRoute = routesToProcess.some(r => r.route === 'Khiva - Urgench');
+        const hasAirportPickup = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport pickup'));
+        const hasAirportDropoff = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport drop'));
+        const hasShovotRoute = routesToProcess.some(r => r.route === 'Khiva - Shovot');
+
+        // Get reference route for creating missing routes
+        const shovotRoute = routesToProcess.find(r => r.route === 'Khiva - Shovot');
+        const shovotIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Shovot');
+
+        if (hasShovotRoute && shovotRoute) {
+          let nextId = Math.max(...routesToProcess.map(r => r.id || 0), 0) + 1;
+          let insertIndex = shovotIndex;
+
+          // 1. Create Urgench route if missing
+          if (!hasUrgenchRoute) {
+            const urgenchRoute = {
+              ...shovotRoute,
+              id: nextId++,
+              route: 'Khiva - Urgench',
+              shahar: 'Khiva',
+              person: paxUzb.toString(),
+              choiceTab: 'sevil-er',
+              transportType: 'Yutong',
+              choiceRate: 'urgenchRate',
+              price: '25' // Default price, will be recalculated
+            };
+            routesToProcess.splice(insertIndex++, 0, urgenchRoute);
+            console.log(`✅ MIXED: Auto-created Khiva-Urgench route for UZB group (${paxUzb} PAX)`);
+          } else {
+            // Urgench exists, insertIndex should be after it
+            const urgenchIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Urgench');
+            insertIndex = urgenchIndex !== -1 ? urgenchIndex + 1 : shovotIndex;
+          }
+
+          // 2. Create Airport Pickup if missing (after Urgench, before Shovot)
+          if (!hasAirportPickup) {
+            const airportPickupRoute = {
+              ...shovotRoute,
+              id: nextId++,
+              route: 'Airport Pickup',
+              shahar: 'Tashkent',
+              person: paxUzb.toString(),
+              choiceTab: 'xayrulla',
+              transportType: null,
+              choiceRate: 'vstrecha',
+              price: '0' // Will be recalculated
+            };
+            routesToProcess.splice(insertIndex++, 0, airportPickupRoute);
+            console.log(`✅ MIXED: Auto-created Airport Pickup for UZB group (${paxUzb} PAX)`);
+          }
+
+          // 3. Create Airport Drop-off if missing (after Pickup, before Shovot)
+          if (!hasAirportDropoff) {
+            const airportDropoffRoute = {
+              ...shovotRoute,
+              id: nextId++,
+              route: 'Airport Drop-off',
+              shahar: 'Tashkent',
+              person: paxUzb.toString(),
+              choiceTab: 'xayrulla',
+              transportType: null,
+              choiceRate: 'vstrecha',
+              price: '0' // Will be recalculated
+            };
+            routesToProcess.splice(insertIndex++, 0, airportDropoffRoute);
+            console.log(`✅ MIXED: Auto-created Airport Drop-off for UZB group (${paxUzb} PAX)`);
+          }
+        }
+
+        console.log(`✅ MIXED: Routes ready for split logic - UZB group to Urgench/Tashkent, TKM group to Shovot`);
+      }
+
+      console.log(`📋 Routes after scenario filtering: ${routesToProcess.length} routes`);
+
+      // Recalculate indices after filtering
+      const urgenchIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Urgench');
+      const hasShovotRoute = routesToProcess.some(r => r.route === 'Khiva - Shovot');
 
       // Helper function to calculate Fergana vehicle split
       const calculateFerganaVehicles = (totalPax) => {
@@ -6439,7 +6677,7 @@ export default function BookingDetail() {
       const consolidatedRoutes = [];
       const seenRoutes = new Map(); // Track "routeName|date|vehicle" -> true
 
-      for (const route of freshErRoutes) {
+      for (const route of routesToProcess) {
         // Skip routes without valid date
         if (!route.sana || route.sana === 'Invalid Date') {
           console.log(`⏭️ ER: Skipping route without valid date: ${route.route}`);
@@ -6554,6 +6792,9 @@ export default function BookingDetail() {
 
           const splitRoutes = [];
 
+          // Generate unique split group ID (using date + route name)
+          const splitGroupId = `${route.sana}_${route.route}`;
+
           // Add Staria routes
           for (let i = 0; i < vehicles.staria; i++) {
             splitRoutes.push({
@@ -6562,7 +6803,10 @@ export default function BookingDetail() {
               choiceTab: provider,
               transportType: 'Staria',
               choiceRate: rateType,
-              price: stariaPrice || route.price
+              price: stariaPrice || route.price,
+              isSplit: true,
+              splitGroup: splitGroupId,
+              splitIndex: i
             });
           }
 
@@ -6574,10 +6818,14 @@ export default function BookingDetail() {
               choiceTab: provider,
               transportType: 'PKW',
               choiceRate: rateType,
-              price: pkwPrice || route.price
+              price: pkwPrice || route.price,
+              isSplit: true,
+              splitGroup: splitGroupId,
+              splitIndex: vehicles.staria + i
             });
           }
 
+          console.log(`    → ER: All split routes marked with splitGroup="${splitGroupId}"`);
           return splitRoutes;
         }
 
@@ -6668,32 +6916,13 @@ export default function BookingDetail() {
           currentRoute.sana = prevRoute.sana; // Same day
           console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as train to Samarkand)`);
         }
-        // RULE 2: Train Station Drop-off + Qoqon-Fergana (SAME DAY)
-        else if (prevRouteName.includes('train station') && prevRouteName.includes('drop') &&
-                 (currentRouteName.includes('qoqon') || (currentRouteName.includes('fergana') && !currentRouteName.includes('tashkent')))) {
-          currentRoute.sana = prevRoute.sana; // Same day
-          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
-        }
-        // RULE 3: Fergana-Tashkent routes (ALL SAME DAY as first Fergana-Tashkent)
-        else if (currentRouteName.includes('fergana') && currentRouteName.includes('tashkent')) {
-          // Find the date from previous Fergana-Tashkent or set from Qoqon-Fergana + 1
-          if (prevRouteName.includes('fergana') && prevRouteName.includes('tashkent')) {
-            // Same day as previous Fergana-Tashkent
-            currentRoute.sana = prevRoute.sana;
-            console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as prev Fergana-Tashkent)`);
-          } else {
-            // Next day after Qoqon-Fergana or previous route
-            currentRoute.sana = nextDayFormatted;
-            console.log(`${i}. ${currentRoute.route} → ${nextDayFormatted} (next day)`);
-          }
-        }
-        // RULE 4: Khiva-Urgench + Airport Pickup (SAME DAY)
+        // RULE 2: Khiva-Urgench + Airport Pickup (SAME DAY)
         else if (prevRouteName.includes('khiva') && prevRouteName.includes('urgench') &&
                  (currentRouteName.includes('airport') || currentRouteName.includes('pickup'))) {
           currentRoute.sana = prevRoute.sana; // Same day
           console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Khiva-Urgench)`);
         }
-        // RULE 5: Before Khiva-Urgench → +2 days (rest day)
+        // RULE 3: Before Khiva-Urgench → +2 days (rest day)
         else if (currentRouteName.includes('khiva') && currentRouteName.includes('urgench')) {
           const twoDaysLater = new Date(prevDate);
           twoDaysLater.setDate(twoDaysLater.getDate() + 2);
@@ -6701,7 +6930,7 @@ export default function BookingDetail() {
           currentRoute.sana = twoDaysFormatted;
           console.log(`${i}. ${currentRoute.route} → ${twoDaysFormatted} (rest day +2)`);
         }
-        // RULE 6: Airport Drop-off + Khiva-Shovot (SAME DAY) - Final split day
+        // RULE 4: Airport Drop-off + Khiva-Shovot (SAME DAY) - Final split day
         else if ((prevRouteName.includes('airport') && prevRouteName.includes('drop')) &&
                  (currentRouteName.includes('khiva') && currentRouteName.includes('shovot'))) {
           currentRoute.sana = prevRoute.sana; // Same day
@@ -6730,19 +6959,32 @@ export default function BookingDetail() {
       // DO NOT update state here - wait for database reload
       // setErRoutes(numberedRoutes); ← REMOVED to prevent duplicates
 
-      // Save to database (preserve both city and itinerary fields!)
-      const routesToSave = numberedRoutes.map((r, index) => ({
-        dayNumber: index + 1,
-        date: r.sana || null,
-        city: r.shahar || null,
-        itinerary: r.sayohatDasturi || null,  // Preserve Sayohat dasturi!
-        routeName: r.route || '',
-        personCount: parseInt(r.person) || 0,
-        transportType: r.transportType || null,
-        provider: r.choiceTab || null,
-        optionRate: r.choiceRate || null,
-        price: parseFloat(r.price) || 0
-      }));
+      // Save to database with smart dayNumber handling for splits (preserve both city and itinerary fields!)
+      let currentDay = 1;
+      let lastSplitGroup = null;
+      const routesToSave = numberedRoutes.map((r, index) => {
+        // If this is a split route and part of the same split group as previous, keep same day
+        if (r.isSplit && r.splitGroup === lastSplitGroup) {
+          // Same day as previous split route
+        } else {
+          // New day (either not a split, or first route in a new split group)
+          if (index > 0) currentDay++;
+          lastSplitGroup = r.isSplit ? r.splitGroup : null;
+        }
+
+        return {
+          dayNumber: currentDay,
+          date: r.sana || null,
+          city: r.shahar || null,
+          itinerary: r.sayohatDasturi || null,  // Preserve Sayohat dasturi!
+          routeName: r.route || '',
+          personCount: parseInt(r.person) || 0,
+          transportType: r.transportType || null,
+          provider: r.choiceTab || null,
+          optionRate: r.choiceRate || null,
+          price: parseFloat(r.price) || 0
+        };
+      });
 
       console.log(`💾 Saving ${routesToSave.length} routes to database:`);
       routesToSave.forEach((r, i) => {
@@ -6806,16 +7048,35 @@ export default function BookingDetail() {
     try {
       // Reload routes from database
       const routesRes = await bookingsApi.getRoutes(id);
-      const freshRoutes = routesRes.data.routes || [];
+      let freshRoutes = routesRes.data.routes || [];
 
-      // Map database routes to erRoutes format
+      // Use booking.arrivalDate as the starting point for routes
+      // (dates are automatically calculated when PDF is imported)
+      const routeStartDate = new Date(booking.arrivalDate);
+      console.log(`📅 CO: Route dates will start from Arrival date: ${routeStartDate.toISOString().split('T')[0]}`);
+
+      // Recalculate route dates based on arrivalDate (accounting for dayNumber, not index)
+      freshRoutes = freshRoutes.map((route, index) => {
+        // Use dayNumber to calculate date (split routes share same dayNumber)
+        const dayOffset = (route.dayNumber || (index + 1)) - 1;
+        const routeDate = new Date(routeStartDate);
+        routeDate.setDate(routeDate.getDate() + dayOffset);
+        return {
+          ...route,
+          date: routeDate.toISOString().split('T')[0]
+        };
+      });
+
+      console.log(`📅 CO: Recalculated ${freshRoutes.length} route dates starting from ${routeStartDate.toISOString().split('T')[0]}`);
+
+      // Map database routes to erRoutes format (using recalculated dates!)
       const freshErRoutes = freshRoutes.map((dbRoute, index) => {
         const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
         return {
           ...existingRoute,
           id: dbRoute.id,
           nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
-          sana: dbRoute.date,
+          sana: dbRoute.date, // Use the recalculated date from freshRoutes!
           shahar: dbRoute.city || existingRoute.shahar || '',
           sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
           route: dbRoute.routeName || existingRoute.route || '',
@@ -6921,6 +7182,9 @@ export default function BookingDetail() {
           const pkwPrice = getPriceFromOpex(provider, 'PKW', rateType);
           const splitRoutes = [];
 
+          // Generate unique split group ID (using date + route name)
+          const splitGroupId = `${route.sana}_${route.route}`;
+
           // Add Staria routes
           for (let i = 0; i < stariaCount; i++) {
             splitRoutes.push({
@@ -6929,7 +7193,10 @@ export default function BookingDetail() {
               choiceTab: provider,
               transportType: 'Staria',
               choiceRate: rateType,
-              price: stariaPrice || route.price
+              price: stariaPrice || route.price,
+              isSplit: true,
+              splitGroup: splitGroupId,
+              splitIndex: i
             });
           }
 
@@ -6941,11 +7208,15 @@ export default function BookingDetail() {
               choiceTab: provider,
               transportType: 'PKW',
               choiceRate: rateType,
-              price: pkwPrice || route.price
+              price: pkwPrice || route.price,
+              isSplit: true,
+              splitGroup: splitGroupId,
+              splitIndex: stariaCount + i
             });
           }
 
           console.log(`    → CO: Split result: ${stariaCount}× Staria ($${stariaPrice} each) + ${pkwCount}× PKW ($${pkwPrice} each)`);
+          console.log(`    → CO: All split routes marked with splitGroup="${splitGroupId}"`);
           return splitRoutes;
         }
 
@@ -6984,103 +7255,78 @@ export default function BookingDetail() {
         }];
       });
 
-      // Sort routes by date
-      const sortedRoutes = fixedRoutes.sort((a, b) => {
-        const dateA = a.sana ? new Date(a.sana) : new Date(0);
-        const dateB = b.sana ? new Date(b.sana) : new Date(0);
-        return dateA - dateB;
-      });
-
-      // CO DATE FILLING RULES (similar to ER but no UZB/TKM split)
-      console.log('===== CO AUTO DATE FILLING START =====');
-
-      // IMPORTANT: Set first route date to ARRIVAL date
-      if (sortedRoutes.length > 0) {
-        // Try multiple sources for arrival date
-        const arrivalDate = formData.arrivalDate || booking?.arrivalDate;
-
-        console.log('🔍 CO: Checking arrival date sources:');
-        console.log('  - formData.arrivalDate:', formData.arrivalDate);
-        console.log('  - booking.arrivalDate:', booking?.arrivalDate);
-
-        if (arrivalDate) {
-          const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
-          sortedRoutes[0].sana = arrivalFormatted;
-          console.log(`0. CO: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
-        } else {
-          console.warn('⚠️ CO: No arrival date found, using existing date for first route');
-        }
-      }
-
-      for (let i = 1; i < sortedRoutes.length; i++) {
-        const prevRoute = sortedRoutes[i - 1];
-        const currentRoute = sortedRoutes[i];
-        const prevRouteName = (prevRoute.route || '').toLowerCase();
-        const currentRouteName = (currentRoute.route || '').toLowerCase();
-
-        const prevDate = new Date(prevRoute.sana);
-        const nextDay = new Date(prevDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-        const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
-
-        // RULE 1: Train Station Drop-off + next route (SAME DAY)
-        if (prevRouteName.includes('train station') && prevRouteName.includes('drop')) {
-          currentRoute.sana = prevRoute.sana;
-          console.log(`${i}. CO: ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
-        }
-        // RULE 2: Fergana-Tashkent routes (ALL SAME DAY as first)
-        else if (currentRouteName.includes('fergana') && currentRouteName.includes('tashkent')) {
-          if (prevRouteName.includes('fergana') && prevRouteName.includes('tashkent')) {
-            currentRoute.sana = prevRoute.sana;
-            console.log(`${i}. CO: ${currentRoute.route} → ${prevRoute.sana} (same day as prev Fergana)`);
-          } else {
-            currentRoute.sana = nextDayFormatted;
-            console.log(`${i}. CO: ${currentRoute.route} → ${nextDayFormatted} (next day)`);
-          }
-        }
-        // RULE 3: Before Khiva-Urgench → +2 days (rest day)
-        else if (currentRouteName.includes('khiva') && currentRouteName.includes('urgench')) {
-          const twoDaysLater = new Date(prevDate);
-          twoDaysLater.setDate(twoDaysLater.getDate() + 2);
-          const twoDaysFormatted = format(twoDaysLater, 'yyyy-MM-dd');
-          currentRoute.sana = twoDaysFormatted;
-          console.log(`${i}. CO: ${currentRoute.route} → ${twoDaysFormatted} (rest day +2)`);
-        }
-        // RULE 4: Khiva-Urgench + Airport Pickup (SAME DAY)
-        else if (prevRouteName.includes('khiva') && prevRouteName.includes('urgench') &&
-                 (currentRouteName.includes('airport') || currentRouteName.includes('pickup'))) {
-          currentRoute.sana = prevRoute.sana;
-          console.log(`${i}. CO: ${currentRoute.route} → ${prevRoute.sana} (same day as Khiva-Urgench)`);
-        }
-        // DEFAULT: Next day (+1)
-        else {
-          currentRoute.sana = nextDayFormatted;
-          console.log(`${i}. CO: ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
-        }
-      }
-
-      console.log('===== CO AUTO DATE FILLING END =====');
+      console.log(`✅ CO: Fixed ${fixedRoutes.length} routes (after Fergana split)`);
 
       // Re-assign row numbers
-      const numberedRoutes = sortedRoutes.map((route, index) => ({
+      const numberedRoutes = fixedRoutes.map((route, index) => ({
         ...route,
         nomer: (index + 1).toString(),
         id: route.id || index + 1
       }));
 
-      // Save to database
-      const routesToSave = numberedRoutes.map((r, index) => ({
-        dayNumber: index + 1,
-        date: r.sana || null,
-        city: r.shahar || null,
-        itinerary: r.sayohatDasturi || null,
-        routeName: r.route || '',
-        personCount: parseInt(r.person) || 0,
-        transportType: r.transportType || null,
-        provider: r.choiceTab || null,
-        optionRate: r.choiceRate || null,
-        price: parseFloat(r.price) || 0
-      }));
+      // Save to database with smart dayNumber handling for splits and same-day routes
+      let currentDay = 1;
+      let lastSplitGroup = null;
+      let lastSavedDate = null;
+      const routesToSave = numberedRoutes.map((r, index) => {
+        const prevRoute = index > 0 ? numberedRoutes[index - 1] : null;
+        const currentRouteLower = (r.route || '').toLowerCase();
+        const prevRouteLower = prevRoute ? (prevRoute.route || '').toLowerCase() : '';
+        let isSameDay = false;
+
+        // RULE 1: Split routes (same splitGroup) → same day
+        if (r.isSplit && r.splitGroup === lastSplitGroup) {
+          isSameDay = true;
+          // Same day as previous split route
+        }
+        // RULE 2: Train Station Drop-off + Qoqon-Fergana → same day
+        else if (prevRouteLower.includes('train station') && prevRouteLower.includes('drop') &&
+                 (currentRouteLower.includes('qoqon') || currentRouteLower.includes('fergana'))) {
+          isSameDay = true;
+          console.log(`  📅 CO: ${r.route} → Same day as Train Station Drop-off (Qoqon/Fergana)`);
+          // Same day as previous route (don't increment)
+        }
+        // RULE 3: Train Station Drop-off + Samarkand City Tour → same day
+        else if (prevRouteLower.includes('train station') && prevRouteLower.includes('drop') &&
+                 (currentRouteLower.includes('samarkand') || currentRouteLower.includes('samarqand'))) {
+          isSameDay = true;
+          console.log(`  📅 CO: ${r.route} → Same day as Train Station Drop-off (Samarkand)`);
+          // Same day as previous route (don't increment)
+        }
+        // DEFAULT: New day
+        else {
+          if (index > 0) currentDay++;
+          lastSplitGroup = r.isSplit ? r.splitGroup : null;
+        }
+
+        // Use previous route's date if same day, otherwise use current route's date
+        const routeDate = isSameDay && lastSavedDate ? lastSavedDate : (r.sana || null);
+        lastSavedDate = routeDate;
+
+        return {
+          dayNumber: currentDay,
+          date: routeDate,
+          city: r.shahar || null,
+          itinerary: r.sayohatDasturi || null,
+          routeName: r.route || '',
+          personCount: parseInt(r.person) || 0,
+          transportType: r.transportType || null,
+          provider: r.choiceTab || null,
+          optionRate: r.choiceRate || null,
+          price: parseFloat(r.price) || 0
+        };
+      });
+
+      // 🚀 RECALCULATE DATES based on new dayNumbers
+      console.log('📅 CO: Recalculating dates based on new dayNumbers...');
+      const arrivalDate = new Date(booking.arrivalDate);
+      routesToSave.forEach((route, index) => {
+        const dayOffset = route.dayNumber - 1;
+        const calculatedDate = new Date(arrivalDate);
+        calculatedDate.setDate(calculatedDate.getDate() + dayOffset);
+        route.date = format(calculatedDate, 'yyyy-MM-dd');
+        console.log(`  Route ${index + 1} (${route.routeName}): dayNumber=${route.dayNumber} → date=${route.date}`);
+      });
 
       console.log(`💾 CO: Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
