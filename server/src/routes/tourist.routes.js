@@ -3528,6 +3528,36 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
     // Update booking pax count
     await updateBookingPaxCount(bookingIdInt);
 
+    // CRITICAL FIX: Override booking dates with PDF tour dates (main group), NOT individual tourist dates
+    // Some tourists have early arrivals (e.g., Baetgen 09.10), but booking.departureDate
+    // should be the MAIN TOUR START DATE from PDF (e.g., 12.10)
+    if (pdfDepartureDate || pdfEndDate) {
+      const dateUpdateData = {};
+
+      if (pdfDepartureDate) {
+        dateUpdateData.departureDate = pdfDepartureDate;
+
+        // arrivalDate = tour start + 1 day (arrival in Uzbekistan)
+        const arrivalDate = new Date(pdfDepartureDate);
+        arrivalDate.setDate(arrivalDate.getDate() + 1);
+        dateUpdateData.arrivalDate = arrivalDate;
+
+        console.log(`📅 PDF Import - Overriding booking dates: departureDate=${pdfDepartureDate.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
+      }
+
+      if (pdfEndDate) {
+        dateUpdateData.endDate = pdfEndDate;
+        console.log(`📅 PDF Import - Overriding booking endDate: ${pdfEndDate.toISOString().split('T')[0]}`);
+      }
+
+      await prisma.booking.update({
+        where: { id: bookingIdInt },
+        data: dateUpdateData
+      });
+
+      console.log(`✅ PDF Import - Booking dates updated from PDF (main tour dates, NOT earliest tourist)`);
+    }
+
     // Return updated data
     const updatedTourists = await prisma.tourist.findMany({
       where: { bookingId: bookingIdInt },
@@ -3700,38 +3730,22 @@ async function updateBookingPaxCount(bookingId) {
     roomsSngl: roomsSngl
   };
 
-  // CRITICAL FIX: Use PDF tour dates (main group), NOT individual tourist dates
-  // Some tourists have early arrivals (e.g., Baetgen 09.10), but booking.departureDate
-  // should be the MAIN TOUR START DATE from PDF (e.g., 12.10)
-  if (pdfDepartureDate) {
-    // Use tour start date from PDF
-    updateData.departureDate = pdfDepartureDate;
-
-    // arrivalDate = tour start + 1 day (arrival in Uzbekistan)
-    const arrivalDate = new Date(pdfDepartureDate);
-    arrivalDate.setDate(arrivalDate.getDate() + 1);
-    updateData.arrivalDate = arrivalDate;
-
-    console.log(`📅 Updated dates from PDF: departureDate=${pdfDepartureDate.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
-  } else if (earliestCheckIn) {
-    // Fallback: if no PDF dates, use earliest tourist check-in
+  // Update dates if we found tourist dates
+  if (earliestCheckIn) {
+    // departureDate = earliest check-in (tour start, departure from home)
     updateData.departureDate = earliestCheckIn;
 
+    // arrivalDate = earliest check-in + 1 day (arrival in Uzbekistan)
     const arrivalDate = new Date(earliestCheckIn);
     arrivalDate.setDate(arrivalDate.getDate() + 1);
     updateData.arrivalDate = arrivalDate;
 
-    console.log(`📅 Updated dates from tourists (fallback): departureDate=${earliestCheckIn.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
+    console.log(`📅 Updated dates from tourists: departureDate=${earliestCheckIn.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
   }
 
-  if (pdfEndDate) {
-    // Use tour end date from PDF
-    updateData.endDate = pdfEndDate;
-    console.log(`📅 Updated endDate from PDF: ${pdfEndDate.toISOString().split('T')[0]}`);
-  } else if (latestCheckOut) {
-    // Fallback: if no PDF end date, use latest tourist check-out
+  if (latestCheckOut) {
     updateData.endDate = latestCheckOut;
-    console.log(`📅 Updated endDate from tourists (fallback): ${latestCheckOut.toISOString().split('T')[0]}`);
+    console.log(`📅 Updated endDate from tourists: ${latestCheckOut.toISOString().split('T')[0]}`);
   }
 
   // Auto-set status based on PAX count
