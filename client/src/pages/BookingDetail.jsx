@@ -5065,6 +5065,16 @@ export default function BookingDetail() {
       // Reload data
       await loadData();
 
+      // CRITICAL: Load rooming lists for all accommodations to display correct prices immediately
+      // Without this, cards show acc.totalCost=0 until setTimeout recalculation completes
+      const accResponse = await bookingsApi.getAccommodations(booking.id);
+      const newAccommodations = accResponse.data.accommodations || [];
+      console.log(`📋 Loading rooming lists for ${newAccommodations.length} accommodations...`);
+      for (const acc of newAccommodations) {
+        await loadAccommodationRoomingList(acc.id);
+      }
+      console.log('✅ Rooming lists loaded - prices will display correctly');
+
       // CRITICAL: Auto-recalculate totals after creating accommodations
       // This ensures correct costs considering:
       // 1. Early arrivals (custom checkInDate/checkOutDate)
