@@ -50,8 +50,8 @@ async function parseRoomingListPdf(buffer, options = {}) {
     const beforeAdditionalInfo = section.split(/Additional\s+Information/i)[0];
 
     const datePatterns = [
-      /Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/,  // "Date: DD.MM.YYYY - DD.MM.YYYY"
-      /Tour:.*?(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/   // "Tour: ... DD.MM.YYYY - DD.MM.YYYY"
+      /Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–\-—−‐]\s*(\d{2}\.\d{2}\.\d{4})/,  // "Date: DD.MM.YYYY - DD.MM.YYYY"
+      /Tour:.*?(\d{2}\.\d{2}\.\d{4})\s*[–\-—−‐]\s*(\d{2}\.\d{2}\.\d{4})/   // "Tour: ... DD.MM.YYYY - DD.MM.YYYY"
     ];
 
     let foundDate = null;
@@ -79,11 +79,45 @@ async function parseRoomingListPdf(buffer, options = {}) {
       result.uzbekistanTourists.push(...tourists);
     }
 
-    // Extract remarks from Additional Information
+    // Extract remarks and individual dates from Additional Information
+    // Look for individual tourist info like "SINGLE Mrs. Name - earlier flight on 09.10"
+    const additionalInfoMatch = section.match(/Additional\s+Information([\s\S]*?)(?=Flights|$)/i);
+    if (additionalInfoMatch) {
+      const additionalInfo = additionalInfoMatch[1];
+      console.log(`📋 Processing Additional Information for individual dates...`);
+
+      // Pattern: "SINGLE/TWIN Name - earlier flight on DD.MM"
+      const individualPattern = /(SINGLE|TWIN)\s+([^-\n]+?)\s*(?:earlier flight on|arrival on)\s*(\d{2}\.\d{2})[^\d]*(?:arrival on\s*(\d{2}\.\d{2}))?/gi;
+      let indMatch;
+
+      while ((indMatch = individualPattern.exec(additionalInfo)) !== null) {
+        const name = indMatch[2].trim();
+        const flightDate = indMatch[3]; // e.g., "09.10"
+        const arrivalDate = indMatch[4]; // e.g., "10.10"
+
+        console.log(`👤 Found individual dates: ${name} - flight: ${flightDate}, arrival: ${arrivalDate || 'same day'}`);
+
+        // Find this tourist in the list and update their dates
+        const targetList = tourType === 'turkmenistan' ? result.turkmenistanTourists : result.uzbekistanTourists;
+        const tourist = targetList.find(t => t.fullName.includes(name) || name.includes(t.fullName.split(' ').pop()));
+
+        if (tourist) {
+          const year = new Date().getFullYear();
+          tourist.checkInDate = `${year}-${flightDate.split('.').reverse().join('-')}`;
+          if (arrivalDate) {
+            tourist.checkOutDate = `${year}-${arrivalDate.split('.').reverse().join('-')}`;
+          }
+          tourist.remarks = `Early arrival: flight ${flightDate}, arrival ${arrivalDate || 'same day'}`;
+          console.log(`✅ Updated ${tourist.fullName}: checkIn=${tourist.checkInDate}, remark="${tourist.remarks}"`);
+        }
+      }
+    }
+
+    // Extract general remark
     const remarkMatch = section.match(/Remark:\s*([^\n]+)/i);
     const remark = remarkMatch ? remarkMatch[1].trim() : '';
     if (remark && remark !== '//' && remark !== '-') {
-      // Apply remark to all tourists in this section
+      // Apply remark to tourists WITHOUT individual remarks
       const targetList = tourType === 'turkmenistan' ? result.turkmenistanTourists : result.uzbekistanTourists;
       targetList.forEach(t => {
         if (!t.remarks) t.remarks = remark;
@@ -419,8 +453,9 @@ function extractTouristsFromSection(text, tourType) {
   // Extract hotel name from section
   const hotelName = extractHotelName(text);
 
-  // Extract check-in/out dates
+  // Extract DEFAULT check-in/out dates for the section
   const dates = extractCheckInOutDates(text);
+  console.log(`🏨 Section dates: checkIn=${dates.checkInDate}, checkOut=${dates.checkOutDate}`);
 
   // Room type patterns
   const roomPatterns = [
