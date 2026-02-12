@@ -3700,22 +3700,38 @@ async function updateBookingPaxCount(bookingId) {
     roomsSngl: roomsSngl
   };
 
-  // Update dates if we found tourist dates
-  if (earliestCheckIn) {
-    // departureDate = earliest check-in (tour start, departure from home)
+  // CRITICAL FIX: Use PDF tour dates (main group), NOT individual tourist dates
+  // Some tourists have early arrivals (e.g., Baetgen 09.10), but booking.departureDate
+  // should be the MAIN TOUR START DATE from PDF (e.g., 12.10)
+  if (pdfDepartureDate) {
+    // Use tour start date from PDF
+    updateData.departureDate = pdfDepartureDate;
+
+    // arrivalDate = tour start + 1 day (arrival in Uzbekistan)
+    const arrivalDate = new Date(pdfDepartureDate);
+    arrivalDate.setDate(arrivalDate.getDate() + 1);
+    updateData.arrivalDate = arrivalDate;
+
+    console.log(`📅 Updated dates from PDF: departureDate=${pdfDepartureDate.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
+  } else if (earliestCheckIn) {
+    // Fallback: if no PDF dates, use earliest tourist check-in
     updateData.departureDate = earliestCheckIn;
 
-    // arrivalDate = earliest check-in + 1 day (arrival in Uzbekistan)
     const arrivalDate = new Date(earliestCheckIn);
     arrivalDate.setDate(arrivalDate.getDate() + 1);
     updateData.arrivalDate = arrivalDate;
 
-    console.log(`📅 Updated dates from tourists: departureDate=${earliestCheckIn.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
+    console.log(`📅 Updated dates from tourists (fallback): departureDate=${earliestCheckIn.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
   }
 
-  if (latestCheckOut) {
+  if (pdfEndDate) {
+    // Use tour end date from PDF
+    updateData.endDate = pdfEndDate;
+    console.log(`📅 Updated endDate from PDF: ${pdfEndDate.toISOString().split('T')[0]}`);
+  } else if (latestCheckOut) {
+    // Fallback: if no PDF end date, use latest tourist check-out
     updateData.endDate = latestCheckOut;
-    console.log(`📅 Updated endDate from tourists: ${latestCheckOut.toISOString().split('T')[0]}`);
+    console.log(`📅 Updated endDate from tourists (fallback): ${latestCheckOut.toISOString().split('T')[0]}`);
   }
 
   // Auto-set status based on PAX count
