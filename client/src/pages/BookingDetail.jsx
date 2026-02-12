@@ -14503,15 +14503,6 @@ export default function BookingDetail() {
                   Hotel Accommodation
                 </h2>
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={autoFillAccommodationsFromItinerary}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
-                    title="Автоматически создать размещения из программы тура"
-                  >
-                    <Wand2 className="w-5 h-5" />
-                    Из программы тура
-                  </button>
                   {booking?.tourType?.code === 'ER' && (
                     <button
                       onClick={createERStandardHotels}
