@@ -15140,63 +15140,165 @@ export default function BookingDetail() {
                                     </div>
                                   </div>
 
-                                  {/* Calculation Breakdown */}
-                                  {calculationBreakdown.length > 0 && (
+                                  {/* Calculation Breakdown - Detailed Table */}
+                                  {accTourists && accTourists.length > 0 && (
                                     <details className="group">
                                       <summary className="cursor-pointer px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-between">
                                         <span className="text-sm font-medium text-gray-700">📊 Hisob-kitob tafsilotlari</span>
                                         <ChevronDown className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" />
                                       </summary>
-                                      <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg space-y-3">
-                                        {calculationBreakdown.map((item, idx) => (
-                                          <div key={idx} className="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
-                                            <div className="flex justify-between items-start mb-2">
-                                              <div>
-                                                <span className="font-bold text-gray-900">{item.roomType}:</span>
-                                                <span className="text-sm text-gray-600 ml-2">
-                                                  {item.roomNights.toFixed(1)} room-nights × {currency === 'UZS' ? (
-                                                    <>{item.pricePerNight.toLocaleString('ru-RU')} {currencySymbol}</>
-                                                  ) : (
-                                                    <>{currencySymbol}{item.pricePerNight.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                                                  )}
-                                                </span>
-                                              </div>
-                                              <span className="font-bold text-blue-700">
-                                                {currency === 'UZS' ? (
-                                                  <>{item.totalCost.toLocaleString('ru-RU')} {currencySymbol}</>
-                                                ) : (
-                                                  <>{currencySymbol}{item.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                                                )}
-                                              </span>
-                                            </div>
-                                            {item.details.length > 0 && (
-                                              <div className="ml-4 space-y-1">
-                                                {item.details.slice(0, 3).map((guest, gidx) => (
-                                                  <div key={gidx} className="text-xs text-gray-500">
-                                                    • {guest.name}: {guest.nights} nights ({guest.checkIn} - {guest.checkOut})
-                                                  </div>
-                                                ))}
-                                                {item.details.length > 3 && (
-                                                  <div className="text-xs text-gray-400 italic">
-                                                    ... va yana {item.details.length - 3} mehmon
-                                                  </div>
-                                                )}
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))}
-                                        <div className="pt-2 border-t-2 border-gray-300">
-                                          <div className="flex justify-between items-center">
-                                            <span className="font-bold text-gray-900">Umumiy:</span>
-                                            <span className="text-xl font-black text-blue-700">
-                                              {currency === 'UZS' ? (
-                                                <>{displayCost} {currencySymbol}</>
-                                              ) : (
-                                                <>{currencySymbol}{displayCost}</>
-                                              )}
-                                            </span>
-                                          </div>
-                                        </div>
+                                      <div className="mt-2 p-4 bg-white border border-gray-200 rounded-lg overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                          <thead>
+                                            <tr className="border-b-2 border-gray-300">
+                                              <th className="text-left py-2 px-2 font-semibold text-gray-700">Mehmon</th>
+                                              <th className="text-center py-2 px-2 font-semibold text-gray-700">Xona</th>
+                                              <th className="text-left py-2 px-2 font-semibold text-gray-700">Roommate</th>
+                                              <th className="text-center py-2 px-2 font-semibold text-gray-700">Check-in</th>
+                                              <th className="text-center py-2 px-2 font-semibold text-gray-700">Check-out</th>
+                                              <th className="text-center py-2 px-2 font-semibold text-gray-700">Kechalar</th>
+                                              <th className="text-right py-2 px-2 font-semibold text-gray-700">Narx/kecha</th>
+                                              <th className="text-right py-2 px-2 font-semibold text-gray-700">Total</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {(() => {
+                                              // Group tourists by room type and assign roommates
+                                              const dblTourists = accTourists.filter(t => {
+                                                const roomPref = (t.roomPreference || '').toUpperCase();
+                                                return roomPref === 'DBL' || roomPref === 'DOUBLE' || roomPref === 'DZ' || roomPref === 'TWIN';
+                                              });
+                                              const snglTourists = accTourists.filter(t => {
+                                                const roomPref = (t.roomPreference || '').toUpperCase();
+                                                return roomPref === 'SNGL' || roomPref === 'SINGLE' || roomPref === 'EZ';
+                                              });
+
+                                              const rows = [];
+                                              let grandTotal = 0;
+
+                                              // Process DBL/TWN tourists (pair them up)
+                                              for (let i = 0; i < dblTourists.length; i++) {
+                                                const tourist = dblTourists[i];
+                                                const roommate = i % 2 === 0 ? dblTourists[i + 1] : dblTourists[i - 1];
+
+                                                // Get dates
+                                                let checkIn, checkOut;
+                                                if (tourist.checkInDate && tourist.checkOutDate) {
+                                                  checkIn = new Date(tourist.checkInDate);
+                                                  checkOut = new Date(tourist.checkOutDate);
+                                                } else {
+                                                  checkIn = new Date(acc.checkInDate);
+                                                  checkOut = new Date(acc.checkOutDate);
+                                                }
+                                                checkIn.setHours(0, 0, 0, 0);
+                                                checkOut.setHours(0, 0, 0, 0);
+
+                                                const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+
+                                                // Get price per night for DBL room
+                                                const dblRoom = acc.rooms?.find(r => r.roomTypeCode === 'DBL' || r.roomTypeCode === 'TWN');
+                                                const pricePerNight = parseFloat(dblRoom?.pricePerNight) || 0;
+                                                const totalPrice = nights * pricePerNight;
+                                                grandTotal += totalPrice;
+
+                                                const roomType = (tourist.roomPreference || '').toUpperCase() === 'TWIN' ? 'TWN' : 'DBL';
+
+                                                rows.push(
+                                                  <tr key={`dbl-${i}`} className="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td className="py-2 px-2 text-gray-900">{tourist.lastName || tourist.fullName || 'Guest'}</td>
+                                                    <td className="py-2 px-2 text-center">
+                                                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">{roomType}</span>
+                                                    </td>
+                                                    <td className="py-2 px-2 text-gray-600 text-xs">{roommate ? (roommate.lastName || roommate.fullName) : '-'}</td>
+                                                    <td className="py-2 px-2 text-center text-gray-700">{checkIn.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</td>
+                                                    <td className="py-2 px-2 text-center text-gray-700">{checkOut.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</td>
+                                                    <td className="py-2 px-2 text-center font-semibold text-gray-900">{nights}</td>
+                                                    <td className="py-2 px-2 text-right text-gray-700">
+                                                      {currency === 'UZS' ? (
+                                                        <>{pricePerNight.toLocaleString('ru-RU')} {currencySymbol}</>
+                                                      ) : (
+                                                        <>{currencySymbol}{pricePerNight.toFixed(2)}</>
+                                                      )}
+                                                    </td>
+                                                    <td className="py-2 px-2 text-right font-bold text-blue-700">
+                                                      {currency === 'UZS' ? (
+                                                        <>{totalPrice.toLocaleString('ru-RU')} {currencySymbol}</>
+                                                      ) : (
+                                                        <>{currencySymbol}{totalPrice.toFixed(2)}</>
+                                                      )}
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              }
+
+                                              // Process SNGL tourists
+                                              snglTourists.forEach((tourist, i) => {
+                                                // Get dates
+                                                let checkIn, checkOut;
+                                                if (tourist.checkInDate && tourist.checkOutDate) {
+                                                  checkIn = new Date(tourist.checkInDate);
+                                                  checkOut = new Date(tourist.checkOutDate);
+                                                } else {
+                                                  checkIn = new Date(acc.checkInDate);
+                                                  checkOut = new Date(acc.checkOutDate);
+                                                }
+                                                checkIn.setHours(0, 0, 0, 0);
+                                                checkOut.setHours(0, 0, 0, 0);
+
+                                                const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+
+                                                // Get price per night for SNGL room
+                                                const snglRoom = acc.rooms?.find(r => r.roomTypeCode === 'SNGL');
+                                                const pricePerNight = parseFloat(snglRoom?.pricePerNight) || 0;
+                                                const totalPrice = nights * pricePerNight;
+                                                grandTotal += totalPrice;
+
+                                                rows.push(
+                                                  <tr key={`sngl-${i}`} className="border-b border-gray-100 hover:bg-gray-50">
+                                                    <td className="py-2 px-2 text-gray-900">{tourist.lastName || tourist.fullName || 'Guest'}</td>
+                                                    <td className="py-2 px-2 text-center">
+                                                      <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">SNGL</span>
+                                                    </td>
+                                                    <td className="py-2 px-2 text-gray-400 text-xs">-</td>
+                                                    <td className="py-2 px-2 text-center text-gray-700">{checkIn.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</td>
+                                                    <td className="py-2 px-2 text-center text-gray-700">{checkOut.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}</td>
+                                                    <td className="py-2 px-2 text-center font-semibold text-gray-900">{nights}</td>
+                                                    <td className="py-2 px-2 text-right text-gray-700">
+                                                      {currency === 'UZS' ? (
+                                                        <>{pricePerNight.toLocaleString('ru-RU')} {currencySymbol}</>
+                                                      ) : (
+                                                        <>{currencySymbol}{pricePerNight.toFixed(2)}</>
+                                                      )}
+                                                    </td>
+                                                    <td className="py-2 px-2 text-right font-bold text-blue-700">
+                                                      {currency === 'UZS' ? (
+                                                        <>{totalPrice.toLocaleString('ru-RU')} {currencySymbol}</>
+                                                      ) : (
+                                                        <>{currencySymbol}{totalPrice.toFixed(2)}</>
+                                                      )}
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              });
+
+                                              // Add grand total row
+                                              rows.push(
+                                                <tr key="total" className="border-t-2 border-gray-400 bg-gray-50 font-bold">
+                                                  <td colSpan="7" className="py-3 px-2 text-right text-gray-900 text-base">UMUMIY:</td>
+                                                  <td className="py-3 px-2 text-right text-blue-700 text-lg">
+                                                    {currency === 'UZS' ? (
+                                                      <>{grandTotal.toLocaleString('ru-RU')} {currencySymbol}</>
+                                                    ) : (
+                                                      <>{currencySymbol}{grandTotal.toFixed(2)}</>
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              );
+
+                                              return rows;
+                                            })()}
+                                          </tbody>
+                                        </table>
                                       </div>
                                     </details>
                                   )}
