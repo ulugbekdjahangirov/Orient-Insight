@@ -4998,10 +4998,15 @@ export default function BookingDetail() {
           }
         });
 
-        // Convert to rooms array format
+        // Convert to rooms array format (backend expects roomTypeCode, roomsCount, guestsPerRoom)
         const rooms = Object.entries(roomCounts)
           .filter(([type, count]) => count > 0)
-          .map(([type, count]) => ({ type, quantity: type === 'SNGL' ? count : Math.ceil(count / 2) }));
+          .map(([type, count]) => ({
+            roomTypeCode: type,
+            roomsCount: type === 'SNGL' ? count : Math.ceil(count / 2),
+            guestsPerRoom: type === 'SNGL' ? 1 : 2,
+            pricePerNight: 0
+          }));
 
         console.log(`🏨 Creating: ${hotel.name} (${format(checkInDate, 'yyyy-MM-dd')} → ${format(checkOutDate, 'yyyy-MM-dd')}) - ${nights} nights`);
         console.log(`   Rooms: ${JSON.stringify(roomCounts)}, Tourists: ${hotelTourists.length}`);
