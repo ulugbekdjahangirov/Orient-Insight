@@ -2477,13 +2477,25 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
         continue;
       }
 
-      // Extract tour dates: "Date: 03.10.2025 – 16.10.2025"
-      if (lowerLine.includes('date:')) {
-        const dateMatch = line.match(/Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/i);
-        if (dateMatch && !tourStartDate) { // Only capture first occurrence (Uzbekistan dates)
-          tourStartDate = dateMatch[1]; // 03.10.2025
-          tourEndDate = dateMatch[2];   // 16.10.2025
-          console.log(`Extracted tour dates from PDF: ${tourStartDate} - ${tourEndDate}`);
+      // Extract tour dates from header/title (support both "Date:" and "Tour: ... DD.MM.YYYY")
+      // Priority: "Tour: ..." format (main group dates), then "Date:" format
+      if (lowerLine.includes('tour:') && !tourStartDate) {
+        // Pattern: "Tour: Usbekistan ... 12.10.2025 – 31.10.2025"
+        const tourDateMatch = line.match(/Tour:.*?(\d{2}\.\d{2}\.\d{4})\s*[–\-—−‐]\s*(\d{2}\.\d{2}\.\d{4})/i);
+        if (tourDateMatch) {
+          tourStartDate = tourDateMatch[1];
+          tourEndDate = tourDateMatch[2];
+          console.log(`Extracted tour dates from PDF (tour title): ${tourStartDate} - ${tourEndDate}`);
+        }
+        continue;
+      }
+
+      if (lowerLine.includes('date:') && !tourStartDate) {
+        const dateMatch = line.match(/Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–\-—−‐]\s*(\d{2}\.\d{2}\.\d{4})/i);
+        if (dateMatch) {
+          tourStartDate = dateMatch[1];
+          tourEndDate = dateMatch[2];
+          console.log(`Extracted tour dates from PDF (Date field): ${tourStartDate} - ${tourEndDate}`);
         }
         continue;
       }
@@ -3558,10 +3570,10 @@ async function updateBookingPaxCount(bookingId) {
     where: { bookingId }
   });
 
-  // Get all tourists to calculate room counts and accommodation split
+  // Get all tourists to calculate room counts, accommodation split, AND dates
   const tourists = await prisma.tourist.findMany({
     where: { bookingId },
-    select: { id: true, roomPreference: true, roomNumber: true, accommodation: true }
+    select: { id: true, roomPreference: true, roomNumber: true, accommodation: true, checkInDate: true, checkOutDate: true }
   });
 
   // Calculate PAX split by accommodation type
@@ -3659,6 +3671,53 @@ async function updateBookingPaxCount(bookingId) {
 
   console.log(`📌 TOTAL rooms (combined): DBL=${roomsDbl}, TWN=${roomsTwn}, SNGL=${roomsSngl}`);
 
+  // Calculate earliest check-in and latest check-out dates from tourists
+  let earliestCheckIn = null;
+  let latestCheckOut = null;
+
+  tourists.forEach(tourist => {
+    if (tourist.checkInDate) {
+      const checkIn = new Date(tourist.checkInDate);
+      if (!earliestCheckIn || checkIn < earliestCheckIn) {
+        earliestCheckIn = checkIn;
+      }
+    }
+    if (tourist.checkOutDate) {
+      const checkOut = new Date(tourist.checkOutDate);
+      if (!latestCheckOut || checkOut > latestCheckOut) {
+        latestCheckOut = checkOut;
+      }
+    }
+  });
+
+  // Prepare update data
+  const updateData = {
+    pax: count,
+    paxUzbekistan: paxUzbekistan,
+    paxTurkmenistan: paxTurkmenistan,
+    roomsDbl: roomsDbl,
+    roomsTwn: roomsTwn,
+    roomsSngl: roomsSngl
+  };
+
+  // Update dates if we found tourist dates
+  if (earliestCheckIn) {
+    // departureDate = earliest check-in (tour start, departure from home)
+    updateData.departureDate = earliestCheckIn;
+
+    // arrivalDate = earliest check-in + 1 day (arrival in Uzbekistan)
+    const arrivalDate = new Date(earliestCheckIn);
+    arrivalDate.setDate(arrivalDate.getDate() + 1);
+    updateData.arrivalDate = arrivalDate;
+
+    console.log(`📅 Updated dates from tourists: departureDate=${earliestCheckIn.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
+  }
+
+  if (latestCheckOut) {
+    updateData.endDate = latestCheckOut;
+    console.log(`📅 Updated endDate from tourists: ${latestCheckOut.toISOString().split('T')[0]}`);
+  }
+
   // Auto-set status based on PAX count
   let status = 'PENDING';
   if (count >= 6) {
@@ -3666,18 +3725,11 @@ async function updateBookingPaxCount(bookingId) {
   } else if (count === 4 || count === 5) {
     status = 'IN_PROGRESS';
   }
+  updateData.status = status;
 
   await prisma.booking.update({
     where: { id: bookingId },
-    data: {
-      pax: count,
-      paxUzbekistan: paxUzbekistan,
-      paxTurkmenistan: paxTurkmenistan,
-      status: status,
-      roomsDbl: roomsDbl,
-      roomsTwn: roomsTwn,
-      roomsSngl: roomsSngl
-    }
+    data: updateData
   });
 
   // Reset all accommodation totalCost to 0 so backend will auto-recalculate based on new rooming list
