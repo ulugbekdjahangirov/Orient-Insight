@@ -6572,24 +6572,32 @@ export default function BookingDetail() {
           return !isTashkentFlight;
         });
       } else if (splitScenario === 'MIXED') {
-        // For MIXED scenario, ensure UZB routes exist (Urgench + Tashkent Airport routes)
-        const hasUrgenchRoute = routesToProcess.some(r => r.route === 'Khiva - Urgench');
-        const hasAirportPickup = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport pickup'));
-        const hasAirportDropoff = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport drop'));
-        const hasShovotRoute = routesToProcess.some(r => r.route === 'Khiva - Shovot');
+        // For MIXED scenario, ensure BOTH UZB and TKM routes exist
+        let hasUrgenchRoute = routesToProcess.some(r => r.route === 'Khiva - Urgench');
+        let hasAirportPickup = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport pickup'));
+        let hasAirportDropoff = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport drop'));
+        let hasShovotRoute = routesToProcess.some(r => r.route === 'Khiva - Shovot');
 
-        // Get reference route for creating missing routes
-        const shovotRoute = routesToProcess.find(r => r.route === 'Khiva - Shovot');
-        const shovotIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Shovot');
+        // Find reference route - try Urgench first, then Shovot, then any Khiva route
+        let referenceRoute = routesToProcess.find(r => r.route === 'Khiva - Urgench') ||
+                             routesToProcess.find(r => r.route === 'Khiva - Shovot') ||
+                             routesToProcess.find(r => (r.shahar || '').toLowerCase().includes('khiva'));
 
-        if (hasShovotRoute && shovotRoute) {
+        if (!referenceRoute) {
+          console.warn('⚠️ MIXED: No reference route found for auto-creation, skipping');
+        } else {
           let nextId = Math.max(...routesToProcess.map(r => r.id || 0), 0) + 1;
-          let insertIndex = shovotIndex;
 
-          // 1. Create Urgench route if missing
+          // Find insertion point - after last Khiva route
+          const lastKhivaIndex = routesToProcess.map((r, i) =>
+            (r.shahar || '').toLowerCase().includes('khiva') ? i : -1
+          ).filter(i => i !== -1).pop();
+          let insertIndex = lastKhivaIndex !== -1 ? lastKhivaIndex + 1 : routesToProcess.length;
+
+          // 1. Create Urgench route if missing (UZB group needs this)
           if (!hasUrgenchRoute) {
             const urgenchRoute = {
-              ...shovotRoute,
+              ...referenceRoute,
               id: nextId++,
               route: 'Khiva - Urgench',
               shahar: 'Khiva',
@@ -6600,17 +6608,18 @@ export default function BookingDetail() {
               price: '25' // Default price, will be recalculated
             };
             routesToProcess.splice(insertIndex++, 0, urgenchRoute);
+            hasUrgenchRoute = true;
             console.log(`✅ MIXED: Auto-created Khiva-Urgench route for UZB group (${paxUzb} PAX)`);
           } else {
             // Urgench exists, insertIndex should be after it
             const urgenchIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Urgench');
-            insertIndex = urgenchIndex !== -1 ? urgenchIndex + 1 : shovotIndex;
+            insertIndex = urgenchIndex !== -1 ? urgenchIndex + 1 : insertIndex;
           }
 
-          // 2. Create Airport Pickup if missing (after Urgench, before Shovot)
+          // 2. Create Airport Pickup if missing (after Urgench)
           if (!hasAirportPickup) {
             const airportPickupRoute = {
-              ...shovotRoute,
+              ...referenceRoute,
               id: nextId++,
               route: 'Airport Pickup',
               shahar: 'Tashkent',
@@ -6621,13 +6630,17 @@ export default function BookingDetail() {
               price: '0' // Will be recalculated
             };
             routesToProcess.splice(insertIndex++, 0, airportPickupRoute);
+            hasAirportPickup = true;
             console.log(`✅ MIXED: Auto-created Airport Pickup for UZB group (${paxUzb} PAX)`);
+          } else {
+            const pickupIndex = routesToProcess.findIndex(r => (r.route || '').toLowerCase().includes('airport pickup'));
+            insertIndex = pickupIndex !== -1 ? pickupIndex + 1 : insertIndex;
           }
 
-          // 3. Create Airport Drop-off if missing (after Pickup, before Shovot)
+          // 3. Create Airport Drop-off if missing (after Pickup)
           if (!hasAirportDropoff) {
             const airportDropoffRoute = {
-              ...shovotRoute,
+              ...referenceRoute,
               id: nextId++,
               route: 'Airport Drop-off',
               shahar: 'Tashkent',
@@ -6638,11 +6651,33 @@ export default function BookingDetail() {
               price: '0' // Will be recalculated
             };
             routesToProcess.splice(insertIndex++, 0, airportDropoffRoute);
+            hasAirportDropoff = true;
             console.log(`✅ MIXED: Auto-created Airport Drop-off for UZB group (${paxUzb} PAX)`);
+          } else {
+            const dropoffIndex = routesToProcess.findIndex(r => (r.route || '').toLowerCase().includes('airport drop'));
+            insertIndex = dropoffIndex !== -1 ? dropoffIndex + 1 : insertIndex;
+          }
+
+          // 4. Create Shovot route LAST (after Airport Drop-off) - TKM group goes to Shovot on last day
+          if (!hasShovotRoute) {
+            const shovotRoute = {
+              ...referenceRoute,
+              id: nextId++,
+              route: 'Khiva - Shovot',
+              shahar: 'Khiva',
+              person: paxTkm.toString(),
+              choiceTab: 'sevil-er',
+              transportType: 'Yutong',
+              choiceRate: 'shovotRate',
+              price: '50' // Default price, will be recalculated
+            };
+            routesToProcess.splice(insertIndex, 0, shovotRoute);
+            hasShovotRoute = true;
+            console.log(`✅ MIXED: Auto-created Khiva-Shovot route for TKM group (${paxTkm} PAX) - LAST DAY`);
           }
         }
 
-        console.log(`✅ MIXED: Routes ready for split logic - UZB group to Urgench/Tashkent, TKM group to Shovot`);
+        console.log(`✅ MIXED: Routes ready for split logic - UZB (${paxUzb} PAX) to Urgench/Tashkent, TKM (${paxTkm} PAX) to Shovot`);
       }
 
       console.log(`📋 Routes after scenario filtering: ${routesToProcess.length} routes`);
@@ -6650,26 +6685,6 @@ export default function BookingDetail() {
       // Recalculate indices after filtering
       const urgenchIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Urgench');
       const hasShovotRoute = routesToProcess.some(r => r.route === 'Khiva - Shovot');
-
-      // Helper function to calculate Fergana vehicle split
-      const calculateFerganaVehicles = (totalPax) => {
-        const stariaCapacity = 5;
-        const pkwCapacity = 3;
-
-        // Maximize Staria usage (more efficient)
-        const stariaCount = Math.floor(totalPax / stariaCapacity);
-        const remaining = totalPax % stariaCapacity;
-
-        // Add PKW for remaining passengers
-        const pkwCount = remaining > 0 ? Math.ceil(remaining / pkwCapacity) : 0;
-
-        return {
-          staria: stariaCount,
-          pkw: pkwCount,
-          stariaPassengers: stariaCount * stariaCapacity,
-          pkwPassengers: remaining
-        };
-      };
 
       // Smart consolidation: Remove exact duplicates while preserving legitimate splits
       // Duplicate = same route name + same date + same vehicle type
@@ -6702,20 +6717,25 @@ export default function BookingDetail() {
 
       console.log(`📋 ER: Consolidated routes: ${freshErRoutes.length} → ${consolidatedRoutes.length} (removed ${freshErRoutes.length - consolidatedRoutes.length} exact duplicates)`);
 
+      // IMPORTANT: Recalculate indices AFTER consolidation
+      const urgenchIndexConsolidated = consolidatedRoutes.findIndex(r => r.route === 'Khiva - Urgench');
+      const hasShovotRouteConsolidated = consolidatedRoutes.some(r => r.route === 'Khiva - Shovot');
+      console.log(`🔍 ER: After consolidation - Urgench index=${urgenchIndexConsolidated}, Shovot exists=${hasShovotRouteConsolidated}`);
+
       // Fix each route (using fresh data with Sayohat dasturi preserved)
       // Use flatMap to allow splitting Fergana routes into multiple rows
       const fixedRoutes = consolidatedRoutes.flatMap((route, index) => {
         // Determine PAX for this route
         let routePax = totalPax;
 
-        if (urgenchIndex !== -1 && hasShovotRoute) {
+        if (urgenchIndexConsolidated !== -1 && hasShovotRouteConsolidated) {
           if (route.route === 'Khiva - Urgench') {
             routePax = paxUzb;
             console.log(`  Route ${index + 1}: Khiva - Urgench → UZB PAX = ${paxUzb}`);
           } else if (route.route === 'Khiva - Shovot') {
             routePax = paxTkm;
             console.log(`  Route ${index + 1}: Khiva - Shovot → TKM PAX = ${paxTkm}`);
-          } else if (index > urgenchIndex && route.shahar === 'Tashkent') {
+          } else if (index > urgenchIndexConsolidated && route.shahar === 'Tashkent') {
             routePax = paxUzb;
             console.log(`  Route ${index + 1}: ${route.route} (after split, Tashkent) → UZB PAX = ${paxUzb}`);
           }
@@ -6750,83 +6770,6 @@ export default function BookingDetail() {
             choiceRate: 'chimgan',
             price: chimganPrice || route.price
           }];
-        }
-
-        // Special handling for Fergana routes (Tashkent-Fergana or Fergana-Tashkent)
-        const isFerganaRoute = route.route === 'Tashkent - Fergana' ||
-                               route.route === 'Fergana - Tashkent';
-
-        if (isFerganaRoute) {
-          const provider = route.choiceTab || 'nosir'; // Fergana routes use Nosir
-          const rateType = 'toshkent'; // Nosir's Fergana rate
-
-          // Add +1 for guide (Fergana routes include guide)
-          const ferganaPax = routePax + 1;
-          console.log(`  Route ${index + 1}: ${route.route} → Adding guide: ${routePax} tourists + 1 guide = ${ferganaPax} total`);
-
-          // For PAX ≤ 5: use single vehicle (Staria for 4-5, PKW for 1-3)
-          if (ferganaPax <= 5) {
-            const vehicle = ferganaPax <= 3 ? 'PKW' : 'Staria';
-            const price = getPriceFromOpex(provider, vehicle, rateType);
-            console.log(`  Route ${index + 1}: ${route.route} → Fergana (${ferganaPax} PAX) → ${vehicle}, $${price}`);
-
-            return [{
-              ...route,
-              person: ferganaPax.toString(),
-              choiceTab: provider,
-              transportType: vehicle,
-              choiceRate: rateType,
-              price: price || route.price
-            }];
-          }
-
-          // For PAX > 5: split into multiple vehicles (only Staria 5 PAX and PKW 3 PAX)
-          console.log(`  Route ${index + 1}: ${route.route} → Fergana route with ${ferganaPax} PAX, splitting...`);
-
-          const vehicles = calculateFerganaVehicles(ferganaPax);
-          const stariaPrice = getPriceFromOpex(provider, 'Staria', rateType);
-          const pkwPrice = getPriceFromOpex(provider, 'PKW', rateType);
-
-          console.log(`    → ${vehicles.staria}× Staria (${vehicles.stariaPassengers} pax) + ${vehicles.pkw}× PKW (${vehicles.pkwPassengers} pax)`);
-          console.log(`    → Prices: Staria=$${stariaPrice}, PKW=$${pkwPrice}`);
-
-          const splitRoutes = [];
-
-          // Generate unique split group ID (using date + route name)
-          const splitGroupId = `${route.sana}_${route.route}`;
-
-          // Add Staria routes
-          for (let i = 0; i < vehicles.staria; i++) {
-            splitRoutes.push({
-              ...route,
-              person: '5', // Each Staria carries 5 passengers
-              choiceTab: provider,
-              transportType: 'Staria',
-              choiceRate: rateType,
-              price: stariaPrice || route.price,
-              isSplit: true,
-              splitGroup: splitGroupId,
-              splitIndex: i
-            });
-          }
-
-          // Add PKW routes
-          for (let i = 0; i < vehicles.pkw; i++) {
-            splitRoutes.push({
-              ...route,
-              person: vehicles.pkwPassengers.toString(), // Remaining passengers
-              choiceTab: provider,
-              transportType: 'PKW',
-              choiceRate: rateType,
-              price: pkwPrice || route.price,
-              isSplit: true,
-              splitGroup: splitGroupId,
-              splitIndex: vehicles.staria + i
-            });
-          }
-
-          console.log(`    → ER: All split routes marked with splitGroup="${splitGroupId}"`);
-          return splitRoutes;
         }
 
         // Get best vehicle
@@ -6869,11 +6812,51 @@ export default function BookingDetail() {
         }];
       });
 
+      // MIXED SCENARIO: Set Airport Drop-off and Shovot to END DATE
+      // Both groups leave on the same day (End date)
+      if (splitScenario === 'MIXED') {
+        const endDate = formData.endDate || booking?.endDate;
+
+        if (endDate) {
+          const endFormatted = format(new Date(endDate), 'yyyy-MM-dd');
+          const shovotRoute = fixedRoutes.find(r => r.route === 'Khiva - Shovot');
+          const airportDropRoute = fixedRoutes.find(r => (r.route || '').toLowerCase().includes('airport drop'));
+
+          // Set Airport Drop-off to End date (UZB group leaves)
+          if (airportDropRoute) {
+            airportDropRoute.sana = endFormatted;
+            console.log(`🔧 MIXED: Set Airport Drop-off date to ${endFormatted} (END DATE - UZB leaves)`);
+          }
+
+          // Set Shovot to End date (TKM group leaves)
+          if (shovotRoute) {
+            shovotRoute.sana = endFormatted;
+            console.log(`🔧 MIXED: Set Shovot date to ${endFormatted} (END DATE - TKM leaves)`);
+          }
+        } else {
+          console.warn('⚠️ MIXED: No end date found, cannot set final routes');
+        }
+      }
+
       // Sort routes by date to maintain correct order after splitting
+      // Secondary sort: Airport Drop-off before Shovot if same date
       const sortedRoutes = fixedRoutes.sort((a, b) => {
         const dateA = a.sana ? new Date(a.sana) : new Date(0);
         const dateB = b.sana ? new Date(b.sana) : new Date(0);
-        return dateA - dateB;
+        const dateDiff = dateA - dateB;
+
+        // If dates are equal, ensure Airport Drop-off comes before Shovot
+        if (dateDiff === 0) {
+          const aIsAirportDrop = (a.route || '').toLowerCase().includes('airport drop');
+          const bIsAirportDrop = (b.route || '').toLowerCase().includes('airport drop');
+          const aIsShovot = a.route === 'Khiva - Shovot';
+          const bIsShovot = b.route === 'Khiva - Shovot';
+
+          if (aIsAirportDrop && bIsShovot) return -1; // Airport Drop first
+          if (aIsShovot && bIsAirportDrop) return 1;  // Shovot last
+        }
+
+        return dateDiff;
       });
 
       // SINGLE PASS: Fill dates sequentially with same-day rules applied inline
@@ -7688,18 +7671,31 @@ export default function BookingDetail() {
         }
       }
 
-      // Fill remaining dates sequentially
+      // Fill remaining dates sequentially with Tajikistan gap logic
       for (let i = 1; i < sortedRoutes.length; i++) {
         const prevRoute = sortedRoutes[i - 1];
         const currentRoute = sortedRoutes[i];
 
+        const prevRouteLower = (prevRoute.route || '').toLowerCase();
+        const currentRouteLower = (currentRoute.route || '').toLowerCase();
+
+        let daysToAdd = 1; // Default: next day
+
+        // SPECIAL CASE: Jartepa (Tajikistan entry) → Oybek/Tashkent (return from Tajikistan)
+        // Group spends 4 days total (including entry day), so next Uzbek route is +4 days
+        if ((prevRouteLower.includes('jartepa') || prevRouteLower.includes('jarteppa')) &&
+            (currentRouteLower.includes('oybek') || currentRouteLower.includes('tashkent') || currentRouteLower.includes('toshkent'))) {
+          daysToAdd = 4; // 4 days in Tajikistan (05.09 → 09.09)
+          console.log(`  🇹🇯 ZA: Tajikistan gap detected (${prevRoute.route} → ${currentRoute.route})`);
+        }
+
         const prevDate = new Date(prevRoute.sana);
         const nextDay = new Date(prevDate);
-        nextDay.setDate(nextDay.getDate() + 1);
+        nextDay.setDate(nextDay.getDate() + daysToAdd);
         const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
 
         currentRoute.sana = nextDayFormatted;
-        console.log(`  ZA: ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
+        console.log(`  ZA: ${currentRoute.route} → ${nextDayFormatted} (${daysToAdd === 1 ? 'sequential +1' : `+${daysToAdd} days`})`);
       }
 
       // Re-assign row numbers
