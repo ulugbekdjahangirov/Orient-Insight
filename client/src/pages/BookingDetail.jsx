@@ -4921,9 +4921,11 @@ export default function BookingDetail() {
       console.log(`👥 Tourist split: UZ=${uzbekistanTourists.length}, TM=${turkmenistanTourists.length}`);
       console.log(`📊 Group type: ${isUzOnly ? 'UZ-only' : isTmOnly ? 'TM-only' : isMixed ? 'MIXED' : 'UNKNOWN'}`);
 
-      // Use booking departure date as base
-      const baseDate = parseISO(booking.departureDate);
-      console.log(`📅 Base date (departure): ${format(baseDate, 'yyyy-MM-dd')}`);
+      // CRITICAL: Use booking ARRIVAL date as base (tourists arrive 1 day after departure)
+      // For ER tours: departureDate = 05.09 (flight from Germany), arrivalDate = 06.09 (land in Tashkent)
+      // First hotel (Arien Plaza) should start on arrivalDate (06.09), not departureDate (05.09)
+      const baseDate = parseISO(booking.arrivalDate);
+      console.log(`📅 Base date (arrival): ${format(baseDate, 'yyyy-MM-dd')}`);
 
       // Standard ER hotel structure (hardcoded)
       const erHotels = [
@@ -5034,6 +5036,114 @@ export default function BookingDetail() {
 
       // Reload data
       await loadData();
+
+      // CRITICAL: Auto-recalculate totals after creating accommodations
+      // This ensures correct costs considering:
+      // 1. Early arrivals (custom checkInDate/checkOutDate)
+      // 2. UZ/TM splits (different checkout dates per tourist group)
+      console.log('🔄 Recalculating totals for all accommodations...');
+      setTimeout(async () => {
+        try {
+          // Reload accommodations list
+          const accResponse = await bookingsApi.getAccommodations(booking.id);
+          const createdAccs = accResponse.data.accommodations;
+
+          // Reload tourists with individual dates
+          const touristsResp = await touristsApi.getAll(booking.id);
+          const allTourists = touristsResp.data.tourists || [];
+
+          // Determine first accommodation (earliest check-in date)
+          const sortedAccs = [...createdAccs].sort((a, b) =>
+            new Date(a.checkInDate) - new Date(b.checkInDate)
+          );
+          const firstAccId = sortedAccs[0]?.id;
+
+          for (const acc of createdAccs) {
+            // Calculate correct totalCost for this accommodation
+            const accCheckIn = new Date(acc.checkInDate);
+            accCheckIn.setHours(0, 0, 0, 0);
+            const accCheckOut = new Date(acc.checkOutDate);
+            accCheckOut.setHours(0, 0, 0, 0);
+
+            // Filter tourists for this hotel (by date overlap)
+            const accTourists = allTourists.filter(t => {
+              // Check date overlap if tourist has custom dates
+              if (t.checkInDate && t.checkOutDate) {
+                const touristCheckIn = new Date(t.checkInDate);
+                const touristCheckOut = new Date(t.checkOutDate);
+                touristCheckIn.setHours(0, 0, 0, 0);
+                touristCheckOut.setHours(0, 0, 0, 0);
+
+                // Tourist dates must overlap with accommodation dates
+                return touristCheckIn < accCheckOut && touristCheckOut > accCheckIn;
+              }
+
+              // If no custom dates, assume tourist is in this hotel
+              return true;
+            });
+
+            if (accTourists.length === 0 || !acc.rooms) continue;
+
+            // Check if this is the first accommodation
+            const isFirstAccommodation = acc.id === firstAccId;
+
+            // Calculate guest-nights per room type
+            const guestNightsPerRoomType = {};
+            accTourists.forEach(tourist => {
+              let checkIn = new Date(accCheckIn);
+              let checkOut = new Date(accCheckOut);
+
+              // Handle early arrival ONLY for first accommodation
+              if (isFirstAccommodation && tourist.checkInDate) {
+                const touristCheckIn = new Date(tourist.checkInDate);
+                touristCheckIn.setHours(0, 0, 0, 0);
+                const daysDiff = Math.round((accCheckIn - touristCheckIn) / (1000 * 60 * 60 * 24));
+
+                if (daysDiff >= 2) {
+                  // Early arrival - use tourist check-in but accommodation check-out
+                  checkIn = touristCheckIn;
+                }
+              }
+
+              const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+
+              let roomType = (tourist.roomPreference || '').toUpperCase();
+              if (roomType === 'DOUBLE' || roomType === 'DZ') roomType = 'DBL';
+              if (roomType === 'TWIN') roomType = 'TWN';
+              if (roomType === 'SINGLE' || roomType === 'SGL' || roomType === 'EZ') roomType = 'SNGL';
+
+              if (!guestNightsPerRoomType[roomType]) {
+                guestNightsPerRoomType[roomType] = 0;
+              }
+              guestNightsPerRoomType[roomType] += nights;
+            });
+
+            // Calculate total cost
+            let totalCost = 0;
+            for (const room of acc.rooms) {
+              const roomTypeCode = room.roomTypeCode || room.type;
+              const guestNights = guestNightsPerRoomType[roomTypeCode] || 0;
+              const pricePerNight = parseFloat(room.pricePerNight) || 0;
+              totalCost += guestNights * pricePerNight;
+            }
+
+            // Update accommodation with correct totalCost
+            if (acc.totalCost !== totalCost) {
+              await bookingsApi.updateAccommodation(booking.id, acc.id, {
+                totalCost: totalCost
+              });
+              console.log(`   💰 Updated ${acc.hotel?.name}: ${totalCost} (was ${acc.totalCost})`);
+            }
+          }
+
+          // Final reload to show updated costs
+          await loadData();
+          console.log('✅ Recalculation complete');
+        } catch (recalcError) {
+          console.error('Recalculation error:', recalcError);
+          // Don't show error to user - accommodations are created successfully
+        }
+      }, 1000);
 
       console.log('✅ ER standard hotels created successfully');
 
