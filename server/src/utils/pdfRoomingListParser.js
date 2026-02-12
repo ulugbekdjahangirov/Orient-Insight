@@ -41,13 +41,16 @@ async function parseRoomingListPdf(buffer, options = {}) {
     const isTurkmenistan = /Turkmenistan|mit Verl/i.test(section);
     const tourType = isTurkmenistan ? 'turkmenistan' : 'uzbekistan';
 
-    // Extract tour dates
-    const dateMatch = section.match(/Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/);
+    // Extract tour dates from MAIN HEADER ONLY (not from Additional Information)
+    // Split section before "Additional Information" to avoid picking up individual tourist dates
+    const beforeAdditionalInfo = section.split(/Additional\s+Information/i)[0];
+    const dateMatch = beforeAdditionalInfo.match(/Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/);
     if (dateMatch) {
       result.tourInfo[tourType] = {
         startDate: dateMatch[1],
         endDate: dateMatch[2]
       };
+      console.log(`📅 Extracted ${tourType} tour dates: ${dateMatch[1]} - ${dateMatch[2]} (from main header, excluding individual dates)`);
     }
 
     // Extract tourists from room sections
