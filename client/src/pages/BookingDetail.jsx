@@ -5010,15 +5010,33 @@ export default function BookingDetail() {
           }
         });
 
-        // Convert to rooms array format (backend expects roomTypeCode, roomsCount, guestsPerRoom)
+        // Convert to rooms array format (backend expects roomTypeCode, roomsCount, guestsPerRoom, pricePerNight)
+        // Get prices from hotel's room types
         const rooms = Object.entries(roomCounts)
           .filter(([type, count]) => count > 0)
-          .map(([type, count]) => ({
-            roomTypeCode: type,
-            roomsCount: type === 'SNGL' ? count : Math.ceil(count / 2),
-            guestsPerRoom: type === 'SNGL' ? 1 : 2,
-            pricePerNight: 0
-          }));
+          .map(([type, count]) => {
+            // Find price for this room type from hotel's roomTypes
+            let pricePerNight = 0;
+            if (hotel.roomTypes && hotel.roomTypes.length > 0) {
+              const roomType = hotel.roomTypes.find(rt =>
+                rt.name.toUpperCase() === type ||
+                rt.name.toUpperCase().includes(type)
+              );
+              if (roomType) {
+                pricePerNight = parseFloat(roomType.pricePerNight) || 0;
+                console.log(`   💰 ${type} price: $${pricePerNight} (from hotel roomTypes)`);
+              } else {
+                console.warn(`   ⚠️ ${type} price not found in hotel roomTypes, using $0`);
+              }
+            }
+
+            return {
+              roomTypeCode: type,
+              roomsCount: type === 'SNGL' ? count : Math.ceil(count / 2),
+              guestsPerRoom: type === 'SNGL' ? 1 : 2,
+              pricePerNight: pricePerNight
+            };
+          });
 
         console.log(`🏨 Creating: ${hotel.name} (${format(checkInDate, 'yyyy-MM-dd')} → ${format(checkOutDate, 'yyyy-MM-dd')}) - ${nights} nights`);
         console.log(`   Rooms: ${JSON.stringify(roomCounts)}, Tourists: ${hotelTourists.length}`);
