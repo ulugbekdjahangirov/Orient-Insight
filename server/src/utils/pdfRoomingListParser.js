@@ -41,16 +41,34 @@ async function parseRoomingListPdf(buffer, options = {}) {
     const isTurkmenistan = /Turkmenistan|mit Verl/i.test(section);
     const tourType = isTurkmenistan ? 'turkmenistan' : 'uzbekistan';
 
-    // Extract tour dates from MAIN HEADER ONLY (not from Additional Information)
-    // Split section before "Additional Information" to avoid picking up individual tourist dates
+    // Extract tour dates from TITLE/HEADER (not from Additional Information remark)
+    // Pattern 1: "Date: DD.MM.YYYY - DD.MM.YYYY"
+    // Pattern 2: "Tour: ... DD.MM.YYYY – DD.MM.YYYY" (in tour title)
+    // Exclude dates from Additional Information section (early/late individual arrivals)
+
+    // Split BEFORE "Additional Information" to exclude individual dates
     const beforeAdditionalInfo = section.split(/Additional\s+Information/i)[0];
-    const dateMatch = beforeAdditionalInfo.match(/Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/);
-    if (dateMatch) {
-      result.tourInfo[tourType] = {
-        startDate: dateMatch[1],
-        endDate: dateMatch[2]
-      };
-      console.log(`📅 Extracted ${tourType} tour dates: ${dateMatch[1]} - ${dateMatch[2]} (from main header, excluding individual dates)`);
+
+    const datePatterns = [
+      /Date:\s*(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/,  // "Date: DD.MM.YYYY - DD.MM.YYYY"
+      /Tour:.*?(\d{2}\.\d{2}\.\d{4})\s*[–-]\s*(\d{2}\.\d{2}\.\d{4})/   // "Tour: ... DD.MM.YYYY - DD.MM.YYYY"
+    ];
+
+    let foundDate = null;
+    for (const pattern of datePatterns) {
+      const match = beforeAdditionalInfo.match(pattern);
+      if (match) {
+        foundDate = {
+          startDate: match[1],
+          endDate: match[2]
+        };
+        console.log(`📅 Extracted ${tourType} tour dates: ${match[1]} - ${match[2]} (from ${pattern.source.includes('Tour') ? 'tour title' : 'Date field'})`);
+        break;
+      }
+    }
+
+    if (foundDate) {
+      result.tourInfo[tourType] = foundDate;
     }
 
     // Extract tourists from room sections
