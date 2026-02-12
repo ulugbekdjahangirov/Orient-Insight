@@ -4221,6 +4221,10 @@ export default function BookingDetail() {
       return;
     }
 
+    // NOTE: This function works for all tour types
+    // ER-specific logic (split groups, Malika) only activates when conditions are met
+    // CO/KAS/ZA get basic accommodation creation without special logic
+
     // If accommodations exist, ask for confirmation to replace
     if (accommodations.length > 0) {
       if (!confirm(`У вас уже есть ${accommodations.length} размещений. Удалить их и создать заново из программы тура?`)) {
@@ -4354,14 +4358,16 @@ export default function BookingDetail() {
       }
 
       // Merge consecutive stays in the same hotel (e.g., two Malika Khorazm periods)
+      // Only merge if gap is small (<=3 days), don't merge arrival + return visits
       const mergedStays = [];
       for (let i = 0; i < hotelStays.length; i++) {
         const stay = hotelStays[i];
         const prevStay = mergedStays[mergedStays.length - 1];
 
-        // If previous stay is same hotel and days are consecutive or overlapping, merge them
-        if (prevStay && prevStay.hotelName === stay.hotelName && stay.startDay <= prevStay.endDay + 2) {
+        // Merge if: same hotel AND (consecutive OR small gap <=3 days)
+        if (prevStay && prevStay.hotelName === stay.hotelName && stay.startDay <= prevStay.endDay + 3) {
           prevStay.endDay = Math.max(prevStay.endDay, stay.endDay);
+          console.log(`  ✅ Merged ${stay.hotelName}: extended to day ${prevStay.endDay}`);
         } else {
           mergedStays.push({ ...stay });
         }
@@ -4415,6 +4421,15 @@ export default function BookingDetail() {
 
         console.log(`  → City: ${cityName}, isKhiva=${isKhiva}, isTashkent=${isTashkent}, hasSplit=${hasSplit}`);
 
+        // CRITICAL: Check TM-only case FIRST (before hasSplit check)
+        // If last stay is Tashkent AND all tourists are TM → SKIP it
+        const isTmOnly = turkmenistanTourists.length > 0 && uzbekistanTourists.length === 0;
+        if (isLastStay && isTashkent && isTmOnly) {
+          console.log(`⏭️ SKIPPED Tashkent return for TM-only group (${turkmenistanTourists.length} TM tourists)`);
+          // Don't create this accommodation
+          continue;
+        }
+
         // If this is the last stay and group splits
         if (isLastStay && hasSplit) {
           // Last stay handles group separation
@@ -4442,15 +4457,25 @@ export default function BookingDetail() {
               }
             }
             // Note: No Khiva accommodation created here - TM tourists use previous one
-          } else if (isTashkent && uzbekistanTourists.length > 0) {
-            // If last hotel is Tashkent: create it for UZ tourists only
-            accommodationsToCreate.push({
-              hotel,
-              startDay: stay.startDay,
-              endDay: stay.endDay,
-              tourists: uzbekistanTourists,
-              groupName: 'Uzbekistan'
-            });
+          } else if (isTashkent) {
+            // Last hotel is Tashkent (Arien Plaza return)
+            // RULE: TM tourists stay in Khiva, DON'T return to Tashkent
+            // RULE: UZ tourists return to Tashkent for 1 night
+
+            if (uzbekistanTourists.length > 0) {
+              // Create Tashkent for UZ tourists only
+              accommodationsToCreate.push({
+                hotel,
+                startDay: stay.startDay,
+                endDay: stay.endDay,
+                tourists: uzbekistanTourists,
+                groupName: 'Uzbekistan'
+              });
+              console.log(`✅ Created Tashkent return for UZ tourists (${uzbekistanTourists.length} tourists)`);
+            } else if (turkmenistanTourists.length > 0) {
+              // ALL tourists are TM - SKIP Tashkent return
+              console.log(`⏭️ Skipped Tashkent return for TM-only group (${turkmenistanTourists.length} tourists)`);
+            }
           } else {
             // Not a split city, use all tourists
             accommodationsToCreate.push({
@@ -4470,26 +4495,57 @@ export default function BookingDetail() {
           const hotelNameLower = hotel.name.toLowerCase();
           const isMalikaKhorazm = hotelNameLower.includes('malika') && hotelNameLower.includes('khorazm');
 
-          // SPECIAL CASE: Malika Khorazm with split group
-          // Don't create separate accommodations - rooming list handles the split
-          // TM tourists: 3 nights (full duration)
-          // UZ tourists: 2 nights (check out 1 day earlier via rooming list logic)
-          const isMalikaKhorazmSplit = hasSplit && isMalikaKhorazm && isKhiva &&
-                                        uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
+          // SPECIAL CASE: Malika Khorazm - different durations for UZ/TM
+          // TM only: 3 nights (full duration)
+          // UZ only: 2 nights (leave 1 day earlier)
+          // MIXED: 3 nights (rooming list handles UZ early checkout)
 
-          if (isMalikaKhorazmSplit) {
-            console.log(`ℹ️ Malika Khorazm with split group: Creating single accommodation, rooming list will handle UZ early checkout`);
+          if (isMalikaKhorazm && isKhiva) {
+            const isUzOnly = uzbekistanTourists.length > 0 && turkmenistanTourists.length === 0;
+            const isTmOnly = turkmenistanTourists.length > 0 && uzbekistanTourists.length === 0;
+            const isMixed = uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
+
+            if (isUzOnly) {
+              // UZ-only group: Malika 2 nights (itinerary -1 day)
+              accommodationsToCreate.push({
+                hotel,
+                startDay: stay.startDay,
+                endDay: stay.endDay - 1, // 2 nights instead of 3
+                tourists: uzbekistanTourists,
+                groupName: 'Uzbekistan'
+              });
+              console.log(`✅ Malika (UZ-only): ${stay.endDay - stay.startDay} nights (adjusted to 2)`);
+            } else if (isTmOnly) {
+              // TM-only group: Malika 3 nights (full duration)
+              accommodationsToCreate.push({
+                hotel,
+                startDay: stay.startDay,
+                endDay: stay.endDay, // 3 nights
+                tourists: turkmenistanTourists,
+                groupName: 'Turkmenistan'
+              });
+              console.log(`✅ Malika (TM-only): ${stay.endDay - stay.startDay + 1} nights`);
+            } else if (isMixed) {
+              // MIXED group: Single accommodation, rooming list handles split
+              accommodationsToCreate.push({
+                hotel,
+                startDay: stay.startDay,
+                endDay: stay.endDay, // 3 nights
+                tourists: [...uzbekistanTourists, ...turkmenistanTourists],
+                groupName: 'All'
+              });
+              console.log(`✅ Malika (MIXED): Rooming list handles UZ early checkout`);
+            }
+          } else {
+            // Normal accommodation: all tourists together
+            accommodationsToCreate.push({
+              hotel,
+              startDay: stay.startDay,
+              endDay: stay.endDay,
+              tourists: [...uzbekistanTourists, ...turkmenistanTourists],
+              groupName: 'All'
+            });
           }
-
-          // Create single accommodation for all tourists
-          // Rooming list logic (line 15251-15265) already handles UZ tourists checking out 1 day earlier
-          accommodationsToCreate.push({
-            hotel,
-            startDay: stay.startDay,
-            endDay: stay.endDay,
-            tourists: [...uzbekistanTourists, ...turkmenistanTourists],
-            groupName: 'All'
-          });
         }
       }
 
@@ -4794,6 +4850,191 @@ export default function BookingDetail() {
     } catch (error) {
       console.error('Auto-fill error:', error);
       toast.error(error.response?.data?.error || error.message || 'Ошибка автозаполнения');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Create standard ER tour hotels with hardcoded structure
+  const createERStandardHotels = async () => {
+    if (!booking?.tourTypeId) {
+      toast.error('Нет информации о бронировании');
+      return;
+    }
+
+    // Verify this is an ER tour
+    const tourType = tourTypes.find(t => t.id === booking.tourTypeId);
+    if (tourType?.code !== 'ER') {
+      toast.error('Эта функция работает только для ER туров');
+      return;
+    }
+
+    // Check if tourists exist
+    if (!tourists || tourists.length === 0) {
+      toast.error('Сначала добавьте туристов');
+      return;
+    }
+
+    // If accommodations exist, ask for confirmation
+    if (accommodations.length > 0) {
+      if (!confirm(`У вас уже есть ${accommodations.length} размещений. Удалить их и создать заново?`)) {
+        return;
+      }
+    }
+
+    try {
+      setSaving(true);
+      console.log('🏨 Creating standard ER hotels...');
+
+      // Delete existing accommodations
+      if (accommodations.length > 0) {
+        for (const acc of accommodations) {
+          try {
+            await bookingsApi.deleteAccommodation(booking.id, acc.id);
+          } catch (error) {
+            if (error.response?.status !== 404) {
+              console.warn('Failed to delete accommodation:', acc.id, error);
+            }
+          }
+        }
+        console.log(`🗑️ Deleted ${accommodations.length} existing accommodations`);
+      }
+
+      // Get tourists with accommodation field data
+      const touristsResp = await touristsApi.getAll(booking.id);
+      const allTourists = touristsResp.data.tourists || [];
+
+      // Split tourists into UZ/TM groups
+      const uzbekistanTourists = allTourists.filter(t =>
+        (t.accommodation || '').toLowerCase().includes('uzbekistan') ||
+        (t.accommodation || '').toLowerCase().includes('узбекистан')
+      );
+      const turkmenistanTourists = allTourists.filter(t =>
+        (t.accommodation || '').toLowerCase().includes('turkmenistan') ||
+        (t.accommodation || '').toLowerCase().includes('туркменистан')
+      );
+
+      const isUzOnly = uzbekistanTourists.length > 0 && turkmenistanTourists.length === 0;
+      const isTmOnly = turkmenistanTourists.length > 0 && uzbekistanTourists.length === 0;
+      const isMixed = uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
+
+      console.log(`👥 Tourist split: UZ=${uzbekistanTourists.length}, TM=${turkmenistanTourists.length}`);
+      console.log(`📊 Group type: ${isUzOnly ? 'UZ-only' : isTmOnly ? 'TM-only' : isMixed ? 'MIXED' : 'UNKNOWN'}`);
+
+      // Use booking departure date as base
+      const baseDate = parseISO(booking.departureDate);
+      console.log(`📅 Base date (departure): ${format(baseDate, 'yyyy-MM-dd')}`);
+
+      // Standard ER hotel structure (hardcoded)
+      const erHotels = [
+        { name: 'Arien Plaza', nights: 2, city: 'Tashkent', type: 'arrival' },
+        { name: 'Jahongir', nights: 3, city: 'Samarkand', type: 'standard' },
+        { name: "Yaxshigul's Guesthouse", nights: 1, city: 'Asraf', type: 'standard' },
+        { name: 'Dargoh Hotel', nights: 3, city: 'Bukhara', type: 'standard' },
+        { name: 'Malika Khorazm', nights: 3, city: 'Khiva', type: 'split' }, // 3 for TM, 2 for UZ
+        { name: 'Arien Plaza', nights: 1, city: 'Tashkent', type: 'return' } // UZ only
+      ];
+
+      let currentDate = new Date(baseDate);
+      let createdCount = 0;
+
+      for (const erHotel of erHotels) {
+        // Find hotel in database
+        const hotel = hotels.find(h =>
+          h.name.toLowerCase().includes(erHotel.name.toLowerCase()) ||
+          erHotel.name.toLowerCase().includes(h.name.toLowerCase())
+        );
+
+        if (!hotel) {
+          console.warn(`❌ Hotel not found: "${erHotel.name}"`);
+          toast.error(`Отель не найден: ${erHotel.name}`);
+          continue;
+        }
+
+        // Skip Tashkent return for TM-only groups
+        if (erHotel.type === 'return' && isTmOnly) {
+          console.log(`⏭️ SKIPPED ${erHotel.name} (return) - TM-only group`);
+          continue;
+        }
+
+        // Calculate check-in and check-out dates
+        const checkInDate = new Date(currentDate);
+        let nights = erHotel.nights;
+
+        // Special handling for Malika Khorazm
+        if (erHotel.type === 'split') {
+          if (isUzOnly) {
+            nights = 2; // UZ-only: 2 nights
+            console.log(`📍 Malika Khorazm (UZ-only): 2 nights`);
+          } else if (isTmOnly) {
+            nights = 3; // TM-only: 3 nights
+            console.log(`📍 Malika Khorazm (TM-only): 3 nights`);
+          } else if (isMixed) {
+            nights = 3; // Mixed: 3 nights (rooming list shows UZ early checkout)
+            console.log(`📍 Malika Khorazm (MIXED): 3 nights, rooming list handles UZ early checkout`);
+          }
+        }
+
+        const checkOutDate = new Date(currentDate);
+        checkOutDate.setDate(checkOutDate.getDate() + nights);
+
+        // Determine which tourists to include
+        let hotelTourists = allTourists;
+        if (erHotel.type === 'return') {
+          // Only UZ tourists for return
+          hotelTourists = uzbekistanTourists;
+        }
+
+        // Calculate room configuration
+        const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+        hotelTourists.forEach(tourist => {
+          let roomType = (tourist.roomPreference || '').toUpperCase();
+          if (roomType === 'DOUBLE' || roomType === 'DZ') roomType = 'DBL';
+          if (roomType === 'TWIN') roomType = 'TWN';
+          if (roomType === 'SINGLE' || roomType === 'SGL' || roomType === 'EZ') roomType = 'SNGL';
+
+          if (roomCounts[roomType] !== undefined) {
+            roomCounts[roomType]++;
+          }
+        });
+
+        // Convert to rooms array format
+        const rooms = Object.entries(roomCounts)
+          .filter(([type, count]) => count > 0)
+          .map(([type, count]) => ({ type, quantity: type === 'SNGL' ? count : Math.ceil(count / 2) }));
+
+        console.log(`🏨 Creating: ${hotel.name} (${format(checkInDate, 'yyyy-MM-dd')} → ${format(checkOutDate, 'yyyy-MM-dd')}) - ${nights} nights`);
+        console.log(`   Rooms: ${JSON.stringify(roomCounts)}, Tourists: ${hotelTourists.length}`);
+
+        // Create accommodation
+        const data = {
+          hotelId: hotel.id,
+          checkInDate: format(checkInDate, 'yyyy-MM-dd'),
+          checkOutDate: format(checkOutDate, 'yyyy-MM-dd'),
+          rooms
+        };
+
+        await bookingsApi.createAccommodation(booking.id, data);
+        createdCount++;
+
+        // Move to next hotel
+        currentDate = new Date(checkOutDate);
+      }
+
+      if (createdCount > 0) {
+        toast.success(`✅ Создано размещений: ${createdCount}`);
+      } else {
+        toast.error('Не создано ни одного размещения');
+      }
+
+      // Reload data
+      await loadData();
+
+      console.log('✅ ER standard hotels created successfully');
+
+    } catch (error) {
+      console.error('ER Hotels creation error:', error);
+      toast.error(error.response?.data?.error || error.message || 'Ошибка создания отелей');
     } finally {
       setSaving(false);
     }
@@ -14146,6 +14387,17 @@ export default function BookingDetail() {
                     <Wand2 className="w-5 h-5" />
                     Из программы тура
                   </button>
+                  {booking?.tourType?.code === 'ER' && (
+                    <button
+                      onClick={createERStandardHotels}
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
+                      title="Создать стандартные отели для ER тура (Arien Plaza, Jahongir, Asraf, Bukhara, Malika, return)"
+                    >
+                      <Building2 className="w-5 h-5" />
+                      ER Hotels
+                    </button>
+                  )}
                   <button
                     onClick={() => { setEditingAccommodation(null); setAccommodationFormOpen(true); }}
                     className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-blue-600 to-primary-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold shadow-md"
