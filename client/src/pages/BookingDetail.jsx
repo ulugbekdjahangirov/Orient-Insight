@@ -4300,20 +4300,32 @@ export default function BookingDetail() {
       const departureDate = parseISO(booking.departureDate);
       const arrivalDate = parseISO(booking.arrivalDate);
 
-      // CRITICAL: Use arrivalDate as base for tourist dates
+      // CRITICAL: Calculate base date for different tour types
       // - ER/CO tours: arrivalDate = day tourists arrive (tour starts)
-      // - KAS tours: arrivalDate = day tourists arrive in UZBEKISTAN (tour starts earlier in Kazakhstan/Kyrgyzstan)
+      // - KAS tours: departureDate = tour start in Kazakhstan/Kyrgyzstan
+      //              arrivalDate in Uzbekistan = departureDate + offset to first Uzbekistan hotel
       // - ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
-      // Example: Excel 23.08 → departureDate 27.08 → arrival 31.08
       const tourTypeCode = booking?.tourType?.code;
-      const baseDate = tourTypeCode === 'ZA'
-        ? new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000)) // +4 days
-        : arrivalDate; // Use arrivalDate for ER/CO/KAS tours
+
+      let baseDate;
+      let baseDateLabel;
 
       if (tourTypeCode === 'ZA') {
-        console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
+        // ZA tours: departureDate + 4 days for Tajikistan
+        baseDate = new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000));
+        baseDateLabel = 'Uzbekistan arrival (departureDate + 4)';
+        console.log(`📅 ZA tour: Base date = ${format(baseDate, 'yyyy-MM-dd')} (${baseDateLabel})`);
+      } else if (tourTypeCode === 'KAS') {
+        // KAS tours: Calculate Uzbekistan arrival from first Uzbekistan hotel in itinerary
+        // We'll calculate this after finding first Uzbekistan hotel
+        baseDate = departureDate; // Temporary - will be updated below
+        baseDateLabel = 'departureDate (tour start)';
+        console.log(`📅 KAS tour: Temporary base date = ${format(baseDate, 'yyyy-MM-dd')} (will be recalculated)`);
       } else {
-        console.log(`📅 ${tourTypeCode} tour: Base date = ${baseDate.toISOString().split('T')[0]} (arrival date)`);
+        // ER/CO tours: use arrivalDate as-is
+        baseDate = arrivalDate;
+        baseDateLabel = 'arrivalDate';
+        console.log(`📅 ${tourTypeCode} tour: Base date = ${format(baseDate, 'yyyy-MM-dd')} (${baseDateLabel})`);
       }
 
       const accommodationsToCreate = [];
@@ -4533,7 +4545,7 @@ export default function BookingDetail() {
       let createdCount = 0;
 
       // CRITICAL: Find the first hotel's day number in itinerary
-      // For KAS tours: find first UZBEKISTAN hotel day (group arrives in Uzbekistan later)
+      // For KAS tours: find first UZBEKISTAN hotel day and calculate arrivalDate from it
       // For ER/CO/ZA tours: use first hotel day as normal
       let firstHotelDay;
 
@@ -4559,8 +4571,15 @@ export default function BookingDetail() {
 
         if (uzbekistanHotels.length > 0) {
           firstHotelDay = Math.min(...uzbekistanHotels.map(acc => acc.startDay));
-          console.log(`📅 KAS tour: First Uzbekistan hotel day: ${firstHotelDay}, baseDate (arrivalDate): ${format(baseDate, 'yyyy-MM-dd')}`);
-          console.log(`📍 Uzbekistan hotels found: ${uzbekistanHotels.map(h => `${h.hotel.name} (${h.hotel.city?.name})`).join(', ')}`);
+
+          // CRITICAL: For KAS tours, calculate baseDate (Uzbekistan arrival) from departureDate
+          // Example: departureDate = 01.09, firstHotelDay = 15 → baseDate = 01.09 + 14 days = 15.09
+          baseDate = new Date(departureDate);
+          baseDate.setDate(baseDate.getDate() + (firstHotelDay - 1));
+
+          console.log(`📅 KAS tour: First Uzbekistan hotel on Day ${firstHotelDay}`);
+          console.log(`📅 KAS tour: Calculated Uzbekistan arrival = departureDate (${format(departureDate, 'yyyy-MM-dd')}) + ${firstHotelDay - 1} days = ${format(baseDate, 'yyyy-MM-dd')}`);
+          console.log(`📍 Uzbekistan hotels found: ${uzbekistanHotels.map(h => `${h.hotel.name} (${h.hotel.city?.name}, Day ${h.startDay})`).join(', ')}`);
         } else {
           // Fallback if no Uzbekistan hotels found
           firstHotelDay = Math.min(...finalAccommodationsToCreate.map(acc => acc.startDay));
