@@ -4221,6 +4221,14 @@ export default function BookingDetail() {
       return;
     }
 
+    const tourTypeCode = booking?.tourType?.code;
+
+    // Check tour type - only ER, CO, and KAS supported
+    if (tourTypeCode !== 'ER' && tourTypeCode !== 'CO' && tourTypeCode !== 'KAS') {
+      toast.error('Бу функция фақат ER, CO ва KAS турлари учун');
+      return;
+    }
+
     // If accommodations exist, ask for confirmation to replace
     if (accommodations.length > 0) {
       if (!confirm(`У вас уже есть ${accommodations.length} размещений. Удалить их и создать заново из программы тура?`)) {
@@ -4264,12 +4272,6 @@ export default function BookingDetail() {
       const touristsResponse = await touristsApi.getAll(booking.id);
       const tourists = touristsResponse.data.tourists || [];
 
-      console.log('🔍 DEBUG: Total tourists loaded:', tourists.length);
-      console.log('🔍 DEBUG: Tourists data:', tourists.map(t => ({
-        name: t.fullName,
-        roomPreference: t.roomPreference,
-        accommodation: t.accommodation
-      })));
 
       // Separate tourists by accommodation
       // IMPORTANT: Tourists with "Turkmenistan" go ONLY to Turkmenistan group
@@ -4293,21 +4295,14 @@ export default function BookingDetail() {
 
       const hasSplit = uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
 
-      console.log('🔍 DEBUG: Uzbekistan-only tourists:', uzbekistanTourists.length, uzbekistanTourists.map(t => t.fullName));
-      console.log('🔍 DEBUG: Turkmenistan tourists:', turkmenistanTourists.length, turkmenistanTourists.map(t => t.fullName));
-      console.log('🔍 DEBUG: Group split:', hasSplit);
-
-      console.log('🔍 DEBUG: Uzbekistan tourists:', uzbekistanTourists.length, uzbekistanTourists.map(t => t.fullName));
-      console.log('🔍 DEBUG: Turkmenistan tourists:', turkmenistanTourists.length, turkmenistanTourists.map(t => t.fullName));
-      console.log('🔍 DEBUG: Group split:', hasSplit);
-
       // Step 3: Build accommodation list from itinerary
       // CRITICAL: Use parseISO() to avoid timezone shift
       const departureDate = parseISO(booking.departureDate);
       const arrivalDate = parseISO(booking.arrivalDate);
 
       // CRITICAL: Use arrivalDate as base for tourist dates
-      // - ER/CO/KAS tours: tourists' Tour Start = arrivalDate (day they arrive in Uzbekistan)
+      // - ER/CO tours: arrivalDate = day tourists arrive (tour starts)
+      // - KAS tours: arrivalDate = day tourists arrive in UZBEKISTAN (tour starts earlier in Kazakhstan/Kyrgyzstan)
       // - ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
       // Example: Excel 23.08 → departureDate 27.08 → arrival 31.08
       const tourTypeCode = booking?.tourType?.code;
@@ -4322,6 +4317,9 @@ export default function BookingDetail() {
       }
 
       const accommodationsToCreate = [];
+
+      // Log itinerary for debugging
+      console.log('🔍 Itinerary loaded:', itinerary.length, 'days');
 
       // Group consecutive days by hotel
       let currentStay = null;
@@ -4347,151 +4345,178 @@ export default function BookingDetail() {
         hotelStays.push(currentStay);
       }
 
+      console.log('📊 Grouped hotel stays:', hotelStays.length);
+
       if (hotelStays.length === 0) {
         toast.error('Нет отелей в программе тура');
         setSaving(false);
         return;
       }
 
-      // Merge consecutive stays in the same hotel (e.g., two Malika Khorazm periods)
+      // ========================================
+      // NEW CLEAN LOGIC - 3 Scenarios (ER only)
+      // ========================================
+
+      // Determine tourist composition (ER tours only)
+      const isERTour = tourTypeCode === 'ER';
+      const onlyTM = isERTour && turkmenistanTourists.length > 0 && uzbekistanTourists.length === 0;
+      const onlyUZ = isERTour && uzbekistanTourists.length > 0 && turkmenistanTourists.length === 0;
+      const mixed = isERTour && uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
+
+      console.log(`📊 Tour: ${tourTypeCode}, Tourist composition: onlyTM=${onlyTM}, onlyUZ=${onlyUZ}, mixed=${mixed}`);
+      console.log(`📋 Hotels from itinerary: ${hotelStays.length}`);
+
+      // Merge CONSECUTIVE same-hotel stays
       const mergedStays = [];
       for (let i = 0; i < hotelStays.length; i++) {
         const stay = hotelStays[i];
         const prevStay = mergedStays[mergedStays.length - 1];
 
-        // If previous stay is same hotel and days are consecutive or overlapping, merge them
-        if (prevStay && prevStay.hotelName === stay.hotelName && stay.startDay <= prevStay.endDay + 2) {
-          prevStay.endDay = Math.max(prevStay.endDay, stay.endDay);
+        // Merge if SAME hotel AND CONSECUTIVE days (no gap)
+        if (prevStay && prevStay.hotelName === stay.hotelName && stay.startDay === prevStay.endDay + 1) {
+          prevStay.endDay = stay.endDay;
+          console.log(`🔗 Merged: ${stay.hotelName} (days ${prevStay.startDay}-${prevStay.endDay})`);
         } else {
           mergedStays.push({ ...stay });
         }
       }
 
-      console.log('🔍 DEBUG: Hotel stays after merge:', mergedStays);
-      console.log('🔍 UPDATED CODE v2: Merge logic is now active');
+      console.log(`📋 After merge: ${mergedStays.length} hotels`);
+      const staysToProcess = mergedStays;
 
-      // Step 4: Create accommodations for each hotel stay
-      // For split groups, handle last day specially
+      // ========================================
+      // Step 4: Create hotels 1-5 from itinerary
+      // ========================================
+
       const lastDay = Math.max(...itinerary.map(d => d.dayNumber));
 
-      for (let i = 0; i < mergedStays.length; i++) {
-        const stay = mergedStays[i];
-        const isLastStay = (i === mergedStays.length - 1);
+      for (let i = 0; i < staysToProcess.length; i++) {
+        const stay = staysToProcess[i];
+        const isLastStay = (i === staysToProcess.length - 1);
 
-        console.log(`🏨 Processing stay ${i + 1}/${mergedStays.length}: ${stay.hotelName} (days ${stay.startDay}-${stay.endDay}, isLastStay=${isLastStay})`);
-
-        // Skip if this is just the departure day (no overnight stay)
-        // If endDay equals lastDay, it means the itinerary includes the departure day
-        // but there's no actual overnight on that day
+        // Skip departure-only days
         if (stay.endDay === lastDay && stay.startDay === lastDay) {
-          console.log(`Skipping departure day accommodation: ${stay.hotelName} on day ${lastDay}`);
           continue;
         }
 
-        // Find hotel in database - try multiple matching strategies
+        // Find hotel in database
         let hotel = hotels.find(h =>
           h.name.toLowerCase().includes(stay.hotelName.toLowerCase()) ||
           stay.hotelName.toLowerCase().includes(h.name.toLowerCase())
         );
 
-        // If not found, try without special characters and extra spaces
         if (!hotel) {
-          const normalizedStayName = stay.hotelName.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+          const normalized = stay.hotelName.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
           hotel = hotels.find(h => {
-            const normalizedHotelName = h.name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-            return normalizedHotelName.includes(normalizedStayName) || normalizedStayName.includes(normalizedHotelName);
+            const hn = h.name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+            return hn.includes(normalized) || normalized.includes(hn);
           });
         }
 
         if (!hotel) {
-          console.warn(`Hotel not found: "${stay.hotelName}"`);
           toast.error(`Отель не найден: ${stay.hotelName}`);
           continue;
         }
 
+        // SKIP: For ONLY TM groups, skip last hotel if it's in Tashkent (return hotel)
         const cityName = hotel.city?.name?.toLowerCase() || '';
-        const isKhiva = cityName.includes('хива') || cityName.includes('khiva');
         const isTashkent = cityName.includes('ташкент') || cityName.includes('tashkent');
 
-        console.log(`  → City: ${cityName}, isKhiva=${isKhiva}, isTashkent=${isTashkent}, hasSplit=${hasSplit}`);
+        if (onlyTM && isLastStay && isTashkent) {
+          console.log(`ℹ️ Only TM: Skipped last Tashkent hotel (TM tourists don't return)`);
+          continue;
+        }
 
-        // If this is the last stay and group splits
-        if (isLastStay && hasSplit) {
-          // Last stay handles group separation
+        // Check if this is a hotel in Khiva (check both city name AND hotel name)
+        // City name can be: "Khiva" (English), "Хива" (Russian/Uzbek), "Chiwa" (German)
+        const hotelNameLower = hotel.name.toLowerCase();
+        const isKhivaByCity = cityName.includes('хива') || cityName.includes('khiva') || cityName.includes('chiwa');
+        const isKhivaByName = hotelNameLower.includes('khiva') || hotelNameLower.includes('хива') || hotelNameLower.includes('chiwa');
+        const isKhiva = isKhivaByCity || isKhivaByName;
+        const isMalikaKhorazm = hotelNameLower.includes('malika') && hotelNameLower.includes('khorazm');
 
-          // If last hotel is Khiva: DON'T create it (TM tourists already in previous Khiva)
-          // Only add Tashkent for UZ tourists
-          if (isKhiva) {
-            // TM tourists already have Malika Khorazm from previous iteration
-            // Only create Tashkent for UZ tourists returning
-            if (uzbekistanTourists.length > 0) {
-              const tashkentHotel = hotels.find(h =>
-                h.name.toLowerCase().includes('arien') ||
-                (h.city?.name?.toLowerCase().includes('ташкент') || h.city?.name?.toLowerCase().includes('tashkent'))
-              );
-              if (tashkentHotel) {
-                accommodationsToCreate.push({
-                  hotel: tashkentHotel,
-                  startDay: lastDay,
-                  endDay: lastDay,
-                  tourists: uzbekistanTourists,
-                  groupName: 'Uzbekistan'
-                });
-              } else {
-                toast.error('Отель в Ташкенте не найден для группы Uzbekistan');
-              }
-            }
-            // Note: No Khiva accommodation created here - TM tourists use previous one
-          } else if (isTashkent && uzbekistanTourists.length > 0) {
-            // If last hotel is Tashkent: create it for UZ tourists only
-            accommodationsToCreate.push({
-              hotel,
-              startDay: stay.startDay,
-              endDay: stay.endDay,
-              tourists: uzbekistanTourists,
-              groupName: 'Uzbekistan'
-            });
+        console.log(`🏨 Hotel: ${hotel.name}, City: ${cityName}, isKhiva: ${isKhiva}`);
+
+        // Adjust Khiva hotels to 2 nights:
+        // - ER tours: Only UZ groups get Malika Khorazm 2 nights
+        // - CO tours: All Khiva hotels should be 2 nights
+        let adjustedEndDay = stay.endDay;
+        const isCOTour = tourTypeCode === 'CO';
+
+        if (isKhiva) {
+          // IMPORTANT: nights = (endDay - startDay) + 1 because checkout adds +1 day
+          // Example: startDay=11, endDay=12 → 2 days in itinerary → 2 nights
+          const nights = (stay.endDay - stay.startDay) + 1;
+          console.log(`🌙 ${hotel.name}: ${nights} nights (startDay: ${stay.startDay}, endDay: ${stay.endDay})`);
+
+          if (isCOTour && nights !== 2) {
+            // CO tours: ALWAYS force Khiva to exactly 2 nights
+            adjustedEndDay = stay.startDay + 1; // startDay + 1 = 2 nights
+            console.log(`✅ CO tour: FORCED ${hotel.name} to exactly 2 nights (was ${nights})`);
+          } else if (onlyUZ && isMalikaKhorazm && nights > 2) {
+            // ER Only UZ: Reduce Malika Khorazm to 2 nights
+            adjustedEndDay = stay.endDay - 1;
+            console.log(`ℹ️ ER Only UZ: Reduced Malika Khorazm to 2 nights`);
           } else {
-            // Not a split city, use all tourists
+            console.log(`ℹ️ ${hotel.name}: ${nights} nights - no adjustment`);
+          }
+        }
+
+        // Create hotel for ALL tourists (simple logic)
+        accommodationsToCreate.push({
+          hotel,
+          startDay: stay.startDay,
+          endDay: adjustedEndDay,
+          tourists: [...uzbekistanTourists, ...turkmenistanTourists],
+          groupName: 'All'
+        });
+      }
+
+      // ========================================
+      // Step 5: Add 6th hotel for UZ return (if needed)
+      // ========================================
+
+      if (onlyUZ || mixed) {
+        // Check if last hotel is already in Tashkent
+        const lastStay = staysToProcess[staysToProcess.length - 1];
+        let lastHotelInTashkent = false;
+
+        if (lastStay) {
+          const lastHotel = hotels.find(h =>
+            h.name.toLowerCase().includes(lastStay.hotelName.toLowerCase()) ||
+            lastStay.hotelName.toLowerCase().includes(h.name.toLowerCase())
+          );
+          const isTashkent = lastHotel?.city?.name?.toLowerCase().includes('ташкент') ||
+                            lastHotel?.city?.name?.toLowerCase().includes('tashkent');
+          lastHotelInTashkent = isTashkent;
+        }
+
+        if (!lastHotelInTashkent) {
+          // Last hotel is NOT in Tashkent (probably Khiva), so add return hotel
+          const arienPlaza = hotels.find(h =>
+            h.name.toLowerCase().includes('arien') &&
+            (h.city?.name?.toLowerCase().includes('ташкент') || h.city?.name?.toLowerCase().includes('tashkent'))
+          );
+
+          if (arienPlaza) {
+            const uzTourists = onlyUZ ? tourists : uzbekistanTourists;
             accommodationsToCreate.push({
-              hotel,
-              startDay: stay.startDay,
-              endDay: stay.endDay,
-              tourists: [...uzbekistanTourists, ...turkmenistanTourists],
-              groupName: 'All'
+              hotel: arienPlaza,
+              startDay: lastDay,
+              endDay: lastDay,
+              tourists: uzTourists,
+              groupName: onlyUZ ? 'All' : 'Uzbekistan'
             });
+            console.log(`✅ Added 6th hotel: ${arienPlaza.name} for ${onlyUZ ? 'ALL (onlyUZ)' : 'UZ tourists (mixed)'}`);
+          } else {
+            toast.error('Arien Plaza не найден в Ташкенте!');
           }
         } else {
-          // Not last stay, or no split - use all tourists
-
-          // SPECIAL CASE: Malika Khorazm in Khiva with split group
-          // UZ tourists stay 2 nights, TM tourists stay 3 nights
-          // Then UZ tourists go to Tashkent for the last night
-          const hotelNameLower = hotel.name.toLowerCase();
-          const isMalikaKhorazm = hotelNameLower.includes('malika') && hotelNameLower.includes('khorazm');
-
-          // SPECIAL CASE: Malika Khorazm with split group
-          // Don't create separate accommodations - rooming list handles the split
-          // TM tourists: 3 nights (full duration)
-          // UZ tourists: 2 nights (check out 1 day earlier via rooming list logic)
-          const isMalikaKhorazmSplit = hasSplit && isMalikaKhorazm && isKhiva &&
-                                        uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
-
-          if (isMalikaKhorazmSplit) {
-            console.log(`ℹ️ Malika Khorazm with split group: Creating single accommodation, rooming list will handle UZ early checkout`);
-          }
-
-          // Create single accommodation for all tourists
-          // Rooming list logic (line 15251-15265) already handles UZ tourists checking out 1 day earlier
-          accommodationsToCreate.push({
-            hotel,
-            startDay: stay.startDay,
-            endDay: stay.endDay,
-            tourists: [...uzbekistanTourists, ...turkmenistanTourists],
-            groupName: 'All'
-          });
+          console.log(`ℹ️ Last hotel already in Tashkent, not adding 6th hotel`);
         }
       }
+
+      console.log(`📊 Total hotels to create: ${accommodationsToCreate.length}`);
 
       // Step 5: Create accommodations in database
       if (accommodationsToCreate.length === 0) {
@@ -4500,27 +4525,80 @@ export default function BookingDetail() {
         return;
       }
 
+      console.log('✅ Hotels to create:', accommodationsToCreate.map(a => `${a.hotel.name} (${a.groupName})`).join(', '));
+
+      // No deduplication - new logic creates exact hotels needed
+      const finalAccommodationsToCreate = accommodationsToCreate;
+
       let createdCount = 0;
 
       // CRITICAL: Find the first hotel's day number in itinerary
-      // First hotel should use arrivalDate (not arrivalDate + offset)
-      const firstHotelDay = Math.min(...accommodationsToCreate.map(acc => acc.startDay));
-      console.log(`📅 First hotel day in itinerary: ${firstHotelDay}, baseDate (arrivalDate): ${format(baseDate, 'yyyy-MM-dd')}`);
+      // For KAS tours: find first UZBEKISTAN hotel day (group arrives in Uzbekistan later)
+      // For ER/CO/ZA tours: use first hotel day as normal
+      let firstHotelDay;
 
-      for (const accData of accommodationsToCreate) {
+      if (tourTypeCode === 'KAS') {
+        // For KAS tours, find the first hotel in Uzbekistan
+        // Check by country OR by known Uzbekistan city names
+        const uzbekistanCities = ['tashkent', 'ташкент', 'samarkand', 'самарканд', 'bukhara', 'бухара',
+                                  'khiva', 'хива', 'chiwa', 'fergana', 'фергана', 'shakhrisabz', 'шахрисабз',
+                                  'termez', 'термез', 'nukus', 'нукус', 'urgench', 'ургенч'];
+
+        const uzbekistanHotels = finalAccommodationsToCreate.filter(acc => {
+          const country = acc.hotel.city?.country?.toLowerCase() || '';
+          const cityName = acc.hotel.city?.name?.toLowerCase() || '';
+
+          // Check country field
+          const isUzbekByCountry = country.includes('uzbek') || country.includes('узбек');
+
+          // Check city name against known Uzbekistan cities
+          const isUzbekByCity = uzbekistanCities.some(city => cityName.includes(city));
+
+          return isUzbekByCountry || isUzbekByCity;
+        });
+
+        if (uzbekistanHotels.length > 0) {
+          firstHotelDay = Math.min(...uzbekistanHotels.map(acc => acc.startDay));
+          console.log(`📅 KAS tour: First Uzbekistan hotel day: ${firstHotelDay}, baseDate (arrivalDate): ${format(baseDate, 'yyyy-MM-dd')}`);
+          console.log(`📍 Uzbekistan hotels found: ${uzbekistanHotels.map(h => `${h.hotel.name} (${h.hotel.city?.name})`).join(', ')}`);
+        } else {
+          // Fallback if no Uzbekistan hotels found
+          firstHotelDay = Math.min(...finalAccommodationsToCreate.map(acc => acc.startDay));
+          console.log(`⚠️ KAS tour: No Uzbekistan hotels found, using first hotel day: ${firstHotelDay}`);
+        }
+      } else {
+        // For ER/CO/ZA tours, use first hotel day as normal
+        firstHotelDay = Math.min(...finalAccommodationsToCreate.map(acc => acc.startDay));
+        console.log(`📅 ${tourTypeCode} tour: First hotel day: ${firstHotelDay}, baseDate: ${format(baseDate, 'yyyy-MM-dd')}`);
+      }
+
+      for (const accData of finalAccommodationsToCreate) {
         const { hotel, startDay, endDay, tourists: groupTourists, groupName } = accData;
 
-        // Calculate dates using baseDate (arrivalDate for ER/CO/KAS tours)
-        // CRITICAL: Offset from FIRST hotel day, not from day 1
-        // Example: If first hotel is on Day 2, and current hotel is on Day 2:
-        //   checkInDate = arrivalDate + (2 - 2) = arrivalDate ✓
+        // Calculate dates using baseDate
+        // - KAS tours: arrivalDate = first day in Uzbekistan, offset from first Uzbekistan hotel
+        // - ER/CO tours: arrivalDate = first day of tour, offset from first hotel
+        // - ZA tours: baseDate = arrivalDate + 4 days, offset from first hotel
         const checkInDate = new Date(baseDate);
         checkInDate.setDate(checkInDate.getDate() + (startDay - firstHotelDay));
 
-        const checkOutDate = new Date(baseDate);
-        checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay) + 1); // endDay is the last night, checkout is next morning
+        // IMPORTANT: For CO tours with Khiva, don't add +1 to checkout
+        const isKhivaHotel = hotel.name.toLowerCase().includes('khiva') ||
+                            hotel.name.toLowerCase().includes('chiwa') ||
+                            hotel.name.toLowerCase().includes('хива');
+        const isCOKhiva = tourTypeCode === 'CO' && isKhivaHotel;
 
-        console.log(`  → ${hotel.name}: Day ${startDay}-${endDay}, checkIn = arrivalDate + (${startDay} - ${firstHotelDay}) = ${format(checkInDate, 'yyyy-MM-dd')}, checkOut = ${format(checkOutDate, 'yyyy-MM-dd')}`);
+        const checkOutDate = new Date(baseDate);
+        if (isCOKhiva) {
+          // For CO Khiva: Fixed to 2 nights (endDay without +1)
+          checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay));
+        } else {
+          checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay) + 1);
+        }
+
+        const hotelCountry = hotel.city?.country || 'Unknown';
+        const dateLabel = tourTypeCode === 'KAS' ? 'baseDate (UZ arrival)' : 'baseDate';
+        console.log(`  → ${hotel.name} (${hotelCountry}): Day ${startDay}-${endDay}, checkIn = ${dateLabel} + (${startDay} - ${firstHotelDay}) = ${format(checkInDate, 'yyyy-MM-dd')}, checkOut = ${format(checkOutDate, 'yyyy-MM-dd')}`);
 
         // Validation: don't create accommodation if checkout is after tour end date
         const tourEndDate = new Date(booking.endDate);
@@ -14137,15 +14215,44 @@ export default function BookingDetail() {
                   Hotel Accommodation
                 </h2>
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={autoFillAccommodationsFromItinerary}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
-                    title="Автоматически создать размещения из программы тура"
-                  >
-                    <Wand2 className="w-5 h-5" />
-                    Из программы тура
-                  </button>
+                  {/* ER Hotels button - only for ER tours */}
+                  {booking?.tourType?.code === 'ER' && (
+                    <button
+                      onClick={autoFillAccommodationsFromItinerary}
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
+                      title="Создать отели для ER тура (Eurasia Route)"
+                    >
+                      <Wand2 className="w-5 h-5" />
+                      ER Hotels
+                    </button>
+                  )}
+
+                  {/* CO Hotels button - only for CO tours */}
+                  {booking?.tourType?.code === 'CO' && (
+                    <button
+                      onClick={autoFillAccommodationsFromItinerary}
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
+                      title="Создать отели для CO тура (Combination)"
+                    >
+                      <Wand2 className="w-5 h-5" />
+                      CO Hotels
+                    </button>
+                  )}
+
+                  {/* KAS Hotels button - only for KAS tours */}
+                  {booking?.tourType?.code === 'KAS' && (
+                    <button
+                      onClick={autoFillAccommodationsFromItinerary}
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
+                      title="Создать отели для KAS тура (Kasakistan, Kirgistan und Usbekistan)"
+                    >
+                      <Wand2 className="w-5 h-5" />
+                      KAS Hotels
+                    </button>
+                  )}
                   <button
                     onClick={() => { setEditingAccommodation(null); setAccommodationFormOpen(true); }}
                     className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-blue-600 to-primary-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold shadow-md"
