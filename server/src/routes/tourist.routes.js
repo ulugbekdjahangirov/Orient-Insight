@@ -4773,18 +4773,44 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
     let arrivalHeader = 'Заезд';
     let departureHeader = 'Выезд';
 
-    // CRITICAL: Only ER tours use "Первый/Второй" labels
-    // ZA/CO/KAS tours come to Tashkent only once, so use simple "Заезд/Выезд"
+    // NEW LOGIC: Check how many times the group stays at THIS hotel
+    // If multiple visits to same hotel, number them: Первый, Второй, Третий
+    const hotelAccommodations = allAccommodations.filter(acc => acc.hotelId === accommodation.hotelId);
+
+    console.log(`\n🔍 VISIT LABEL DEBUG (Single PDF):`);
+    console.log(`   accommodation.id: ${accommodation.id}`);
+    console.log(`   accommodation.hotelId: ${accommodation.hotelId}`);
+    console.log(`   hotelAccommodations count: ${hotelAccommodations.length}`);
+    console.log(`   Condition check (length > 1): ${hotelAccommodations.length > 1}`);
+
+    if (hotelAccommodations.length > 1) {
+      // Find which visit number this accommodation is (1st, 2nd, 3rd, etc.)
+      const visitNumber = hotelAccommodations.findIndex(acc => acc.id === accommodation.id) + 1;
+
+      const visitLabels = ['Первый', 'Второй', 'Третий', 'Четвёртый', 'Пятый'];
+      const visitLabel = visitLabels[visitNumber - 1] || `${visitNumber}-й`;
+
+      arrivalHeader = `${visitLabel}<br>заезд`;
+      departureHeader = `${visitLabel}<br>выезд`;
+
+      console.log(`   ✅ Applied visit labels:`);
+      console.log(`   visitNumber: ${visitNumber}`);
+      console.log(`   visitLabel: ${visitLabel}`);
+      console.log(`   arrivalHeader: ${arrivalHeader}`);
+      console.log(`   departureHeader: ${departureHeader}`);
+    } else {
+      console.log(`   ❌ NOT applying visit labels (only 1 visit)`);
+      console.log(`   arrivalHeader: ${arrivalHeader}`);
+      console.log(`   departureHeader: ${departureHeader}`);
+    }
+
+    // Special handling for ER tours - filter tourists for second visit
     const tourTypeCode = booking?.tourType?.code;
     const isERTour = tourTypeCode === 'ER';
+    const isSecondVisitSameHotel = hotelAccommodations.length > 1 &&
+                                    hotelAccommodations[hotelAccommodations.length - 1].id === accommodation.id;
 
-    if (isERTour && isFirstTashkentHotel) {
-      arrivalHeader = 'Первый<br>заезд';
-      departureHeader = 'Первый<br>выезд';
-    } else if (isERTour && isSecondVisitSameHotel) {
-      arrivalHeader = 'Второй<br>заезд';
-      departureHeader = 'Второй<br>выезд';
-
+    if (isERTour && isSecondVisitSameHotel) {
       // Filter tourists for second visit - only UZ tourists return to Tashkent
       // TM tourists stay in Khiva (Malika Khorazm)
       tourists = tourists.filter(t => {
@@ -5518,24 +5544,36 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
       let arrivalHeader = 'Заезд';
       let departureHeader = 'Выезд';
 
-      // CRITICAL: Only ER tours use "Первый/Второй" labels for multiple visits
-      // ZA/CO/KAS tours come to Tashkent only once, so use simple "Заезд/Выезд"
-      const tourTypeCode = booking?.tourType?.code;
-      const isERTour = tourTypeCode === 'ER';
+      // NEW LOGIC: Check how many times the group stays at THIS hotel
+      // If multiple visits to same hotel, number them: Первый, Второй, Третий
+      console.log(`\n🔍 VISIT LABEL DEBUG (Combined PDF):`);
+      console.log(`   hotelAccommodations.length: ${hotelAccommodations.length}`);
+      console.log(`   visitIndex: ${visitIndex}`);
+      console.log(`   Condition check (length > 1): ${hotelAccommodations.length > 1}`);
 
-      if (isERTour && hotelAccommodations.length > 1) {
-        if (isFirstVisit) {
-          visitLabel = ' (Первый заезд)';
-          arrivalHeader = 'Первый<br>заезд';
-          departureHeader = 'Первый<br>выезд';
-        } else if (isLastVisit) {
-          visitLabel = ' (Второй заезд)';
-          arrivalHeader = 'Второй<br>заезд';
-          departureHeader = 'Второй<br>выезд';
-        } else {
-          visitLabel = ` (Заезд ${visitIndex + 1})`;
-        }
+      if (hotelAccommodations.length > 1) {
+        // Visit number is the index + 1
+        const visitNumber = visitIndex + 1;
+
+        const visitLabels = ['Первый', 'Второй', 'Третий', 'Четвёртый', 'Пятый'];
+        const visitLabelText = visitLabels[visitNumber - 1] || `${visitNumber}-й`;
+
+        visitLabel = ` (${visitLabelText} заезд)`;
+        arrivalHeader = `${visitLabelText}<br>заезд`;
+        departureHeader = `${visitLabelText}<br>выезд`;
+
+        console.log(`   ✅ Applied visit labels:`);
+        console.log(`   visitNumber: ${visitNumber}`);
+        console.log(`   visitLabelText: ${visitLabelText}`);
+        console.log(`   arrivalHeader: ${arrivalHeader}`);
+        console.log(`   departureHeader: ${departureHeader}`);
+      } else {
+        console.log(`   ❌ NOT applying visit labels (only 1 visit)`);
+        console.log(`   arrivalHeader: ${arrivalHeader}`);
+        console.log(`   departureHeader: ${departureHeader}`);
       }
+
+      const tourTypeCode = booking?.tourType?.code;
 
       // Check if this is the second visit to the same Tashkent hotel
       const isSecondVisitSameHotel = tashkentAccommodations.length > 1 &&
