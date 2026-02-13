@@ -4760,6 +4760,22 @@ export default function BookingDetail() {
         toast.error('Не создано ни одного размещения');
       }
 
+      // CRITICAL FOR KAS TOURS: Update all tourists' checkInDate to Uzbekistan arrival
+      if (tourTypeCode === 'KAS') {
+        console.log('📅 KAS tour: Updating tourists checkInDate to Uzbekistan arrival:', format(baseDate, 'yyyy-MM-dd'));
+
+        try {
+          for (const tourist of tourists) {
+            await touristsApi.update(booking.id, tourist.id, {
+              checkInDate: baseDate.toISOString()
+            });
+          }
+          console.log(`✅ Updated ${tourists.length} tourists checkInDate to ${format(baseDate, 'yyyy-MM-dd')}`);
+        } catch (error) {
+          console.error('Error updating tourists:', error);
+        }
+      }
+
       // Reload data to get newly created accommodations
       await loadData();
 
