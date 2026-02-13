@@ -4305,7 +4305,7 @@ export default function BookingDetail() {
       // - KAS tours: departureDate = tour start in Kazakhstan/Kyrgyzstan
       //              arrivalDate in Uzbekistan = departureDate + offset to first Uzbekistan hotel
       // - ZA tours: Excel date → booking.departureDate (+4) → Uzbekistan arrival (+4)
-      const tourTypeCode = booking?.tourType?.code;
+      // tourTypeCode already declared above at line 4224
 
       let baseDate;
       let baseDateLabel;
