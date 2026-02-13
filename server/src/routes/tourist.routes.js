@@ -4762,13 +4762,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
     const isFirstTashkentHotel = tashkentAccommodations.length > 0 &&
                                   tashkentAccommodations[0].id === accommodationIdInt;
 
-    // Check if current accommodation is the last Tashkent hotel and same as first hotel
-    // (second visit to the same hotel at the end of tour)
-    const isSecondVisitSameHotel = tashkentAccommodations.length > 1 &&
-                                    tashkentAccommodations[tashkentAccommodations.length - 1].id === accommodationIdInt &&
-                                    tashkentAccommodations[0].hotelId === tashkentAccommodations[tashkentAccommodations.length - 1].hotelId &&
-                                    tashkentAccommodations[0].id !== tashkentAccommodations[tashkentAccommodations.length - 1].id;
-
     // Set table headers based on position
     let arrivalHeader = 'Заезд';
     let departureHeader = 'Выезд';
@@ -4776,12 +4769,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
     // NEW LOGIC: Check how many times the group stays at THIS hotel
     // If multiple visits to same hotel, number them: Первый, Второй, Третий
     const hotelAccommodations = allAccommodations.filter(acc => acc.hotelId === accommodation.hotelId);
-
-    console.log(`\n🔍 VISIT LABEL DEBUG (Single PDF):`);
-    console.log(`   accommodation.id: ${accommodation.id}`);
-    console.log(`   accommodation.hotelId: ${accommodation.hotelId}`);
-    console.log(`   hotelAccommodations count: ${hotelAccommodations.length}`);
-    console.log(`   Condition check (length > 1): ${hotelAccommodations.length > 1}`);
 
     if (hotelAccommodations.length > 1) {
       // Find which visit number this accommodation is (1st, 2nd, 3rd, etc.)
@@ -4792,16 +4779,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 
       arrivalHeader = `${visitLabel}<br>заезд`;
       departureHeader = `${visitLabel}<br>выезд`;
-
-      console.log(`   ✅ Applied visit labels:`);
-      console.log(`   visitNumber: ${visitNumber}`);
-      console.log(`   visitLabel: ${visitLabel}`);
-      console.log(`   arrivalHeader: ${arrivalHeader}`);
-      console.log(`   departureHeader: ${departureHeader}`);
-    } else {
-      console.log(`   ❌ NOT applying visit labels (only 1 visit)`);
-      console.log(`   arrivalHeader: ${arrivalHeader}`);
-      console.log(`   departureHeader: ${departureHeader}`);
     }
 
     // Special handling for ER tours - filter tourists for second visit
@@ -5546,11 +5523,6 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
 
       // NEW LOGIC: Check how many times the group stays at THIS hotel
       // If multiple visits to same hotel, number them: Первый, Второй, Третий
-      console.log(`\n🔍 VISIT LABEL DEBUG (Combined PDF):`);
-      console.log(`   hotelAccommodations.length: ${hotelAccommodations.length}`);
-      console.log(`   visitIndex: ${visitIndex}`);
-      console.log(`   Condition check (length > 1): ${hotelAccommodations.length > 1}`);
-
       if (hotelAccommodations.length > 1) {
         // Visit number is the index + 1
         const visitNumber = visitIndex + 1;
@@ -5561,16 +5533,6 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
         visitLabel = ` (${visitLabelText} заезд)`;
         arrivalHeader = `${visitLabelText}<br>заезд`;
         departureHeader = `${visitLabelText}<br>выезд`;
-
-        console.log(`   ✅ Applied visit labels:`);
-        console.log(`   visitNumber: ${visitNumber}`);
-        console.log(`   visitLabelText: ${visitLabelText}`);
-        console.log(`   arrivalHeader: ${arrivalHeader}`);
-        console.log(`   departureHeader: ${departureHeader}`);
-      } else {
-        console.log(`   ❌ NOT applying visit labels (only 1 visit)`);
-        console.log(`   arrivalHeader: ${arrivalHeader}`);
-        console.log(`   departureHeader: ${departureHeader}`);
       }
 
       const tourTypeCode = booking?.tourType?.code;
