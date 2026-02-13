@@ -1747,9 +1747,9 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
         const month = tourStartDate.getUTCMonth();
         const day = tourStartDate.getUTCDate();
 
-        // For ZA tours: tourist.checkInDate is already arrival date, don't add +1
-        // For ER tours: add +1 day to get arrival date
-        const daysToAdd = (tourTypeCode === 'ZA' || tourTypeCode === 'CO' || tourTypeCode === 'KAS') ? 0 : 1;
+        // For ZA/KAS tours: tourist.checkInDate is already arrival date (start from Kazakhstan/Kyrgyzstan), don't add +1
+        // For CO/ER tours: fly from Germany, add +1 day to get arrival date in Uzbekistan
+        const daysToAdd = (tourTypeCode === 'ZA' || tourTypeCode === 'KAS') ? 0 : 1;
         const arrivalDate = new Date(Date.UTC(year, month, day + daysToAdd));
         checkInDate = arrivalDate.toISOString();
       } else {
