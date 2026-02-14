@@ -33,8 +33,17 @@ import {
   Car,
   Database,
   Download,
-  Upload
+  Upload,
+  Folder,
+  FolderOpen,
+  CheckCircle2
 } from 'lucide-react';
+import {
+  isFileSystemAccessSupported,
+  selectBaseFolder,
+  getBaseFolderHandle,
+  downloadAndSavePdf
+} from '../utils/fileSystemUtils';
 import html2pdf from 'html2pdf.js';
 
 // Import booking components
@@ -463,6 +472,7 @@ export default function BookingDetail() {
   const [hotels, setHotels] = useState([]);
   const [bookingRooms, setBookingRooms] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
+  const [openCalculationBreakdowns, setOpenCalculationBreakdowns] = useState({}); // Track which breakdown sections are open
   const [roomsTotalAmount, setRoomsTotalAmount] = useState(0);
   const [tourists, setTourists] = useState([]);
   const [routes, setRoutes] = useState([]);
@@ -478,6 +488,10 @@ export default function BookingDetail() {
   });
   // Accommodation-specific rooming lists (keyed by accommodationId)
   const [accommodationRoomingLists, setAccommodationRoomingLists] = useState({});
+
+  // PDF Auto-save folder configuration
+  const [pdfFolderConfigured, setPdfFolderConfigured] = useState(false);
+  const [pdfFolderName, setPdfFolderName] = useState('');
 
   // Track previous departureDate to detect when it changes
   const prevDepartureDateRef = useRef(null);
@@ -1857,6 +1871,88 @@ export default function BookingDetail() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Check if PDF folder is configured
+  useEffect(() => {
+    const checkFolderConfiguration = async () => {
+      if (!isFileSystemAccessSupported()) {
+        return; // API not supported
+      }
+
+      try {
+        const handle = await getBaseFolderHandle();
+        if (handle) {
+          setPdfFolderConfigured(true);
+          setPdfFolderName(handle.name);
+        }
+      } catch (error) {
+        console.error('Error checking folder configuration:', error);
+      }
+    };
+
+    checkFolderConfiguration();
+  }, []);
+
+  // Configure PDF auto-save folder
+  const handleConfigurePdfFolder = async () => {
+    try {
+      const result = await selectBaseFolder();
+
+      if (result.success) {
+        setPdfFolderConfigured(true);
+        setPdfFolderName(result.folderName);
+        toast.success(`Papka tanlandi: ${result.folderName}`);
+      } else if (result.error && !result.error.includes('cancelled')) {
+        toast.error(`Xatolik: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error configuring folder:', error);
+      toast.error('Papka tanlashda xatolik');
+    }
+  };
+
+  // Download PDF and auto-save to folder
+  const handleDownloadPdfWithAutoSave = async (hotelId, accommodationId, hotelName, isCombined) => {
+    try {
+      // Determine preview URL
+      const previewUrl = isCombined
+        ? bookingsApi.getHotelRequestCombined(id, hotelId)
+        : bookingsApi.getHotelRequestPreview(id, accommodationId);
+
+      // Open in new window for printing (traditional behavior)
+      const printWindow = window.open(previewUrl, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 500);
+        });
+      }
+
+      // Auto-save to folder if configured
+      if (pdfFolderConfigured && booking?.tourType?.code && booking?.bookingNumber) {
+        toast.loading('Papkaga saqlanmoqda...', { id: 'pdf-save' });
+
+        const result = await downloadAndSavePdf({
+          url: previewUrl,
+          tourType: booking.tourType.code,
+          bookingNumber: booking.bookingNumber,
+          hotelName: hotelName,
+          isCombined
+        });
+
+        if (result.success) {
+          toast.success(`✓ Saqlandi: ${result.path}`, { id: 'pdf-save', duration: 4000 });
+        } else {
+          toast.error(`Xatolik: ${result.error}`, { id: 'pdf-save' });
+        }
+      }
+
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast.error('PDF yuklanmadi');
     }
   };
 
@@ -4223,9 +4319,9 @@ export default function BookingDetail() {
 
     const tourTypeCode = booking?.tourType?.code;
 
-    // Check tour type - only ER, CO, and KAS supported
-    if (tourTypeCode !== 'ER' && tourTypeCode !== 'CO' && tourTypeCode !== 'KAS') {
-      toast.error('Бу функция фақат ER, CO ва KAS турлари учун');
+    // Check tour type - only ER, CO, KAS, and ZA supported
+    if (tourTypeCode !== 'ER' && tourTypeCode !== 'CO' && tourTypeCode !== 'KAS' && tourTypeCode !== 'ZA') {
+      toast.error('Бу функция фақат ER, CO, KAS ва ZA турлари учун');
       return;
     }
 
@@ -4763,6 +4859,22 @@ export default function BookingDetail() {
       // CRITICAL FOR KAS TOURS: Update all tourists' checkInDate to Uzbekistan arrival
       if (tourTypeCode === 'KAS') {
         console.log('📅 KAS tour: Updating tourists checkInDate to Uzbekistan arrival:', format(baseDate, 'yyyy-MM-dd'));
+
+        try {
+          for (const tourist of tourists) {
+            await touristsApi.update(booking.id, tourist.id, {
+              checkInDate: baseDate.toISOString()
+            });
+          }
+          console.log(`✅ Updated ${tourists.length} tourists checkInDate to ${format(baseDate, 'yyyy-MM-dd')}`);
+        } catch (error) {
+          console.error('Error updating tourists:', error);
+        }
+      }
+
+      // CRITICAL FOR ZA TOURS: Update all tourists' checkInDate to Uzbekistan arrival (departureDate + 4)
+      if (tourTypeCode === 'ZA') {
+        console.log('📅 ZA tour: Updating tourists checkInDate to Uzbekistan arrival:', format(baseDate, 'yyyy-MM-dd'));
 
         try {
           for (const tourist of tourists) {
@@ -14250,6 +14362,32 @@ export default function BookingDetail() {
                   Hotel Accommodation
                 </h2>
                 <div className="flex items-center gap-3">
+                  {/* PDF Auto-save Folder Configuration */}
+                  {isFileSystemAccessSupported() && (
+                    <button
+                      onClick={handleConfigurePdfFolder}
+                      className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold shadow-md ${
+                        pdfFolderConfigured
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
+                          : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
+                      }`}
+                      title={pdfFolderConfigured ? `PDF auto-save: ${pdfFolderName}` : 'PDF papkasini tanlash (bir marta)'}
+                    >
+                      {pdfFolderConfigured ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <FolderOpen className="w-4 h-4" />
+                          <span className="text-xs">{pdfFolderName}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Folder className="w-4 h-4" />
+                          <span className="text-xs">PDF Papka</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
                   {/* ER Hotels button - only for ER tours */}
                   {booking?.tourType?.code === 'ER' && (
                     <button
@@ -14286,6 +14424,19 @@ export default function BookingDetail() {
                     >
                       <Wand2 className="w-5 h-5" />
                       KAS Hotels
+                    </button>
+                  )}
+
+                  {/* ZA Hotels button - only for ZA tours */}
+                  {booking?.tourType?.code === 'ZA' && (
+                    <button
+                      onClick={autoFillAccommodationsFromItinerary}
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
+                      title="Создать отели для ZA тура (Zentralasian)"
+                    >
+                      <Wand2 className="w-5 h-5" />
+                      ZA Hotels
                     </button>
                   )}
                   <button
@@ -14600,7 +14751,25 @@ export default function BookingDetail() {
                                 });
                               }
 
-                              if (accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
+                              // CRITICAL FIX: Check if rooming list matches saved database values
+                              // If rooming list tourist count differs from saved totalGuests, recalculate from rooming list
+                              // This handles MIXED groups where UZ/TM tourists split differently per hotel
+                              const shouldRecalculate = accTourists.length > 0 &&
+                                                        acc.totalGuests &&
+                                                        accTourists.length !== acc.totalGuests;
+
+                              if (shouldRecalculate) {
+                                console.log(`   ⚠️ Rooming list (${accTourists.length} tourists) doesn't match database (${acc.totalGuests} guests) - recalculating...`);
+                              }
+
+                              // Use saved database values ONLY if they match rooming list
+                              if (acc.totalCost && acc.totalCost > 0 && !shouldRecalculate) {
+                                console.log(`   ✓ Using saved totalCost from database: ${acc.totalCost}`);
+                                totalCost = parseFloat(acc.totalCost) || 0;
+                                totalRooms = acc.totalRooms || 0;
+                                totalGuests = acc.totalGuests || 0;
+                                usedRoomingList = false; // Not calculating, just using saved value
+                              } else if (accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
                                 const accCheckIn = new Date(acc.checkInDate);
                                 accCheckIn.setHours(0, 0, 0, 0);
                                 const accCheckOut = new Date(acc.checkOutDate);
@@ -14759,6 +14928,99 @@ export default function BookingDetail() {
                                 totalGuests = acc.totalGuests || 0;
                                 totalCost = parseFloat(acc.totalCost) || 0;
 
+                                // CRITICAL: Populate calculationBreakdown even when using saved values
+                                // This ensures "Hisob-kitob tafsilotlari" section always appears
+                                if (accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
+                                  const accCheckIn = new Date(acc.checkInDate);
+                                  accCheckIn.setHours(0, 0, 0, 0);
+                                  const accCheckOut = new Date(acc.checkOutDate);
+                                  accCheckOut.setHours(0, 0, 0, 0);
+
+                                  // Calculate guest-nights per room type for breakdown display
+                                  const guestNightsPerRoomType = {};
+                                  const touristDetails = {};
+
+                                  accTourists.forEach(tourist => {
+                                    let checkIn, checkOut;
+
+                                    if (tourist.checkInDate && tourist.checkOutDate) {
+                                      checkIn = new Date(tourist.checkInDate);
+                                      checkOut = new Date(tourist.checkOutDate);
+                                    } else {
+                                      checkIn = new Date(accCheckIn);
+                                      checkOut = new Date(accCheckOut);
+                                    }
+
+                                    checkIn.setHours(0, 0, 0, 0);
+                                    checkOut.setHours(0, 0, 0, 0);
+
+                                    const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+
+                                    let roomType = (tourist.roomPreference || '').toUpperCase();
+                                    if (isPAX) {
+                                      roomType = 'PAX';
+                                    } else {
+                                      if (roomType === 'DOUBLE' || roomType === 'DZ') roomType = 'DBL';
+                                      if (roomType === 'TWIN') roomType = 'TWN';
+                                      if (roomType === 'SINGLE' || roomType === 'EZ') roomType = 'SNGL';
+                                    }
+
+                                    if (!guestNightsPerRoomType[roomType]) {
+                                      guestNightsPerRoomType[roomType] = 0;
+                                    }
+                                    guestNightsPerRoomType[roomType] += nights;
+
+                                    if (!touristDetails[roomType]) {
+                                      touristDetails[roomType] = [];
+                                    }
+                                    touristDetails[roomType].push({
+                                      name: tourist.lastName || 'Guest',
+                                      nights: nights,
+                                      checkIn: checkIn.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+                                      checkOut: checkOut.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+                                    });
+                                  });
+
+                                  // Populate breakdown from saved rooms data
+                                  acc.rooms?.forEach(room => {
+                                    const pricePerNight = parseFloat(room.pricePerNight) || 0;
+                                    let normalizedRoomType = room.roomTypeCode?.toUpperCase();
+                                    if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
+                                    if (normalizedRoomType === 'TWIN') normalizedRoomType = 'TWN';
+                                    if (normalizedRoomType === 'SINGLE') normalizedRoomType = 'SNGL';
+
+                                    const guestNights = guestNightsPerRoomType[normalizedRoomType] || 0;
+                                    if (guestNights === 0) return;
+
+                                    let roomNights;
+                                    if (normalizedRoomType === 'PAX') {
+                                      roomNights = guestNights;
+                                    } else if (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL') {
+                                      roomNights = guestNights / 2;
+                                    } else {
+                                      roomNights = guestNights;
+                                    }
+
+                                    const roomTypeCost = roomNights * pricePerNight;
+
+                                    calculationBreakdown.push({
+                                      roomType: normalizedRoomType,
+                                      roomNights: roomNights,
+                                      pricePerNight: pricePerNight,
+                                      totalCost: roomTypeCost,
+                                      guestNights: guestNights,
+                                      details: touristDetails[normalizedRoomType] || []
+                                    });
+
+                                    const hotelRoomType = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
+                                    if (hotelRoomType?.currency) {
+                                      currency = hotelRoomType.currency;
+                                    }
+                                  });
+
+                                  console.log(`   ✓ Populated breakdown from saved data: ${calculationBreakdown.length} room types`);
+                                }
+
                                 // If still 0, calculate from rooms
                                 if (totalCost === 0 && acc.rooms?.length > 0) {
                                   acc.rooms.forEach(room => {
@@ -14898,7 +15160,16 @@ export default function BookingDetail() {
 
                                   {/* Calculation Breakdown */}
                                   {calculationBreakdown.length > 0 && (
-                                    <details className="group">
+                                    <details
+                                      className="group"
+                                      open={openCalculationBreakdowns[acc.id] || false}
+                                      onToggle={(e) => {
+                                        setOpenCalculationBreakdowns(prev => ({
+                                          ...prev,
+                                          [acc.id]: e.target.open
+                                        }));
+                                      }}
+                                    >
                                       <summary className="cursor-pointer px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-between">
                                         <span className="text-sm font-medium text-gray-700">📊 Hisob-kitob tafsilotlari</span>
                                         <ChevronDown className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" />
@@ -15051,25 +15322,18 @@ export default function BookingDetail() {
                               // Check if this hotel has multiple visits in the booking
                               const hotelId = acc.hotel?.id;
                               const visitsToSameHotel = accommodations.filter(a => a.hotel?.id === hotelId);
+                              const isCombined = visitsToSameHotel.length > 1;
 
-                              // Use combined route if multiple visits, otherwise single accommodation route
-                              const previewUrl = visitsToSameHotel.length > 1
-                                ? bookingsApi.getHotelRequestCombined(id, hotelId)
-                                : bookingsApi.getHotelRequestPreview(id, acc.id);
-
-                              // Open in new window for printing/PDF download
-                              const printWindow = window.open(previewUrl, '_blank');
-                              if (printWindow) {
-                                // Wait for content to load then trigger print dialog
-                                printWindow.addEventListener('load', () => {
-                                  setTimeout(() => {
-                                    printWindow.print();
-                                  }, 500);
-                                });
-                              }
+                              // Use new auto-save function
+                              handleDownloadPdfWithAutoSave(
+                                hotelId,
+                                acc.id,
+                                acc.hotel?.name || 'Hotel',
+                                isCombined
+                              );
                             }}
                             className="p-3 text-green-600 bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md"
-                            title="Скачать заявку для отеля (Print to PDF)"
+                            title={pdfFolderConfigured ? `PDF yuklab olish va papkaga saqlash (${pdfFolderName})` : "Скачать заявку для отеля (Print to PDF)"}
                           >
                             <FileDown className="w-5 h-5" />
                           </button>
