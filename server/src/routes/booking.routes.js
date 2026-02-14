@@ -1714,6 +1714,45 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
       console.log(`   📊 Khiva Hotel Group Analysis: UZ=${hasUZ}, TM=${hasTM}, Mixed=${isMixedGroup}`);
     }
 
+    // CRITICAL FIX: For ER MIXED groups, filter last Tashkent hotel to only UZ tourists
+    // This handles case where 6th hotel (Arien Plaza) is DIFFERENT from first Tashkent hotel
+    const currentCityName = accommodation.hotel?.city?.name?.toLowerCase() || '';
+    const isTashkentHotel = currentCityName.includes('ташкент') || currentCityName.includes('tashkent') || currentCityName.includes('toshkent');
+    const isLastTashkentHotel = isTashkentHotel &&
+                                 tashkentAccommodations.length > 0 &&
+                                 tashkentAccommodations[tashkentAccommodations.length - 1].id === accommodationIdInt;
+    const tourTypeCode = booking?.tourType?.code;
+    const isERTour = tourTypeCode === 'ER';
+
+    // For Tashkent hotels, recalculate isMixedGroup if it wasn't already calculated
+    if (!isTurkmenistanHotel && isTashkentHotel) {
+      let hasUZ = false;
+      let hasTM = false;
+      tourists.forEach(t => {
+        const placement = (t.accommodation || '').toLowerCase();
+        if (placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz') {
+          hasUZ = true;
+        }
+        if (placement.includes('turkmen') || placement.includes('туркмен') || placement === 'tm') {
+          hasTM = true;
+        }
+      });
+      isMixedGroup = hasUZ && hasTM;
+      console.log(`   📊 Tashkent Hotel Group Analysis: UZ=${hasUZ}, TM=${hasTM}, Mixed=${isMixedGroup}`);
+    }
+
+    // For ER MIXED groups: Last Tashkent hotel = only UZ tourists (6th hotel return)
+    if (isERTour && isMixedGroup && isLastTashkentHotel && !isSecondVisitSameHotel) {
+      console.log(`   🔥 ER MIXED: Last Tashkent hotel (${accommodation.hotel?.name}) - filtering to UZ tourists only`);
+      const beforeCount = tourists.length;
+      tourists = tourists.filter(t => {
+        const placement = (t.accommodation || '').toLowerCase();
+        const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
+        return isUzbekistan;
+      });
+      console.log(`   ✅ Filtered from ${beforeCount} to ${tourists.length} UZ tourists`);
+    }
+
     // Merge tourists with accommodation-specific data
     const roomingList = tourists.map(tourist => {
       const entry = roomingListEntries.find(e => e.touristId === tourist.id);
