@@ -14754,12 +14754,26 @@ export default function BookingDetail() {
                               // CRITICAL FIX: Check if rooming list matches saved database values
                               // If rooming list tourist count differs from saved totalGuests, recalculate from rooming list
                               // This handles MIXED groups where UZ/TM tourists split differently per hotel
-                              const shouldRecalculate = accTourists.length > 0 &&
-                                                        acc.totalGuests &&
-                                                        accTourists.length !== acc.totalGuests;
+
+                              // Check if this is a Khiva hotel (ER MIXED scenario)
+                              const cityName = acc.hotel?.city?.name?.toLowerCase() || '';
+                              const hotelName = acc.hotel?.name?.toLowerCase() || '';
+                              const isKhivaHotel = cityName.includes('хива') || cityName.includes('khiva') || cityName.includes('chiwa') ||
+                                                   hotelName.includes('khiva') || hotelName.includes('хива') || hotelName.includes('chiwa');
+
+                              // Check if this is ER tour
+                              const isERTour = booking?.tourType?.code === 'ER';
+
+                              // For ER tours with Khiva hotels, ALWAYS recalculate because UZ tourists have different nights
+                              const shouldRecalculate = (accTourists.length > 0 && acc.totalGuests && accTourists.length !== acc.totalGuests) ||
+                                                        (isERTour && isKhivaHotel && accTourists.length > 0);
 
                               if (shouldRecalculate) {
-                                console.log(`   ⚠️ Rooming list (${accTourists.length} tourists) doesn't match database (${acc.totalGuests} guests) - recalculating...`);
+                                if (isERTour && isKhivaHotel) {
+                                  console.log(`   🔥 ER + Khiva: Force recalculate for ${acc.hotel?.name} (UZ tourists have different nights)`);
+                                } else {
+                                  console.log(`   ⚠️ Rooming list (${accTourists.length} tourists) doesn't match database (${acc.totalGuests} guests) - recalculating...`);
+                                }
                               }
 
                               // Use saved database values ONLY if they match rooming list
@@ -14930,7 +14944,8 @@ export default function BookingDetail() {
 
                                 // CRITICAL: Populate calculationBreakdown even when using saved values
                                 // This ensures "Hisob-kitob tafsilotlari" section always appears
-                                if (accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
+                                console.log(`   🔍 Fallback breakdown for ${acc.hotel?.name}: accTourists.length = ${accTourists?.length || 0}`);
+                                if (accTourists && accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
                                   const accCheckIn = new Date(acc.checkInDate);
                                   accCheckIn.setHours(0, 0, 0, 0);
                                   const accCheckOut = new Date(acc.checkOutDate);
@@ -14946,15 +14961,18 @@ export default function BookingDetail() {
                                     if (tourist.checkInDate && tourist.checkOutDate) {
                                       checkIn = new Date(tourist.checkInDate);
                                       checkOut = new Date(tourist.checkOutDate);
+                                      console.log(`      → ${tourist.fullName || tourist.lastName}: ${tourist.checkInDate} → ${tourist.checkOutDate}`);
                                     } else {
                                       checkIn = new Date(accCheckIn);
                                       checkOut = new Date(accCheckOut);
+                                      console.log(`      → ${tourist.fullName || tourist.lastName}: using acc dates (no individual dates)`);
                                     }
 
                                     checkIn.setHours(0, 0, 0, 0);
                                     checkOut.setHours(0, 0, 0, 0);
 
                                     const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+                                    console.log(`         Nights: ${nights}`);
 
                                     let roomType = (tourist.roomPreference || '').toUpperCase();
                                     if (isPAX) {
