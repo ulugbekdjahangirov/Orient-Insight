@@ -92,6 +92,10 @@ export default function HotelAccommodationForm({
     try {
       const response = await bookingsApi.getRoomingList(bookingId, accommodationId);
       const roomingData = response.data.roomingList || [];
+      console.log(`📥 Loaded rooming list for accommodation ${accommodationId}:`, {
+        count: roomingData.length,
+        tourists: roomingData.map(t => ({name: t.fullName || `${t.firstName} ${t.lastName}`, accommodation: t.accommodation}))
+      });
       // Check Baetgen's raw data from API
       const baetgen = roomingData.find(t => t.fullName?.includes('Baetgen'));
       if (baetgen) {
@@ -874,6 +878,15 @@ export default function HotelAccommodationForm({
     // Use rooming list if available, otherwise use tourists
     const dataSource = roomingList.length > 0 ? roomingList : tourists;
 
+    console.log('🔧 autoFillFromRoomingList called:', {
+      roomingListLength: roomingList.length,
+      touristsLength: tourists.length,
+      dataSourceLength: dataSource.length,
+      hotelId: formData.hotelId,
+      checkIn: formData.checkInDate,
+      checkOut: formData.checkOutDate
+    });
+
     if (dataSource.length === 0) {
       toast.error('No tourist data available');
       return;
@@ -904,20 +917,26 @@ export default function HotelAccommodationForm({
 
         // If checkout is within 2 days of tour end, this is the last hotel
         const daysToEnd = Math.abs((tourEndDate - accCheckOut) / (1000 * 60 * 60 * 24));
+        console.log(`  🏨 Tashkent hotel check: daysToEnd=${daysToEnd}, tourEnd=${booking.endDate}, checkOut=${formData.checkOutDate}`);
+
         if (daysToEnd <= 2) {
           // Check if there was an earlier accommodation at the same hotel
           // This is a simplified check - we filter to UZ tourists for last Tashkent hotel
+          const beforeFilter = dataSource.length;
           filteredTourists = dataSource.filter(t => {
             const placement = (t.accommodation || '').toLowerCase();
             // Only include tourists WITHOUT "turkmen" in their placement
             const isTM = placement.includes('turkmen') || placement.includes('туркмен');
             return !isTM;
           });
+          console.log(`  🔥 Last Tashkent hotel - filtered from ${beforeFilter} to ${filteredTourists.length} UZ tourists`);
         }
       }
 
       // For Malika Khorazm, we still count all tourists but note that UZ stay fewer nights
     }
+
+    console.log(`  ✅ Final filteredTourists count: ${filteredTourists.length}`);
 
     // Count room types from tourists
     const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
@@ -944,12 +963,15 @@ export default function HotelAccommodationForm({
     // Calculate extra nights for early arrivals / late departures
     const extraNightsByRoomType = { DBL: 0, TWN: 0, SNGL: 0 };
 
+    // Declare accNights outside the if block to avoid scope error
+    let accNights = 0;
+
     if (formData.checkInDate && formData.checkOutDate) {
       const accCheckIn = new Date(formData.checkInDate);
       accCheckIn.setHours(0, 0, 0, 0);
       const accCheckOut = new Date(formData.checkOutDate);
       accCheckOut.setHours(0, 0, 0, 0);
-      const accNights = Math.max(0, Math.round((accCheckOut - accCheckIn) / (1000 * 60 * 60 * 24)));
+      accNights = Math.max(0, Math.round((accCheckOut - accCheckIn) / (1000 * 60 * 60 * 24)));
 
       ['DBL', 'TWN', 'SNGL'].forEach(roomType => {
         touristsByRoomType[roomType].forEach(tourist => {
@@ -1065,6 +1087,7 @@ export default function HotelAccommodationForm({
     }
 
     if (newRooms.length > 0) {
+      console.log('  🎯 Setting rooms:', newRooms);
       setRooms(newRooms);
       const totalTourists = filteredTourists.length;
       const totalRooms = roomCounts.DBL + roomCounts.TWN + roomCounts.SNGL;
@@ -1072,6 +1095,7 @@ export default function HotelAccommodationForm({
       const message = extraNightsTotal > 0
         ? `Calculated from Rooming List: ${totalTourists} guests, ${totalRooms} rooms (+${extraNightsTotal} extra nights)`
         : `Calculated from Rooming List: ${totalTourists} guests, ${totalRooms} rooms`;
+      console.log('  ✅ ' + message);
       toast.success(message);
     } else {
       toast.error('Could not calculate rooms from Rooming List');
