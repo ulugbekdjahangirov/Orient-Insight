@@ -331,24 +331,12 @@ export default function Price() {
     }
   };
 
-  const loadHotelPrices = () => {
-    const storageKey = 'er-hotel-prices';
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setHotelPrices(JSON.parse(saved));
-    } else {
-      setHotelPrices(defaultHotelPrices);
-    }
+  const loadHotelPrices = async () => {
+    await loadPriceConfig('ER', 'hotels', selectedPaxTier, 'er-hotel-prices', defaultHotelPrices, setHotelPrices);
   };
 
-  const loadTransportRoutes = () => {
-    const storageKey = `er-transport-${selectedPaxTier}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setTransportRoutes(JSON.parse(saved));
-    } else {
-      setTransportRoutes(defaultTransportRoutes);
-    }
+  const loadTransportRoutes = async () => {
+    await loadPriceConfig('ER', 'transport', selectedPaxTier, `er-transport-${selectedPaxTier}`, defaultTransportRoutes, setTransportRoutes);
   };
 
   const savePrices = () => {
@@ -377,6 +365,40 @@ export default function Price() {
       console.error('❌ Database save error:', error);
       toast.error('Сохранено в браузере, но не в базе данных!');
       return false;
+    }
+  };
+
+  // CRITICAL FIX: Helper function to load from localStorage OR database
+  const loadPriceConfig = async (tourType, category, paxTier, localStorageKey, defaultValue, setter) => {
+    try {
+      // 1. Try localStorage first (fastest)
+      const saved = localStorage.getItem(localStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log(`✅ Loaded from localStorage (${localStorageKey})`);
+        setter(parsed);
+        return;
+      }
+
+      // 2. If localStorage empty, try database
+      console.log(`⚠️ localStorage empty, loading from database (${tourType}/${category}/${paxTier})...`);
+      const response = await pricesApi.get(tourType.toUpperCase(), category, paxTier);
+
+      if (response.data && response.data.items && response.data.items.length > 0) {
+        console.log(`✅ Loaded from database, caching to localStorage (${localStorageKey})`);
+        setter(response.data.items);
+        // Cache to localStorage for next time
+        localStorage.setItem(localStorageKey, JSON.stringify(response.data.items));
+        return;
+      }
+
+      // 3. If both empty, use defaults
+      console.log(`⚠️ No data in database, using defaults (${localStorageKey})`);
+      setter(defaultValue);
+    } catch (error) {
+      console.error(`❌ Database load error (${localStorageKey}):`, error);
+      // On error, use defaults
+      setter(defaultValue);
     }
   };
 
@@ -725,14 +747,8 @@ export default function Price() {
   };
 
   // Railway functions
-  const loadRailwayRoutes = () => {
-    const storageKey = 'er-railway-routes';
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setRailwayRoutes(JSON.parse(saved));
-    } else {
-      setRailwayRoutes(defaultRailwayRoutes);
-    }
+  const loadRailwayRoutes = async () => {
+    await loadPriceConfig('ER', 'railway', selectedPaxTier, 'er-railway-routes', defaultRailwayRoutes, setRailwayRoutes);
   };
 
   const saveRailwayRoutes = async () => {
@@ -783,14 +799,8 @@ export default function Price() {
   };
 
   // Fly functions
-  const loadFlyRoutes = () => {
-    const storageKey = 'er-fly-routes';
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setFlyRoutes(JSON.parse(saved));
-    } else {
-      setFlyRoutes(defaultFlyRoutes);
-    }
+  const loadFlyRoutes = async () => {
+    await loadPriceConfig('ER', 'fly', selectedPaxTier, 'er-fly-routes', defaultFlyRoutes, setFlyRoutes);
   };
 
   const saveFlyRoutes = async () => {
@@ -841,9 +851,8 @@ export default function Price() {
   };
 
   // Meal functions
-  const loadMealItems = () => {
-    const saved = localStorage.getItem('er-meal-items');
-    setMealItems(saved ? JSON.parse(saved) : defaultMealItems);
+  const loadMealItems = async () => {
+    await loadPriceConfig('ER', 'meal', selectedPaxTier, 'er-meal-items', defaultMealItems, setMealItems);
   };
   const saveMealItems = async () => {
     const storageKey = 'er-meal-items';
@@ -875,9 +884,8 @@ export default function Price() {
   };
 
   // Sightseing functions
-  const loadSightseingItems = () => {
-    const saved = localStorage.getItem('er-sightseing-items');
-    setSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
+  const loadSightseingItems = async () => {
+    await loadPriceConfig('ER', 'sightseeing', selectedPaxTier, 'er-sightseing-items', defaultSightseingItems, setSightseingItems);
   };
   const saveSightseingItems = async () => {
     const storageKey = 'er-sightseing-items';
@@ -909,9 +917,8 @@ export default function Price() {
   };
 
   // Guide functions
-  const loadGuideItems = () => {
-    const saved = localStorage.getItem('er-guide-items');
-    setGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
+  const loadGuideItems = async () => {
+    await loadPriceConfig('ER', 'guide', selectedPaxTier, 'er-guide-items', defaultGuideItems, setGuideItems);
   };
   const saveGuideItems = async () => {
     const storageKey = 'er-guide-items';
@@ -943,9 +950,8 @@ export default function Price() {
   };
 
   // Shou functions
-  const loadShouItems = () => {
-    const saved = localStorage.getItem('er-shou-items');
-    setShouItems(saved ? JSON.parse(saved) : defaultShouItems);
+  const loadShouItems = async () => {
+    await loadPriceConfig('ER', 'shou', selectedPaxTier, 'er-shou-items', defaultShouItems, setShouItems);
   };
   const saveShouItems = async () => {
     const storageKey = 'er-shou-items';
@@ -995,37 +1001,20 @@ export default function Price() {
   };
 
   // Zusatzkosten load functions
-  const loadZusatzkostenItems = () => {
-    const saved = localStorage.getItem('er_zusatzkosten');
-    console.log('🔵 Loading ER Zusatzkosten from localStorage:', saved);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      console.log('✅ Loaded ER Zusatzkosten:', parsed);
-      setZusatzkostenItems(parsed);
-    } else {
-      console.log('⚠️ No ER Zusatzkosten data found in localStorage');
-    }
+  const loadZusatzkostenItems = async () => {
+    await loadPriceConfig('ER', 'zusatzkosten', selectedPaxTier, 'er_zusatzkosten', [], setZusatzkostenItems);
   };
 
-  const loadCoZusatzkostenItems = () => {
-    const saved = localStorage.getItem('co_zusatzkosten');
-    if (saved) {
-      setCoZusatzkostenItems(JSON.parse(saved));
-    }
+  const loadCoZusatzkostenItems = async () => {
+    await loadPriceConfig('CO', 'zusatzkosten', selectedPaxTier, 'co_zusatzkosten', [], setCoZusatzkostenItems);
   };
 
-  const loadKasZusatzkostenItems = () => {
-    const saved = localStorage.getItem('kas_zusatzkosten');
-    if (saved) {
-      setKasZusatzkostenItems(JSON.parse(saved));
-    }
+  const loadKasZusatzkostenItems = async () => {
+    await loadPriceConfig('KAS', 'zusatzkosten', selectedPaxTier, 'kas_zusatzkosten', [], setKasZusatzkostenItems);
   };
 
-  const loadZaZusatzkostenItems = () => {
-    const saved = localStorage.getItem('za_zusatzkosten');
-    if (saved) {
-      setZaZusatzkostenItems(JSON.parse(saved));
-    }
+  const loadZaZusatzkostenItems = async () => {
+    await loadPriceConfig('ZA', 'zusatzkosten', selectedPaxTier, 'za_zusatzkosten', [], setZaZusatzkostenItems);
   };
 
   // Zusatzkosten save functions
@@ -1062,9 +1051,8 @@ export default function Price() {
   };
 
   // ==================== CO MODULE FUNCTIONS ====================
-  const loadCoHotelPrices = () => {
-    const saved = localStorage.getItem('co-hotel-prices');
-    setCoHotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
+  const loadCoHotelPrices = async () => {
+    await loadPriceConfig('CO', 'hotels', selectedPaxTier, 'co-hotel-prices', defaultHotelPrices, setCoHotelPrices);
   };
   const saveCoHotelPrices = async () => {
     const storageKey = 'co-hotel-prices';
@@ -1085,14 +1073,8 @@ export default function Price() {
     if (confirm('Bu mehmonxonani o\'chirmoqchimisiz?')) setCoHotelPrices(coHotelPrices.filter(h => h.id !== id));
   };
 
-  const loadCoTransportRoutes = () => {
-    const storageKey = `co-transport-${selectedPaxTier}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setCoTransportRoutes(JSON.parse(saved));
-    } else {
-      setCoTransportRoutes([]);
-    }
+  const loadCoTransportRoutes = async () => {
+    await loadPriceConfig('CO', 'transport', selectedPaxTier, `co-transport-${selectedPaxTier}`, [], setCoTransportRoutes);
   };
   const saveCoTransportRoutes = async () => {
     const storageKey = `co-transport-${selectedPaxTier}`;
@@ -1111,9 +1093,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setCoTransportRoutes(coTransportRoutes.filter(r => r.id !== id));
   };
 
-  const loadCoRailwayRoutes = () => {
-    const saved = localStorage.getItem('co-railway-routes');
-    setCoRailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
+  const loadCoRailwayRoutes = async () => {
+    await loadPriceConfig('CO', 'railway', selectedPaxTier, 'co-railway-routes', defaultRailwayRoutes, setCoRailwayRoutes);
   };
   const saveCoRailwayRoutes = async () => {
     const storageKey = 'co-railway-routes';
@@ -1132,9 +1113,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setCoRailwayRoutes(coRailwayRoutes.filter(r => r.id !== id));
   };
 
-  const loadCoFlyRoutes = () => {
-    const saved = localStorage.getItem('co-fly-routes');
-    setCoFlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
+  const loadCoFlyRoutes = async () => {
+    await loadPriceConfig('CO', 'fly', selectedPaxTier, 'co-fly-routes', defaultFlyRoutes, setCoFlyRoutes);
   };
   const saveCoFlyRoutes = async () => {
     const storageKey = 'co-fly-routes';
@@ -1153,9 +1133,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setCoFlyRoutes(coFlyRoutes.filter(r => r.id !== id));
   };
 
-  const loadCoMealItems = () => {
-    const saved = localStorage.getItem('co-meal-items');
-    setCoMealItems(saved ? JSON.parse(saved) : defaultMealItems);
+  const loadCoMealItems = async () => {
+    await loadPriceConfig('CO', 'meal', selectedPaxTier, 'co-meal-items', defaultMealItems, setCoMealItems);
   };
   const saveCoMealItems = async () => {
     const storageKey = 'co-meal-items';
@@ -1174,9 +1153,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setCoMealItems(coMealItems.filter(m => m.id !== id));
   };
 
-  const loadCoSightseingItems = () => {
-    const saved = localStorage.getItem('co-sightseing-items');
-    setCoSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
+  const loadCoSightseingItems = async () => {
+    await loadPriceConfig('CO', 'sightseeing', selectedPaxTier, 'co-sightseing-items', defaultSightseingItems, setCoSightseingItems);
   };
   const saveCoSightseingItems = async () => {
     const storageKey = 'co-sightseing-items';
@@ -1195,9 +1173,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setCoSightseingItems(coSightseingItems.filter(s => s.id !== id));
   };
 
-  const loadCoGuideItems = () => {
-    const saved = localStorage.getItem('co-guide-items');
-    setCoGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
+  const loadCoGuideItems = async () => {
+    await loadPriceConfig('CO', 'guide', selectedPaxTier, 'co-guide-items', defaultGuideItems, setCoGuideItems);
   };
   const saveCoGuideItems = async () => {
     const storageKey = 'co-guide-items';
@@ -1216,9 +1193,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setCoGuideItems(coGuideItems.filter(g => g.id !== id));
   };
 
-  const loadCoShouItems = () => {
-    const saved = localStorage.getItem('co-shou-items');
-    setCoShouItems(saved ? JSON.parse(saved) : defaultShouItems);
+  const loadCoShouItems = async () => {
+    await loadPriceConfig('CO', 'shou', selectedPaxTier, 'co-shou-items', defaultShouItems, setCoShouItems);
   };
   const saveCoShouItems = async () => {
     const storageKey = 'co-shou-items';
@@ -1250,9 +1226,8 @@ export default function Price() {
   };
 
   // ==================== KAS MODULE FUNCTIONS ====================
-  const loadKasHotelPrices = () => {
-    const saved = localStorage.getItem('kas-hotel-prices');
-    setKasHotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
+  const loadKasHotelPrices = async () => {
+    await loadPriceConfig('KAS', 'hotels', selectedPaxTier, 'kas-hotel-prices', defaultHotelPrices, setKasHotelPrices);
   };
   const saveKasHotelPrices = async () => {
     const storageKey = 'kas-hotel-prices';
@@ -1273,14 +1248,8 @@ export default function Price() {
     if (confirm('Bu mehmonxonani o\'chirmoqchimisiz?')) setKasHotelPrices(kasHotelPrices.filter(h => h.id !== id));
   };
 
-  const loadKasTransportRoutes = () => {
-    const storageKey = `kas-transport-${selectedPaxTier}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setKasTransportRoutes(JSON.parse(saved));
-    } else {
-      setKasTransportRoutes([]);
-    }
+  const loadKasTransportRoutes = async () => {
+    await loadPriceConfig('KAS', 'transport', selectedPaxTier, `kas-transport-${selectedPaxTier}`, [], setKasTransportRoutes);
   };
   const saveKasTransportRoutes = async () => {
     const storageKey = `kas-transport-${selectedPaxTier}`;
@@ -1299,9 +1268,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setKasTransportRoutes(kasTransportRoutes.filter(r => r.id !== id));
   };
 
-  const loadKasRailwayRoutes = () => {
-    const saved = localStorage.getItem('kas-railway-routes');
-    setKasRailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
+  const loadKasRailwayRoutes = async () => {
+    await loadPriceConfig('KAS', 'railway', selectedPaxTier, 'kas-railway-routes', defaultRailwayRoutes, setKasRailwayRoutes);
   };
   const saveKasRailwayRoutes = async () => {
     const storageKey = 'kas-railway-routes';
@@ -1320,9 +1288,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setKasRailwayRoutes(kasRailwayRoutes.filter(r => r.id !== id));
   };
 
-  const loadKasFlyRoutes = () => {
-    const saved = localStorage.getItem('kas-fly-routes');
-    setKasFlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
+  const loadKasFlyRoutes = async () => {
+    await loadPriceConfig('KAS', 'fly', selectedPaxTier, 'kas-fly-routes', defaultFlyRoutes, setKasFlyRoutes);
   };
   const saveKasFlyRoutes = async () => {
     const storageKey = 'kas-fly-routes';
@@ -1341,9 +1308,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setKasFlyRoutes(kasFlyRoutes.filter(r => r.id !== id));
   };
 
-  const loadKasMealItems = () => {
-    const saved = localStorage.getItem('kas-meal-items');
-    setKasMealItems(saved ? JSON.parse(saved) : defaultMealItems);
+  const loadKasMealItems = async () => {
+    await loadPriceConfig('KAS', 'meal', selectedPaxTier, 'kas-meal-items', defaultMealItems, setKasMealItems);
   };
   const saveKasMealItems = async () => {
     const storageKey = 'kas-meal-items';
@@ -1362,9 +1328,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setKasMealItems(kasMealItems.filter(m => m.id !== id));
   };
 
-  const loadKasSightseingItems = () => {
-    const saved = localStorage.getItem('kas-sightseing-items');
-    setKasSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
+  const loadKasSightseingItems = async () => {
+    await loadPriceConfig('KAS', 'sightseeing', selectedPaxTier, 'kas-sightseing-items', defaultSightseingItems, setKasSightseingItems);
   };
   const saveKasSightseingItems = async () => {
     const storageKey = 'kas-sightseing-items';
@@ -1383,9 +1348,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setKasSightseingItems(kasSightseingItems.filter(s => s.id !== id));
   };
 
-  const loadKasGuideItems = () => {
-    const saved = localStorage.getItem('kas-guide-items');
-    setKasGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
+  const loadKasGuideItems = async () => {
+    await loadPriceConfig('KAS', 'guide', selectedPaxTier, 'kas-guide-items', defaultGuideItems, setKasGuideItems);
   };
   const saveKasGuideItems = async () => {
     const storageKey = 'kas-guide-items';
@@ -1404,9 +1368,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setKasGuideItems(kasGuideItems.filter(g => g.id !== id));
   };
 
-  const loadKasShouItems = () => {
-    const saved = localStorage.getItem('kas-shou-items');
-    setKasShouItems(saved ? JSON.parse(saved) : defaultShouItems);
+  const loadKasShouItems = async () => {
+    await loadPriceConfig('KAS', 'shou', selectedPaxTier, 'kas-shou-items', defaultShouItems, setKasShouItems);
   };
   const saveKasShouItems = async () => {
     const storageKey = 'kas-shou-items';
@@ -1438,9 +1401,8 @@ export default function Price() {
   };
 
   // ==================== ZA MODULE FUNCTIONS ====================
-  const loadZaHotelPrices = () => {
-    const saved = localStorage.getItem('za-hotel-prices');
-    setZaHotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
+  const loadZaHotelPrices = async () => {
+    await loadPriceConfig('ZA', 'hotels', selectedPaxTier, 'za-hotel-prices', defaultHotelPrices, setZaHotelPrices);
   };
   const saveZaHotelPrices = async () => {
     const storageKey = 'za-hotel-prices';
@@ -1461,14 +1423,8 @@ export default function Price() {
     if (confirm('Bu mehmonxonani o\'chirmoqchimisiz?')) setZaHotelPrices(zaHotelPrices.filter(h => h.id !== id));
   };
 
-  const loadZaTransportRoutes = () => {
-    const storageKey = `za-transport-${selectedPaxTier}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setZaTransportRoutes(JSON.parse(saved));
-    } else {
-      setZaTransportRoutes([]);
-    }
+  const loadZaTransportRoutes = async () => {
+    await loadPriceConfig('ZA', 'transport', selectedPaxTier, `za-transport-${selectedPaxTier}`, [], setZaTransportRoutes);
   };
   const saveZaTransportRoutes = async () => {
     const storageKey = `za-transport-${selectedPaxTier}`;
@@ -1487,9 +1443,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setZaTransportRoutes(zaTransportRoutes.filter(r => r.id !== id));
   };
 
-  const loadZaRailwayRoutes = () => {
-    const saved = localStorage.getItem('za-railway-routes');
-    setZaRailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
+  const loadZaRailwayRoutes = async () => {
+    await loadPriceConfig('ZA', 'railway', selectedPaxTier, 'za-railway-routes', defaultRailwayRoutes, setZaRailwayRoutes);
   };
   const saveZaRailwayRoutes = async () => {
     const storageKey = 'za-railway-routes';
@@ -1508,9 +1463,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setZaRailwayRoutes(zaRailwayRoutes.filter(r => r.id !== id));
   };
 
-  const loadZaFlyRoutes = () => {
-    const saved = localStorage.getItem('za-fly-routes');
-    setZaFlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
+  const loadZaFlyRoutes = async () => {
+    await loadPriceConfig('ZA', 'fly', selectedPaxTier, 'za-fly-routes', defaultFlyRoutes, setZaFlyRoutes);
   };
   const saveZaFlyRoutes = async () => {
     const storageKey = 'za-fly-routes';
@@ -1529,9 +1483,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setZaFlyRoutes(zaFlyRoutes.filter(r => r.id !== id));
   };
 
-  const loadZaMealItems = () => {
-    const saved = localStorage.getItem('za-meal-items');
-    setZaMealItems(saved ? JSON.parse(saved) : defaultMealItems);
+  const loadZaMealItems = async () => {
+    await loadPriceConfig('ZA', 'meal', selectedPaxTier, 'za-meal-items', defaultMealItems, setZaMealItems);
   };
   const saveZaMealItems = async () => {
     const storageKey = 'za-meal-items';
@@ -1550,9 +1503,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setZaMealItems(zaMealItems.filter(m => m.id !== id));
   };
 
-  const loadZaSightseingItems = () => {
-    const saved = localStorage.getItem('za-sightseing-items');
-    setZaSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
+  const loadZaSightseingItems = async () => {
+    await loadPriceConfig('ZA', 'sightseeing', selectedPaxTier, 'za-sightseing-items', defaultSightseingItems, setZaSightseingItems);
   };
   const saveZaSightseingItems = async () => {
     const storageKey = 'za-sightseing-items';
@@ -1571,9 +1523,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setZaSightseingItems(zaSightseingItems.filter(s => s.id !== id));
   };
 
-  const loadZaGuideItems = () => {
-    const saved = localStorage.getItem('za-guide-items');
-    setZaGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
+  const loadZaGuideItems = async () => {
+    await loadPriceConfig('ZA', 'guide', selectedPaxTier, 'za-guide-items', defaultGuideItems, setZaGuideItems);
   };
   const saveZaGuideItems = async () => {
     const storageKey = 'za-guide-items';
@@ -1592,9 +1543,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setZaGuideItems(zaGuideItems.filter(g => g.id !== id));
   };
 
-  const loadZaShouItems = () => {
-    const saved = localStorage.getItem('za-shou-items');
-    setZaShouItems(saved ? JSON.parse(saved) : defaultShouItems);
+  const loadZaShouItems = async () => {
+    await loadPriceConfig('ZA', 'shou', selectedPaxTier, 'za-shou-items', defaultShouItems, setZaShouItems);
   };
   const saveZaShouItems = async () => {
     const storageKey = 'za-shou-items';
@@ -1780,9 +1730,8 @@ export default function Price() {
   };
 
   // Preis 2026 Module Functions
-  const loadPreis2026HotelPrices = () => {
-    const saved = localStorage.getItem('preis2026-hotel-prices');
-    setPreis2026HotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
+  const loadPreis2026HotelPrices = async () => {
+    await loadPriceConfig('PREIS2026', 'hotels', selectedPaxTier, 'preis2026-hotel-prices', defaultHotelPrices, setPreis2026HotelPrices);
   };
   const savePreis2026HotelPrices = async () => {
     const storageKey = 'preis2026-hotel-prices';
@@ -1801,14 +1750,8 @@ export default function Price() {
     if (confirm('Bu mehmonxonani o\'chirmoqchimisiz?')) setPreis2026HotelPrices(preis2026HotelPrices.filter(h => h.id !== id));
   };
 
-  const loadPreis2026TransportRoutes = () => {
-    const storageKey = `preis2026-transport-${selectedPaxTier}`;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      setPreis2026TransportRoutes(JSON.parse(saved));
-    } else {
-      setPreis2026TransportRoutes([]);
-    }
+  const loadPreis2026TransportRoutes = async () => {
+    await loadPriceConfig('PREIS2026', 'transport', selectedPaxTier, `preis2026-transport-${selectedPaxTier}`, [], setPreis2026TransportRoutes);
   };
   const savePreis2026TransportRoutes = async () => {
     const storageKey = `preis2026-transport-${selectedPaxTier}`;
@@ -1827,9 +1770,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setPreis2026TransportRoutes(preis2026TransportRoutes.filter(r => r.id !== id));
   };
 
-  const loadPreis2026RailwayRoutes = () => {
-    const saved = localStorage.getItem('preis2026-railway-routes');
-    setPreis2026RailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
+  const loadPreis2026RailwayRoutes = async () => {
+    await loadPriceConfig('PREIS2026', 'railway', selectedPaxTier, 'preis2026-railway-routes', defaultRailwayRoutes, setPreis2026RailwayRoutes);
   };
   const savePreis2026RailwayRoutes = async () => {
     const storageKey = 'preis2026-railway-routes';
@@ -1848,9 +1790,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setPreis2026RailwayRoutes(preis2026RailwayRoutes.filter(r => r.id !== id));
   };
 
-  const loadPreis2026FlyRoutes = () => {
-    const saved = localStorage.getItem('preis2026-fly-routes');
-    setPreis2026FlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
+  const loadPreis2026FlyRoutes = async () => {
+    await loadPriceConfig('PREIS2026', 'fly', selectedPaxTier, 'preis2026-fly-routes', defaultFlyRoutes, setPreis2026FlyRoutes);
   };
   const savePreis2026FlyRoutes = async () => {
     const storageKey = 'preis2026-fly-routes';
@@ -1869,9 +1810,8 @@ export default function Price() {
     if (confirm('Bu marshrutni o\'chirmoqchimisiz?')) setPreis2026FlyRoutes(preis2026FlyRoutes.filter(r => r.id !== id));
   };
 
-  const loadPreis2026MealItems = () => {
-    const saved = localStorage.getItem('preis2026-meal-items');
-    setPreis2026MealItems(saved ? JSON.parse(saved) : defaultMealItems);
+  const loadPreis2026MealItems = async () => {
+    await loadPriceConfig('PREIS2026', 'meal', selectedPaxTier, 'preis2026-meal-items', defaultMealItems, setPreis2026MealItems);
   };
   const savePreis2026MealItems = async () => {
     const storageKey = 'preis2026-meal-items';
@@ -1890,9 +1830,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setPreis2026MealItems(preis2026MealItems.filter(m => m.id !== id));
   };
 
-  const loadPreis2026SightseingItems = () => {
-    const saved = localStorage.getItem('preis2026-sightseing-items');
-    setPreis2026SightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
+  const loadPreis2026SightseingItems = async () => {
+    await loadPriceConfig('PREIS2026', 'sightseeing', selectedPaxTier, 'preis2026-sightseing-items', defaultSightseingItems, setPreis2026SightseingItems);
   };
   const savePreis2026SightseingItems = async () => {
     const storageKey = 'preis2026-sightseing-items';
@@ -1911,9 +1850,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setPreis2026SightseingItems(preis2026SightseingItems.filter(s => s.id !== id));
   };
 
-  const loadPreis2026GuideItems = () => {
-    const saved = localStorage.getItem('preis2026-guide-items');
-    setPreis2026GuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
+  const loadPreis2026GuideItems = async () => {
+    await loadPriceConfig('PREIS2026', 'guide', selectedPaxTier, 'preis2026-guide-items', defaultGuideItems, setPreis2026GuideItems);
   };
   const savePreis2026GuideItems = async () => {
     const storageKey = 'preis2026-guide-items';
@@ -1932,9 +1870,8 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setPreis2026GuideItems(preis2026GuideItems.filter(g => g.id !== id));
   };
 
-  const loadPreis2026ShouItems = () => {
-    const saved = localStorage.getItem('preis2026-shou-items');
-    setPreis2026ShouItems(saved ? JSON.parse(saved) : defaultShouItems);
+  const loadPreis2026ShouItems = async () => {
+    await loadPriceConfig('PREIS2026', 'shou', selectedPaxTier, 'preis2026-shou-items', defaultShouItems, setPreis2026ShouItems);
   };
   const savePreis2026ShouItems = async () => {
     const storageKey = 'preis2026-shou-items';
