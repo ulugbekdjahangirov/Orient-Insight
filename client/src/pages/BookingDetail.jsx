@@ -391,6 +391,7 @@ export default function BookingDetail() {
   const [planeVehicles, setPlaneVehicles] = useState([]); // Planes from OPEX database
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
+  const [sightseeingData, setSightseeingData] = useState([]); // Sightseeing from OPEX database
   const [flightForm, setFlightForm] = useState({
     type: 'INTERNATIONAL',
     flightNumber: '',
@@ -916,6 +917,29 @@ export default function BookingDetail() {
     }
   };
 
+  // Load sightseeing data from OPEX API
+  const loadSightseeingFromApi = async () => {
+    if (!booking?.tourType?.code) return;
+
+    try {
+      const tourTypeCode = booking.tourType.code.toUpperCase();
+      console.log(`🎫 Loading sightseeing from OPEX database for ${tourTypeCode}...`);
+
+      const response = await opexApi.get(tourTypeCode, 'sightseeing');
+
+      if (response.data && response.data.items && Array.isArray(response.data.items)) {
+        setSightseeingData(response.data.items);
+        console.log(`✅ Loaded ${response.data.items.length} sightseeing items from OPEX database`);
+      } else {
+        console.log('⚠️ No sightseeing found in OPEX database');
+        setSightseeingData([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading sightseeing from OPEX:', error);
+      setSightseeingData([]);
+    }
+  };
+
   // Refresh vehicle data from API when component mounts or when updated
   useEffect(() => {
     // Load on mount
@@ -944,6 +968,22 @@ export default function BookingDetail() {
     window.addEventListener('opexUpdated', handleMealsUpdated);
     return () => {
       window.removeEventListener('opexUpdated', handleMealsUpdated);
+    };
+  }, [booking?.tourType?.code]);
+
+  // Refresh sightseeing data from OPEX API when booking is loaded or updated
+  useEffect(() => {
+    if (booking?.tourType?.code) {
+      loadSightseeingFromApi();
+    }
+
+    // Listen for custom event from Opex page when sightseeing is updated
+    const handleSightseeingUpdated = () => {
+      loadSightseeingFromApi();
+    };
+    window.addEventListener('opexUpdated', handleSightseeingUpdated);
+    return () => {
+      window.removeEventListener('opexUpdated', handleSightseeingUpdated);
     };
   }, [booking?.tourType?.code]);
 
@@ -10818,19 +10858,8 @@ export default function BookingDetail() {
 
           {/* Eintritt Tab */}
           {tourServicesTab === 'eintritt' && (() => {
-            // Load sightseeing data from Opex based on tour type
+            // Use sightseeing data loaded from OPEX database (state)
             const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
-            const sightseeingKey = `${tourTypeCode}Sightseeing`;
-            let sightseeingData = [];
-            try {
-              const saved = localStorage.getItem(sightseeingKey);
-              if (saved) {
-                sightseeingData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading sightseeing from localStorage:', e);
-            }
-
             const services = tourServices.eintritt || [];
 
             // Function to calculate date for ER tour attractions based on arrival date
