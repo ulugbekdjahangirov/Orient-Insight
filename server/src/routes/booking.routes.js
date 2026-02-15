@@ -349,6 +349,7 @@ router.post('/', authenticate, async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('🔄 PUT /bookings/:id', id, 'rlExchangeRate:', req.body.rlExchangeRate);
     const {
       bookingNumber,
       tourTypeId,
@@ -446,6 +447,10 @@ router.put('/:id', authenticate, async (req, res) => {
     if (assignedToId !== undefined) updateData.assignedToId = assignedToId ? parseInt(assignedToId) : null;
     if (rechnungFirma !== undefined) updateData.rechnungFirma = rechnungFirma || null;
     if (rlExchangeRate !== undefined) updateData.rlExchangeRate = rlExchangeRate ? parseFloat(rlExchangeRate) : null;
+
+    if (rlExchangeRate !== undefined) {
+      console.log('💾 Saving rlExchangeRate to DB:', updateData.rlExchangeRate);
+    }
 
     const booking = await prisma.booking.update({
       where: { id: parseInt(id) },
