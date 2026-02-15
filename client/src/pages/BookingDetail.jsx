@@ -3256,18 +3256,83 @@ export default function BookingDetail() {
         });
       }
 
-      // 2. Process Eintritt (from Opex localStorage merged with tourServices.eintritt)
-      const sightseeingKey = `${tourTypeCode}Sightseeing`;
-      let sightseeingData = [];
-      try {
-        const saved = localStorage.getItem(sightseeingKey);
-        if (saved) {
-          sightseeingData = JSON.parse(saved);
-        }
-      } catch (e) {
-        console.error('Error loading sightseeing:', e);
+      // 2. Process Metro (from metroVehicles state) - Skip for ZA tours
+      if (metroVehicles && metroVehicles.length > 0 && booking?.tourType?.code !== 'ZA') {
+        metroVehicles.forEach(metro => {
+          const name = metro.name || 'Metro';
+          const city = metro.city || '';
+          const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
+          const pricePerPerson = parseFloat(rawPrice.toString().replace(/\s/g, '')) || 0;
+          const metroPax = (tourists?.length || 0) + 1; // +1 for guide
+          const total = pricePerPerson * metroPax;
+
+          // Map to standard city name
+          let targetCity = mapCityName(city) || mapCityName(name);
+          if (!targetCity) targetCity = 'Extra Kosten';
+
+          expensesByCity[targetCity].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: metroPax,
+            usd: 0,
+            uzs: total
+          });
+        });
       }
 
+      // 3. Process Meals (from OPEX database state)
+      // Use mealsData state loaded from database
+      mealsData.forEach(meal => {
+        const name = meal.name || 'Unknown Meal';
+        const city = meal.city || '';
+        const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+        const pricePerPerson = parseFloat(priceStr) || 0;
+        const mealPax = tourists?.length || 0;
+        const total = pricePerPerson * mealPax;
+
+        // Map to standard city name
+        let targetCity = mapCityName(city) || mapCityName(name);
+        if (!targetCity) targetCity = 'Extra Kosten';
+
+        if (total > 0) {
+          expensesByCity[targetCity].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: mealPax,
+            usd: 0,
+            uzs: total
+          });
+        }
+      });
+
+      // 4. Process Shows (from OPEX database state)
+      // Use showsData state loaded from database
+      showsData.forEach(show => {
+        const name = show.name || 'Unknown Show';
+        const city = show.city || '';
+        const rawPrice = show.price || show.pricePerPerson || 0;
+        const priceStr = rawPrice.toString().replace(/\s/g, '');
+        const pricePerPerson = parseFloat(priceStr) || 0;
+        const showPax = tourists?.length || 0;
+        const total = pricePerPerson * showPax;
+
+        // Map to standard city name
+        let targetCity = mapCityName(city) || mapCityName(name);
+        if (!targetCity) targetCity = 'Extra Kosten';
+
+        if (total > 0) {
+          expensesByCity[targetCity].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: showPax,
+            usd: 0,
+            uzs: total
+          });
+        }
+      });
+
+      // 5. Process Eintritt (from OPEX database state merged with tourServices.eintritt)
+      // Use sightseeingData state loaded from database
       const eintrittServices = tourServices.eintritt || [];
       const savedEntriesMap = new Map(eintrittServices.map(s => [s.name.toLowerCase().trim(), s]));
 
@@ -3306,77 +3371,13 @@ export default function BookingDetail() {
         }
       });
 
-      // Add any remaining saved entries not in template
-      savedEntriesMap.forEach((savedEntry, itemName) => {
+      // Add remaining saved entries not in template
+      savedEntriesMap.forEach(savedEntry => {
         const name = savedEntry.name || 'Unknown Entry';
         const city = savedEntry.city || '';
         const pricePerPerson = savedEntry.pricePerPerson || 0;
         const servicePax = tourists?.length || 0;
         const total = pricePerPerson * servicePax;
-
-        let targetCity = mapCityName(city) || mapCityName(name);
-        if (!targetCity) targetCity = 'Extra Kosten';
-
-        if (total > 0) {
-          expensesByCity[targetCity].push({
-            name: name,
-            pricePerPerson: pricePerPerson,
-            pax: servicePax,
-            usd: 0,
-            uzs: total
-          });
-        }
-      });
-
-      // 3-4. Process Metro and Shou (skip Metro for ZA tours)
-      ['METRO', 'SHOU'].forEach(type => {
-        // Skip Metro for ZA tours
-        if (type === 'METRO' && booking?.tourType?.code === 'ZA') return;
-
-        const services = tourServices[type.toLowerCase()];
-        if (services && services.length > 0) {
-          services.forEach(item => {
-            const city = item.city || '';
-            const name = item.name || type;
-            const pricePerPerson = item.pricePerPerson || 0;
-            const itemPax = item.pax || pax;
-            const total = pricePerPerson * itemPax;
-
-            let targetCity = mapCityName(city) || mapCityName(name);
-            if (!targetCity) targetCity = 'Extra Kosten';
-
-            if (total > 0) {
-              expensesByCity[targetCity].push({
-                name: name,
-                pricePerPerson: pricePerPerson,
-                pax: itemPax,
-                usd: 0,
-                uzs: total
-              });
-            }
-          });
-        }
-      });
-
-      // 5. Process Meals (from Opex localStorage)
-      const mealsKey = `${tourTypeCode}Meal`; // Note: singular "Meal" not "Meals"
-      let mealsData = [];
-      try {
-        const saved = localStorage.getItem(mealsKey);
-        if (saved) {
-          mealsData = JSON.parse(saved);
-        }
-      } catch (e) {
-        console.error('Error loading meals:', e);
-      }
-
-      mealsData.forEach(meal => {
-        const name = meal.name || 'Unknown Meal';
-        const city = meal.city || '';
-        const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
-        const pricePerPerson = parseFloat(priceStr) || 0;
-        const mealPax = tourists?.length || 0;
-        const total = pricePerPerson * mealPax;
 
         // Map to standard city name
         let targetCity = mapCityName(city) || mapCityName(name);
@@ -3386,7 +3387,7 @@ export default function BookingDetail() {
           expensesByCity[targetCity].push({
             name: name,
             pricePerPerson: pricePerPerson,
-            pax: mealPax,
+            pax: servicePax,
             usd: 0,
             uzs: total
           });
