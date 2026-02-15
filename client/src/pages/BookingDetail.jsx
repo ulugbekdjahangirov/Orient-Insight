@@ -11750,18 +11750,8 @@ export default function BookingDetail() {
               });
             }
 
-            // 3. Process Meals (from Opex localStorage)
-            const mealsKey = `${tourTypeCode}Meal`; // Note: singular "Meal" not "Meals"
-            let mealsData = [];
-            try {
-              const saved = localStorage.getItem(mealsKey);
-              if (saved) {
-                mealsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading meals:', e);
-            }
-
+            // 3. Process Meals (from OPEX database state)
+            // Use mealsData state loaded from database
             mealsData.forEach(meal => {
               const name = meal.name || 'Unknown Meal';
               const city = meal.city || '';
@@ -11785,18 +11775,8 @@ export default function BookingDetail() {
               }
             });
 
-            // 4. Process Shows (from Opex localStorage)
-            const showsKey = `${tourTypeCode}Shows`;
-            let showsData = [];
-            try {
-              const saved = localStorage.getItem(showsKey);
-              if (saved) {
-                showsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading shows:', e);
-            }
-
+            // 4. Process Shows (from OPEX database state)
+            // Use showsData state loaded from database
             showsData.forEach(show => {
               const name = show.name || 'Unknown Show';
               const city = show.city || '';
@@ -11821,18 +11801,8 @@ export default function BookingDetail() {
               }
             });
 
-            // 5. Process Eintritt (from Opex localStorage merged with tourServices.eintritt)
-            const sightseeingKey = `${tourTypeCode}Sightseeing`;
-            let sightseeingData = [];
-            try {
-              const saved = localStorage.getItem(sightseeingKey);
-              if (saved) {
-                sightseeingData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading sightseeing:', e);
-            }
-
+            // 5. Process Eintritt (from OPEX database state merged with tourServices.eintritt)
+            // Use sightseeingData state loaded from database
             const services = tourServices.eintritt || [];
             const savedEntriesMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s]));
 
