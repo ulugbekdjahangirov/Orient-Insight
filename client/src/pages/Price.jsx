@@ -2094,7 +2094,7 @@ export default function Price() {
       doc.text('Tel: +998933484208 / +998979282814', pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 4;
       doc.text('E-Mail: orientinsightreisen@gmail.com | Web: www.orient-insight.uz', pageWidth / 2, yPosition, { align: 'center' });
-      yPosition += 8;
+      yPosition += 12;
 
       // Title
       doc.setFontSize(16);
