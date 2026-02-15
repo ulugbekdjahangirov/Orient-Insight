@@ -12653,18 +12653,8 @@ export default function BookingDetail() {
               return null;
             };
 
-            // Process Entrance Fees (Eintritt) - from localStorage
-            const sightseeingKey = `${tourTypeCode}Sightseeing`;
-            let sightseeingData = [];
-            try {
-              const saved = localStorage.getItem(sightseeingKey);
-              if (saved) {
-                sightseeingData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading sightseeing:', e);
-            }
-
+            // Process Entrance Fees (Eintritt) - from OPEX database state
+            // Use sightseeingData state loaded from database
             sightseeingData.forEach(sight => {
               const name = sight.name || 'Unknown Entrance';
               const city = sight.city || '';
