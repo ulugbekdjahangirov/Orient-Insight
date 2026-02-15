@@ -3562,46 +3562,52 @@ export default function BookingDetail() {
       ]);
 
       // Add title with booking number
-      doc.setFontSize(14);
+      doc.setFontSize(12);
       doc.setFont(undefined, 'bold');
       const ausgabenTitle = `Ausgaben ${booking?.bookingNumber || ''}`;
-      doc.text(ausgabenTitle, 105, 15, { align: 'center' });
+      doc.text(ausgabenTitle, 105, 10, { align: 'center' });
 
       // Add booking info
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setFont(undefined, 'normal');
       const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
-      doc.text(bookingInfo, 105, 21, { align: 'center' });
+      doc.text(bookingInfo, 105, 15, { align: 'center' });
 
-      // Generate table (optimized for portrait orientation)
+      // Generate table (optimized to fit on one page)
       autoTable(doc, {
-        startY: 26,
+        startY: 19,
         head: [['Städte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 8.5,
-          cellPadding: 2,
+          fontSize: 6.5,
+          cellPadding: 1.2,
           lineColor: [200, 200, 200],
-          lineWidth: 0.15
+          lineWidth: 0.1
         },
         headStyles: {
           fillColor: [102, 187, 106],  // Lighter green color
           textColor: 255,
           fontStyle: 'bold',
           halign: 'center',
-          fontSize: 9.5,
-          cellPadding: 2.5
+          fontSize: 7.5,
+          cellPadding: 1.5
         },
         columnStyles: {
-          0: { cellWidth: 25 }, // Städte
-          1: { cellWidth: 60 }, // Item
-          2: { halign: 'right', cellWidth: 25 }, // Preis
-          3: { halign: 'center', cellWidth: 18 }, // PAX
-          4: { halign: 'right', cellWidth: 30 }, // Dollar
-          5: { halign: 'right', cellWidth: 38 }  // Som
+          0: { cellWidth: 22 }, // Städte
+          1: { cellWidth: 58 }, // Item
+          2: { halign: 'right', cellWidth: 22 }, // Preis
+          3: { halign: 'center', cellWidth: 16 }, // PAX
+          4: { halign: 'right', cellWidth: 28 }, // Dollar
+          5: { halign: 'right', cellWidth: 34 }  // Som
         },
-        margin: { top: 26, bottom: 10, left: 7, right: 7 }
+        margin: { top: 19, bottom: 8, left: 10, right: 10 },
+        didDrawPage: function(data) {
+          // Prevent page breaks - fit everything on one page
+          if (data.pageNumber > 1) {
+            return false;
+          }
+        }
       });
 
       // Save PDF
