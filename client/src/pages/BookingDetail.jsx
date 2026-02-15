@@ -3127,7 +3127,7 @@ export default function BookingDetail() {
         { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } }
       ]);
 
-      // Total row - Combined USD with Exchange Rate
+      // Converted UZS to USD row
       tableData.push([
         {
           content: `TOTAL (Kurs: 1 USD = ${Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)`,
@@ -3135,17 +3135,21 @@ export default function BookingDetail() {
           styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 }
         },
         {
-          content: `$${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
+          content: `$${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
           styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 10 }
         }
       ]);
 
-      // Breakdown row
+      // Total sum row
       tableData.push([
         {
-          content: `USD: $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + UZS: ${Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} ($${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}) = $${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
-          colSpan: 6,
-          styles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'normal', halign: 'right', fontSize: 7 }
+          content: `Total: $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + $${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
+          colSpan: 5,
+          styles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'bold', halign: 'right', fontSize: 8 }
+        },
+        {
+          content: `= $${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
+          styles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'bold', halign: 'right', fontSize: 8 }
         }
       ]);
 
@@ -12453,21 +12457,21 @@ export default function BookingDetail() {
                             {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
-                        {/* Total Row - Combined USD with Exchange Rate */}
+                        {/* Converted UZS to USD Row */}
                         <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
                           <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
                             TOTAL (Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)
                           </td>
                           <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
+                            ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
-                        {/* Breakdown Row */}
+                        {/* Total Sum Row */}
                         <tr className="bg-gray-100">
-                          <td colSpan="4" className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-semibold text-sm">
-                            USD: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + UZS: {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} (${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')})
+                          <td colSpan="5" className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-bold text-base">
+                            Total: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
-                          <td colSpan="2" className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-semibold text-sm">
+                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-bold text-base">
                             = ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
