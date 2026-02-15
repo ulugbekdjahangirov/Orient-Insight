@@ -3473,7 +3473,7 @@ export default function Price() {
               const sightseingTotal = sightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
               const guideTotal = guideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0);
               const shouTotal = shouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
-              const ezZuschlag = calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2);
+              const ezZuschlag = calculateHotelTotals().totalEZZuschlag;
 
               // Clear previous calculations
               calculatedTotalPrices.current = {};
