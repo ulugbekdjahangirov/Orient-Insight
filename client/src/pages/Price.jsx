@@ -384,7 +384,13 @@ export default function Price() {
       console.log(`⚠️ localStorage empty, loading from database (${tourType}/${category}/${paxTier})...`);
       const response = await pricesApi.get(tourType.toUpperCase(), category, paxTier);
 
-      if (response.data && response.data.items && response.data.items.length > 0) {
+      // Check if items exists and is not empty (array OR object)
+      const hasItems = response.data && response.data.items && (
+        (Array.isArray(response.data.items) && response.data.items.length > 0) ||
+        (typeof response.data.items === 'object' && !Array.isArray(response.data.items) && Object.keys(response.data.items).length > 0)
+      );
+
+      if (hasItems) {
         console.log(`✅ Loaded from database, caching to localStorage (${localStorageKey})`);
         setter(response.data.items);
         // Cache to localStorage for next time
