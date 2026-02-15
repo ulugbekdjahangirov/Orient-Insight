@@ -2064,12 +2064,37 @@ export default function Price() {
       const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
       console.log('✅ jsPDF instance created');
 
+      let yPosition = 10;
+
+      // Load and add Orient Insight logo
+      const logoImg = new Image();
+      logoImg.src = '/logo.png';
+
+      // Add logo at top left
+      try {
+        doc.addImage(logoImg, 'PNG', 10, yPosition, 25, 25);
+      } catch (e) {
+        console.log('Logo could not be added:', e);
+      }
+
+      // Company information next to logo
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ORIENT INSIGHT GmbH', 40, yPosition + 3);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text('Shota Rustavelli, 45, 140100 Samarkand, Usbekistan', 40, yPosition + 8);
+      doc.text('Tel: +998933484208 / +998979282814', 40, yPosition + 12);
+      doc.text('E-Mail: orientinsightreisen@gmail.com | Web: www.orient-insight.uz', 40, yPosition + 16);
+
+      yPosition += 30;
+
       // Title
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('Preis 2026 - Preisliste', doc.internal.pageSize.getWidth() / 2, 10, { align: 'center' });
+      doc.text('Preis 2026 - Preisliste', doc.internal.pageSize.getWidth() / 2, yPosition, { align: 'center' });
 
-      let yPosition = 18;
+      yPosition += 8;
 
       // CO (Comfort Plus) Table
       const coHotelTotal = calculateCoHotelTotals().totalPerTraveler / 2;
