@@ -473,7 +473,11 @@ export default function BookingDetail() {
   const [mainGuide, setMainGuide] = useState(null);
   const [secondGuide, setSecondGuide] = useState(null);
   const [bergreiseleiter, setBergreiseleiter] = useState(null);
-  const [rlExchangeRate, setRlExchangeRate] = useState(12800); // Default USD to UZS rate
+  const [rlExchangeRate, setRlExchangeRate] = useState(() => {
+    // Load from localStorage on mount
+    const saved = localStorage.getItem(`rlExchangeRate_${id}`);
+    return saved ? parseFloat(saved) : 12800;
+  });
   const [hotels, setHotels] = useState([]);
   const [bookingRooms, setBookingRooms] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
@@ -573,6 +577,13 @@ export default function BookingDetail() {
 
     return { dbl, twn, sgl, trpl, total };
   }, [tourists]);
+
+  // Save RL exchange rate to localStorage when it changes
+  useEffect(() => {
+    if (id && rlExchangeRate) {
+      localStorage.setItem(`rlExchangeRate_${id}`, rlExchangeRate.toString());
+    }
+  }, [id, rlExchangeRate]);
 
   // Calculate Grand Total for all hotels (using Final List individual dates)
   // Re-renders when accommodations or accommodationRoomingLists changes
