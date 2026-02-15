@@ -3623,16 +3623,17 @@ export default function BookingDetail() {
       expensesByCity['Transport'] = [];
       expensesByCity['Reiseleiter'] = [];
 
-      // 1. Process Jahongir Hotel in Samarkand
+      // 1. Process Hotels in Samarkand
       if (grandTotalData && grandTotalData.hotelBreakdown) {
         grandTotalData.hotelBreakdown.forEach(hotelData => {
           const acc = accommodations.find(a => a.id === hotelData.accommodationId);
           const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
+          const cityName = acc?.hotel?.city?.name?.toLowerCase() || '';
 
-          const hotelNameLower = hotelName.toLowerCase();
-          const isJahongir = hotelNameLower.includes('jahongir') || hotelNameLower.includes('жахонгир');
+          // Check by CITY, not hotel name
+          const isSamarkand = cityName.includes('samarkand') || cityName.includes('самарканд');
 
-          if (isJahongir) {
+          if (isSamarkand) {
             const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
             const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
 
@@ -4764,23 +4765,35 @@ export default function BookingDetail() {
 
         if (!lastHotelInTashkent) {
           // Last hotel is NOT in Tashkent (probably Khiva), so add return hotel
-          const arienPlaza = hotels.find(h =>
-            h.name.toLowerCase().includes('arien') &&
-            (h.city?.name?.toLowerCase().includes('ташкент') || h.city?.name?.toLowerCase().includes('tashkent'))
-          );
+          // Find FIRST Tashkent hotel from itinerary (tourists return to where they started)
+          let tashkentReturnHotel = null;
 
-          if (arienPlaza) {
+          for (const stay of staysToProcess) {
+            const hotel = hotels.find(h =>
+              h.name.toLowerCase().includes(stay.hotelName.toLowerCase()) ||
+              stay.hotelName.toLowerCase().includes(h.name.toLowerCase())
+            );
+            const cityName = hotel?.city?.name?.toLowerCase() || '';
+            const isTashkent = cityName.includes('ташкент') || cityName.includes('tashkent');
+
+            if (isTashkent && hotel) {
+              tashkentReturnHotel = hotel;
+              break; // Use first Tashkent hotel found
+            }
+          }
+
+          if (tashkentReturnHotel) {
             const uzTourists = onlyUZ ? tourists : uzbekistanTourists;
             accommodationsToCreate.push({
-              hotel: arienPlaza,
+              hotel: tashkentReturnHotel,
               startDay: lastDay,
               endDay: lastDay,
               tourists: uzTourists,
               groupName: onlyUZ ? 'All' : 'Uzbekistan'
             });
-            console.log(`✅ Added 6th hotel: ${arienPlaza.name} for ${onlyUZ ? 'ALL (onlyUZ)' : 'UZ tourists (mixed)'}`);
+            console.log(`✅ Added 6th hotel: ${tashkentReturnHotel.name} (return to first Tashkent hotel) for ${onlyUZ ? 'ALL (onlyUZ)' : 'UZ tourists (mixed)'}`);
           } else {
-            toast.error('Arien Plaza не найден в Ташкенте!');
+            toast.error('Тошкентда отель топилмади! Программада Тошкент отели бўлиши керак.');
           }
         } else {
           console.log(`ℹ️ Last hotel already in Tashkent, not adding 6th hotel`);
@@ -12144,11 +12157,11 @@ export default function BookingDetail() {
                 const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
                 const cityName = acc?.hotel?.city?.name || '';
 
-                // Skip Jahongir hotel in RL tab
-                const hotelNameLower = hotelName.toLowerCase();
-                const isJahongir = hotelNameLower.includes('jahongir') || hotelNameLower.includes('жахонгир');
-                if (isJahongir) {
-                  return; // Skip this hotel
+                // Skip Samarkand hotels in RL tab (check by CITY, not hotel name)
+                const cityNameLower = cityName.toLowerCase();
+                const isSamarkand = cityNameLower.includes('samarkand') || cityNameLower.includes('самарканд');
+                if (isSamarkand) {
+                  return; // Skip Samarkand hotels
                 }
 
                 // Map to standard city name
@@ -12419,18 +12432,18 @@ export default function BookingDetail() {
             expensesByCity['Transport'] = [];
             expensesByCity['Reiseleiter'] = [];
 
-            // 1. Process Jahongir Hotel in Samarkand
+            // 1. Process Hotels in Samarkand
             if (grandTotalData && grandTotalData.hotelBreakdown) {
               grandTotalData.hotelBreakdown.forEach(hotelData => {
                 const acc = accommodations.find(a => a.id === hotelData.accommodationId);
                 const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
                 const cityName = acc?.hotel?.city?.name || '';
 
-                // Only include Jahongir hotel
-                const hotelNameLower = hotelName.toLowerCase();
-                const isJahongir = hotelNameLower.includes('jahongir') || hotelNameLower.includes('жахонгир');
+                // Only include Samarkand hotels (check by CITY, not hotel name)
+                const cityNameLower = cityName.toLowerCase();
+                const isSamarkand = cityNameLower.includes('samarkand') || cityNameLower.includes('самарканд');
 
-                if (isJahongir) {
+                if (isSamarkand) {
                   const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
                   const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
 
@@ -15748,18 +15761,20 @@ export default function BookingDetail() {
                                       const accCheckIn = new Date(acc.checkInDate);
                                       const accCheckOut = new Date(acc.checkOutDate);
 
-                                      // Check if this is Malika Khorazm hotel and tourist is UZ (stays 2 nights instead of 3)
+                                      // Check if this is Khiva hotel and tourist is UZ (stays 2 nights instead of 3 in MIXED groups)
+                                      const cityName = acc.hotel?.city?.name?.toLowerCase() || '';
                                       const hotelName = acc.hotel?.name?.toLowerCase() || '';
-                                      const isMalikaKhorazm = hotelName.includes('malika') && hotelName.includes('khorazm');
+                                      const isKhivaHotel = cityName.includes('хива') || cityName.includes('khiva') || cityName.includes('chiwa') ||
+                                                           hotelName.includes('khiva') || hotelName.includes('хива') || hotelName.includes('chiwa');
                                       const isUzTourist = t.accommodation?.toLowerCase().includes('uzbek') || t.accommodation?.toLowerCase() === 'uz';
-                                      const isMalikaUzTourist = isMalikaKhorazm && isUzTourist;
+                                      const isKhivaUzTourist = isKhivaHotel && isUzTourist;
 
                                       // Tourist's individual dates - ONLY use for FIRST accommodation
                                       // For other hotels, use accommodation's standard dates
-                                      // For Malika Khorazm UZ tourists - check out 1 day earlier (2 nights instead of 3)
+                                      // For Khiva UZ tourists (MIXED groups) - check out 1 day earlier (2 nights instead of 3)
                                       const touristCheckInDate = (isFirstAccommodation && t.checkInDate) ? new Date(t.checkInDate) : accCheckIn;
                                       let touristCheckOutDate;
-                                      if (isMalikaUzTourist) {
+                                      if (isKhivaUzTourist) {
                                         // UZ tourists leave 1 day earlier at Malika Khorazm
                                         touristCheckOutDate = new Date(accCheckOut);
                                         touristCheckOutDate.setDate(touristCheckOutDate.getDate() - 1);
@@ -15787,7 +15802,7 @@ export default function BookingDetail() {
                                         touristCheckOutDate.getTime() !== accCheckOut.getTime()
                                       );
 
-                                      const hasCustomDates = hasAccommodationOverride || hasDifferentDates || isMalikaUzTourist;
+                                      const hasCustomDates = hasAccommodationOverride || hasDifferentDates || isKhivaUzTourist;
                                       const isEditing = editingTouristId === t.id;
 
                                       return (
@@ -15925,7 +15940,7 @@ export default function BookingDetail() {
                                               }
 
                                               // Malika Khorazm: UZ tourists stay 2 nights (TM tourists stay 3 nights)
-                                              if (isMalikaUzTourist) {
+                                              if (isKhivaUzTourist) {
                                                 notes.push('2 Nights');
                                               }
 
