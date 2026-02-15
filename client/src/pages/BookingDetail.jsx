@@ -473,6 +473,7 @@ export default function BookingDetail() {
   const [mainGuide, setMainGuide] = useState(null);
   const [secondGuide, setSecondGuide] = useState(null);
   const [bergreiseleiter, setBergreiseleiter] = useState(null);
+  const [rlExchangeRate, setRlExchangeRate] = useState(12800); // Default USD to UZS rate
   const [hotels, setHotels] = useState([]);
   const [bookingRooms, setBookingRooms] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
@@ -2966,16 +2967,8 @@ export default function BookingDetail() {
         });
       }
 
-      // 2. Process Meals
-      const mealsKey = `${tourTypeCode}Meal`;
-      let mealsData = [];
-      try {
-        const saved = localStorage.getItem(mealsKey);
-        if (saved) mealsData = JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading meals:', e);
-      }
-
+      // 2. Process Meals (from OPEX database state)
+      // Use mealsData state loaded from database
       mealsData.forEach(meal => {
         const name = meal.name || 'Unknown Meal';
         const city = meal.city || '';
@@ -3020,16 +3013,8 @@ export default function BookingDetail() {
         });
       }
 
-      // 4. Process Shou
-      const showsKey = `${tourTypeCode}Shows`;
-      let showsData = [];
-      try {
-        const saved = localStorage.getItem(showsKey);
-        if (saved) showsData = JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading shows:', e);
-      }
-
+      // 4. Process Shows (from OPEX database state)
+      // Use showsData state loaded from database
       showsData.forEach(show => {
         const name = show.name || 'Unknown Show';
         const city = show.city || '';
@@ -3105,6 +3090,10 @@ export default function BookingDetail() {
         });
       });
 
+      // Convert UZS to USD and combine
+      const uzsToUsd = rlExchangeRate > 0 ? totalUZS / rlExchangeRate : 0;
+      const combinedTotalUSD = totalUSD + uzsToUsd;
+
       // Filter out empty sections
       const sections = [...cityOrder, 'Reiseleiter'].filter(section =>
         expensesByCity[section] && expensesByCity[section].length > 0
@@ -3131,11 +3120,26 @@ export default function BookingDetail() {
         });
       });
 
-      // Total row
+      // Total row - Combined USD
       tableData.push([
-        { content: 'TOTAL', colSpan: 4, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
-        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
-        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
+        {
+          content: `TOTAL (Kurs: 1 USD = ${Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)`,
+          colSpan: 5,
+          styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 }
+        },
+        {
+          content: `$${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
+          styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 10 }
+        }
+      ]);
+
+      // Breakdown row
+      tableData.push([
+        {
+          content: `USD: $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + UZS: ${Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} ($${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}) = $${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
+          colSpan: 6,
+          styles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'normal', halign: 'right', fontSize: 7 }
+        }
       ]);
 
       // Add title with booking number
@@ -12329,6 +12333,10 @@ export default function BookingDetail() {
               });
             });
 
+            // Convert UZS to USD and combine
+            const uzsToUsd = rlExchangeRate > 0 ? totalUZS / rlExchangeRate : 0;
+            const combinedTotalUSD = totalUSD + uzsToUsd;
+
             // Filter out empty sections for display
             const sections = [
               ...cityOrder,
@@ -12343,15 +12351,32 @@ export default function BookingDetail() {
 
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Reiseleiter)</h3>
-                  {hasData && (
-                    <button
-                      onClick={exportRLToPDF}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
-                    >
-                      <Download className="w-5 h-5" />
-                      PDF saqlab olish
-                    </button>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {/* Exchange Rate Input */}
+                    <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border-2 border-blue-200">
+                      <label className="text-sm font-semibold text-blue-900 whitespace-nowrap">Kurs (USD → UZS):</label>
+                      <input
+                        type="text"
+                        value={rlExchangeRate.toLocaleString('en-US').replace(/,/g, ' ')}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\s/g, '');
+                          const numValue = parseFloat(value) || 0;
+                          setRlExchangeRate(numValue);
+                        }}
+                        className="w-28 px-3 py-1.5 text-right font-bold text-blue-900 bg-white border-2 border-blue-300 rounded focus:outline-none focus:border-blue-500"
+                        placeholder="12 800"
+                      />
+                    </div>
+                    {hasData && (
+                      <button
+                        onClick={exportRLToPDF}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
+                      >
+                        <Download className="w-5 h-5" />
+                        PDF saqlab olish
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {hasData ? (
@@ -12409,16 +12434,22 @@ export default function BookingDetail() {
                           );
                         })}
 
-                        {/* Total Row */}
+                        {/* Total Row - Combined USD */}
                         <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
-                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            TOTAL
+                          <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            TOTAL (Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)
                           </td>
                           <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
+                            ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
+                        </tr>
+                        {/* Breakdown Row */}
+                        <tr className="bg-gray-100">
+                          <td colSpan="4" className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-semibold text-sm">
+                            USD: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + UZS: {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} (${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')})
+                          </td>
+                          <td colSpan="2" className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-semibold text-sm">
+                            = ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
                       </tbody>
