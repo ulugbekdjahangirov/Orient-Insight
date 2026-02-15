@@ -3140,12 +3140,12 @@ export default function BookingDetail() {
         }
       ]);
 
-      // Row 3 - Total sum (gray, larger)
+      // Row 3 - Total sum (gray, larger Total label)
       tableData.push([
         {
-          content: `Total: $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + $${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
+          content: `Total:     $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + $${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
           colSpan: 5,
-          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 }
+          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 11 }
         },
         {
           content: `= $${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
@@ -12468,7 +12468,8 @@ export default function BookingDetail() {
                         {/* Row 3 - Total Sum (gray, larger) */}
                         <tr className="bg-gray-200">
                           <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
-                            Total: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
+                            <span className="text-2xl font-extrabold mr-4">Total:</span>
+                            <span className="text-base">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
                           </td>
                           <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
                             = ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
