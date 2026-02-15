@@ -528,20 +528,11 @@ export default function Opex() {
     }
   };
 
-  // Load helper - loads from localStorage OR database
+  // Load helper - loads from DATABASE first (source of truth)
   const loadOpexConfig = async (tourType, category, localStorageKey, defaultValue, setter) => {
     try {
-      // 1. Try localStorage first (fastest)
-      const saved = localStorage.getItem(localStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        console.log(`✅ Loaded from localStorage (${localStorageKey})`);
-        setter(parsed);
-        return;
-      }
-
-      // 2. If localStorage empty, try database
-      console.log(`⚠️ localStorage empty, loading from database (${tourType}/${category})...`);
+      // 1. Try DATABASE first (source of truth) - always load fresh data on mount
+      console.log(`🔄 Loading from database (${tourType}/${category})...`);
       const response = await opexApi.get(tourType.toUpperCase(), category);
 
       // Check if items exists and is not empty (array OR object)
@@ -557,12 +548,30 @@ export default function Opex() {
         return;
       }
 
+      // 2. If database empty, try localStorage as fallback
+      console.log(`⚠️ Database empty, trying localStorage (${localStorageKey})...`);
+      const saved = localStorage.getItem(localStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log(`✅ Loaded from localStorage (${localStorageKey})`);
+        setter(parsed);
+        return;
+      }
+
       // 3. If both empty, use defaults
-      console.log(`⚠️ No data in database, using defaults (${localStorageKey})`);
+      console.log(`⚠️ No data in database or localStorage, using defaults (${localStorageKey})`);
       setter(defaultValue);
     } catch (error) {
       console.error(`❌ Database load error (${localStorageKey}):`, error);
-      setter(defaultValue);
+      // Fallback to localStorage if database fails
+      const saved = localStorage.getItem(localStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log(`⚠️ Database failed, using localStorage (${localStorageKey})`);
+        setter(parsed);
+      } else {
+        setter(defaultValue);
+      }
     }
   };
 
