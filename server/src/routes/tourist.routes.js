@@ -4488,6 +4488,13 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
             </tr>
           </tbody>
         </table>
+        <!-- Guide Information -->
+        ${booking.guide ? `
+        <div class="guide-info">
+          <strong>Гид группы:</strong> ${booking.guide.name || 'Не указан'}${booking.guide.phone ? ` | <strong>Телефон:</strong> ${booking.guide.phone}` : ''}
+        </div>
+        ` : ''}
+
 
         <!-- ROOMING LISTE Title -->
         <div class="rooming-title">ROOMING LISTE</div>
@@ -5099,6 +5106,7 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       <html>
       <head>
         <meta charset="UTF-8">
+        <title>ЗАЯВКА ${booking.bookingNumber} - ${accommodation.hotel.name}</title>
         <style>
           @page {
             size: A4 portrait;
@@ -5263,6 +5271,17 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
             font-size: 11px;
             color: #856404;
           }
+          .guide-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 9pt;
+          }
+          .guide-info strong {
+            color: #495057;
+          }
           @media print {
             .print-notice { display: none; }
           }
@@ -5350,6 +5369,13 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
             </tr>
           </tbody>
         </table>
+        <!-- Guide Information -->
+        ${booking.guide ? `
+        <div class="guide-info">
+          <strong>Гид группы:</strong> ${booking.guide.name || 'Не указан'}${booking.guide.phone ? ` | <strong>Телефон:</strong> ${booking.guide.phone}` : ''}
+        </div>
+        ` : ''}
+
 
         <!-- ROOMING LISTE Title -->
         <div class="rooming-title">ROOMING LISTE</div>
@@ -5994,6 +6020,13 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
               </tr>
             </tbody>
           </table>
+          <!-- Guide Information -->
+          ${booking.guide ? `
+          <div class="guide-info">
+            <strong>Гид группы:</strong> ${booking.guide.name || 'Не указан'}${booking.guide.phone ? ` | <strong>Телефон:</strong> ${booking.guide.phone}` : ''}
+          </div>
+          ` : ''}
+
 
           <!-- ROOMING LISTE Title -->
           <div class="rooming-title">ROOMING LISTE</div>

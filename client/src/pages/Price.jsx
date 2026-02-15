@@ -3,6 +3,7 @@ import { DollarSign, Plus, Edit, Trash2, Save, X, Hotel, Truck, ChevronUp, Chevr
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { pricesApi } from '../services/api';
 
 const tourTypes = [
   { id: 'er', name: 'ER', color: 'blue' },
@@ -356,16 +357,43 @@ export default function Price() {
     toast.success('Цены сохранены');
   };
 
-  const saveHotelPrices = () => {
-    const storageKey = 'er-hotel-prices';
-    localStorage.setItem(storageKey, JSON.stringify(hotelPrices));
-    toast.success('Hotel цены сохранены');
+  // CRITICAL FIX: Helper function to save to BOTH localStorage AND database
+  const savePriceConfig = async (tourType, category, paxTier, items, localStorageKey) => {
+    try {
+      // 1. Save to localStorage (for immediate use & cache)
+      localStorage.setItem(localStorageKey, JSON.stringify(items));
+
+      // 2. Save to DATABASE (for persistence)
+      await pricesApi.save({
+        tourType: tourType.toUpperCase(),
+        category,
+        paxTier,
+        items
+      });
+
+      console.log(`✅ Saved to localStorage (${localStorageKey}) AND database`);
+      return true;
+    } catch (error) {
+      console.error('❌ Database save error:', error);
+      toast.error('Сохранено в браузере, но не в базе данных!');
+      return false;
+    }
   };
 
-  const saveTransportRoutes = () => {
+  const saveHotelPrices = async () => {
+    const storageKey = 'er-hotel-prices';
+    const success = await savePriceConfig('ER', 'hotels', selectedPaxTier, hotelPrices, storageKey);
+    if (success) {
+      toast.success('Hotel цены сохранены в базу данных!');
+    }
+  };
+
+  const saveTransportRoutes = async () => {
     const storageKey = `er-transport-${selectedPaxTier}`;
-    localStorage.setItem(storageKey, JSON.stringify(transportRoutes));
-    toast.success('Transport маршрутлар сохранены');
+    const success = await savePriceConfig('ER', 'transport', selectedPaxTier, transportRoutes, storageKey);
+    if (success) {
+      toast.success('Transport маршрутлар сохранены в базу данных!');
+    }
   };
 
   const copyTransportFrom4PaxToOthers = () => {
@@ -707,10 +735,12 @@ export default function Price() {
     }
   };
 
-  const saveRailwayRoutes = () => {
+  const saveRailwayRoutes = async () => {
     const storageKey = 'er-railway-routes';
-    localStorage.setItem(storageKey, JSON.stringify(railwayRoutes));
-    toast.success('Railway маршрутлар сохранены');
+    const success = await savePriceConfig('ER', 'railway', selectedPaxTier, railwayRoutes, storageKey);
+    if (success) {
+      toast.success('Railway маршрутлар сохранены в базу данных!');
+    }
   };
 
   const updateRailwayRoute = (id, field, value) => {
@@ -763,10 +793,12 @@ export default function Price() {
     }
   };
 
-  const saveFlyRoutes = () => {
+  const saveFlyRoutes = async () => {
     const storageKey = 'er-fly-routes';
-    localStorage.setItem(storageKey, JSON.stringify(flyRoutes));
-    toast.success('Fly маршрутлар сохранены');
+    const success = await savePriceConfig('ER', 'fly', selectedPaxTier, flyRoutes, storageKey);
+    if (success) {
+      toast.success('Fly маршрутлар сохранены в базу данных!');
+    }
   };
 
   const updateFlyRoute = (id, field, value) => {
@@ -813,9 +845,12 @@ export default function Price() {
     const saved = localStorage.getItem('er-meal-items');
     setMealItems(saved ? JSON.parse(saved) : defaultMealItems);
   };
-  const saveMealItems = () => {
-    localStorage.setItem('er-meal-items', JSON.stringify(mealItems));
-    toast.success('Meal маълумотлар сохранены');
+  const saveMealItems = async () => {
+    const storageKey = 'er-meal-items';
+    const success = await savePriceConfig('ER', 'meal', selectedPaxTier, mealItems, storageKey);
+    if (success) {
+      toast.success('Meal маълумотлар сохранены в базу данных!');
+    }
   };
   const updateMealItem = (id, field, value) => {
     setMealItems(mealItems.map(m => m.id === id ? { ...m, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : m));
@@ -844,9 +879,12 @@ export default function Price() {
     const saved = localStorage.getItem('er-sightseing-items');
     setSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
   };
-  const saveSightseingItems = () => {
-    localStorage.setItem('er-sightseing-items', JSON.stringify(sightseingItems));
-    toast.success('Sightseing маълумотлар сохранены');
+  const saveSightseingItems = async () => {
+    const storageKey = 'er-sightseing-items';
+    const success = await savePriceConfig('ER', 'sightseeing', selectedPaxTier, sightseingItems, storageKey);
+    if (success) {
+      toast.success('Sightseing маълумотлар сохранены в базу данных!');
+    }
   };
   const updateSightseingItem = (id, field, value) => {
     setSightseingItems(sightseingItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -875,9 +913,12 @@ export default function Price() {
     const saved = localStorage.getItem('er-guide-items');
     setGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
   };
-  const saveGuideItems = () => {
-    localStorage.setItem('er-guide-items', JSON.stringify(guideItems));
-    toast.success('Guide маълумотлар сохранены');
+  const saveGuideItems = async () => {
+    const storageKey = 'er-guide-items';
+    const success = await savePriceConfig('ER', 'guide', selectedPaxTier, guideItems, storageKey);
+    if (success) {
+      toast.success('Guide маълумотлар сохранены в базу данных!');
+    }
   };
   const updateGuideItem = (id, field, value) => {
     setGuideItems(guideItems.map(g => g.id === id ? { ...g, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : g));
@@ -906,9 +947,12 @@ export default function Price() {
     const saved = localStorage.getItem('er-shou-items');
     setShouItems(saved ? JSON.parse(saved) : defaultShouItems);
   };
-  const saveShouItems = () => {
-    localStorage.setItem('er-shou-items', JSON.stringify(shouItems));
-    toast.success('Shou маълумотлар сохранены');
+  const saveShouItems = async () => {
+    const storageKey = 'er-shou-items';
+    const success = await savePriceConfig('ER', 'shou', selectedPaxTier, shouItems, storageKey);
+    if (success) {
+      toast.success('Shou маълумотлар сохранены в базу данных!');
+    }
   };
   const updateShouItem = (id, field, value) => {
     setShouItems(shouItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -984,14 +1028,50 @@ export default function Price() {
     }
   };
 
+  // Zusatzkosten save functions
+  const saveZusatzkosten = async () => {
+    const storageKey = 'er_zusatzkosten';
+    const success = await savePriceConfig('ER', 'zusatzkosten', selectedPaxTier, zusatzkostenItems, storageKey);
+    if (success) {
+      toast.success(`ER Zusatzkosten сохранены в базу данных! (${zusatzkostenItems.length} items)`);
+    }
+  };
+
+  const saveCoZusatzkosten = async () => {
+    const storageKey = 'co_zusatzkosten';
+    const success = await savePriceConfig('CO', 'zusatzkosten', selectedPaxTier, coZusatzkostenItems, storageKey);
+    if (success) {
+      toast.success('CO Zusatzkosten сохранены в базу данных!');
+    }
+  };
+
+  const saveKasZusatzkosten = async () => {
+    const storageKey = 'kas_zusatzkosten';
+    const success = await savePriceConfig('KAS', 'zusatzkosten', selectedPaxTier, kasZusatzkostenItems, storageKey);
+    if (success) {
+      toast.success('KAS Zusatzkosten сохранены в базу данных!');
+    }
+  };
+
+  const saveZaZusatzkosten = async () => {
+    const storageKey = 'za_zusatzkosten';
+    const success = await savePriceConfig('ZA', 'zusatzkosten', selectedPaxTier, zaZusatzkostenItems, storageKey);
+    if (success) {
+      toast.success('ZA Zusatzkosten сохранены в базу данных!');
+    }
+  };
+
   // ==================== CO MODULE FUNCTIONS ====================
   const loadCoHotelPrices = () => {
     const saved = localStorage.getItem('co-hotel-prices');
     setCoHotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
   };
-  const saveCoHotelPrices = () => {
-    localStorage.setItem('co-hotel-prices', JSON.stringify(coHotelPrices));
-    toast.success('CO Hotel цены сохранены');
+  const saveCoHotelPrices = async () => {
+    const storageKey = 'co-hotel-prices';
+    const success = await savePriceConfig('CO', 'hotels', selectedPaxTier, coHotelPrices, storageKey);
+    if (success) {
+      toast.success('CO Hotel цены сохранены в базу данных!');
+    }
   };
   const updateCoHotelPrice = (id, field, value) => {
     setCoHotelPrices(coHotelPrices.map(h => h.id === id ? { ...h, [field]: field === 'city' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : h));
@@ -1014,10 +1094,12 @@ export default function Price() {
       setCoTransportRoutes([]);
     }
   };
-  const saveCoTransportRoutes = () => {
+  const saveCoTransportRoutes = async () => {
     const storageKey = `co-transport-${selectedPaxTier}`;
-    localStorage.setItem(storageKey, JSON.stringify(coTransportRoutes));
-    toast.success('CO Transport сохранены');
+    const success = await savePriceConfig('CO', 'transport', selectedPaxTier, coTransportRoutes, storageKey);
+    if (success) {
+      toast.success('CO Transport сохранены в базу данных!');
+    }
   };
   const updateCoTransportRoute = (id, field, value) => {
     setCoTransportRoutes(coTransportRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1033,9 +1115,12 @@ export default function Price() {
     const saved = localStorage.getItem('co-railway-routes');
     setCoRailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
   };
-  const saveCoRailwayRoutes = () => {
-    localStorage.setItem('co-railway-routes', JSON.stringify(coRailwayRoutes));
-    toast.success('CO Railway сохранены');
+  const saveCoRailwayRoutes = async () => {
+    const storageKey = 'co-railway-routes';
+    const success = await savePriceConfig('CO', 'railway', selectedPaxTier, coRailwayRoutes, storageKey);
+    if (success) {
+      toast.success('CO Railway сохранены в базу данных!');
+    }
   };
   const updateCoRailwayRoute = (id, field, value) => {
     setCoRailwayRoutes(coRailwayRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1051,9 +1136,12 @@ export default function Price() {
     const saved = localStorage.getItem('co-fly-routes');
     setCoFlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
   };
-  const saveCoFlyRoutes = () => {
-    localStorage.setItem('co-fly-routes', JSON.stringify(coFlyRoutes));
-    toast.success('CO Fly сохранены');
+  const saveCoFlyRoutes = async () => {
+    const storageKey = 'co-fly-routes';
+    const success = await savePriceConfig('CO', 'fly', selectedPaxTier, coFlyRoutes, storageKey);
+    if (success) {
+      toast.success('CO Fly сохранены в базу данных!');
+    }
   };
   const updateCoFlyRoute = (id, field, value) => {
     setCoFlyRoutes(coFlyRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1069,9 +1157,12 @@ export default function Price() {
     const saved = localStorage.getItem('co-meal-items');
     setCoMealItems(saved ? JSON.parse(saved) : defaultMealItems);
   };
-  const saveCoMealItems = () => {
-    localStorage.setItem('co-meal-items', JSON.stringify(coMealItems));
-    toast.success('CO Meal сохранены');
+  const saveCoMealItems = async () => {
+    const storageKey = 'co-meal-items';
+    const success = await savePriceConfig('CO', 'meal', selectedPaxTier, coMealItems, storageKey);
+    if (success) {
+      toast.success('CO Meal сохранены в базу данных!');
+    }
   };
   const updateCoMealItem = (id, field, value) => {
     setCoMealItems(coMealItems.map(m => m.id === id ? { ...m, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : m));
@@ -1087,9 +1178,12 @@ export default function Price() {
     const saved = localStorage.getItem('co-sightseing-items');
     setCoSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
   };
-  const saveCoSightseingItems = () => {
-    localStorage.setItem('co-sightseing-items', JSON.stringify(coSightseingItems));
-    toast.success('CO Sightseing сохранены');
+  const saveCoSightseingItems = async () => {
+    const storageKey = 'co-sightseing-items';
+    const success = await savePriceConfig('CO', 'sightseeing', selectedPaxTier, coSightseingItems, storageKey);
+    if (success) {
+      toast.success('CO Sightseing сохранены в базу данных!');
+    }
   };
   const updateCoSightseingItem = (id, field, value) => {
     setCoSightseingItems(coSightseingItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -1105,9 +1199,12 @@ export default function Price() {
     const saved = localStorage.getItem('co-guide-items');
     setCoGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
   };
-  const saveCoGuideItems = () => {
-    localStorage.setItem('co-guide-items', JSON.stringify(coGuideItems));
-    toast.success('CO Guide сохранены');
+  const saveCoGuideItems = async () => {
+    const storageKey = 'co-guide-items';
+    const success = await savePriceConfig('CO', 'guide', selectedPaxTier, coGuideItems, storageKey);
+    if (success) {
+      toast.success('CO Guide сохранены в базу данных!');
+    }
   };
   const updateCoGuideItem = (id, field, value) => {
     setCoGuideItems(coGuideItems.map(g => g.id === id ? { ...g, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : g));
@@ -1123,9 +1220,12 @@ export default function Price() {
     const saved = localStorage.getItem('co-shou-items');
     setCoShouItems(saved ? JSON.parse(saved) : defaultShouItems);
   };
-  const saveCoShouItems = () => {
-    localStorage.setItem('co-shou-items', JSON.stringify(coShouItems));
-    toast.success('CO Shou сохранены');
+  const saveCoShouItems = async () => {
+    const storageKey = 'co-shou-items';
+    const success = await savePriceConfig('CO', 'shou', selectedPaxTier, coShouItems, storageKey);
+    if (success) {
+      toast.success('CO Shou сохранены в базу данных!');
+    }
   };
   const updateCoShouItem = (id, field, value) => {
     setCoShouItems(coShouItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -1154,9 +1254,12 @@ export default function Price() {
     const saved = localStorage.getItem('kas-hotel-prices');
     setKasHotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
   };
-  const saveKasHotelPrices = () => {
-    localStorage.setItem('kas-hotel-prices', JSON.stringify(kasHotelPrices));
-    toast.success('KAS Hotel цены сохранены');
+  const saveKasHotelPrices = async () => {
+    const storageKey = 'kas-hotel-prices';
+    const success = await savePriceConfig('KAS', 'hotels', selectedPaxTier, kasHotelPrices, storageKey);
+    if (success) {
+      toast.success('KAS Hotel цены сохранены в базу данных!');
+    }
   };
   const updateKasHotelPrice = (id, field, value) => {
     setKasHotelPrices(kasHotelPrices.map(h => h.id === id ? { ...h, [field]: field === 'city' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : h));
@@ -1179,10 +1282,12 @@ export default function Price() {
       setKasTransportRoutes([]);
     }
   };
-  const saveKasTransportRoutes = () => {
+  const saveKasTransportRoutes = async () => {
     const storageKey = `kas-transport-${selectedPaxTier}`;
-    localStorage.setItem(storageKey, JSON.stringify(kasTransportRoutes));
-    toast.success('KAS Transport сохранены');
+    const success = await savePriceConfig('KAS', 'transport', selectedPaxTier, kasTransportRoutes, storageKey);
+    if (success) {
+      toast.success('KAS Transport сохранены в базу данных!');
+    }
   };
   const updateKasTransportRoute = (id, field, value) => {
     setKasTransportRoutes(kasTransportRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1198,9 +1303,12 @@ export default function Price() {
     const saved = localStorage.getItem('kas-railway-routes');
     setKasRailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
   };
-  const saveKasRailwayRoutes = () => {
-    localStorage.setItem('kas-railway-routes', JSON.stringify(kasRailwayRoutes));
-    toast.success('KAS Railway сохранены');
+  const saveKasRailwayRoutes = async () => {
+    const storageKey = 'kas-railway-routes';
+    const success = await savePriceConfig('KAS', 'railway', selectedPaxTier, kasRailwayRoutes, storageKey);
+    if (success) {
+      toast.success('KAS Railway сохранены в базу данных!');
+    }
   };
   const updateKasRailwayRoute = (id, field, value) => {
     setKasRailwayRoutes(kasRailwayRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1216,9 +1324,12 @@ export default function Price() {
     const saved = localStorage.getItem('kas-fly-routes');
     setKasFlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
   };
-  const saveKasFlyRoutes = () => {
-    localStorage.setItem('kas-fly-routes', JSON.stringify(kasFlyRoutes));
-    toast.success('KAS Fly сохранены');
+  const saveKasFlyRoutes = async () => {
+    const storageKey = 'kas-fly-routes';
+    const success = await savePriceConfig('KAS', 'fly', selectedPaxTier, kasFlyRoutes, storageKey);
+    if (success) {
+      toast.success('KAS Fly сохранены в базу данных!');
+    }
   };
   const updateKasFlyRoute = (id, field, value) => {
     setKasFlyRoutes(kasFlyRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1234,9 +1345,12 @@ export default function Price() {
     const saved = localStorage.getItem('kas-meal-items');
     setKasMealItems(saved ? JSON.parse(saved) : defaultMealItems);
   };
-  const saveKasMealItems = () => {
-    localStorage.setItem('kas-meal-items', JSON.stringify(kasMealItems));
-    toast.success('KAS Meal сохранены');
+  const saveKasMealItems = async () => {
+    const storageKey = 'kas-meal-items';
+    const success = await savePriceConfig('KAS', 'meal', selectedPaxTier, kasMealItems, storageKey);
+    if (success) {
+      toast.success('KAS Meal сохранены в базу данных!');
+    }
   };
   const updateKasMealItem = (id, field, value) => {
     setKasMealItems(kasMealItems.map(m => m.id === id ? { ...m, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : m));
@@ -1252,9 +1366,12 @@ export default function Price() {
     const saved = localStorage.getItem('kas-sightseing-items');
     setKasSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
   };
-  const saveKasSightseingItems = () => {
-    localStorage.setItem('kas-sightseing-items', JSON.stringify(kasSightseingItems));
-    toast.success('KAS Sightseing сохранены');
+  const saveKasSightseingItems = async () => {
+    const storageKey = 'kas-sightseing-items';
+    const success = await savePriceConfig('KAS', 'sightseeing', selectedPaxTier, kasSightseingItems, storageKey);
+    if (success) {
+      toast.success('KAS Sightseing сохранены в базу данных!');
+    }
   };
   const updateKasSightseingItem = (id, field, value) => {
     setKasSightseingItems(kasSightseingItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -1270,9 +1387,12 @@ export default function Price() {
     const saved = localStorage.getItem('kas-guide-items');
     setKasGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
   };
-  const saveKasGuideItems = () => {
-    localStorage.setItem('kas-guide-items', JSON.stringify(kasGuideItems));
-    toast.success('KAS Guide сохранены');
+  const saveKasGuideItems = async () => {
+    const storageKey = 'kas-guide-items';
+    const success = await savePriceConfig('KAS', 'guide', selectedPaxTier, kasGuideItems, storageKey);
+    if (success) {
+      toast.success('KAS Guide сохранены в базу данных!');
+    }
   };
   const updateKasGuideItem = (id, field, value) => {
     setKasGuideItems(kasGuideItems.map(g => g.id === id ? { ...g, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : g));
@@ -1288,9 +1408,12 @@ export default function Price() {
     const saved = localStorage.getItem('kas-shou-items');
     setKasShouItems(saved ? JSON.parse(saved) : defaultShouItems);
   };
-  const saveKasShouItems = () => {
-    localStorage.setItem('kas-shou-items', JSON.stringify(kasShouItems));
-    toast.success('KAS Shou сохранены');
+  const saveKasShouItems = async () => {
+    const storageKey = 'kas-shou-items';
+    const success = await savePriceConfig('KAS', 'shou', selectedPaxTier, kasShouItems, storageKey);
+    if (success) {
+      toast.success('KAS Shou сохранены в базу данных!');
+    }
   };
   const updateKasShouItem = (id, field, value) => {
     setKasShouItems(kasShouItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -1319,9 +1442,12 @@ export default function Price() {
     const saved = localStorage.getItem('za-hotel-prices');
     setZaHotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
   };
-  const saveZaHotelPrices = () => {
-    localStorage.setItem('za-hotel-prices', JSON.stringify(zaHotelPrices));
-    toast.success('ZA Hotel цены сохранены');
+  const saveZaHotelPrices = async () => {
+    const storageKey = 'za-hotel-prices';
+    const success = await savePriceConfig('ZA', 'hotels', selectedPaxTier, zaHotelPrices, storageKey);
+    if (success) {
+      toast.success('ZA Hotel цены сохранены в базу данных!');
+    }
   };
   const updateZaHotelPrice = (id, field, value) => {
     setZaHotelPrices(zaHotelPrices.map(h => h.id === id ? { ...h, [field]: field === 'city' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : h));
@@ -1344,10 +1470,12 @@ export default function Price() {
       setZaTransportRoutes([]);
     }
   };
-  const saveZaTransportRoutes = () => {
+  const saveZaTransportRoutes = async () => {
     const storageKey = `za-transport-${selectedPaxTier}`;
-    localStorage.setItem(storageKey, JSON.stringify(zaTransportRoutes));
-    toast.success('ZA Transport сохранены');
+    const success = await savePriceConfig('ZA', 'transport', selectedPaxTier, zaTransportRoutes, storageKey);
+    if (success) {
+      toast.success('ZA Transport сохранены в базу данных!');
+    }
   };
   const updateZaTransportRoute = (id, field, value) => {
     setZaTransportRoutes(zaTransportRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1363,9 +1491,12 @@ export default function Price() {
     const saved = localStorage.getItem('za-railway-routes');
     setZaRailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
   };
-  const saveZaRailwayRoutes = () => {
-    localStorage.setItem('za-railway-routes', JSON.stringify(zaRailwayRoutes));
-    toast.success('ZA Railway сохранены');
+  const saveZaRailwayRoutes = async () => {
+    const storageKey = 'za-railway-routes';
+    const success = await savePriceConfig('ZA', 'railway', selectedPaxTier, zaRailwayRoutes, storageKey);
+    if (success) {
+      toast.success('ZA Railway сохранены в базу данных!');
+    }
   };
   const updateZaRailwayRoute = (id, field, value) => {
     setZaRailwayRoutes(zaRailwayRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1381,9 +1512,12 @@ export default function Price() {
     const saved = localStorage.getItem('za-fly-routes');
     setZaFlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
   };
-  const saveZaFlyRoutes = () => {
-    localStorage.setItem('za-fly-routes', JSON.stringify(zaFlyRoutes));
-    toast.success('ZA Fly сохранены');
+  const saveZaFlyRoutes = async () => {
+    const storageKey = 'za-fly-routes';
+    const success = await savePriceConfig('ZA', 'fly', selectedPaxTier, zaFlyRoutes, storageKey);
+    if (success) {
+      toast.success('ZA Fly сохранены в базу данных!');
+    }
   };
   const updateZaFlyRoute = (id, field, value) => {
     setZaFlyRoutes(zaFlyRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1399,9 +1533,12 @@ export default function Price() {
     const saved = localStorage.getItem('za-meal-items');
     setZaMealItems(saved ? JSON.parse(saved) : defaultMealItems);
   };
-  const saveZaMealItems = () => {
-    localStorage.setItem('za-meal-items', JSON.stringify(zaMealItems));
-    toast.success('ZA Meal сохранены');
+  const saveZaMealItems = async () => {
+    const storageKey = 'za-meal-items';
+    const success = await savePriceConfig('ZA', 'meal', selectedPaxTier, zaMealItems, storageKey);
+    if (success) {
+      toast.success('ZA Meal сохранены в базу данных!');
+    }
   };
   const updateZaMealItem = (id, field, value) => {
     setZaMealItems(zaMealItems.map(m => m.id === id ? { ...m, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : m));
@@ -1417,9 +1554,12 @@ export default function Price() {
     const saved = localStorage.getItem('za-sightseing-items');
     setZaSightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
   };
-  const saveZaSightseingItems = () => {
-    localStorage.setItem('za-sightseing-items', JSON.stringify(zaSightseingItems));
-    toast.success('ZA Sightseing сохранены');
+  const saveZaSightseingItems = async () => {
+    const storageKey = 'za-sightseing-items';
+    const success = await savePriceConfig('ZA', 'sightseeing', selectedPaxTier, zaSightseingItems, storageKey);
+    if (success) {
+      toast.success('ZA Sightseing сохранены в базу данных!');
+    }
   };
   const updateZaSightseingItem = (id, field, value) => {
     setZaSightseingItems(zaSightseingItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -1435,9 +1575,12 @@ export default function Price() {
     const saved = localStorage.getItem('za-guide-items');
     setZaGuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
   };
-  const saveZaGuideItems = () => {
-    localStorage.setItem('za-guide-items', JSON.stringify(zaGuideItems));
-    toast.success('ZA Guide сохранены');
+  const saveZaGuideItems = async () => {
+    const storageKey = 'za-guide-items';
+    const success = await savePriceConfig('ZA', 'guide', selectedPaxTier, zaGuideItems, storageKey);
+    if (success) {
+      toast.success('ZA Guide сохранены в базу данных!');
+    }
   };
   const updateZaGuideItem = (id, field, value) => {
     setZaGuideItems(zaGuideItems.map(g => g.id === id ? { ...g, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : g));
@@ -1453,9 +1596,12 @@ export default function Price() {
     const saved = localStorage.getItem('za-shou-items');
     setZaShouItems(saved ? JSON.parse(saved) : defaultShouItems);
   };
-  const saveZaShouItems = () => {
-    localStorage.setItem('za-shou-items', JSON.stringify(zaShouItems));
-    toast.success('ZA Shou сохранены');
+  const saveZaShouItems = async () => {
+    const storageKey = 'za-shou-items';
+    const success = await savePriceConfig('ZA', 'shou', selectedPaxTier, zaShouItems, storageKey);
+    if (success) {
+      toast.success('ZA Shou сохранены в базу данных!');
+    }
   };
   const updateZaShouItem = (id, field, value) => {
     setZaShouItems(zaShouItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -1638,9 +1784,12 @@ export default function Price() {
     const saved = localStorage.getItem('preis2026-hotel-prices');
     setPreis2026HotelPrices(saved ? JSON.parse(saved) : defaultHotelPrices);
   };
-  const savePreis2026HotelPrices = () => {
-    localStorage.setItem('preis2026-hotel-prices', JSON.stringify(preis2026HotelPrices));
-    toast.success('Preis 2026 Hotel цены сохранены');
+  const savePreis2026HotelPrices = async () => {
+    const storageKey = 'preis2026-hotel-prices';
+    const success = await savePriceConfig('PREIS2026', 'hotels', selectedPaxTier, preis2026HotelPrices, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Hotel цены сохранены в базу данных!');
+    }
   };
   const updatePreis2026HotelPrice = (id, field, value) => {
     setPreis2026HotelPrices(preis2026HotelPrices.map(h => h.id === id ? { ...h, [field]: field === 'city' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : h));
@@ -1661,10 +1810,12 @@ export default function Price() {
       setPreis2026TransportRoutes([]);
     }
   };
-  const savePreis2026TransportRoutes = () => {
+  const savePreis2026TransportRoutes = async () => {
     const storageKey = `preis2026-transport-${selectedPaxTier}`;
-    localStorage.setItem(storageKey, JSON.stringify(preis2026TransportRoutes));
-    toast.success('Preis 2026 Transport сохранены');
+    const success = await savePriceConfig('PREIS2026', 'transport', selectedPaxTier, preis2026TransportRoutes, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Transport сохранены в базу данных!');
+    }
   };
   const updatePreis2026TransportRoute = (id, field, value) => {
     setPreis2026TransportRoutes(preis2026TransportRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1680,9 +1831,12 @@ export default function Price() {
     const saved = localStorage.getItem('preis2026-railway-routes');
     setPreis2026RailwayRoutes(saved ? JSON.parse(saved) : defaultRailwayRoutes);
   };
-  const savePreis2026RailwayRoutes = () => {
-    localStorage.setItem('preis2026-railway-routes', JSON.stringify(preis2026RailwayRoutes));
-    toast.success('Preis 2026 Railway сохранены');
+  const savePreis2026RailwayRoutes = async () => {
+    const storageKey = 'preis2026-railway-routes';
+    const success = await savePriceConfig('PREIS2026', 'railway', selectedPaxTier, preis2026RailwayRoutes, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Railway сохранены в базу данных!');
+    }
   };
   const updatePreis2026RailwayRoute = (id, field, value) => {
     setPreis2026RailwayRoutes(preis2026RailwayRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1698,9 +1852,12 @@ export default function Price() {
     const saved = localStorage.getItem('preis2026-fly-routes');
     setPreis2026FlyRoutes(saved ? JSON.parse(saved) : defaultFlyRoutes);
   };
-  const savePreis2026FlyRoutes = () => {
-    localStorage.setItem('preis2026-fly-routes', JSON.stringify(preis2026FlyRoutes));
-    toast.success('Preis 2026 Fly сохранены');
+  const savePreis2026FlyRoutes = async () => {
+    const storageKey = 'preis2026-fly-routes';
+    const success = await savePriceConfig('PREIS2026', 'fly', selectedPaxTier, preis2026FlyRoutes, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Fly сохранены в базу данных!');
+    }
   };
   const updatePreis2026FlyRoute = (id, field, value) => {
     setPreis2026FlyRoutes(preis2026FlyRoutes.map(r => r.id === id ? { ...r, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : r));
@@ -1716,9 +1873,12 @@ export default function Price() {
     const saved = localStorage.getItem('preis2026-meal-items');
     setPreis2026MealItems(saved ? JSON.parse(saved) : defaultMealItems);
   };
-  const savePreis2026MealItems = () => {
-    localStorage.setItem('preis2026-meal-items', JSON.stringify(preis2026MealItems));
-    toast.success('Preis 2026 Meal сохранены');
+  const savePreis2026MealItems = async () => {
+    const storageKey = 'preis2026-meal-items';
+    const success = await savePriceConfig('PREIS2026', 'meal', selectedPaxTier, preis2026MealItems, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Meal сохранены в базу данных!');
+    }
   };
   const updatePreis2026MealItem = (id, field, value) => {
     setPreis2026MealItems(preis2026MealItems.map(m => m.id === id ? { ...m, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : m));
@@ -1734,9 +1894,12 @@ export default function Price() {
     const saved = localStorage.getItem('preis2026-sightseing-items');
     setPreis2026SightseingItems(saved ? JSON.parse(saved) : defaultSightseingItems);
   };
-  const savePreis2026SightseingItems = () => {
-    localStorage.setItem('preis2026-sightseing-items', JSON.stringify(preis2026SightseingItems));
-    toast.success('Preis 2026 Sightseing сохранены');
+  const savePreis2026SightseingItems = async () => {
+    const storageKey = 'preis2026-sightseing-items';
+    const success = await savePriceConfig('PREIS2026', 'sightseeing', selectedPaxTier, preis2026SightseingItems, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Sightseing сохранены в базу данных!');
+    }
   };
   const updatePreis2026SightseingItem = (id, field, value) => {
     setPreis2026SightseingItems(preis2026SightseingItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -1752,9 +1915,12 @@ export default function Price() {
     const saved = localStorage.getItem('preis2026-guide-items');
     setPreis2026GuideItems(saved ? JSON.parse(saved) : defaultGuideItems);
   };
-  const savePreis2026GuideItems = () => {
-    localStorage.setItem('preis2026-guide-items', JSON.stringify(preis2026GuideItems));
-    toast.success('Preis 2026 Guide сохранены');
+  const savePreis2026GuideItems = async () => {
+    const storageKey = 'preis2026-guide-items';
+    const success = await savePriceConfig('PREIS2026', 'guide', selectedPaxTier, preis2026GuideItems, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Guide сохранены в базу данных!');
+    }
   };
   const updatePreis2026GuideItem = (id, field, value) => {
     setPreis2026GuideItems(preis2026GuideItems.map(g => g.id === id ? { ...g, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : g));
@@ -1770,9 +1936,12 @@ export default function Price() {
     const saved = localStorage.getItem('preis2026-shou-items');
     setPreis2026ShouItems(saved ? JSON.parse(saved) : defaultShouItems);
   };
-  const savePreis2026ShouItems = () => {
-    localStorage.setItem('preis2026-shou-items', JSON.stringify(preis2026ShouItems));
-    toast.success('Preis 2026 Shou сохранены');
+  const savePreis2026ShouItems = async () => {
+    const storageKey = 'preis2026-shou-items';
+    const success = await savePriceConfig('PREIS2026', 'shou', selectedPaxTier, preis2026ShouItems, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Shou сохранены в базу данных!');
+    }
   };
   const updatePreis2026ShouItem = (id, field, value) => {
     setPreis2026ShouItems(preis2026ShouItems.map(s => s.id === id ? { ...s, [field]: field === 'name' ? value : (value === '' ? 0 : parseFloat(value) || 0) } : s));
@@ -3297,22 +3466,7 @@ export default function Price() {
           </div>
           <div className="p-4 bg-pink-50 border-t border-pink-200">
             <button
-              onClick={() => {
-                console.log('💾 Saving ER Zusatzkosten to localStorage:', zusatzkostenItems);
-                localStorage.setItem('er_zusatzkosten', JSON.stringify(zusatzkostenItems));
-
-                // Verify it was saved
-                const verification = localStorage.getItem('er_zusatzkosten');
-                console.log('🔍 Verification - Data in localStorage after save:', verification);
-
-                if (verification) {
-                  console.log('✅ ER Zusatzkosten saved and verified successfully');
-                  toast.success(`Zusatzkosten saved! (${zusatzkostenItems.length} items)`);
-                } else {
-                  console.error('❌ Save failed - localStorage is empty after save!');
-                  toast.error('Save failed!');
-                }
-              }}
+              onClick={saveZusatzkosten}
               className="w-full bg-gradient-to-r from-pink-600 to-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
             >
               <Save className="w-5 h-5" />
@@ -4411,10 +4565,7 @@ export default function Price() {
           </div>
           <div className="p-4 bg-pink-50 border-t border-pink-200">
             <button
-              onClick={() => {
-                localStorage.setItem('co_zusatzkosten', JSON.stringify(coZusatzkostenItems));
-                toast.success('Zusatzkosten saved to localStorage!');
-              }}
+              onClick={saveCoZusatzkosten}
               className="w-full bg-gradient-to-r from-pink-600 to-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
             >
               <Save className="w-5 h-5" />
@@ -5280,7 +5431,7 @@ export default function Price() {
             </table>
           </div>
           <div className="p-4 bg-pink-50 border-t border-pink-200">
-            <button onClick={() => { localStorage.setItem('kas_zusatzkosten', JSON.stringify(kasZusatzkostenItems)); toast.success('Zusatzkosten saved!'); }} className="w-full bg-gradient-to-r from-pink-600 to-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+            <button onClick={saveKasZusatzkosten} className="w-full bg-gradient-to-r from-pink-600 to-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
               <Save className="w-5 h-5" />
               Save Zusatzkosten
             </button>
@@ -6128,7 +6279,7 @@ export default function Price() {
             </table>
           </div>
           <div className="p-4 bg-purple-50 border-t border-purple-200">
-            <button onClick={() => { localStorage.setItem('za_zusatzkosten', JSON.stringify(zaZusatzkostenItems)); toast.success('Zusatzkosten saved!'); }} className="w-full bg-gradient-to-r from-purple-600 to-violet-600 text-white px-6 py-3 rounded-xl font-bold hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+            <button onClick={saveZaZusatzkosten} className="w-full bg-gradient-to-r from-purple-600 to-violet-600 text-white px-6 py-3 rounded-xl font-bold hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
               <Save className="w-5 h-5" />
               Save Zusatzkosten
             </button>

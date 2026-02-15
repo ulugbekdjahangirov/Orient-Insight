@@ -291,4 +291,22 @@ export const invoicesApi = {
   delete: (id) => api.delete(`/invoices/${id}`)
 };
 
+// API for price configurations
+export const pricesApi = {
+  // Get price config for specific tour/category/pax
+  get: (tourType, category, paxTier) => api.get(`/prices/${tourType}/${category}/${paxTier}`),
+
+  // Get all configs for a tour type
+  getByTourType: (tourType) => api.get(`/prices/${tourType}`),
+
+  // Save single price config
+  save: (data) => api.post('/prices', data),
+
+  // Bulk import multiple configs
+  bulkImport: (configs) => api.post('/prices/bulk', { configs }),
+
+  // Delete config
+  delete: (tourType, category, paxTier) => api.delete(`/prices/${tourType}/${category}/${paxTier}`)
+};
+
 export default api;

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>localStorage Price Exporter/Importer</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #667eea;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f7fafc;
+    }
+    .section h2 {
+      color: #4a5568;
+      margin-top: 0;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 5px;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    button.success {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    }
+    button.danger {
+      background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+    }
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 15px;
+      border: 2px solid #cbd5e0;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+    .info {
+      background: #e6fffa;
+      border-left: 4px solid #319795;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+    }
+    .warning {
+      background: #fffaf0;
+      border-left: 4px solid #ed8936;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+    }
+    .success {
+      background: #f0fff4;
+      border-left: 4px solid #48bb78;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 32px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    .stat-label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 localStorage Price Manager</h1>
+    <p class="subtitle">Export narxlarni local dan, import qiling production ga</p>
+
+    <!-- STATISTICS -->
+    <div class="stats" id="stats"></div>
+
+    <!-- EXPORT SECTION -->
+    <div class="section">
+      <h2>📤 EXPORT (Local Development dan)</h2>
+      <div class="info">
+        <strong>Qachon ishlatiladi?</strong> Local development (localhost:5173) da prices to'ldirilgan bo'lsa, bu yerdan export qiling.
+      </div>
+
+      <button onclick="exportAllPrices()">Export All ER Prices</button>
+      <button onclick="exportAllPrices('co')">Export CO Prices</button>
+      <button onclick="exportAllPrices('kas')">Export KAS Prices</button>
+      <button onclick="exportAllPrices('za')">Export ZA Prices</button>
+      <button onclick="checkCurrentPrices()">Check Current Data</button>
+
+      <h3>Exported JSON:</h3>
+      <textarea id="exportOutput" placeholder="Bu yerda JSON paydo bo'ladi..."></textarea>
+      <button class="success" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+    </div>
+
+    <!-- IMPORT SECTION -->
+    <div class="section">
+      <h2>📥 IMPORT (Production ga)</h2>
+      <div class="warning">
+        <strong>⚠️ Diqqat!</strong> Bu funksiya production browserda ishlatiladi. Export qilingan JSON ni paste qiling va import qiling.
+      </div>
+
+      <h3>Paste JSON here:</h3>
+      <textarea id="importInput" placeholder='{"er-total-prices": "{...}", ...}'></textarea>
+      <button class="success" onclick="importPrices()">Import Prices</button>
+      <button class="danger" onclick="clearImportInput()">Clear Input</button>
+
+      <div id="importResult"></div>
+    </div>
+
+    <!-- VIEW SECTION -->
+    <div class="section">
+      <h2>👁️ VIEW Current localStorage</h2>
+      <button onclick="viewAllPrices()">View All Price Keys</button>
+      <button onclick="viewERPrices()">View ER Prices</button>
+      <button onclick="viewCOPrices()">View CO Prices</button>
+      <button onclick="viewKASPrices()">View KAS Prices</button>
+      <button onclick="viewZAPrices()">View ZA Prices</button>
+
+      <h3>Current Data:</h3>
+      <textarea id="viewOutput" placeholder="Bu yerda current data ko'rinadi..." readonly></textarea>
+    </div>
+
+    <!-- DANGER ZONE -->
+    <div class="section" style="border-color: #fc8181; background: #fff5f5;">
+      <h2 style="color: #c53030;">🚨 DANGER ZONE</h2>
+      <div class="warning">
+        <strong>⚠️ DIQQAT!</strong> Bu amallar localStorage ni o'chiradi. Faqat test uchun ishlatiladi!
+      </div>
+      <button class="danger" onclick="clearAllPrices()">Clear All Prices (ALL TOURS)</button>
+      <button class="danger" onclick="clearERPrices()">Clear Only ER Prices</button>
+    </div>
+  </div>
+
+  <script>
+    // Update statistics
+    function updateStats() {
+      const stats = document.getElementById('stats');
+      const allKeys = Object.keys(localStorage);
+      const erKeys = allKeys.filter(k => k.startsWith('er_') || k.startsWith('er-'));
+      const coKeys = allKeys.filter(k => k.startsWith('co_') || k.startsWith('co-'));
+      const kasKeys = allKeys.filter(k => k.startsWith('kas_') || k.startsWith('kas-'));
+      const zaKeys = allKeys.filter(k => k.startsWith('za_') || k.startsWith('za-'));
+
+      stats.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">Total Keys</div>
+          <div class="stat-number">${allKeys.length}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ER Keys</div>
+          <div class="stat-number">${erKeys.length}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">CO Keys</div>
+          <div class="stat-number">${coKeys.length}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">KAS Keys</div>
+          <div class="stat-number">${kasKeys.length}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ZA Keys</div>
+          <div class="stat-number">${zaKeys.length}</div>
+        </div>
+      `;
+    }
+
+    // Export all prices for a tour
+    function exportAllPrices(tour = 'er') {
+      const exported = {};
+      const prefix = tour.toLowerCase();
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(prefix + '_') || key.startsWith(prefix + '-')) {
+          exported[key] = localStorage.getItem(key);
+        }
+      }
+
+      const output = document.getElementById('exportOutput');
+      output.value = JSON.stringify(exported, null, 2);
+
+      console.log(`✅ Exported ${Object.keys(exported).length} keys for ${tour.toUpperCase()}`);
+      alert(`✅ Exported ${Object.keys(exported).length} ${tour.toUpperCase()} price keys!\n\nCopy qiling va production ga import qiling.`);
+
+      updateStats();
+    }
+
+    // Check what's currently in localStorage
+    function checkCurrentPrices() {
+      const allKeys = Object.keys(localStorage);
+      const priceKeys = allKeys.filter(k =>
+        k.startsWith('er_') || k.startsWith('er-') ||
+        k.startsWith('co_') || k.startsWith('co-') ||
+        k.startsWith('kas_') || k.startsWith('kas-') ||
+        k.startsWith('za_') || k.startsWith('za-')
+      );
+
+      const output = document.getElementById('exportOutput');
+      output.value = `Found ${priceKeys.length} price-related keys:\n\n${priceKeys.join('\n')}`;
+
+      console.log('Current price keys:', priceKeys);
+      updateStats();
+    }
+
+    // Copy to clipboard
+    function copyToClipboard() {
+      const output = document.getElementById('exportOutput');
+      output.select();
+      document.execCommand('copy');
+      alert('✅ Copied to clipboard!');
+    }
+
+    // Import prices
+    function importPrices() {
+      const input = document.getElementById('importInput');
+      const result = document.getElementById('importResult');
+
+      try {
+        const data = JSON.parse(input.value);
+        let count = 0;
+
+        Object.keys(data).forEach(key => {
+          localStorage.setItem(key, data[key]);
+          count++;
+        });
+
+        result.innerHTML = `<div class="success">
+          ✅ Successfully imported ${count} keys!<br>
+          Refresh sahifani va Rechnung ni tekshiring.
+        </div>`;
+
+        console.log(`✅ Imported ${count} keys`);
+        updateStats();
+      } catch (e) {
+        result.innerHTML = `<div class="warning">
+          ❌ Error: ${e.message}<br>
+          JSON format xato. To'g'ri JSON paste qiling.
+        </div>`;
+        console.error('Import error:', e);
+      }
+    }
+
+    // Clear import input
+    function clearImportInput() {
+      document.getElementById('importInput').value = '';
+      document.getElementById('importResult').innerHTML = '';
+    }
+
+    // View all prices
+    function viewAllPrices() {
+      const output = document.getElementById('viewOutput');
+      const allKeys = Object.keys(localStorage);
+      const priceKeys = allKeys.filter(k =>
+        k.startsWith('er_') || k.startsWith('er-') ||
+        k.startsWith('co_') || k.startsWith('co-') ||
+        k.startsWith('kas_') || k.startsWith('kas-') ||
+        k.startsWith('za_') || k.startsWith('za-')
+      );
+
+      let result = `Found ${priceKeys.length} price keys:\n\n`;
+      priceKeys.forEach(key => {
+        const value = localStorage.getItem(key);
+        result += `${key}:\n${value}\n\n`;
+      });
+
+      output.value = result;
+      updateStats();
+    }
+
+    // View specific tour prices
+    function viewERPrices() { viewTourPrices('er'); }
+    function viewCOPrices() { viewTourPrices('co'); }
+    function viewKASPrices() { viewTourPrices('kas'); }
+    function viewZAPrices() { viewTourPrices('za'); }
+
+    function viewTourPrices(tour) {
+      const output = document.getElementById('viewOutput');
+      const prefix = tour.toLowerCase();
+      const keys = [];
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(prefix + '_') || key.startsWith(prefix + '-')) {
+          keys.push(key);
+        }
+      }
+
+      let result = `${tour.toUpperCase()} Prices (${keys.length} keys):\n\n`;
+      keys.forEach(key => {
+        const value = localStorage.getItem(key);
+        result += `${key}:\n${value}\n\n`;
+      });
+
+      output.value = result || `No ${tour.toUpperCase()} prices found.`;
+      updateStats();
+    }
+
+    // DANGER: Clear all prices
+    function clearAllPrices() {
+      if (!confirm('⚠️ DIQQAT! Barcha tour narxlarini o\'chirmoqchimisiz?\n\nBu amalni bekor qilib bo\'lmaydi!')) {
+        return;
+      }
+
+      const allKeys = Object.keys(localStorage);
+      const priceKeys = allKeys.filter(k =>
+        k.startsWith('er_') || k.startsWith('er-') ||
+        k.startsWith('co_') || k.startsWith('co-') ||
+        k.startsWith('kas_') || k.startsWith('kas-') ||
+        k.startsWith('za_') || k.startsWith('za-')
+      );
+
+      priceKeys.forEach(key => localStorage.removeItem(key));
+
+      alert(`✅ Cleared ${priceKeys.length} price keys`);
+      updateStats();
+      checkCurrentPrices();
+    }
+
+    // DANGER: Clear ER prices only
+    function clearERPrices() {
+      if (!confirm('⚠️ ER narxlarini o\'chirmoqchimisiz?')) {
+        return;
+      }
+
+      const allKeys = Object.keys(localStorage);
+      const erKeys = allKeys.filter(k => k.startsWith('er_') || k.startsWith('er-'));
+
+      erKeys.forEach(key => localStorage.removeItem(key));
+
+      alert(`✅ Cleared ${erKeys.length} ER price keys`);
+      updateStats();
+      checkCurrentPrices();
+    }
+
+    // Initialize stats on page load
+    updateStats();
+  </script>
+</body>
+</html>

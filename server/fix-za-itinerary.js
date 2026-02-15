@@ -2,103 +2,47 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function fixZAItinerary() {
-  try {
-    console.log('🔧 Fixing ZA tour itinerary...\n');
+  // Delete current itinerary
+  await prisma.tourItinerary.deleteMany({
+    where: { tourTypeId: 4 }
+  });
+  console.log('✓ Deleted old ZA itinerary');
 
-    // Get ZA tour type
-    const tourType = await prisma.tourType.findFirst({
-      where: { code: 'ZA' }
-    });
+  // Create new correct itinerary
+  const newItinerary = [
+    { day: 1, hotel: 'Dargoh Hotel', title: 'Auf nach Usbekistan', desc: 'Ankunft in Buchara' },
+    { day: 2, hotel: 'Dargoh Hotel', title: 'Mausoleen, Moscheen', desc: 'Buchara Stadtbesichtigung' },
+    { day: 3, hotel: 'Dargoh Hotel', title: 'Ein Nachmittag für dich', desc: 'Buchara Freizeit' },
+    { day: 4, hotel: 'Jahongir', title: 'Auf der Route der alten Seidenstraße', desc: 'Fahrt nach Samarkand' },
+    { day: 5, hotel: 'Jahongir', title: 'Seidenpapier und Nekropole', desc: 'Samarkand Besichtigung' },
+    { day: 6, hotel: '', title: 'Auf nach Tadschikistan', desc: 'Tag 1 in Tadschikistan' },
+    { day: 7, hotel: '', title: 'Tadschikistan', desc: 'Tag 2 in Tadschikistan' },
+    { day: 8, hotel: '', title: 'Tadschikistan', desc: 'Tag 3 in Tadschikistan' },
+    { day: 9, hotel: '', title: 'Tadschikistan', desc: 'Tag 4 in Tadschikistan' },
+    { day: 10, hotel: 'Arien Plaza', title: 'Zurück nach Usbekistan', desc: 'Tashkent - 1 Nacht' },
+    { day: 11, hotel: '', title: 'Auf nach Kasachstan', desc: 'Weiterreise nach Kasachstan' }
+  ];
 
-    // Find the Arien Plaza entry on day 7 and update it to day 10
-    const arienDay7 = await prisma.tourItinerary.findFirst({
-      where: {
-        tourTypeId: tourType.id,
-        dayNumber: 7,
-        accommodation: { contains: 'Arien' }
+  for (const item of newItinerary) {
+    await prisma.tourItinerary.create({
+      data: {
+        tourTypeId: 4,
+        dayNumber: item.day,
+        accommodation: item.hotel || null,
+        title: item.title,
+        description: item.desc
       }
     });
-
-    if (arienDay7) {
-      console.log('Found Arien Plaza on day 7 (WRONG)');
-      console.log('Updating to day 10...\n');
-
-      await prisma.tourItinerary.update({
-        where: { id: arienDay7.id },
-        data: { dayNumber: 10 }
-      });
-
-      console.log('✅ Updated Arien Plaza from day 7 to day 10\n');
-    }
-
-    // Check day 6 - should have no hotel (Tajikistan)
-    const day6 = await prisma.tourItinerary.findFirst({
-      where: {
-        tourTypeId: tourType.id,
-        dayNumber: 6
-      }
-    });
-
-    if (day6 && day6.accommodation) {
-      console.log(`Day 6 has hotel: ${day6.accommodation} (should be empty for Tajikistan)`);
-      await prisma.tourItinerary.update({
-        where: { id: day6.id },
-        data: { accommodation: null }
-      });
-      console.log('✅ Cleared day 6 accommodation\n');
-    }
-
-    // Ensure days 7, 8, 9 exist with no hotel
-    for (let day = 7; day <= 9; day++) {
-      const existing = await prisma.tourItinerary.findFirst({
-        where: {
-          tourTypeId: tourType.id,
-          dayNumber: day
-        }
-      });
-
-      if (!existing) {
-        await prisma.tourItinerary.create({
-          data: {
-            tourTypeId: tourType.id,
-            dayNumber: day,
-            title: `Day ${day}: Tajikistan`,
-            accommodation: null
-          }
-        });
-        console.log(`✅ Created day ${day} (Tajikistan - no hotel)`);
-      } else if (existing.accommodation) {
-        await prisma.tourItinerary.update({
-          where: { id: existing.id },
-          data: { accommodation: null }
-        });
-        console.log(`✅ Cleared day ${day} accommodation (Tajikistan)`);
-      }
-    }
-
-    console.log('\n✅ ZA itinerary fixed!\n');
-
-    // Show updated itinerary
-    const updated = await prisma.tourItinerary.findMany({
-      where: { tourTypeId: tourType.id },
-      orderBy: { dayNumber: 'asc' },
-      select: {
-        dayNumber: true,
-        accommodation: true
-      }
-    });
-
-    console.log('Updated itinerary:');
-    updated.forEach(day => {
-      console.log(`  Day ${day.dayNumber}: ${day.accommodation || '(no hotel - Tajikistan)'}`);
-    });
-
-  } catch (error) {
-    console.error('❌ Error:', error.message);
-    console.error(error);
-  } finally {
-    await prisma.$disconnect();
   }
+  
+  console.log('✓ Created new ZA itinerary with 11 days');
+  console.log('  - Days 1-3: Dargoh Hotel (Bukhara) - 3 nights');
+  console.log('  - Days 4-5: Jahongir (Samarkand) - 2 nights');
+  console.log('  - Days 6-9: Tajikistan (no hotel) - 4 days');
+  console.log('  - Day 10: Arien Plaza (Tashkent) - 1 night');
+  console.log('  - Day 11: Kazakhstan (no hotel)');
+  
+  await prisma.$disconnect();
 }
 
 fixZAItinerary();

@@ -1,0 +1,9862 @@
+[
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.329Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.354Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.379Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.402Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.232Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.255Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.281Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "fly",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.306Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.921Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.945Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.971Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.994Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.824Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.848Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.872Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "guide",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.896Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.772Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.797Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.822Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.868Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.670Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.694Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.719Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "hotels",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 4,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 100,
+        "ezZimmer": 85,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 100,
+        "ezZimmer": 75,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.747Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.527Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.551Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.576Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.600Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.426Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.450Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.474Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "meal",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Samarkand",
+        "days": 2,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 2,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.501Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.138Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.162Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.185Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.208Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.042Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.066Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.090Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "railway",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Tashkent-Kokand",
+        "days": 1,
+        "price": 20
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.113Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.112Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.136Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.162Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.184Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.020Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.044Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.067Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "shou",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.090Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.729Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.752Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.775Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.800Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.624Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.649Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.672Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "sightseeing",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 105
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.704Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Kokand-Fergana",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Fergana-Tashkent",
+        "days": 1,
+        "price": 350
+      },
+      {
+        "id": 6,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Samarkand-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.996Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:54.554Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Kokand-Fergana",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Fergana-Tashkent",
+        "days": 1,
+        "price": 420
+      },
+      {
+        "id": 6,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Samarkand-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:15.020Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:54.723Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 4,
+        "name": "Kokand-Fergana",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 5,
+        "name": "Fergana-Tashkent",
+        "days": 1,
+        "price": 140
+      },
+      {
+        "id": 6,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Samarkand-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.894Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 4,
+        "name": "Kokand-Fergana",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 5,
+        "name": "Fergana-Tashkent",
+        "days": 1,
+        "price": 140
+      },
+      {
+        "id": 6,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Samarkand-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.920Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 4,
+        "name": "Kokand-Fergana",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 5,
+        "name": "Fergana-Tashkent",
+        "days": 1,
+        "price": 210
+      },
+      {
+        "id": 6,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Samarkand-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.945Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "transport",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 4,
+        "name": "Kokand-Fergana",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 5,
+        "name": "Fergana-Tashkent",
+        "days": 1,
+        "price": 140
+      },
+      {
+        "id": 6,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Samarkand-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.970Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "10-11",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.533Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "12-13",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.619Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "14-15",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.704Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "16",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.785Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "4",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.198Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "5",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.286Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "6-7",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.375Z"
+  },
+  {
+    "tourType": "CO",
+    "category": "zusatzkosten",
+    "paxTier": "8-9",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.454Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.770Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.795Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.821Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.845Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.667Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.692Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.718Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "fly",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.745Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.369Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.393Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.419Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.444Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.269Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.294Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.319Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "guide",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 14,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.343Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.169Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.190Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.213Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.239Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.061Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.090Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.121Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "hotels",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 65,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.146Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.970Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.996Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.022Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.046Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.869Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.895Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.918Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "meal",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Nurata",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 3,
+        "name": "Khiva",
+        "days": 1,
+        "price": 15
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.944Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.563Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.588Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.614Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.639Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.466Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.490Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.515Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "railway",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "price": 40
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.539Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.569Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.594Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.621Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.648Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.470Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.494Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.520Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "shou",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.544Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.172Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.196Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.221Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.245Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.071Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.097Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.123Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "sightseeing",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 95
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:14.146Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 11,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 12,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.368Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 11,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 12,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.392Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 11,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 12,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.417Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 11,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 12,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 14,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.442Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 2,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 140
+      },
+      {
+        "id": 4,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 14,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 1770022479765,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 50
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.265Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 2,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 140
+      },
+      {
+        "id": 4,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 14,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 1770022479765,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 50
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.291Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 2,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 140
+      },
+      {
+        "id": 4,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 14,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 1770022479765,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 50
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.316Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "transport",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 2,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 140
+      },
+      {
+        "id": 4,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 9,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 10,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 11,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 12,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 13,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 14,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 15,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 50
+      },
+      {
+        "id": 1770022479765,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 50
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:13.341Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "10-11",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:53.782Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "12-13",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:53.887Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "14-15",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:53.989Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "16",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.100Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "4",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:53.344Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "5",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:53.453Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "6-7",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:53.564Z"
+  },
+  {
+    "tourType": "ER",
+    "category": "zusatzkosten",
+    "paxTier": "8-9",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:53.669Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.164Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.254Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.345Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.431Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:54.820Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:54.906Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:54.986Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "fly",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.073Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.285Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.313Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.340Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.366Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.177Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.207Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.236Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "guide",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 8,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.262Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.306Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.332Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.358Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.383Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.207Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.228Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.253Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "hotels",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "city": "Fergana",
+        "days": 1,
+        "pricePerDay": 84,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Bukhara",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 63,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Tashkent",
+        "days": 2,
+        "pricePerDay": 84,
+        "ezZimmer": 61,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.280Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.867Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.892Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.916Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.940Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.778Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.800Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.822Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "meal",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Fergana",
+        "days": 1,
+        "price": 15
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.845Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.681Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.706Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.732Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.755Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.585Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.608Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.633Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "railway",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Kokand-Bukhara",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.656Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.491Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.515Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.541Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.566Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.391Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.416Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.441Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "shou",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 10
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.466Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.071Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.093Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.120Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.149Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.966Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.993Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.021Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "sightseeing",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.045Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.494Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.515Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.536Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.560Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.405Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.427Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.450Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "transport",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Dostlik-Fergana",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 2,
+        "name": "Fergana-Kokand-Bukhara",
+        "days": 1,
+        "price": 150
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 7,
+        "name": "Samarkand-Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 8,
+        "name": "Vokzal-Hotel",
+        "days": 1,
+        "price": 40
+      },
+      {
+        "id": 12,
+        "name": "Tashkent",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 15,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 40
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:16.472Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "10-11",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.216Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "12-13",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.306Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "14-15",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.394Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "16",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.481Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "4",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.869Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "5",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:54.949Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "6-7",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.034Z"
+  },
+  {
+    "tourType": "KAS",
+    "category": "zusatzkosten",
+    "paxTier": "8-9",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.126Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.661Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.776Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.870Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.969Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.274Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.377Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.468Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "fly",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.557Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.693Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.811Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.903Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.998Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.310Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.408Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.498Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "guide",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.587Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.553Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.578Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.603Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.630Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.443Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.471Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.502Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "hotels",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "city": "Tashkent",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Asraf",
+        "days": 1,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 4,
+        "city": "Buchara",
+        "days": 3,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 5,
+        "city": "Chiwa",
+        "days": 2,
+        "pricePerDay": 0,
+        "ezZimmer": 0,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.528Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.674Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.791Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.879Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.979Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.286Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.388Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.478Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "meal",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.567Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.647Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.764Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.860Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.959Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.261Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.366Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.457Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "railway",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.547Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.704Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.821Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.914Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:57.007Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.323Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.419Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.507Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "shou",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.599Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.683Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.802Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.891Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.988Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.297Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.398Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.488Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "sightseeing",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.576Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.636Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.750Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.849Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.947Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.251Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.356Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.447Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "transport",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Chimgan-Taschkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Transfer zum Bahnhof",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 4,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand-Asraf",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Asraf-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 7,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Bukhara-Khiva",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 9,
+        "name": "Khiva-Urgench",
+        "days": 1,
+        "price": 80
+      },
+      {
+        "id": 10,
+        "name": "Khiva-Shovot",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 11,
+        "name": "Aeroport-Hotel",
+        "days": 1,
+        "price": 60
+      },
+      {
+        "id": 12,
+        "name": "Hotel-Aeroport",
+        "days": 1,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.537Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "10-11",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.716Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "12-13",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.830Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "14-15",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.924Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "16",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:57.016Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "4",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.336Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "5",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.428Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "6-7",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.516Z"
+  },
+  {
+    "tourType": "PREIS2026",
+    "category": "zusatzkosten",
+    "paxTier": "8-9",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.613Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.857Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.970Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.072Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.174Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.520Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.605Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.687Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "fly",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Istanbul-Taschkent",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Taschkent-Istanbul",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.767Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.334Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.361Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.387Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.416Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.225Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.252Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.277Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "guide",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Main Guide (per day)",
+        "days": 6,
+        "price": 120
+      },
+      {
+        "id": 2,
+        "name": "Local Guide (per day)",
+        "days": 2,
+        "price": 60
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.305Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.707Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.737Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.765Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.794Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.595Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.620Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.649Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "hotels",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "city": "Bukhara",
+        "days": 3,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 2,
+        "city": "Samarkand",
+        "days": 2,
+        "pricePerDay": 85,
+        "ezZimmer": 64,
+        "ezZuschlag": 0
+      },
+      {
+        "id": 3,
+        "city": "Tashkent",
+        "days": 1,
+        "pricePerDay": 85,
+        "ezZimmer": 60,
+        "ezZuschlag": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.679Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.868Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.980Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.086Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.185Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.529Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.613Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.696Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "meal",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Breakfast",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Lunch",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 3,
+        "name": "Dinner",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.776Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.846Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.957Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.058Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.164Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.511Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.595Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.679Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "railway",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Taschkent-Samarkand",
+        "days": 1,
+        "price": 0
+      },
+      {
+        "id": 2,
+        "name": "Samarkand-Taschkent",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.757Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.905Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.013Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.122Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:56.221Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.557Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.642Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.723Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "shou",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Show",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:14:55.804Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.128Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.152Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.177Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.200Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.030Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.052Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.075Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "sightseeing",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Museum Entry",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 2,
+        "name": "Guide Service",
+        "days": 1,
+        "price": 0
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.104Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "10-11",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.926Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "12-13",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.954Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "14-15",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.978Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "16",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 100
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 220
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 80
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:18.005Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "4",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 70
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.818Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "5",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 70
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.841Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "6-7",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 70
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.867Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "transport",
+    "paxTier": "8-9",
+    "items": [
+      {
+        "id": 1,
+        "name": "Olot-Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 2,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 3,
+        "name": "Bukhara",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 4,
+        "name": "Bukhara-Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 5,
+        "name": "Samarkand",
+        "days": 1,
+        "price": 110
+      },
+      {
+        "id": 6,
+        "name": "Samarkand-Panjikent",
+        "days": 1,
+        "price": 70
+      },
+      {
+        "id": 7,
+        "name": "Oybek-Tashkent",
+        "days": 1,
+        "price": 120
+      },
+      {
+        "id": 8,
+        "name": "Tashkent-Chernyayevka",
+        "days": 1,
+        "price": 70
+      }
+    ],
+    "updatedAt": "2026-02-11T17:28:17.897Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "10-11",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.919Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "12-13",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.025Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "14-15",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.135Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "16",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:56.232Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "4",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.566Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "5",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.649Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "6-7",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.731Z"
+  },
+  {
+    "tourType": "ZA",
+    "category": "zusatzkosten",
+    "paxTier": "8-9",
+    "items": [],
+    "updatedAt": "2026-02-11T17:14:55.814Z"
+  }
+]
