@@ -566,6 +566,16 @@ export default function Opex() {
     }
   };
 
+  // Format price with space separator (2 000, 20 000, 200 000, etc.)
+  const formatPrice = (price) => {
+    if (!price || price === '-') return '-';
+    // Remove existing spaces and parse number
+    const numStr = String(price).replace(/\s/g, '');
+    if (!numStr || isNaN(numStr)) return price;
+    // Format with space separator every 3 digits from right
+    return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  };
+
   // Load transport data from API
   const loadTransportData = useCallback(async () => {
     try {
@@ -2388,7 +2398,7 @@ export default function Opex() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -2501,7 +2511,7 @@ export default function Opex() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -2614,7 +2624,7 @@ export default function Opex() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -2727,7 +2737,7 @@ export default function Opex() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -2885,7 +2895,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -2971,7 +2981,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -3057,7 +3067,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -3143,7 +3153,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -3284,7 +3294,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -3370,7 +3380,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -3456,7 +3466,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -3542,7 +3552,7 @@ export default function Opex() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{item.price || '-'}</span>
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
