@@ -71,14 +71,14 @@ const defaultMetroVehicles = [
 ];
 
 const defaultTrainVehicles = [
-  { id: 1, name: 'Afrosiyob764Ф (CKPCT) Tashkent Central → Karshi', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '6:33', arrival: '8:46' },
-  { id: 2, name: 'Afrosiyob766Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '7:30', arrival: '9:49' },
-  { id: 3, name: 'Afrosiyob768Ф (CKPCT) Tashkent Central → Samarkand', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', departure: '8:00', arrival: '10:25' },
+  { id: 1, name: 'Afrosiyob764Ф (CKPCT) Tashkent Central → Karshi', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', vipPrice: '600 000', departure: '6:33', arrival: '8:46' },
+  { id: 2, name: 'Afrosiyob766Ф (CKPCT) Tashkent Central → Bukhara', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', vipPrice: '600 000', departure: '7:30', arrival: '9:49' },
+  { id: 3, name: 'Afrosiyob768Ф (CKPCT) Tashkent Central → Samarkand', route: 'Tashkent- Samarkand', economPrice: '270 000', businessPrice: '396 000', vipPrice: '600 000', departure: '8:00', arrival: '10:25' },
 ];
 
 const defaultPlaneVehicles = [
-  { id: 1, name: 'Uzbekistan Airways HY-101', route: 'Tashkent - Samarkand', economPrice: '450 000', businessPrice: '850 000', departure: '7:00', arrival: '8:15' },
-  { id: 2, name: 'Uzbekistan Airways HY-102', route: 'Tashkent - Bukhara', economPrice: '480 000', businessPrice: '900 000', departure: '9:30', arrival: '10:50' },
+  { id: 1, name: 'Uzbekistan Airways HY-101', route: 'Tashkent - Samarkand', economPrice: '450 000', businessPrice: '850 000', vipPrice: '1 200 000', departure: '7:00', arrival: '8:15' },
+  { id: 2, name: 'Uzbekistan Airways HY-102', route: 'Tashkent - Bukhara', economPrice: '480 000', businessPrice: '900 000', vipPrice: '1 200 000', departure: '9:30', arrival: '10:50' },
 ];
 
 export default function Opex() {
@@ -733,6 +733,7 @@ export default function Opex() {
     route: '',
     economPrice: '',
     businessPrice: '',
+    vipPrice: '',
     departure: '',
     arrival: '',
     // Route fields
@@ -1129,6 +1130,7 @@ export default function Opex() {
       route: vehicle.route || '',
       economPrice: vehicle.economPrice || '',
       businessPrice: vehicle.businessPrice || '',
+      vipPrice: vehicle.vipPrice || '',
       departure: vehicle.departure || '',
       arrival: vehicle.arrival || '',
       transportType: vehicle.transportType || '',
@@ -1971,6 +1973,9 @@ export default function Opex() {
                     Business
                   </th>
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    VIP
+                  </th>
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Departure
                   </th>
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
@@ -1984,7 +1989,7 @@ export default function Opex() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {planeVehicles.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-16 text-center">
+                    <td colSpan="10" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-20 h-20 bg-gradient-to-br from-sky-100 to-blue-200 rounded-full flex items-center justify-center shadow-lg">
                           <Plane className="w-10 h-10 text-sky-500" />
@@ -2041,6 +2046,11 @@ export default function Opex() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">
+                          {vehicle.vipPrice || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="text-sm text-gray-600">
                           {vehicle.departure || '-'}
                         </div>
@@ -2071,7 +2081,7 @@ export default function Opex() {
                 )}
                 {planeVehicles.length > 0 && (
                   <tr>
-                    <td colSpan="8" className="px-6 py-4">
+                    <td colSpan="10" className="px-6 py-4">
                       <button
                         onClick={handleAddVehicle}
                         className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
@@ -2118,6 +2128,9 @@ export default function Opex() {
                     Business
                   </th>
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
+                    VIP
+                  </th>
+                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
                     Departure
                   </th>
                   <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
@@ -2131,7 +2144,7 @@ export default function Opex() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {trainVehicles.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-16 text-center">
+                    <td colSpan="9" className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-green-200 rounded-full flex items-center justify-center shadow-lg">
                           <Train className="w-10 h-10 text-emerald-500" />
@@ -2179,6 +2192,11 @@ export default function Opex() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">
+                          {vehicle.vipPrice || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="text-sm text-gray-600">
                           {vehicle.departure || '-'}
                         </div>
@@ -2209,7 +2227,7 @@ export default function Opex() {
                 )}
                 {trainVehicles.length > 0 && (
                   <tr>
-                    <td colSpan="8" className="px-6 py-4">
+                    <td colSpan="9" className="px-6 py-4">
                       <button
                         onClick={handleAddVehicle}
                         className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
@@ -4014,7 +4032,7 @@ export default function Opex() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Econom Price
@@ -4038,6 +4056,19 @@ export default function Opex() {
                         onChange={(e) => setVehicleForm({ ...vehicleForm, businessPrice: e.target.value })}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
                         placeholder={activeTransportTab === 'plane' ? '850 000' : '396 000'}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        VIP Price
+                      </label>
+                      <input
+                        type="text"
+                        value={vehicleForm.vipPrice}
+                        onChange={(e) => setVehicleForm({ ...vehicleForm, vipPrice: e.target.value })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 hover:border-gray-300"
+                        placeholder={activeTransportTab === 'plane' ? '1 200 000' : '600 000'}
                       />
                     </div>
                   </div>
