@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi } from '../services/api';
 import { format, addDays, parseISO } from 'date-fns';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
@@ -390,6 +390,7 @@ export default function BookingDetail() {
   const [editingFlight, setEditingFlight] = useState(null);
   const [planeVehicles, setPlaneVehicles] = useState([]); // Planes from OPEX database
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
+  const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
   const [flightForm, setFlightForm] = useState({
     type: 'INTERNATIONAL',
     flightNumber: '',
@@ -892,6 +893,29 @@ export default function BookingDetail() {
     }
   };
 
+  // Load meals data from OPEX API
+  const loadMealsFromApi = async () => {
+    if (!booking?.tourType?.code) return;
+
+    try {
+      const tourTypeCode = booking.tourType.code.toUpperCase();
+      console.log(`🍽️ Loading meals from OPEX database for ${tourTypeCode}...`);
+
+      const response = await opexApi.get(tourTypeCode, 'meal');
+
+      if (response.data && response.data.items && Array.isArray(response.data.items)) {
+        setMealsData(response.data.items);
+        console.log(`✅ Loaded ${response.data.items.length} meals from OPEX database`);
+      } else {
+        console.log('⚠️ No meals found in OPEX database');
+        setMealsData([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading meals from OPEX:', error);
+      setMealsData([]);
+    }
+  };
+
   // Refresh vehicle data from API when component mounts or when updated
   useEffect(() => {
     // Load on mount
@@ -906,6 +930,22 @@ export default function BookingDetail() {
       window.removeEventListener('vehiclesUpdated', handleVehiclesUpdated);
     };
   }, []);
+
+  // Refresh meals data from OPEX API when booking is loaded or updated
+  useEffect(() => {
+    if (booking?.tourType?.code) {
+      loadMealsFromApi();
+    }
+
+    // Listen for custom event from Opex page when meals are updated
+    const handleMealsUpdated = () => {
+      loadMealsFromApi();
+    };
+    window.addEventListener('opexUpdated', handleMealsUpdated);
+    return () => {
+      window.removeEventListener('opexUpdated', handleMealsUpdated);
+    };
+  }, [booking?.tourType?.code]);
 
   // Transform OPEX train data to PREDEFINED_RAILWAYS format for Railway modal
   const transformedTrainVehicles = React.useMemo(() => {
@@ -10686,19 +10726,8 @@ export default function BookingDetail() {
 
           {/* Meals Tab */}
           {tourServicesTab === 'meals' && (() => {
-            // Load meals data from Opex based on tour type
+            // Use meals data loaded from OPEX database (state)
             const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
-            const mealsKey = `${tourTypeCode}Meal`; // Note: singular "Meal" not "Meals"
-            let mealsData = [];
-            try {
-              const saved = localStorage.getItem(mealsKey);
-              if (saved) {
-                mealsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading meals from localStorage:', e);
-            }
-
             const pax = tourists?.length || 0;
 
             // Calculate total
