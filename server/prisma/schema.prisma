@@ -992,3 +992,26 @@ model PriceConfig {
   @@index([tourType])
   @@index([category])
 }
+
+// ============================================
+// Module: Audit Log (Логирование действий)
+// ============================================
+
+// Audit log for tracking user actions
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int?
+  action       String
+  resource     String?
+  resourceId   Int?
+  ipAddress    String?
+  userAgent    String?
+  status       String
+  errorMessage String?
+  metadata     String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([userId])
+}
