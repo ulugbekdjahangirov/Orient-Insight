@@ -964,3 +964,31 @@ model TourService {
   @@index([bookingId])
   @@index([type])
 }
+
+// ============================================
+// Module: Price Configuration (Цены для Price page)
+// ============================================
+
+// Price configurations for different tour types and categories
+model PriceConfig {
+  id              Int       @id @default(autoincrement())
+
+  // Tour type (ER, CO, KAS, ZA, PREIS2026)
+  tourType        String                   // ER, CO, KAS, ZA, PREIS2026
+
+  // Category (hotels, transport, railway, fly, meal, sightseeing, guide, shou, zusatzkosten)
+  category        String                   // hotels, transport, railway, fly, meal, sightseeing, guide, shou, zusatzkosten
+
+  // PAX tier (for transport routes that vary by group size)
+  paxTier         String                   // "4", "5", "6-7", "8-9", "10-11", "12-13", "14-15", "16"
+
+  // Price items as JSON
+  itemsJson       String                   // JSON array of price items
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([tourType, category, paxTier])
+  @@index([tourType])
+  @@index([category])
+}
