@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation, Users, Car, Train, Plane, MapPin, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { transportApi } from '../services/api';
+import { transportApi, opexApi } from '../services/api';
 
 const categories = [
   { id: 'transport', name: 'Transport', icon: Bus, color: 'blue', hasSubTabs: true },
@@ -366,6 +366,206 @@ export default function Opex() {
     ];
   });
 
+  // Default values for sightseeing, meal, and shows
+  const defaultErSightseeing = [
+    // Tashkent
+    { id: 1, name: 'Hast Imam Complex', city: 'Tashkent', price: '60 000' },
+    { id: 2, name: 'Kukeldash Madrasah', city: 'Tashkent', price: '' },
+    // Samarkand
+    { id: 3, name: 'Amir Temur Mausoleum', city: 'Samarkand', price: '50 000' },
+    { id: 4, name: 'Registan Square', city: 'Samarkand', price: '100 000' },
+    { id: 5, name: 'Bibi-Khanym Mosque', city: 'Samarkand', price: '50 000' },
+    { id: 6, name: 'Shah-i-Zinda Necropolis', city: 'Samarkand', price: '50 000' },
+    { id: 7, name: 'Daniel Mausoleum', city: 'Samarkand', price: '30 000' },
+    { id: 8, name: 'Ulugbek Observatory', city: 'Samarkand', price: '50 000' },
+    { id: 9, name: 'Konigil Paper Workshop', city: 'Samarkand', price: '15 000' },
+    // Nurota
+    { id: 10, name: 'Spring', city: 'Nurota', price: '20 000' },
+    // Buxoro
+    { id: 11, name: 'Samanid Mausoleum', city: 'Bukhara', price: '' },
+    { id: 12, name: 'Chashma Ayub', city: 'Bukhara', price: '20 000' },
+    { id: 13, name: 'Ark Fortress', city: 'Bukhara', price: '60 000' },
+    { id: 14, name: 'Kalon Mosque', city: 'Bukhara', price: '' },
+    { id: 15, name: 'Mohi Khosa', city: 'Bukhara', price: '60 000' },
+    // Khiva
+    { id: 16, name: 'Itchan Kala', city: 'Khiva', price: '250 000' },
+    { id: 17, name: 'Pahlavon Mahmud', city: 'Khiva', price: '30 000' },
+  ];
+
+  const defaultCoSightseeing = [
+    // Qoqon
+    { id: 1, name: 'Khudayar Khan Palace', city: 'Kokand', price: '30 000' },
+    { id: 2, name: 'Jami Mosque', city: 'Kokand', price: '30 000' },
+    // Tashkent
+    { id: 3, name: 'Hast Imam Complex', city: 'Tashkent', price: '60 000' },
+    { id: 4, name: 'Kukeldash Madrasah', city: 'Tashkent', price: '20 000' },
+    // Samarkand
+    { id: 5, name: 'Amir Temur Mausoleum', city: 'Samarkand', price: '50 000' },
+    { id: 6, name: 'Registan Square', city: 'Samarkand', price: '100 000' },
+    { id: 7, name: 'Bibi-Khanym Mosque', city: 'Samarkand', price: '50 000' },
+    { id: 8, name: 'Shah-i-Zinda Necropolis', city: 'Samarkand', price: '50 000' },
+    { id: 9, name: 'Daniel Mausoleum', city: 'Samarkand', price: '30 000' },
+    { id: 10, name: 'Ulugbek Observatory', city: 'Samarkand', price: '50 000' },
+    { id: 11, name: 'Konigil Paper Workshop', city: 'Samarkand', price: '15 000' },
+    // Buxoro
+    { id: 12, name: 'Samanid Mausoleum', city: 'Bukhara', price: '20000' },
+    { id: 13, name: 'Chashma Ayub', city: 'Bukhara', price: '20 000' },
+    { id: 14, name: 'Ark Fortress', city: 'Bukhara', price: '60 000' },
+    { id: 15, name: 'Kalon Mosque', city: 'Bukhara', price: '20000' },
+    { id: 16, name: 'Naqshband mausoleum', city: 'Bukhara', price: '30000' },
+    { id: 17, name: 'Mohi Khosa', city: 'Bukhara', price: '60 000' },
+    // Khiva
+    { id: 18, name: 'Itchan Kala', city: 'Khiva', price: '250 000' },
+    { id: 19, name: 'Pahlavon Mahmud', city: 'Khiva', price: '30 000' },
+    { id: 20, name: 'Koshay Bobo', city: 'Khiva', price: '150 000' },
+  ];
+
+  const defaultKasSightseeing = [
+    // Qoqon
+    { id: 1, name: 'Khudayar Khan Palace', city: 'Kokand', price: '30 000' },
+    { id: 2, name: 'Jami Mosque', city: 'Kokand', price: '30 000' },
+    // Tashkent
+    { id: 3, name: 'Hast Imam Complex', city: 'Tashkent', price: '60 000' },
+    { id: 4, name: 'Kukeldash Madrasah', city: 'Tashkent', price: '20 000' },
+    // Samarkand
+    { id: 5, name: 'Amir Temur Mausoleum', city: 'Samarkand', price: '50 000' },
+    { id: 6, name: 'Registan Square', city: 'Samarkand', price: '100 000' },
+    { id: 7, name: 'Bibi-Khanym Mosque', city: 'Samarkand', price: '50 000' },
+    { id: 8, name: 'Shah-i-Zinda Necropolis', city: 'Samarkand', price: '50 000' },
+    { id: 9, name: 'Daniel Mausoleum', city: 'Samarkand', price: '30 000' },
+    { id: 10, name: 'Ulugbek Observatory', city: 'Samarkand', price: '50 000' },
+    { id: 11, name: 'Konigil Paper Workshop', city: 'Samarkand', price: '15 000' },
+    // Buxoro
+    { id: 12, name: 'Samanid Mausoleum', city: 'Bukhara', price: '20000' },
+    { id: 13, name: 'Chashma Ayub', city: 'Bukhara', price: '20 000' },
+    { id: 14, name: 'Ark Fortress', city: 'Bukhara', price: '60 000' },
+    { id: 15, name: 'Kalon Mosque', city: 'Bukhara', price: '20000' },
+    { id: 16, name: 'Mohi Khosa', city: 'Bukhara', price: '60 000' },
+  ];
+
+  const defaultZaSightseeing = [
+    // Buxoro
+    { id: 1, name: 'Samanid Mausoleum', city: 'Bukhara', price: '20000' },
+    { id: 2, name: 'Chashma Ayub', city: 'Bukhara', price: '20 000' },
+    { id: 3, name: 'Ark Fortress', city: 'Bukhara', price: '60 000' },
+    { id: 4, name: 'Kalon Mosque', city: 'Bukhara', price: '20000' },
+    { id: 5, name: 'Mohi Khosa', city: 'Bukhara', price: '60 000' },
+    // Samarkand
+    { id: 6, name: 'Amir Temur Mausoleum', city: 'Samarkand', price: '50 000' },
+    { id: 7, name: 'Registan Square', city: 'Samarkand', price: '100 000' },
+    { id: 8, name: 'Bibi-Khanym Mosque', city: 'Samarkand', price: '50 000' },
+    { id: 9, name: 'Shah-i-Zinda Necropolis', city: 'Samarkand', price: '50 000' },
+    { id: 10, name: 'Daniel Mausoleum', city: 'Samarkand', price: '30 000' },
+    { id: 11, name: 'Ulugbek Observatory', city: 'Samarkand', price: '50 000' },
+    { id: 12, name: 'Konigil Paper Workshop', city: 'Samarkand', price: '15 000' },
+  ];
+
+  const defaultErMeal = [
+    { id: 1, name: 'Caravan Restaurant', city: 'Tashkent', price: '150 000' },
+    { id: 2, name: 'Samarkand Restaurant', city: 'Samarkand', price: '120 000' },
+    { id: 3, name: 'Lyabi Hauz Restaurant', city: 'Bukhara', price: '130 000' },
+    { id: 4, name: 'Terrassa Restaurant', city: 'Khiva', price: '110 000' },
+  ];
+
+  const defaultCoMeal = [
+    { id: 1, name: 'Silk Road Restaurant', city: 'Kokand', price: '100 000' },
+    { id: 2, name: 'Caravan Restaurant', city: 'Tashkent', price: '150 000' },
+    { id: 3, name: 'Registan Plaza', city: 'Samarkand', price: '140 000' },
+    { id: 4, name: 'Old Bukhara', city: 'Bukhara', price: '135 000' },
+    { id: 5, name: 'Orient Star', city: 'Khiva', price: '115 000' },
+  ];
+
+  const defaultKasMeal = [
+    { id: 1, name: 'Akhunbabaev Restaurant', city: 'Kokand', price: '95 000' },
+    { id: 2, name: 'Caravan Restaurant', city: 'Tashkent', price: '150 000' },
+    { id: 3, name: 'Samarkand Restaurant', city: 'Samarkand', price: '120 000' },
+    { id: 4, name: 'Lyabi Hauz Restaurant', city: 'Bukhara', price: '130 000' },
+  ];
+
+  const defaultZaMeal = [
+    { id: 1, name: 'Old Bukhara', city: 'Bukhara', price: '135 000' },
+    { id: 2, name: 'Registan Plaza', city: 'Samarkand', price: '140 000' },
+    { id: 3, name: 'Samarkand Restaurant', city: 'Samarkand', price: '120 000' },
+  ];
+
+  const defaultErShows = [
+    { id: 1, name: 'Folklore Show at Nadir Divan-Begi', city: 'Bukhara', price: '80 000' },
+    { id: 2, name: 'Silk Road Spices Show', city: 'Bukhara', price: '70 000' },
+    { id: 3, name: 'El Merosi Show', city: 'Khiva', price: '75 000' },
+  ];
+
+  const defaultCoShows = [
+    { id: 1, name: 'Folklore Show at Nadir Divan-Begi', city: 'Bukhara', price: '80 000' },
+    { id: 2, name: 'El Merosi Show', city: 'Khiva', price: '75 000' },
+    { id: 3, name: 'National Dance Show', city: 'Samarkand', price: '85 000' },
+  ];
+
+  const defaultKasShows = [
+    { id: 1, name: 'Folklore Show at Nadir Divan-Begi', city: 'Bukhara', price: '80 000' },
+    { id: 2, name: 'Silk Road Spices Show', city: 'Bukhara', price: '70 000' },
+  ];
+
+  const defaultZaShows = [
+    { id: 1, name: 'Folklore Show at Nadir Divan-Begi', city: 'Bukhara', price: '80 000' },
+    { id: 2, name: 'National Dance Show', city: 'Samarkand', price: '85 000' },
+  ];
+
+  // Save helper - saves to BOTH localStorage AND database
+  const saveOpexConfig = async (tourType, category, items, localStorageKey) => {
+    try {
+      localStorage.setItem(localStorageKey, JSON.stringify(items));
+      await opexApi.save({
+        tourType: tourType.toUpperCase(),
+        category,
+        items
+      });
+      console.log(`✅ Saved to localStorage (${localStorageKey}) AND database`);
+      return true;
+    } catch (error) {
+      console.error('❌ Database save error:', error);
+      toast.error('Сохранено в браузере, но не в базе данных!');
+      return false;
+    }
+  };
+
+  // Load helper - loads from localStorage OR database
+  const loadOpexConfig = async (tourType, category, localStorageKey, defaultValue, setter) => {
+    try {
+      // 1. Try localStorage first (fastest)
+      const saved = localStorage.getItem(localStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log(`✅ Loaded from localStorage (${localStorageKey})`);
+        setter(parsed);
+        return;
+      }
+
+      // 2. If localStorage empty, try database
+      console.log(`⚠️ localStorage empty, loading from database (${tourType}/${category})...`);
+      const response = await opexApi.get(tourType.toUpperCase(), category);
+
+      // Check if items exists and is not empty (array OR object)
+      const hasItems = response.data && response.data.items && (
+        (Array.isArray(response.data.items) && response.data.items.length > 0) ||
+        (typeof response.data.items === 'object' && !Array.isArray(response.data.items) && Object.keys(response.data.items).length > 0)
+      );
+
+      if (hasItems) {
+        console.log(`✅ Loaded from database, caching to localStorage (${localStorageKey})`);
+        setter(response.data.items);
+        localStorage.setItem(localStorageKey, JSON.stringify(response.data.items));
+        return;
+      }
+
+      // 3. If both empty, use defaults
+      console.log(`⚠️ No data in database, using defaults (${localStorageKey})`);
+      setter(defaultValue);
+    } catch (error) {
+      console.error(`❌ Database load error (${localStorageKey}):`, error);
+      setter(defaultValue);
+    }
+  };
+
   // Load transport data from API
   const loadTransportData = useCallback(async () => {
     try {
@@ -409,64 +609,89 @@ export default function Opex() {
     loadTransportData();
   }, [loadTransportData]);
 
-  // Save ER sightseeing to localStorage whenever it changes
+  // Load OPEX data from database on mount
   useEffect(() => {
-    localStorage.setItem('erSightseeing', JSON.stringify(erSightseeing));
+    const loadAllOpexData = async () => {
+      await Promise.all([
+        // Sightseeing
+        loadOpexConfig('ER', 'sightseeing', 'erSightseeing', defaultErSightseeing, setErSightseeing),
+        loadOpexConfig('CO', 'sightseeing', 'coSightseeing', defaultCoSightseeing, setCoSightseeing),
+        loadOpexConfig('KAS', 'sightseeing', 'kasSightseeing', defaultKasSightseeing, setKasSightseeing),
+        loadOpexConfig('ZA', 'sightseeing', 'zaSightseeing', defaultZaSightseeing, setZaSightseeing),
+        // Meal
+        loadOpexConfig('ER', 'meal', 'erMeal', defaultErMeal, setErMeal),
+        loadOpexConfig('CO', 'meal', 'coMeal', defaultCoMeal, setCoMeal),
+        loadOpexConfig('KAS', 'meal', 'kasMeal', defaultKasMeal, setKasMeal),
+        loadOpexConfig('ZA', 'meal', 'zaMeal', defaultZaMeal, setZaMeal),
+        // Shows
+        loadOpexConfig('ER', 'shows', 'erShows', defaultErShows, setErShows),
+        loadOpexConfig('CO', 'shows', 'coShows', defaultCoShows, setCoShows),
+        loadOpexConfig('KAS', 'shows', 'kasShows', defaultKasShows, setKasShows),
+        loadOpexConfig('ZA', 'shows', 'zaShows', defaultZaShows, setZaShows),
+      ]);
+    };
+
+    loadAllOpexData();
+  }, []); // Run once on mount
+
+  // Save ER sightseeing to localStorage and database whenever it changes
+  useEffect(() => {
+    saveOpexConfig('ER', 'sightseeing', erSightseeing, 'erSightseeing');
   }, [erSightseeing]);
 
-  // Save CO sightseeing to localStorage whenever it changes
+  // Save CO sightseeing to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('coSightseeing', JSON.stringify(coSightseeing));
+    saveOpexConfig('CO', 'sightseeing', coSightseeing, 'coSightseeing');
   }, [coSightseeing]);
 
-  // Save KAS sightseeing to localStorage whenever it changes
+  // Save KAS sightseeing to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('kasSightseeing', JSON.stringify(kasSightseeing));
+    saveOpexConfig('KAS', 'sightseeing', kasSightseeing, 'kasSightseeing');
   }, [kasSightseeing]);
 
-  // Save ZA sightseeing to localStorage whenever it changes
+  // Save ZA sightseeing to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('zaSightseeing', JSON.stringify(zaSightseeing));
+    saveOpexConfig('ZA', 'sightseeing', zaSightseeing, 'zaSightseeing');
   }, [zaSightseeing]);
 
-  // Save ER meal to localStorage whenever it changes
+  // Save ER meal to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('erMeal', JSON.stringify(erMeal));
+    saveOpexConfig('ER', 'meal', erMeal, 'erMeal');
   }, [erMeal]);
 
-  // Save CO meal to localStorage whenever it changes
+  // Save CO meal to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('coMeal', JSON.stringify(coMeal));
+    saveOpexConfig('CO', 'meal', coMeal, 'coMeal');
   }, [coMeal]);
 
-  // Save KAS meal to localStorage whenever it changes
+  // Save KAS meal to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('kasMeal', JSON.stringify(kasMeal));
+    saveOpexConfig('KAS', 'meal', kasMeal, 'kasMeal');
   }, [kasMeal]);
 
-  // Save ZA meal to localStorage whenever it changes
+  // Save ZA meal to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('zaMeal', JSON.stringify(zaMeal));
+    saveOpexConfig('ZA', 'meal', zaMeal, 'zaMeal');
   }, [zaMeal]);
 
-  // Save ER shows to localStorage whenever it changes
+  // Save ER shows to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('erShows', JSON.stringify(erShows));
+    saveOpexConfig('ER', 'shows', erShows, 'erShows');
   }, [erShows]);
 
-  // Save CO shows to localStorage whenever it changes
+  // Save CO shows to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('coShows', JSON.stringify(coShows));
+    saveOpexConfig('CO', 'shows', coShows, 'coShows');
   }, [coShows]);
 
-  // Save KAS shows to localStorage whenever it changes
+  // Save KAS shows to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('kasShows', JSON.stringify(kasShows));
+    saveOpexConfig('KAS', 'shows', kasShows, 'kasShows');
   }, [kasShows]);
 
-  // Save ZA shows to localStorage whenever it changes
+  // Save ZA shows to localStorage and database whenever it changes
   useEffect(() => {
-    localStorage.setItem('zaShows', JSON.stringify(zaShows));
+    saveOpexConfig('ZA', 'shows', zaShows, 'zaShows');
   }, [zaShows]);
 
   // Modal states

@@ -309,4 +309,22 @@ export const pricesApi = {
   delete: (tourType, category, paxTier) => api.delete(`/prices/${tourType}/${category}/${paxTier}`)
 };
 
+// API for OPEX configuration (Operational Expenses)
+export const opexApi = {
+  // Get OPEX config for specific tour/category
+  get: (tourType, category) => api.get(`/opex/${tourType}/${category}`),
+
+  // Get all configs for a tour type
+  getByTourType: (tourType) => api.get(`/opex/${tourType}`),
+
+  // Save single OPEX config
+  save: (data) => api.post('/opex', data),
+
+  // Bulk import multiple configs
+  bulkImport: (configs) => api.post('/opex/bulk', { configs }),
+
+  // Delete config
+  delete: (tourType, category) => api.delete(`/opex/${tourType}/${category}`)
+};
+
 export default api;

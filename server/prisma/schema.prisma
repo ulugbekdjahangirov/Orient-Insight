@@ -994,6 +994,31 @@ model PriceConfig {
 }
 
 // ============================================
+// Module: OPEX Configuration (Operational Expenses)
+// ============================================
+
+// OPEX configuration for sightseeing, meal, and shows
+model OpexConfig {
+  id              Int       @id @default(autoincrement())
+
+  // Tour type (ER, CO, KAS, ZA)
+  tourType        String                   // ER, CO, KAS, ZA
+
+  // Category (sightseeing, meal, shows)
+  category        String                   // sightseeing, meal, shows
+
+  // Items as JSON (array of expense items)
+  itemsJson       String                   // JSON array of items
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([tourType, category])
+  @@index([tourType])
+  @@index([category])
+}
+
+// ============================================
 // Module: Audit Log (Логирование действий)
 // ============================================
 

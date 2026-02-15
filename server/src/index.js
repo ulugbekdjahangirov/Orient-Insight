@@ -18,6 +18,7 @@ const gmailRoutes = require('./routes/gmail.routes');
 const tourServiceRoutes = require('./routes/tourservice.routes');
 const invoiceRoutes = require('./routes/invoice.routes');
 const priceRoutes = require('./routes/price.routes');
+const opexRoutes = require('./routes/opex.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +51,7 @@ app.use('/api/transport', transportRoutes);
 app.use('/api/gmail', gmailRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/prices', priceRoutes);
+app.use('/api/opex', opexRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
