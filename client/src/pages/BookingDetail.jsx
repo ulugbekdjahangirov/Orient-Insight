@@ -3138,10 +3138,11 @@ export default function BookingDetail() {
         { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
       ]);
 
-      // Add title
+      // Add title with booking number
       doc.setFontSize(13);
       doc.setFont(undefined, 'bold');
-      doc.text('RL (Reiseleiter)', 148.5, 11, { align: 'center' });
+      const rlTitle = `Ausgaben ${booking?.bookingNumber || ''} (Reiseleiter)`;
+      doc.text(rlTitle, 148.5, 11, { align: 'center' });
 
       // Add booking info
       doc.setFontSize(8.5);
@@ -3559,10 +3560,11 @@ export default function BookingDetail() {
         { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
       ]);
 
-      // Add title
+      // Add title with booking number
       doc.setFontSize(13);
       doc.setFont(undefined, 'bold');
-      doc.text('Ausgaben (Expenses)', 105, 11, { align: 'center' });
+      const ausgabenTitle = `Ausgaben ${booking?.bookingNumber || ''}`;
+      doc.text(ausgabenTitle, 105, 11, { align: 'center' });
 
       // Add booking info
       doc.setFontSize(8.5);
@@ -4049,10 +4051,11 @@ export default function BookingDetail() {
         { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
       ]);
 
-      // Add title
+      // Add title with booking number
       doc.setFontSize(16);
       doc.setFont(undefined, 'bold');
-      doc.text('Karta (Card Payments)', 148.5, 13, { align: 'center' });
+      const kartaTitle = `Ausgaben ${booking?.bookingNumber || ''} (Card Payments)`;
+      doc.text(kartaTitle, 148.5, 13, { align: 'center' });
 
       // Add booking info
       doc.setFontSize(11);
@@ -12035,7 +12038,7 @@ export default function BookingDetail() {
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500"></div>
 
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben (Expenses)</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''}</h3>
                   <button
                     onClick={exportAusgabenToPDF}
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl"
@@ -12332,7 +12335,7 @@ export default function BookingDetail() {
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
 
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">RL (Reiseleiter)</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Reiseleiter)</h3>
                   {hasData && (
                     <button
                       onClick={exportRLToPDF}
@@ -12544,7 +12547,7 @@ export default function BookingDetail() {
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500"></div>
 
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Später (Deferred Payments)</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Später)</h3>
                   {hasData && (
                     <button
                       onClick={exportSpaterToPDF}
@@ -12716,7 +12719,7 @@ export default function BookingDetail() {
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500"></div>
 
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Überweisung (Bank Transfer)</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Überweisung)</h3>
                   {hasData && (
                     <button
                       onClick={exportUberweisungToPDF}
@@ -12890,7 +12893,7 @@ export default function BookingDetail() {
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
 
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Karta (Card Payments)</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Card Payments)</h3>
                   {hasData && (
                     <button
                       onClick={exportKartaToPDF}
