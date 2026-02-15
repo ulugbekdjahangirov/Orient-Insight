@@ -4,7 +4,7 @@ import { Download, Printer, Plus, Trash2, Edit2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import api, { invoicesApi } from '../../services/api';
+import api, { invoicesApi, pricesApi } from '../../services/api';
 
 const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0 }) => {
   // Format number with space as thousands separator (1234 → 1 234)
@@ -29,8 +29,55 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
   const [roomingListData, setRoomingListData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [totalPrices, setTotalPrices] = useState(null); // Total prices from database/localStorage
   const lockedInvoiceIdRef = React.useRef(null); // Track which invoice ID is locked
   const lockedItemsRef = React.useRef(null); // Store locked items
+
+  // Load Total Prices from database (with localStorage fallback)
+  useEffect(() => {
+    const loadTotalPrices = async () => {
+      const tourTypeCode = typeof booking?.tourType === 'string'
+        ? booking?.tourType
+        : booking?.tourType?.code;
+
+      if (!tourTypeCode) {
+        console.log('⚠️ No tour type found');
+        return;
+      }
+
+      try {
+        console.log(`💾 Loading Total Prices from database for ${tourTypeCode}...`);
+        const response = await pricesApi.getTotalPrices(tourTypeCode);
+
+        if (response.data && response.data.items && Object.keys(response.data.items).length > 0) {
+          console.log('✅ Loaded Total Prices from database:', response.data.items);
+          setTotalPrices(response.data.items);
+        } else {
+          // Fallback to localStorage
+          console.log('📦 Database empty, loading from localStorage...');
+          const storageKey = `${tourTypeCode.toLowerCase()}-total-prices`;
+          const savedPrices = JSON.parse(localStorage.getItem(storageKey) || '{}');
+
+          if (Object.keys(savedPrices).length > 0) {
+            console.log('✅ Loaded Total Prices from localStorage:', savedPrices);
+            setTotalPrices(savedPrices);
+          } else {
+            console.log('⚠️ No prices found in database or localStorage');
+            setTotalPrices({});
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error loading Total Prices from database:', error);
+        // Fallback to localStorage on error
+        const storageKey = `${tourTypeCode.toLowerCase()}-total-prices`;
+        const savedPrices = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        console.log('📦 Fallback to localStorage:', savedPrices);
+        setTotalPrices(savedPrices);
+      }
+    };
+
+    loadTotalPrices();
+  }, [booking?.tourType]);
 
   // Load rooming list data for the first accommodation (arrival hotel)
   useEffect(() => {
@@ -102,17 +149,17 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
     return { id: '16', name: '16 PAX', count: 16 };
   };
 
-  // Get ER price from saved Total Prices in localStorage
+  // Get ER price from database (via totalPrices state)
   const calculateERPrice = () => {
     const touristCount = tourists?.length || booking?.pax || 0;
     const tier = getPaxTier(touristCount);
 
     console.log('🔵 Rechnung: Getting ER price for', touristCount, 'tourists, tier:', tier);
 
-    // Load saved Total Prices from localStorage
-    const savedTotalPrices = JSON.parse(localStorage.getItem('er-total-prices') || '{}');
+    // Use totalPrices state loaded from database (with localStorage fallback)
+    const savedTotalPrices = totalPrices || {};
 
-    console.log('📦 Loaded Total Prices from localStorage:', savedTotalPrices);
+    console.log('📦 Total Prices from state (database):', savedTotalPrices);
 
     // Get prices for this tier
     const tierPrices = savedTotalPrices[tier.id] || { totalPrice: 0, ezZuschlag: 0 };
@@ -133,11 +180,10 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
     console.log(`🔵 Rechnung: Getting ${tourTypeCode} price for`, touristCount, 'tourists, tier:', tier);
 
-    // Load saved Total Prices from localStorage with tour-specific key
-    const storageKey = `${tourTypeCode.toLowerCase()}-total-prices`;
-    const savedTotalPrices = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    // Use totalPrices state loaded from database (with localStorage fallback)
+    const savedTotalPrices = totalPrices || {};
 
-    console.log(`📦 Loaded Total Prices from localStorage (${storageKey}):`, savedTotalPrices);
+    console.log(`📦 Total Prices from state (database):`, savedTotalPrices);
 
     // Get prices for this tier
     const tierPrices = savedTotalPrices[tier.id] || { totalPrice: 0, ezZuschlag: 0 };

@@ -32,6 +32,36 @@ router.get('/:tourType/:category/:paxTier', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/prices/:tourType/total - Get total prices for Rechnung (all PAX tiers)
+router.get('/:tourType/total', authenticate, async (req, res) => {
+  try {
+    const { tourType } = req.params;
+
+    const configs = await prisma.priceConfig.findMany({
+      where: {
+        tourType: tourType.toUpperCase(),
+        category: 'total'
+      },
+      orderBy: [{ paxTier: 'asc' }]
+    });
+
+    if (configs.length === 0) {
+      return res.json({ items: {} });
+    }
+
+    // Format: { '4': { totalPrice: 1490, ezZuschlag: 260 }, '5': { ... }, ... }
+    const result = {};
+    configs.forEach(config => {
+      result[config.paxTier] = JSON.parse(config.itemsJson);
+    });
+
+    res.json({ items: result });
+  } catch (error) {
+    console.error('Get total prices error:', error);
+    res.status(500).json({ error: 'Ошибка получения Total Prices' });
+  }
+});
+
 // GET /api/prices/:tourType - Get all configs for a tour type
 router.get('/:tourType', authenticate, async (req, res) => {
   try {

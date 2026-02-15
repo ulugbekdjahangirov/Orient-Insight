@@ -299,6 +299,9 @@ export const pricesApi = {
   // Get all configs for a tour type
   getByTourType: (tourType) => api.get(`/prices/${tourType}`),
 
+  // Get total prices for all PAX tiers (for Rechnung)
+  getTotalPrices: (tourType) => api.get(`/prices/${tourType}/total`),
+
   // Save single price config
   save: (data) => api.post('/prices', data),
 

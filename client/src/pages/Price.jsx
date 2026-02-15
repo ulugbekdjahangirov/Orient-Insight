@@ -2236,9 +2236,9 @@ export default function Price() {
     }
   };
 
-  // Save Total Prices to localStorage for Rechnung
-  const saveTotalPrices = () => {
-    console.log('💾 Saving Total Prices from table to localStorage...');
+  // Save Total Prices to localStorage AND database for Rechnung
+  const saveTotalPrices = async () => {
+    console.log('💾 Saving Total Prices from table to localStorage and database...');
 
     // CRITICAL FIX: Check if selectedTour exists
     const selectedTour = tourTypes.find(t => t.id === selectedTourType);
@@ -2261,6 +2261,7 @@ export default function Price() {
     const storageKey = `${selectedTour.id.toLowerCase()}-total-prices`;
 
     try {
+      // 1. Save to localStorage (fast, immediate)
       localStorage.setItem(storageKey, JSON.stringify(pricesToSave));
 
       console.log(`✅ Total Prices saved to localStorage (${storageKey})!`);
@@ -2269,9 +2270,21 @@ export default function Price() {
         console.log(`   ${tierId}: Total=${tierData.totalPrice}$, EZ=${tierData.ezZuschlag}$`);
       });
 
-      toast.success(`${selectedTour.name} narxlar saqlandi! Endi Rechnung to'g'ri ko'rinadi.`);
+      // 2. Save to database (persistent, survives Ctrl+Shift+Delete)
+      console.log('💾 Saving to database...');
+      for (const [paxTier, tierData] of Object.entries(pricesToSave)) {
+        await pricesApi.save({
+          tourType: selectedTour.id.toUpperCase(),
+          category: 'total',
+          paxTier: paxTier,
+          items: tierData
+        });
+      }
+      console.log('✅ Total Prices saved to database!');
+
+      toast.success(`${selectedTour.name} narxlar saqlandi (localStorage + database)!`);
     } catch (error) {
-      console.error('❌ localStorage save error:', error);
+      console.error('❌ Save error:', error);
       toast.error('Saqlashda xatolik: ' + error.message);
     }
   };
