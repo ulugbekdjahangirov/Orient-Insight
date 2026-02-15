@@ -201,6 +201,9 @@ model Booking {
   // Rechnung firma (Orient Insight / INFUTURESTORM)
   rechnungFirma   String?   // Orient Insight, INFUTURESTORM
 
+  // RL Exchange Rate (USD to UZS)
+  rlExchangeRate  Float?    // Exchange rate for RL tab calculations
+
   // Метаданные
   createdById     Int?
   createdBy       User?     @relation("CreatedBy", fields: [createdById], references: [id])

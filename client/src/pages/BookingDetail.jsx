@@ -473,11 +473,7 @@ export default function BookingDetail() {
   const [mainGuide, setMainGuide] = useState(null);
   const [secondGuide, setSecondGuide] = useState(null);
   const [bergreiseleiter, setBergreiseleiter] = useState(null);
-  const [rlExchangeRate, setRlExchangeRate] = useState(() => {
-    // Load from localStorage on mount
-    const saved = localStorage.getItem(`rlExchangeRate_${id}`);
-    return saved ? parseFloat(saved) : 12800;
-  });
+  const [rlExchangeRate, setRlExchangeRate] = useState(null); // Load from database, default null
   const [hotels, setHotels] = useState([]);
   const [bookingRooms, setBookingRooms] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
@@ -578,12 +574,26 @@ export default function BookingDetail() {
     return { dbl, twn, sgl, trpl, total };
   }, [tourists]);
 
-  // Save RL exchange rate to localStorage when it changes
+  // Save RL exchange rate to database when it changes
   useEffect(() => {
-    if (id && rlExchangeRate) {
-      localStorage.setItem(`rlExchangeRate_${id}`, rlExchangeRate.toString());
+    if (id && rlExchangeRate !== null && booking) {
+      // Debounce API call to avoid too many requests
+      const timeoutId = setTimeout(async () => {
+        try {
+          await axios.put(`http://localhost:5000/api/bookings/${id}`, {
+            rlExchangeRate
+          }, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          console.log('✅ RL exchange rate saved:', rlExchangeRate);
+        } catch (error) {
+          console.error('Error saving RL exchange rate:', error);
+        }
+      }, 500); // Wait 500ms after user stops typing
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [id, rlExchangeRate]);
+  }, [id, rlExchangeRate, booking]);
 
   // Calculate Grand Total for all hotels (using Final List individual dates)
   // Re-renders when accommodations or accommodationRoomingLists changes
@@ -1363,6 +1373,11 @@ export default function BookingDetail() {
         setAccommodations(accommodationsRes.data.accommodations || []);
         setTourists(touristsRes.data.tourists || []);
         setRailways(railwaysRes.data.railways || []);
+        // Load RL exchange rate from database
+        if (b.rlExchangeRate) {
+          setRlExchangeRate(b.rlExchangeRate);
+          console.log('💱 RL exchange rate loaded from DB:', b.rlExchangeRate);
+        }
 
         // Load invoices for this booking
         try {
@@ -12379,10 +12394,10 @@ export default function BookingDetail() {
                       <label className="text-sm font-semibold text-blue-900 whitespace-nowrap">Kurs (USD → UZS):</label>
                       <input
                         type="text"
-                        value={rlExchangeRate.toLocaleString('en-US').replace(/,/g, ' ')}
+                        value={rlExchangeRate ? rlExchangeRate.toLocaleString('en-US').replace(/,/g, ' ') : ''}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\s/g, '');
-                          const numValue = parseFloat(value) || 0;
+                          const numValue = parseFloat(value) || null;
                           setRlExchangeRate(numValue);
                         }}
                         className="w-28 px-3 py-1.5 text-right font-bold text-blue-900 bg-white border-2 border-blue-300 rounded focus:outline-none focus:border-blue-500"
