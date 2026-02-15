@@ -971,15 +971,15 @@ export default function Price() {
   };
 
   // Commission functions
-  const loadCommissionValues = () => {
-    const saved = localStorage.getItem('er-commission-values');
-    if (saved) {
-      setCommissionValues(JSON.parse(saved));
-    }
+  const loadCommissionValues = async () => {
+    await loadPriceConfig('ER', 'commission', selectedPaxTier, 'er-commission-values', {}, setCommissionValues);
   };
-  const saveCommissionValues = () => {
-    localStorage.setItem('er-commission-values', JSON.stringify(commissionValues));
-    toast.success('Commission маълумотлар сохранены');
+  const saveCommissionValues = async () => {
+    const storageKey = 'er-commission-values';
+    const success = await savePriceConfig('ER', 'commission', selectedPaxTier, commissionValues, storageKey);
+    if (success) {
+      toast.success('Commission маълумотлар сохранены в базу данных!');
+    }
   };
   const updateCommissionValue = (tierId, value) => {
     setCommissionValues(prev => ({
@@ -1213,13 +1213,15 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setCoShouItems(coShouItems.filter(s => s.id !== id));
   };
 
-  const loadCoCommissionValues = () => {
-    const saved = localStorage.getItem('co-commission-values');
-    if (saved) setCoCommissionValues(JSON.parse(saved));
+  const loadCoCommissionValues = async () => {
+    await loadPriceConfig('CO', 'commission', selectedPaxTier, 'co-commission-values', {}, setCoCommissionValues);
   };
-  const saveCoCommissionValues = () => {
-    localStorage.setItem('co-commission-values', JSON.stringify(coCommissionValues));
-    toast.success('CO Commission сохранены');
+  const saveCoCommissionValues = async () => {
+    const storageKey = 'co-commission-values';
+    const success = await savePriceConfig('CO', 'commission', selectedPaxTier, coCommissionValues, storageKey);
+    if (success) {
+      toast.success('CO Commission сохранены в базу данных!');
+    }
   };
   const updateCoCommissionValue = (tierId, value) => {
     setCoCommissionValues(prev => ({ ...prev, [tierId]: value === '' ? 0 : parseFloat(value) || 0 }));
@@ -1388,13 +1390,15 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setKasShouItems(kasShouItems.filter(s => s.id !== id));
   };
 
-  const loadKasCommissionValues = () => {
-    const saved = localStorage.getItem('kas-commission-values');
-    if (saved) setKasCommissionValues(JSON.parse(saved));
+  const loadKasCommissionValues = async () => {
+    await loadPriceConfig('KAS', 'commission', selectedPaxTier, 'kas-commission-values', {}, setKasCommissionValues);
   };
-  const saveKasCommissionValues = () => {
-    localStorage.setItem('kas-commission-values', JSON.stringify(kasCommissionValues));
-    toast.success('KAS Commission сохранены');
+  const saveKasCommissionValues = async () => {
+    const storageKey = 'kas-commission-values';
+    const success = await savePriceConfig('KAS', 'commission', selectedPaxTier, kasCommissionValues, storageKey);
+    if (success) {
+      toast.success('KAS Commission сохранены в базу данных!');
+    }
   };
   const updateKasCommissionValue = (tierId, value) => {
     setKasCommissionValues(prev => ({ ...prev, [tierId]: value === '' ? 0 : parseFloat(value) || 0 }));
@@ -1563,13 +1567,15 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setZaShouItems(zaShouItems.filter(s => s.id !== id));
   };
 
-  const loadZaCommissionValues = () => {
-    const saved = localStorage.getItem('za-commission-values');
-    if (saved) setZaCommissionValues(JSON.parse(saved));
+  const loadZaCommissionValues = async () => {
+    await loadPriceConfig('ZA', 'commission', selectedPaxTier, 'za-commission-values', {}, setZaCommissionValues);
   };
-  const saveZaCommissionValues = () => {
-    localStorage.setItem('za-commission-values', JSON.stringify(zaCommissionValues));
-    toast.success('ZA Commission сохранены');
+  const saveZaCommissionValues = async () => {
+    const storageKey = 'za-commission-values';
+    const success = await savePriceConfig('ZA', 'commission', selectedPaxTier, zaCommissionValues, storageKey);
+    if (success) {
+      toast.success('ZA Commission сохранены в базу данных!');
+    }
   };
   const updateZaCommissionValue = (tierId, value) => {
     setZaCommissionValues(prev => ({ ...prev, [tierId]: value === '' ? 0 : parseFloat(value) || 0 }));
@@ -1890,13 +1896,15 @@ export default function Price() {
     if (confirm('Bu elementni o\'chirmoqchimisiz?')) setPreis2026ShouItems(preis2026ShouItems.filter(s => s.id !== id));
   };
 
-  const loadPreis2026CommissionValues = () => {
-    const saved = localStorage.getItem('preis2026-commission-values');
-    if (saved) setPreis2026CommissionValues(JSON.parse(saved));
+  const loadPreis2026CommissionValues = async () => {
+    await loadPriceConfig('PREIS2026', 'commission', selectedPaxTier, 'preis2026-commission-values', {}, setPreis2026CommissionValues);
   };
-  const savePreis2026CommissionValues = () => {
-    localStorage.setItem('preis2026-commission-values', JSON.stringify(preis2026CommissionValues));
-    toast.success('Preis 2026 Commission сохранены');
+  const savePreis2026CommissionValues = async () => {
+    const storageKey = 'preis2026-commission-values';
+    const success = await savePriceConfig('PREIS2026', 'commission', selectedPaxTier, preis2026CommissionValues, storageKey);
+    if (success) {
+      toast.success('Preis 2026 Commission сохранены в базу данных!');
+    }
   };
   const updatePreis2026CommissionValue = (tierId, value) => {
     setPreis2026CommissionValues(prev => ({ ...prev, [tierId]: value === '' ? 0 : parseFloat(value) || 0 }));
