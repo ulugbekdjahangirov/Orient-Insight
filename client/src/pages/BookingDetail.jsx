@@ -2973,6 +2973,13 @@ export default function BookingDetail() {
           const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
           const cityName = acc?.hotel?.city?.name || '';
 
+          // Skip Samarkand hotels in RL PDF (they belong to Später tab)
+          const cityNameLower = cityName.toLowerCase();
+          const isSamarkand = cityNameLower.includes('samarkand') || cityNameLower.includes('самарканд');
+          if (isSamarkand) {
+            return; // Skip Samarkand hotels
+          }
+
           let targetCity = mapCityName(cityName) || mapCityName(hotelName);
           if (!targetCity) targetCity = cityOrder[0];
 
