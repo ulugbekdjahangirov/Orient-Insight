@@ -3120,7 +3120,14 @@ export default function BookingDetail() {
         });
       });
 
-      // Total row - Combined USD
+      // Total row - Separate USD and UZS
+      tableData.push([
+        { content: 'TOTAL', colSpan: 4, styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } },
+        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } },
+        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } }
+      ]);
+
+      // Total row - Combined USD with Exchange Rate
       tableData.push([
         {
           content: `TOTAL (Kurs: 1 USD = ${Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)`,
@@ -12434,7 +12441,19 @@ export default function BookingDetail() {
                           );
                         })}
 
-                        {/* Total Row - Combined USD */}
+                        {/* Total Row - Separate USD and UZS */}
+                        <tr className="bg-gradient-to-r from-slate-600 to-gray-600">
+                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            TOTAL
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
+                          </td>
+                        </tr>
+                        {/* Total Row - Combined USD with Exchange Rate */}
                         <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
                           <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
                             TOTAL (Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)
