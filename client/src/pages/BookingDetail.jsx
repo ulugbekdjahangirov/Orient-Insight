@@ -3120,36 +3120,36 @@ export default function BookingDetail() {
         });
       });
 
-      // Row 1 - Separate USD and UZS (no label)
+      // Row 1 - Separate USD and UZS (white, smaller)
       tableData.push([
-        { content: '', colSpan: 4, styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } },
-        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } },
-        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } }
+        { content: '', colSpan: 4, styles: { fillColor: [255, 255, 255], textColor: [50, 50, 50], fontStyle: 'normal', halign: 'right', fontSize: 7 } },
+        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [255, 255, 255], textColor: [50, 50, 50], fontStyle: 'normal', halign: 'right', fontSize: 7 } },
+        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [255, 255, 255], textColor: [50, 50, 50], fontStyle: 'normal', halign: 'right', fontSize: 7 } }
       ]);
 
-      // Row 2 - Converted UZS to USD (no TOTAL label)
+      // Row 2 - Converted UZS to USD (white, smaller)
       tableData.push([
         {
           content: `Kurs: 1 USD = ${Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS`,
           colSpan: 5,
-          styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 }
+          styles: { fillColor: [255, 255, 255], textColor: [50, 50, 50], fontStyle: 'normal', halign: 'right', fontSize: 7 }
         },
         {
           content: `$${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
-          styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 10 }
+          styles: { fillColor: [255, 255, 255], textColor: [50, 50, 50], fontStyle: 'normal', halign: 'right', fontSize: 7 }
         }
       ]);
 
-      // Row 3 - Total sum (with Total label)
+      // Row 3 - Total sum (gray, larger)
       tableData.push([
         {
           content: `Total: $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + $${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
           colSpan: 5,
-          styles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'bold', halign: 'right', fontSize: 8 }
+          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 }
         },
         {
           content: `= $${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
-          styles: { fillColor: [240, 240, 240], textColor: [60, 60, 60], fontStyle: 'bold', halign: 'right', fontSize: 8 }
+          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 }
         }
       ]);
 
@@ -12445,32 +12445,32 @@ export default function BookingDetail() {
                           );
                         })}
 
-                        {/* Row 1 - Separate USD and UZS (no label) */}
-                        <tr className="bg-gradient-to-r from-slate-600 to-gray-600">
-                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                        {/* Row 1 - Separate USD and UZS (white, smaller) */}
+                        <tr className="bg-white">
+                          <td colSpan="4" className="border border-gray-300 px-4 py-2 text-right text-gray-800 font-semibold text-sm">
                           </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-800 font-semibold text-sm">
                             ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-800 font-semibold text-sm">
                             {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
-                        {/* Row 2 - Converted UZS to USD (no TOTAL label) */}
-                        <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
-                          <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                        {/* Row 2 - Converted UZS to USD (white, smaller) */}
+                        <tr className="bg-white">
+                          <td colSpan="5" className="border border-gray-300 px-4 py-2 text-right text-gray-800 font-semibold text-sm">
                             Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS
                           </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
+                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-800 font-semibold text-sm">
                             ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
-                        {/* Row 3 - Total Sum (with Total label) */}
-                        <tr className="bg-gray-100">
-                          <td colSpan="5" className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-bold text-base">
+                        {/* Row 3 - Total Sum (gray, larger) */}
+                        <tr className="bg-gray-200">
+                          <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
                             Total: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
-                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-bold text-base">
+                          <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
                             = ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
