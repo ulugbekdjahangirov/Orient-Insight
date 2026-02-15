@@ -88,7 +88,14 @@ export default function App() {
           }
         />
         <Route path="email-imports" element={<EmailImports />} />
-        <Route path="settings" element={<Settings />} />
+        <Route
+          path="settings"
+          element={
+            <AdminRoute>
+              <Settings />
+            </AdminRoute>
+          }
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
