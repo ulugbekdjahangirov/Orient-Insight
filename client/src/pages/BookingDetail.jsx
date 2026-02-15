@@ -3561,46 +3561,46 @@ export default function BookingDetail() {
       ]);
 
       // Add title with booking number
-      doc.setFontSize(13);
+      doc.setFontSize(14);
       doc.setFont(undefined, 'bold');
       const ausgabenTitle = `Ausgaben ${booking?.bookingNumber || ''}`;
-      doc.text(ausgabenTitle, 105, 11, { align: 'center' });
+      doc.text(ausgabenTitle, 105, 15, { align: 'center' });
 
       // Add booking info
-      doc.setFontSize(8.5);
+      doc.setFontSize(9);
       doc.setFont(undefined, 'normal');
       const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
-      doc.text(bookingInfo, 105, 16, { align: 'center' });
+      doc.text(bookingInfo, 105, 21, { align: 'center' });
 
-      // Generate table
+      // Generate table (optimized for portrait orientation)
       autoTable(doc, {
-        startY: 20,
-        head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
+        startY: 26,
+        head: [['Städte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 6.5,
-          cellPadding: 1.2,
+          fontSize: 8.5,
+          cellPadding: 2,
           lineColor: [200, 200, 200],
-          lineWidth: 0.1
+          lineWidth: 0.15
         },
         headStyles: {
-          fillColor: [22, 163, 74],
+          fillColor: [102, 187, 106],  // Lighter green color
           textColor: 255,
           fontStyle: 'bold',
           halign: 'center',
-          fontSize: 7.5,
-          cellPadding: 1.7
+          fontSize: 9.5,
+          cellPadding: 2.5
         },
         columnStyles: {
-          0: { cellWidth: 21 }, // Stadte
-          1: { cellWidth: 57 }, // Item
-          2: { halign: 'right', cellWidth: 21 }, // Preis
-          3: { halign: 'center', cellWidth: 12 }, // PAX
-          4: { halign: 'right', cellWidth: 26 }, // Dollar
-          5: { halign: 'right', cellWidth: 31 }  // Som
+          0: { cellWidth: 25 }, // Städte
+          1: { cellWidth: 60 }, // Item
+          2: { halign: 'right', cellWidth: 25 }, // Preis
+          3: { halign: 'center', cellWidth: 18 }, // PAX
+          4: { halign: 'right', cellWidth: 30 }, // Dollar
+          5: { halign: 'right', cellWidth: 38 }  // Som
         },
-        margin: { top: 20, bottom: 7, left: 7, right: 7 }
+        margin: { top: 26, bottom: 10, left: 7, right: 7 }
       });
 
       // Save PDF
