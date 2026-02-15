@@ -1506,7 +1506,8 @@ export default function Price() {
     }
   };
 
-  const selectedTour = tourTypes.find(t => t.id === selectedTourType);
+  // CRITICAL FIX: Always ensure selectedTour has a value (fallback to first tour type)
+  const selectedTour = tourTypes.find(t => t.id === selectedTourType) || tourTypes[0];
 
   // Calculate totals for Hotels
   const calculateHotelTotals = () => {
@@ -2087,6 +2088,14 @@ export default function Price() {
   const saveTotalPrices = () => {
     console.log('💾 Saving Total Prices from table to localStorage...');
 
+    // CRITICAL FIX: Check if selectedTour exists
+    const selectedTour = tourTypes.find(t => t.id === selectedTourType);
+    if (!selectedTour) {
+      toast.error('Tour type topilmadi!');
+      console.error('❌ selectedTour is undefined. selectedTourType:', selectedTourType);
+      return;
+    }
+
     // Just save the prices that were calculated during table rendering
     const pricesToSave = calculatedTotalPrices.current;
 
@@ -2098,15 +2107,21 @@ export default function Price() {
 
     // Save to localStorage with tour-specific key
     const storageKey = `${selectedTour.id.toLowerCase()}-total-prices`;
-    localStorage.setItem(storageKey, JSON.stringify(pricesToSave));
 
-    console.log(`✅ Total Prices saved to localStorage (${storageKey})!`);
-    Object.keys(pricesToSave).forEach(tierId => {
-      const tierData = pricesToSave[tierId];
-      console.log(`   ${tierId}: Total=${tierData.totalPrice}$, EZ=${tierData.ezZuschlag}$`);
-    });
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(pricesToSave));
 
-    toast.success(`${selectedTour.id} narxlar saqlandi! Endi Rechnung to'g'ri ko'rinadi.`);
+      console.log(`✅ Total Prices saved to localStorage (${storageKey})!`);
+      Object.keys(pricesToSave).forEach(tierId => {
+        const tierData = pricesToSave[tierId];
+        console.log(`   ${tierId}: Total=${tierData.totalPrice}$, EZ=${tierData.ezZuschlag}$`);
+      });
+
+      toast.success(`${selectedTour.name} narxlar saqlandi! Endi Rechnung to'g'ri ko'rinadi.`);
+    } catch (error) {
+      console.error('❌ localStorage save error:', error);
+      toast.error('Saqlashda xatolik: ' + error.message);
+    }
   };
 
   return (
