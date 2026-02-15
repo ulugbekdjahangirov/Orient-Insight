@@ -1400,6 +1400,12 @@ export default function Opex() {
             onClick={() => {
               if (activeCategory === 'transport' && ['sevil-er', 'sevil-co', 'sevil-kas', 'sevil-za', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab)) {
                 handleAddVehicle();
+              } else if (activeCategory === 'sightseeing') {
+                handleAddSightseeing();
+              } else if (activeCategory === 'meal') {
+                handleAddMeal();
+              } else if (activeCategory === 'shows') {
+                handleAddShow();
               } else {
                 toast.success('Функционал в разработке');
               }
