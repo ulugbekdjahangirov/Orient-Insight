@@ -35,19 +35,31 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
   // Load Total Prices from database (with localStorage fallback)
   useEffect(() => {
+    console.log('🔄 Rechnung useEffect triggered, booking:', booking);
+
+    if (!booking) {
+      console.log('⚠️ Booking not loaded yet');
+      return;
+    }
+
     const loadTotalPrices = async () => {
       const tourTypeCode = typeof booking?.tourType === 'string'
         ? booking?.tourType
         : booking?.tourType?.code;
 
+      console.log('🔍 Tour type code:', tourTypeCode, 'from booking.tourType:', booking?.tourType);
+
       if (!tourTypeCode) {
         console.log('⚠️ No tour type found');
+        setTotalPrices({});
         return;
       }
 
       try {
         console.log(`💾 Loading Total Prices from database for ${tourTypeCode}...`);
         const response = await pricesApi.getTotalPrices(tourTypeCode);
+
+        console.log('📡 Database response:', response.data);
 
         if (response.data && response.data.items && Object.keys(response.data.items).length > 0) {
           console.log('✅ Loaded Total Prices from database:', response.data.items);
@@ -68,6 +80,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
         }
       } catch (error) {
         console.error('❌ Error loading Total Prices from database:', error);
+        console.error('Error details:', error.response?.data || error.message);
         // Fallback to localStorage on error
         const storageKey = `${tourTypeCode.toLowerCase()}-total-prices`;
         const savedPrices = JSON.parse(localStorage.getItem(storageKey) || '{}');
@@ -77,7 +90,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
     };
 
     loadTotalPrices();
-  }, [booking?.tourType]);
+  }, [booking]);
 
   // Load rooming list data for the first accommodation (arrival hotel)
   useEffect(() => {
