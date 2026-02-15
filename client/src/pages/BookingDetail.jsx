@@ -392,6 +392,7 @@ export default function BookingDetail() {
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
   const [sightseeingData, setSightseeingData] = useState([]); // Sightseeing from OPEX database
+  const [showsData, setShowsData] = useState([]); // Shows from OPEX database
   const [flightForm, setFlightForm] = useState({
     type: 'INTERNATIONAL',
     flightNumber: '',
@@ -940,6 +941,29 @@ export default function BookingDetail() {
     }
   };
 
+  // Load shows data from OPEX API
+  const loadShowsFromApi = async () => {
+    if (!booking?.tourType?.code) return;
+
+    try {
+      const tourTypeCode = booking.tourType.code.toUpperCase();
+      console.log(`🎭 Loading shows from OPEX database for ${tourTypeCode}...`);
+
+      const response = await opexApi.get(tourTypeCode, 'shows');
+
+      if (response.data && response.data.items && Array.isArray(response.data.items)) {
+        setShowsData(response.data.items);
+        console.log(`✅ Loaded ${response.data.items.length} shows from OPEX database`);
+      } else {
+        console.log('⚠️ No shows found in OPEX database');
+        setShowsData([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading shows from OPEX:', error);
+      setShowsData([]);
+    }
+  };
+
   // Refresh vehicle data from API when component mounts or when updated
   useEffect(() => {
     // Load on mount
@@ -984,6 +1008,22 @@ export default function BookingDetail() {
     window.addEventListener('opexUpdated', handleSightseeingUpdated);
     return () => {
       window.removeEventListener('opexUpdated', handleSightseeingUpdated);
+    };
+  }, [booking?.tourType?.code]);
+
+  // Refresh shows data from OPEX API when booking is loaded or updated
+  useEffect(() => {
+    if (booking?.tourType?.code) {
+      loadShowsFromApi();
+    }
+
+    // Listen for custom event from Opex page when shows are updated
+    const handleShowsUpdated = () => {
+      loadShowsFromApi();
+    };
+    window.addEventListener('opexUpdated', handleShowsUpdated);
+    return () => {
+      window.removeEventListener('opexUpdated', handleShowsUpdated);
     };
   }, [booking?.tourType?.code]);
 
@@ -11265,19 +11305,8 @@ export default function BookingDetail() {
 
           {/* Shou Tab */}
           {tourServicesTab === 'shou' && (() => {
-            // Load shows data from Opex based on tour type
+            // Use shows data loaded from OPEX database (state)
             const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
-            const showsKey = `${tourTypeCode}Shows`;
-            let showsData = [];
-            try {
-              const saved = localStorage.getItem(showsKey);
-              if (saved) {
-                showsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading shows from localStorage:', e);
-            }
-
             const pax = tourists?.length || 0;
 
             // Calculate total
