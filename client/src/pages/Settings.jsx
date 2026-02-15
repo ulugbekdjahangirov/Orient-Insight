@@ -29,7 +29,7 @@ export default function Settings() {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `http://localhost:5000/api/auth/users/${user.id}`,
+        `/api/auth/users/${user.id}`,
         { password: newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
