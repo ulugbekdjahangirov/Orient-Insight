@@ -3964,9 +3964,10 @@ export default function BookingDetail() {
       // Process Railways
       if (railways && railways.length > 0) {
         railways.forEach(railway => {
-          const from = railway.from || '';
-          const to = railway.to || '';
-          const name = `Railway: ${from}-${to}`.trim();
+          const departure = railway.departure || railway.from || '';
+          const arrival = railway.arrival || railway.to || '';
+          const routeName = railway.route || `${departure}-${arrival}`.trim();
+          const name = routeName ? `Railway: ${routeName}` : 'Railway';
           const pax = railway.pax || 1;
           const total = railway.price || 0;
           const pricePerTicket = railway.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
@@ -12803,9 +12804,10 @@ export default function BookingDetail() {
             // 1. Process Railways
             if (railways && railways.length > 0) {
               railways.forEach(railway => {
-                const from = railway.from || '';
-                const to = railway.to || '';
-                const name = `Railway: ${from}-${to}`.trim();
+                const departure = railway.departure || railway.from || '';
+                const arrival = railway.arrival || railway.to || '';
+                const routeName = railway.route || `${departure}-${arrival}`.trim();
+                const name = routeName ? `Railway: ${routeName}` : 'Railway';
                 const pax = railway.pax || 1;
 
                 // railway.price is the TOTAL price, not per ticket
