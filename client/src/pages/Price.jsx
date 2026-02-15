@@ -3473,7 +3473,7 @@ export default function Price() {
               const sightseingTotal = sightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
               const guideTotal = guideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0);
               const shouTotal = shouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
-              const ezZuschlag = calculateHotelTotals().totalEZZuschlag;
+              const ezZuschlag = calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2);
 
               // Clear previous calculations
               calculatedTotalPrices.current = {};
@@ -3635,7 +3635,7 @@ export default function Price() {
             <div className="px-6 py-4 bg-orange-50 border-t-2 border-orange-200">
               <div className="flex items-center justify-center">
                 <span className="text-lg font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
-                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateHotelTotals().totalEZZuschlag)} $</span>
+                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
 
