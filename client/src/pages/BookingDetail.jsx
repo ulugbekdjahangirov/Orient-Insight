@@ -3157,17 +3157,17 @@ export default function BookingDetail() {
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 7,
-          cellPadding: 1.5,
+          fontSize: 8.5,
+          cellPadding: 2,
           lineColor: [200, 200, 200],
           lineWidth: 0.15
         },
         headStyles: {
-          fillColor: [22, 163, 74],
+          fillColor: [102, 187, 106],  // Lighter green color
           textColor: 255,
           fontStyle: 'bold',
-          fontSize: 8,
-          cellPadding: 2
+          fontSize: 9.5,
+          cellPadding: 2.5
         },
         columnStyles: {
           0: { cellWidth: 25 }, // Städte
