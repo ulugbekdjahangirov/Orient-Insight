@@ -3120,17 +3120,17 @@ export default function BookingDetail() {
         });
       });
 
-      // Total row - Separate USD and UZS
+      // Row 1 - Separate USD and UZS (no label)
       tableData.push([
-        { content: 'TOTAL', colSpan: 4, styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } },
+        { content: '', colSpan: 4, styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } },
         { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } },
         { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [82, 82, 91], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 } }
       ]);
 
-      // Converted UZS to USD row
+      // Row 2 - Converted UZS to USD (no TOTAL label)
       tableData.push([
         {
-          content: `TOTAL (Kurs: 1 USD = ${Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)`,
+          content: `Kurs: 1 USD = ${Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS`,
           colSpan: 5,
           styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right', fontSize: 9 }
         },
@@ -3140,7 +3140,7 @@ export default function BookingDetail() {
         }
       ]);
 
-      // Total sum row
+      // Row 3 - Total sum (with Total label)
       tableData.push([
         {
           content: `Total: $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + $${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
@@ -12445,10 +12445,9 @@ export default function BookingDetail() {
                           );
                         })}
 
-                        {/* Total Row - Separate USD and UZS */}
+                        {/* Row 1 - Separate USD and UZS (no label) */}
                         <tr className="bg-gradient-to-r from-slate-600 to-gray-600">
                           <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            TOTAL
                           </td>
                           <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
                             ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
@@ -12457,16 +12456,16 @@ export default function BookingDetail() {
                             {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
-                        {/* Converted UZS to USD Row */}
+                        {/* Row 2 - Converted UZS to USD (no TOTAL label) */}
                         <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
                           <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            TOTAL (Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS)
+                            Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS
                           </td>
                           <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
                             ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
                           </td>
                         </tr>
-                        {/* Total Sum Row */}
+                        {/* Row 3 - Total Sum (with Total label) */}
                         <tr className="bg-gray-100">
                           <td colSpan="5" className="border border-gray-300 px-4 py-2 text-right text-gray-700 font-bold text-base">
                             Total: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
