@@ -2064,35 +2064,42 @@ export default function Price() {
       const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
       console.log('✅ jsPDF instance created');
 
-      let yPosition = 10;
+      let yPosition = 8;
+      const pageWidth = doc.internal.pageSize.getWidth();
 
-      // Load and add Orient Insight logo
+      // Load and add Orient Insight logo (centered, bigger)
       const logoImg = new Image();
       logoImg.src = '/logo.png';
 
-      // Add logo at top left
+      // Add logo at top center (bigger size: 35x35)
       try {
-        doc.addImage(logoImg, 'PNG', 10, yPosition, 25, 25);
+        const logoSize = 35;
+        doc.addImage(logoImg, 'PNG', (pageWidth - logoSize) / 2, yPosition, logoSize, logoSize);
+        yPosition += logoSize + 3;
       } catch (e) {
         console.log('Logo could not be added:', e);
+        yPosition += 8;
       }
 
-      // Company information next to logo
-      doc.setFontSize(9);
+      // Company information (centered, below logo)
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('ORIENT INSIGHT GmbH', 40, yPosition + 3);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.text('Shota Rustavelli, 45, 140100 Samarkand, Usbekistan', 40, yPosition + 8);
-      doc.text('Tel: +998933484208 / +998979282814', 40, yPosition + 12);
-      doc.text('E-Mail: orientinsightreisen@gmail.com | Web: www.orient-insight.uz', 40, yPosition + 16);
+      doc.text('ORIENT INSIGHT GmbH', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5;
 
-      yPosition += 30;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Shota Rustavelli, 45, 140100 Samarkand, Usbekistan', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4;
+      doc.text('Tel: +998933484208 / +998979282814', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 4;
+      doc.text('E-Mail: orientinsightreisen@gmail.com | Web: www.orient-insight.uz', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 8;
 
       // Title
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('Preis 2026 - Preisliste', doc.internal.pageSize.getWidth() / 2, yPosition, { align: 'center' });
+      doc.text('Preis 2026 - Preisliste', pageWidth / 2, yPosition, { align: 'center' });
 
       yPosition += 8;
 
