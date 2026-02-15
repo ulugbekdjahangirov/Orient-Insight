@@ -3635,7 +3635,7 @@ export default function Price() {
             <div className="px-6 py-4 bg-orange-50 border-t-2 border-orange-200">
               <div className="flex items-center justify-center">
                 <span className="text-lg font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
-                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2))} $</span>
+                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateHotelTotals().totalEZZuschlag)} $</span>
               </div>
             </div>
 
