@@ -580,11 +580,7 @@ export default function BookingDetail() {
       // Debounce API call to avoid too many requests
       const timeoutId = setTimeout(async () => {
         try {
-          await axios.put(`http://localhost:5000/api/bookings/${id}`, {
-            rlExchangeRate
-          }, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-          });
+          await bookingsApi.update(id, { rlExchangeRate });
           console.log('✅ RL exchange rate saved:', rlExchangeRate);
         } catch (error) {
           console.error('Error saving RL exchange rate:', error);
