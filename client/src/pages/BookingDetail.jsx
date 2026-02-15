@@ -4873,16 +4873,19 @@ export default function BookingDetail() {
         const checkInDate = new Date(baseDate);
         checkInDate.setDate(checkInDate.getDate() + (startDay - firstHotelDay));
 
-        // IMPORTANT: For CO tours with Khiva, don't add +1 to checkout
-        const isKhivaHotel = hotel.name.toLowerCase().includes('khiva') ||
-                            hotel.name.toLowerCase().includes('chiwa') ||
-                            hotel.name.toLowerCase().includes('хива');
+        // IMPORTANT: For CO tours and ER Only UZ with Khiva, don't add +1 to checkout
+        const cityName = hotel.city?.name?.toLowerCase() || '';
+        const hotelName = hotel.name.toLowerCase();
+        const isKhivaHotel = cityName.includes('хива') || cityName.includes('khiva') || cityName.includes('chiwa') ||
+                            hotelName.includes('khiva') || hotelName.includes('chiwa') || hotelName.includes('хива');
         const isCOKhiva = tourTypeCode === 'CO' && isKhivaHotel;
+        const isEROnlyUZKhiva = isERTour && onlyUZ && isKhivaHotel;
 
         const checkOutDate = new Date(baseDate);
-        if (isCOKhiva) {
-          // For CO Khiva: Fixed to 2 nights (endDay without +1)
+        if (isCOKhiva || isEROnlyUZKhiva) {
+          // For CO Khiva or ER Only UZ Khiva: Fixed to 2 nights (endDay without +1)
           checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay));
+          console.log(`✅ ${tourTypeCode} ${onlyUZ ? 'Only UZ' : ''} Khiva: checkout WITHOUT +1 (2 nights)`);
         } else {
           checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay) + 1);
         }
