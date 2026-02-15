@@ -15,6 +15,7 @@ import Rechnung from './pages/Rechnung';
 import Ausgaben from './pages/Ausgaben';
 import Import from './pages/Import';
 import Users from './pages/Users';
+import Settings from './pages/Settings';
 import GmailSettings from './pages/GmailSettings';
 import EmailImports from './pages/EmailImports';
 
@@ -87,6 +88,7 @@ export default function App() {
           }
         />
         <Route path="email-imports" element={<EmailImports />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
