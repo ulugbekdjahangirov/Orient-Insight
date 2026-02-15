@@ -4724,10 +4724,10 @@ export default function BookingDetail() {
             // CO tours: ALWAYS force Khiva to exactly 2 nights
             adjustedEndDay = stay.startDay + 1; // startDay + 1 = 2 nights
             console.log(`✅ CO tour: FORCED ${hotel.name} to exactly 2 nights (was ${nights})`);
-          } else if (onlyUZ && isMalikaKhorazm && nights > 2) {
-            // ER Only UZ: Reduce Malika Khorazm to 2 nights
+          } else if (onlyUZ && isKhiva && nights > 2) {
+            // ER Only UZ: Reduce ANY Khiva hotel to 2 nights (not just Malika Khorazm)
             adjustedEndDay = stay.endDay - 1;
-            console.log(`ℹ️ ER Only UZ: Reduced Malika Khorazm to 2 nights`);
+            console.log(`✅ ER Only UZ: Reduced ${hotel.name} to 2 nights (was ${nights})`);
           } else {
             console.log(`ℹ️ ${hotel.name}: ${nights} nights - no adjustment`);
           }
