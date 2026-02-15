@@ -12168,18 +12168,8 @@ export default function BookingDetail() {
               });
             }
 
-            // 2. Process Meals (from localStorage)
-            const mealsKey = `${tourTypeCode}Meal`;
-            let mealsData = [];
-            try {
-              const saved = localStorage.getItem(mealsKey);
-              if (saved) {
-                mealsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading meals:', e);
-            }
-
+            // 2. Process Meals (from OPEX database state)
+            // Use mealsData state loaded from database
             mealsData.forEach(meal => {
               const name = meal.name || 'Unknown Meal';
               const city = meal.city || '';
@@ -12227,18 +12217,8 @@ export default function BookingDetail() {
               });
             }
 
-            // 4. Process Shou (from localStorage)
-            const showsKey = `${tourTypeCode}Shows`;
-            let showsData = [];
-            try {
-              const saved = localStorage.getItem(showsKey);
-              if (saved) {
-                showsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading shows:', e);
-            }
-
+            // 4. Process Shou (from OPEX database state)
+            // Use showsData state loaded from database
             showsData.forEach(show => {
               const name = show.name || 'Unknown Show';
               const city = show.city || '';
@@ -13019,17 +12999,8 @@ export default function BookingDetail() {
             // 5. Guide - ONLY USD
             const guideUSD = (mainGuide?.totalPayment || 0) + (secondGuide?.totalPayment || 0) + (bergreiseleiter?.totalPayment || 0);
 
-            // 6. Meals - ONLY UZS (from Opex localStorage)
-            const mealsKey = `${tourTypeCode}Meal`;
-            let mealsData = [];
-            try {
-              const saved = localStorage.getItem(mealsKey);
-              if (saved) {
-                mealsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading meals:', e);
-            }
+            // 6. Meals - ONLY UZS (from OPEX database state)
+            // Use mealsData state loaded from database
             const mealsUZS = mealsData.reduce((sum, meal) => {
               const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
               const pricePerPerson = parseFloat(priceStr) || 0;
@@ -13046,17 +13017,8 @@ export default function BookingDetail() {
               return sum + (pricePerPerson * metroPax);
             }, 0);
 
-            // 8. Shows - ONLY UZS (from Opex localStorage)
-            const showsKey = `${tourTypeCode}Shows`;
-            let showsData = [];
-            try {
-              const saved = localStorage.getItem(showsKey);
-              if (saved) {
-                showsData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading shows:', e);
-            }
+            // 8. Shows - ONLY UZS (from OPEX database state)
+            // Use showsData state loaded from database
             const showsUZS = showsData.reduce((sum, show) => {
               const rawPrice = show.price || show.pricePerPerson || 0;
               const priceStr = rawPrice.toString().replace(/\s/g, '');
@@ -13064,17 +13026,8 @@ export default function BookingDetail() {
               return sum + (pricePerPerson * pax);
             }, 0);
 
-            // 9. Eintritt (Entrance Fees) - ONLY UZS
-            const sightseeingKey = `${tourTypeCode}Sightseeing`;
-            let sightseeingData = [];
-            try {
-              const saved = localStorage.getItem(sightseeingKey);
-              if (saved) {
-                sightseeingData = JSON.parse(saved);
-              }
-            } catch (e) {
-              console.error('Error loading sightseeing:', e);
-            }
+            // 9. Eintritt (Entrance Fees) - ONLY UZS (from OPEX database state)
+            // Use sightseeingData state loaded from database
             const services = tourServices.eintritt || [];
             const savedEntriesMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s]));
 
