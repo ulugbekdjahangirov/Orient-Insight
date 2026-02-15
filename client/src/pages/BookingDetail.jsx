@@ -389,6 +389,7 @@ export default function BookingDetail() {
   const [flightModalOpen, setFlightModalOpen] = useState(false);
   const [editingFlight, setEditingFlight] = useState(null);
   const [planeVehicles, setPlaneVehicles] = useState([]); // Planes from OPEX database
+  const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [flightForm, setFlightForm] = useState({
     type: 'INTERNATIONAL',
     flightNumber: '',
@@ -881,6 +882,10 @@ export default function BookingDetail() {
         setPlaneVehicles(grouped.plane);
         console.log('✈️ Loaded planes from OPEX:', grouped.plane.length, 'flights');
       }
+      if (grouped.train?.length > 0) {
+        setTrainVehicles(grouped.train);
+        console.log('🚂 Loaded trains from OPEX:', grouped.train.length, 'trains');
+      }
     } catch (error) {
       console.error('Error loading vehicle data from API:', error);
       // Keep default values on error
@@ -901,6 +906,43 @@ export default function BookingDetail() {
       window.removeEventListener('vehiclesUpdated', handleVehiclesUpdated);
     };
   }, []);
+
+  // Transform OPEX train data to PREDEFINED_RAILWAYS format for Railway modal
+  const transformedTrainVehicles = React.useMemo(() => {
+    if (!trainVehicles || trainVehicles.length === 0) {
+      return PREDEFINED_RAILWAYS; // Fallback to hardcoded data if no OPEX data
+    }
+
+    return trainVehicles.map(train => {
+      // Parse route to extract departure and arrival stations
+      // Example route: "Tashkent - Samarkand" or "Tashkent- Samarkand"
+      const routeParts = (train.route || '').split('-').map(s => s.trim());
+      const departureStation = routeParts[0] || '';
+      const arrivalStation = routeParts[1] || '';
+
+      // Extract train name from full name (e.g., "Afrosiyob764Ф..." → "Afrosiyob")
+      const trainNameMatch = (train.name || '').match(/^([A-Za-z]+)/);
+      const trainName = trainNameMatch ? trainNameMatch[1] : '';
+
+      // Convert price strings to numbers (e.g., "270 000" → 270000)
+      const parsePrice = (priceStr) => {
+        if (!priceStr) return 0;
+        return parseInt(String(priceStr).replace(/\s/g, ''), 10) || 0;
+      };
+
+      return {
+        trainNumber: train.trainNumber || '',
+        trainName: trainName,
+        route: train.route || '',
+        departure: departureStation,
+        arrival: arrivalStation,
+        departureTime: train.departure || '',
+        arrivalTime: train.arrival || '',
+        priceEconomy: parsePrice(train.economPrice),
+        priceBusiness: parsePrice(train.businessPrice)
+      };
+    });
+  }, [trainVehicles]);
 
   useEffect(() => {
     setDatesInitialized(false); // Reset when booking changes
@@ -8998,7 +9040,7 @@ export default function BookingDetail() {
                     <select
                       value={railwayForm.trainNumber}
                       onChange={(e) => {
-                        const selectedTrain = PREDEFINED_RAILWAYS.find(t => t.trainNumber === e.target.value);
+                        const selectedTrain = transformedTrainVehicles.find(t => t.trainNumber === e.target.value);
                         if (selectedTrain) {
                           // Auto-populate date: departure date + 3 days
                           // (departureDate + 1 day = arrival in UZ, + 2 days = train date)
@@ -9043,7 +9085,7 @@ export default function BookingDetail() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     >
                       <option value="">Select train number...</option>
-                      {PREDEFINED_RAILWAYS.map(train => (
+                      {transformedTrainVehicles.map(train => (
                         <option key={train.trainNumber} value={train.trainNumber}>
                           {train.trainNumber} - {train.trainName} - {train.route}
                         </option>
@@ -9087,7 +9129,7 @@ export default function BookingDetail() {
                     <select
                       value={railwayForm.tariff || 'Economy'}
                       onChange={(e) => {
-                        const selectedTrain = PREDEFINED_RAILWAYS.find(t => t.trainNumber === railwayForm.trainNumber);
+                        const selectedTrain = transformedTrainVehicles.find(t => t.trainNumber === railwayForm.trainNumber);
                         if (selectedTrain) {
                           const newTariff = e.target.value;
                           const pricePerPerson = newTariff === 'Economy' ? selectedTrain.priceEconomy : selectedTrain.priceBusiness;
