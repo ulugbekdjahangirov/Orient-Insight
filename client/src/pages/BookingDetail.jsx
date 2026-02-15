@@ -2916,7 +2916,7 @@ export default function BookingDetail() {
   // Export RL (Reiseleiter) to PDF
   const exportRLToPDF = () => {
     try {
-      const doc = new jsPDF('landscape', 'mm', 'a4'); // Landscape for more width
+      const doc = new jsPDF('p', 'mm', 'a4'); // Portrait format
       const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
       const pax = tourists?.length || 0;
 
@@ -3139,45 +3139,45 @@ export default function BookingDetail() {
       ]);
 
       // Add title with booking number
-      doc.setFontSize(13);
+      doc.setFontSize(14);
       doc.setFont(undefined, 'bold');
       const rlTitle = `Ausgaben ${booking?.bookingNumber || ''} (Reiseleiter)`;
-      doc.text(rlTitle, 148.5, 11, { align: 'center' });
+      doc.text(rlTitle, 105, 15, { align: 'center' });
 
       // Add booking info
-      doc.setFontSize(8.5);
+      doc.setFontSize(9);
       doc.setFont(undefined, 'normal');
       const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
-      doc.text(bookingInfo, 148.5, 16, { align: 'center' });
+      doc.text(bookingInfo, 105, 21, { align: 'center' });
 
-      // Generate table
+      // Generate table (optimized for portrait orientation)
       autoTable(doc, {
-        startY: 20,
-        head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
+        startY: 26,
+        head: [['Städte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 6.5,
-          cellPadding: 1.2,
+          fontSize: 7,
+          cellPadding: 1.5,
           lineColor: [200, 200, 200],
-          lineWidth: 0.1
+          lineWidth: 0.15
         },
         headStyles: {
           fillColor: [22, 163, 74],
           textColor: 255,
           fontStyle: 'bold',
-          fontSize: 7.5,
-          cellPadding: 1.7
+          fontSize: 8,
+          cellPadding: 2
         },
         columnStyles: {
-          0: { cellWidth: 30 }, // Stadte
-          1: { cellWidth: 80 }, // Item
-          2: { halign: 'right', cellWidth: 30 }, // Preis
-          3: { halign: 'center', cellWidth: 20 }, // PAX
-          4: { halign: 'right', cellWidth: 35 }, // Dollar
-          5: { halign: 'right', cellWidth: 35 }  // Som
+          0: { cellWidth: 25 }, // Städte
+          1: { cellWidth: 60 }, // Item
+          2: { halign: 'right', cellWidth: 25 }, // Preis
+          3: { halign: 'center', cellWidth: 18 }, // PAX
+          4: { halign: 'right', cellWidth: 30 }, // Dollar
+          5: { halign: 'right', cellWidth: 38 }  // Som
         },
-        margin: { top: 20, bottom: 7, left: 7, right: 7 }
+        margin: { top: 26, bottom: 10, left: 7, right: 7 }
       });
 
       // Save PDF
