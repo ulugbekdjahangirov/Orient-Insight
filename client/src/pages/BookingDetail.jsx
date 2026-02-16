@@ -2957,6 +2957,7 @@ export default function BookingDetail() {
         expensesByCity[city] = [];
       });
       expensesByCity['Reiseleiter'] = [];
+      expensesByCity['Extra Kosten'] = [];
 
       // Helper function to map city names
       const mapCityName = (text) => {
@@ -2986,7 +2987,7 @@ export default function BookingDetail() {
           }
 
           let targetCity = mapCityName(cityName) || mapCityName(hotelName);
-          if (!targetCity) targetCity = cityOrder[0];
+          if (!targetCity) targetCity = 'Extra Kosten';
 
           const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
           const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
@@ -3011,7 +3012,7 @@ export default function BookingDetail() {
         const total = pricePerPerson * pax;
 
         let targetCity = mapCityName(city) || mapCityName(name);
-        if (!targetCity) targetCity = cityOrder[0];
+        if (!targetCity) targetCity = 'Extra Kosten';
 
         if (total > 0) {
           expensesByCity[targetCity].push({
@@ -3035,7 +3036,7 @@ export default function BookingDetail() {
           const total = pricePerPerson * metroPax;
 
           let targetCity = mapCityName(city) || mapCityName(name);
-          if (!targetCity) targetCity = cityOrder[0];
+          if (!targetCity) targetCity = 'Extra Kosten';
 
           expensesByCity[targetCity].push({
             name: name,
@@ -3057,7 +3058,7 @@ export default function BookingDetail() {
         const total = pricePerPerson * pax;
 
         let targetCity = mapCityName(city) || mapCityName(name);
-        if (!targetCity) targetCity = cityOrder[0];
+        if (!targetCity) targetCity = 'Extra Kosten';
 
         if (total > 0) {
           expensesByCity[targetCity].push({
@@ -3114,6 +3115,24 @@ export default function BookingDetail() {
         }
       }
 
+      // 6. Process Other (from tourServices.other) - Extra Kosten
+      if (tourServices.other && tourServices.other.length > 0) {
+        tourServices.other.forEach(item => {
+          const name = item.name || 'Other';
+          const pricePerPerson = item.pricePerPerson || 0;
+          const itemPax = item.pax || 0;
+          const total = pricePerPerson * itemPax;
+
+          expensesByCity['Extra Kosten'].push({
+            name: name,
+            pricePerPerson: pricePerPerson,
+            pax: itemPax,
+            usd: 0,
+            uzs: total
+          });
+        });
+      }
+
       // Calculate totals
       let totalUSD = 0;
       let totalUZS = 0;
@@ -3129,7 +3148,7 @@ export default function BookingDetail() {
       const combinedTotalUSD = totalUSD + uzsToUsd;
 
       // Filter out empty sections
-      const sections = [...cityOrder, 'Reiseleiter'].filter(section =>
+      const sections = [...cityOrder, 'Reiseleiter', 'Extra Kosten'].filter(section =>
         expensesByCity[section] && expensesByCity[section].length > 0
       );
 
@@ -11812,7 +11831,7 @@ export default function BookingDetail() {
               if (str.includes('tashkent') || str.includes('тошкент')) return 'Tashkent';
               if (str.includes('samarkand') || str.includes('samarqand') || str.includes('самарканд')) return 'Samarkand';
               if (str.includes('asraf') || str.includes('асраф')) return 'Asraf';
-              if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
+              if (str.includes('nurota') || str.includes('nurata') || str.includes('нурата')) return 'Nurota';
               if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
               if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
 
@@ -12281,6 +12300,9 @@ export default function BookingDetail() {
             // Add Reiseleiter section
             expensesByCity['Reiseleiter'] = [];
 
+            // Add Extra Kosten section
+            expensesByCity['Extra Kosten'] = [];
+
             // Helper function to map city names
             const mapCityName = (text) => {
               if (!text) return null;
@@ -12290,7 +12312,7 @@ export default function BookingDetail() {
               if (str.includes('tashkent') || str.includes('тошкент')) return 'Tashkent';
               if (str.includes('samarkand') || str.includes('samarqand') || str.includes('самарканд')) return 'Samarkand';
               if (str.includes('asraf') || str.includes('асраф')) return 'Asraf';
-              if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
+              if (str.includes('nurota') || str.includes('nurata') || str.includes('нурата')) return 'Nurota';
               if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
               if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
 
@@ -12314,7 +12336,7 @@ export default function BookingDetail() {
 
                 // Map to standard city name
                 let targetCity = mapCityName(cityName) || mapCityName(hotelName);
-                if (!targetCity) targetCity = cityOrder[0]; // Default to first city if unknown
+                if (!targetCity) targetCity = 'Extra Kosten'; // Default to Extra Kosten if unknown
 
                 // Use costs from grandTotalData
                 const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
@@ -12342,7 +12364,7 @@ export default function BookingDetail() {
 
               // Map to standard city name
               let targetCity = mapCityName(city) || mapCityName(name);
-              if (!targetCity) targetCity = cityOrder[0]; // Default to first city if unknown
+              if (!targetCity) targetCity = 'Extra Kosten'; // Default to Extra Kosten if unknown
 
               if (total > 0) {
                 expensesByCity[targetCity].push({
@@ -12453,6 +12475,24 @@ export default function BookingDetail() {
               }
             }
 
+            // 6. Process Other (from tourServices.other) - Extra Kosten
+            if (tourServices.other && tourServices.other.length > 0) {
+              tourServices.other.forEach(item => {
+                const name = item.name || 'Other';
+                const pricePerPerson = item.pricePerPerson || 0;
+                const pax = item.pax || 0;
+                const total = pricePerPerson * pax;
+
+                expensesByCity['Extra Kosten'].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: pax,
+                  usd: 0,
+                  uzs: total
+                });
+              });
+            }
+
             // Calculate totals
             let totalUSD = 0;
             let totalUZS = 0;
@@ -12471,7 +12511,8 @@ export default function BookingDetail() {
             // Filter out empty sections for display
             const sections = [
               ...cityOrder,
-              'Reiseleiter'
+              'Reiseleiter',
+              'Extra Kosten'
             ].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
 
             const hasData = sections.length > 0;
@@ -12847,7 +12888,7 @@ export default function BookingDetail() {
               if (str.includes('tashkent') || str.includes('тошкент')) return 'Tashkent';
               if (str.includes('samarkand') || str.includes('samarqand') || str.includes('самарканд')) return 'Samarkand';
               if (str.includes('asraf') || str.includes('асраф')) return 'Asraf';
-              if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
+              if (str.includes('nurota') || str.includes('nurata') || str.includes('нурата')) return 'Nurota';
               if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
               if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
 
