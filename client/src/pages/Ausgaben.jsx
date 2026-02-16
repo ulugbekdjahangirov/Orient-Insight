@@ -42,9 +42,14 @@ export default function Ausgaben() {
     try {
       const response = await transportApi.getAll();
       const { grouped } = response.data;
-      if (grouped.metro?.length > 0) setMetroVehicles(grouped.metro);
+      if (grouped.metro?.length > 0) {
+        setMetroVehicles(grouped.metro);
+      } else {
+        console.warn('⚠️ No Metro vehicles found in OPEX Transport');
+      }
     } catch (error) {
       console.error('Error loading metro vehicles from API:', error);
+      toast.error('Failed to load Metro data from OPEX');
     }
   };
 
@@ -71,10 +76,32 @@ export default function Ausgaben() {
       const response = await bookingsApi.getAll();
       const allBookings = response.data.bookings;
 
+      // DEBUG: Log all bookings with tourType info
+      console.log(`📊 Total bookings from API: ${allBookings.length}`);
+
+      // Count bookings by tourType
+      const tourTypeCounts = {};
+      const noTourType = [];
+      allBookings.forEach(b => {
+        const code = b.tourType?.code;
+        if (code) {
+          tourTypeCounts[code] = (tourTypeCounts[code] || 0) + 1;
+        } else {
+          noTourType.push(b.bookingNumber || `ID-${b.id}`);
+        }
+      });
+
+      console.log(`📊 Bookings by tourType:`, tourTypeCounts);
+      if (noTourType.length > 0) {
+        console.warn(`⚠️ ${noTourType.length} bookings WITHOUT tourType:`, noTourType);
+      }
+
       // Filter by tour type
       const filteredBookings = allBookings.filter(
         booking => booking.tourType?.code === activeTourType
       );
+
+      console.log(`✅ Filtered ${filteredBookings.length} bookings for ${activeTourType}`);
 
       setBookings(filteredBookings);
 
@@ -602,10 +629,15 @@ export default function Ausgaben() {
     return dataToUse.reduce((sum, booking) => {
       if (!booking.grandTotalData?.hotelBreakdown) return sum;
 
-      const hotelData = booking.grandTotalData.hotelBreakdown.find(h => h.hotel === hotelName);
-      if (!hotelData) return sum;
+      // FIX: Use .filter() to get ALL occurrences of the same hotel (e.g., Arien Plaza twice)
+      const hotelMatches = booking.grandTotalData.hotelBreakdown.filter(h => h.hotel === hotelName);
 
-      return sum + (currency === 'usd' ? (hotelData.USD || 0) : (hotelData.UZS || 0));
+      // Sum all occurrences of this hotel
+      const hotelTotal = hotelMatches.reduce((hotelSum, h) => {
+        return hotelSum + (currency === 'usd' ? (h.USD || 0) : (h.UZS || 0));
+      }, 0);
+
+      return sum + hotelTotal;
     }, 0);
   };
 
@@ -627,182 +659,6 @@ export default function Ausgaben() {
     // Format number with spaces every 3 digits: 4618200 → 4 618 200
     const rounded = Math.round(num).toString();
     return rounded.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  };
-
-  // Calculate expenses by category (Hotels, Transport, Railway, Flights, Guide, etc.)
-  const calculateExpensesByCategory = (grandTotalData, routes, railways, flights, tourServices, booking) => {
-    const expenses = {
-      hotelsUSD: grandTotalData?.grandTotalUSD || 0,
-      hotelsUZS: grandTotalData?.grandTotalUZS || 0,
-      transportSevil: 0,
-      transportXayrulla: 0,
-      railway: 0,
-      flights: 0,
-      guide: 0,
-      meals: 0,
-      eintritt: 0,
-      metro: 0,
-      shou: 0,
-      other: 0
-    };
-
-    // Transport by provider
-    routes.forEach(route => {
-      const price = parseFloat(route.price) || 0;
-      const provider = (route.provider || '').toLowerCase();
-
-      if (provider.includes('sevil')) {
-        expenses.transportSevil += price;
-      } else if (provider.includes('xayrulla') || provider.includes('hayrulla')) {
-        expenses.transportXayrulla += price;
-      }
-    });
-
-    // Railway
-    railways.forEach(railway => {
-      const price = parseFloat(railway.totalCost || railway.price) || 0;
-      console.log(`  🚂 Railway: ${railway.route || railway.departure}-${railway.arrival}, totalCost: ${railway.totalCost}, price: ${railway.price}, calculated: ${price}`);
-      expenses.railway += price;
-    });
-
-    // Flights
-    flights.forEach(flight => {
-      const price = parseFloat(flight.totalCost || flight.price) || 0;
-      console.log(`  ✈️ Flight: ${flight.route || flight.flightNumber}, totalCost: ${flight.totalCost}, price: ${flight.price}, calculated: ${price}`);
-      expenses.flights += price;
-    });
-
-    // Tour Services (EINTRITT, METRO, SHOU, OTHER)
-    tourServices.forEach(service => {
-      const price = parseFloat(service.price) || 0;
-      const type = (service.type || '').toUpperCase();
-
-      console.log(`  🎫 TourService: ${type} - ${service.name}, price: ${service.price}, calculated: ${price}`);
-
-      if (type === 'EINTRITT') {
-        expenses.eintritt += price;
-      } else if (type === 'METRO') {
-        // Skip Metro for ZA tours
-        if (booking.tourType?.code !== 'ZA') {
-          expenses.metro += price;
-        } else {
-          console.log(`  🚇 Metro skipped for ZA tour`);
-        }
-      } else if (type === 'SHOU') {
-        expenses.shou += price;
-      } else if (type === 'OTHER') {
-        expenses.other += price;
-      }
-    });
-
-    // Meals (from localStorage - OPEX module)
-    const tourTypeCode = booking.tourType?.code?.toLowerCase() || 'er';
-    const mealsKey = `${tourTypeCode}Meal`;
-    try {
-      const saved = localStorage.getItem(mealsKey);
-      if (saved) {
-        const mealsData = JSON.parse(saved);
-        mealsData.forEach(meal => {
-          const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
-          const pricePerPerson = parseFloat(priceStr) || 0;
-          const pax = parseInt(meal.pax) || booking.pax || 0;
-          expenses.meals += pricePerPerson * pax;
-        });
-      }
-    } catch (e) {
-      console.error('Error loading meals from localStorage:', e);
-    }
-
-    // Guide (from booking's guide data)
-    try {
-      // Parse JSON fields (additionalGuides and bergreiseleiter are stored as JSON strings)
-      let additionalGuides = [];
-      let bergreiseleiter = null;
-
-      try {
-        if (booking.additionalGuides && typeof booking.additionalGuides === 'string') {
-          additionalGuides = JSON.parse(booking.additionalGuides);
-        } else if (Array.isArray(booking.additionalGuides)) {
-          additionalGuides = booking.additionalGuides;
-        }
-      } catch (e) {
-        console.error('Error parsing additionalGuides:', e);
-      }
-
-      try {
-        if (booking.bergreiseleiter && typeof booking.bergreiseleiter === 'string') {
-          bergreiseleiter = JSON.parse(booking.bergreiseleiter);
-        } else if (booking.bergreiseleiter && typeof booking.bergreiseleiter === 'object') {
-          bergreiseleiter = booking.bergreiseleiter;
-        }
-      } catch (e) {
-        console.error('Error parsing bergreiseleiter:', e);
-      }
-
-      console.log(`  👨‍🏫 Guide data for booking:`, {
-        hasGuide: !!booking.guide,
-        guideFullDays: booking.guideFullDays,
-        guideHalfDays: booking.guideHalfDays,
-        additionalGuides,
-        bergreiseleiter
-      });
-
-      // Main guide - Calculate from days if available, otherwise use totalPayment
-      if (booking.guide) {
-        const dayRate = booking.guide.dayRate || 110;
-        const halfDayRate = booking.guide.halfDayRate || 55;
-        let fullDays = booking.guideFullDays || 0;
-        let halfDays = booking.guideHalfDays || 0;
-
-        // AUTO-CALCULATE: Use tour type defaults if days are 0
-        if (fullDays === 0 && halfDays === 0) {
-          if (tourTypeCode === 'er') {
-            fullDays = 12;
-            halfDays = 1;
-            console.log(`  🤖 AUTO: ER guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
-          } else if (tourTypeCode === 'za') {
-            fullDays = 5;
-            halfDays = 1;
-            console.log(`  🤖 AUTO: ZA guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
-          }
-        }
-
-        // Calculate from days
-        let mainGuidePayment = (fullDays * dayRate) + (halfDays * halfDayRate);
-
-        // If days are 0, try to get from the guide object's totalPayment (if stored there)
-        if (mainGuidePayment === 0 && booking.guide.totalPayment) {
-          mainGuidePayment = parseFloat(booking.guide.totalPayment) || 0;
-          console.log(`  💰 Main guide payment (from stored total): $${mainGuidePayment}`);
-        } else {
-          console.log(`  💰 Main guide payment: ${fullDays} days × $${dayRate} + ${halfDays} half days × $${halfDayRate} = $${mainGuidePayment}`);
-        }
-
-        expenses.guide += mainGuidePayment;
-      }
-
-      // Second guide (from additionalGuides array)
-      if (additionalGuides && additionalGuides.length > 0) {
-        additionalGuides.forEach((guide, index) => {
-          if (guide && guide.totalPayment) {
-            const payment = parseFloat(guide.totalPayment) || 0;
-            console.log(`  💰 Additional guide ${index + 1} (${guide.guide || 'Unknown'}): $${payment}`);
-            expenses.guide += payment;
-          }
-        });
-      }
-
-      // Bergreiseleiter (from bergreiseleiter field)
-      if (bergreiseleiter && bergreiseleiter.totalPayment) {
-        const payment = parseFloat(bergreiseleiter.totalPayment) || 0;
-        console.log(`  💰 Bergreiseleiter payment: $${payment}`);
-        expenses.guide += payment;
-      }
-    } catch (e) {
-      console.error('Error calculating guide expenses:', e);
-    }
-
-    return expenses;
   };
 
   const activeModule = tourTypeModules.find(m => m.code === activeTourType);
@@ -832,7 +688,7 @@ export default function Ausgaben() {
                 key={module.code}
                 onClick={() => {
                   setActiveTourType(module.code);
-                  setActiveExpenseTab('hotels'); // Reset to hotels tab
+                  // Keep current tab when switching tour types
                 }}
                 className={`
                   flex-1 py-4 px-6 text-center font-medium text-sm transition-all
@@ -964,7 +820,17 @@ export default function Ausgaben() {
                     <p className="text-gray-500">No expense data available for {activeModule?.name}</p>
                   </div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
+                  <>
+                    {/* Warning if some bookings are filtered out */}
+                    {bookingsDetailedData.length > filteredBookingsWithHotels.length && (
+                      <div className="px-6 py-3 bg-amber-50 border-l-4 border-amber-400">
+                        <p className="text-sm text-amber-800">
+                          ⚠️ <strong>Note:</strong> Showing {filteredBookingsWithHotels.length} of {bookingsDetailedData.length} bookings.
+                          {' '}{bookingsDetailedData.length - filteredBookingsWithHotels.length} booking(s) hidden (no Hotels data).
+                        </p>
+                      </div>
+                    )}
+                    <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300 bg-gray-100">
@@ -1159,6 +1025,7 @@ export default function Ausgaben() {
                       </tr>
                     </tbody>
                   </table>
+                  </>
                 )}
               </div>
             )}

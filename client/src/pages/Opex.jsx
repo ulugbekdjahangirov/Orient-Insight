@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation, Users, Car, Train, Plane, MapPin, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { transportApi, opexApi } from '../services/api';
@@ -102,6 +102,9 @@ export default function Opex() {
   const [metroVehicles, setMetroVehicles] = useState([]);
   const [trainVehicles, setTrainVehicles] = useState([]);
   const [planeVehicles, setPlaneVehicles] = useState([]);
+
+  // Prevent saving on initial mount - only save after data is loaded from database
+  const dataLoadedRef = useRef(false);
 
   // Sightseeing data for each tour type
   const [erSightseeing, setErSightseeing] = useState(() => {
@@ -648,6 +651,9 @@ export default function Opex() {
         loadOpexConfig('KAS', 'shows', 'kasShows', defaultKasShows, setKasShows),
         loadOpexConfig('ZA', 'shows', 'zaShows', defaultZaShows, setZaShows),
       ]);
+
+      // Mark data as loaded - now saves are allowed
+      dataLoadedRef.current = true;
     };
 
     loadAllOpexData();
@@ -655,62 +661,86 @@ export default function Opex() {
 
   // Save ER sightseeing to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('ER', 'sightseeing', erSightseeing, 'erSightseeing');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('ER', 'sightseeing', erSightseeing, 'erSightseeing');
+    }
   }, [erSightseeing]);
 
   // Save CO sightseeing to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('CO', 'sightseeing', coSightseeing, 'coSightseeing');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('CO', 'sightseeing', coSightseeing, 'coSightseeing');
+    }
   }, [coSightseeing]);
 
   // Save KAS sightseeing to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('KAS', 'sightseeing', kasSightseeing, 'kasSightseeing');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('KAS', 'sightseeing', kasSightseeing, 'kasSightseeing');
+    }
   }, [kasSightseeing]);
 
   // Save ZA sightseeing to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('ZA', 'sightseeing', zaSightseeing, 'zaSightseeing');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('ZA', 'sightseeing', zaSightseeing, 'zaSightseeing');
+    }
   }, [zaSightseeing]);
 
   // Save ER meal to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('ER', 'meal', erMeal, 'erMeal');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('ER', 'meal', erMeal, 'erMeal');
+    }
   }, [erMeal]);
 
   // Save CO meal to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('CO', 'meal', coMeal, 'coMeal');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('CO', 'meal', coMeal, 'coMeal');
+    }
   }, [coMeal]);
 
   // Save KAS meal to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('KAS', 'meal', kasMeal, 'kasMeal');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('KAS', 'meal', kasMeal, 'kasMeal');
+    }
   }, [kasMeal]);
 
   // Save ZA meal to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('ZA', 'meal', zaMeal, 'zaMeal');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('ZA', 'meal', zaMeal, 'zaMeal');
+    }
   }, [zaMeal]);
 
   // Save ER shows to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('ER', 'shows', erShows, 'erShows');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('ER', 'shows', erShows, 'erShows');
+    }
   }, [erShows]);
 
   // Save CO shows to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('CO', 'shows', coShows, 'coShows');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('CO', 'shows', coShows, 'coShows');
+    }
   }, [coShows]);
 
   // Save KAS shows to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('KAS', 'shows', kasShows, 'kasShows');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('KAS', 'shows', kasShows, 'kasShows');
+    }
   }, [kasShows]);
 
   // Save ZA shows to localStorage and database whenever it changes
   useEffect(() => {
-    saveOpexConfig('ZA', 'shows', zaShows, 'zaShows');
+    if (dataLoadedRef.current) {
+      saveOpexConfig('ZA', 'shows', zaShows, 'zaShows');
+    }
   }, [zaShows]);
 
   // Modal states

@@ -525,10 +525,10 @@ export default function Guides() {
             {guides.map((guide) => (
               <>
                 <tr key={guide.id} className={!guide.isActive ? 'bg-gray-50 opacity-60' : 'hover:bg-primary-50/50 transition-colors duration-150'}>
-                  <td className="px-6 py-4">
+                  <td className="px-3 md:px-6 py-4">
                     <button
                       onClick={() => toggleTours(guide.id)}
-                      className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-100 rounded-lg transition-all duration-200"
+                      className="p-2 md:p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-100 rounded-lg transition-all duration-200"
                     >
                       {expandedTours === guide.id ? (
                         <ChevronUp className="w-5 h-5" />
@@ -537,13 +537,13 @@ export default function Guides() {
                       )}
                     </button>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <User className="w-6 h-6 text-white" />
+                  <td className="px-3 md:px-6 py-4">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
+                        <User className="w-5 h-5 md:w-6 md:h-6 text-white" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{guide.name}</p>
+                        <p className="font-semibold text-sm md:text-base text-gray-900">{guide.name}</p>
                         {(guide.firstName || guide.lastName) && (
                           <p className="text-xs text-gray-500 mt-0.5">
                             {guide.firstName} {guide.lastName}
@@ -552,7 +552,7 @@ export default function Guides() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden md:table-cell px-6 py-4">
                     <div className="text-sm font-medium text-gray-700">
                       {guide.dateOfBirth ? (
                         <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg">
@@ -564,23 +564,23 @@ export default function Guides() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1.5 text-sm">
+                  <td className="px-3 md:px-6 py-4">
+                    <div className="space-y-1.5 text-xs md:text-sm">
                       {guide.phone && (
-                        <div className="flex items-center gap-2 text-gray-700">
+                        <div className="flex items-center gap-1 md:gap-2 text-gray-700">
                           <Phone className="w-4 h-4 text-primary-500" />
                           <span className="font-medium">{guide.phone}</span>
                         </div>
                       )}
                       {guide.email && (
-                        <div className="flex items-center gap-2 text-gray-700">
+                        <div className="flex items-center gap-1 md:gap-2 text-gray-700">
                           <Mail className="w-4 h-4 text-primary-500" />
-                          <span className="font-medium">{guide.email}</span>
+                          <span className="font-medium truncate">{guide.email}</span>
                         </div>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden lg:table-cell px-6 py-4">
                     <div className="space-y-2">
                       {guide.passportNumber && (
                         <div className="flex items-center gap-2">
@@ -609,7 +609,7 @@ export default function Guides() {
                     </div>
                   </td>
                   {isAdmin && (
-                    <td className="px-6 py-4">
+                    <td className="hidden xl:table-cell px-6 py-4">
                       <div className="space-y-1.5 text-xs">
                         {guide.bankCardNumber && (
                           <div className="flex items-center gap-2 text-gray-700">
@@ -626,14 +626,14 @@ export default function Guides() {
                       </div>
                     </td>
                   )}
-                  <td className="px-6 py-4">
+                  <td className="hidden md:table-cell px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-xs font-bold shadow-sm">
                       <FileText className="w-3.5 h-3.5" />
                       {guide._count?.bookings || 0} туров
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
+                  <td className="px-3 md:px-6 py-4">
+                    <span className={`inline-flex items-center px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
                       guide.isActive
                         ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
                         : 'bg-gray-200 text-gray-600'
@@ -641,14 +641,14 @@ export default function Guides() {
                       {guide.isActive ? 'Активен' : 'Неактивен'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
+                  <td className="px-3 md:px-6 py-4">
+                    <div className="flex items-center justify-end gap-1 md:gap-2">
                       <button
                         onClick={() => openModal(guide)}
                         className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                         title="Редактировать"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-5 h-5 md:w-4 md:h-4" />
                       </button>
                       {isAdmin && (
                         <>
@@ -657,14 +657,14 @@ export default function Guides() {
                             className="p-2 text-gray-400 hover:text-white hover:bg-yellow-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                             title={guide.isActive ? 'Деактивировать' : 'Активировать'}
                           >
-                            <Shield className="w-4 h-4" />
+                            <Shield className="w-5 h-5 md:w-4 md:h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(guide)}
                             className="p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
                             title="Удалить"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
                           </button>
                         </>
                       )}
@@ -1138,18 +1138,18 @@ export default function Guides() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg md:rounded-xl shadow-xl w-full max-w-full md:max-w-2xl my-4 md:my-8">
+            <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-200">
+              <h2 className="text-base md:text-lg font-semibold text-gray-900">
                 {editingGuide ? 'Редактировать гида' : 'Новый гид'}
               </h2>
-              <button onClick={closeModal} className="p-1 hover:bg-gray-100 rounded">
+              <button onClick={closeModal} className="p-2 md:p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-3 md:p-4 space-y-6 max-h-[75vh] md:max-h-[70vh] overflow-y-auto">
               {/* Basic Info */}
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
@@ -1165,7 +1165,7 @@ export default function Guides() {
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                       placeholder="Zokir"
                     />
                   </div>
@@ -1175,7 +1175,7 @@ export default function Guides() {
                       type="text"
                       value={formData.firstName}
                       onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   <div>

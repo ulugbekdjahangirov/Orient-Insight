@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../store/AuthContext';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -17,7 +18,8 @@ import {
   Settings,
   DollarSign,
   FileText,
-  Receipt
+  Receipt,
+  X
 } from 'lucide-react';
 
 const navItems = [
@@ -42,13 +44,30 @@ const adminItems = [
 
 export default function Sidebar({ open, onToggle }) {
   const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
+
+  // On mobile, sidebar should be completely hidden when closed (drawer pattern)
+  // On desktop, sidebar collapses to narrow state (w-20)
+  const sidebarClasses = isMobile
+    ? `fixed left-0 top-0 h-full bg-gray-900 text-white transition-transform duration-300 z-50 w-64 ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`
+    : `fixed left-0 top-0 h-full bg-gray-900 text-white transition-all duration-300 z-40 ${
+        open ? 'w-64' : 'w-20'
+      }`;
 
   return (
-    <aside
-      className={`fixed left-0 top-0 h-full bg-gray-900 text-white transition-all duration-300 z-40 ${
-        open ? 'w-64' : 'w-20'
-      }`}
-    >
+    <>
+      {/* Mobile backdrop overlay */}
+      {isMobile && open && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+          onClick={onToggle}
+          aria-label="Close sidebar"
+        />
+      )}
+
+      <aside className={sidebarClasses}>
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
@@ -62,6 +81,17 @@ export default function Sidebar({ open, onToggle }) {
             </div>
           )}
         </div>
+
+        {/* Close button on mobile */}
+        {isMobile && open && (
+          <button
+            onClick={onToggle}
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Close menu"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -76,15 +106,18 @@ export default function Sidebar({ open, onToggle }) {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={isMobile ? onToggle : undefined} // Close sidebar on mobile after navigation
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+              `flex items-center gap-3 px-3 rounded-lg transition-colors ${
+                isMobile ? 'py-3' : 'py-2.5'
+              } ${
                 isActive
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
               }`
             }
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
+            <item.icon className={isMobile ? 'w-6 h-6 flex-shrink-0' : 'w-5 h-5 flex-shrink-0'} />
             {open && <span>{item.label}</span>}
           </NavLink>
         ))}
@@ -102,15 +135,18 @@ export default function Sidebar({ open, onToggle }) {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={isMobile ? onToggle : undefined} // Close sidebar on mobile after navigation
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                  `flex items-center gap-3 px-3 rounded-lg transition-colors ${
+                    isMobile ? 'py-3' : 'py-2.5'
+                  } ${
                     isActive
                       ? 'bg-primary-600 text-white'
                       : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                   }`
                 }
               >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
+                <item.icon className={isMobile ? 'w-6 h-6 flex-shrink-0' : 'w-5 h-5 flex-shrink-0'} />
                 {open && <span>{item.label}</span>}
               </NavLink>
             ))}
@@ -118,13 +154,16 @@ export default function Sidebar({ open, onToggle }) {
         )}
       </nav>
 
-      {/* Toggle Button */}
-      <button
-        onClick={onToggle}
-        className="absolute bottom-4 right-0 translate-x-1/2 w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-      >
-        {open ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-      </button>
+      {/* Toggle Button - Desktop only */}
+      {!isMobile && (
+        <button
+          onClick={onToggle}
+          className="absolute bottom-4 right-0 translate-x-1/2 w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+        >
+          {open ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+      )}
     </aside>
+    </>
   );
 }

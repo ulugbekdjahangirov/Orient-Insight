@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { dashboardApi } from '../services/api';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import {
   CalendarDays,
   Users,
@@ -90,6 +91,7 @@ export default function Dashboard() {
   const [upcoming, setUpcoming] = useState([]);
   const [monthly, setMonthly] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadData();
@@ -141,22 +143,22 @@ export default function Dashboard() {
   })) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 space-y-4 md:space-y-6">
       {/* Page header */}
-      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+      <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-blue-100 p-4 md:p-8">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-purple-500/10"></div>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-purple-400/20 to-blue-400/20 rounded-full blur-3xl"></div>
 
-        <div className="relative flex items-center gap-6">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
-            <TrendingUp className="w-10 h-10 text-white" />
+        <div className="relative flex items-center gap-3 md:gap-6">
+          <div className="w-14 h-14 md:w-20 md:h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl md:rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
+            <TrendingUp className="w-7 h-7 md:w-10 md:h-10 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1 md:mb-2">
               Dashboard
             </h1>
-            <p className="text-gray-600 font-semibold text-base">Activity Overview & Statistics</p>
+            <p className="text-sm md:text-base text-gray-600 font-semibold">Activity Overview & Statistics</p>
           </div>
         </div>
       </div>
@@ -271,19 +273,19 @@ export default function Dashboard() {
 
       {/* Upcoming bookings */}
       <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
-        <div className="p-8 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <CalendarDays className="w-5 h-5 text-white" />
+        <div className="p-4 md:p-8 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
+              <CalendarDays className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
-            <h2 className="text-xl font-black text-gray-900">Ближайшие бронирования</h2>
+            <h2 className="text-lg md:text-xl font-black text-gray-900">Ближайшие бронирования</h2>
           </div>
           <Link
             to="/bookings"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 hover:-translate-y-1 transition-all duration-300 font-bold text-sm"
+            className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 hover:-translate-y-1 transition-all duration-300 font-bold text-xs md:text-sm w-full sm:w-auto justify-center sm:justify-start"
           >
             Все бронирования
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
           </Link>
         </div>
 
@@ -296,35 +298,37 @@ export default function Dashboard() {
               <Link
                 key={booking.id}
                 to={`/bookings/${booking.id}`}
-                className="flex items-center justify-between p-6 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group"
+                className={`p-4 md:p-6 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 group ${
+                  isMobile ? 'flex flex-col gap-3' : 'flex items-center justify-between'
+                }`}
               >
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-3 md:gap-5">
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-lg group-hover:scale-110 transition-all duration-300"
+                    className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-black text-sm md:text-base shadow-lg group-hover:scale-110 transition-all duration-300 flex-shrink-0"
                     style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
                   >
                     {booking.tourType?.code}
                   </div>
-                  <div>
-                    <p className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">{booking.bookingNumber}</p>
-                    <p className="text-sm text-gray-600 font-medium mt-1">
+                  <div className="flex-1">
+                    <p className="font-bold text-gray-900 text-base md:text-lg group-hover:text-blue-600 transition-colors">{booking.bookingNumber}</p>
+                    <p className="text-xs md:text-sm text-gray-600 font-medium mt-0.5 md:mt-1">
                       {booking.guide?.name || 'Гид не назначен'}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-5 text-sm">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-md">
-                    <Clock className="w-5 h-5 text-blue-500" />
-                    <span className="font-semibold text-gray-700">
+                <div className={`flex items-center gap-2 md:gap-5 text-xs md:text-sm ${isMobile ? 'flex-wrap' : ''}`}>
+                  <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 bg-white rounded-lg md:rounded-xl shadow-md">
+                    <Clock className="w-4 h-4 md:w-5 md:h-5 text-blue-500" />
+                    <span className="font-semibold text-gray-700 whitespace-nowrap">
                       {format(new Date(booking.departureDate), 'd MMM yyyy', { locale: ru })}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-md">
-                    <Users className="w-5 h-5 text-green-500" />
+                  <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 bg-white rounded-lg md:rounded-xl shadow-md">
+                    <Users className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
                     <span className="font-semibold text-gray-700">{booking.pax} чел.</span>
                   </div>
-                  <span className={`inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold shadow-md ${statusClasses[status]}`}>
+                  <span className={`inline-flex items-center px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-bold shadow-md ${statusClasses[status]}`}>
                     {statusLabels[status]}
                   </span>
                 </div>
@@ -377,15 +381,15 @@ function StatCard({ icon: Icon, label, value, color }) {
   const colors = colorClasses[color];
 
   return (
-    <div className="relative group bg-white rounded-3xl shadow-xl border-2 border-gray-100 p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+    <div className="relative group bg-white rounded-2xl md:rounded-3xl shadow-xl border-2 border-gray-100 p-4 md:p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
       <div className={`absolute inset-0 ${colors.bg} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
 
-      <div className="relative flex items-center gap-5">
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br ${colors.gradient} shadow-lg ${colors.shadow} transform group-hover:scale-110 transition-all duration-300`}>
-          <Icon className="w-8 h-8 text-white" />
+      <div className="relative flex items-center gap-3 md:gap-5">
+        <div className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center bg-gradient-to-br ${colors.gradient} shadow-lg ${colors.shadow} transform group-hover:scale-110 transition-all duration-300`}>
+          <Icon className="w-6 h-6 md:w-8 md:h-8 text-white" />
         </div>
         <div>
-          <p className="text-3xl font-black text-gray-900 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-gray-900 group-hover:to-gray-700 transition-all duration-300">{value}</p>
+          <p className="text-2xl md:text-3xl font-black text-gray-900 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-gray-900 group-hover:to-gray-700 transition-all duration-300">{value}</p>
           <p className="text-sm font-semibold text-gray-600 mt-1">{label}</p>
         </div>
       </div>

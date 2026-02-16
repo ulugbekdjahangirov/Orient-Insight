@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, touristsApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
-import { Bell, Edit, Trash2, Users, Upload } from 'lucide-react';
+import { Bell, Edit, Trash2, Users, Upload, Calendar, MapPin } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 const tourTypeModules = [
   { code: 'ER', name: 'Erlebnisreisen', color: '#3B82F6' },
@@ -36,6 +37,9 @@ export default function Updates() {
   const [tourTypes, setTourTypes] = useState([]);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
+  const isMobile = useIsMobile();
+
+  console.log('🔍 Updates - isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
 
   useEffect(() => {
     loadTourTypes();
@@ -907,6 +911,87 @@ export default function Updates() {
               </div>
               <p className="text-xl font-bold text-gray-700 mb-2">No bookings for type {activeTab}</p>
               <p className="text-gray-500">Import Excel files to add tours</p>
+            </div>
+          ) : isMobile ? (
+            <div className="space-y-3">
+              {bookings.map((booking, index) => {
+                const calculatedStatus = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+
+                return (
+                  <div
+                    key={booking.id}
+                    className={`rounded-2xl p-4 shadow-lg border-2 ${
+                      calculatedStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
+                      calculatedStatus === 'PENDING' ? 'bg-yellow-50 border-yellow-300' :
+                      calculatedStatus === 'IN_PROGRESS' ? 'bg-purple-50 border-purple-300' :
+                      calculatedStatus === 'CONFIRMED' ? 'bg-green-50 border-green-300' :
+                      calculatedStatus === 'COMPLETED' ? 'bg-blue-50 border-blue-300' :
+                      'bg-white border-gray-200'
+                    }`}
+                  >
+                    {/* Header: Booking Number + Status */}
+                    <div className="flex items-center justify-between mb-3">
+                      <Link to={`/bookings/${booking.id}?edit=true`}>
+                        <span
+                          className="inline-flex items-center px-4 py-2 rounded-xl text-base font-bold text-white shadow-md hover:shadow-lg transition-all"
+                          style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
+                        >
+                          {booking.bookingNumber}
+                        </span>
+                      </Link>
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
+                        {statusLabels[calculatedStatus]}
+                      </span>
+                    </div>
+
+                    {/* Tour Start Date */}
+                    <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
+                      <Calendar className="w-4 h-4 text-indigo-500" />
+                      <span className="font-semibold">Start:</span>
+                      <span>{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</span>
+                    </div>
+
+                    {/* PAX */}
+                    <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
+                      <Users className="w-4 h-4 text-indigo-500" />
+                      <span className="font-semibold">PAX:</span>
+                      <span className="font-bold">{booking.pax}</span>
+                      {activeTab === 'ER' && (
+                        <span className="text-xs text-gray-500 ml-1">
+                          (UZ: {booking.paxUzbekistan || 0}, TM: {booking.paxTurkmenistan || 0})
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Guide */}
+                    {booking.guide?.name && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                        <MapPin className="w-4 h-4 text-indigo-500" />
+                        <span className="font-semibold">Guide:</span>
+                        <span>{booking.guide.name}</span>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3 pt-3 border-t border-gray-300">
+                      <Link
+                        to={`/bookings/${booking.id}?edit=true`}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-indigo-600 bg-indigo-100 hover:bg-indigo-200 rounded-xl transition-all font-semibold text-sm"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(booking.id, booking.bookingNumber)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-red-600 bg-red-100 hover:bg-red-200 rounded-xl transition-all font-semibold text-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="overflow-x-auto rounded-2xl">

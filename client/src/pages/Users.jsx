@@ -134,22 +134,22 @@ export default function Users() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Пользователь
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Роль
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Статус
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Создан
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+              <th className="px-3 md:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                 Действия
               </th>
             </tr>
@@ -157,9 +157,9 @@ export default function Users() {
           <tbody className="divide-y divide-gray-200">
             {users.map((user) => (
               <tr key={user.id} className={!user.isActive ? 'bg-gray-50 opacity-60' : ''}>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                <td className="px-3 md:px-6 py-4">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <div className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center ${
                       user.role === 'ADMIN' ? 'bg-purple-100' : 'bg-blue-100'
                     }`}>
                       {user.role === 'ADMIN' ? (
@@ -168,11 +168,11 @@ export default function Users() {
                         <User className="w-5 h-5 text-blue-600" />
                       )}
                     </div>
-                    <span className="font-medium text-gray-900">{user.name}</span>
+                    <span className="font-medium text-sm md:text-base text-gray-900">{user.name}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-gray-600">{user.email}</td>
-                <td className="px-6 py-4">
+                <td className="px-3 md:px-6 py-4 text-xs md:text-sm text-gray-600 truncate max-w-[150px] md:max-w-none">{user.email}</td>
+                <td className="hidden md:table-cell px-6 py-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     user.role === 'ADMIN'
                       ? 'bg-purple-100 text-purple-800'
@@ -181,7 +181,7 @@ export default function Users() {
                     {roleLabels[user.role]}
                   </span>
                 </td>
-                <td className="px-6 py-4">
+                <td className="hidden md:table-cell px-6 py-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     user.isActive
                       ? 'bg-green-100 text-green-800'
@@ -190,28 +190,28 @@ export default function Users() {
                     {user.isActive ? 'Активен' : 'Неактивен'}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
+                <td className="hidden lg:table-cell px-6 py-4 text-sm text-gray-500">
                   {format(new Date(user.createdAt), 'dd.MM.yyyy')}
                 </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-end gap-2">
+                <td className="px-3 md:px-6 py-4">
+                  <div className="flex items-center justify-end gap-1 md:gap-2">
                     <button
                       onClick={() => openModal(user)}
-                      className="p-1.5 text-gray-400 hover:text-primary-600 rounded"
+                      className="p-2 md:p-1.5 text-gray-400 hover:text-primary-600 rounded"
                       title="Редактировать"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-5 h-5 md:w-4 md:h-4" />
                     </button>
                     <button
                       onClick={() => toggleActive(user)}
-                      className={`p-1.5 rounded ${
+                      className={`p-2 md:p-1.5 rounded ${
                         user.isActive
                           ? 'text-gray-400 hover:text-red-600'
                           : 'text-gray-400 hover:text-green-600'
                       }`}
                       title={user.isActive ? 'Деактивировать' : 'Активировать'}
                     >
-                      <UserCog className="w-4 h-4" />
+                      <UserCog className="w-5 h-5 md:w-4 md:h-4" />
                     </button>
                   </div>
                 </td>
@@ -229,18 +229,18 @@ export default function Users() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-white rounded-lg md:rounded-xl shadow-xl w-full max-w-full md:max-w-md">
+            <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-200">
+              <h2 className="text-base md:text-lg font-semibold text-gray-900">
                 {editingUser ? 'Редактировать пользователя' : 'Новый пользователь'}
               </h2>
-              <button onClick={closeModal} className="p-1 hover:bg-gray-100 rounded">
+              <button onClick={closeModal} className="p-2 md:p-1 hover:bg-gray-100 rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="p-3 md:p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Имя *
@@ -249,7 +249,7 @@ export default function Users() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="Иван Иванов"
                 />
               </div>

@@ -6,11 +6,13 @@ import {
   X, Save, Search, Download, FileSpreadsheet, FileText,
   AlertCircle, Check, ChevronDown
 } from 'lucide-react';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export default function TouristsList({ bookingId, onUpdate }) {
   const [tourists, setTourists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const isMobile = useIsMobile();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -362,88 +364,164 @@ export default function TouristsList({ bookingId, onUpdate }) {
 
           {/* Tourist Cards */}
           {filteredTourists.map((p, index) => (
-            <div
-              key={p.id}
-              className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300 p-4"
-            >
-              <div className="grid grid-cols-12 gap-3 items-center text-sm">
-                {/* Number */}
-                <div className="col-span-1">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 flex items-center justify-center shadow-sm">
-                    <span className="text-base font-bold text-gray-700">{index + 1}</span>
+            isMobile ? (
+              /* MOBILE: Vertical stacked layout */
+              <div
+                key={p.id}
+                className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md p-4 space-y-3"
+              >
+                {/* Header: Number + Name + Leader Icon */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 flex items-center justify-center shadow-sm flex-shrink-0">
+                    <span className="text-sm font-bold text-gray-700">{index + 1}</span>
+                  </div>
+                  {p.isGroupLeader && (
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-100 to-yellow-200 border-2 border-yellow-300 flex items-center justify-center flex-shrink-0">
+                      <Crown className="w-4 h-4 text-yellow-600" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900 text-sm">
+                      {p.fullName || `${p.lastName}, ${p.firstName}`}
+                    </div>
                   </div>
                 </div>
 
-                {/* Name */}
-                <div className="col-span-3">
-                  <div className="flex items-center gap-3">
-                    {p.isGroupLeader ? (
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-200 border-2 border-yellow-300 flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <Crown className="w-5 h-5 text-yellow-600" title="Group leader" />
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <User className="w-5 h-5 text-blue-700" />
-                      </div>
-                    )}
-                    <span className="font-semibold text-gray-900 text-sm">
-                      {p.fullName || `${p.lastName}, ${p.firstName}`}
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-500">Gender:</span>
+                    <span className="ml-1 text-gray-900">{p.gender === 'M' ? 'M' : p.gender === 'F' ? 'F' : '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Country:</span>
+                    <span className="ml-1 text-gray-900">{p.country && p.country !== 'Not provided' ? p.country : '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Passport:</span>
+                    <span className="ml-1 text-gray-900">{p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Birth:</span>
+                    <span className="ml-1 text-gray-900">{formatDisplayDate(p.dateOfBirth)}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Pass. Exp:</span>
+                    <span className={`ml-1 ${
+                      isPassportExpired(p.passportExpiryDate)
+                        ? 'text-red-600 font-semibold'
+                        : isPassportExpiringSoon(p.passportExpiryDate)
+                        ? 'text-orange-500 font-medium'
+                        : 'text-gray-900'
+                    }`}>
+                      {formatDisplayDate(p.passportExpiryDate)}
                     </span>
                   </div>
                 </div>
 
-                {/* Gender */}
-                <div className="col-span-1 text-gray-600">
-                  {p.gender === 'M' ? 'M' : p.gender === 'F' ? 'F' : '-'}
-                </div>
-
-                {/* Nationality */}
-                <div className="col-span-2 text-gray-600 text-sm">
-                  {p.country && p.country !== 'Not provided' ? p.country : '-'}
-                </div>
-
-                {/* Passport */}
-                <div className="col-span-2 text-gray-600 text-sm">
-                  {p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}
-                </div>
-
-                {/* Birth */}
-                <div className="col-span-1 text-gray-600 text-xs">
-                  {formatDisplayDate(p.dateOfBirth)}
-                </div>
-
-                {/* Passport Expiry */}
-                <div className="col-span-1 text-xs">
-                  <span className={
-                    isPassportExpired(p.passportExpiryDate)
-                      ? 'text-red-600 font-semibold'
-                      : isPassportExpiringSoon(p.passportExpiryDate)
-                      ? 'text-orange-500 font-medium'
-                      : 'text-gray-600'
-                  }>
-                    {formatDisplayDate(p.passportExpiryDate)}
-                  </span>
-                </div>
-
                 {/* Actions */}
-                <div className="col-span-1">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => openModal(p)}
-                      className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl hover:scale-110 transition-all duration-200"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => deleteTourist(p)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl hover:scale-110 transition-all duration-200"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                <div className="flex gap-2 pt-2 border-t border-gray-200">
+                  <button
+                    onClick={() => openModal(p)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-xl transition-all text-sm font-medium"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteTourist(p)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all text-sm font-medium"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* DESKTOP: 12-column grid layout */
+              <div
+                key={p.id}
+                className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300 p-4"
+              >
+                <div className="grid grid-cols-12 gap-3 items-center text-sm">
+                  {/* Number */}
+                  <div className="col-span-1">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 flex items-center justify-center shadow-sm">
+                      <span className="text-base font-bold text-gray-700">{index + 1}</span>
+                    </div>
+                  </div>
+
+                  {/* Name */}
+                  <div className="col-span-3">
+                    <div className="flex items-center gap-3">
+                      {p.isGroupLeader ? (
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-200 border-2 border-yellow-300 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <Crown className="w-5 h-5 text-yellow-600" title="Group leader" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 border-2 border-blue-300 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <User className="w-5 h-5 text-blue-700" />
+                        </div>
+                      )}
+                      <span className="font-semibold text-gray-900 text-sm">
+                        {p.fullName || `${p.lastName}, ${p.firstName}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Gender */}
+                  <div className="col-span-1 text-gray-600">
+                    {p.gender === 'M' ? 'M' : p.gender === 'F' ? 'F' : '-'}
+                  </div>
+
+                  {/* Nationality */}
+                  <div className="col-span-2 text-gray-600 text-sm">
+                    {p.country && p.country !== 'Not provided' ? p.country : '-'}
+                  </div>
+
+                  {/* Passport */}
+                  <div className="col-span-2 text-gray-600 text-sm">
+                    {p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}
+                  </div>
+
+                  {/* Birth */}
+                  <div className="col-span-1 text-gray-600 text-xs">
+                    {formatDisplayDate(p.dateOfBirth)}
+                  </div>
+
+                  {/* Passport Expiry */}
+                  <div className="col-span-1 text-xs">
+                    <span className={
+                      isPassportExpired(p.passportExpiryDate)
+                        ? 'text-red-600 font-semibold'
+                        : isPassportExpiringSoon(p.passportExpiryDate)
+                        ? 'text-orange-500 font-medium'
+                        : 'text-gray-600'
+                    }>
+                      {formatDisplayDate(p.passportExpiryDate)}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-1">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => openModal(p)}
+                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl hover:scale-110 transition-all duration-200"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteTourist(p)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl hover:scale-110 transition-all duration-200"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )
           ))}
         </div>
       ) : (

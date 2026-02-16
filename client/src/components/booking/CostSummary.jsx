@@ -131,27 +131,27 @@ export default function CostSummary({ bookingId, booking }) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg md:rounded-xl p-3 md:p-4">
           <div className="flex items-center gap-2 text-blue-600 mb-1">
             <Building2 className="w-4 h-4" />
-            <span className="text-sm font-medium">Номеров</span>
+            <span className="text-xs md:text-sm font-medium">Номеров</span>
           </div>
-          <p className="text-2xl font-bold text-blue-900">{totals?.rooms || 0}</p>
+          <p className="text-xl md:text-2xl font-bold text-blue-900">{totals?.rooms || 0}</p>
         </div>
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg md:rounded-xl p-3 md:p-4">
           <div className="flex items-center gap-2 text-purple-600 mb-1">
             <PieChart className="w-4 h-4" />
-            <span className="text-sm font-medium">Ночей</span>
+            <span className="text-xs md:text-sm font-medium">Ночей</span>
           </div>
-          <p className="text-2xl font-bold text-purple-900">{totals?.nights || 0}</p>
+          <p className="text-xl md:text-2xl font-bold text-purple-900">{totals?.nights || 0}</p>
         </div>
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg md:rounded-xl p-3 md:p-4 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center gap-2 text-green-600 mb-1">
             <TrendingUp className="w-4 h-4" />
-            <span className="text-sm font-medium">Итого</span>
+            <span className="text-xs md:text-sm font-medium">Итого</span>
           </div>
-          <p className="text-2xl font-bold text-green-900">
+          <p className="text-xl md:text-2xl font-bold text-green-900">
             ${(totals?.cost || 0).toLocaleString()}
           </p>
         </div>

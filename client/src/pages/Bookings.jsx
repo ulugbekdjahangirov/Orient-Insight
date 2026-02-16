@@ -4,6 +4,7 @@ import { bookingsApi, tourTypesApi, guidesApi } from '../services/api';
 import { format, addDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import toast from 'react-hot-toast';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import {
   Search,
   Filter,
@@ -14,7 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Users
+  Users,
+  Calendar,
+  MapPin
 } from 'lucide-react';
 
 const statusLabels = {
@@ -66,6 +69,8 @@ const getStatusByPax = (pax, departureDate, endDate) => {
 };
 
 export default function Bookings() {
+  const isMobile = useIsMobile();
+  console.log('🔍 Bookings - isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: 200 });
@@ -191,17 +196,17 @@ export default function Bookings() {
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-primary-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
 
-        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-primary-500 via-purple-500 to-pink-600 rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
-              <CalendarDays className="w-10 h-10 text-white" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 md:gap-6">
+          <div className="flex items-center gap-3 md:gap-6">
+            <div className="w-14 h-14 md:w-20 md:h-20 bg-gradient-to-br from-primary-500 via-purple-500 to-pink-600 rounded-2xl md:rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
+              <CalendarDays className="w-7 h-7 md:w-10 md:h-10 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 Bookings Management
               </h1>
-              <p className="text-gray-600 font-semibold mt-2 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-primary-100 to-purple-100 rounded-full">
+              <p className="text-sm md:text-base text-gray-600 font-semibold mt-1 md:mt-2 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2 md:px-3 py-1 bg-gradient-to-r from-primary-100 to-purple-100 rounded-full text-xs md:text-sm">
                   <span className="text-gray-700">Total:</span>
                   <span className="text-primary-700 font-bold">{pagination.total}</span>
                   <span className="text-gray-700">records</span>
@@ -212,9 +217,9 @@ export default function Bookings() {
 
           <Link
             to="/bookings/new"
-            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:from-primary-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-base"
+            className="inline-flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:from-primary-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base"
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-5 h-5 md:w-6 md:h-6" />
             <span>Add New Booking</span>
           </Link>
         </div>
@@ -407,54 +412,133 @@ export default function Bookings() {
             <p className="text-xl font-bold text-gray-700 mb-2">No bookings found</p>
             <p className="text-gray-500">Try adjusting your filters or create a new booking</p>
           </div>
+        ) : isMobile ? (
+          <div className="space-y-3">
+            {bookings.map((booking, index) => {
+              const calculatedStatus = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+              return (
+                <div
+                  key={booking.id}
+                  className={`rounded-2xl p-4 shadow-lg border-2 ${
+                    calculatedStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
+                    calculatedStatus === 'PENDING' ? 'bg-yellow-50 border-yellow-300' :
+                    calculatedStatus === 'IN_PROGRESS' ? 'bg-purple-50 border-purple-300' :
+                    calculatedStatus === 'CONFIRMED' ? 'bg-green-50 border-green-300' :
+                    'bg-blue-50 border-blue-300'
+                  }`}
+                >
+                  {/* Header with Booking Number and Status */}
+                  <div className="flex items-center justify-between mb-3">
+                    <Link to={`/bookings/${booking.id}?edit=true`}>
+                      <span
+                        className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg"
+                        style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
+                      >
+                        {booking.bookingNumber}
+                      </span>
+                    </Link>
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
+                      {statusLabels[calculatedStatus]}
+                    </span>
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4 text-primary-600" />
+                      <span className="font-semibold text-gray-700">Start:</span>
+                      <span className="text-gray-900">{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="w-4 h-4 text-primary-600" />
+                      <span className="font-semibold text-gray-700">PAX:</span>
+                      <span className="text-gray-900 font-bold">{booking.pax}</span>
+                    </div>
+                    {booking.guide && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <MapPin className="w-4 h-4 text-primary-600" />
+                        <span className="font-semibold text-gray-700">Guide:</span>
+                        <span className="text-gray-900">{booking.guide.name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-300">
+                    <Link
+                      to={`/bookings/${booking.id}`}
+                      className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all"
+                      title="View"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </Link>
+                    <Link
+                      to={`/bookings/${booking.id}?edit=true`}
+                      className="p-2 text-primary-600 hover:text-primary-900 hover:bg-white rounded-lg transition-all"
+                      title="Edit"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(booking.id, booking.bookingNumber)}
+                      className="p-2 text-red-600 hover:text-red-900 hover:bg-white rounded-lg transition-all"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="overflow-x-auto rounded-2xl">
             <table className="w-full">
               <thead className="bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 border-b-4 border-primary-600 shadow-2xl sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Number
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Tour Type
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Tour Start
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Arrival
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Tour End
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Pax
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Uzbekistan
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Turkmenistan
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Guide
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Train Tickets
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden xl:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     DBL
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden xl:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     TWN
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden xl:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     SNGL
                   </th>
-                  <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-5 text-right text-sm font-black text-white uppercase tracking-wider">
+                  <th className="px-3 md:px-6 py-5 text-right text-sm font-black text-white uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -480,18 +564,18 @@ export default function Bookings() {
                   return (
                   <tr key={booking.id} className={`${rowClass} transition-all duration-200`}>
                     {/* НОМЕР */}
-                    <td className="px-4 py-4">
+                    <td className="hidden md:table-cell px-4 py-4">
                       <span className="font-bold text-gray-900 text-base">
                         {(pagination.page - 1) * pagination.limit + index + 1}
                       </span>
                     </td>
                     {/* ТИП ТУРА */}
-                    <td className="px-4 py-4">
+                    <td className="px-2 md:px-4 py-4">
                       <Link
                         to={`/bookings/${booking.id}?edit=true`}
                       >
                         <span
-                          className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold text-white whitespace-nowrap hover:shadow-lg hover:scale-105 transition-all duration-200 shadow-sm"
+                          className="inline-flex items-center px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-white whitespace-nowrap hover:shadow-lg hover:scale-105 transition-all duration-200 shadow-sm"
                           style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
                         >
                           {booking.bookingNumber}
@@ -499,83 +583,83 @@ export default function Bookings() {
                       </Link>
                     </td>
                     {/* TOUR START */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                    <td className="px-2 md:px-4 py-4 text-xs md:text-sm text-gray-700 font-medium">
                       {format(new Date(booking.departureDate), 'dd.MM.yyyy')}
                     </td>
                     {/* ARRIVAL */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                    <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
                       {booking.arrivalDate
                         ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy')
                         : format(addDays(new Date(booking.departureDate), 1), 'dd.MM.yyyy')}
                     </td>
                     {/* TOUR END */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                    <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
                       {format(new Date(booking.endDate), 'dd.MM.yyyy')}
                     </td>
                     {/* PAX */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2 text-sm">
+                    <td className="px-2 md:px-4 py-4">
+                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                         <Users className="w-4 h-4 text-primary-500" />
                         <span className="font-bold text-gray-900">{booking.pax}</span>
                       </div>
                     </td>
                     {/* УЗБЕКИСТАН */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
                       {booking.paxUzbekistan || 0}
                     </td>
                     {/* ТУРКМЕНИСТАН */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
                       {booking.paxTurkmenistan || 0}
                     </td>
                     {/* ГИД */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
                       {booking.guide?.name || '-'}
                     </td>
                     {/* ЖД БИЛЕТЫ */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
                       {booking.trainTickets || '-'}
                     </td>
                     {/* DBL */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
                       {booking.roomsDbl ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : Number(booking.roomsDbl).toFixed(1)) : 0}
                     </td>
                     {/* TWN */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
                       {booking.roomsTwn ? (Number(booking.roomsTwn) % 1 === 0 ? booking.roomsTwn : Number(booking.roomsTwn).toFixed(1)) : 0}
                     </td>
                     {/* SNGL */}
-                    <td className="px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
                       {booking.roomsSngl ? (Number(booking.roomsSngl) % 1 === 0 ? booking.roomsSngl : Number(booking.roomsSngl).toFixed(1)) : 0}
                     </td>
                     {/* СТАТУС */}
-                    <td className="px-4 py-4">
-                      <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
+                    <td className="px-2 md:px-4 py-4">
+                      <span className={`inline-flex items-center px-2 md:px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
                         {statusLabels[calculatedStatus]}
                       </span>
                     </td>
                     {/* ДЕЙСТВИЯ */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-2 md:px-4 py-4">
+                      <div className="flex items-center justify-end gap-1 md:gap-2">
                         <Link
                           to={`/bookings/${booking.id}`}
-                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg hover:scale-110 transition-all duration-200"
+                          className="p-2 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg hover:scale-110 transition-all duration-200"
                           title="View"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-5 h-5 md:w-4 md:h-4" />
                         </Link>
                         <Link
                           to={`/bookings/${booking.id}?edit=true`}
-                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg hover:scale-110 transition-all duration-200"
+                          className="p-2 md:p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg hover:scale-110 transition-all duration-200"
                           title="Edit"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-5 h-5 md:w-4 md:h-4" />
                         </Link>
                         <button
                           onClick={() => handleDelete(booking.id, booking.bookingNumber)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200"
+                          className="p-2 md:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200"
                           title="Delete"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
                         </button>
                       </div>
                     </td>
