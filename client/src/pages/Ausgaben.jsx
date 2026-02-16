@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi } from '../services/api';
+import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { Hotel, DollarSign, BarChart3 } from 'lucide-react';
 
@@ -176,7 +176,7 @@ export default function Ausgaben() {
           const grandTotalData = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
 
           // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab
-          const expenses = calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
+          const expenses = await calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
 
           return {
             bookingId: booking.id,
@@ -203,7 +203,7 @@ export default function Ausgaben() {
   };
 
   // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab (BookingDetail.jsx:11146-11264)
-  const calculateExpensesLikeTotalTab = (booking, tourists, grandTotalData, routes, railways, flights, tourServices = [], metroVehicles = []) => {
+  const calculateExpensesLikeTotalTab = async (booking, tourists, grandTotalData, routes, railways, flights, tourServices = [], metroVehicles = []) => {
     const pax = tourists?.length || 0;
     const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
 
@@ -357,14 +357,12 @@ export default function Ausgaben() {
       })()
     };
 
-    // Load Meals from localStorage (same as Total tab)
+    // Load Meals from database (OPEX API)
     try {
-      const mealsKey = `${tourTypeCode}Meal`;
-      const saved = localStorage.getItem(mealsKey);
-      console.log(`  📦 localStorage[${mealsKey}]:`, saved ? 'exists' : 'null');
-      if (saved) {
-        const mealsData = JSON.parse(saved);
-        console.log(`    Items: ${mealsData.length}`);
+      const response = await opexApi.get(tourTypeCode.toUpperCase(), 'meal');
+      const mealsData = response.data?.data || [];
+      console.log(`  📦 OPEX Meals[${tourTypeCode}]:`, mealsData.length, 'items');
+      if (mealsData.length > 0) {
         expenses.meals = mealsData.reduce((sum, meal) => {
           const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
           const pricePerPerson = parseFloat(priceStr) || 0;
@@ -376,41 +374,37 @@ export default function Ausgaben() {
       console.error('  ❌ Error loading meals:', e);
     }
 
-    // ADD Shows from localStorage (in addition to tourServices)
+    // ADD Shows from database (OPEX API) (in addition to tourServices)
     try {
-      const showsKey = `${tourTypeCode}Shows`;
-      const saved = localStorage.getItem(showsKey);
-      console.log(`  📦 localStorage[${showsKey}]:`, saved ? 'exists' : 'null');
-      if (saved) {
-        const showsData = JSON.parse(saved);
-        console.log(`    Items: ${showsData.length}`);
-        const localStorageShows = showsData.reduce((sum, show) => {
+      const response = await opexApi.get(tourTypeCode.toUpperCase(), 'shows');
+      const showsData = response.data?.data || [];
+      console.log(`  📦 OPEX Shows[${tourTypeCode}]:`, showsData.length, 'items');
+      if (showsData.length > 0) {
+        const opexShows = showsData.reduce((sum, show) => {
           const rawPrice = show.price || show.pricePerPerson || 0;
           const priceStr = rawPrice.toString().replace(/\s/g, '');
           const pricePerPerson = parseFloat(priceStr) || 0;
           return sum + (pricePerPerson * pax);
         }, 0);
-        expenses.shou += localStorageShows; // ADD to existing tourServices value
-        console.log(`    ✅ Shows total (localStorage + tourServices): ${expenses.shou} UZS`);
+        expenses.shou += opexShows; // ADD to existing tourServices value
+        console.log(`    ✅ Shows total (OPEX + tourServices): ${expenses.shou} UZS`);
       }
     } catch (e) {
       console.error('  ❌ Error loading shows:', e);
     }
 
-    // ADD Eintritt from localStorage (in addition to tourServices)
+    // ADD Eintritt from database (OPEX API) (in addition to tourServices)
     try {
-      const sightseeingKey = `${tourTypeCode}Sightseeing`;
-      const saved = localStorage.getItem(sightseeingKey);
-      console.log(`  📦 localStorage[${sightseeingKey}]:`, saved ? 'exists' : 'null');
-      if (saved) {
-        const sightseeingData = JSON.parse(saved);
-        console.log(`    Items: ${sightseeingData.length}`);
-        const localStorageEintritt = sightseeingData.reduce((sum, item) => {
+      const response = await opexApi.get(tourTypeCode.toUpperCase(), 'sightseeing');
+      const sightseeingData = response.data?.data || [];
+      console.log(`  📦 OPEX Sightseeing[${tourTypeCode}]:`, sightseeingData.length, 'items');
+      if (sightseeingData.length > 0) {
+        const opexEintritt = sightseeingData.reduce((sum, item) => {
           const pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
           return sum + (pricePerPerson * pax);
         }, 0);
-        expenses.eintritt += localStorageEintritt; // ADD to existing tourServices value
-        console.log(`    ✅ Eintritt total (localStorage + tourServices): ${expenses.eintritt} UZS`);
+        expenses.eintritt += opexEintritt; // ADD to existing tourServices value
+        console.log(`    ✅ Eintritt total (OPEX + tourServices): ${expenses.eintritt} UZS`);
       }
     } catch (e) {
       console.error('  ❌ Error loading sightseeing:', e);
