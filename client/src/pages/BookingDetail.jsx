@@ -2188,25 +2188,42 @@ export default function BookingDetail() {
     }
   };
 
-  // Helper function to calculate PAX based on tour type and flight type
-  const calculateFlightPax = (flightType) => {
-    console.log('✈️ CALCULATING FLIGHT PAX:', { tourType: booking?.tourType, flightType, totalTourists: tourists.length });
+  // Helper function to calculate PAX based on tour type, flight type, and route
+  const calculateFlightPax = (flightType, route = '') => {
+    console.log('✈️ CALCULATING FLIGHT PAX:', { tourType: booking?.tourType, flightType, route, totalTourists: tourists.length });
 
     // For ER tours: distinguish between UZ and TM tourists
     // Check tourType.code since tourType is an object {id, code, name}
     if (booking?.tourType?.code === 'ER') {
+      // Calculate UZ and TM tourist counts
+      const uzbekistanTourists = tourists.filter(t => {
+        const acc = (t.accommodation || '').toLowerCase();
+        return !acc.includes('turkmen') && !acc.includes('туркмен');
+      });
+      const uzCount = uzbekistanTourists.length;
+      const totalCount = tourists.length;
+
       if (flightType === 'DOMESTIC') {
         // DOMESTIC flights: only UZ tourists fly (TM tourists don't fly domestic routes)
-        const uzbekistanTourists = tourists.filter(t => {
-          const acc = (t.accommodation || '').toLowerCase();
-          return !acc.includes('turkmen') && !acc.includes('туркмен');
-        });
-        console.log(`✅ ER + DOMESTIC → UZ tourists only: ${uzbekistanTourists.length} PAX`);
-        return uzbekistanTourists.length;
+        console.log(`✅ ER + DOMESTIC → UZ tourists only: ${uzCount} PAX`);
+        return uzCount;
       } else if (flightType === 'INTERNATIONAL') {
-        // INTERNATIONAL flights: all tourists fly (both UZ and TM)
-        console.log(`✅ ER + INTERNATIONAL → All tourists: ${tourists.length} PAX`);
-        return tourists.length;
+        // Check if it's Tashkent-Istanbul (return flight) - only UZ fly
+        const routeLower = route.toLowerCase();
+        const isTashkentToIstanbul =
+          routeLower.includes('tashkent-istanbul') ||
+          routeLower.includes('tas-ist') ||
+          routeLower.includes('ташкент-стамбул');
+
+        if (isTashkentToIstanbul) {
+          // Tashkent → Istanbul (return): only UZ tourists fly
+          console.log(`✅ ER + INTERNATIONAL (TAS→IST return) → UZ tourists only: ${uzCount} PAX`);
+          return uzCount;
+        } else {
+          // Istanbul → Tashkent (arrival): all tourists fly (both UZ and TM)
+          console.log(`✅ ER + INTERNATIONAL (IST→TAS arrival) → All tourists: ${totalCount} PAX`);
+          return totalCount;
+        }
       }
     }
 
@@ -2220,7 +2237,7 @@ export default function BookingDetail() {
   // Open flight modal for adding new flight
   const openFlightModal = () => {
     setEditingFlight(null);
-    const initialPax = calculateFlightPax('INTERNATIONAL'); // Default to INTERNATIONAL
+    const initialPax = calculateFlightPax('INTERNATIONAL', ''); // Default to INTERNATIONAL, no route yet
     setFlightForm({
       type: 'INTERNATIONAL',
       flightNumber: '',
@@ -9136,7 +9153,7 @@ export default function BookingDetail() {
                       value={flightForm.type}
                       onChange={(e) => {
                         const newType = e.target.value;
-                        const newPax = calculateFlightPax(newType);
+                        const newPax = calculateFlightPax(newType, flightForm.route);
                         console.log(`🔄 Flight type changed to ${newType}, PAX updated to ${newPax}`);
                         setFlightForm({ ...flightForm, type: newType, pax: newPax });
                       }}
@@ -9173,8 +9190,8 @@ export default function BookingDetail() {
                             }
                           }
 
-                          // Calculate smart PAX based on tour type and flight type
-                          const smartPax = calculateFlightPax(flightForm.type);
+                          // Calculate smart PAX based on tour type, flight type, and route
+                          const smartPax = calculateFlightPax(flightForm.type, selectedFlight.route);
 
                           setFlightForm({
                             ...flightForm,
@@ -9301,18 +9318,31 @@ export default function BookingDetail() {
                         placeholder="Number of passengers"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                       />
-                      {/* Info message for ER + DOMESTIC auto-calculation */}
-                      {booking?.tourType?.code === 'ER' && flightForm.type === 'DOMESTIC' && (
-                        <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
-                          <span className="font-semibold">ℹ️ Auto:</span> Faqat UZ turistlar ({(() => {
-                            const uzTourists = tourists.filter(t => {
-                              const acc = (t.accommodation || '').toLowerCase();
-                              return !acc.includes('turkmen') && !acc.includes('туркмен');
-                            });
-                            return uzTourists.length;
-                          })()}/{tourists.length})
-                        </p>
-                      )}
+                      {/* Info message for ER + DOMESTIC or ER + TAS-IST auto-calculation */}
+                      {booking?.tourType?.code === 'ER' && (() => {
+                        const routeLower = (flightForm.route || '').toLowerCase();
+                        const isTashkentToIstanbul =
+                          routeLower.includes('tashkent-istanbul') ||
+                          routeLower.includes('tas-ist') ||
+                          routeLower.includes('ташкент-стамбул');
+                        const shouldShowInfo =
+                          flightForm.type === 'DOMESTIC' ||
+                          (flightForm.type === 'INTERNATIONAL' && isTashkentToIstanbul);
+
+                        if (shouldShowInfo) {
+                          const uzTourists = tourists.filter(t => {
+                            const acc = (t.accommodation || '').toLowerCase();
+                            return !acc.includes('turkmen') && !acc.includes('туркмен');
+                          });
+                          return (
+                            <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                              <span className="font-semibold">ℹ️ Auto:</span> Faqat UZ turistlar ({uzTourists.length}/{tourists.length})
+                              {isTashkentToIstanbul && <span className="ml-1">(TAS→IST qaytish)</span>}
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">
