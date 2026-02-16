@@ -8416,66 +8416,68 @@ export default function BookingDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+      <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-blue-100 p-4 md:p-8">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-purple-500/10"></div>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-purple-400/20 to-blue-400/20 rounded-full blur-3xl"></div>
 
-        <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-6">
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
+          <div className="flex items-center gap-3 md:gap-6 w-full sm:w-auto">
             <button
               onClick={() => navigate(-1)}
-              className="p-3 rounded-2xl hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white transition-all duration-300 shadow-md hover:shadow-xl"
+              className="p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white transition-all duration-300 shadow-md hover:shadow-xl min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
             </button>
-            <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl md:text-3xl lg:text-4xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1 md:mb-2 truncate">
                 {isNew ? 'Новое бронирование' : formData.bookingNumber}
               </h1>
               {!isNew && booking?.tourType && (
-                <p className="text-gray-600 font-semibold text-base flex items-center gap-2">
-                  <span className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: booking.tourType.color }}></span>
-                    <span>{booking.tourType.code} - {booking.tourType.name}</span>
+                <p className="text-gray-600 font-semibold text-xs md:text-base flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-0.5 md:py-1 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full text-xs md:text-sm">
+                    <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full flex-shrink-0" style={{ backgroundColor: booking.tourType.color }}></span>
+                    <span className="truncate">{booking.tourType.code} - {booking.tourType.name}</span>
                   </span>
                 </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
             {editing ? (
               <>
                 <button
                   onClick={() => isNew ? navigate(-1) : setEditing(false)}
-                  className="px-6 py-3 border-2 border-gray-300 rounded-2xl hover:bg-white hover:shadow-lg transition-all duration-300 font-bold text-gray-700"
+                  className="px-4 md:px-6 py-2.5 md:py-3 border-2 border-gray-300 rounded-xl md:rounded-2xl hover:bg-white hover:shadow-lg transition-all duration-300 font-bold text-gray-700 min-h-[44px] flex items-center justify-center flex-1 sm:flex-initial"
                 >
                   <X className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white rounded-2xl shadow-2xl hover:shadow-blue-500/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 font-bold"
+                  className="inline-flex items-center justify-center gap-2 px-4 md:px-8 py-2.5 md:py-3 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-blue-500/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 font-bold text-sm md:text-base min-h-[44px] flex-1 sm:flex-initial"
                 >
                   <Save className="w-5 h-5" />
-                  {saving ? 'Сохранение...' : 'Сохранить'}
+                  <span className="hidden sm:inline">{saving ? 'Сохранение...' : 'Сохранить'}</span>
+                  <span className="sm:hidden">{saving ? '...' : 'Save'}</span>
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => setEditing(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-2xl hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white hover:border-blue-500 transition-all duration-300 font-bold shadow-md hover:shadow-xl"
+                  className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 border-2 border-gray-300 rounded-xl md:rounded-2xl hover:bg-gradient-to-r hover:from-blue-500 hover:to-indigo-500 hover:text-white hover:border-blue-500 transition-all duration-300 font-bold shadow-md hover:shadow-xl text-sm md:text-base min-h-[44px] flex-1 sm:flex-initial"
                 >
                   <Edit className="w-5 h-5" />
-                  Редактировать
+                  <span className="hidden sm:inline">Редактировать</span>
+                  <span className="sm:hidden">Edit</span>
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="p-3 text-red-600 hover:text-white hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-2xl transition-all duration-300 shadow-md hover:shadow-xl"
+                  className="p-2.5 md:p-3 text-red-600 hover:text-white hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl md:rounded-2xl transition-all duration-300 shadow-md hover:shadow-xl min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
@@ -8487,10 +8489,10 @@ export default function BookingDetail() {
 
       {/* Tabs Navigation - only show for existing bookings */}
       {!isNew && (
-        <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4">
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl md:rounded-3xl shadow-2xl border-2 border-gray-100 p-2 md:p-4">
           {/* DESKTOP: Horizontal tabs */}
           {!isMobile && (
-            <nav className="flex space-x-3 overflow-x-auto">
+            <nav className="flex space-x-2 md:space-x-3 overflow-x-auto pb-1">
               {[
                 { id: 'info', label: 'Information', icon: MapPin },
                 { id: 'rooms', label: 'Rooms', icon: Building2 },
@@ -8505,13 +8507,13 @@ export default function BookingDetail() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2.5 px-6 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl flex-shrink-0 ${
                     activeTab === tab.id
-                      ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white shadow-blue-500/30 scale-110 -translate-y-0.5'
+                      ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white shadow-blue-500/30 scale-105 md:scale-110 -translate-y-0.5'
                       : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
                   }`}
                 >
-                  <tab.icon className="w-5 h-5" />
+                  <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
                   {tab.label}
                 </button>
               ))}
@@ -8605,14 +8607,14 @@ export default function BookingDetail() {
 
       {/* Tab Content */}
       {!isNew && activeTab === 'tourists' && (
-        <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+        <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-blue-100 p-4 md:p-8">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
           <TouristsList bookingId={parseInt(id)} onUpdate={loadData} />
         </div>
       )}
 
       {!isNew && activeTab === 'rooming-list' && (
-        <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-indigo-100 p-8">
+        <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-indigo-100 p-4 md:p-8">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
           <RoomingListModule bookingId={parseInt(id)} onUpdate={loadData} />
         </div>
