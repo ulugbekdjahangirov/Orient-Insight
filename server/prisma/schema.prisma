@@ -79,6 +79,7 @@ model Guide {
   bankAccountNumber  String?     // Номер счёта
   bankCardNumber     String?     // Номер карты
   bankName           String?     // Название банка
+  mfo                String?     // МФО банка
 
   // Адрес
   address     String?
