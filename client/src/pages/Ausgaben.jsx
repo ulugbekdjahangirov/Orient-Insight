@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import { Hotel, DollarSign, BarChart3 } from 'lucide-react';
 

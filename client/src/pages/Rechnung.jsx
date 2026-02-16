@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Receipt, Building, Globe, Plus, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import { invoicesApi } from '../services/api';
 import { toast } from 'react-hot-toast';
 
