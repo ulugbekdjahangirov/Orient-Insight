@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { guidesApi, bookingsApi } from '../services/api';
 import { useAuth } from '../store/AuthContext';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -48,6 +49,7 @@ export default function Guides() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const [guides, setGuides] = useState([]);
   const [alerts, setAlerts] = useState({ alerts: [], expiredCount: 0, expiringSoonCount: 0 });
   const [loading, setLoading] = useState(true);
@@ -404,33 +406,34 @@ export default function Guides() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 md:space-y-6 p-3 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
             Guides
           </h1>
-          <p className="text-gray-600 mt-1 text-sm font-medium">Guide Management System</p>
+          <p className="text-gray-600 mt-1 text-xs md:text-sm font-medium">Guide Management System</p>
         </div>
 
         {isAdmin && (
           <button
             onClick={() => openModal()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-200 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 font-medium"
+            className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-200 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 font-medium text-sm md:text-base min-h-[44px]"
           >
             <Plus className="w-5 h-5" />
-            Добавить гида
+            <span className="hidden sm:inline">Добавить гида</span>
+            <span className="sm:hidden">Добавить</span>
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-1">
-        <div className="flex gap-1">
+      <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-1">
+        <div className="flex gap-1 overflow-x-auto">
           <button
             onClick={() => handleTabChange('information')}
-            className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
+            className={`flex-1 min-w-[100px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
               activeTab === 'information'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -440,7 +443,7 @@ export default function Guides() {
           </button>
           <button
             onClick={() => handleTabChange('tours')}
-            className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
+            className={`flex-1 min-w-[100px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
               activeTab === 'tours'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -450,7 +453,7 @@ export default function Guides() {
           </button>
           <button
             onClick={() => handleTabChange('payment')}
-            className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
+            className={`flex-1 min-w-[100px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
               activeTab === 'payment'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -460,7 +463,7 @@ export default function Guides() {
           </button>
           <button
             onClick={() => handleTabChange('city-payment')}
-            className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
+            className={`flex-1 min-w-[110px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
               activeTab === 'city-payment'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -515,24 +518,25 @@ export default function Guides() {
       {/* Information Tab */}
       {activeTab === 'information' && (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gradient-to-r from-primary-600 to-primary-700">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase w-8"></th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Гид</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Дата рождения</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Контакты</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Паспорт</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Срок действия</th>
+              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase w-8"></th>
+              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Гид</th>
+              <th className="hidden lg:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Дата рождения</th>
+              <th className="hidden md:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Контакты</th>
+              <th className="hidden lg:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Паспорт</th>
+              <th className="hidden xl:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Срок действия</th>
               {isAdmin && (
                 <>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Счет</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Банк</th>
+                  <th className="hidden xl:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Счет</th>
+                  <th className="hidden xl:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Банк</th>
                 </>
               )}
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Туры</th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Статус</th>
-              <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase">Действия</th>
+              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Туры</th>
+              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Статус</th>
+              <th className="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Действия</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -690,7 +694,7 @@ export default function Guides() {
                     <div className="flex items-center justify-end gap-1 md:gap-2">
                       <button
                         onClick={() => openModal(guide)}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="p-3 md:p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                         title="Редактировать"
                       >
                         <Edit className="w-5 h-5 md:w-4 md:h-4" />
@@ -699,14 +703,14 @@ export default function Guides() {
                         <>
                           <button
                             onClick={() => toggleActive(guide)}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-yellow-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                            className="p-3 md:p-2 text-gray-400 hover:text-white hover:bg-yellow-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                             title={guide.isActive ? 'Деактивировать' : 'Активировать'}
                           >
                             <Shield className="w-5 h-5 md:w-4 md:h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(guide)}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                            className="p-3 md:p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                             title="Удалить"
                           >
                             <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
@@ -810,6 +814,7 @@ export default function Guides() {
             ))}
           </tbody>
         </table>
+        </div>
 
         {guides.length === 0 && (
           <div className="text-center py-16">
@@ -1468,13 +1473,13 @@ export default function Guides() {
             <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-3 md:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 min-h-[44px] text-sm md:text-base font-medium"
               >
                 Отмена
               </button>
               <button
                 onClick={handleSave}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 md:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 min-h-[44px] text-sm md:text-base font-medium"
               >
                 <Save className="w-4 h-4" />
                 Сохранить
