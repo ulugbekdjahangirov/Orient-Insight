@@ -25,7 +25,9 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
-  MoreVertical
+  MoreVertical,
+  Info,
+  DollarSign
 } from 'lucide-react';
 
 // Helper function to calculate booking status
@@ -406,70 +408,90 @@ export default function Guides() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 p-3 md:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-            Guides
-          </h1>
-          <p className="text-gray-600 mt-1 text-xs md:text-sm font-medium">Guide Management System</p>
-        </div>
+      <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-primary-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-indigo-500/5 to-purple-500/10"></div>
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-primary-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-purple-400/20 to-primary-400/20 rounded-full blur-3xl"></div>
 
-        {isAdmin && (
-          <button
-            onClick={() => openModal()}
-            className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-200 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 font-medium text-sm md:text-base min-h-[44px]"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Добавить гида</span>
-            <span className="sm:hidden">Добавить</span>
-          </button>
-        )}
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 p-4 md:p-8">
+          <div className="flex items-center gap-3 md:gap-6">
+            <div className="relative">
+              <div className="w-14 h-14 md:w-20 md:h-20 bg-gradient-to-br from-primary-500 via-indigo-500 to-purple-600 rounded-2xl md:rounded-3xl shadow-2xl shadow-primary-500/40 flex items-center justify-center transform hover:scale-110 transition-all duration-300">
+                <User className="w-7 h-7 md:w-10 md:h-10 text-white" />
+              </div>
+              <div className="absolute -bottom-1 md:-bottom-2 -right-1 md:-right-2 w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                <span className="text-[10px] md:text-xs font-bold text-white">{guides.length}</span>
+              </div>
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-primary-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1 md:mb-2">
+                Tour Guides
+              </h1>
+              <p className="text-slate-600 text-xs md:text-base font-semibold">Professional Guide Management</p>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <button
+              onClick={() => openModal()}
+              className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-indigo-500 to-purple-500 hover:from-primary-600 hover:via-indigo-600 hover:to-purple-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline">Добавить гида</span>
+              <span className="sm:hidden">Добавить</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-1">
-        <div className="flex gap-1 overflow-x-auto">
+      <div className="bg-white rounded-xl md:rounded-2xl shadow-lg border-2 border-gray-200 p-1.5 md:p-2">
+        <div className="flex gap-1.5 md:gap-2 overflow-x-auto">
           <button
             onClick={() => handleTabChange('information')}
-            className={`flex-1 min-w-[100px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
+            className={`flex-1 min-w-[110px] px-3 md:px-6 py-3 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === 'information'
-                ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-gradient-to-r from-primary-600 via-primary-500 to-indigo-600 text-white shadow-xl shadow-primary-500/40 scale-105 border-2 border-primary-300'
+                : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:text-gray-900 hover:shadow-md hover:scale-102'
             }`}
           >
-            Information
+            <Info className={`w-4 h-4 md:w-5 md:h-5 ${activeTab === 'information' ? 'animate-pulse' : ''}`} />
+            <span>Information</span>
           </button>
           <button
             onClick={() => handleTabChange('tours')}
-            className={`flex-1 min-w-[100px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
+            className={`flex-1 min-w-[100px] px-3 md:px-6 py-3 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === 'tours'
-                ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600 text-white shadow-xl shadow-blue-500/40 scale-105 border-2 border-blue-300'
+                : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:text-gray-900 hover:shadow-md hover:scale-102'
             }`}
           >
-            Tours
+            <Calendar className={`w-4 h-4 md:w-5 md:h-5 ${activeTab === 'tours' ? 'animate-pulse' : ''}`} />
+            <span>Tours</span>
           </button>
           <button
             onClick={() => handleTabChange('payment')}
-            className={`flex-1 min-w-[100px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
+            className={`flex-1 min-w-[100px] px-3 md:px-6 py-3 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === 'payment'
-                ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 text-white shadow-xl shadow-green-500/40 scale-105 border-2 border-green-300'
+                : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:text-gray-900 hover:shadow-md hover:scale-102'
             }`}
           >
-            Payment
+            <DollarSign className={`w-4 h-4 md:w-5 md:h-5 ${activeTab === 'payment' ? 'animate-pulse' : ''}`} />
+            <span>Payment</span>
           </button>
           <button
             onClick={() => handleTabChange('city-payment')}
-            className={`flex-1 min-w-[110px] px-3 md:px-6 py-2.5 md:py-3 font-semibold text-sm md:text-base rounded-xl transition-all duration-200 whitespace-nowrap ${
+            className={`flex-1 min-w-[120px] px-3 md:px-6 py-3 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-2 ${
               activeTab === 'city-payment'
-                ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-violet-600 text-white shadow-xl shadow-purple-500/40 scale-105 border-2 border-purple-300'
+                : 'text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:text-gray-900 hover:shadow-md hover:scale-102'
             }`}
           >
-            City Payment
+            <MapPin className={`w-4 h-4 md:w-5 md:h-5 ${activeTab === 'city-payment' ? 'animate-pulse' : ''}`} />
+            <span>City Payment</span>
           </button>
         </div>
       </div>
@@ -517,32 +539,33 @@ export default function Guides() {
 
       {/* Information Tab */}
       {activeTab === 'information' && (
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-primary-100 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-transparent to-indigo-50/30 pointer-events-none"></div>
+        <div className="relative overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gradient-to-r from-primary-600 to-primary-700">
+          <thead className="bg-gradient-to-r from-primary-600 via-primary-500 to-indigo-600 relative">
             <tr>
-              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase w-8"></th>
-              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Гид</th>
-              <th className="hidden lg:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Дата рождения</th>
-              <th className="hidden md:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Контакты</th>
-              <th className="hidden lg:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Паспорт</th>
-              <th className="hidden xl:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Срок действия</th>
+              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider w-8 border-r border-primary-400/30"></th>
+              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Гид</th>
+              <th className="hidden lg:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Дата рождения</th>
+              <th className="hidden md:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Контакты</th>
+              <th className="hidden lg:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Паспорт</th>
+              <th className="hidden xl:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Срок действия</th>
               {isAdmin && (
                 <>
-                  <th className="hidden xl:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Счет</th>
-                  <th className="hidden xl:table-cell px-6 py-4 text-left text-xs font-bold text-white uppercase">Банк</th>
+                  <th className="hidden xl:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Счет</th>
+                  <th className="hidden xl:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Банк</th>
                 </>
               )}
-              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Туры</th>
-              <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Статус</th>
-              <th className="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Действия</th>
+              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Туры</th>
+              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Статус</th>
+              <th className="px-3 md:px-6 py-4 md:py-5 text-right text-xs font-black text-white uppercase tracking-wider">Действия</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {guides.map((guide) => (
+          <tbody className="divide-y divide-gray-200">
+            {guides.map((guide, idx) => (
               <>
-                <tr key={guide.id} className={!guide.isActive ? 'bg-gray-50 opacity-60' : 'hover:bg-primary-50/50 transition-colors duration-150'}>
+                <tr key={guide.id} className={!guide.isActive ? 'bg-gray-50/70 opacity-70' : `hover:bg-gradient-to-r hover:from-primary-50/80 hover:via-indigo-50/50 hover:to-purple-50/30 transition-all duration-300 hover:shadow-md ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                   <td className="px-3 md:px-6 py-4">
                     <button
                       onClick={() => toggleTours(guide.id)}
@@ -723,32 +746,33 @@ export default function Guides() {
                 {/* Expanded Tours Table */}
                 {expandedTours === guide.id && (
                   <tr key={`${guide.id}-tours`}>
-                    <td colSpan={isAdmin ? 11 : 9} className="p-0 bg-gradient-to-br from-primary-50 to-blue-50">
-                      <div className="p-6">
-                        <div className="bg-white rounded-xl border-2 border-primary-200 overflow-hidden shadow-lg">
+                    <td colSpan={isAdmin ? 11 : 9} className="p-0 bg-gradient-to-br from-primary-50 via-indigo-50 to-purple-50">
+                      <div className="p-4 md:p-6">
+                        <div className="relative bg-white rounded-xl md:rounded-2xl border-2 border-primary-200 overflow-hidden shadow-2xl">
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary-50/20 via-transparent to-indigo-50/20 pointer-events-none"></div>
                           {guideBookings[guide.id] ? (
                             guideBookings[guide.id].length > 0 ? (
-                              <div className="overflow-x-auto">
+                              <div className="relative overflow-x-auto">
                                 <table className="w-full text-sm">
-                                  <thead className="bg-gradient-to-r from-primary-600 to-primary-700">
+                                  <thead className="bg-gradient-to-r from-primary-600 via-indigo-600 to-purple-600 relative">
                                     <tr>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Number</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Tour Type</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Tour Start</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Arrival</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Tour End</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">PAX</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Uzbekistan</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Turkmenistan</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Guide</th>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase">Status</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">#</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Tour Type</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Tour Start</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Arrival</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Tour End</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">PAX</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Uzbekistan</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Turkmenistan</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Guide</th>
+                                      <th className="px-4 py-4 text-left text-xs font-black text-white uppercase tracking-wider">Status</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-gray-100">
+                                  <tbody className="divide-y divide-gray-200">
                                     {guideBookings[guide.id].map((booking, idx) => {
                                       const status = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
                                       return (
-                                        <tr key={booking.id} className="hover:bg-primary-50/30 transition-colors duration-150">
+                                        <tr key={booking.id} className={`hover:bg-gradient-to-r hover:from-primary-50/80 hover:via-indigo-50/50 hover:to-purple-50/30 transition-all duration-300 hover:shadow-sm ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                                           <td className="px-4 py-3">
                                             <span className="inline-flex items-center justify-center w-7 h-7 bg-primary-100 text-primary-700 rounded-lg font-bold text-xs">
                                               {idx + 1}
@@ -829,35 +853,36 @@ export default function Guides() {
 
       {/* Tours Tab */}
       {activeTab === 'tours' && (
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+        <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-blue-100 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-transparent to-cyan-50/30 pointer-events-none"></div>
           {bookingsLoading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
-              <p className="mt-4 text-gray-600 font-medium">Loading tours...</p>
+            <div className="relative flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+              <p className="mt-4 text-gray-600 font-semibold">Loading tours...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gradient-to-r from-primary-600 to-primary-700">
+                <thead className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600 relative">
                   <tr>
-                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Number</th>
-                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Tour Type</th>
-                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Tour Start</th>
-                    <th className="hidden md:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Arrival</th>
-                    <th className="hidden lg:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Tour End</th>
-                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">PAX</th>
-                    <th className="hidden lg:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Uzbekistan</th>
-                    <th className="hidden lg:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Turkmenistan</th>
-                    <th className="hidden md:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Guide</th>
-                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Status</th>
-                    <th className="px-3 md:px-4 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
+                    <th className="px-3 md:px-4 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Number</th>
+                    <th className="px-3 md:px-4 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Tour Type</th>
+                    <th className="px-3 md:px-4 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Tour Start</th>
+                    <th className="hidden md:table-cell px-4 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Arrival</th>
+                    <th className="hidden lg:table-cell px-4 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Tour End</th>
+                    <th className="px-3 md:px-4 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">PAX</th>
+                    <th className="hidden lg:table-cell px-4 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Uzbekistan</th>
+                    <th className="hidden lg:table-cell px-4 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Turkmenistan</th>
+                    <th className="hidden md:table-cell px-4 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Guide</th>
+                    <th className="px-3 md:px-4 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-blue-400/30">Status</th>
+                    <th className="px-3 md:px-4 py-4 md:py-5 text-right text-xs font-black text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200">
                   {allBookings.map((booking, idx) => {
                     const status = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
                     return (
-                      <tr key={booking.id} className="hover:bg-primary-50/30 transition-colors duration-150">
+                      <tr key={booking.id} className={`hover:bg-gradient-to-r hover:from-blue-50/80 hover:via-cyan-50/50 hover:to-sky-50/30 transition-all duration-300 hover:shadow-md ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                         <td className="px-3 md:px-4 py-3 md:py-4">
                           <span className="inline-flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-primary-100 text-primary-700 rounded-lg font-bold text-xs">
                             {idx + 1}
@@ -939,20 +964,21 @@ export default function Guides() {
 
       {/* Payment Tab */}
       {activeTab === 'payment' && (
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-green-100 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-50/30 via-transparent to-emerald-50/30 pointer-events-none"></div>
+          <div className="relative overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-green-600 to-green-700">
+              <thead className="bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 relative">
                 <tr>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Name</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Half Day</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Day</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-green-400/30">Name</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-green-400/30">Half Day</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-green-400/30">Day</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-right text-xs font-black text-white uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {guides.filter(g => g.isActive).map((guide) => (
-                  <tr key={guide.id} className="hover:bg-green-50/50 transition-colors duration-150">
+              <tbody className="divide-y divide-gray-200">
+                {guides.filter(g => g.isActive).map((guide, idx) => (
+                  <tr key={guide.id} className={`hover:bg-gradient-to-r hover:from-green-50/80 hover:via-emerald-50/50 hover:to-teal-50/30 transition-all duration-300 hover:shadow-md ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                     <td className="px-3 md:px-6 py-3 md:py-4">
                       <div className="flex items-center gap-2 md:gap-3">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
@@ -1061,21 +1087,22 @@ export default function Guides() {
 
       {/* City Payment Tab */}
       {activeTab === 'city-payment' && (
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-purple-100 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 via-transparent to-violet-50/30 pointer-events-none"></div>
+          <div className="relative overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-purple-600 to-purple-700">
+              <thead className="bg-gradient-to-r from-purple-600 via-purple-500 to-violet-600 relative">
                 <tr>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Nomer</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Name</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">City</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Price (USD)</th>
-                  <th className="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">Nomer</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">Name</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">City</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">Price (USD)</th>
+                  <th className="px-3 md:px-6 py-4 md:py-5 text-right text-xs font-black text-white uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-200">
                 {guides.filter(g => g.isActive).map((guide, index) => (
-                  <tr key={guide.id} className="hover:bg-purple-50/50 transition-colors duration-150">
+                  <tr key={guide.id} className={`hover:bg-gradient-to-r hover:from-purple-50/80 hover:via-violet-50/50 hover:to-fuchsia-50/30 transition-all duration-300 hover:shadow-md ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                     <td className="px-3 md:px-6 py-3 md:py-4">
                       <span className="inline-flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-purple-100 text-purple-700 rounded-lg font-bold text-xs md:text-sm">
                         {index + 1}
