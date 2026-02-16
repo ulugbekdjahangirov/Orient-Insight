@@ -382,12 +382,23 @@ export default function BookingDetail() {
     }
   };
 
+  // Initialize sub-tabs from localStorage
+  const getInitialSubTab = (key, defaultValue) => {
+    if (isNew) return defaultValue;
+    try {
+      const savedTab = localStorage.getItem(`bookingDetail_${id}_${key}`);
+      return savedTab || defaultValue;
+    } catch (e) {
+      return defaultValue;
+    }
+  };
+
   const [activeTab, setActiveTabState] = useState(getInitialTab());
-  const [flyRailwayTab, setFlyRailwayTab] = useState('fly'); // Sub-tab for Fly&Railway module
-  const [documentsTab, setDocumentsTab] = useState('tourist-list'); // Sub-tab for Documents module
-  const [tourServicesTab, setTourServicesTab] = useState('hotels'); // Sub-tab for Tour Services module
+  const [flyRailwayTab, setFlyRailwayTabState] = useState(() => getInitialSubTab('flyRailwayTab', 'fly')); // Sub-tab for Fly&Railway module
+  const [documentsTab, setDocumentsTabState] = useState(() => getInitialSubTab('documentsTab', 'tourist-list')); // Sub-tab for Documents module
+  const [tourServicesTab, setTourServicesTabState] = useState(() => getInitialSubTab('tourServicesTab', 'hotels')); // Sub-tab for Tour Services module
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile hamburger menu
-  const [costsTab, setCostsTab] = useState('rl'); // Sub-tab for Costs module (payment methods)
+  const [costsTab, setCostsTabState] = useState(() => getInitialSubTab('costsTab', 'rl')); // Sub-tab for Costs module (payment methods)
   const [flights, setFlights] = useState([]);
   const [flightSections, setFlightSections] = useState([]);
   const [loadingFlights, setLoadingFlights] = useState(false);
@@ -462,6 +473,51 @@ export default function BookingDetail() {
         localStorage.setItem(`bookingDetail_${id}_activeTab`, tab);
       } catch (e) {
         console.error('Failed to save active tab to localStorage:', e);
+      }
+    }
+  };
+
+  // Wrapper functions for sub-tabs with localStorage persistence
+  const setFlyRailwayTab = (tab) => {
+    setFlyRailwayTabState(tab);
+    if (!isNew) {
+      try {
+        localStorage.setItem(`bookingDetail_${id}_flyRailwayTab`, tab);
+      } catch (e) {
+        console.error('Failed to save flyRailwayTab to localStorage:', e);
+      }
+    }
+  };
+
+  const setDocumentsTab = (tab) => {
+    setDocumentsTabState(tab);
+    if (!isNew) {
+      try {
+        localStorage.setItem(`bookingDetail_${id}_documentsTab`, tab);
+      } catch (e) {
+        console.error('Failed to save documentsTab to localStorage:', e);
+      }
+    }
+  };
+
+  const setTourServicesTab = (tab) => {
+    setTourServicesTabState(tab);
+    if (!isNew) {
+      try {
+        localStorage.setItem(`bookingDetail_${id}_tourServicesTab`, tab);
+      } catch (e) {
+        console.error('Failed to save tourServicesTab to localStorage:', e);
+      }
+    }
+  };
+
+  const setCostsTab = (tab) => {
+    setCostsTabState(tab);
+    if (!isNew) {
+      try {
+        localStorage.setItem(`bookingDetail_${id}_costsTab`, tab);
+      } catch (e) {
+        console.error('Failed to save costsTab to localStorage:', e);
       }
     }
   };
