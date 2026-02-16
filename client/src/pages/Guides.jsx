@@ -523,8 +523,12 @@ export default function Guides() {
               <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Дата рождения</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Контакты</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Паспорт</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Срок действия</th>
               {isAdmin && (
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Банк</th>
+                <>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Счет</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Банк</th>
+                </>
               )}
               <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Туры</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Статус</th>
@@ -607,19 +611,49 @@ export default function Guides() {
                           )}
                         </div>
                       )}
-                      {guide.passportExpiryDate && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600 font-medium">
-                            до {format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')}
-                          </span>
-                          {getPassportStatusBadge(guide.passportStatus)}
+                      {guide.passportIssueDate && (
+                        <div className="text-xs text-gray-600 font-medium">
+                          до {format(new Date(guide.passportIssueDate), 'dd.MM.yyyy')}
                         </div>
                       )}
                       {!guide.passportNumber && <span className="text-xs text-gray-400">—</span>}
                     </div>
                   </td>
+                  <td className="hidden lg:table-cell px-6 py-4">
+                    <div className="space-y-2">
+                      {guide.passportExpiryDate ? (
+                        <div className="flex flex-col gap-2">
+                          <span className="text-xs text-gray-700 font-semibold">
+                            {format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')}
+                          </span>
+                          {getPassportStatusBadge(guide.passportStatus)}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </div>
+                  </td>
                   {isAdmin && (
-                    <td className="hidden xl:table-cell px-6 py-4">
+                    <>
+                      <td className="hidden xl:table-cell px-6 py-4">
+                        <div className="space-y-1.5 text-xs">
+                          {guide.bankAccountNumber && (
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <CreditCard className="w-4 h-4 text-green-500" />
+                              <span className="font-medium">{guide.bankAccountNumber}</span>
+                            </div>
+                          )}
+                          {guide.mfo && (
+                            <div className="text-gray-600 font-medium ml-6">
+                              МФО: {guide.mfo}
+                            </div>
+                          )}
+                          {!guide.bankAccountNumber && !guide.mfo && (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="hidden xl:table-cell px-6 py-4">
                       <div className="space-y-1.5 text-xs">
                         {guide.bankCardNumber && (
                           <div className="flex items-center gap-2 text-gray-700">
@@ -635,6 +669,7 @@ export default function Guides() {
                         )}
                       </div>
                     </td>
+                    </>
                   )}
                   <td className="hidden md:table-cell px-6 py-4">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-xs font-bold shadow-sm">
@@ -684,7 +719,7 @@ export default function Guides() {
                 {/* Expanded Tours Table */}
                 {expandedTours === guide.id && (
                   <tr key={`${guide.id}-tours`}>
-                    <td colSpan={isAdmin ? 9 : 8} className="p-0 bg-gradient-to-br from-primary-50 to-blue-50">
+                    <td colSpan={isAdmin ? 11 : 9} className="p-0 bg-gradient-to-br from-primary-50 to-blue-50">
                       <div className="p-6">
                         <div className="bg-white rounded-xl border-2 border-primary-200 overflow-hidden shadow-lg">
                           {guideBookings[guide.id] ? (
