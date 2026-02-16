@@ -2188,10 +2188,38 @@ export default function BookingDetail() {
     }
   };
 
+  // Helper function to calculate PAX based on tour type and flight type
+  const calculateFlightPax = (flightType) => {
+    console.log('✈️ CALCULATING FLIGHT PAX:', { tourType: booking?.tourType, flightType, totalTourists: tourists.length });
+
+    // For ER tours: distinguish between UZ and TM tourists
+    if (booking?.tourType === 'ER') {
+      if (flightType === 'DOMESTIC') {
+        // DOMESTIC flights: only UZ tourists fly (TM tourists don't fly domestic routes)
+        const uzbekistanTourists = tourists.filter(t => {
+          const acc = (t.accommodation || '').toLowerCase();
+          return !acc.includes('turkmen') && !acc.includes('туркмен');
+        });
+        console.log(`✅ ER + DOMESTIC → UZ tourists only: ${uzbekistanTourists.length} PAX`);
+        return uzbekistanTourists.length;
+      } else if (flightType === 'INTERNATIONAL') {
+        // INTERNATIONAL flights: all tourists fly (both UZ and TM)
+        console.log(`✅ ER + INTERNATIONAL → All tourists: ${tourists.length} PAX`);
+        return tourists.length;
+      }
+    }
+
+    // For non-ER tours or fallback
+    const pax = booking?.pax || tourists.length || 0;
+    console.log(`✅ Non-ER tour or fallback: ${pax} PAX`);
+    return pax;
+  };
+
   // Handle flight PDF import
   // Open flight modal for adding new flight
   const openFlightModal = () => {
     setEditingFlight(null);
+    const initialPax = calculateFlightPax('INTERNATIONAL'); // Default to INTERNATIONAL
     setFlightForm({
       type: 'INTERNATIONAL',
       flightNumber: '',
@@ -2202,7 +2230,7 @@ export default function BookingDetail() {
       date: '',
       departureTime: '',
       arrivalTime: '',
-      pax: 0,
+      pax: initialPax,
       price: 0,
       tariff: 'economy',
       notes: ''
@@ -9105,7 +9133,12 @@ export default function BookingDetail() {
                     </label>
                     <select
                       value={flightForm.type}
-                      onChange={(e) => setFlightForm({ ...flightForm, type: e.target.value })}
+                      onChange={(e) => {
+                        const newType = e.target.value;
+                        const newPax = calculateFlightPax(newType);
+                        console.log(`🔄 Flight type changed to ${newType}, PAX updated to ${newPax}`);
+                        setFlightForm({ ...flightForm, type: newType, pax: newPax });
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                     >
                       <option value="INTERNATIONAL">International (IST ↔ TAS)</option>
@@ -9139,6 +9172,9 @@ export default function BookingDetail() {
                             }
                           }
 
+                          // Calculate smart PAX based on tour type and flight type
+                          const smartPax = calculateFlightPax(flightForm.type);
+
                           setFlightForm({
                             ...flightForm,
                             flightNumber: selectedFlight.flightNumber,
@@ -9149,7 +9185,7 @@ export default function BookingDetail() {
                             departureTime: selectedFlight.departureTime,
                             arrivalTime: selectedFlight.arrivalTime,
                             date: autoDate,
-                            pax: booking?.pax || 0
+                            pax: smartPax
                           });
                         } else {
                           setFlightForm({ ...flightForm, flightNumber: e.target.value });
@@ -9264,6 +9300,18 @@ export default function BookingDetail() {
                         placeholder="Number of passengers"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                       />
+                      {/* Info message for ER + DOMESTIC auto-calculation */}
+                      {booking?.tourType === 'ER' && flightForm.type === 'DOMESTIC' && (
+                        <p className="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                          <span className="font-semibold">ℹ️ Auto:</span> Faqat UZ turistlar ({(() => {
+                            const uzTourists = tourists.filter(t => {
+                              const acc = (t.accommodation || '').toLowerCase();
+                              return !acc.includes('turkmen') && !acc.includes('туркмен');
+                            });
+                            return uzTourists.length;
+                          })()}/{tourists.length})
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">
