@@ -8994,7 +8994,7 @@ export default function BookingDetail() {
 
                                   return (
                                     <tr key={railway.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-blue-900">{railway.trainNumber || railway.trainName || '-'}</td>
+                                      <td className="px-4 py-3 font-bold text-blue-900">{railway.trainName || railway.trainNumber || '-'}</td>
                                       <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
@@ -9077,7 +9077,7 @@ export default function BookingDetail() {
 
                                   return (
                                     <tr key={railway.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainNumber || railway.trainName || '-'}</td>
+                                      <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainName || railway.trainNumber || '-'}</td>
                                       <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
                                       <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
