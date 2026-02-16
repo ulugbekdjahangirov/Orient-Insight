@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { hotelsApi, citiesApi } from '../services/api';
 import toast from 'react-hot-toast';
 import {
@@ -9,11 +10,23 @@ import {
 } from 'lucide-react';
 
 export default function Hotels() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [groupedHotels, setGroupedHotels] = useState([]);
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
+
+  // Get selected city from URL or default to empty (show all)
+  const selectedCity = searchParams.get('city') || '';
+
+  // Function to change city and update URL
+  const handleCityChange = (cityId) => {
+    if (cityId) {
+      setSearchParams({ city: cityId });
+    } else {
+      setSearchParams({});
+    }
+  };
   const [expandedCities, setExpandedCities] = useState({});
   const [expandedHotels, setExpandedHotels] = useState({});
 
@@ -77,7 +90,7 @@ export default function Hotels() {
       });
       // Set first city (Tashkent if exists, otherwise first in sorted list)
       if (sortedCities.length > 0) {
-        setSelectedCity(sortedCities[0].id.toString());
+        handleCityChange(sortedCities[0].id.toString());
       }
     }
   }, [cities]);
@@ -336,9 +349,9 @@ export default function Hotels() {
       if (selectedCity === city.id.toString()) {
         const remainingCities = cities.filter(c => c.id !== city.id);
         if (remainingCities.length > 0) {
-          setSelectedCity(remainingCities[0].id.toString());
+          handleCityChange(remainingCities[0].id.toString());
         } else {
-          setSelectedCity('');
+          handleCityChange('');
         }
       }
       loadData(true);
@@ -607,7 +620,7 @@ export default function Hotels() {
                   return (
                     <div key={city.id} className="relative group/tab">
                       <button
-                        onClick={() => setSelectedCity(city.id.toString())}
+                        onClick={() => handleCityChange(city.id.toString())}
                         className={`relative px-6 py-4 rounded-2xl text-base font-bold transition-all duration-300 transform ${
                           isActive
                             ? `bg-gradient-to-r ${colors.bg} text-white shadow-2xl shadow-primary-500/30 scale-110 hover:scale-115`
