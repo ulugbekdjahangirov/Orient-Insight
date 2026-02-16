@@ -89,7 +89,7 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const {
       page = 1,
-      limit = 50,
+      limit = 100, // Increased from 50 to 100 to accommodate all bookings
       tourTypeId,
       guideId,
       status,
@@ -164,6 +164,18 @@ router.get('/', authenticate, async (req, res) => {
         _touristsCount: tourists ? tourists.length : 0
       };
     });
+
+    // DEBUG: Log bookings count by tourType
+    const tourTypeCounts = {};
+    bookingsWithCalculatedRooms.forEach(b => {
+      const code = b.tourType?.code;
+      if (code) {
+        tourTypeCounts[code] = (tourTypeCounts[code] || 0) + 1;
+      }
+    });
+    console.log(`📊 API Returning ${bookingsWithCalculatedRooms.length} total bookings:`, tourTypeCounts);
+    console.log(`   Filters: tourTypeId=${tourTypeId}, guideId=${guideId}, status=${status}, page=${page}, limit=${limit}`);
+    console.log(`   Total in DB matching filter: ${total}`);
 
     res.json({
       bookings: bookingsWithCalculatedRooms,
