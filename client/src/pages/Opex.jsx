@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation, Users, Car, Train, Plane, MapPin, Save } from 'lucide-react';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import { transportApi, opexApi } from '../services/api';
 
@@ -83,6 +84,7 @@ const defaultPlaneVehicles = [
 ];
 
 export default function Opex() {
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get state from URL or use defaults
@@ -1425,28 +1427,28 @@ export default function Opex() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-emerald-100 p-8">
+      <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-emerald-100 p-4 md:p-8">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-cyan-500/10"></div>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-cyan-400/20 to-teal-400/20 rounded-full blur-3xl"></div>
 
-        <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/40 transform hover:scale-110 transition-transform duration-300">
-                <Wallet className="w-10 h-10 text-white" />
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
+          <div className="flex items-center gap-3 md:gap-6">
+            <div className="relative flex-shrink-0">
+              <div className="w-14 h-14 md:w-20 md:h-20 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-2xl shadow-emerald-500/40 transform hover:scale-110 transition-transform duration-300">
+                <Wallet className="w-7 h-7 md:w-10 md:h-10 text-white" />
               </div>
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
-                <span className="text-xs font-bold text-white">$</span>
+              <div className="absolute -bottom-1 md:-bottom-2 -right-1 md:-right-2 w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                <span className="text-[10px] md:text-xs font-bold text-white">$</span>
               </div>
             </div>
             <div>
-              <h1 className="text-3xl font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+              <h1 className="text-xl md:text-3xl font-black bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 OPEX Management
               </h1>
-              <p className="text-slate-600 text-sm mt-1 font-medium">Operational Expenses & Cost Control</p>
+              <p className="text-slate-600 text-xs md:text-sm mt-0.5 md:mt-1 font-medium">Operational Expenses & Cost Control</p>
             </div>
           </div>
 
@@ -1464,19 +1466,22 @@ export default function Opex() {
                 toast.success('Функционал в разработке');
               }
             }}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-2xl hover:shadow-2xl hover:shadow-emerald-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-base"
+            className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white rounded-xl md:rounded-2xl hover:shadow-2xl hover:shadow-emerald-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
-            <span>
+            <span className="hidden sm:inline">
               {activeCategory === 'transport' && ['sevil-er', 'sevil-co', 'sevil-kas', 'sevil-za', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab) ? 'Добавить транспорт' : 'Добавить расход'}
+            </span>
+            <span className="sm:hidden">
+              {activeCategory === 'transport' && ['sevil-er', 'sevil-co', 'sevil-kas', 'sevil-za', 'xayrulla', 'nosir', 'metro', 'train', 'plane'].includes(activeTransportTab) ? 'Транспорт' : 'Добавить'}
             </span>
           </button>
         </div>
       </div>
 
       {/* Category Tabs */}
-      <div className="bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-4">
-        <div className="flex gap-4 overflow-x-auto justify-center">
+      <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-slate-100 p-2 md:p-4">
+        <div className="flex gap-2 md:gap-4 overflow-x-auto justify-start md:justify-center pb-1">
           {categories.map((category) => {
             const Icon = category.icon;
             const isActive = activeCategory === category.id;
@@ -1497,18 +1502,18 @@ export default function Opex() {
               <button
                 key={category.id}
                 onClick={() => updateParams({ category: category.id })}
-                className={`group relative flex items-center gap-3 px-8 py-4 rounded-2xl font-black transition-all duration-300 whitespace-nowrap transform ${
+                className={`group relative flex items-center gap-2 md:gap-3 px-4 md:px-8 py-2.5 md:py-4 rounded-xl md:rounded-2xl font-black transition-all duration-300 whitespace-nowrap transform min-h-[44px] flex-shrink-0 ${
                   isActive
-                    ? `${colors.bg} text-white shadow-2xl hover:shadow-3xl scale-110 hover:scale-115`
+                    ? `${colors.bg} text-white shadow-2xl hover:shadow-3xl scale-105 md:scale-110 hover:scale-110 md:hover:scale-115`
                     : `text-gray-700 bg-gradient-to-br ${colors.hoverBg} hover:shadow-xl hover:scale-105 border-2 border-slate-200`
                 }`}
               >
-                <div className={`${isActive ? 'bg-white/30 backdrop-blur-sm' : colors.iconBg} p-2 rounded-xl transition-all duration-300 shadow-md`}>
-                  <Icon className="w-6 h-6" />
+                <div className={`${isActive ? 'bg-white/30 backdrop-blur-sm' : colors.iconBg} p-1.5 md:p-2 rounded-lg md:rounded-xl transition-all duration-300 shadow-md`}>
+                  <Icon className="w-4 h-4 md:w-6 md:h-6" />
                 </div>
-                <span className="text-base">{category.name}</span>
+                <span className="text-sm md:text-base">{category.name}</span>
                 {isActive && (
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-1.5 bg-white rounded-full shadow-lg"></div>
+                  <div className="absolute -bottom-1 md:-bottom-2 left-1/2 -translate-x-1/2 w-12 md:w-16 h-1 md:h-1.5 bg-white rounded-full shadow-lg"></div>
                 )}
               </button>
             );
@@ -1518,8 +1523,8 @@ export default function Opex() {
 
       {/* Transport Sub-Tabs */}
       {activeCategory === 'transport' && (
-        <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4">
-          <div className="flex gap-3 overflow-x-auto">
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl md:rounded-3xl shadow-2xl border-2 border-gray-100 p-2 md:p-4">
+          <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1">
             {transportSubTabs.map((subTab) => {
               const Icon = subTab.icon;
               const isActive = activeTransportTab === subTab.id;
@@ -1587,13 +1592,13 @@ export default function Opex() {
                 <button
                   key={subTab.id}
                   onClick={() => updateParams({ transport: subTab.id })}
-                  className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
+                  className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-xs md:text-sm min-h-[44px] flex-shrink-0 ${
                     isActive
-                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
+                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-105 md:scale-110 -translate-y-0.5`
                       : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4 md:w-5 md:h-5" />
                   {subTab.name}
                 </button>
               );
