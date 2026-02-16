@@ -199,6 +199,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       bankAccountNumber,
       bankCardNumber,
       bankName,
+      mfo,
       address,
       notes,
       dayRate,
@@ -239,6 +240,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         bankAccountNumber: encryptedData.bankAccountNumber,
         bankCardNumber: encryptedData.bankCardNumber,
         bankName,
+        mfo,
         address,
         notes,
         dayRate: dayRate ? parseFloat(dayRate) : 110,
@@ -282,6 +284,7 @@ router.put('/:id', authenticate, async (req, res) => {
       bankAccountNumber,
       bankCardNumber,
       bankName,
+      mfo,
       address,
       notes,
       isActive,
@@ -329,6 +332,7 @@ router.put('/:id', authenticate, async (req, res) => {
         updateData.bankCardNumber = bankCardNumber ? encryptGuideData({ bankCardNumber }).bankCardNumber : null;
       }
       if (bankName !== undefined) updateData.bankName = bankName;
+      if (mfo !== undefined) updateData.mfo = mfo;
     }
 
     const guide = await prisma.guide.update({
