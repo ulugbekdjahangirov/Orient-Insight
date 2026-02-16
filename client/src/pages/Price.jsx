@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DollarSign, Plus, Edit, Trash2, Save, X, Hotel, Truck, ChevronUp, ChevronDown, Train, Plane, Utensils, Camera, User, Sparkles, Calculator, Download, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -94,18 +95,30 @@ const defaultShouItems = [
 ];
 
 export default function Price() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // Format number with space as thousands separator and no decimals
   const formatPrice = (price) => {
     return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   };
 
-  const [selectedTourType, setSelectedTourType] = useState('er');
-  const [selectedERSubTab, setSelectedERSubTab] = useState('hotels');
-  const [selectedCOSubTab, setSelectedCOSubTab] = useState('hotels');
-  const [selectedKASSubTab, setSelectedKASSubTab] = useState('hotels');
-  const [selectedZASubTab, setSelectedZASubTab] = useState('hotels');
-  const [selectedPreis2026SubTab, setSelectedPreis2026SubTab] = useState('hotels');
-  const [selectedPaxTier, setSelectedPaxTier] = useState('4');
+  // Get state from URL or use defaults
+  const selectedTourType = searchParams.get('tour') || 'er';
+  const selectedERSubTab = searchParams.get('er') || 'hotels';
+  const selectedCOSubTab = searchParams.get('co') || 'hotels';
+  const selectedKASSubTab = searchParams.get('kas') || 'hotels';
+  const selectedZASubTab = searchParams.get('za') || 'hotels';
+  const selectedPreis2026SubTab = searchParams.get('preis2026') || 'hotels';
+  const selectedPaxTier = searchParams.get('pax') || '4';
+
+  // Function to update URL params
+  const updateParams = (updates) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      newParams.set(key, value);
+    });
+    setSearchParams(newParams);
+  };
   const [prices, setPrices] = useState([]);
   const [hotelPrices, setHotelPrices] = useState(defaultHotelPrices);
   const [transportRoutes, setTransportRoutes] = useState(defaultTransportRoutes);
@@ -2489,7 +2502,7 @@ export default function Price() {
         {tourTypes.map((tour) => (
           <button
             key={tour.id}
-            onClick={() => setSelectedTourType(tour.id)}
+            onClick={() => updateParams({ tour: tour.id })}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 ${
               selectedTourType === tour.id
                 ? `bg-gradient-to-r from-${tour.color}-600 to-${tour.color}-700 text-white shadow-lg`
@@ -2509,7 +2522,7 @@ export default function Price() {
             return (
               <button
                 key={subTab.id}
-                onClick={() => setSelectedERSubTab(subTab.id)}
+                onClick={() => updateParams({ er: subTab.id })}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
                   selectedERSubTab === subTab.id
                     ? 'bg-blue-600 text-white shadow-md'
@@ -2532,7 +2545,7 @@ export default function Price() {
             return (
               <button
                 key={subTab.id}
-                onClick={() => setSelectedCOSubTab(subTab.id)}
+                onClick={() => updateParams({ co: subTab.id })}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
                   selectedCOSubTab === subTab.id
                     ? 'bg-green-600 text-white shadow-md'
@@ -2555,7 +2568,7 @@ export default function Price() {
             return (
               <button
                 key={subTab.id}
-                onClick={() => setSelectedKASSubTab(subTab.id)}
+                onClick={() => updateParams({ kas: subTab.id })}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
                   selectedKASSubTab === subTab.id
                     ? 'bg-orange-600 text-white shadow-md'
@@ -2578,7 +2591,7 @@ export default function Price() {
             return (
               <button
                 key={subTab.id}
-                onClick={() => setSelectedZASubTab(subTab.id)}
+                onClick={() => updateParams({ za: subTab.id })}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
                   selectedZASubTab === subTab.id
                     ? 'bg-purple-600 text-white shadow-md'
@@ -2711,7 +2724,7 @@ export default function Price() {
             {paxTiers.map((tier) => (
               <button
                 key={tier.id}
-                onClick={() => setSelectedPaxTier(tier.id)}
+                onClick={() => updateParams({ pax: tier.id })}
                 className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
                   selectedPaxTier === tier.id
                     ? 'bg-blue-600 text-white shadow-md'
@@ -3993,7 +4006,7 @@ export default function Price() {
             {paxTiers.map((tier) => (
               <button
                 key={tier.id}
-                onClick={() => setSelectedPaxTier(tier.id)}
+                onClick={() => updateParams({ pax: tier.id })}
                 className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 ${
                   selectedPaxTier === tier.id
                     ? 'bg-green-600 text-white shadow-md'
@@ -4871,7 +4884,7 @@ export default function Price() {
             {paxTiers.map((tier) => (
               <button
                 key={tier.id}
-                onClick={() => setSelectedPaxTier(tier.id)}
+                onClick={() => updateParams({ pax: tier.id })}
                 className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
                   selectedPaxTier === tier.id
                     ? 'bg-orange-600 text-white shadow-md'
@@ -5719,7 +5732,7 @@ export default function Price() {
             {paxTiers.map((tier) => (
               <button
                 key={tier.id}
-                onClick={() => setSelectedPaxTier(tier.id)}
+                onClick={() => updateParams({ pax: tier.id })}
                 className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
                   selectedPaxTier === tier.id
                     ? 'bg-purple-600 text-white shadow-md'

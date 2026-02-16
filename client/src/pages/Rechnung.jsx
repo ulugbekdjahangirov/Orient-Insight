@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Receipt, Building, Globe, Plus, Edit, Trash2, ExternalLink } from 'lucide-react';
 import { invoicesApi } from '../services/api';
 import { toast } from 'react-hot-toast';
@@ -47,7 +47,15 @@ const colorClasses = {
 
 export default function Rechnung() {
   const navigate = useNavigate();
-  const [activeModule, setActiveModule] = useState('rechnung');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get active module from URL or default to 'rechnung'
+  const activeModule = searchParams.get('module') || 'rechnung';
+
+  // Function to change module and update URL
+  const handleModuleChange = (module) => {
+    setSearchParams({ module });
+  };
   const [rechnungItems, setRechnungItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [gutschriftItems, setGutschriftItems] = useState([]);
@@ -279,7 +287,7 @@ export default function Rechnung() {
             return (
               <button
                 key={module.id}
-                onClick={() => setActiveModule(module.id)}
+                onClick={() => handleModuleChange(module.id)}
                 className={`flex items-center gap-2.5 px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl ${
                   isActive
                     ? `${colors.active} ${colors.hover} text-white scale-105`
