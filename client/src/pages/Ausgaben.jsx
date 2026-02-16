@@ -37,6 +37,8 @@ export default function Ausgaben() {
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]); // Store all booking data with calculations
   const [metroVehicles, setMetroVehicles] = useState([]); // Metro data from Opex Transport API
+  const [displayLimit, setDisplayLimit] = useState(10); // Pagination: show first 10 bookings
+  const [allBookingsLoaded, setAllBookingsLoaded] = useState(false); // Track if all bookings are loaded
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -46,8 +48,29 @@ export default function Ausgaben() {
   }, []);
 
   useEffect(() => {
+    // Reset pagination when tour type or tab changes
+    setDisplayLimit(10);
+    setAllBookingsLoaded(false);
     loadBookingsAndExpenses();
   }, [activeTourType, activeExpenseTab]);
+
+  // Load more bookings
+  const loadMoreBookings = async () => {
+    const newLimit = displayLimit + 10;
+    setDisplayLimit(newLimit);
+
+    // Reload with new limit
+    const cacheKey = activeTourType;
+    const currentBookings = cache[cacheKey]?.bookings || bookings;
+
+    if (currentBookings.length > 0) {
+      setLoading(true);
+      const detailedData = await loadDetailedBookingsData(currentBookings, newLimit);
+      setBookingsDetailedData(detailedData);
+      setAllBookingsLoaded(currentBookings.length <= newLimit);
+      setLoading(false);
+    }
+  };
 
   // Load Metro vehicles from Opex Transport API
   const loadVehiclesFromApi = async () => {
@@ -150,7 +173,9 @@ export default function Ausgaben() {
       // Load detailed data with hotel calculations for general and hotels tabs
       let detailedData = null;
       if (needsDetailedData) {
-        detailedData = await loadDetailedBookingsData(filteredBookings);
+        // Only load first 'displayLimit' bookings for faster initial load
+        detailedData = await loadDetailedBookingsData(filteredBookings, displayLimit);
+        setAllBookingsLoaded(filteredBookings.length <= displayLimit);
       }
 
       // Cache the results in memory
@@ -183,7 +208,7 @@ export default function Ausgaben() {
     }
   };
 
-  const loadDetailedBookingsData = async (bookingsData) => {
+  const loadDetailedBookingsData = async (bookingsData, limit = null) => {
     try {
       // Load Metro vehicles from Opex Transport API (once for all bookings)
       let metroVehiclesData = [];
@@ -196,8 +221,12 @@ export default function Ausgaben() {
         console.error('Error loading metro vehicles:', error);
       }
 
-      // Load data for all bookings in parallel (OPTIMIZED)
-      const detailedData = await Promise.all(bookingsData.map(async (booking) => {
+      // Apply limit for pagination (only load first N bookings)
+      const bookingsToLoad = limit ? bookingsData.slice(0, limit) : bookingsData;
+      console.log(`📊 Loading detailed data for ${bookingsToLoad.length} of ${bookingsData.length} bookings`);
+
+      // Load data for bookings in parallel (OPTIMIZED)
+      const detailedData = await Promise.all(bookingsToLoad.map(async (booking) => {
         try {
           // Load all data in parallel for this booking
           const [accResponse, touristsResponse, routesResponse, railwaysResponse, flightsResponse, tourServicesResponse] = await Promise.all([
@@ -1209,6 +1238,18 @@ export default function Ausgaben() {
                     </table>
                   );
                 })()}
+              </div>
+            )}
+
+            {/* Load More Button */}
+            {!loading && !allBookingsLoaded && bookings.length > displayLimit && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={loadMoreBookings}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
+                >
+                  Ko'proq yuklash ({displayLimit} / {bookings.length})
+                </button>
               </div>
             )}
           </>
