@@ -9174,18 +9174,33 @@ export default function BookingDetail() {
                       onChange={(e) => {
                         const selectedFlight = opexFlights[flightForm.type]?.find(f => f.flightNumber === e.target.value);
                         if (selectedFlight) {
-                          // Auto-populate date based on flight type
+                          // Auto-populate date based on flight type and route
                           let autoDate = '';
                           if (booking) {
+                            // Check if it's Tashkent-Istanbul return flight
+                            const routeLower = (selectedFlight.route || '').toLowerCase();
+                            const isTashkentToIstanbul =
+                              routeLower.includes('tashkent-istanbul') ||
+                              routeLower.includes('tas-ist') ||
+                              routeLower.includes('ташкент-стамбул');
+
                             if (flightForm.type === 'INTERNATIONAL') {
-                              // International: arrival date (group arrives +1 day)
-                              autoDate = booking.departureDate ? format(addDays(new Date(booking.departureDate), 1), 'yyyy-MM-dd') : '';
+                              if (isTashkentToIstanbul) {
+                                // Tashkent → Istanbul (return): tour end date
+                                autoDate = booking.endDate ? format(new Date(booking.endDate), 'yyyy-MM-dd') : '';
+                                console.log('📅 TAS→IST return flight: using tour end date', autoDate);
+                              } else {
+                                // Istanbul → Tashkent (arrival): arrival date (group arrives +1 day)
+                                autoDate = booking.departureDate ? format(addDays(new Date(booking.departureDate), 1), 'yyyy-MM-dd') : '';
+                                console.log('📅 IST→TAS arrival flight: using arrival date (+1 day)', autoDate);
+                              }
                             } else if (flightForm.type === 'DOMESTIC') {
                               // Domestic: 1 day before group departure
                               if (booking.endDate) {
                                 const endDate = new Date(booking.endDate);
                                 const oneDayBefore = addDays(endDate, -1);
                                 autoDate = format(oneDayBefore, 'yyyy-MM-dd');
+                                console.log('📅 DOMESTIC flight: using 1 day before end date', autoDate);
                               }
                             }
                           }
