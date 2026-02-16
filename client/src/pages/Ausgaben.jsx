@@ -360,7 +360,7 @@ export default function Ausgaben() {
     // Load Meals from database (OPEX API)
     try {
       const response = await opexApi.get(tourTypeCode.toUpperCase(), 'meal');
-      const mealsData = response.data?.data || [];
+      const mealsData = response.data?.items || [];
       console.log(`  📦 OPEX Meals[${tourTypeCode}]:`, mealsData.length, 'items');
       if (mealsData.length > 0) {
         expenses.meals = mealsData.reduce((sum, meal) => {
@@ -377,7 +377,7 @@ export default function Ausgaben() {
     // ADD Shows from database (OPEX API) (in addition to tourServices)
     try {
       const response = await opexApi.get(tourTypeCode.toUpperCase(), 'shows');
-      const showsData = response.data?.data || [];
+      const showsData = response.data?.items || [];
       console.log(`  📦 OPEX Shows[${tourTypeCode}]:`, showsData.length, 'items');
       if (showsData.length > 0) {
         const opexShows = showsData.reduce((sum, show) => {
@@ -396,7 +396,7 @@ export default function Ausgaben() {
     // ADD Eintritt from database (OPEX API) (in addition to tourServices)
     try {
       const response = await opexApi.get(tourTypeCode.toUpperCase(), 'sightseeing');
-      const sightseeingData = response.data?.data || [];
+      const sightseeingData = response.data?.items || [];
       console.log(`  📦 OPEX Sightseeing[${tourTypeCode}]:`, sightseeingData.length, 'items');
       if (sightseeingData.length > 0) {
         const opexEintritt = sightseeingData.reduce((sum, item) => {
