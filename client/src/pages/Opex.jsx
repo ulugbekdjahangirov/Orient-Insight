@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation, Users, Car, Train, Plane, MapPin, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { transportApi, opexApi } from '../services/api';
@@ -82,11 +83,23 @@ const defaultPlaneVehicles = [
 ];
 
 export default function Opex() {
-  const [activeCategory, setActiveCategory] = useState('transport');
-  const [activeTransportTab, setActiveTransportTab] = useState('sevil-er');
-  const [activeSightseeingTab, setActiveSightseeingTab] = useState('er');
-  const [activeMealTab, setActiveMealTab] = useState('er');
-  const [activeShowsTab, setActiveShowsTab] = useState('er');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get state from URL or use defaults
+  const activeCategory = searchParams.get('category') || 'transport';
+  const activeTransportTab = searchParams.get('transport') || 'sevil-er';
+  const activeSightseeingTab = searchParams.get('sightseeing') || 'er';
+  const activeMealTab = searchParams.get('meal') || 'er';
+  const activeShowsTab = searchParams.get('shows') || 'er';
+
+  // Function to update URL params
+  const updateParams = (updates) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      newParams.set(key, value);
+    });
+    setSearchParams(newParams);
+  };
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1483,7 +1496,7 @@ export default function Opex() {
             return (
               <button
                 key={category.id}
-                onClick={() => setActiveCategory(category.id)}
+                onClick={() => updateParams({ category: category.id })}
                 className={`group relative flex items-center gap-3 px-8 py-4 rounded-2xl font-black transition-all duration-300 whitespace-nowrap transform ${
                   isActive
                     ? `${colors.bg} text-white shadow-2xl hover:shadow-3xl scale-110 hover:scale-115`
@@ -1573,7 +1586,7 @@ export default function Opex() {
               return (
                 <button
                   key={subTab.id}
-                  onClick={() => setActiveTransportTab(subTab.id)}
+                  onClick={() => updateParams({ transport: subTab.id })}
                   className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
                     isActive
                       ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
@@ -1629,7 +1642,7 @@ export default function Opex() {
               return (
                 <button
                   key={subTab.id}
-                  onClick={() => setActiveSightseeingTab(subTab.id)}
+                  onClick={() => updateParams({ sightseeing: subTab.id })}
                   className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
                     isActive
                       ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
@@ -2893,7 +2906,7 @@ export default function Opex() {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveMealTab(tab.id)}
+                      onClick={() => updateParams({ meal: tab.id })}
                       className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
                         isActive
                           ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
@@ -3293,7 +3306,7 @@ export default function Opex() {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveShowsTab(tab.id)}
+                      onClick={() => updateParams({ shows: tab.id })}
                       className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
                         isActive
                           ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`

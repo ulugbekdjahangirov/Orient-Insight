@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { guidesApi, bookingsApi } from '../services/api';
 import { useAuth } from '../store/AuthContext';
 import { format } from 'date-fns';
@@ -47,6 +47,7 @@ function getStatusByPax(pax, departureDate, endDate) {
 export default function Guides() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [guides, setGuides] = useState([]);
   const [alerts, setAlerts] = useState({ alerts: [], expiredCount: 0, expiringSoonCount: 0 });
   const [loading, setLoading] = useState(true);
@@ -57,7 +58,14 @@ export default function Guides() {
   const [formData, setFormData] = useState(getEmptyFormData());
   const [expandedTours, setExpandedTours] = useState(null);
   const [guideBookings, setGuideBookings] = useState({});
-  const [activeTab, setActiveTab] = useState('information'); // 'information', 'tours', 'payment', 'city-payment'
+
+  // Get active tab from URL or default to 'information'
+  const activeTab = searchParams.get('tab') || 'information';
+
+  // Function to change tab and update URL
+  const handleTabChange = (tab) => {
+    setSearchParams({ tab });
+  };
   const [allBookings, setAllBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null); // ID of guide being edited in Payment tab
@@ -419,7 +427,7 @@ export default function Guides() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-1">
         <div className="flex gap-1">
           <button
-            onClick={() => setActiveTab('information')}
+            onClick={() => handleTabChange('information')}
             className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
               activeTab === 'information'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
@@ -429,7 +437,7 @@ export default function Guides() {
             Information
           </button>
           <button
-            onClick={() => setActiveTab('tours')}
+            onClick={() => handleTabChange('tours')}
             className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
               activeTab === 'tours'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
@@ -439,7 +447,7 @@ export default function Guides() {
             Tours
           </button>
           <button
-            onClick={() => setActiveTab('payment')}
+            onClick={() => handleTabChange('payment')}
             className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
               activeTab === 'payment'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'
@@ -449,7 +457,7 @@ export default function Guides() {
             Payment
           </button>
           <button
-            onClick={() => setActiveTab('city-payment')}
+            onClick={() => handleTabChange('city-payment')}
             className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-200 ${
               activeTab === 'city-payment'
                 ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-500/30'

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { Hotel, DollarSign, BarChart3 } from 'lucide-react';
@@ -19,8 +19,20 @@ const expenseTabs = [
 ];
 
 export default function Ausgaben() {
-  const [activeTourType, setActiveTourType] = useState('ER');
-  const [activeExpenseTab, setActiveExpenseTab] = useState('general');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get state from URL or use defaults
+  const activeTourType = searchParams.get('tour') || 'ER';
+  const activeExpenseTab = searchParams.get('tab') || 'general';
+
+  // Function to update URL params
+  const updateParams = (updates) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      newParams.set(key, value);
+    });
+    setSearchParams(newParams);
+  };
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]); // Store all booking data with calculations
@@ -681,7 +693,7 @@ export default function Ausgaben() {
               <button
                 key={module.code}
                 onClick={() => {
-                  setActiveTourType(module.code);
+                  updateParams({ tour: module.code });
                   // Keep current tab when switching tour types
                 }}
                 className={`
@@ -718,7 +730,7 @@ export default function Ausgaben() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveExpenseTab(tab.id)}
+                  onClick={() => updateParams({ tab: tab.id })}
                   className={`
                     flex-1 py-3 px-6 text-center font-medium text-sm transition-all
                     flex items-center justify-center gap-2
