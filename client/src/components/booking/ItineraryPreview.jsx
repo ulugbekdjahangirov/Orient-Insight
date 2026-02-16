@@ -540,7 +540,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
           return [
             formatDateDisplay(r.date),
             transliterate(routeStr),
-            r.trainNumber || '-',
+            r.trainName || r.trainNumber || '-',
             r.departureTime && r.arrivalTime ? `${r.departureTime}-${r.arrivalTime}` : '-',
             transliterate(room?.hotel?.city?.name || '-'),
             room?.hotel?.name || '-',
@@ -1547,7 +1547,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
                             className="w-full px-2 py-1 border rounded"
                           />
                         ) : (
-                          railway.trainNumber || '-'
+                          railway.trainName || railway.trainNumber || '-'
                         )}
                       </td>
                       <td className="border border-gray-900 px-3 py-2 text-center font-bold">
