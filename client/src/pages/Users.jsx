@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usersApi } from '../services/api';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { Plus, Edit, UserCog, Shield, User, X, Save, Eye, EyeOff } from 'lucide-react';
@@ -10,6 +11,7 @@ const roleLabels = {
 };
 
 export default function Users() {
+  const isMobile = useIsMobile();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -112,20 +114,21 @@ export default function Users() {
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-4 md:space-y-6 p-3 md:p-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Пользователи</h1>
-          <p className="text-gray-500">Управление доступом к системе</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Пользователи</h1>
+          <p className="text-sm md:text-base text-gray-500">Управление доступом к системе</p>
         </div>
 
         <button
           onClick={() => openModal()}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="inline-flex items-center justify-center gap-2 px-4 md:px-5 py-2.5 md:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm md:text-base font-medium min-h-[44px] w-full sm:w-auto"
         >
           <Plus className="w-5 h-5" />
-          Добавить пользователя
+          <span className="hidden sm:inline">Добавить пользователя</span>
+          <span className="sm:hidden">Добавить</span>
         </button>
       </div>
 
@@ -197,14 +200,14 @@ export default function Users() {
                   <div className="flex items-center justify-end gap-1 md:gap-2">
                     <button
                       onClick={() => openModal(user)}
-                      className="p-2 md:p-1.5 text-gray-400 hover:text-primary-600 rounded"
+                      className="p-2.5 md:p-1.5 text-gray-400 hover:text-primary-600 rounded min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                       title="Редактировать"
                     >
                       <Edit className="w-5 h-5 md:w-4 md:h-4" />
                     </button>
                     <button
                       onClick={() => toggleActive(user)}
-                      className={`p-2 md:p-1.5 rounded ${
+                      className={`p-2.5 md:p-1.5 rounded min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center ${
                         user.isActive
                           ? 'text-gray-400 hover:text-red-600'
                           : 'text-gray-400 hover:text-green-600'

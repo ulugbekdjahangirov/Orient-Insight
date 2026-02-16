@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { hotelsApi, citiesApi } from '../services/api';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import {
   Plus, Edit, Trash2, Building2, MapPin, X, Save,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 
 export default function Hotels() {
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [groupedHotels, setGroupedHotels] = useState([]);
   const [cities, setCities] = useState([]);
@@ -540,65 +542,66 @@ export default function Hotels() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
         {/* Header */}
-        <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-primary-100">
+        <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-primary-100">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/5 to-pink-500/10"></div>
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-primary-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
-          <div className="relative flex items-center justify-between p-8">
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-primary-500 via-purple-500 to-primary-700 rounded-3xl flex items-center justify-center shadow-2xl shadow-primary-500/40 transform hover:scale-110 transition-transform duration-300">
-                  <Building2 className="w-10 h-10 text-white" />
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 p-4 md:p-8">
+            <div className="flex items-center gap-3 md:gap-6">
+              <div className="relative flex-shrink-0">
+                <div className="w-14 h-14 md:w-20 md:h-20 bg-gradient-to-br from-primary-500 via-purple-500 to-primary-700 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-2xl shadow-primary-500/40 transform hover:scale-110 transition-transform duration-300">
+                  <Building2 className="w-7 h-7 md:w-10 md:h-10 text-white" />
                 </div>
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
-                  <span className="text-xs font-bold text-white">
+                <div className="absolute -bottom-1 md:-bottom-2 -right-1 md:-right-2 w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                  <span className="text-[10px] md:text-xs font-bold text-white">
                     {groupedHotels.reduce((sum, g) => sum + g.hotels.length, 0)}
                   </span>
                 </div>
               </div>
               <div>
-                <h1 className="text-3xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="text-xl md:text-3xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                   Hotels Management
                 </h1>
-                <p className="text-slate-600 text-sm mt-1 font-medium">Luxury hotels and room reservations</p>
+                <p className="text-slate-600 text-xs md:text-sm mt-0.5 md:mt-1 font-medium">Luxury hotels and room reservations</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
                 onClick={() => openHotelModal()}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-600 text-white rounded-2xl hover:shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-base"
+                className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-600 text-white rounded-xl md:rounded-2xl hover:shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
               >
                 <Plus className="w-5 h-5" />
-                Add Hotel
+                <span className="hidden sm:inline">Add Hotel</span>
+                <span className="sm:hidden">Add</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Search and City Tabs */}
-        <div className="bg-white rounded-3xl shadow-2xl border-2 border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-slate-100 overflow-hidden">
           {/* Search Bar */}
-          <div className="p-6 border-b-2 border-gradient-to-r from-primary-100 via-purple-100 to-pink-100">
+          <div className="p-3 md:p-6 border-b-2 border-gradient-to-r from-primary-100 via-purple-100 to-pink-100">
             <div className="relative max-w-2xl mx-auto">
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 w-12 h-12 bg-gradient-to-br from-primary-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <Search className="w-6 h-6 text-white" />
+              <div className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg">
+                <Search className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               <input
                 type="text"
-                placeholder="Search hotels by name or city..."
+                placeholder={isMobile ? "Search hotels..." : "Search hotels by name or city..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-20 pr-6 py-4 bg-gradient-to-r from-slate-50 to-white border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 text-base font-medium shadow-inner"
+                className="w-full pl-16 md:pl-20 pr-4 md:pr-6 py-3 md:py-4 bg-gradient-to-r from-slate-50 to-white border-2 border-slate-200 rounded-xl md:rounded-2xl focus:ring-4 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 text-sm md:text-base font-medium shadow-inner"
               />
             </div>
           </div>
 
           {/* City Tabs */}
-          <div className="p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50">
-            <div className="flex items-center gap-4 flex-wrap justify-center">
+          <div className="p-3 md:p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50">
+            <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center">
               {(() => {
                 const cityOrder = ['Tashkent', 'Samarkand', 'Fergana', 'Asraf', 'Bukhara', 'Khiva'];
                 const sortedCities = [...cities].sort((a, b) => {
@@ -621,17 +624,18 @@ export default function Hotels() {
                     <div key={city.id} className="relative group/tab">
                       <button
                         onClick={() => handleCityChange(city.id.toString())}
-                        className={`relative px-6 py-4 rounded-2xl text-base font-bold transition-all duration-300 transform ${
+                        className={`relative px-3 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl text-sm md:text-base font-bold transition-all duration-300 transform min-h-[44px] ${
                           isActive
                             ? `bg-gradient-to-r ${colors.bg} text-white shadow-2xl shadow-primary-500/30 scale-110 hover:scale-115`
                             : 'bg-white text-slate-700 hover:bg-gradient-to-br hover:from-slate-50 hover:to-white border-2 border-slate-200 hover:border-primary-300 hover:shadow-xl hover:scale-105'
                         }`}
                       >
-                        <span className="flex items-center gap-3">
-                          <MapPin className={`w-6 h-6 ${isActive ? 'text-white' : colors.text}`} />
-                          {city.nameEn || city.name}
+                        <span className="flex items-center gap-2 md:gap-3">
+                          <MapPin className={`w-4 h-4 md:w-6 md:h-6 ${isActive ? 'text-white' : colors.text}`} />
+                          <span className="hidden sm:inline">{city.nameEn || city.name}</span>
+                          <span className="sm:hidden">{(city.nameEn || city.name).substring(0, 3)}</span>
                           {hotelCount > 0 && (
-                            <span className={`px-3 py-1 rounded-xl text-sm font-black ${
+                            <span className={`px-2 md:px-3 py-0.5 md:py-1 rounded-lg md:rounded-xl text-xs md:text-sm font-black ${
                               isActive ? 'bg-white/30 text-white backdrop-blur-sm' : `${colors.light} ${colors.text}`
                             }`}>
                               {hotelCount}
@@ -647,10 +651,10 @@ export default function Hotels() {
                           e.preventDefault();
                           deleteCity(city);
                         }}
-                        className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tab:opacity-100 shadow-2xl hover:scale-125 z-10 cursor-pointer transition-all duration-300"
+                        className="absolute -top-2 md:-top-3 -right-2 md:-right-3 w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tab:opacity-100 shadow-2xl hover:scale-125 z-10 cursor-pointer transition-all duration-300"
                         title="Delete city"
                       >
-                        <X className="w-5 h-5 pointer-events-none" />
+                        <X className="w-4 h-4 md:w-5 md:h-5 pointer-events-none" />
                       </button>
                     </div>
                   );
@@ -664,7 +668,7 @@ export default function Hotels() {
                   setCityForm({ name: '', nameEn: '', sortOrder: cities.length });
                   setCityModalOpen(true);
                 }}
-                className="px-4 py-3 rounded-xl text-base font-medium text-slate-400 hover:text-slate-600 border-2 border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all"
+                className="px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-medium text-slate-400 hover:text-slate-600 border-2 border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
                 title="Add city"
               >
                 <Plus className="w-5 h-5" />
@@ -674,47 +678,47 @@ export default function Hotels() {
         </div>
 
         {/* Hotels List */}
-        <div className="space-y-8">
+        <div className="space-y-6 md:space-y-8">
           {filteredGroups.map(group => {
             const cityColors = getCityColor(group.city.nameEn || group.city.name);
 
             return (
-              <div key={group.city.id} className="space-y-5">
+              <div key={group.city.id} className="space-y-3 md:space-y-5">
                 {/* City Header */}
                 <div
-                  className="flex items-center justify-between cursor-pointer group py-3 px-4 bg-white rounded-2xl shadow-lg border-2 border-slate-100 hover:shadow-2xl hover:border-primary-200 transition-all duration-300"
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer group py-3 px-3 md:px-4 bg-white rounded-xl md:rounded-2xl shadow-lg border-2 border-slate-100 hover:shadow-2xl hover:border-primary-200 transition-all duration-300 gap-3 sm:gap-0"
                   onClick={() => toggleCity(group.city.id)}
                 >
-                  <div className="flex items-center gap-5">
-                    <div className={`w-2 h-14 rounded-full bg-gradient-to-b ${cityColors.bg} shadow-lg`}></div>
-                    <h2 className="text-2xl font-black text-slate-800">{group.city.nameEn || group.city.name}</h2>
-                    <span className={`px-4 py-2 rounded-xl text-sm font-black ${cityColors.light} ${cityColors.text} shadow-md`}>
+                  <div className="flex items-center gap-3 md:gap-5 w-full sm:w-auto">
+                    <div className={`w-1.5 md:w-2 h-12 md:h-14 rounded-full bg-gradient-to-b ${cityColors.bg} shadow-lg flex-shrink-0`}></div>
+                    <h2 className="text-lg md:text-2xl font-black text-slate-800">{group.city.nameEn || group.city.name}</h2>
+                    <span className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black ${cityColors.light} ${cityColors.text} shadow-md`}>
                       {group.hotels.length} {group.hotels.length === 1 ? 'hotel' : 'hotels'}
                     </span>
                     {expandedCities[group.city.id] ? (
-                      <ChevronDown className="w-7 h-7 text-slate-400 group-hover:text-primary-600 transition-colors" />
+                      <ChevronDown className="w-6 h-6 md:w-7 md:h-7 text-slate-400 group-hover:text-primary-600 transition-colors ml-auto sm:ml-0" />
                     ) : (
-                      <ChevronRight className="w-7 h-7 text-slate-400 group-hover:text-primary-600 transition-colors" />
+                      <ChevronRight className="w-6 h-6 md:w-7 md:h-7 text-slate-400 group-hover:text-primary-600 transition-colors ml-auto sm:ml-0" />
                     )}
                   </div>
-                  <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                  <div className={`flex items-center gap-2 md:gap-3 w-full sm:w-auto ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-all`}>
                     <button
                       onClick={(e) => { e.stopPropagation(); openHotelModal(null, group.city.id); }}
-                      className="p-3 text-white bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
+                      className="p-2.5 md:p-3 text-white bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 rounded-lg md:rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       title="Add hotel to this city"
                     >
                       <Plus className="w-5 h-5" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); openCityModal(group.city); }}
-                      className="p-3 text-white bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
+                      className="p-2.5 md:p-3 text-white bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-lg md:rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       title="Edit city"
                     >
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteCity(group.city); }}
-                      className="p-3 text-white bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110"
+                      className="p-2.5 md:p-3 text-white bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-lg md:rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       title="Delete city"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -745,35 +749,35 @@ export default function Hotels() {
                       return (
                         <div
                           key={hotel.id}
-                          className="bg-white rounded-2xl border-2 border-slate-200 hover:border-primary-300 hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:scale-[1.02]"
+                          className="bg-white rounded-xl md:rounded-2xl border-2 border-slate-200 hover:border-primary-300 hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:scale-[1.01] md:hover:scale-[1.02]"
                         >
                           {/* Single Row: Hotel Info + Room Types + Actions */}
-                          <div className="flex items-stretch">
+                          <div className={`flex ${isMobile ? 'flex-col' : 'items-stretch'}`}>
                             {/* Hotel Info - Left Side */}
                             <div
-                              className={`w-80 flex-shrink-0 p-6 border-r-2 border-slate-100 cursor-pointer hover:bg-gradient-to-br hover:from-slate-50 hover:to-white transition-all duration-300 bg-gradient-to-br ${cityColors.light}`}
+                              className={`${isMobile ? 'w-full' : 'w-80 flex-shrink-0 border-r-2'} p-4 md:p-6 border-slate-100 cursor-pointer hover:bg-gradient-to-br hover:from-slate-50 hover:to-white transition-all duration-300 bg-gradient-to-br ${cityColors.light}`}
                               onClick={() => toggleHotel(hotel.id)}
                             >
-                              <div className="flex items-center gap-4">
-                                <div className={`w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-xl border-2 border-slate-100`}>
+                              <div className="flex items-center gap-3 md:gap-4">
+                                <div className={`w-14 h-14 md:w-20 md:h-20 bg-white rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl border-2 border-slate-100 flex-shrink-0`}>
                                   {hotel.stars && !isNaN(parseInt(hotel.stars)) ? (
                                     <div className="flex flex-col items-center">
-                                      <Star className={`w-8 h-8 ${cityColors.text} fill-current`} />
-                                      <span className={`text-base font-black ${cityColors.text}`}>{hotel.stars}</span>
+                                      <Star className={`w-6 h-6 md:w-8 md:h-8 ${cityColors.text} fill-current`} />
+                                      <span className={`text-sm md:text-base font-black ${cityColors.text}`}>{hotel.stars}</span>
                                     </div>
                                   ) : hotel.stars === 'Guesthouse' || hotel.stars === 'Yurta' ? (
-                                    <Home className={`w-10 h-10 ${cityColors.text}`} />
+                                    <Home className={`w-7 h-7 md:w-10 md:h-10 ${cityColors.text}`} />
                                   ) : (
-                                    <Building2 className={`w-10 h-10 ${cityColors.text}`} />
+                                    <Building2 className={`w-7 h-7 md:w-10 md:h-10 ${cityColors.text}`} />
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-black text-xl text-slate-900 truncate">{hotel.name}</h3>
+                                  <h3 className="font-black text-base md:text-xl text-slate-900 truncate">{hotel.name}</h3>
                                   {hotel.address && (
-                                    <p className="text-sm text-slate-600 truncate mt-1 font-medium">{hotel.address}</p>
+                                    <p className="text-xs md:text-sm text-slate-600 truncate mt-0.5 md:mt-1 font-medium">{hotel.address}</p>
                                   )}
-                                  <div className="flex items-center gap-2 mt-2">
-                                    <span className={`px-3 py-1 rounded-xl text-xs font-black ${cityColors.light} ${cityColors.text} shadow-sm`}>
+                                  <div className="flex items-center gap-2 mt-1 md:mt-2">
+                                    <span className={`px-2 md:px-3 py-0.5 md:py-1 rounded-lg md:rounded-xl text-xs font-black ${cityColors.light} ${cityColors.text} shadow-sm`}>
                                       {hotel.roomTypes?.length || 0} room types
                                     </span>
                                   </div>
@@ -782,7 +786,7 @@ export default function Hotels() {
                             </div>
 
                             {/* Room Types - Middle (Scrollable) */}
-                            <div className="flex-1 flex items-center gap-4 px-6 py-5 overflow-x-auto">
+                            <div className={`flex-1 flex items-center gap-3 md:gap-4 px-3 md:px-6 py-3 md:py-5 overflow-x-auto ${isMobile ? 'border-t-2 border-slate-100' : ''}`}>
                               {hotel.roomTypes?.length > 0 ? (
                                 hotel.roomTypes.map(room => {
                                   const roomStyle = getRoomTypeStyle(room.name);
@@ -792,71 +796,71 @@ export default function Hotels() {
                                   return (
                                     <div
                                       key={room.id}
-                                      className={`flex-shrink-0 px-6 py-4 rounded-2xl border-2 ${roomStyle.bg} border-slate-200 hover:shadow-2xl hover:scale-110 transition-all duration-300 cursor-pointer group relative`}
+                                      className={`flex-shrink-0 px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl border-2 ${roomStyle.bg} border-slate-200 hover:shadow-2xl hover:scale-105 md:hover:scale-110 transition-all duration-300 cursor-pointer group relative min-w-[140px]`}
                                       onClick={() => openRoomModal(hotel.id, room)}
                                     >
-                                      <div className="flex items-center gap-3">
-                                        <span className={`font-black text-lg ${roomStyle.color}`}>{room.name}</span>
-                                        <span className="text-lg font-black text-slate-800">
+                                      <div className="flex items-center gap-2 md:gap-3">
+                                        <span className={`font-black text-base md:text-lg ${roomStyle.color}`}>{room.name}</span>
+                                        <span className="text-base md:text-lg font-black text-slate-800">
                                           {symbol}{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                           {room.currency === 'UZS' && ' UZS'}
                                         </span>
                                       </div>
                                       {/* Hover actions */}
-                                      <div className="absolute -top-3 -right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <div className={`absolute -top-2 md:-top-3 -right-2 md:-right-3 flex gap-1 md:gap-1.5 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
                                         <button
                                           onClick={(e) => { e.stopPropagation(); openSeasonModal(hotel.id, room); }}
-                                          className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
+                                          className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
                                           title="Seasonal prices"
                                         >
-                                          <Calendar className="w-4 h-4" />
+                                          <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                         </button>
                                         <button
                                           onClick={(e) => { e.stopPropagation(); deleteRoom(hotel.id, room); }}
-                                          className="w-8 h-8 bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
+                                          className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
                                           title="Delete"
                                         >
-                                          <X className="w-4 h-4" />
+                                          <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                         </button>
                                       </div>
                                     </div>
                                   );
                                 })
                               ) : (
-                                <span className="text-base text-slate-400 italic font-medium">No room types</span>
+                                <span className="text-sm md:text-base text-slate-400 italic font-medium">No room types</span>
                               )}
 
                               {/* Add Room Button */}
                               <button
                                 onClick={() => openRoomModal(hotel.id)}
-                                className="flex-shrink-0 px-5 py-4 rounded-2xl border-3 border-dashed border-emerald-400 text-emerald-600 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-green-50 hover:border-emerald-500 hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+                                className="flex-shrink-0 px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-2xl border-3 border-dashed border-emerald-400 text-emerald-600 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-green-50 hover:border-emerald-500 hover:shadow-xl transition-all duration-300 transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
                               >
-                                <Plus className="w-6 h-6" />
+                                <Plus className="w-5 h-5 md:w-6 md:h-6" />
                               </button>
                             </div>
 
                             {/* Actions - Right Side */}
-                            <div className="flex-shrink-0 flex items-center gap-3 px-5 border-l-2 border-slate-100 bg-gradient-to-br from-slate-50 to-white">
+                            <div className={`flex-shrink-0 flex items-center ${isMobile ? 'justify-center' : ''} gap-2 md:gap-3 px-3 md:px-5 py-3 md:py-0 border-slate-100 bg-gradient-to-br from-slate-50 to-white ${isMobile ? 'border-t-2' : 'border-l-2'}`}>
                               <button
                                 onClick={() => openImageModal(hotel)}
-                                className="p-3 text-white bg-gradient-to-br from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110"
+                                className="p-2.5 md:p-3 text-white bg-gradient-to-br from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-xl md:rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 title="Photos"
                               >
-                                <Image className="w-6 h-6" />
+                                <Image className="w-5 h-5 md:w-6 md:h-6" />
                               </button>
                               <button
                                 onClick={() => openHotelModal(hotel)}
-                                className="p-3 text-white bg-gradient-to-br from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110"
+                                className="p-2.5 md:p-3 text-white bg-gradient-to-br from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-xl md:rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 title="Edit"
                               >
-                                <Edit className="w-6 h-6" />
+                                <Edit className="w-5 h-5 md:w-6 md:h-6" />
                               </button>
                               <button
                                 onClick={() => deleteHotel(hotel)}
-                                className="p-3 text-white bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110"
+                                className="p-2.5 md:p-3 text-white bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl md:rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
                                 title="Delete"
                               >
-                                <Trash2 className="w-6 h-6" />
+                                <Trash2 className="w-5 h-5 md:w-6 md:h-6" />
                               </button>
                             </div>
                           </div>
