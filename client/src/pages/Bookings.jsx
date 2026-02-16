@@ -642,21 +642,21 @@ export default function Bookings() {
                       <div className="flex items-center justify-end gap-1 md:gap-2">
                         <Link
                           to={`/bookings/${booking.id}`}
-                          className="p-2 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg hover:scale-110 transition-all duration-200"
+                          className="p-2.5 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                           title="View"
                         >
                           <Eye className="w-5 h-5 md:w-4 md:h-4" />
                         </Link>
                         <Link
                           to={`/bookings/${booking.id}?edit=true`}
-                          className="p-2 md:p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg hover:scale-110 transition-all duration-200"
+                          className="p-2.5 md:p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                           title="Edit"
                         >
                           <Edit className="w-5 h-5 md:w-4 md:h-4" />
                         </Link>
                         <button
                           onClick={() => handleDelete(booking.id, booking.bookingNumber)}
-                          className="p-2 md:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200"
+                          className="p-2.5 md:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                           title="Delete"
                         >
                           <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
