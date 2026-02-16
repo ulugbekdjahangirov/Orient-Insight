@@ -840,17 +840,17 @@ export default function Guides() {
               <table className="w-full text-sm">
                 <thead className="bg-gradient-to-r from-primary-600 to-primary-700">
                   <tr>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Number</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Tour Type</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Tour Start</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Arrival</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Tour End</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">PAX</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Uzbekistan</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Turkmenistan</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Guide</th>
-                    <th className="px-4 py-4 text-left text-xs font-bold text-white uppercase">Status</th>
-                    <th className="px-4 py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
+                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Number</th>
+                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Tour Type</th>
+                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Tour Start</th>
+                    <th className="hidden md:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Arrival</th>
+                    <th className="hidden lg:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Tour End</th>
+                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">PAX</th>
+                    <th className="hidden lg:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Uzbekistan</th>
+                    <th className="hidden lg:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Turkmenistan</th>
+                    <th className="hidden md:table-cell px-4 py-4 text-left text-xs font-bold text-white uppercase">Guide</th>
+                    <th className="px-3 md:px-4 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Status</th>
+                    <th className="px-3 md:px-4 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -858,33 +858,33 @@ export default function Guides() {
                     const status = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
                     return (
                       <tr key={booking.id} className="hover:bg-primary-50/30 transition-colors duration-150">
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center justify-center w-8 h-8 bg-primary-100 text-primary-700 rounded-lg font-bold text-xs">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
+                          <span className="inline-flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-primary-100 text-primary-700 rounded-lg font-bold text-xs">
                             {idx + 1}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <span
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-white shadow-sm"
+                            className="px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs font-bold text-white shadow-sm whitespace-nowrap"
                             style={{ backgroundColor: booking.tourType?.color || '#3B82F6' }}
                           >
                             {booking.bookingNumber || 'N/A'}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-gray-700 font-medium">{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</td>
-                        <td className="px-4 py-4 text-gray-700 font-medium">{format(new Date(booking.arrivalDate), 'dd.MM.yyyy')}</td>
-                        <td className="px-4 py-4 text-gray-700 font-medium">{format(new Date(booking.endDate), 'dd.MM.yyyy')}</td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 md:px-4 py-3 md:py-4 text-gray-700 font-medium text-xs md:text-sm">{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</td>
+                        <td className="hidden md:table-cell px-4 py-4 text-gray-700 font-medium">{format(new Date(booking.arrivalDate), 'dd.MM.yyyy')}</td>
+                        <td className="hidden lg:table-cell px-4 py-4 text-gray-700 font-medium">{format(new Date(booking.endDate), 'dd.MM.yyyy')}</td>
+                        <td className="px-3 md:px-4 py-3 md:py-4">
                           <div className="flex items-center gap-1.5">
-                            <User className="w-4 h-4 text-primary-500" />
-                            <span className="font-bold text-gray-900">{booking.pax || 0}</span>
+                            <User className="w-3 h-3 md:w-4 md:h-4 text-primary-500" />
+                            <span className="font-bold text-gray-900 text-xs md:text-sm">{booking.pax || 0}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-gray-700 font-medium">{booking.paxUzbekistan || 0}</td>
-                        <td className="px-4 py-4 text-gray-700 font-medium">{booking.paxTurkmenistan || 0}</td>
-                        <td className="px-4 py-4 text-gray-700 font-semibold">{booking.guide?.name || '—'}</td>
-                        <td className="px-4 py-4">
-                          <span className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
+                        <td className="hidden lg:table-cell px-4 py-4 text-gray-700 font-medium">{booking.paxUzbekistan || 0}</td>
+                        <td className="hidden lg:table-cell px-4 py-4 text-gray-700 font-medium">{booking.paxTurkmenistan || 0}</td>
+                        <td className="hidden md:table-cell px-4 py-4 text-gray-700 font-semibold">{booking.guide?.name || '—'}</td>
+                        <td className="px-3 md:px-4 py-3 md:py-4">
+                          <span className={`px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap ${
                             status === 'COMPLETED' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' :
                             status === 'CONFIRMED' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' :
                             status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' :
@@ -898,11 +898,11 @@ export default function Guides() {
                              'Pending'}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-3 md:px-4 py-3 md:py-4">
+                          <div className="flex items-center justify-end gap-1 md:gap-2">
                             <button
                               onClick={() => handleEditBooking(booking.id)}
-                              className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                               title="Edit"
                             >
                               <Edit className="w-4 h-4" />
@@ -910,7 +910,7 @@ export default function Guides() {
                             {isAdmin && (
                               <button
                                 onClick={() => handleDeleteBooking(booking)}
-                                className="p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                                className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                                 title="Delete"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -944,22 +944,22 @@ export default function Guides() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-green-600 to-green-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Half Day</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Day</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Name</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Half Day</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Day</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {guides.filter(g => g.isActive).map((guide) => (
                   <tr key={guide.id} className="hover:bg-green-50/50 transition-colors duration-150">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                          <User className="w-6 h-6 text-white" />
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
+                          <User className="w-5 h-5 md:w-6 md:h-6 text-white" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{guide.name}</p>
+                          <p className="font-semibold text-sm md:text-base text-gray-900">{guide.name}</p>
                           {(guide.firstName || guide.lastName) && (
                             <p className="text-xs text-gray-500 mt-0.5">
                               {guide.firstName} {guide.lastName}
@@ -968,7 +968,7 @@ export default function Guides() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
                       {editingPayment === guide.id ? (
                         <input
                           type="number"
@@ -979,18 +979,18 @@ export default function Guides() {
                             console.log('🟡 [INPUT] Half Day Rate changed:', rawValue, '→', newValue);
                             setPaymentFormData({ ...paymentFormData, halfDayRate: newValue });
                           }}
-                          className="w-28 px-3 py-2 border-2 border-yellow-300 rounded-lg focus:border-yellow-500 focus:outline-none font-bold"
+                          className="w-20 md:w-28 px-2 md:px-3 py-2 md:py-2 text-sm border-2 border-yellow-300 rounded-lg focus:border-yellow-500 focus:outline-none font-bold"
                           step="0.01"
                           min="0"
                         />
                       ) : (
-                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg font-bold text-sm shadow-sm">
-                          <CreditCard className="w-4 h-4" />
+                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-yellow-100 text-yellow-800 rounded-lg font-bold text-xs md:text-sm shadow-sm">
+                          <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
                           ${guide.halfDayRate ?? 55}
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
                       {editingPayment === guide.id ? (
                         <input
                           type="number"
@@ -1001,31 +1001,31 @@ export default function Guides() {
                             console.log('🟢 [INPUT] Day Rate changed:', rawValue, '→', newValue);
                             setPaymentFormData({ ...paymentFormData, dayRate: newValue });
                           }}
-                          className="w-28 px-3 py-2 border-2 border-green-300 rounded-lg focus:border-green-500 focus:outline-none font-bold"
+                          className="w-20 md:w-28 px-2 md:px-3 py-2 md:py-2 text-sm border-2 border-green-300 rounded-lg focus:border-green-500 focus:outline-none font-bold"
                           step="0.01"
                           min="0"
                         />
                       ) : (
-                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-bold text-sm shadow-md">
-                          <CreditCard className="w-4 h-4" />
+                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-bold text-xs md:text-sm shadow-md">
+                          <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
                           ${guide.dayRate ?? 110}
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center justify-end gap-1 md:gap-2">
                         {editingPayment === guide.id ? (
                           <>
                             <button
                               onClick={() => handleSavePayment(guide.id)}
-                              className="p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                               title="Save"
                             >
                               <Save className="w-4 h-4" />
                             </button>
                             <button
                               onClick={handleCancelPaymentEdit}
-                              className="p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                               title="Cancel"
                             >
                               <X className="w-4 h-4" />
@@ -1034,7 +1034,7 @@ export default function Guides() {
                         ) : (
                           <button
                             onClick={() => handleEditPayment(guide)}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                            className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
@@ -1066,28 +1066,28 @@ export default function Guides() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-purple-600 to-purple-700">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Nomer</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">City</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase">Price (USD)</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Nomer</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Name</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">City</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-left text-xs font-bold text-white uppercase">Price (USD)</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-right text-xs font-bold text-white uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {guides.filter(g => g.isActive).map((guide, index) => (
                   <tr key={guide.id} className="hover:bg-purple-50/50 transition-colors duration-150">
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center justify-center w-8 h-8 bg-purple-100 text-purple-700 rounded-lg font-bold text-sm">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <span className="inline-flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-purple-100 text-purple-700 rounded-lg font-bold text-xs md:text-sm">
                         {index + 1}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                          <User className="w-6 h-6 text-white" />
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
+                          <User className="w-5 h-5 md:w-6 md:h-6 text-white" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{guide.name}</p>
+                          <p className="font-semibold text-sm md:text-base text-gray-900">{guide.name}</p>
                           {(guide.firstName || guide.lastName) && (
                             <p className="text-xs text-gray-500 mt-0.5">
                               {guide.firstName} {guide.lastName}
@@ -1096,7 +1096,7 @@ export default function Guides() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
                       {editingCityPayment === guide.id ? (
                         <input
                           type="text"
@@ -1106,17 +1106,17 @@ export default function Guides() {
                             console.log('🟣 [CITY INPUT] City changed:', newValue);
                             setCityPaymentFormData({ ...cityPaymentFormData, city: newValue });
                           }}
-                          className="w-40 px-3 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium"
+                          className="w-32 md:w-40 px-2 md:px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium"
                           placeholder="Город"
                         />
                       ) : (
-                        <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg font-medium">
-                          <MapPin className="w-4 h-4" />
+                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-gray-100 text-gray-600 rounded-lg font-medium text-xs md:text-sm">
+                          <MapPin className="w-3 h-3 md:w-4 md:h-4" />
                           {guide.city || '—'}
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
                       {editingCityPayment === guide.id ? (
                         <input
                           type="number"
@@ -1127,32 +1127,32 @@ export default function Guides() {
                             console.log('🟣 [CITY INPUT] City Rate changed:', rawValue, '→', newValue);
                             setCityPaymentFormData({ ...cityPaymentFormData, cityRate: newValue });
                           }}
-                          className="w-28 px-3 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-bold"
+                          className="w-20 md:w-28 px-2 md:px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-bold"
                           step="0.01"
                           min="0"
                           placeholder="0"
                         />
                       ) : (
-                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-bold text-sm shadow-md">
-                          <CreditCard className="w-4 h-4" />
+                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-bold text-xs md:text-sm shadow-md">
+                          <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
                           ${guide.cityRate ?? 0}
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center justify-end gap-1 md:gap-2">
                         {editingCityPayment === guide.id ? (
                           <>
                             <button
                               onClick={() => handleSaveCityPayment(guide.id)}
-                              className="p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                               title="Save"
                             >
                               <Save className="w-4 h-4" />
                             </button>
                             <button
                               onClick={handleCancelCityPaymentEdit}
-                              className="p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                               title="Cancel"
                             >
                               <X className="w-4 h-4" />
@@ -1161,7 +1161,7 @@ export default function Guides() {
                         ) : (
                           <button
                             onClick={() => handleEditCityPayment(guide)}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                            className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
