@@ -70,8 +70,38 @@ export default function Ausgaben() {
     const cacheKey = activeTourType;
     const needsDetailedData = activeExpenseTab === 'general' || activeExpenseTab === 'hotels';
 
+    // Try localStorage first (persists across page reloads)
+    try {
+      const localStorageKey = `ausgaben_cache_${cacheKey}`;
+      const cachedData = localStorage.getItem(localStorageKey);
+
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        const cacheAge = Date.now() - (parsed.timestamp || 0);
+        const maxAge = 5 * 60 * 1000; // 5 minutes cache
+
+        if (cacheAge < maxAge && parsed.bookings && (!needsDetailedData || parsed.detailedData)) {
+          console.log(`✅ Using localStorage cache for ${cacheKey} (age: ${Math.round(cacheAge / 1000)}s)`);
+          setBookings(parsed.bookings);
+          if (parsed.detailedData) {
+            setBookingsDetailedData(parsed.detailedData);
+          }
+          // Also update in-memory cache
+          setCache(prev => ({
+            ...prev,
+            [cacheKey]: { bookings: parsed.bookings, detailedData: parsed.detailedData }
+          }));
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load from localStorage:', e);
+    }
+
+    // Check in-memory cache
     if (cache[cacheKey]?.bookings && (!needsDetailedData || cache[cacheKey]?.detailedData)) {
-      console.log(`✅ Using cached data for ${cacheKey}`);
+      console.log(`✅ Using in-memory cache for ${cacheKey}`);
       setBookings(cache[cacheKey].bookings);
       if (cache[cacheKey].detailedData) {
         setBookingsDetailedData(cache[cacheKey].detailedData);
@@ -123,14 +153,28 @@ export default function Ausgaben() {
         detailedData = await loadDetailedBookingsData(filteredBookings);
       }
 
-      // Cache the results
+      // Cache the results in memory
+      const cacheData = {
+        bookings: filteredBookings,
+        detailedData: detailedData || cache[cacheKey]?.detailedData || null
+      };
+
       setCache(prev => ({
         ...prev,
-        [cacheKey]: {
-          bookings: filteredBookings,
-          detailedData: detailedData || prev[cacheKey]?.detailedData || null
-        }
+        [cacheKey]: cacheData
       }));
+
+      // Also save to localStorage for persistence
+      try {
+        const localStorageKey = `ausgaben_cache_${cacheKey}`;
+        localStorage.setItem(localStorageKey, JSON.stringify({
+          ...cacheData,
+          timestamp: Date.now()
+        }));
+        console.log(`💾 Saved to localStorage: ${localStorageKey}`);
+      } catch (e) {
+        console.warn('Failed to save to localStorage:', e);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Error loading data');
