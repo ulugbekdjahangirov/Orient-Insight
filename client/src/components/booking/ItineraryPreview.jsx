@@ -425,7 +425,11 @@ export default function ItineraryPreview({ bookingId, booking }) {
           3: { cellWidth: 55 }
         },
         didParseCell: function(data) {
-          // Xayrulla row (row index 3, which is index 2 in 0-based)
+          // Nosir row (row index 1) → blue-50
+          if (data.row.index === 1) {
+            data.cell.styles.fillColor = [239, 246, 255]; // blue-50
+          }
+          // Sevil row (row index 2, col 0) → yellow-100
           if (data.row.index === 2 && data.column.index === 0) {
             data.cell.styles.fillColor = [254, 243, 199]; // yellow-100
           }
@@ -466,18 +470,23 @@ export default function ItineraryPreview({ bookingId, booking }) {
           filteredRoutes = routes.filter(r => checkIsFergana(r));
         }
 
-        // Store which rows should be yellow (Tashkent routes)
+        // Store which rows should be colored (Tashkent → yellow, Fergana → blue)
         const yellowRowIndices = [];
+        const blueRowIndices = [];
 
         const routeRows = filteredRoutes.map((r, idx) => {
           // Find matching flight for arrival time
           const routeDate = r.date?.split('T')[0];
           const matchingFlight = flights.find(f => f.date?.split('T')[0] === routeDate);
 
-          // Check if route is in Tashkent
+          // Check if route is in Tashkent or Fergana
           const isTashkent = checkIsTashkent(r);
+          const isFergana = checkIsFergana(r);
 
-          if (isTashkent) {
+          // Fergana takes priority over Tashkent (e.g. "Fergana-Tashkent" → blue)
+          if (isFergana) {
+            blueRowIndices.push(idx);
+          } else if (isTashkent) {
             yellowRowIndices.push(idx);
           }
 
@@ -508,9 +517,14 @@ export default function ItineraryPreview({ bookingId, booking }) {
             4: { cellWidth: 115 }
           },
           didParseCell: function(data) {
-            // Apply yellow background to Tashkent routes
-            if (data.section === 'body' && yellowRowIndices.includes(data.row.index)) {
-              data.cell.styles.fillColor = [254, 243, 199]; // yellow-100
+            if (data.section === 'body') {
+              // Fergana routes → blue-50
+              if (blueRowIndices.includes(data.row.index)) {
+                data.cell.styles.fillColor = [239, 246, 255]; // blue-50
+              // Tashkent routes → yellow-100
+              } else if (yellowRowIndices.includes(data.row.index)) {
+                data.cell.styles.fillColor = [254, 243, 199]; // yellow-100
+              }
             }
           }
         });
