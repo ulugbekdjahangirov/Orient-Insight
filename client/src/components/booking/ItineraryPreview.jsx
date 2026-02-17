@@ -1419,8 +1419,18 @@ export default function ItineraryPreview({ bookingId, booking }) {
                                      cityLower.includes('tashkent') ||
                                      cityLower.includes('toshkent');
 
+                  // Check if route is in Fergana (Nosir)
+                  const isFergana = routeNameLower.includes('fergana') ||
+                                    routeNameLower.includes('farg') ||
+                                    routeNameLower.includes('фарг') ||
+                                    cityLower.includes('fergana') ||
+                                    cityLower.includes('farg');
+
+                  // Determine row background color
+                  const rowClassName = isTashkent ? 'bg-yellow-100' : isFergana ? 'bg-blue-50' : '';
+
                   return (
-                    <tr key={route.id} className={isTashkent ? 'bg-yellow-100' : ''}>
+                    <tr key={route.id} className={rowClassName}>
                       <td className="border border-gray-900 px-3 py-2 text-center">
                         {idx + 1}
                       </td>
