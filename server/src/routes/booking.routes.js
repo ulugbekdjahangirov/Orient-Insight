@@ -256,6 +256,13 @@ router.get('/:id', authenticate, async (req, res) => {
         booking.bergreiseleiter = null;
       }
     }
+    if (booking.itineraryHeader) {
+      try {
+        booking.itineraryHeader = JSON.parse(booking.itineraryHeader);
+      } catch (e) {
+        booking.itineraryHeader = null;
+      }
+    }
 
     res.json({ booking });
   } catch (error) {
@@ -392,7 +399,8 @@ router.put('/:id', authenticate, async (req, res) => {
       notes,
       assignedToId,
       rechnungFirma,
-      rlExchangeRate
+      rlExchangeRate,
+      itineraryHeader
     } = req.body;
 
     const updateData = {};
@@ -459,6 +467,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (assignedToId !== undefined) updateData.assignedToId = assignedToId ? parseInt(assignedToId) : null;
     if (rechnungFirma !== undefined) updateData.rechnungFirma = rechnungFirma || null;
     if (rlExchangeRate !== undefined) updateData.rlExchangeRate = rlExchangeRate ? parseFloat(rlExchangeRate) : null;
+    if (itineraryHeader !== undefined) updateData.itineraryHeader = itineraryHeader ? JSON.stringify(itineraryHeader) : null;
 
     if (rlExchangeRate !== undefined) {
       console.log('💾 Saving rlExchangeRate to DB:', updateData.rlExchangeRate);

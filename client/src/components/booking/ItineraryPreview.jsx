@@ -31,10 +31,16 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   useEffect(() => {
     loadItineraryData();
-    // Load header data from localStorage
-    const savedHeader = localStorage.getItem(`itinerary-header-${bookingId}`);
-    if (savedHeader) {
-      setHeaderData(JSON.parse(savedHeader));
+    // Load header data: database first, then localStorage fallback
+    if (booking?.itineraryHeader) {
+      // Database has saved header → use it
+      setHeaderData(prev => ({ ...prev, ...booking.itineraryHeader }));
+    } else {
+      // Fallback: check localStorage
+      const savedHeader = localStorage.getItem(`itinerary-header-${bookingId}`);
+      if (savedHeader) {
+        setHeaderData(JSON.parse(savedHeader));
+      }
     }
   }, [bookingId]);
 
@@ -1154,30 +1160,35 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   const cancelEditHeader = () => {
     setEditingHeader(false);
-    // Reload from localStorage
-    const savedHeader = localStorage.getItem(`itinerary-header-${bookingId}`);
-    if (savedHeader) {
-      setHeaderData(JSON.parse(savedHeader));
+    // Reload from database first, then localStorage fallback
+    if (booking?.itineraryHeader) {
+      setHeaderData(prev => ({ ...prev, ...booking.itineraryHeader }));
     } else {
-      setHeaderData({
-        nosirContact: 'Nosir aka (+998 91 151 11 10) Farg\'ona',
-        sevilContact: 'Sevil aka (+998 90 445 10 92) Marshrutda',
-        xayrullaContact: 'Xayrulla (+998 93 133 00 03) Toshkentda',
-        country: 'Germaniya',
-        guideName: 'Zokir Saidov',
-        guidePhone: '+998 97 929 03 85'
-      });
+      const savedHeader = localStorage.getItem(`itinerary-header-${bookingId}`);
+      if (savedHeader) {
+        setHeaderData(JSON.parse(savedHeader));
+      }
     }
   };
 
-  const saveHeader = () => {
+  const saveHeader = async () => {
     try {
+      // Save to database (primary storage)
+      await bookingsApi.update(bookingId, { itineraryHeader: headerData });
+      // Save to localStorage as backup
       localStorage.setItem(`itinerary-header-${bookingId}`, JSON.stringify(headerData));
-      toast.success('Заголовок обновлен');
+      toast.success('Заголовок сақланди (Database)');
       setEditingHeader(false);
     } catch (error) {
       console.error('Error saving header:', error);
-      toast.error('Ошибка сохранения заголовка');
+      // Fallback: save only to localStorage
+      try {
+        localStorage.setItem(`itinerary-header-${bookingId}`, JSON.stringify(headerData));
+        toast.success('Заголовок обновлен (localStorage)');
+        setEditingHeader(false);
+      } catch (e) {
+        toast.error('Ошибка сохранения заголовка');
+      }
     }
   };
 

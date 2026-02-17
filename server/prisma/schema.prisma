@@ -202,6 +202,9 @@ model Booking {
   // Rechnung firma (Orient Insight / INFUTURESTORM)
   rechnungFirma   String?   // Orient Insight, INFUTURESTORM
 
+  // Marshrut varaqasi header (JSON: nosirContact, sevilContact, xayrullaContact)
+  itineraryHeader String?
+
   // RL Exchange Rate (USD to UZS)
   rlExchangeRate  Float?    // Exchange rate for RL tab calculations
 
