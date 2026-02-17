@@ -12652,11 +12652,13 @@ export default function BookingDetail() {
                 const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
                 const cityName = acc?.hotel?.city?.name || '';
 
-                // Skip Samarkand hotels in RL tab (check by CITY, not hotel name)
+                // Skip Jahongir/Jahongir Premium hotels (they go to Später tab)
+                // Other Samarkand hotels (e.g. Asia Samarkand) are shown here in RL tab
                 const cityNameLower = cityName.toLowerCase();
                 const isSamarkand = cityNameLower.includes('samarkand') || cityNameLower.includes('самарканд');
-                if (isSamarkand) {
-                  return; // Skip Samarkand hotels
+                const isJahongirHotel = hotelName.toLowerCase().includes('jahongir');
+                if (isSamarkand && isJahongirHotel) {
+                  return; // Skip Jahongir - it belongs to Später tab
                 }
 
                 // Map to standard city name
@@ -12992,11 +12994,12 @@ export default function BookingDetail() {
                 const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
                 const cityName = acc?.hotel?.city?.name || '';
 
-                // Only include Samarkand hotels (check by CITY, not hotel name)
+                // Only include Samarkand hotels in Später if hotel is Jahongir or Jahongir Premium
                 const cityNameLower = cityName.toLowerCase();
                 const isSamarkand = cityNameLower.includes('samarkand') || cityNameLower.includes('самарканд');
+                const isJahongirHotel = hotelName.toLowerCase().includes('jahongir');
 
-                if (isSamarkand) {
+                if (isSamarkand && isJahongirHotel) {
                   const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
                   const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
 
