@@ -399,6 +399,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
         ? 'Marshrut varaqasi (Xayrulla)'
         : provider === 'sevil'
         ? 'Marshrut varaqasi (Sevil)'
+        : provider === 'nosir'
+        ? 'Marshrut varaqasi (Nosir)'
         : 'Marshrut varaqasi';
       doc.text(title, 105, yPos, { align: 'center' });
       yPos += 7;
@@ -443,12 +445,25 @@ export default function ItineraryPreview({ bookingId, booking }) {
                  cityLower.includes('toshkent');
         };
 
+        // Helper function to check if route is Fergana (Nosir provider)
+        const checkIsFergana = (r) => {
+          const routeNameLower = (r.routeName || '').toLowerCase();
+          const cityLower = (r.city || '').toLowerCase();
+          return routeNameLower.includes('fergana') ||
+                 routeNameLower.includes('farg') ||
+                 routeNameLower.includes('фарг') ||
+                 cityLower.includes('fergana') ||
+                 cityLower.includes('farg');
+        };
+
         // Filter routes based on provider
         let filteredRoutes = routes;
         if (provider === 'xayrulla') {
           filteredRoutes = routes.filter(r => checkIsTashkent(r));
         } else if (provider === 'sevil') {
-          filteredRoutes = routes.filter(r => !checkIsTashkent(r));
+          filteredRoutes = routes.filter(r => !checkIsTashkent(r) && !checkIsFergana(r));
+        } else if (provider === 'nosir') {
+          filteredRoutes = routes.filter(r => checkIsFergana(r));
         }
 
         // Store which rows should be yellow (Tashkent routes)
@@ -1205,6 +1220,13 @@ export default function ItineraryPreview({ bookingId, booking }) {
         >
           <FileDown className="w-4 h-4" />
           PDF (Sevil)
+        </button>
+        <button
+          onClick={() => exportToPDF('nosir')}
+          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+        >
+          <FileDown className="w-4 h-4" />
+          PDF (Nosir)
         </button>
       </div>
 
