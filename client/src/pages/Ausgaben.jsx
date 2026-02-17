@@ -83,14 +83,18 @@ export default function Ausgaben() {
 
         if (cacheAge < maxAge && parsed.bookings && (!needsDetailedData || parsed.detailedData)) {
           console.log(`✅ Using localStorage cache for ${cacheKey} (age: ${Math.round(cacheAge / 1000)}s)`);
-          setBookings(parsed.bookings);
+          const nonCancelledBookings = parsed.bookings.filter(b => b.status !== 'CANCELLED');
+          setBookings(nonCancelledBookings);
           if (parsed.detailedData) {
-            setBookingsDetailedData(parsed.detailedData);
+            const nonCancelledDetailedData = parsed.detailedData.filter(d =>
+              nonCancelledBookings.some(b => b.id === d.bookingId)
+            );
+            setBookingsDetailedData(nonCancelledDetailedData);
           }
           // Also update in-memory cache
           setCache(prev => ({
             ...prev,
-            [cacheKey]: { bookings: parsed.bookings, detailedData: parsed.detailedData }
+            [cacheKey]: { bookings: nonCancelledBookings, detailedData: parsed.detailedData }
           }));
           setLoading(false);
           return;
@@ -103,9 +107,12 @@ export default function Ausgaben() {
     // Check in-memory cache
     if (cache[cacheKey]?.bookings && (!needsDetailedData || cache[cacheKey]?.detailedData)) {
       console.log(`✅ Using in-memory cache for ${cacheKey}`);
-      setBookings(cache[cacheKey].bookings);
+      const nonCancelledBookings = cache[cacheKey].bookings.filter(b => b.status !== 'CANCELLED');
+      setBookings(nonCancelledBookings);
       if (cache[cacheKey].detailedData) {
-        setBookingsDetailedData(cache[cacheKey].detailedData);
+        setBookingsDetailedData(cache[cacheKey].detailedData.filter(d =>
+          nonCancelledBookings.some(b => b.id === d.bookingId)
+        ));
       }
       setLoading(false);
       return;
@@ -139,9 +146,9 @@ export default function Ausgaben() {
         console.warn(`⚠️ ${noTourType.length} bookings WITHOUT tourType:`, noTourType);
       }
 
-      // Filter by tour type
+      // Filter by tour type, exclude cancelled bookings
       const filteredBookings = allBookings.filter(
-        booking => booking.tourType?.code === activeTourType
+        booking => booking.tourType?.code === activeTourType && booking.status !== 'CANCELLED'
       );
 
       console.log(`✅ Filtered ${filteredBookings.length} bookings for ${activeTourType}`);
@@ -231,11 +238,7 @@ export default function Ausgaben() {
           await Promise.all(roomingPromises);
 
           // Calculate hotels total
-          const grandTotalDataRaw = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
-          // Override hotel totals to 0 for cancelled bookings
-          const grandTotalData = booking.status === 'CANCELLED'
-            ? { grandTotalUSD: 0, grandTotalUZS: 0, hotelBreakdown: [] }
-            : grandTotalDataRaw;
+          const grandTotalData = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
 
           // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab
           const expenses = await calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
@@ -506,17 +509,6 @@ export default function Ausgaben() {
       }
     } catch (e) {
       console.error('  ❌ Error loading sightseeing:', e);
-    }
-
-    // Override all costs to 0 for cancelled bookings
-    if (booking.status === 'CANCELLED') {
-      console.log(`  ⚠️ Booking ${booking.bookingNumber} is CANCELLED - all costs set to 0`);
-      return {
-        hotelsUSD: 0, hotelsUZS: 0,
-        transportSevil: 0, transportXayrulla: 0, transportNosir: 0,
-        railway: 0, flights: 0, guide: 0,
-        meals: 0, metro: 0, shou: 0, eintritt: 0, other: 0
-      };
     }
 
     console.log(`\n  📊 FINAL EXPENSES for ${booking.bookingNumber}:`);
