@@ -3637,19 +3637,28 @@ export default function BookingDetail() {
 
       // 6. Transport
       if (routes && routes.length > 0) {
+        const normalizeProviderPDF = (provider) => {
+          const p = (provider || '').toLowerCase().trim();
+          if (p.includes('sevil')) return 'Sevil';
+          if (p.includes('xayrulla') || p.includes('hayrulla')) return 'Xayrulla';
+          if (p.includes('nosir')) return 'Nosir';
+          return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : 'Unknown';
+        };
+
         const transportByProvider = {};
         routes.forEach(route => {
-          const providerName = route.provider || 'Unknown Provider';
           const price = route.price || 0;
-          if (!transportByProvider[providerName]) {
-            transportByProvider[providerName] = 0;
+          if (price <= 0) return;
+          const displayName = normalizeProviderPDF(route.provider);
+          if (!transportByProvider[displayName]) {
+            transportByProvider[displayName] = 0;
           }
-          transportByProvider[providerName] += price;
+          transportByProvider[displayName] += price;
         });
 
         Object.entries(transportByProvider).forEach(([provider, total]) => {
           expensesByCity['Transport'].push({
-            name: capitalizeFirstLetter(provider),
+            name: provider,
             pricePerPerson: null,
             pax: null,
             usd: total,
@@ -12354,28 +12363,31 @@ export default function BookingDetail() {
 
             // 6. Process Transport (from routes) - aggregate by provider
             if (routes && routes.length > 0) {
+              // Normalize provider to display name
+              const normalizeProvider = (provider) => {
+                const p = (provider || '').toLowerCase().trim();
+                if (p.includes('sevil')) return 'Sevil';
+                if (p.includes('xayrulla') || p.includes('hayrulla')) return 'Xayrulla';
+                if (p.includes('nosir')) return 'Nosir';
+                return provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : 'Unknown';
+              };
+
               const transportByProvider = {};
 
               routes.forEach(route => {
-                const providerName = route.provider || 'Unknown Provider';
                 const price = route.price || 0;
-
-                if (!transportByProvider[providerName]) {
-                  transportByProvider[providerName] = 0;
+                if (price <= 0) return;
+                const displayName = normalizeProvider(route.provider);
+                if (!transportByProvider[displayName]) {
+                  transportByProvider[displayName] = 0;
                 }
-                transportByProvider[providerName] += price;
+                transportByProvider[displayName] += price;
               });
-
-              // Helper function to capitalize first letter
-              const capitalizeFirstLetter = (str) => {
-                if (!str) return str;
-                return str.charAt(0).toUpperCase() + str.slice(1);
-              };
 
               // Add aggregated transport costs
               Object.entries(transportByProvider).forEach(([provider, total]) => {
                 expensesByCity['Transport'].push({
-                  name: capitalizeFirstLetter(provider),
+                  name: provider,
                   pricePerPerson: null,
                   pax: null,
                   usd: total,
