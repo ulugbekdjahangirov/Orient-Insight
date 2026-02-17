@@ -280,6 +280,14 @@ export default function Ausgaben() {
     let secondGuide = null;
     let bergreiseleiter = null;
 
+    // Tour type default days helper
+    const getDefaultDays = (code) => {
+      if (code === 'er' || code === 'co') return { fullDays: 12, halfDays: 1 };
+      if (code === 'kas') return { fullDays: 7, halfDays: 0 };
+      if (code === 'za') return { fullDays: 5, halfDays: 1 };
+      return { fullDays: 0, halfDays: 0 };
+    };
+
     // 1. Try mainGuideData JSON first (most accurate - explicitly saved by user in BookingDetail)
     try {
       if (booking.mainGuideData) {
@@ -287,12 +295,19 @@ export default function Ausgaben() {
           ? JSON.parse(booking.mainGuideData)
           : booking.mainGuideData;
         if (mgData) {
-          let totalPayment = mgData.totalPayment;
-          if (!totalPayment && (mgData.fullDays > 0 || mgData.halfDays > 0)) {
-            const dr = mgData.dayRate || mgData.guide?.dayRate || 110;
-            const hdr = mgData.halfDayRate || mgData.guide?.halfDayRate || 55;
-            totalPayment = ((mgData.fullDays || 0) * dr) + ((mgData.halfDays || 0) * hdr);
+          const dr = mgData.dayRate || mgData.guide?.dayRate || 110;
+          const hdr = mgData.halfDayRate || mgData.guide?.halfDayRate || 55;
+          let fullDays = mgData.fullDays || 0;
+          let halfDays = mgData.halfDays || 0;
+
+          // If saved days are 0, use tour type defaults (handles old data saved before KAS fix)
+          if (fullDays === 0 && halfDays === 0 && mgData.guide) {
+            const defaults = getDefaultDays(tourTypeCode);
+            fullDays = defaults.fullDays;
+            halfDays = defaults.halfDays;
           }
+
+          let totalPayment = (fullDays * dr) + (halfDays * hdr);
           if (totalPayment > 0) {
             mainGuide = { totalPayment };
             console.log(`  ✅ mainGuideData totalPayment: $${totalPayment}`);
@@ -309,14 +324,16 @@ export default function Ausgaben() {
         secondGuide = additionalGuides[0] || null;
         console.log(`  ✅ Parsed secondGuide:`, secondGuide);
 
-        // Calculate totalPayment if missing
-        if (secondGuide && !secondGuide.totalPayment) {
+        // Always recalculate totalPayment from days × rate (in case rate changed)
+        if (secondGuide) {
           const dayRate = secondGuide.dayRate || secondGuide.guide?.dayRate || 110;
           const halfDayRate = secondGuide.halfDayRate || secondGuide.guide?.halfDayRate || 55;
           const fullDays = secondGuide.fullDays || 0;
           const halfDays = secondGuide.halfDays || 0;
-          secondGuide.totalPayment = (fullDays * dayRate) + (halfDays * halfDayRate);
-          console.log(`  🔧 Calculated second guide payment: ${fullDays} days × $${dayRate} + ${halfDays} half days × $${halfDayRate} = $${secondGuide.totalPayment}`);
+          if (fullDays > 0 || halfDays > 0) {
+            secondGuide.totalPayment = (fullDays * dayRate) + (halfDays * halfDayRate);
+          }
+          console.log(`  🔧 Second guide payment: ${fullDays} days × $${dayRate} = $${secondGuide.totalPayment}`);
         }
       }
     } catch (e) {
@@ -356,14 +373,11 @@ export default function Ausgaben() {
 
       // AUTO-CALCULATE: If guide is assigned but days are 0, use tour type defaults
       if (booking.guide && fullDays === 0 && halfDays === 0) {
-        if (tourTypeCode === 'er' || tourTypeCode === 'co') {
-          fullDays = 12;  // ER/CO default: 12 full days
-          halfDays = 1;   // ER/CO default: 1 half day
+        const defaults = getDefaultDays(tourTypeCode);
+        if (defaults.fullDays > 0 || defaults.halfDays > 0) {
+          fullDays = defaults.fullDays;
+          halfDays = defaults.halfDays;
           console.log(`  🤖 AUTO: ${tourTypeCode.toUpperCase()} guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
-        } else if (tourTypeCode === 'za') {
-          fullDays = 5;   // ZA default: 5 full days
-          halfDays = 1;   // ZA default: 1 half day
-          console.log(`  🤖 AUTO: ZA guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
         }
       }
 
