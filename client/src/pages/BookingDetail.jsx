@@ -39,7 +39,8 @@ import {
   Folder,
   FolderOpen,
   CheckCircle2,
-  Menu
+  Menu,
+  Ban
 } from 'lucide-react';
 import {
   isFileSystemAccessSupported,
@@ -400,6 +401,14 @@ export default function BookingDetail() {
   const [loadingFlights, setLoadingFlights] = useState(false);
   const [flightModalOpen, setFlightModalOpen] = useState(false);
   const [editingFlight, setEditingFlight] = useState(null);
+  const [stornoModalOpen, setStornoModalOpen] = useState(false);
+  const [stornoAcc, setStornoAcc] = useState(null); // accommodation for storno
+  const [stornoHotelId, setStornoHotelId] = useState(''); // selected hotel id
+  const [stornoCheckIn, setStornoCheckIn] = useState('');
+  const [stornoCheckOut, setStornoCheckOut] = useState('');
+  const [stornoDbl, setStornoDbl] = useState(0);
+  const [stornoTwn, setStornoTwn] = useState(0);
+  const [stornoSngl, setStornoSngl] = useState(0);
   const [planeVehicles, setPlaneVehicles] = useState([]); // Planes from OPEX database
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
@@ -5308,9 +5317,28 @@ export default function BookingDetail() {
         }
 
         if (rooms.length === 0) {
-          console.warn(`No rooms calculated for ${hotel.name} (${groupName}): ${groupTourists.length} tourists`);
-          toast.error(`Нет комнат для ${hotel.name}: проверьте предпочтения туристов`);
-          continue;
+          // If tourists = 0 (e.g. cancelled group), use booking's room counts as fallback
+          const fallbackDbl = booking.roomsDbl || 0;
+          const fallbackTwn = booking.roomsTwn || 0;
+          const fallbackSngl = booking.roomsSngl || 0;
+          const hasFallback = fallbackDbl > 0 || fallbackTwn > 0 || fallbackSngl > 0;
+
+          if (hasFallback) {
+            if (fallbackDbl > 0) {
+              rooms.push({ roomTypeCode: 'DBL', roomsCount: fallbackDbl, guestsPerRoom: 2, pricePerNight: 0 });
+            }
+            if (fallbackTwn > 0) {
+              rooms.push({ roomTypeCode: 'TWN', roomsCount: fallbackTwn, guestsPerRoom: 2, pricePerNight: 0 });
+            }
+            if (fallbackSngl > 0) {
+              rooms.push({ roomTypeCode: 'SNGL', roomsCount: fallbackSngl, guestsPerRoom: 1, pricePerNight: 0 });
+            }
+            console.log(`⚠️ 0 tourists for ${hotel.name}: using booking room counts as fallback (DBL:${fallbackDbl}, TWN:${fallbackTwn}, SNGL:${fallbackSngl})`);
+          } else {
+            console.warn(`No rooms calculated for ${hotel.name} (${groupName}): ${groupTourists.length} tourists`);
+            toast.error(`Нет комнат для ${hotel.name}: проверьте предпочтения туристов`);
+            continue;
+          }
         }
 
         // Create accommodation
@@ -16091,6 +16119,29 @@ export default function BookingDetail() {
                             <Trash2 className="w-5 h-5" />
                             {isMobile && <span className="font-medium">Delete</span>}
                           </button>
+                          {/* Storno button - only for Cancelled bookings */}
+                          {booking?.status === 'CANCELLED' && (
+                            <button
+                              onClick={() => {
+                                const dblRooms = acc.rooms?.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + (r.roomsCount || 0), 0) || 0;
+                                const twnRooms = acc.rooms?.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + (r.roomsCount || 0), 0) || 0;
+                                const snglRooms = acc.rooms?.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + (r.roomsCount || 0), 0) || 0;
+                                setStornoAcc(acc);
+                                setStornoHotelId(acc.hotel?.id?.toString() || '');
+                                setStornoCheckIn(acc.checkInDate?.split('T')[0] || '');
+                                setStornoCheckOut(acc.checkOutDate?.split('T')[0] || '');
+                                setStornoDbl(dblRooms);
+                                setStornoTwn(twnRooms);
+                                setStornoSngl(snglRooms);
+                                setStornoModalOpen(true);
+                              }}
+                              className={`p-3 text-orange-600 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 hover:border-orange-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                              title="Stornierungsschreiben (Annulyatsiya xati)"
+                            >
+                              <Ban className="w-5 h-5" />
+                              {isMobile && <span className="font-medium">Storno PDF</span>}
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -17947,6 +17998,108 @@ export default function BookingDetail() {
                   Save
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Storno (Cancellation) Modal */}
+      {stornoModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6 rounded-t-2xl flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Ban className="w-6 h-6" />
+                Stornierungsschreiben
+              </h2>
+              <button onClick={() => setStornoModalOpen(false)} className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Hotel selection */}
+              <div>
+                <label className="block text-sm font-bold mb-1 text-gray-700">Hotel</label>
+                <select
+                  value={stornoHotelId}
+                  onChange={e => setStornoHotelId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                >
+                  <option value="">— Tanlang —</option>
+                  {hotels.map(h => (
+                    <option key={h.id} value={h.id}>{h.name} ({h.city?.name})</option>
+                  ))}
+                </select>
+              </div>
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1 text-gray-700">Anreise (kirish)</label>
+                  <input type="date" value={stornoCheckIn} onChange={e => setStornoCheckIn(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1 text-gray-700">Abreise (chiqish)</label>
+                  <input type="date" value={stornoCheckOut} onChange={e => setStornoCheckOut(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+              </div>
+              {/* Room counts */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1 text-gray-700">DBL</label>
+                  <input type="number" min="0" value={stornoDbl} onChange={e => setStornoDbl(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1 text-gray-700">TWN</label>
+                  <input type="number" min="0" value={stornoTwn} onChange={e => setStornoTwn(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1 text-gray-700">SNGL</label>
+                  <input type="number" min="0" value={stornoSngl} onChange={e => setStornoSngl(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                </div>
+              </div>
+              {/* Info */}
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
+                <strong>Buchung:</strong> {booking?.bookingNumber} &nbsp;|&nbsp;
+                <strong>PAX:</strong> {tourists?.length || booking?.pax || 0}
+              </div>
+            </div>
+            <div className="px-6 pb-6 flex gap-3 justify-end">
+              <button
+                onClick={() => setStornoModalOpen(false)}
+                className="px-5 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => {
+                  if (!stornoHotelId) { toast.error('Hotel tanlang'); return; }
+                  const selectedHotel = hotels.find(h => h.id.toString() === stornoHotelId.toString());
+                  const roomParts = [];
+                  if (stornoDbl > 0) roomParts.push(`${stornoDbl}x DBL`);
+                  if (stornoTwn > 0) roomParts.push(`${stornoTwn}x TWN`);
+                  if (stornoSngl > 0) roomParts.push(`${stornoSngl}x SNGL`);
+                  const url = `/api/bookings/${id}/storno-preview?` + new URLSearchParams({
+                    hotelId: stornoHotelId,
+                    hotelName: selectedHotel?.name || '',
+                    hotelCity: selectedHotel?.city?.name || '',
+                    checkIn: stornoCheckIn,
+                    checkOut: stornoCheckOut,
+                    rooms: roomParts.join(', '),
+                    bookingNumber: booking?.bookingNumber || '',
+                    pax: tourists?.length || booking?.pax || 0
+                  });
+                  window.open(url, '_blank');
+                }}
+                className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors font-bold flex items-center gap-2 shadow-lg"
+              >
+                <FileDown className="w-4 h-4" />
+                PDF yuklab olish
+              </button>
             </div>
           </div>
         </div>

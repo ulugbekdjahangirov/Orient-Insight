@@ -2309,6 +2309,109 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/bookings/:id/storno-preview - Stornierungsschreiben (Cancellation letter) PDF
+router.get('/:id/storno-preview', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hotelName, hotelCity, checkIn, checkOut, rooms, bookingNumber, pax } = req.query;
+
+    // Format dates to German format
+    const formatDE = (dateStr) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+      return `${d.getDate()}. ${months[d.getMonth()]} ${d.getFullYear()}`;
+    };
+
+    const today = new Date();
+    const todayDE = formatDE(today.toISOString().split('T')[0]);
+    const checkInDE = formatDE(checkIn);
+    const checkOutDE = formatDE(checkOut);
+
+    const html = `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Storno ${bookingNumber} - ${hotelName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #222; background: white; padding: 40px 50px; }
+    .header { margin-bottom: 40px; }
+    .sender { font-size: 10pt; color: #666; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 20px; }
+    .recipient { margin-bottom: 30px; }
+    .recipient strong { font-size: 13pt; }
+    .date-line { text-align: right; margin-bottom: 30px; font-size: 11pt; color: #555; }
+    .subject { font-size: 13pt; font-weight: bold; margin-bottom: 24px; border-bottom: 2px solid #e55; padding-bottom: 8px; color: #c33; }
+    .body p { margin-bottom: 14px; line-height: 1.6; }
+    .details-box { background: #fff8f8; border: 1px solid #f5c6c6; border-radius: 6px; padding: 16px 20px; margin: 20px 0; }
+    .details-box table { width: 100%; border-collapse: collapse; }
+    .details-box td { padding: 5px 10px; font-size: 11pt; }
+    .details-box td:first-child { font-weight: bold; color: #555; width: 180px; }
+    .footer { margin-top: 50px; }
+    .signature { margin-top: 40px; }
+    @media print {
+      body { padding: 20px 30px; }
+      @page { margin: 15mm 15mm; size: A4; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="sender">Orient Insight GmbH &nbsp;|&nbsp; Reisebüro &nbsp;|&nbsp; info@orient-insight.com</div>
+    <div class="recipient">
+      <strong>${hotelName || 'Hotel'}</strong><br>
+      ${hotelCity || ''}
+    </div>
+  </div>
+
+  <div class="date-line">Taschkent, den ${todayDE}</div>
+
+  <div class="subject">Betreff: Stornierung der Buchung ${bookingNumber || ''}</div>
+
+  <div class="body">
+    <p>Sehr geehrte Damen und Herren,</p>
+
+    <p>hiermit teilen wir Ihnen mit, dass wir die folgende Buchung leider stornieren müssen:</p>
+
+    <div class="details-box">
+      <table>
+        <tr><td>Buchungsnummer:</td><td><strong>${bookingNumber || '–'}</strong></td></tr>
+        <tr><td>Hotel:</td><td>${hotelName || '–'}</td></tr>
+        <tr><td>Anreisedatum:</td><td>${checkInDE || '–'}</td></tr>
+        <tr><td>Abreisedatum:</td><td>${checkOutDE || '–'}</td></tr>
+        <tr><td>Zimmerbelegung:</td><td>${rooms || '–'}</td></tr>
+        <tr><td>Personenanzahl:</td><td>${pax || '–'} Personen</td></tr>
+      </table>
+    </div>
+
+    <p>Wir bitten Sie, diese Stornierung zu bestätigen und uns gegebenenfalls über anfallende Stornogebühren zu informieren.</p>
+
+    <p>Wir entschuldigen uns für etwaige Unannehmlichkeiten und danken Ihnen für Ihr Verständnis.</p>
+  </div>
+
+  <div class="footer">
+    <div class="signature">
+      <p>Mit freundlichen Grüßen,</p>
+      <br><br>
+      <p><strong>Orient Insight GmbH</strong></p>
+      <p>Reisebüro</p>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() { window.print(); };
+  </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (error) {
+    console.error('Storno preview error:', error);
+    res.status(500).json({ error: 'Ошибка создания Storno' });
+  }
+});
+
 module.exports = router;
 
 
