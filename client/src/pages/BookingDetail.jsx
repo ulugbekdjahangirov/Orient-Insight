@@ -14026,6 +14026,7 @@ export default function BookingDetail() {
                                 <option value="Tashkent - Fergana">Tashkent - Fergana</option>
                                 <option value="Fergana - Tashkent">Fergana - Tashkent</option>
                                 <option value="Qoqon - Fergana">Qoqon - Fergana</option>
+                                <option value="Fergana - Qoqon">Fergana - Qoqon</option>
                                 <option value="Fergana - Margilan">Fergana - Margilan</option>
                                 <option value="Dostlik - Fergana">Dostlik - Fergana</option>
                                 <option value="Tashkent - Chimgan - Tashkent">Tashkent - Chimgan - Tashkent</option>
