@@ -1524,10 +1524,13 @@ export default function BookingDetail() {
         // Priority: mainGuideData (JSON) > guide + guideId (database relation)
         if (b.mainGuideData) {
           const rates = getCurrentGuideRate(b.mainGuideData.guide);
-          const fullDays = b.mainGuideData.fullDays || 0;
+          let fullDays = b.mainGuideData.fullDays || 0;
           const halfDays = b.mainGuideData.halfDays || 0;
+          // Correct fullDays if saved value exceeds tour-type maximum (e.g. ZA must be 5)
+          if (b.tourType?.code === 'ZA' && fullDays > 5) fullDays = 5;
           setMainGuide({
             ...b.mainGuideData,
+            fullDays,
             dayRate: rates.dayRate,
             halfDayRate: rates.halfDayRate,
             totalPayment: (fullDays * rates.dayRate) + (halfDays * rates.halfDayRate)
