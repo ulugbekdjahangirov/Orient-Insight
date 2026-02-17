@@ -3919,7 +3919,7 @@ export default function BookingDetail() {
 
       // 2. Process Routes/Transport - Calculate totals by Provider
       if (routes && routes.length > 0) {
-        const providerTotals = { xayrulla: 0, sevil: 0 };
+        const providerTotals = { xayrulla: 0, sevil: 0, nosir: 0 };
 
         routes.forEach(route => {
           const price = route.price || 0;
@@ -3931,6 +3931,8 @@ export default function BookingDetail() {
               providerTotals.sevil += price;
             } else if (providerLower.includes('xayrulla') || providerLower.includes('hayrulla') || providerLower.includes('хайрулла')) {
               providerTotals.xayrulla += price;
+            } else if (providerLower.includes('nosir') || providerLower.includes('носир')) {
+              providerTotals.nosir += price;
             } else {
               providerTotals.xayrulla += price;
             }
@@ -3953,6 +3955,16 @@ export default function BookingDetail() {
             pricePerPerson: null,
             pax: null,
             usd: providerTotals.sevil,
+            uzs: 0
+          });
+        }
+
+        if (providerTotals.nosir > 0) {
+          expensesByCity['Transport'].push({
+            name: 'Nosir',
+            pricePerPerson: null,
+            pax: null,
+            usd: providerTotals.nosir,
             uzs: 0
           });
         }
@@ -12987,7 +12999,8 @@ export default function BookingDetail() {
             if (routes && routes.length > 0) {
               const providerTotals = {
                 xayrulla: 0,
-                sevil: 0
+                sevil: 0,
+                nosir: 0
               };
 
               routes.forEach(route => {
@@ -13000,6 +13013,8 @@ export default function BookingDetail() {
                     providerTotals.sevil += price;
                   } else if (providerLower.includes('xayrulla') || providerLower.includes('hayrulla') || providerLower.includes('хайрулла')) {
                     providerTotals.xayrulla += price;
+                  } else if (providerLower.includes('nosir') || providerLower.includes('носир')) {
+                    providerTotals.nosir += price;
                   } else {
                     // Default to xayrulla if provider not specified
                     providerTotals.xayrulla += price;
@@ -13024,6 +13039,16 @@ export default function BookingDetail() {
                   pricePerPerson: null,
                   pax: null,
                   usd: providerTotals.sevil,
+                  uzs: 0
+                });
+              }
+
+              if (providerTotals.nosir > 0) {
+                expensesByCity['Transport'].push({
+                  name: 'Nosir',
+                  pricePerPerson: null,
+                  pax: null,
+                  usd: providerTotals.nosir,
                   uzs: 0
                 });
               }
