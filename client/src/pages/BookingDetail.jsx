@@ -1526,8 +1526,9 @@ export default function BookingDetail() {
           const rates = getCurrentGuideRate(b.mainGuideData.guide);
           let fullDays = b.mainGuideData.fullDays || 0;
           const halfDays = b.mainGuideData.halfDays || 0;
-          // Correct fullDays if saved value exceeds tour-type maximum (e.g. ZA must be 5)
+          // Correct fullDays if saved value exceeds tour-type maximum
           if (b.tourType?.code === 'ZA' && fullDays > 5) fullDays = 5;
+          if (b.tourType?.code === 'KAS' && fullDays > 8) fullDays = 8;
           setMainGuide({
             ...b.mainGuideData,
             fullDays,
@@ -1549,8 +1550,8 @@ export default function BookingDetail() {
             defaultFullDays = 5;
             defaultHalfDays = 1;
           } else if (b.tourType?.code === 'KAS') {
-            defaultFullDays = 7;
-            defaultHalfDays = 0;
+            defaultFullDays = 8;
+            defaultHalfDays = 1;
           }
           const fullDays = b.guideFullDays || defaultFullDays;
           const halfDays = b.guideHalfDays || defaultHalfDays;
@@ -1587,8 +1588,8 @@ export default function BookingDetail() {
               totalPayment: (fullDays * rates.dayRate) + (halfDays * rates.halfDayRate)
             });
           }
-        } else if (b.tourType?.code === 'ZA' || b.tourType?.code === 'KAS') {
-          // For ZA and KAS tours without second guide, auto-select Feruz (1 full day)
+        } else if (b.tourType?.code === 'ZA') {
+          // For ZA tours without second guide, auto-select Feruz (1 full day)
           const feruzGuide = guidesRes.data.guides.find(g => g.name === 'Feruz' || g.name === 'Феруз');
           const feruzDayRate = feruzGuide?.dayRate || 110;
           const feruzHalfDayRate = feruzGuide?.halfDayRate || Math.round(feruzDayRate / 2);
@@ -2946,7 +2947,7 @@ export default function BookingDetail() {
         } else if (booking?.tourType?.code === 'ZA') {
           setGuideDays({ fullDays: 5, halfDays: 1 });
         } else if (booking?.tourType?.code === 'KAS') {
-          setGuideDays({ fullDays: 7, halfDays: 0 });
+          setGuideDays({ fullDays: 8, halfDays: 1 });
         } else {
           setGuideDays({ fullDays: 0, halfDays: 0 });
         }

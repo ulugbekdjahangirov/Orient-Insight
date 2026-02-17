@@ -283,7 +283,7 @@ export default function Ausgaben() {
     // Tour type default days helper
     const getDefaultDays = (code) => {
       if (code === 'er' || code === 'co') return { fullDays: 12, halfDays: 1 };
-      if (code === 'kas') return { fullDays: 7, halfDays: 0 };
+      if (code === 'kas') return { fullDays: 8, halfDays: 1 };
       if (code === 'za') return { fullDays: 5, halfDays: 1 };
       return { fullDays: 0, halfDays: 0 };
     };
