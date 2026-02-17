@@ -245,65 +245,46 @@ export default function ItineraryPreview({ bookingId, booking }) {
       // 2. Middle routes (Samarkand, Bukhara, Khiva)
       // 3. Last 2 Tashkent routes at the end (Mahalliy Aeroport-Hotel, Hotel- Mahalliy Aeroport)
 
+      const tourTypeCode = typeof booking?.tourType === 'string'
+        ? booking?.tourType
+        : booking?.tourType?.code;
+      const isERTour = tourTypeCode === 'ER';
+
       const sortedRoutes = [...loadedRoutes].sort((a, b) => {
+        // For non-ER tours (KAS, ZA, CO): sort purely by date
+        if (!isERTour) {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          const dateDiff = dateA - dateB;
+          if (dateDiff !== 0) return dateDiff;
+          return a.id - b.id;
+        }
+
+        // For ER tours: special sorting (Tashkent start/end logic)
         const routeA = (a.routeName || '').toLowerCase();
         const routeB = (b.routeName || '').toLowerCase();
 
-        // Simplified categorization based on routeName (not city field!)
         const getCategory = (routeName) => {
-          console.log(`🔍 Checking route: "${routeName}"`);
-
-          // Check if it's a Tashkent route (routeName contains "tashkent")
-          if (!routeName.includes('tashkent')) {
-            console.log(`  → middle (not Tashkent route)`);
-            return 'middle';  // Non-Tashkent routes in middle
-          }
-
-          // First 3 Tashkent routes (by routeName pattern)
-          if (routeName.includes('city tour')) {
-            console.log(`  → first (city tour)`);
-            return 'first';
-          }
-          if (routeName.includes('chimgan')) {
-            console.log(`  → first (chimgan)`);
-            return 'first';
-          }
-          if (routeName.includes('vokzal')) {
-            console.log(`  → first (vokzal)`);
-            return 'first';
-          }
-
-          // Last 2 Tashkent routes (airport pickup/dropoff)
-          if (routeName.includes('aeroport') || routeName.includes('aeroporti')) {
-            console.log(`  → last (aeroport)`);
-            return 'last';
-          }
-
-          // Other Tashkent routes
-          console.log(`  → middle (other Tashkent route)`);
+          if (!routeName.includes('tashkent')) return 'middle';
+          if (routeName.includes('city tour')) return 'first';
+          if (routeName.includes('chimgan')) return 'first';
+          if (routeName.includes('vokzal')) return 'first';
+          if (routeName.includes('aeroport') || routeName.includes('aeroporti')) return 'last';
           return 'middle';
         };
 
         const catA = getCategory(routeA);
         const catB = getCategory(routeB);
-
-        // Category order: first < middle < last
         const catOrder = { first: 1, middle: 2, last: 3 };
 
         if (catOrder[catA] !== catOrder[catB]) {
           return catOrder[catA] - catOrder[catB];
         }
 
-        // Within same category, sort by date
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
         const dateDiff = dateA - dateB;
-
-        if (dateDiff !== 0) {
-          return dateDiff;
-        }
-
-        // Same date: sort by ID
+        if (dateDiff !== 0) return dateDiff;
         return a.id - b.id;
       });
 
