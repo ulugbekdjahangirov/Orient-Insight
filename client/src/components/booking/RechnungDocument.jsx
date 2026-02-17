@@ -502,15 +502,19 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
           einzelpreis: einzelpreis,
           anzahl: anzahl,
           currency: 'USD'
-        },
-        {
+        }
+      ];
+
+      // Only add EZ Zuschlag if there are EZ rooms
+      if (ezCount > 0) {
+        items.push({
           id: 2,
           description: 'EZ Zuschlag',
           einzelpreis: ezZuschlag,
           anzahl: ezCount,
           currency: 'USD'
-        }
-      ];
+        });
+      }
 
       let nextId = 3;
 
@@ -589,15 +593,19 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
           einzelpreis: einzelpreis,
           anzahl: anzahl,
           currency: 'USD'
-        },
-        {
+        }
+      ];
+
+      // Only add EZ Zuschlag if there are EZ rooms
+      if (ezCount > 0) {
+        items.push({
           id: 2,
           description: 'EZ Zuschlag',
           einzelpreis: ezZuschlag,
           anzahl: ezCount,
           currency: 'USD'
-        }
-      ];
+        });
+      }
 
       // Note: For now, we only handle basic items for non-ER tours
       // Additional items can be added manually or we can extend this logic later
