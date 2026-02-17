@@ -809,9 +809,25 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       const pax = tourists?.length || booking?.pax || 0;
       const startDate = format(new Date(booking.departureDate), 'dd.MM');
       const endDate = format(new Date(booking.endDate), 'dd.MM.yyyy');
-      return `für die Erlebnisreisen Usbekistan mit Turkmenistan (${pax} Personen) ${startDate}- ${endDate} (Usbekistan Teil)`;
+
+      const tourTypeCode = typeof booking?.tourType === 'string'
+        ? booking?.tourType
+        : booking?.tourType?.code;
+
+      let tourName;
+      if (tourTypeCode === 'KAS') {
+        tourName = 'Kasakistan, Kirgistan und Usbekistan';
+      } else if (tourTypeCode === 'ZA') {
+        tourName = 'Zentralasien';
+      } else if (tourTypeCode === 'CO') {
+        tourName = 'Usbekistan ComfortPlus';
+      } else {
+        tourName = 'Usbekistan mit Turkmenistan';
+      }
+
+      return `für die Erlebnisreisen ${tourName} (${pax} Personen) ${startDate}- ${endDate} (Usbekistan Teil)`;
     }
-    return 'für die Erlebnisreisen Usbekistan mit Turkmenistan';
+    return 'für die Erlebnisreisen Usbekistan';
   };
 
   // Generate Orient Insight PDF
