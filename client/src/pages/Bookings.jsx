@@ -127,7 +127,7 @@ export default function Bookings() {
       // Filter by calculated status on frontend
       if (status) {
         bookingsData = bookingsData.filter(booking => {
-          const calculatedStatus = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+          const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
           return calculatedStatus === status;
         });
       }
@@ -415,7 +415,7 @@ export default function Bookings() {
         ) : isMobile ? (
           <div className="space-y-3">
             {bookings.map((booking, index) => {
-              const calculatedStatus = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+              const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
               return (
                 <div
                   key={booking.id}
@@ -545,12 +545,12 @@ export default function Bookings() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {bookings.map((booking, index) => {
-                  const calculatedStatus = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                  const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                   // Set row background color based on status
                   let rowClass = 'hover:bg-gray-50';
                   if (calculatedStatus === 'CANCELLED') {
-                    rowClass = 'bg-red-100 hover:bg-red-200';
+                    rowClass = 'bg-red-50 hover:bg-red-100';
                   } else if (calculatedStatus === 'PENDING') {
                     rowClass = 'bg-yellow-100 hover:bg-yellow-200';
                   } else if (calculatedStatus === 'IN_PROGRESS') {

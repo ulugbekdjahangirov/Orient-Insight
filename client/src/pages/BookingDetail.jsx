@@ -13954,17 +13954,17 @@ export default function BookingDetail() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg">
                     <span className="text-xs text-blue-600">PAX</span>
-                    <span className="text-sm font-bold text-blue-700">{tourists.length || formData.pax || 0}</span>
+                    <span className="text-sm font-bold text-blue-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.length || formData.pax || 0)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-lg">
                     <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                     <span className="text-xs text-emerald-600">UZB</span>
-                    <span className="text-sm font-bold text-emerald-700">{tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0}</span>
+                    <span className="text-sm font-bold text-emerald-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-lg">
                     <div className="w-2 h-2 rounded-full bg-purple-500"></div>
                     <span className="text-xs text-purple-600">TKM</span>
-                    <span className="text-sm font-bold text-purple-700">{tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0}</span>
+                    <span className="text-sm font-bold text-purple-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0)}</span>
                   </div>
                 </div>
 
@@ -15232,8 +15232,10 @@ export default function BookingDetail() {
               {(() => {
                 // Calculate statistics from tourists
                 // Include ALL tourists (with or without room numbers)
-                const touristsWithRooms = tourists; // Use all tourists, not just those with roomNumbers
-                const totalGuests = tourists.length;
+                // Show 0 for cancelled bookings
+                const isCancelledBooking = booking?.status === 'CANCELLED';
+                const touristsWithRooms = isCancelledBooking ? [] : tourists; // Use all tourists, not just those with roomNumbers
+                const totalGuests = isCancelledBooking ? 0 : tourists.length;
 
                 // Count unique rooms by type
                 const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
@@ -17011,7 +17013,7 @@ export default function BookingDetail() {
                 <div className="text-sm">
                   <p className="font-semibold text-blue-700">Tourist counts</p>
                   <p className="text-blue-600">
-                    Auto-calculated from Final List: <span className="font-bold">{tourists.filter(t => (t.accommodation || '').toLowerCase().includes('uzbek') || (t.accommodation || '').toLowerCase() === 'uz').length} Uzbekistan</span>
+                    Auto-calculated from Final List: <span className="font-bold">{booking?.status === 'CANCELLED' ? 0 : tourists.filter(t => (t.accommodation || '').toLowerCase().includes('uzbek') || (t.accommodation || '').toLowerCase() === 'uz').length} Uzbekistan</span>
                     {(() => {
                       const selectedTourType = tourTypes.find(t => t.id === parseInt(formData.tourTypeId));
                       return selectedTourType?.code === 'ER' ? (
@@ -17034,7 +17036,7 @@ export default function BookingDetail() {
                 <input
                   type="number"
                   name="pax"
-                  value={formData.pax}
+                  value={booking?.status === 'CANCELLED' ? 0 : formData.pax}
                   disabled={true}
                   min="0"
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 cursor-not-allowed font-bold text-gray-900"
@@ -17049,7 +17051,7 @@ export default function BookingDetail() {
                 <input
                   type="number"
                   name="paxUzbekistan"
-                  value={formData.paxUzbekistan}
+                  value={booking?.status === 'CANCELLED' ? 0 : formData.paxUzbekistan}
                   onChange={(e) => {
                     const uzbekCount = parseInt(e.target.value) || 0;
                     const turkCount = parseInt(formData.paxTurkmenistan) || 0;
@@ -17078,7 +17080,7 @@ export default function BookingDetail() {
                     <input
                       type="number"
                       name="paxTurkmenistan"
-                      value={formData.paxTurkmenistan}
+                      value={booking?.status === 'CANCELLED' ? 0 : formData.paxTurkmenistan}
                       onChange={(e) => {
                         const turkCount = parseInt(e.target.value) || 0;
                         const uzbekCount = parseInt(formData.paxUzbekistan) || 0;
