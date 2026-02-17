@@ -10677,6 +10677,22 @@ export default function BookingDetail() {
                           })()}
                         </td>
                       </tr>
+                      {/* Nosir Total */}
+                      <tr className="bg-gradient-to-r from-blue-50 to-sky-50">
+                        <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">
+                          Nosir Total:
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-lg text-blue-700">
+                          {(() => {
+                            const nosirTotal = routes
+                              .filter(r => r.provider?.toLowerCase() === 'nosir')
+                              .reduce((sum, r) => sum + (r.price || 0), 0);
+                            return nosirTotal > 0
+                              ? Math.round(nosirTotal).toLocaleString('en-US').replace(/,/g, ' ')
+                              : '-';
+                          })()}
+                        </td>
+                      </tr>
                       {/* Grand Total */}
                       <tr className="bg-gradient-to-r from-blue-100 to-cyan-100 border-t-2 border-blue-300">
                         <td colSpan="6" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-blue-200">
