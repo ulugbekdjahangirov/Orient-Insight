@@ -684,7 +684,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
         setInvoiceItems(items);
       }
     }
-  }, [booking, tourists, roomingListData, loading, invoice?.id, invoice?.firma, invoice?.items]);
+  }, [booking, tourists, roomingListData, loading, invoice?.id, invoice?.firma, invoice?.items, totalPrices]);
 
   // Calculate total
   const calculateTotal = () => {
