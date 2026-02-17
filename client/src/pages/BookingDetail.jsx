@@ -5436,6 +5436,7 @@ export default function BookingDetail() {
       setFormData((prev) => {
         const selectedTourType = tourTypes.find(t => t.id === parseInt(value));
         const isER = selectedTourType?.code === 'ER';
+        const isCO = selectedTourType?.code === 'CO';
 
         const uzbek = parseInt(prev.paxUzbekistan) || 0;
         const turkmen = parseInt(prev.paxTurkmenistan) || 0;
@@ -5445,11 +5446,15 @@ export default function BookingDetail() {
         const totalPax = isER ? (uzbek + turkmen) : uzbek;
         const newTurkmen = isER ? prev.paxTurkmenistan : '0';
 
+        // For CO tours: auto-set country to Germany (unless already set)
+        const newCountry = isCO && !prev.country ? 'Germany' : prev.country;
+
         return {
           ...prev,
           [name]: value,
           paxTurkmenistan: newTurkmen,
-          pax: totalPax
+          pax: totalPax,
+          country: newCountry
         };
       });
     }
