@@ -1515,7 +1515,7 @@ export default function BookingDetail() {
           // Auto-calculate days based on tour type
           let defaultFullDays = 0;
           let defaultHalfDays = 0;
-          if (b.tourType?.code === 'ER') {
+          if (b.tourType?.code === 'ER' || b.tourType?.code === 'CO') {
             defaultFullDays = 12;
             defaultHalfDays = 1;
           } else if (b.tourType?.code === 'ZA') {
@@ -2899,7 +2899,7 @@ export default function BookingDetail() {
       }
 
       if (type === 'main') {
-        if (booking?.tourType?.code === 'ER') {
+        if (booking?.tourType?.code === 'ER' || booking?.tourType?.code === 'CO') {
           setGuideDays({ fullDays: 12, halfDays: 1 });
         } else if (booking?.tourType?.code === 'ZA') {
           setGuideDays({ fullDays: 5, halfDays: 1 });
