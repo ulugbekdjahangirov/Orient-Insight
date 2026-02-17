@@ -1122,8 +1122,8 @@ export default function BookingDetail() {
 
     return trainVehicles.map(train => {
       // Parse route to extract departure and arrival stations
-      // Example route: "Tashkent - Samarkand" or "Tashkent- Samarkand"
-      const routeParts = (train.route || '').split('-').map(s => s.trim());
+      // Supports: "Tashkent - Samarkand", "Tashkent-Samarkand", "Qoqon_Bukhara"
+      const routeParts = (train.route || '').split(/[-_]/).map(s => s.trim()).filter(Boolean);
       const departureStation = routeParts[0] || '';
       const arrivalStation = routeParts[1] || '';
 
@@ -9551,19 +9551,48 @@ export default function BookingDetail() {
                       onChange={(e) => {
                         const selectedTrain = transformedTrainVehicles.find(t => t.trainNumber === e.target.value);
                         if (selectedTrain) {
-                          // Auto-populate date: departure date + 3 days
-                          // (departureDate + 1 day = arrival in UZ, + 2 days = train date)
+                          // Auto-populate date based on tour type and train route
                           let autoDate = '';
                           if (booking && booking.departureDate) {
-                            console.log('🔍 Railway Date Calculation:');
-                            console.log('  booking.departureDate:', booking.departureDate);
+                            const tourTypeCode = typeof booking.tourType === 'string' ? booking.tourType : booking.tourType?.code;
+                            const isKAS = tourTypeCode === 'KAS';
+                            const routeLower = (selectedTrain.route || '').toLowerCase();
+                            const depLower = (selectedTrain.departure || '').toLowerCase();
+                            const arrLower = (selectedTrain.arrival || '').toLowerCase();
 
-                            const departureDate = new Date(booking.departureDate);
-                            departureDate.setDate(departureDate.getDate() + 3);
+                            if (isKAS) {
+                              const isQoqonBukhara =
+                                (depLower.includes('qoqon') || depLower.includes('qqon') || routeLower.includes('qoqon')) &&
+                                (arrLower.includes('bukhara') || arrLower.includes('buxoro') || routeLower.includes('bukhara') || routeLower.includes('buxoro'));
+                              const isSamarkandTashkent =
+                                (depLower.includes('samarkand') || depLower.includes('samarqand') || routeLower.includes('samarkand')) &&
+                                (arrLower.includes('tashkent') || arrLower.includes('toshkent') || routeLower.includes('tashkent'));
 
-                            console.log('  Train date (departure +3 days):', departureDate);
-                            autoDate = format(departureDate, 'yyyy-MM-dd');
-                            console.log('  autoDate (formatted):', autoDate);
+                              if (isQoqonBukhara) {
+                                // 2nd day in Uzbekistan = min tourist checkInDate + 1 day
+                                const uzTourists = tourists?.filter(t => t.checkInDate) || [];
+                                const uzArrival = uzTourists.length > 0
+                                  ? new Date(Math.min(...uzTourists.map(t => new Date(t.checkInDate).getTime())))
+                                  : new Date(booking.departureDate);
+                                uzArrival.setDate(uzArrival.getDate() + 1);
+                                autoDate = format(uzArrival, 'yyyy-MM-dd');
+                              } else if (isSamarkandTashkent) {
+                                // endDate - 2 days
+                                const endDate = new Date(booking.endDate);
+                                endDate.setDate(endDate.getDate() - 2);
+                                autoDate = format(endDate, 'yyyy-MM-dd');
+                              } else {
+                                // KAS default: departureDate + 3
+                                const d = new Date(booking.departureDate);
+                                d.setDate(d.getDate() + 3);
+                                autoDate = format(d, 'yyyy-MM-dd');
+                              }
+                            } else {
+                              // ER/CO/ZA: departureDate + 3 days
+                              const departureDate = new Date(booking.departureDate);
+                              departureDate.setDate(departureDate.getDate() + 3);
+                              autoDate = format(departureDate, 'yyyy-MM-dd');
+                            }
                           }
 
                           // Default tariff to Economy
