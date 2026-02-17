@@ -231,7 +231,11 @@ export default function Ausgaben() {
           await Promise.all(roomingPromises);
 
           // Calculate hotels total
-          const grandTotalData = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
+          const grandTotalDataRaw = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
+          // Override hotel totals to 0 for cancelled bookings
+          const grandTotalData = booking.status === 'CANCELLED'
+            ? { grandTotalUSD: 0, grandTotalUZS: 0, hotelBreakdown: [] }
+            : grandTotalDataRaw;
 
           // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab
           const expenses = await calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
@@ -502,6 +506,17 @@ export default function Ausgaben() {
       }
     } catch (e) {
       console.error('  ❌ Error loading sightseeing:', e);
+    }
+
+    // Override all costs to 0 for cancelled bookings
+    if (booking.status === 'CANCELLED') {
+      console.log(`  ⚠️ Booking ${booking.bookingNumber} is CANCELLED - all costs set to 0`);
+      return {
+        hotelsUSD: 0, hotelsUZS: 0,
+        transportSevil: 0, transportXayrulla: 0, transportNosir: 0,
+        railway: 0, flights: 0, guide: 0,
+        meals: 0, metro: 0, shou: 0, eintritt: 0, other: 0
+      };
     }
 
     console.log(`\n  📊 FINAL EXPENSES for ${booking.bookingNumber}:`);

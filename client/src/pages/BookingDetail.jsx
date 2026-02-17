@@ -12525,6 +12525,13 @@ export default function BookingDetail() {
               });
             }
 
+            // Override all costs to 0 for cancelled bookings
+            if (booking?.status === 'CANCELLED') {
+              Object.keys(expensesByCity).forEach(city => {
+                expensesByCity[city] = expensesByCity[city].map(item => ({ ...item, usd: 0, uzs: 0 }));
+              });
+            }
+
             // Calculate totals
             let totalUSD = 0;
             let totalUZS = 0;
@@ -12848,6 +12855,13 @@ export default function BookingDetail() {
               });
             }
 
+            // Override all costs to 0 for cancelled bookings
+            if (booking?.status === 'CANCELLED') {
+              Object.keys(expensesByCity).forEach(city => {
+                expensesByCity[city] = expensesByCity[city].map(item => ({ ...item, usd: 0, uzs: 0 }));
+              });
+            }
+
             // Calculate totals
             let totalUSD = 0;
             let totalUZS = 0;
@@ -13115,6 +13129,13 @@ export default function BookingDetail() {
                   uzs: 0
                 });
               }
+            }
+
+            // Override all costs to 0 for cancelled bookings
+            if (booking?.status === 'CANCELLED') {
+              Object.keys(expensesByCity).forEach(city => {
+                expensesByCity[city] = expensesByCity[city].map(item => ({ ...item, usd: 0, uzs: 0 }));
+              });
             }
 
             // Calculate totals
@@ -13586,26 +13607,27 @@ export default function BookingDetail() {
             // Calculate all totals in their original currencies
             const pax = tourists?.length || 0;
             const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+            const isCancelledTotal = booking?.status === 'CANCELLED';
 
             // 1. Hotels - has BOTH USD and UZS (from grandTotalData)
-            const hotelsUSD = grandTotalData?.grandTotalUSD || 0;
-            const hotelsUZS = grandTotalData?.grandTotalUZS || 0;
+            const hotelsUSD = isCancelledTotal ? 0 : (grandTotalData?.grandTotalUSD || 0);
+            const hotelsUZS = isCancelledTotal ? 0 : (grandTotalData?.grandTotalUZS || 0);
 
             // 2. Transport & Routes - ONLY USD
-            const transportUSD = routes?.reduce((sum, r) => sum + (r.price || 0), 0) || 0;
+            const transportUSD = isCancelledTotal ? 0 : (routes?.reduce((sum, r) => sum + (r.price || 0), 0) || 0);
 
             // 3. Railway - ONLY UZS
-            const railwayUZS = railways?.reduce((sum, r) => sum + (r.price || 0), 0) || 0;
+            const railwayUZS = isCancelledTotal ? 0 : (railways?.reduce((sum, r) => sum + (r.price || 0), 0) || 0);
 
             // 4. Flights - ONLY UZS
-            const flightsUZS = flights?.reduce((sum, f) => sum + (f.price || 0), 0) || 0;
+            const flightsUZS = isCancelledTotal ? 0 : (flights?.reduce((sum, f) => sum + (f.price || 0), 0) || 0);
 
             // 5. Guide - ONLY USD
-            const guideUSD = (mainGuide?.totalPayment || 0) + (secondGuide?.totalPayment || 0) + (bergreiseleiter?.totalPayment || 0);
+            const guideUSD = isCancelledTotal ? 0 : ((mainGuide?.totalPayment || 0) + (secondGuide?.totalPayment || 0) + (bergreiseleiter?.totalPayment || 0));
 
             // 6. Meals - ONLY UZS (from OPEX database state)
             // Use mealsData state loaded from database
-            const mealsUZS = mealsData.reduce((sum, meal) => {
+            const mealsUZS = isCancelledTotal ? 0 : mealsData.reduce((sum, meal) => {
               const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
               const pricePerPerson = parseFloat(priceStr) || 0;
               return sum + (pricePerPerson * pax);
@@ -13614,7 +13636,7 @@ export default function BookingDetail() {
             // 7. Metro - ONLY UZS (from API) - Skip for ZA tours
             const metroData = (booking?.tourType?.code !== 'ZA') ? (metroVehicles || []) : [];
             const metroPax = pax + 1; // +1 for guide (tourists + guide)
-            const metroUZS = metroData.reduce((sum, metro) => {
+            const metroUZS = isCancelledTotal ? 0 : metroData.reduce((sum, metro) => {
               const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
               const priceStr = rawPrice.toString().replace(/\s/g, '');
               const pricePerPerson = parseFloat(priceStr) || 0;
@@ -13623,7 +13645,7 @@ export default function BookingDetail() {
 
             // 8. Shows - ONLY UZS (from OPEX database state)
             // Use showsData state loaded from database
-            const showsUZS = showsData.reduce((sum, show) => {
+            const showsUZS = isCancelledTotal ? 0 : showsData.reduce((sum, show) => {
               const rawPrice = show.price || show.pricePerPerson || 0;
               const priceStr = rawPrice.toString().replace(/\s/g, '');
               const pricePerPerson = parseFloat(priceStr) || 0;
@@ -13636,7 +13658,7 @@ export default function BookingDetail() {
             const savedEntriesMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s]));
 
             // Merge template entries with saved entries (recalculate with current PAX)
-            const allEintrittEntries = sightseeingData.map(item => {
+            const allEintrittEntries = isCancelledTotal ? [] : sightseeingData.map(item => {
               const itemName = item.name.toLowerCase().trim();
               const savedEntry = savedEntriesMap.get(itemName);
 
@@ -13659,18 +13681,20 @@ export default function BookingDetail() {
             });
 
             // Add remaining saved entries (recalculate with current PAX)
-            savedEntriesMap.forEach(savedEntry => {
-              const currentPax = tourists?.length || 0;
-              const pricePerPerson = savedEntry.pricePerPerson || 0;
-              allEintrittEntries.push({
-                price: pricePerPerson * currentPax
+            if (!isCancelledTotal) {
+              savedEntriesMap.forEach(savedEntry => {
+                const currentPax = tourists?.length || 0;
+                const pricePerPerson = savedEntry.pricePerPerson || 0;
+                allEintrittEntries.push({
+                  price: pricePerPerson * currentPax
+                });
               });
-            });
+            }
 
             const eintrittUZS = allEintrittEntries.reduce((sum, s) => sum + (s.price || 0), 0);
 
             // 10. Other Expenses - ONLY UZS
-            const otherUZS = tourServices.other ? tourServices.other.reduce((sum, item) => sum + ((item.pricePerPerson || 0) * (item.pax || 0)), 0) : 0;
+            const otherUZS = isCancelledTotal ? 0 : (tourServices.other ? tourServices.other.reduce((sum, item) => sum + ((item.pricePerPerson || 0) * (item.pax || 0)), 0) : 0);
 
             // Grand Totals (sum only in their respective currencies)
             const totalUZS = hotelsUZS + railwayUZS + flightsUZS + mealsUZS + metroUZS + showsUZS + eintrittUZS + otherUZS;
@@ -15798,6 +15822,12 @@ export default function BookingDetail() {
                                 currency = 'UZS';
                               }
 
+                              // Override costs to 0 for cancelled bookings
+                              if (booking?.status === 'CANCELLED') {
+                                totalCost = 0;
+                                calculationBreakdown = [];
+                              }
+
                               const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'so\'m';
                               const displayCost = currency === 'UZS' ? totalCost.toLocaleString('ru-RU') : totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -15889,7 +15919,7 @@ export default function BookingDetail() {
                                       </div>
 
                                       {/* Right side - Total */}
-                                      {totalCost > 0 && (
+                                      {(totalCost > 0 || booking?.status === 'CANCELLED') && (
                                         <div className="text-left md:text-right w-full md:w-auto">
                                           <div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-medium">Total (incl. tax)</div>
                                           <div className="text-2xl md:text-3xl font-black text-blue-700">
