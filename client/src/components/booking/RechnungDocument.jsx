@@ -74,8 +74,23 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
             console.log('✅ Loaded Total Prices from localStorage:', savedPrices);
             setTotalPrices(savedPrices);
           } else {
-            console.log('⚠️ No prices found in database or localStorage');
-            setTotalPrices({});
+            // Last fallback: calculate from individual categories
+            console.log('🔄 Calculating totals from individual categories...');
+            try {
+              const allResp = await api.get(`/prices/${tourTypeCode}`);
+              const allPrices = allResp.data || {};
+              const calculated = calculateTotalsFromCategories(allPrices);
+              if (Object.keys(calculated).length > 0) {
+                console.log('✅ Calculated totals from individual categories:', calculated);
+                setTotalPrices(calculated);
+              } else {
+                console.log('⚠️ No prices found anywhere');
+                setTotalPrices({});
+              }
+            } catch (calcErr) {
+              console.error('❌ Error calculating from categories:', calcErr);
+              setTotalPrices({});
+            }
           }
         }
       } catch (error) {
@@ -149,6 +164,57 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
 
     loadRoomingListData();
   }, [booking?.id]);
+
+  // Calculate total prices from individual category records (fallback when "total" not saved)
+  const calculateTotalsFromCategories = (allPrices) => {
+    const tiers = ['4', '5', '6-7', '8-9', '10-11', '12-13', '14-15', '16'];
+    const paxCounts = { '4': 4, '5': 5, '6-7': 6, '8-9': 8, '10-11': 10, '12-13': 12, '14-15': 14, '16': 16 };
+
+    // Commission is stored with paxTier "4" but contains rates for all tiers
+    const commissionData = allPrices['commission_4'] || {};
+
+    const result = {};
+    tiers.forEach(tierId => {
+      const pax = paxCounts[tierId];
+      const hotels = allPrices[`hotels_${tierId}`] || [];
+      const transport = allPrices[`transport_${tierId}`] || [];
+      const railway = allPrices[`railway_${tierId}`] || [];
+      const fly = allPrices[`fly_${tierId}`] || [];
+      const meal = allPrices[`meal_${tierId}`] || [];
+      const sightseeing = allPrices[`sightseeing_${tierId}`] || [];
+      const guide = allPrices[`guide_${tierId}`] || [];
+      const shou = allPrices[`shou_${tierId}`] || [];
+
+      if (!Array.isArray(hotels) || hotels.length === 0) return; // skip if no data for this tier
+
+      // Hotels: pricePerDay = room rate for 2 (shared), so /2 per person
+      const hotelTotal = hotels.reduce((sum, h) => sum + (h.days * h.pricePerDay), 0) / 2;
+      const totalEZZimmer = hotels.reduce((sum, h) => sum + (h.days * (h.ezZimmer || 0)), 0);
+      const ezZuschlagValue = totalEZZimmer - hotelTotal;
+
+      // Transport, Fly, Guide: total group cost, divide by PAX
+      const transportTotal = Array.isArray(transport) ? transport.reduce((sum, t) => sum + (t.days * t.price), 0) / pax : 0;
+      const flyTotal = Array.isArray(fly) ? fly.reduce((sum, f) => sum + (f.days * f.price), 0) / pax : 0;
+      const guideTotal = Array.isArray(guide) ? guide.reduce((sum, g) => sum + (g.days * g.price), 0) / pax : 0;
+
+      // Railway, Meal, Sightseeing, Shou: already per person
+      const railwayTotal = Array.isArray(railway) ? railway.reduce((sum, r) => sum + (r.days * r.price), 0) : 0;
+      const mealTotal = Array.isArray(meal) ? meal.reduce((sum, m) => sum + (m.days * m.price), 0) : 0;
+      const sightTotal = Array.isArray(sightseeing) ? sightseeing.reduce((sum, s) => sum + (s.days * s.price), 0) : 0;
+      const shouTotal = Array.isArray(shou) ? shou.reduce((sum, s) => sum + (s.days * s.price), 0) : 0;
+
+      const basePrice = hotelTotal + transportTotal + railwayTotal + flyTotal + mealTotal + sightTotal + guideTotal + shouTotal;
+      const commissionRate = typeof commissionData === 'object' ? (commissionData[tierId] || 0) : 0;
+      const commissionAmount = Math.round(basePrice * commissionRate / 100);
+
+      result[tierId] = {
+        totalPrice: Math.round(basePrice + commissionAmount),
+        ezZuschlag: Math.round(ezZuschlagValue)
+      };
+    });
+
+    return result;
+  };
 
   // Helper function to determine PAX tier (matching Price.jsx paxTiers)
   const getPaxTier = (touristCount) => {
