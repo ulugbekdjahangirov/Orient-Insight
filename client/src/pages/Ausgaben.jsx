@@ -73,7 +73,7 @@ export default function Ausgaben() {
 
     // Try localStorage first (persists across page reloads)
     try {
-      const localStorageKey = `ausgaben_cache_v3_${cacheKey}`;
+      const localStorageKey = `ausgaben_cache_v4_${cacheKey}`;
       const cachedData = localStorage.getItem(localStorageKey);
 
       if (cachedData) {
@@ -174,7 +174,7 @@ export default function Ausgaben() {
 
       // Also save to localStorage for persistence
       try {
-        const localStorageKey = `ausgaben_cache_v3_${cacheKey}`;
+        const localStorageKey = `ausgaben_cache_v4_${cacheKey}`;
         localStorage.setItem(localStorageKey, JSON.stringify({
           ...cacheData,
           timestamp: Date.now()
