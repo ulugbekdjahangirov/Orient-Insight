@@ -1,6 +1,8 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth.middleware');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -2311,98 +2313,187 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
   }
 });
 
-// GET /api/bookings/:id/storno-preview - Stornierungsschreiben (Cancellation letter) PDF
-router.get('/:id/storno-preview', authenticate, async (req, res) => {
+// GET /api/bookings/:id/storno-preview - Annulyatsiya (Cancellation letter) PDF
+router.get('/:id/storno-preview', async (req, res) => {
   try {
     const { id } = req.params;
-    const { hotelName, hotelCity, checkIn, checkOut, rooms, bookingNumber, pax } = req.query;
+    const { hotelName, hotelCity, checkIn, checkOut, dbl, twn, sngl, bookingNumber, pax } = req.query;
 
-    // Format dates to German format
-    const formatDE = (dateStr) => {
+    // Fetch booking with guide info
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        guide: true,
+        tourType: true,
+      }
+    });
+
+    // Format date to dd.MM.yyyy
+    const formatDate = (dateStr) => {
       if (!dateStr) return '';
       const d = new Date(dateStr);
-      const months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-      return `${d.getDate()}. ${months[d.getMonth()]} ${d.getFullYear()}`;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}.${month}.${year}`;
     };
 
-    const today = new Date();
-    const todayDE = formatDE(today.toISOString().split('T')[0]);
-    const checkInDE = formatDE(checkIn);
-    const checkOutDE = formatDE(checkOut);
+    const currentDate = formatDate(new Date().toISOString());
+    const arrivalDate = formatDate(checkIn);
+    const departureDate = formatDate(checkOut);
+
+    const dblCount = parseInt(dbl) || 0;
+    const twnCount = parseInt(twn) || 0;
+    const snglCount = parseInt(sngl) || 0;
+    const paxCount = parseInt(pax) || 0;
+
+    // Country based on tour type
+    const tourCode = booking?.tourType?.code || '';
+    const country = (tourCode.startsWith('ER') || tourCode.startsWith('CO') || tourCode.startsWith('ZA') || tourCode.startsWith('KAS'))
+      ? 'Германия' : 'Германия';
+
+    // Load logo as base64
+    const logoPath = path.join(__dirname, '../../uploads/logo.png');
+    let logoDataUrl = '';
+    try {
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoDataUrl = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      }
+    } catch (err) {
+      console.warn('Could not load logo:', err);
+    }
 
     const html = `<!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Storno ${bookingNumber} - ${hotelName}</title>
+  <title>АННУЛЯЦИЯ ${bookingNumber} - ${hotelName}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 12pt; color: #222; background: white; padding: 40px 50px; }
-    .header { margin-bottom: 40px; }
-    .sender { font-size: 10pt; color: #666; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 20px; }
-    .recipient { margin-bottom: 30px; }
-    .recipient strong { font-size: 13pt; }
-    .date-line { text-align: right; margin-bottom: 30px; font-size: 11pt; color: #555; }
-    .subject { font-size: 13pt; font-weight: bold; margin-bottom: 24px; border-bottom: 2px solid #e55; padding-bottom: 8px; color: #c33; }
-    .body p { margin-bottom: 14px; line-height: 1.6; }
-    .details-box { background: #fff8f8; border: 1px solid #f5c6c6; border-radius: 6px; padding: 16px 20px; margin: 20px 0; }
-    .details-box table { width: 100%; border-collapse: collapse; }
-    .details-box td { padding: 5px 10px; font-size: 11pt; }
-    .details-box td:first-child { font-weight: bold; color: #555; width: 180px; }
-    .footer { margin-top: 50px; }
-    .signature { margin-top: 40px; }
-    @media print {
-      body { padding: 20px 30px; }
-      @page { margin: 15mm 15mm; size: A4; }
+    @page { size: A4 portrait; margin: 15mm 12mm 15mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.2; color: #000; }
+    .action-bar {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #2c3e50; padding: 12px 20px;
+      display: flex; gap: 10px; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000;
     }
+    .action-bar button {
+      padding: 10px 24px; font-size: 14px; font-weight: 600;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+    .btn-print { background: #3498db; color: white; }
+    .btn-close { background: #95a5a6; color: white; }
+    .content-wrapper { margin-top: 60px; }
+    @media print {
+      .action-bar { display: none !important; }
+      .content-wrapper { margin-top: 0 !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+    .header-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 10px; }
+    .date-hotel-row { width: 100%; border: none; border-collapse: collapse; margin-bottom: 15px; }
+    .date-hotel-row td { vertical-align: top; padding: 3px; }
+    .date-cell { width: 50%; text-align: left; }
+    .hotel-cell { width: 50%; text-align: right; }
+    .zayvka-title { text-align: center; font-size: 14pt; font-weight: bold; margin: 15px 0; text-decoration: underline; }
+    .annul-title { text-align: center; font-size: 12pt; font-weight: bold; margin: 15px 0 8px 0; }
+    .intro-text { margin-bottom: 15px; text-align: justify; }
+    .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .summary-table th, .summary-table td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 8pt; }
+    .summary-table th { background-color: #f0f0f0; font-weight: bold; }
+    .guide-info { background: #f8f9fa; border: 1px solid #dee2e6; padding: 8px 12px; margin: 15px 0; border-radius: 4px; font-size: 9pt; }
+    .guide-info strong { color: #495057; }
+    .signature-table { width: 100%; border: none; border-collapse: collapse; margin-top: 30px; }
+    .signature-table td { padding: 5px; }
+    .print-notice { background: #fff3cd; border: 1px solid #ffc107; padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 11px; color: #856404; }
+    @media print { .print-notice { display: none; } }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="sender">Orient Insight GmbH &nbsp;|&nbsp; Reisebüro &nbsp;|&nbsp; info@orient-insight.com</div>
-    <div class="recipient">
-      <strong>${hotelName || 'Hotel'}</strong><br>
-      ${hotelCity || ''}
-    </div>
+  <div class="action-bar">
+    <button class="btn-print" onclick="window.print()">🖨️ Печать / Сохранить как PDF</button>
+    <button class="btn-close" onclick="window.close()">✕ Закрыть</button>
   </div>
 
-  <div class="date-line">Taschkent, den ${todayDE}</div>
+  <div class="content-wrapper">
+    <div class="print-notice">💡 В диалоге печати отключите "Верхние и нижние колонтитулы"</div>
 
-  <div class="subject">Betreff: Stornierung der Buchung ${bookingNumber || ''}</div>
+    <!-- Logo + Company Info -->
+    <table class="header-table">
+      <tr>
+        <td style="width:100%;text-align:center">
+          ${logoDataUrl ? `<img src="${logoDataUrl}" alt="Orient Insight" style="width:150px;height:auto;margin-bottom:8px" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>'}
+          <div style="font-size:9pt;margin-top:5px">
+            <strong>Республика Узбекистан,</strong><br>
+            г.Самарканд, Шота Руставели, дом 45<br>
+            Тел/fax.: +998 933484208, +998 97 9282814<br>
+            E-Mail: orientinsightreisen@gmail.com<br>
+            Website: orient-insight.uz
+          </div>
+        </td>
+      </tr>
+    </table>
 
-  <div class="body">
-    <p>Sehr geehrte Damen und Herren,</p>
+    <!-- Date and Hotel -->
+    <table class="date-hotel-row">
+      <tr>
+        <td class="date-cell"><strong>Дата:</strong> ${currentDate}</td>
+        <td class="hotel-cell">
+          <strong>Директору гостиницы</strong><br>
+          <strong>${hotelName || ''}</strong>
+        </td>
+      </tr>
+    </table>
 
-    <p>hiermit teilen wir Ihnen mit, dass wir die folgende Buchung leider stornieren müssen:</p>
-
-    <div class="details-box">
-      <table>
-        <tr><td>Buchungsnummer:</td><td><strong>${bookingNumber || '–'}</strong></td></tr>
-        <tr><td>Hotel:</td><td>${hotelName || '–'}</td></tr>
-        <tr><td>Anreisedatum:</td><td>${checkInDE || '–'}</td></tr>
-        <tr><td>Abreisedatum:</td><td>${checkOutDE || '–'}</td></tr>
-        <tr><td>Zimmerbelegung:</td><td>${rooms || '–'}</td></tr>
-        <tr><td>Personenanzahl:</td><td>${pax || '–'} Personen</td></tr>
-      </table>
+    <!-- Title -->
+    <div class="zayvka-title">АННУЛЯЦИЯ к заявке ${bookingNumber || ''}</div>
+    <div class="intro-text">
+      ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит аннулировать бронь группы с учетом нижеследующих деталей.
     </div>
 
-    <p>Wir bitten Sie, diese Stornierung zu bestätigen und uns gegebenenfalls über anfallende Stornogebühren zu informieren.</p>
+    <!-- Summary Table -->
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Группа</th>
+          <th>Страна</th>
+          <th>PAX</th>
+          <th>Первый<br>заезд</th>
+          <th>Первый<br>выезд</th>
+          <th>DBL</th>
+          <th>TWN</th>
+          <th>SNGL</th>
+          <th>Тип номера</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>${bookingNumber || ''}</td>
+          <td>${country}</td>
+          <td>${paxCount}</td>
+          <td>${arrivalDate}</td>
+          <td>${departureDate}</td>
+          <td>${dblCount}</td>
+          <td>${twnCount}</td>
+          <td>${snglCount}</td>
+          <td>стандарт</td>
+        </tr>
+      </tbody>
+    </table>
 
-    <p>Wir entschuldigen uns für etwaige Unannehmlichkeiten und danken Ihnen für Ihr Verständnis.</p>
+
+    <!-- Signature -->
+    <table class="signature-table">
+      <tr>
+        <td style="width:40%"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+        <td style="width:40%;text-align:center">_________________________</td>
+        <td style="width:20%;text-align:center"><strong>Милиев С.Р.</strong></td>
+      </tr>
+    </table>
   </div>
-
-  <div class="footer">
-    <div class="signature">
-      <p>Mit freundlichen Grüßen,</p>
-      <br><br>
-      <p><strong>Orient Insight GmbH</strong></p>
-      <p>Reisebüro</p>
-    </div>
-  </div>
-
-  <script>
-    window.onload = function() { window.print(); };
-  </script>
 </body>
 </html>`;
 
@@ -2410,7 +2501,7 @@ router.get('/:id/storno-preview', authenticate, async (req, res) => {
     res.send(html);
   } catch (error) {
     console.error('Storno preview error:', error);
-    res.status(500).json({ error: 'Ошибка создания Storno' });
+    res.status(500).json({ error: 'Ошибка создания аннуляции' });
   }
 });
 

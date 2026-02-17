@@ -8986,7 +8986,7 @@ export default function BookingDetail() {
                               <tbody>
                                 {internationalFlights.map((flight, idx) => {
                                   const pax = flight.pax || 0;
-                                  const totalPrice = flight.price || 0;
+                                  const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
                                   const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                   return (
                                     <tr key={flight.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
@@ -9064,7 +9064,7 @@ export default function BookingDetail() {
                               <tbody>
                                 {domesticFlights.map((flight, idx) => {
                                   const pax = flight.pax || 0;
-                                  const totalPrice = flight.price || 0;
+                                  const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
                                   const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                   return (
                                     <tr key={flight.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
@@ -10782,7 +10782,9 @@ export default function BookingDetail() {
                             {route.provider || '-'}
                           </td>
                           <td className="px-4 py-3 text-right font-bold">
-                            {route.price > 0 ? (
+                            {booking?.status === 'CANCELLED' ? (
+                              <span className="text-gray-900">0</span>
+                            ) : route.price > 0 ? (
                               <span className="text-blue-700">{Math.round(route.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
                             ) : (
                               <span className="text-gray-400">-</span>
@@ -10799,6 +10801,7 @@ export default function BookingDetail() {
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-lg text-purple-700">
                           {(() => {
+                            if (booking?.status === 'CANCELLED') return '0';
                             const sevilTotal = routes
                               .filter(r => r.provider?.toLowerCase().includes('sevil'))
                               .reduce((sum, r) => sum + (r.price || 0), 0);
@@ -10815,6 +10818,7 @@ export default function BookingDetail() {
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-lg text-green-700">
                           {(() => {
+                            if (booking?.status === 'CANCELLED') return '0';
                             const xayrullaTotal = routes
                               .filter(r => r.provider?.toLowerCase() === 'xayrulla')
                               .reduce((sum, r) => sum + (r.price || 0), 0);
@@ -10831,6 +10835,7 @@ export default function BookingDetail() {
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-lg text-blue-700">
                           {(() => {
+                            if (booking?.status === 'CANCELLED') return '0';
                             const nosirTotal = routes
                               .filter(r => r.provider?.toLowerCase() === 'nosir')
                               .reduce((sum, r) => sum + (r.price || 0), 0);
@@ -10846,7 +10851,7 @@ export default function BookingDetail() {
                           Grand Total:
                         </td>
                         <td className="px-4 py-4 text-right font-black text-xl text-blue-700">
-                          {routes.reduce((sum, r) => sum + (r.price || 0), 0) > 0
+                          {booking?.status === 'CANCELLED' ? '0' : routes.reduce((sum, r) => sum + (r.price || 0), 0) > 0
                             ? Math.round(routes.reduce((sum, r) => sum + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
                             : '-'}
                         </td>
@@ -10922,7 +10927,9 @@ export default function BookingDetail() {
                             {railway.pax > 0 ? railway.pax : '-'}
                           </td>
                           <td className="px-4 py-3 text-right font-bold border-r border-gray-200">
-                            {railway.price > 0 ? (
+                            {booking?.status === 'CANCELLED' ? (
+                              <span className="text-gray-900">0</span>
+                            ) : railway.price > 0 ? (
                               <span className="text-orange-700">{Math.round(railway.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
                             ) : (
                               <span className="text-gray-400">-</span>
@@ -10948,7 +10955,7 @@ export default function BookingDetail() {
                           Total:
                         </td>
                         <td className="px-4 py-4 text-right font-black text-xl text-orange-700 border-r border-orange-200">
-                          {railways.reduce((sum, r) => sum + (r.price || 0), 0) > 0
+                          {booking?.status === 'CANCELLED' ? '0' : railways.reduce((sum, r) => sum + (r.price || 0), 0) > 0
                             ? Math.round(railways.reduce((sum, r) => sum + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
                             : '-'}
                         </td>
@@ -11691,9 +11698,9 @@ export default function BookingDetail() {
                             )}
                           </td>
                           <td className="px-4 py-3 font-medium">{item.name}</td>
-                          <td className="px-4 py-3 text-right">{item.pricePerPerson > 0 ? Math.round(item.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-right">{booking?.status === 'CANCELLED' ? '0' : item.pricePerPerson > 0 ? Math.round(item.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
                           <td className="px-4 py-3 text-center font-semibold">{item.pax || '-'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-cyan-700">{item.price > 0 ? Math.round(item.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-cyan-700">{booking?.status === 'CANCELLED' ? '0' : item.price > 0 ? Math.round(item.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
@@ -11727,7 +11734,7 @@ export default function BookingDetail() {
                     <tfoot>
                       <tr className="bg-cyan-100 font-bold">
                         <td colSpan="6" className="px-4 py-3 text-right">Total:</td>
-                        <td className="px-4 py-3 text-right text-cyan-700 text-lg">{Math.round(visibleEntries.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                        <td className="px-4 py-3 text-right text-cyan-700 text-lg">{booking?.status === 'CANCELLED' ? '0' : Math.round(visibleEntries.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
                         <td></td>
                       </tr>
                     </tfoot>
@@ -16155,16 +16162,13 @@ export default function BookingDetail() {
                           {booking?.status === 'CANCELLED' && (
                             <button
                               onClick={() => {
-                                const dblRooms = acc.rooms?.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + (r.roomsCount || 0), 0) || 0;
-                                const twnRooms = acc.rooms?.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + (r.roomsCount || 0), 0) || 0;
-                                const snglRooms = acc.rooms?.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + (r.roomsCount || 0), 0) || 0;
                                 setStornoAcc(acc);
                                 setStornoHotelId(acc.hotel?.id?.toString() || '');
                                 setStornoCheckIn(acc.checkInDate?.split('T')[0] || '');
                                 setStornoCheckOut(acc.checkOutDate?.split('T')[0] || '');
-                                setStornoDbl(dblRooms);
-                                setStornoTwn(twnRooms);
-                                setStornoSngl(snglRooms);
+                                setStornoDbl(0);
+                                setStornoTwn(0);
+                                setStornoSngl(0);
                                 setStornoModalOpen(true);
                               }}
                               className={`p-3 text-orange-600 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 hover:border-orange-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
@@ -18097,7 +18101,7 @@ export default function BookingDetail() {
               {/* Info */}
               <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800">
                 <strong>Buchung:</strong> {booking?.bookingNumber} &nbsp;|&nbsp;
-                <strong>PAX:</strong> {tourists?.length || booking?.pax || 0}
+                <strong>PAX:</strong> 0
               </div>
             </div>
             <div className="px-6 pb-6 flex gap-3 justify-end">
@@ -18121,9 +18125,11 @@ export default function BookingDetail() {
                     hotelCity: selectedHotel?.city?.name || '',
                     checkIn: stornoCheckIn,
                     checkOut: stornoCheckOut,
-                    rooms: roomParts.join(', '),
+                    dbl: stornoDbl,
+                    twn: stornoTwn,
+                    sngl: stornoSngl,
                     bookingNumber: booking?.bookingNumber || '',
-                    pax: tourists?.length || booking?.pax || 0
+                    pax: 0
                   });
                   window.open(url, '_blank');
                 }}

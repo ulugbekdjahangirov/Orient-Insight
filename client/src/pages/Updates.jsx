@@ -25,9 +25,9 @@ const statusLabels = {
 const statusClasses = {
   PENDING: 'bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900 border border-yellow-400 shadow-sm',
   CONFIRMED: 'bg-gradient-to-r from-green-200 to-green-300 text-green-900 border border-green-400 shadow-sm',
-  IN_PROGRESS: 'bg-gradient-to-r from-purple-200 to-purple-300 text-purple-900 border border-purple-400 shadow-sm',
+  IN_PROGRESS: 'bg-gradient-to-r from-sky-200 to-cyan-200 text-sky-900 border border-sky-400 shadow-sm',
   COMPLETED: 'bg-gradient-to-r from-blue-200 to-blue-300 text-blue-900 border border-blue-400 shadow-sm',
-  CANCELLED: 'bg-gradient-to-r from-red-200 to-red-300 text-red-900 border border-red-400 shadow-sm'
+  CANCELLED: 'bg-gradient-to-r from-red-500 to-red-600 text-white border border-red-700 shadow-sm'
 };
 
 export default function Updates() {
@@ -915,7 +915,7 @@ export default function Updates() {
           ) : isMobile ? (
             <div className="space-y-3">
               {bookings.map((booking, index) => {
-                const calculatedStatus = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                 return (
                   <div
@@ -1049,20 +1049,20 @@ export default function Updates() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {bookings.map((booking, index) => {
-                    const calculatedStatus = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                    const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                     // Set row background color based on status
                     let rowClass = 'hover:bg-gray-50';
                     if (calculatedStatus === 'CANCELLED') {
-                      rowClass = 'bg-red-100 hover:bg-red-200';
+                      rowClass = 'bg-red-200 hover:bg-red-300';
                     } else if (calculatedStatus === 'PENDING') {
                       rowClass = 'bg-yellow-100 hover:bg-yellow-200';
                     } else if (calculatedStatus === 'IN_PROGRESS') {
-                      rowClass = 'bg-purple-100 hover:bg-purple-200';
+                      rowClass = 'bg-sky-200 hover:bg-sky-300';
                     } else if (calculatedStatus === 'CONFIRMED') {
                       rowClass = 'bg-green-100 hover:bg-green-200';
                     } else if (calculatedStatus === 'COMPLETED') {
-                      rowClass = 'bg-blue-100 hover:bg-blue-200';
+                      rowClass = 'bg-slate-300 hover:bg-slate-400';
                     }
 
                     return (
@@ -1097,15 +1097,15 @@ export default function Updates() {
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2 text-sm">
                           <Users className="w-4 h-4 text-primary-500" />
-                          <span className="font-bold text-gray-900">{booking.pax}</span>
+                          <span className="font-bold text-gray-900">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
                         </div>
                       </td>
                       <td className="px-3 py-4 text-sm text-gray-700 font-semibold text-center">
-                        {booking.paxUzbekistan || 0}
+                        {calculatedStatus === 'CANCELLED' ? 0 : (booking.paxUzbekistan || 0)}
                       </td>
                       {activeTab === 'ER' && (
                         <td className="px-3 py-4 text-sm text-gray-700 font-semibold text-center">
-                          {booking.paxTurkmenistan || 0}
+                          {calculatedStatus === 'CANCELLED' ? 0 : (booking.paxTurkmenistan || 0)}
                         </td>
                       )}
                       <td className="px-4 py-4 text-sm text-gray-700 font-medium">
@@ -1117,13 +1117,13 @@ export default function Updates() {
                         </span>
                       </td>
                       <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
-                        {booking.roomsDbl > 0 ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : booking.roomsDbl.toFixed(1)) : '-'}
+                        {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : booking.roomsDbl.toFixed(1)) : '-'}
                       </td>
                       <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
-                        {booking.roomsTwn > 0 ? (Number(booking.roomsTwn) % 1 === 0 ? booking.roomsTwn : booking.roomsTwn.toFixed(1)) : '-'}
+                        {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? (Number(booking.roomsTwn) % 1 === 0 ? booking.roomsTwn : booking.roomsTwn.toFixed(1)) : '-'}
                       </td>
                       <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
-                        {booking.roomsSngl > 0 ? (Number(booking.roomsSngl) % 1 === 0 ? booking.roomsSngl : booking.roomsSngl.toFixed(1)) : '-'}
+                        {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? (Number(booking.roomsSngl) % 1 === 0 ? booking.roomsSngl : booking.roomsSngl.toFixed(1)) : '-'}
                       </td>
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
