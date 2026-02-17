@@ -3753,13 +3753,21 @@ async function updateBookingPaxCount(bookingId) {
   }
 
   // Auto-set status based on PAX count
-  let status = 'PENDING';
-  if (count >= 6) {
-    status = 'CONFIRMED';
-  } else if (count === 4 || count === 5) {
-    status = 'IN_PROGRESS';
+  // BUT: preserve CANCELLED/COMPLETED status - don't override manually set statuses
+  const currentBookingStatus = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { status: true }
+  });
+  const preservedStatuses = ['CANCELLED', 'COMPLETED'];
+  if (!preservedStatuses.includes(currentBookingStatus?.status)) {
+    let status = 'PENDING';
+    if (count >= 6) {
+      status = 'CONFIRMED';
+    } else if (count === 4 || count === 5) {
+      status = 'IN_PROGRESS';
+    }
+    updateData.status = status;
   }
-  updateData.status = status;
 
   await prisma.booking.update({
     where: { id: bookingId },

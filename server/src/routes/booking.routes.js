@@ -436,7 +436,9 @@ router.put('/:id', authenticate, async (req, res) => {
     updateData.pax = currentUzbek + currentTurkmen;
 
     // Auto-set status based on PAX count (only if status not explicitly provided)
-    if (status === undefined) {
+    // AND only if current status is not CANCELLED or COMPLETED
+    const preservedStatuses = ['CANCELLED', 'COMPLETED'];
+    if (status === undefined && !preservedStatuses.includes(currentBooking?.status)) {
       const calculatedPax = updateData.pax;
       if (calculatedPax >= 6) {
         updateData.status = 'CONFIRMED';
@@ -446,6 +448,7 @@ router.put('/:id', authenticate, async (req, res) => {
         updateData.status = 'PENDING';
       }
     }
+    if (status) updateData.status = status;
     if (guideId !== undefined) updateData.guideId = guideId ? parseInt(guideId) : null;
     if (guideFullDays !== undefined) updateData.guideFullDays = parseFloat(guideFullDays) || 0;
     if (guideHalfDays !== undefined) updateData.guideHalfDays = parseFloat(guideHalfDays) || 0;
@@ -462,7 +465,6 @@ router.put('/:id', authenticate, async (req, res) => {
     if (dateJartepa !== undefined) updateData.dateJartepa = dateJartepa ? new Date(dateJartepa) : null;
     if (dateOybek !== undefined) updateData.dateOybek = dateOybek ? new Date(dateOybek) : null;
     if (dateChernyaevka !== undefined) updateData.dateChernyaevka = dateChernyaevka ? new Date(dateChernyaevka) : null;
-    if (status) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
     if (assignedToId !== undefined) updateData.assignedToId = assignedToId ? parseInt(assignedToId) : null;
     if (rechnungFirma !== undefined) updateData.rechnungFirma = rechnungFirma || null;
