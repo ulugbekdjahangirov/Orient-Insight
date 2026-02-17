@@ -1294,7 +1294,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
                 <td className="border border-gray-900 px-3 py-2 font-semibold text-center">Gruppa</td>
                 <td className="border border-gray-900 px-3 py-2 font-bold text-center">{booking?.bookingNumber || ''}</td>
               </tr>
-              <tr>
+              <tr className="bg-blue-50">
                 <td className="border border-gray-900 px-3 py-2">
                   {editingHeader ? (
                     <input
@@ -1427,7 +1427,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
                                     cityLower.includes('farg');
 
                   // Determine row background color
-                  const rowClassName = isTashkent ? 'bg-yellow-100' : isFergana ? 'bg-blue-50' : '';
+                  // Fergana takes priority over Tashkent (e.g. "Fergana - Tashkent" → blue)
+                  const rowClassName = isFergana ? 'bg-blue-50' : isTashkent ? 'bg-yellow-100' : '';
 
                   return (
                     <tr key={route.id} className={rowClassName}>
