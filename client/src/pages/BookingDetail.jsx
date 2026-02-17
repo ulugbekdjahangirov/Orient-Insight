@@ -2115,9 +2115,8 @@ export default function BookingDetail() {
         const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
         const arrivalDateStr = b.departureDate ? format(addDays(new Date(b.departureDate), daysToAdd), 'yyyy-MM-dd') : '';
 
-        // Auto-set country to Germany for CO tours if not set
-        const isCO = tourTypeCode === 'CO';
-        const autoCountry = isCO && !b.country ? 'Germany' : (b.country || '');
+        // Auto-set country to Germany for all tours if not set
+        const autoCountry = !b.country ? 'Germany' : b.country;
 
         setFormData({
           bookingNumber: b.bookingNumber,
@@ -5440,7 +5439,6 @@ export default function BookingDetail() {
       setFormData((prev) => {
         const selectedTourType = tourTypes.find(t => t.id === parseInt(value));
         const isER = selectedTourType?.code === 'ER';
-        const isCO = selectedTourType?.code === 'CO';
 
         const uzbek = parseInt(prev.paxUzbekistan) || 0;
         const turkmen = parseInt(prev.paxTurkmenistan) || 0;
@@ -5450,8 +5448,8 @@ export default function BookingDetail() {
         const totalPax = isER ? (uzbek + turkmen) : uzbek;
         const newTurkmen = isER ? prev.paxTurkmenistan : '0';
 
-        // For CO tours: auto-set country to Germany (unless already set)
-        const newCountry = isCO && !prev.country ? 'Germany' : prev.country;
+        // For all tours: auto-set country to Germany (unless already set)
+        const newCountry = !prev.country ? 'Germany' : prev.country;
 
         return {
           ...prev,
