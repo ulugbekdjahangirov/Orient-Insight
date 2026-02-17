@@ -20,7 +20,7 @@ router.get('/:tourType/:category', authenticate, async (req, res) => {
     });
 
     if (!config) {
-      return res.json({ items: [] });
+      return res.json({ items: null }); // null = no record exists (different from empty array)
     }
 
     const items = JSON.parse(config.itemsJson);

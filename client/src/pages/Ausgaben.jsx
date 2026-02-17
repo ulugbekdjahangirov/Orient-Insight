@@ -73,7 +73,7 @@ export default function Ausgaben() {
 
     // Try localStorage first (persists across page reloads)
     try {
-      const localStorageKey = `ausgaben_cache_v2_${cacheKey}`;
+      const localStorageKey = `ausgaben_cache_v3_${cacheKey}`;
       const cachedData = localStorage.getItem(localStorageKey);
 
       if (cachedData) {
@@ -167,7 +167,7 @@ export default function Ausgaben() {
 
       // Also save to localStorage for persistence
       try {
-        const localStorageKey = `ausgaben_cache_v2_${cacheKey}`;
+        const localStorageKey = `ausgaben_cache_v3_${cacheKey}`;
         localStorage.setItem(localStorageKey, JSON.stringify({
           ...cacheData,
           timestamp: Date.now()
@@ -280,6 +280,29 @@ export default function Ausgaben() {
     let secondGuide = null;
     let bergreiseleiter = null;
 
+    // 1. Try mainGuideData JSON first (most accurate - explicitly saved by user in BookingDetail)
+    try {
+      if (booking.mainGuideData) {
+        const mgData = typeof booking.mainGuideData === 'string'
+          ? JSON.parse(booking.mainGuideData)
+          : booking.mainGuideData;
+        if (mgData) {
+          let totalPayment = mgData.totalPayment;
+          if (!totalPayment && (mgData.fullDays > 0 || mgData.halfDays > 0)) {
+            const dr = mgData.dayRate || mgData.guide?.dayRate || 110;
+            const hdr = mgData.halfDayRate || mgData.guide?.halfDayRate || 55;
+            totalPayment = ((mgData.fullDays || 0) * dr) + ((mgData.halfDays || 0) * hdr);
+          }
+          if (totalPayment > 0) {
+            mainGuide = { totalPayment };
+            console.log(`  ✅ mainGuideData totalPayment: $${totalPayment}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('  ❌ Error parsing mainGuideData:', e);
+    }
+
     try {
       if (booking.additionalGuides && typeof booking.additionalGuides === 'string') {
         const additionalGuides = JSON.parse(booking.additionalGuides);
@@ -322,10 +345,10 @@ export default function Ausgaben() {
       console.error('  ❌ Error parsing bergreiseleiter:', e);
     }
 
-    // Calculate main guide payment
-    // If guide is assigned, calculate payment even if days are 0 (use defaults for ER tours)
-    if (booking.guide || (booking.guideFullDays !== undefined && booking.guideFullDays !== null) ||
-        (booking.guideHalfDays !== undefined && booking.guideHalfDays !== null)) {
+    // Calculate main guide payment (fallback if mainGuideData not available)
+    // If guide is assigned, calculate payment even if days are 0 (use defaults for ER/CO tours)
+    if (!mainGuide && (booking.guide || (booking.guideFullDays !== undefined && booking.guideFullDays !== null) ||
+        (booking.guideHalfDays !== undefined && booking.guideHalfDays !== null))) {
       const dayRate = booking.guide?.dayRate || 110;
       const halfDayRate = booking.guide?.halfDayRate || 55;
       let fullDays = booking.guideFullDays || 0;
@@ -333,17 +356,15 @@ export default function Ausgaben() {
 
       // AUTO-CALCULATE: If guide is assigned but days are 0, use tour type defaults
       if (booking.guide && fullDays === 0 && halfDays === 0) {
-        if (tourTypeCode === 'er') {
-          fullDays = 12;  // ER default: 12 full days
-          halfDays = 1;   // ER default: 1 half day
-          console.log(`  🤖 AUTO: ER guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
+        if (tourTypeCode === 'er' || tourTypeCode === 'co') {
+          fullDays = 12;  // ER/CO default: 12 full days
+          halfDays = 1;   // ER/CO default: 1 half day
+          console.log(`  🤖 AUTO: ${tourTypeCode.toUpperCase()} guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
         } else if (tourTypeCode === 'za') {
           fullDays = 5;   // ZA default: 5 full days
           halfDays = 1;   // ZA default: 1 half day
           console.log(`  🤖 AUTO: ZA guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
         }
-        // Add defaults for other tour types here if needed
-        // else if (tourTypeCode === 'co') { fullDays = 10; halfDays = 0; }
       }
 
       // Calculate if at least one day is set (including auto-calculated)
@@ -367,6 +388,7 @@ export default function Ausgaben() {
       // 2. Transport & Routes - from routes array
       transportSevil: routes.filter(r => r.provider?.toLowerCase().includes('sevil')).reduce((sum, r) => sum + (r.price || 0), 0),
       transportXayrulla: routes.filter(r => r.provider?.toLowerCase().includes('xayrulla')).reduce((sum, r) => sum + (r.price || 0), 0),
+      transportNosir: routes.filter(r => r.provider?.toLowerCase().includes('nosir')).reduce((sum, r) => sum + (r.price || 0), 0),
 
       // 3. Railway - from railways array
       railway: railways.reduce((sum, r) => sum + (r.price || 0), 0),
@@ -894,7 +916,7 @@ export default function Ausgaben() {
                         <th colSpan="2" className="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-purple-100 border-r border-gray-300">
                           Hotels
                         </th>
-                        <th colSpan="2" className="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-100 border-r border-gray-300">
+                        <th colSpan="3" className="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-100 border-r border-gray-300">
                           Transport
                         </th>
                         <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-100 border-r border-gray-300">
@@ -938,8 +960,11 @@ export default function Ausgaben() {
                         <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-50 border-r border-gray-200">
                           Sevil
                         </th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-50 border-r border-gray-300">
+                        <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-50 border-r border-gray-200">
                           Xayrulla
+                        </th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-50 border-r border-gray-300">
+                          Nosir
                         </th>
                       </tr>
                     </thead>
@@ -957,7 +982,7 @@ export default function Ausgaben() {
                                         (exp.meals || 0) + (exp.eintritt || 0) + (exp.metro || 0) +
                                         (exp.shou || 0) + (exp.other || 0);
                         const totalUSD = (exp.hotelsUSD || 0) + (exp.transportSevil || 0) +
-                                        (exp.transportXayrulla || 0) + (exp.guide || 0);
+                                        (exp.transportXayrulla || 0) + (exp.transportNosir || 0) + (exp.guide || 0);
 
                         return (
                           <tr key={idx} className="hover:bg-gray-50">
@@ -981,8 +1006,11 @@ export default function Ausgaben() {
                             <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-200">
                               {exp.transportSevil > 0 ? `$${formatNumber(exp.transportSevil)}` : '-'}
                             </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
+                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-200">
                               {exp.transportXayrulla > 0 ? `$${formatNumber(exp.transportXayrulla)}` : '-'}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
+                              {exp.transportNosir > 0 ? `$${formatNumber(exp.transportNosir)}` : '-'}
                             </td>
                             <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
                               {exp.railway > 0 ? formatNumber(exp.railway) : '-'}
@@ -1032,8 +1060,11 @@ export default function Ausgaben() {
                         <td className="px-3 py-3 text-center text-sm border-r border-gray-200">
                           ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.transportSevil || 0), 0))}
                         </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
+                        <td className="px-3 py-3 text-center text-sm border-r border-gray-200">
                           ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.transportXayrulla || 0), 0))}
+                        </td>
+                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
+                          ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.transportNosir || 0), 0))}
                         </td>
                         <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
                           {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.railway || 0), 0))}
@@ -1071,7 +1102,7 @@ export default function Ausgaben() {
                           ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => {
                             const exp = b.expenses || {};
                             return sum + (exp.hotelsUSD || 0) + (exp.transportSevil || 0) +
-                                   (exp.transportXayrulla || 0) + (exp.guide || 0);
+                                   (exp.transportXayrulla || 0) + (exp.transportNosir || 0) + (exp.guide || 0);
                           }, 0))}
                         </td>
                       </tr>

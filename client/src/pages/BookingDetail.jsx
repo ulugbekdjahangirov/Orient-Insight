@@ -3079,7 +3079,7 @@ export default function BookingDetail() {
 
       // Collect all expenses and organize by city (same as display)
       const expensesByCity = {};
-      const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+      const cityOrder = ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva'];
 
       // Initialize city sections
       cityOrder.forEach(city => {
@@ -3098,6 +3098,8 @@ export default function BookingDetail() {
         if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
         if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
         if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+        if (str.includes('fergana') || str.includes('farg\'ona') || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
+        if (str.includes('qizilqum') || str.includes('kyzylkum') || str.includes('қизилқум') || str.includes('choyxona') || str.includes('чойхона') || str.includes('chayhana') || str.includes('tea house')) return 'Qizilqum';
         return null;
       };
 
@@ -3397,7 +3399,7 @@ export default function BookingDetail() {
 
       // Collect all expenses and organize by city (same logic as display)
       const expensesByCity = {};
-      const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+      const cityOrder = ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva'];
 
       // Initialize sections
       cityOrder.forEach(city => {
@@ -3418,6 +3420,8 @@ export default function BookingDetail() {
         if (str.includes('nurota') || str.includes('nurata')) return 'Nurota';
         if (str.includes('bukhara') || str.includes('buxoro')) return 'Bukhara';
         if (str.includes('khiva') || str.includes('xiva')) return 'Khiva';
+        if (str.includes('fergana') || str.includes('farg\'ona') || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
+        if (str.includes('qizilqum') || str.includes('kyzylkum') || str.includes('қизилқум') || str.includes('choyxona') || str.includes('чойхона') || str.includes('chayhana') || str.includes('tea house')) return 'Qizilqum';
         return null;
       };
 
@@ -3770,42 +3774,61 @@ export default function BookingDetail() {
       const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
       doc.text(bookingInfo, 105, 15, { align: 'center' });
 
-      // Generate table (optimized to fit on one page)
-      autoTable(doc, {
-        startY: 19,
+      const pageHeight = 297; // A4 height in mm
+      const startY = 19;
+      const bottomMargin = 8;
+      const availableHeight = pageHeight - startY - bottomMargin;
+
+      const tableOptions = (fs, cp) => ({
+        startY: startY,
         head: [['Städte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
         body: tableData,
         theme: 'grid',
         styles: {
-          fontSize: 6.5,
-          cellPadding: 1.2,
+          fontSize: fs,
+          cellPadding: cp,
           lineColor: [200, 200, 200],
           lineWidth: 0.1
         },
         headStyles: {
-          fillColor: [102, 187, 106],  // Lighter green color
+          fillColor: [102, 187, 106],
           textColor: 255,
           fontStyle: 'bold',
           halign: 'center',
-          fontSize: 7.5,
-          cellPadding: 1.5
+          fontSize: fs + 0.5,
+          cellPadding: cp + 0.2
         },
         columnStyles: {
-          0: { cellWidth: 22 }, // Städte
-          1: { cellWidth: 58 }, // Item
-          2: { halign: 'right', cellWidth: 22 }, // Preis
-          3: { halign: 'center', cellWidth: 16 }, // PAX
-          4: { halign: 'right', cellWidth: 28 }, // Dollar
-          5: { halign: 'right', cellWidth: 34 }  // Som
+          0: { cellWidth: 22 },
+          1: { cellWidth: 58 },
+          2: { halign: 'right', cellWidth: 22 },
+          3: { halign: 'center', cellWidth: 16 },
+          4: { halign: 'right', cellWidth: 28 },
+          5: { halign: 'right', cellWidth: 34 }
         },
-        margin: { top: 19, bottom: 8, left: 10, right: 10 },
-        didDrawPage: function(data) {
-          // Prevent page breaks - fit everything on one page
-          if (data.pageNumber > 1) {
-            return false;
-          }
-        }
+        margin: { top: startY, bottom: bottomMargin, left: 10, right: 10 }
       });
+
+      // First pass: measure actual table height with base font size
+      const testDoc = new jsPDF('p', 'mm', 'a4');
+      autoTable(testDoc, tableOptions(6.5, 1.2));
+      const numPages = testDoc.getNumberOfPages();
+      const finalY = testDoc.lastAutoTable.finalY;
+
+      // Calculate true total content height across all pages
+      // Page 1: availableHeight (startY to pageHeight-bottomMargin)
+      // Page 2+: each page adds (finalY_on_that_page - startY)
+      let fs = 6.5;
+      let cp = 1.2;
+      if (numPages > 1) {
+        const totalContentHeight = (numPages - 1) * availableHeight + (finalY - startY);
+        const scale = (availableHeight / totalContentHeight) * 0.97; // 3% extra buffer
+        fs = Math.max(4.0, 6.5 * scale);
+        cp = Math.max(0.3, 1.2 * scale);
+      }
+
+      // Second pass: generate actual PDF with correct scale
+      autoTable(doc, tableOptions(fs, cp));
 
       // Save PDF
       const fileName = `Ausgaben_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
@@ -4014,7 +4037,7 @@ export default function BookingDetail() {
 
       // Collect Eintritt expenses and organize by city
       const expensesByCity = {};
-      const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+      const cityOrder = ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva'];
 
       // Initialize city sections
       cityOrder.forEach(city => {
@@ -4031,6 +4054,8 @@ export default function BookingDetail() {
         if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
         if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
         if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+        if (str.includes('fergana') || str.includes('farg\'ona') || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
+        if (str.includes('qizilqum') || str.includes('kyzylkum') || str.includes('қизилқум') || str.includes('choyxona') || str.includes('чойхона') || str.includes('chayhana') || str.includes('tea house')) return 'Qizilqum';
         return null;
       };
 
@@ -12002,7 +12027,7 @@ export default function BookingDetail() {
 
             // Collect all expenses and organize by city
             const expensesByCity = {};
-            const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+            const cityOrder = ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva'];
 
             // Initialize city sections
             cityOrder.forEach(city => {
@@ -12033,6 +12058,8 @@ export default function BookingDetail() {
               if (str.includes('nurota') || str.includes('nurata') || str.includes('нурата')) return 'Nurota';
               if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
               if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+              if (str.includes('fergana') || str.includes('farg\'ona') || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
+              if (str.includes('qizilqum') || str.includes('kyzylkum') || str.includes('қизилқум') || str.includes('choyxona') || str.includes('чойхона') || str.includes('chayhana') || str.includes('tea house')) return 'Qizilqum';
 
               // Tashkent landmarks
               if (str.includes('hast imam') || str.includes('hazrat imam') || str.includes('хазрат имом')) return 'Tashkent';
@@ -12489,7 +12516,7 @@ export default function BookingDetail() {
 
             // Collect all expenses and organize by city
             const expensesByCity = {};
-            const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+            const cityOrder = ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva'];
 
             // Initialize city sections
             cityOrder.forEach(city => {
@@ -12514,6 +12541,8 @@ export default function BookingDetail() {
               if (str.includes('nurota') || str.includes('nurata') || str.includes('нурата')) return 'Nurota';
               if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
               if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+              if (str.includes('fergana') || str.includes('farg\'ona') || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
+              if (str.includes('qizilqum') || str.includes('kyzylkum') || str.includes('қизилқум') || str.includes('choyxona') || str.includes('чойхона') || str.includes('chayhana') || str.includes('tea house')) return 'Qizilqum';
 
               return null;
             };
@@ -13071,7 +13100,7 @@ export default function BookingDetail() {
 
             // Collect Eintritt expenses and organize by city
             const expensesByCity = {};
-            const cityOrder = ['Tashkent', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Khiva'];
+            const cityOrder = ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva'];
 
             // Initialize city sections
             cityOrder.forEach(city => {
@@ -13090,6 +13119,8 @@ export default function BookingDetail() {
               if (str.includes('nurota') || str.includes('nurata') || str.includes('нурата')) return 'Nurota';
               if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
               if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
+              if (str.includes('fergana') || str.includes('farg\'ona') || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
+              if (str.includes('qizilqum') || str.includes('kyzylkum') || str.includes('қизилқум') || str.includes('choyxona') || str.includes('чойхона') || str.includes('chayhana') || str.includes('tea house')) return 'Qizilqum';
 
               return null;
             };

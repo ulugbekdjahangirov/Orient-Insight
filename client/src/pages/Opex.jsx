@@ -553,30 +553,35 @@ export default function Opex() {
       console.log(`🔄 Loading from database (${tourType}/${category})...`);
       const response = await opexApi.get(tourType.toUpperCase(), category);
 
-      // Check if items exists and is not empty (array OR object)
-      const hasItems = response.data && response.data.items && (
-        (Array.isArray(response.data.items) && response.data.items.length > 0) ||
-        (typeof response.data.items === 'object' && !Array.isArray(response.data.items) && Object.keys(response.data.items).length > 0)
-      );
+      // Check if DB returned a record (items !== null means record exists in DB)
+      // null = no record in DB; [] = record exists but user deleted all items; [...] = has items
+      const dbHasRecord = response.data && response.data.items !== null && response.data.items !== undefined;
 
-      if (hasItems) {
-        console.log(`✅ Loaded from database, caching to localStorage (${localStorageKey})`);
+      if (dbHasRecord) {
+        // Trust DB completely - even empty array means user deleted all items intentionally
+        console.log(`✅ Loaded from database (${localStorageKey}), items: ${Array.isArray(response.data.items) ? response.data.items.length : 'object'}`);
         setter(response.data.items);
         localStorage.setItem(localStorageKey, JSON.stringify(response.data.items));
         return;
       }
 
-      // 2. If database empty, try localStorage as fallback
-      console.log(`⚠️ Database empty, trying localStorage (${localStorageKey})...`);
+      // 2. No DB record yet - try localStorage as fallback
+      console.log(`⚠️ No DB record, trying localStorage (${localStorageKey})...`);
       const saved = localStorage.getItem(localStorageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log(`✅ Loaded from localStorage (${localStorageKey})`);
+        console.log(`✅ Loaded from localStorage (${localStorageKey}), saving to DB...`);
         setter(parsed);
+        // Sync localStorage data back to DB so it persists
+        try {
+          await opexApi.save({ tourType: tourType.toUpperCase(), category, items: parsed });
+        } catch (syncError) {
+          console.warn(`⚠️ Could not sync localStorage to DB (${localStorageKey}):`, syncError);
+        }
         return;
       }
 
-      // 3. If both empty, use defaults
+      // 3. No data anywhere - use defaults (don't save to DB here, let user changes trigger save)
       console.log(`⚠️ No data in database or localStorage, using defaults (${localStorageKey})`);
       setter(defaultValue);
     } catch (error) {
