@@ -2115,10 +2115,14 @@ export default function BookingDetail() {
         const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
         const arrivalDateStr = b.departureDate ? format(addDays(new Date(b.departureDate), daysToAdd), 'yyyy-MM-dd') : '';
 
+        // Auto-set country to Germany for CO tours if not set
+        const isCO = tourTypeCode === 'CO';
+        const autoCountry = isCO && !b.country ? 'Germany' : (b.country || '');
+
         setFormData({
           bookingNumber: b.bookingNumber,
           tourTypeId: b.tourTypeId?.toString() || '',
-          country: b.country || '',
+          country: autoCountry,
           departureDate: departureDateStr,
           arrivalDate: arrivalDateStr, // +1 day for ER/CO, +14 days for KAS
           endDate: b.endDate ? format(new Date(b.endDate), 'yyyy-MM-dd') : '',
