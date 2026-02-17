@@ -1505,13 +1505,37 @@ export default function BookingDetail() {
           console.error('Error loading invoices:', error);
         }
 
+        // Helper: get current rate from Guide module (overrides saved rate)
+        const allGuidesList = guidesRes.data.guides || [];
+        const getCurrentGuideRate = (savedGuide) => {
+          if (!savedGuide) return { dayRate: 110, halfDayRate: 55 };
+          const guideId = typeof savedGuide === 'object' ? savedGuide.id : null;
+          const guideName = typeof savedGuide === 'object' ? savedGuide.name : savedGuide;
+          const liveGuide = guideId
+            ? allGuidesList.find(g => g.id === guideId)
+            : allGuidesList.find(g => g.name === guideName);
+          return {
+            dayRate: liveGuide?.dayRate || (typeof savedGuide === 'object' ? savedGuide.dayRate : null) || 110,
+            halfDayRate: liveGuide?.halfDayRate || (typeof savedGuide === 'object' ? savedGuide.halfDayRate : null) || 55
+          };
+        };
+
         // Load guide assignment if exists
         // Priority: mainGuideData (JSON) > guide + guideId (database relation)
         if (b.mainGuideData) {
-          setMainGuide(b.mainGuideData);
+          const rates = getCurrentGuideRate(b.mainGuideData.guide);
+          const fullDays = b.mainGuideData.fullDays || 0;
+          const halfDays = b.mainGuideData.halfDays || 0;
+          setMainGuide({
+            ...b.mainGuideData,
+            dayRate: rates.dayRate,
+            halfDayRate: rates.halfDayRate,
+            totalPayment: (fullDays * rates.dayRate) + (halfDays * rates.halfDayRate)
+          });
         } else if (b.guide && b.guideId) {
-          const dayRate = b.guide.dayRate || 110;
-          const halfDayRate = b.guide.halfDayRate || 55;
+          const rates = getCurrentGuideRate(b.guide);
+          const dayRate = rates.dayRate;
+          const halfDayRate = rates.halfDayRate;
           // Auto-calculate days based on tour type
           let defaultFullDays = 0;
           let defaultHalfDays = 0;
@@ -1521,6 +1545,9 @@ export default function BookingDetail() {
           } else if (b.tourType?.code === 'ZA') {
             defaultFullDays = 5;
             defaultHalfDays = 1;
+          } else if (b.tourType?.code === 'KAS') {
+            defaultFullDays = 7;
+            defaultHalfDays = 0;
           }
           const fullDays = b.guideFullDays || defaultFullDays;
           const halfDays = b.guideHalfDays || defaultHalfDays;
@@ -1545,37 +1572,45 @@ export default function BookingDetail() {
           // Load the first additional guide as second guide
           const secondGuideData = b.additionalGuides[0];
           if (secondGuideData) {
+            const rates = getCurrentGuideRate(secondGuideData.guide);
+            const fullDays = secondGuideData.fullDays || 0;
+            const halfDays = secondGuideData.halfDays || 0;
             setSecondGuide({
               guide: secondGuideData.guide,
-              fullDays: secondGuideData.fullDays || 0,
-              halfDays: secondGuideData.halfDays || 0,
-              dayRate: secondGuideData.dayRate || 110,
-              halfDayRate: secondGuideData.halfDayRate || 55,
-              totalPayment: secondGuideData.totalPayment || 0
+              fullDays,
+              halfDays,
+              dayRate: rates.dayRate,
+              halfDayRate: rates.halfDayRate,
+              totalPayment: (fullDays * rates.dayRate) + (halfDays * rates.halfDayRate)
             });
           }
-        } else if (b.tourType?.code === 'ZA') {
-          // For ZA tours without second guide, auto-select Feruz
+        } else if (b.tourType?.code === 'ZA' || b.tourType?.code === 'KAS') {
+          // For ZA and KAS tours without second guide, auto-select Feruz (1 full day)
           const feruzGuide = guidesRes.data.guides.find(g => g.name === 'Feruz' || g.name === 'Феруз');
+          const feruzDayRate = feruzGuide?.dayRate || 110;
+          const feruzHalfDayRate = feruzGuide?.halfDayRate || Math.round(feruzDayRate / 2);
           setSecondGuide({
             guide: feruzGuide || null,
             fullDays: 1,
             halfDays: 0,
-            dayRate: 110,
-            halfDayRate: 55,
-            totalPayment: 110
+            dayRate: feruzDayRate,
+            halfDayRate: feruzHalfDayRate,
+            totalPayment: feruzDayRate
           });
         }
 
         // Load bergreiseleiter from bergreiseleiter JSON field
         if (b.bergreiseleiter) {
+          const rates = getCurrentGuideRate(b.bergreiseleiter.guide);
+          const fullDays = b.bergreiseleiter.fullDays || 0;
+          const halfDays = b.bergreiseleiter.halfDays || 0;
           setBergreiseleiter({
             guide: b.bergreiseleiter.guide,
-            fullDays: b.bergreiseleiter.fullDays || 0,
-            halfDays: b.bergreiseleiter.halfDays || 0,
-            dayRate: b.bergreiseleiter.dayRate || 110,
-            halfDayRate: b.bergreiseleiter.halfDayRate || 55,
-            totalPayment: b.bergreiseleiter.totalPayment || 0
+            fullDays,
+            halfDays,
+            dayRate: rates.dayRate,
+            halfDayRate: rates.halfDayRate,
+            totalPayment: (fullDays * rates.dayRate) + (halfDays * rates.halfDayRate)
           });
         }
 
@@ -2890,12 +2925,16 @@ export default function BookingDetail() {
       setManualGuideEntry(false);
       setManualGuideName('');
 
-      // Auto-select Feruz for ZA second guide
-      if (type === 'second' && booking?.tourType?.code === 'ZA') {
+      // Auto-select Feruz for ZA/KAS second guide and use their actual rates from DB
+      if (type === 'second' && (booking?.tourType?.code === 'ZA' || booking?.tourType?.code === 'KAS')) {
         const feruzGuide = guides.find(g => g.name === 'Feruz' || g.name === 'Феруз');
         setSelectedGuide(feruzGuide || null);
+        const feruzDayRate = feruzGuide?.dayRate || 110;
+        const feruzHalfDayRate = feruzGuide?.halfDayRate || Math.round(feruzDayRate / 2);
+        setGuideRates({ dayRate: feruzDayRate, halfDayRate: feruzHalfDayRate });
       } else {
         setSelectedGuide(null);
+        setGuideRates({ dayRate: 110, halfDayRate: 55 });
       }
 
       if (type === 'main') {
@@ -2903,18 +2942,19 @@ export default function BookingDetail() {
           setGuideDays({ fullDays: 12, halfDays: 1 });
         } else if (booking?.tourType?.code === 'ZA') {
           setGuideDays({ fullDays: 5, halfDays: 1 });
+        } else if (booking?.tourType?.code === 'KAS') {
+          setGuideDays({ fullDays: 7, halfDays: 0 });
         } else {
           setGuideDays({ fullDays: 0, halfDays: 0 });
         }
       } else {
-        // For second guide in ZA tours, default to 1 full day
-        if (type === 'second' && booking?.tourType?.code === 'ZA') {
+        // For second guide in ZA/KAS tours, default to 1 full day
+        if (type === 'second' && (booking?.tourType?.code === 'ZA' || booking?.tourType?.code === 'KAS')) {
           setGuideDays({ fullDays: 1, halfDays: 0 });
         } else {
           setGuideDays({ fullDays: 0, halfDays: 0 });
         }
       }
-      setGuideRates({ dayRate: 110, halfDayRate: 55 });
     }
 
     setGuideModalOpen(true);
