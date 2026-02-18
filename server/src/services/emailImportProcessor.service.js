@@ -144,25 +144,31 @@ class EmailImportProcessor {
 
     for (const parsedBooking of parsedBookings) {
       try {
+        // Excel files: match by tourType + departure date, then import tourists
+        if (parsedBooking.source === 'excel') {
+          const result = await this.importExcelBooking(parsedBooking);
+          if (result) {
+            if (result.action === 'created') created++;
+            else updated++;
+            ids.push(result.bookingId);
+          }
+          continue;
+        }
+
+        // Screenshot imports: original logic using booking number
         const bookingData = claudeVision.transformToBookingData(parsedBooking);
 
-        // Check if booking exists
         const existing = await prisma.booking.findFirst({
           where: { bookingNumber: bookingData.bookingNumber }
         });
 
         if (existing) {
-          // Update existing booking
           const updateData = {
             departureDate: bookingData.departureDate,
             arrivalDate: bookingData.arrivalDate,
             endDate: bookingData.endDate,
             avia: bookingData.avia
           };
-          // Update PAX from Excel if provided and booking has no tourists yet
-          if (bookingData.pax > 0 && existing.pax === 0) {
-            updateData.pax = bookingData.pax;
-          }
           await prisma.booking.update({
             where: { id: existing.id },
             data: updateData
@@ -171,37 +177,23 @@ class EmailImportProcessor {
           ids.push(existing.id);
           console.log(`✏️  Updated booking: ${bookingData.bookingNumber}`);
         } else {
-          // Create new booking
-          const tourTypeCode = claudeVision.extractTourTypeCode(bookingData.bookingNumber)
-            || excelParser.extractTourType(parsedBooking.reisename);
-
+          const tourTypeCode = claudeVision.extractTourTypeCode(bookingData.bookingNumber);
           if (!tourTypeCode) {
             console.warn(`⚠️  Cannot extract tour type from: ${bookingData.bookingNumber}`);
             continue;
           }
-
-          const tourType = await prisma.tourType.findFirst({
-            where: { code: tourTypeCode }
-          });
-
-          if (!tourType) {
-            console.warn(`⚠️  Unknown tour type: ${tourTypeCode}`);
-            continue;
-          }
+          const tourType = await prisma.tourType.findFirst({ where: { code: tourTypeCode } });
+          if (!tourType) { console.warn(`⚠️  Unknown tour type: ${tourTypeCode}`); continue; }
 
           const newBooking = await prisma.booking.create({
             data: {
               ...bookingData,
               tourTypeId: tourType.id,
               status: 'PENDING',
-              pax: bookingData.pax || 0,
-              roomsDbl: 0,
-              roomsTwn: 0,
-              roomsSngl: 0,
-              roomsTotal: 0
+              pax: 0,
+              roomsDbl: 0, roomsTwn: 0, roomsSngl: 0, roomsTotal: 0
             }
           });
-
           created++;
           ids.push(newBooking.id);
           console.log(`✨ Created booking: ${bookingData.bookingNumber}`);
@@ -212,6 +204,142 @@ class EmailImportProcessor {
     }
 
     return { created, updated, ids };
+  }
+
+  /**
+   * Import an Excel (Agenturdaten) booking:
+   * 1. Find matching booking by tourType + departureDate
+   * 2. Import tourists into found booking
+   */
+  async importExcelBooking(parsedBooking) {
+    const tourTypeCode = excelParser.extractTourType(parsedBooking.reisename);
+    if (!tourTypeCode) {
+      console.warn(`⚠️  Cannot determine tour type from: ${parsedBooking.reisename}`);
+      return null;
+    }
+
+    const tourType = await prisma.tourType.findFirst({ where: { code: tourTypeCode } });
+    if (!tourType) {
+      console.warn(`⚠️  Unknown tour type code: ${tourTypeCode}`);
+      return null;
+    }
+
+    // Parse departure date
+    const departureDate = this.parseDateString(parsedBooking.departureDate);
+    const endDate = this.parseDateString(parsedBooking.returnArrivalDate);
+
+    // Find booking by tourType + departure date (within ±3 days tolerance)
+    let booking = null;
+    if (departureDate) {
+      const from = new Date(departureDate);
+      const to = new Date(departureDate);
+      from.setDate(from.getDate() - 3);
+      to.setDate(to.getDate() + 3);
+
+      booking = await prisma.booking.findFirst({
+        where: {
+          tourTypeId: tourType.id,
+          departureDate: { gte: from, lte: to }
+        },
+        orderBy: { departureDate: 'asc' }
+      });
+    }
+
+    let action = 'updated';
+    if (!booking) {
+      // Create new booking from Excel data
+      const bookingNumber = `${tourTypeCode}-EXCEL-${parsedBooking.departureDate || 'unknown'}`;
+      booking = await prisma.booking.create({
+        data: {
+          bookingNumber,
+          tourTypeId: tourType.id,
+          departureDate,
+          arrivalDate: departureDate,
+          endDate,
+          status: 'PENDING',
+          pax: parsedBooking.tourists?.length || 0,
+          roomsDbl: 0, roomsTwn: 0, roomsSngl: 0, roomsTotal: 0
+        }
+      });
+      action = 'created';
+      console.log(`✨ Created booking from Excel: ${bookingNumber}`);
+    } else {
+      console.log(`🔗 Matched booking: ${booking.bookingNumber}`);
+    }
+
+    // Import tourists
+    if (parsedBooking.tourists && parsedBooking.tourists.length > 0) {
+      let touristsAdded = 0;
+      for (const t of parsedBooking.tourists) {
+        // Check if tourist already exists in this booking
+        const existingTourist = await prisma.tourist.findFirst({
+          where: {
+            bookingId: booking.id,
+            lastName: t.lastName,
+            firstName: t.firstName
+          }
+        });
+
+        if (existingTourist) {
+          // Update existing tourist with fresh data
+          await prisma.tourist.update({
+            where: { id: existingTourist.id },
+            data: {
+              gender: t.gender || existingTourist.gender,
+              dateOfBirth: t.dateOfBirth ? this.parseDateString(t.dateOfBirth) : existingTourist.dateOfBirth,
+              passportNumber: t.passport || existingTourist.passportNumber,
+              passportExpiryDate: t.passportExpiry ? this.parseDateString(t.passportExpiry) : existingTourist.passportExpiryDate,
+              country: t.nationality || existingTourist.country,
+              roomPreference: t.roomType || existingTourist.roomPreference,
+              remarks: t.remarks || existingTourist.remarks
+            }
+          });
+        } else {
+          // Create new tourist
+          await prisma.tourist.create({
+            data: {
+              bookingId: booking.id,
+              firstName: t.firstName || '',
+              lastName: t.lastName || '',
+              fullName: t.fullName || `${t.firstName} ${t.lastName}`.trim(),
+              gender: t.gender,
+              dateOfBirth: t.dateOfBirth ? this.parseDateString(t.dateOfBirth) : null,
+              passportNumber: t.passport || null,
+              passportExpiryDate: t.passportExpiry ? this.parseDateString(t.passportExpiry) : null,
+              country: t.nationality || 'Deutschland',
+              roomPreference: t.roomType || 'SNGL',
+              accommodation: 'Not assigned',
+              remarks: [t.remarks, t.voyageOption].filter(Boolean).join('; ') || null,
+              notes: t.vegetarian ? 'Vegetarian' : null
+            }
+          });
+          touristsAdded++;
+        }
+      }
+
+      // Update booking PAX count
+      const totalTourists = await prisma.tourist.count({ where: { bookingId: booking.id } });
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { pax: totalTourists }
+      });
+
+      console.log(`👥 Imported ${touristsAdded} new tourists for booking ${booking.bookingNumber} (total: ${totalTourists})`);
+    }
+
+    return { bookingId: booking.id, action };
+  }
+
+  /**
+   * Parse "DD.MM.YYYY" date string to Date object
+   */
+  parseDateString(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split('.');
+    if (parts.length !== 3) return null;
+    const [d, m, y] = parts;
+    const date = new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+    return isNaN(date.getTime()) ? null : date;
   }
 
   /**
