@@ -106,7 +106,8 @@ Rules:
       if (!booking.bookingCode) {
         throw new Error(`Missing bookingCode for booking: ${JSON.stringify(booking)}`);
       }
-      if (!booking.departureDate) {
+      // departureDate is required for screenshot imports but may be absent in Excel summary files
+      if (!booking.departureDate && booking.source !== 'excel') {
         throw new Error(`Missing departureDate for booking: ${booking.bookingCode}`);
       }
     }
@@ -145,8 +146,9 @@ Rules:
       arrivalDate,
       endDate,
       avia: avia || null,
+      pax: parsedBooking.pax || 0,
       // These fields will be filled by existing import logic:
-      // tourTypeId, pax, guide, status, etc.
+      // tourTypeId, guide, status, etc.
     };
   }
 

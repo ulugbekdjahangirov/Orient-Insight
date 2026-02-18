@@ -44,9 +44,14 @@ async function pollGmailForBookings() {
  */
 async function processNewEmail(messageId) {
   try {
-    // Check if already processed
-    const existing = await prisma.emailImport.findUnique({
-      where: { gmailMessageId: messageId }
+    // Check if already processed (check both exact messageId and composite key format)
+    const existing = await prisma.emailImport.findFirst({
+      where: {
+        OR: [
+          { gmailMessageId: messageId },
+          { gmailMessageId: { startsWith: messageId + '::' } }
+        ]
+      }
     });
 
     if (existing) {
@@ -65,53 +70,87 @@ async function processNewEmail(messageId) {
       return;
     }
 
-    // Find first image or PDF attachment
-    const attachment = emailDetails.attachments.find(att =>
-      att.mimeType.startsWith('image/') || att.mimeType === 'application/pdf'
-    );
+    // Find first supported attachment: Excel, image, or PDF
+    const isExcelAttachment = (att) => {
+      return att.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        || att.mimeType === 'application/vnd.ms-excel'
+        || (att.filename && att.filename.toLowerCase().endsWith('.xlsx'))
+        || (att.filename && att.filename.toLowerCase().endsWith('.xls'));
+    };
 
-    if (!attachment) {
-      console.log(`⚠️  No image/PDF attachment in email ${messageId}`);
+    const isImageOrPdf = (att) => {
+      return att.mimeType.startsWith('image/') || att.mimeType === 'application/pdf';
+    };
+
+    // Collect all supported attachments
+    const excelAttachments = emailDetails.attachments.filter(isExcelAttachment);
+    const imageOrPdfAttachments = emailDetails.attachments.filter(isImageOrPdf);
+
+    // Use all Excel files if present, otherwise use first image/PDF
+    const attachmentsToProcess = excelAttachments.length > 0
+      ? excelAttachments
+      : imageOrPdfAttachments.slice(0, 1);
+
+    if (attachmentsToProcess.length === 0) {
+      console.log(`⚠️  No supported attachment in email ${messageId}`);
       await gmailService.markAsProcessed(messageId);
       return;
     }
 
-    // Download attachment
-    const attachmentBuffer = await gmailService.downloadAttachment(messageId, attachment.attachmentId);
+    console.log(`📎 Found ${attachmentsToProcess.length} attachment(s) to process`);
 
-    // Save attachment to disk
     const uploadDir = path.join(__dirname, '../../uploads/gmail');
     await fs.mkdir(uploadDir, { recursive: true });
 
-    const timestamp = Date.now();
-    const sanitizedFilename = attachment.filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const filename = `${timestamp}-${sanitizedFilename}`;
-    const filepath = path.join(uploadDir, filename);
-    await fs.writeFile(filepath, attachmentBuffer);
+    // Process each attachment
+    for (const attachment of attachmentsToProcess) {
+      const attachmentType = isExcelAttachment(attachment) ? 'excel' : 'image';
+      console.log(`📎 Processing ${attachmentType} attachment: ${attachment.filename}`);
 
-    console.log(`💾 Saved attachment: ${filename}`);
+      // Download attachment
+      const attachmentBuffer = await gmailService.downloadAttachment(messageId, attachment.attachmentId);
 
-    // Create EmailImport record
-    const emailImport = await prisma.emailImport.create({
-      data: {
-        gmailMessageId: messageId,
-        emailSubject: emailDetails.subject,
-        emailFrom: emailDetails.from,
-        emailDate: emailDetails.date,
-        attachmentName: attachment.filename,
-        attachmentUrl: filepath,
-        attachmentType: attachment.mimeType,
-        status: 'PENDING'
+      // Save attachment to disk (unique per attachment)
+      const timestamp = Date.now();
+      const sanitizedFilename = attachment.filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filename = `${timestamp}-${sanitizedFilename}`;
+      const filepath = path.join(uploadDir, filename);
+      await fs.writeFile(filepath, attachmentBuffer);
+
+      console.log(`💾 Saved attachment: ${filename}`);
+
+      // Create EmailImport record for this attachment
+      // Use messageId+filename as unique key to avoid duplicate processing per attachment
+      const uniqueKey = `${messageId}::${attachment.filename}`;
+      const existingAtt = await prisma.emailImport.findFirst({
+        where: { gmailMessageId: uniqueKey }
+      });
+      if (existingAtt) {
+        console.log(`⏭️  Attachment ${attachment.filename} already processed`);
+        continue;
       }
-    });
 
-    console.log(`✅ Created EmailImport record ${emailImport.id}`);
+      const emailImport = await prisma.emailImport.create({
+        data: {
+          gmailMessageId: uniqueKey,
+          emailSubject: emailDetails.subject,
+          emailFrom: emailDetails.from,
+          emailDate: emailDetails.date,
+          attachmentName: attachment.filename,
+          attachmentUrl: filepath,
+          attachmentType: attachment.mimeType,
+          status: 'PENDING'
+        }
+      });
 
-    // Process import asynchronously
-    setImmediate(() => {
-      emailImportProcessor.processEmailImport(emailImport.id)
-        .catch(err => console.error(`Failed to process import ${emailImport.id}:`, err));
-    });
+      console.log(`✅ Created EmailImport record ${emailImport.id}`);
+
+      // Process import asynchronously
+      setImmediate(() => {
+        emailImportProcessor.processEmailImport(emailImport.id)
+          .catch(err => console.error(`Failed to process import ${emailImport.id}:`, err));
+      });
+    }
 
   } catch (error) {
     console.error(`❌ Error processing email ${messageId}:`, error.message);
@@ -128,7 +167,7 @@ async function getEmailWhitelist() {
 
   if (!setting) {
     // Default whitelist
-    return ['@orient-tours.de'];
+    return ['@world-insight.de'];
   }
 
   return JSON.parse(setting.value);

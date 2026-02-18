@@ -264,7 +264,7 @@ class GmailService {
 
     if (!setting) {
       // Default whitelist
-      return ['@orient-tours.de'];
+      return ['@world-insight.de'];
     }
 
     return JSON.parse(setting.value);

@@ -174,7 +174,7 @@ export default function GmailSettings() {
           )}
         </div>
         <p className="text-sm text-gray-500 mt-4">
-          Интеграция автоматически импортирует расписания туров из писем с вложениями-скриншотами.
+          Интеграция автоматически импортирует данные из писем с вложениями Excel (Agenturdaten), PDF или скриншотами.
           Проверка почты происходит каждые 5 минут.
         </p>
       </div>
@@ -193,7 +193,7 @@ export default function GmailSettings() {
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAddEmail()}
-            placeholder="booking@example.com или @orient-tours.de"
+            placeholder="booking@example.com или @world-insight.de"
             className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button

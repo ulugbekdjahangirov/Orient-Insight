@@ -80,6 +80,21 @@ app.listen(PORT, () => {
   console.log(`🚀 Orient Insight сервер запущен на порту ${PORT}`);
 });
 
+// Migrate old Gmail whitelist if needed
+const { PrismaClient } = require('@prisma/client');
+const _prisma = new PrismaClient();
+_prisma.systemSetting.findUnique({ where: { key: 'GMAIL_SENDER_WHITELIST' } }).then(setting => {
+  if (setting) {
+    const whitelist = JSON.parse(setting.value);
+    if (whitelist.length === 1 && whitelist[0] === '@orient-tours.de') {
+      _prisma.systemSetting.update({
+        where: { key: 'GMAIL_SENDER_WHITELIST' },
+        data: { value: JSON.stringify(['@world-insight.de']) }
+      }).then(() => console.log('✅ Gmail whitelist migrated to @world-insight.de'));
+    }
+  }
+}).catch(() => {});
+
 // Start Gmail polling cron job
 const { startGmailPolling } = require('./jobs/gmailPoller.job');
 startGmailPolling();

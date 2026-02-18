@@ -226,7 +226,7 @@ router.get('/settings', authenticate, async (req, res) => {
       where: { key: 'GMAIL_SENDER_WHITELIST' }
     });
 
-    const whitelist = setting ? JSON.parse(setting.value) : ['@orient-tours.de'];
+    const whitelist = setting ? JSON.parse(setting.value) : ['@world-insight.de'];
 
     res.json({ whitelist });
   } catch (error) {

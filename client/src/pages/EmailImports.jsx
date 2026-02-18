@@ -308,6 +308,18 @@ export default function EmailImports() {
                   />
                 </div>
               )}
+              {selectedImport.attachmentName && (
+                selectedImport.attachmentName.toLowerCase().endsWith('.xlsx') ||
+                selectedImport.attachmentName.toLowerCase().endsWith('.xls')
+              ) && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-2">Excel файл:</h3>
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded">
+                    <span className="text-2xl">📊</span>
+                    <span className="text-green-800 font-medium">{selectedImport.attachmentName}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <button

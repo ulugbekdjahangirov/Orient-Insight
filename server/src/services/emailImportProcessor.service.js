@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const gmailService = require('./gmail.service');
 const claudeVision = require('./claudeVision.service');
+const excelParser = require('./excelParser.service');
 const fs = require('fs').promises;
 const path = require('path');
 const nodemailer = require('nodemailer');
@@ -29,11 +30,19 @@ class EmailImportProcessor {
       });
 
       // Read attachment from disk
-      const imageBuffer = await fs.readFile(emailImport.attachmentUrl);
+      const fileBuffer = await fs.readFile(emailImport.attachmentUrl);
 
-      // Parse with Claude Vision
-      console.log(`🔍 Parsing screenshot with Claude AI...`);
-      const parsedData = await claudeVision.parseBookingScreenshot(imageBuffer);
+      // Determine file type and parse accordingly
+      const isExcel = this.isExcelFile(emailImport.attachmentName, emailImport.attachmentType);
+
+      let parsedData;
+      if (isExcel) {
+        console.log(`📊 Parsing Excel file: ${emailImport.attachmentName}`);
+        parsedData = excelParser.parseAgenturdaten(fileBuffer);
+      } else {
+        console.log(`🔍 Parsing screenshot with Claude AI...`);
+        parsedData = await claudeVision.parseBookingScreenshot(fileBuffer);
+      }
 
       // Validate structure
       await claudeVision.validateParsedData(parsedData);
@@ -60,7 +69,11 @@ class EmailImportProcessor {
       });
 
       // Mark email as processed in Gmail
-      await gmailService.markAsProcessed(emailImport.gmailMessageId);
+      // gmailMessageId may be "messageId::filename" format for Excel files
+      const realMessageId = emailImport.gmailMessageId.includes('::')
+        ? emailImport.gmailMessageId.split('::')[0]
+        : emailImport.gmailMessageId;
+      await gmailService.markAsProcessed(realMessageId);
 
       // Send success notification
       await this.sendNotification('SUCCESS', {
@@ -105,6 +118,23 @@ class EmailImportProcessor {
   }
 
   /**
+   * Check if a file is an Excel file based on name or MIME type
+   */
+  isExcelFile(filename, mimeType) {
+    if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      || mimeType === 'application/vnd.ms-excel') {
+      return true;
+    }
+    if (filename) {
+      const lower = filename.toLowerCase();
+      if (lower.endsWith('.xlsx') || lower.endsWith('.xls')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Import bookings from parsed data
    */
   async importBookings(parsedBookings) {
@@ -123,21 +153,27 @@ class EmailImportProcessor {
 
         if (existing) {
           // Update existing booking
+          const updateData = {
+            departureDate: bookingData.departureDate,
+            arrivalDate: bookingData.arrivalDate,
+            endDate: bookingData.endDate,
+            avia: bookingData.avia
+          };
+          // Update PAX from Excel if provided and booking has no tourists yet
+          if (bookingData.pax > 0 && existing.pax === 0) {
+            updateData.pax = bookingData.pax;
+          }
           await prisma.booking.update({
             where: { id: existing.id },
-            data: {
-              departureDate: bookingData.departureDate,
-              arrivalDate: bookingData.arrivalDate,
-              endDate: bookingData.endDate,
-              avia: bookingData.avia
-            }
+            data: updateData
           });
           updated++;
           ids.push(existing.id);
           console.log(`✏️  Updated booking: ${bookingData.bookingNumber}`);
         } else {
           // Create new booking
-          const tourTypeCode = claudeVision.extractTourTypeCode(bookingData.bookingNumber);
+          const tourTypeCode = claudeVision.extractTourTypeCode(bookingData.bookingNumber)
+            || excelParser.extractTourType(parsedBooking.reisename);
 
           if (!tourTypeCode) {
             console.warn(`⚠️  Cannot extract tour type from: ${bookingData.bookingNumber}`);
@@ -158,7 +194,7 @@ class EmailImportProcessor {
               ...bookingData,
               tourTypeId: tourType.id,
               status: 'PENDING',
-              pax: 0, // Will be updated when tourists are imported
+              pax: bookingData.pax || 0,
               roomsDbl: 0,
               roomsTwn: 0,
               roomsSngl: 0,
