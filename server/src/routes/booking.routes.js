@@ -2317,7 +2317,7 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
 router.get('/:id/storno-preview', async (req, res) => {
   try {
     const { id } = req.params;
-    const { hotelName, hotelCity, checkIn, checkOut, dbl, twn, sngl, bookingNumber, pax } = req.query;
+    const { hotelName, hotelCity, checkIn, checkOut, dbl, twn, sngl, bookingNumber, pax, visitNumber } = req.query;
 
     // Fetch booking with guide info
     const booking = await prisma.booking.findUnique({
@@ -2346,6 +2346,19 @@ router.get('/:id/storno-preview', async (req, res) => {
     const twnCount = parseInt(twn) || 0;
     const snglCount = parseInt(sngl) || 0;
     const paxCount = parseInt(pax) || 0;
+    const visitNum = parseInt(visitNumber) || 1;
+
+    // Visit labels for title and column headers
+    const visitLabels = {
+      1: { title: 'Первый заезд', checkInCol: 'Первый<br>заезд', checkOutCol: 'Первый<br>выезд' },
+      2: { title: 'Второй заезд', checkInCol: 'Второй<br>заезд', checkOutCol: 'Второй<br>выезд' },
+      3: { title: 'Третий заезд', checkInCol: 'Третий<br>заезд', checkOutCol: 'Третий<br>выезд' },
+    };
+    const visitLabel = visitLabels[visitNum] || visitLabels[1];
+
+    // Title suffix: "(Первый заезд)" only if hotel is visited multiple times (visitNum tracked by frontend)
+    // Always show visit label in title for clarity
+    const titleSuffix = ` (${visitLabel.title})`;
 
     // Country based on tour type
     const tourCode = booking?.tourType?.code || '';
@@ -2368,7 +2381,7 @@ router.get('/:id/storno-preview', async (req, res) => {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>АННУЛЯЦИЯ ${bookingNumber} - ${hotelName}</title>
+  <title>АННУЛЯЦИЯ к заявке ${bookingNumber}${titleSuffix} - ${hotelName}</title>
   <style>
     @page { size: A4 portrait; margin: 15mm 12mm 15mm 12mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2447,7 +2460,7 @@ router.get('/:id/storno-preview', async (req, res) => {
     </table>
 
     <!-- Title -->
-    <div class="zayvka-title">АННУЛЯЦИЯ к заявке ${bookingNumber || ''}</div>
+    <div class="zayvka-title">АННУЛЯЦИЯ к заявке ${bookingNumber || ''}${titleSuffix}</div>
     <div class="intro-text">
       ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит аннулировать бронь группы с учетом нижеследующих деталей.
     </div>
@@ -2460,8 +2473,8 @@ router.get('/:id/storno-preview', async (req, res) => {
           <th>Группа</th>
           <th>Страна</th>
           <th>PAX</th>
-          <th>Первый<br>заезд</th>
-          <th>Первый<br>выезд</th>
+          <th>${visitLabel.checkInCol}</th>
+          <th>${visitLabel.checkOutCol}</th>
           <th>DBL</th>
           <th>TWN</th>
           <th>SNGL</th>
@@ -2501,6 +2514,230 @@ router.get('/:id/storno-preview', async (req, res) => {
     res.send(html);
   } catch (error) {
     console.error('Storno preview error:', error);
+    res.status(500).json({ error: 'Ошибка создания аннуляции' });
+  }
+});
+
+// GET /api/bookings/:id/storno-combined/:hotelId - Combined Annulation PDF (all visits to same hotel)
+router.get('/:id/storno-combined/:hotelId', async (req, res) => {
+  try {
+    const { id, hotelId } = req.params;
+    const bookingIdInt = parseInt(id);
+    const hotelIdInt = parseInt(hotelId);
+
+    // Fetch booking with guide and tourType
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingIdInt },
+      include: { tourType: true, guide: true }
+    });
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Fetch all accommodations for this hotel in this booking (sorted by check-in)
+    const hotelAccommodations = await prisma.accommodation.findMany({
+      where: { bookingId: bookingIdInt, hotelId: hotelIdInt },
+      include: { hotel: { include: { city: true } }, rooms: true },
+      orderBy: { checkInDate: 'asc' }
+    });
+
+    if (hotelAccommodations.length === 0) {
+      return res.status(404).json({ error: 'No accommodations found for this hotel' });
+    }
+
+    const hotel = hotelAccommodations[0].hotel;
+    const hotelName = hotel?.name || 'Hotel';
+    const bookingNumber = booking.bookingNumber || 'N/A';
+    const country = 'Германия';
+
+    // Format date to dd.MM.yyyy
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+
+    const currentDate = formatDate(new Date().toISOString());
+
+    // Load logo as base64
+    const logoPath = path.join(__dirname, '../../uploads/logo.png');
+    let logoDataUrl = '';
+    try {
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoDataUrl = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      }
+    } catch (err) {
+      console.warn('Could not load logo:', err);
+    }
+
+    const visitLabels = ['Первый', 'Второй', 'Третий', 'Четвёртый', 'Пятый'];
+
+    // Build one page per visit
+    let pagesHtml = '';
+
+    for (let i = 0; i < hotelAccommodations.length; i++) {
+      const acc = hotelAccommodations[i];
+      const isMultiVisit = hotelAccommodations.length > 1;
+
+      const visitLabelText = visitLabels[i] || `${i + 1}-й`;
+      const visitSuffix = isMultiVisit ? ` (${visitLabelText} заезд)` : '';
+      const checkInHeader = isMultiVisit ? `${visitLabelText}<br>заезд` : 'заезд';
+      const checkOutHeader = isMultiVisit ? `${visitLabelText}<br>выезд` : 'выезд';
+
+      const arrivalDate = formatDate(acc.checkInDate);
+      const departureDate = formatDate(acc.checkOutDate);
+
+      // Room counts from saved rooms (all 0 for cancelled)
+      let dblCount = 0, twnCount = 0, snglCount = 0;
+      if (acc.rooms && acc.rooms.length > 0) {
+        acc.rooms.forEach(room => {
+          const code = room.roomTypeCode?.toUpperCase();
+          if (code === 'DBL' || code === 'DOUBLE' || code === 'DZ') dblCount += room.roomsCount || 0;
+          else if (code === 'TWN' || code === 'TWIN') twnCount += room.roomsCount || 0;
+          else if (code === 'SNGL' || code === 'SINGLE' || code === 'EZ') snglCount += room.roomsCount || 0;
+        });
+      }
+
+      const logoHtml = logoDataUrl
+        ? `<img src="${logoDataUrl}" alt="Orient Insight" style="width:150px;height:auto;margin-bottom:8px" />`
+        : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>';
+
+      // Page break between visits (not before first)
+      const pageBreak = i > 0 ? '<div style="page-break-before:always;"></div>' : '';
+
+      pagesHtml += `
+      ${pageBreak}
+      <div class="page-content">
+        <!-- Logo + Company Info -->
+        <table style="width:100%;border:none;border-collapse:collapse;margin-bottom:10px;">
+          <tr>
+            <td style="width:100%;text-align:center">
+              ${logoHtml}
+              <div style="font-size:9pt;margin-top:5px">
+                <strong>Республика Узбекистан,</strong><br>
+                г.Самарканд, Шота Руставели, дом 45<br>
+                Тел/fax.: +998 933484208, +998 97 9282814<br>
+                E-Mail: orientinsightreisen@gmail.com<br>
+                Website: orient-insight.uz
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Date and Hotel -->
+        <table style="width:100%;border:none;border-collapse:collapse;margin-bottom:15px;">
+          <tr>
+            <td style="width:50%;text-align:left;vertical-align:top;padding:3px">
+              <strong>Дата:</strong> ${currentDate}
+            </td>
+            <td style="width:50%;text-align:right;vertical-align:top;padding:3px">
+              <strong>Директору гостиницы</strong><br>
+              <strong>${hotelName}</strong>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Title -->
+        <div style="text-align:center;font-size:14pt;font-weight:bold;margin:15px 0;text-decoration:underline;">
+          АННУЛЯЦИЯ к заявке ${bookingNumber}${visitSuffix}
+        </div>
+
+        <div style="margin-bottom:15px;text-align:justify;">
+          ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит аннулировать бронь группы с учетом нижеследующих деталей.
+        </div>
+
+        <!-- Summary Table -->
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+          <thead>
+            <tr>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">№</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">Группа</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">Страна</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">PAX</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">${checkInHeader}</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">${checkOutHeader}</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">DBL</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">TWN</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">SNGL</th>
+              <th style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;background:#f0f0f0;">Тип номера</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">1</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">${bookingNumber}</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">${country}</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">0</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">${arrivalDate}</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">${departureDate}</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">${dblCount}</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">${twnCount}</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">${snglCount}</td>
+              <td style="border:1px solid #000;padding:4px;text-align:center;font-size:8pt;">стандарт</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Signature -->
+        <table style="width:100%;border:none;border-collapse:collapse;margin-top:30px;">
+          <tr>
+            <td style="width:40%;padding:5px"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+            <td style="width:40%;text-align:center;padding:5px">_________________________</td>
+            <td style="width:20%;text-align:center;padding:5px"><strong>Милиев С.Р.</strong></td>
+          </tr>
+        </table>
+      </div>
+      `;
+    }
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>АННУЛЯЦИЯ ${bookingNumber} - ${hotelName}</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm 12mm 15mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.2; color: #000; }
+    .action-bar {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #2c3e50; padding: 12px 20px;
+      display: flex; gap: 10px; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000;
+    }
+    .action-bar button {
+      padding: 10px 24px; font-size: 14px; font-weight: 600;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+    .btn-print { background: #3498db; color: white; }
+    .btn-close { background: #95a5a6; color: white; }
+    .content-wrapper { margin-top: 60px; }
+    .page-content { padding-top: 5px; }
+    @media print {
+      .action-bar { display: none !important; }
+      .content-wrapper { margin-top: 0 !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="action-bar">
+    <button class="btn-print" onclick="window.print()">🖨️ Печать / Сохранить как PDF</button>
+    <button class="btn-close" onclick="window.close()">✕ Закрыть</button>
+  </div>
+  <div class="content-wrapper">
+    ${pagesHtml}
+  </div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (error) {
+    console.error('Storno combined error:', error);
     res.status(500).json({ error: 'Ошибка создания аннуляции' });
   }
 });

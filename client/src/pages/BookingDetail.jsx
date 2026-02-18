@@ -409,6 +409,7 @@ export default function BookingDetail() {
   const [stornoDbl, setStornoDbl] = useState(0);
   const [stornoTwn, setStornoTwn] = useState(0);
   const [stornoSngl, setStornoSngl] = useState(0);
+  const [stornoVisitNumber, setStornoVisitNumber] = useState(1); // 1=first visit, 2=second, 3=third
   const [planeVehicles, setPlaneVehicles] = useState([]); // Planes from OPEX database
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
@@ -5334,6 +5335,11 @@ export default function BookingDetail() {
               rooms.push({ roomTypeCode: 'SNGL', roomsCount: fallbackSngl, guestsPerRoom: 1, pricePerNight: 0 });
             }
             console.log(`⚠️ 0 tourists for ${hotel.name}: using booking room counts as fallback (DBL:${fallbackDbl}, TWN:${fallbackTwn}, SNGL:${fallbackSngl})`);
+          } else if (booking.status === 'CANCELLED') {
+            // For cancelled bookings with 0 tourists: create accommodation with empty rooms
+            // This allows generating Storno PDF (which shows 0 rooms anyway)
+            console.log(`ℹ️ Cancelled booking: creating ${hotel.name} with 0 rooms (for Storno PDF)`);
+            // rooms stays [] - backend accepts empty array, creates accommodation without room records
           } else {
             console.warn(`No rooms calculated for ${hotel.name} (${groupName}): ${groupTourists.length} tourists`);
             toast.error(`Нет комнат для ${hotel.name}: проверьте предпочтения туристов`);
@@ -16162,14 +16168,11 @@ export default function BookingDetail() {
                           {booking?.status === 'CANCELLED' && (
                             <button
                               onClick={() => {
-                                setStornoAcc(acc);
-                                setStornoHotelId(acc.hotel?.id?.toString() || '');
-                                setStornoCheckIn(acc.checkInDate?.split('T')[0] || '');
-                                setStornoCheckOut(acc.checkOutDate?.split('T')[0] || '');
-                                setStornoDbl(0);
-                                setStornoTwn(0);
-                                setStornoSngl(0);
-                                setStornoModalOpen(true);
+                                // Open combined storno PDF for ALL visits to this hotel
+                                const hotelId = acc.hotel?.id;
+                                if (!hotelId) { toast.error('Hotel topilmadi'); return; }
+                                const url = `/api/bookings/${id}/storno-combined/${hotelId}`;
+                                window.open(url, '_blank');
                               }}
                               className={`p-3 text-orange-600 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 hover:border-orange-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
                               title="Stornierungsschreiben (Annulyatsiya xati)"
@@ -18129,7 +18132,8 @@ export default function BookingDetail() {
                     twn: stornoTwn,
                     sngl: stornoSngl,
                     bookingNumber: booking?.bookingNumber || '',
-                    pax: 0
+                    pax: 0,
+                    visitNumber: stornoVisitNumber
                   });
                   window.open(url, '_blank');
                 }}
