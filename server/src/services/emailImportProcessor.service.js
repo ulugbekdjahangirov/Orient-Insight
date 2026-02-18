@@ -368,19 +368,25 @@ class EmailImportProcessor {
         ? '✅ Gmail Import Success'
         : '❌ Gmail Import Failed';
 
+      const escapeHtml = (str) => String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
       const html = type === 'SUCCESS' ? `
         <h2>Gmail Import Successful</h2>
-        <p><strong>From:</strong> ${data.emailFrom}</p>
-        <p><strong>Subject:</strong> ${data.emailSubject}</p>
+        <p><strong>From:</strong> ${escapeHtml(data.emailFrom)}</p>
+        <p><strong>Subject:</strong> ${escapeHtml(data.emailSubject)}</p>
         <p><strong>Bookings Created:</strong> ${data.bookingsCreated}</p>
         <p><strong>Bookings Updated:</strong> ${data.bookingsUpdated}</p>
         ${data.bookingIds && data.bookingIds.length > 0 ? `<p><strong>Booking IDs:</strong> ${data.bookingIds.join(', ')}</p>` : ''}
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/email-imports">View Details</a></p>
       ` : `
         <h2>Gmail Import Failed</h2>
-        <p><strong>From:</strong> ${data.emailFrom}</p>
-        <p><strong>Subject:</strong> ${data.emailSubject}</p>
-        <p><strong>Error:</strong> ${data.errorMessage}</p>
+        <p><strong>From:</strong> ${escapeHtml(data.emailFrom)}</p>
+        <p><strong>Subject:</strong> ${escapeHtml(data.emailSubject)}</p>
+        <p><strong>Error:</strong> ${escapeHtml(data.errorMessage)}</p>
         <p><strong>Retry Count:</strong> ${data.retryCount || 0}</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/email-imports">View Details</a></p>
       `;

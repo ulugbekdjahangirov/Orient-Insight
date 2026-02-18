@@ -37,7 +37,7 @@ class GmailService {
   }
 
   /**
-   * Load tokens from database
+   * Load tokens from database (decrypts if encrypted)
    */
   async loadTokens() {
     const setting = await prisma.systemSetting.findUnique({
@@ -48,24 +48,45 @@ class GmailService {
       throw new Error('Gmail not authenticated. Please authorize first.');
     }
 
+    if (setting.encrypted) {
+      const key = process.env.ENCRYPTION_KEY;
+      if (!key) throw new Error('ENCRYPTION_KEY missing — cannot decrypt Gmail tokens');
+      const crypto = require('crypto');
+      const [ivHex, encrypted] = setting.value.split(':');
+      const iv = Buffer.from(ivHex, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(key.slice(0, 32)), iv);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return JSON.parse(decrypted);
+    }
+
     return JSON.parse(setting.value);
   }
 
   /**
-   * Save tokens to database
+   * Save tokens to database (encrypts with AES-256 if ENCRYPTION_KEY is set)
    */
   async saveTokens(tokens) {
+    const key = process.env.ENCRYPTION_KEY;
+    let valueToStore;
+    let isEncrypted = false;
+
+    if (key && key.length >= 32) {
+      const crypto = require('crypto');
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(key.slice(0, 32)), iv);
+      let encrypted = cipher.update(JSON.stringify(tokens), 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      valueToStore = iv.toString('hex') + ':' + encrypted;
+      isEncrypted = true;
+    } else {
+      valueToStore = JSON.stringify(tokens);
+    }
+
     await prisma.systemSetting.upsert({
       where: { key: 'GMAIL_OAUTH_TOKENS' },
-      update: {
-        value: JSON.stringify(tokens),
-        encrypted: false
-      },
-      create: {
-        key: 'GMAIL_OAUTH_TOKENS',
-        value: JSON.stringify(tokens),
-        encrypted: false
-      }
+      update: { value: valueToStore, encrypted: isEncrypted },
+      create: { key: 'GMAIL_OAUTH_TOKENS', value: valueToStore, encrypted: isEncrypted }
     });
   }
 
