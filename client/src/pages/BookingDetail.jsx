@@ -411,6 +411,14 @@ export default function BookingDetail() {
   const [stornoSngl, setStornoSngl] = useState(0);
   const [stornoVisitNumber, setStornoVisitNumber] = useState(1); // 1=first visit, 2=second, 3=third
   const [planeVehicles, setPlaneVehicles] = useState([]); // Planes from OPEX database
+  const [pdfFlightModalOpen, setPdfFlightModalOpen] = useState(false);
+  const [pdfFlightResults, setPdfFlightResults] = useState([]);
+  const [pdfFlightSelected, setPdfFlightSelected] = useState({});
+  const [pdfFlightLoading, setPdfFlightLoading] = useState(false);
+  const [pdfFlightTotalPax, setPdfFlightTotalPax] = useState(0);
+  const [pdfFlightPaxEdits, setPdfFlightPaxEdits] = useState({});
+  const [pdfFlightDomesticPaxHint, setPdfFlightDomesticPaxHint] = useState(0);
+  const [pdfFlightNumberEdits, setPdfFlightNumberEdits] = useState({});
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
   const [sightseeingData, setSightseeingData] = useState([]); // Sightseeing from OPEX database
@@ -2365,7 +2373,82 @@ export default function BookingDetail() {
     return pax;
   };
 
-  // Handle flight PDF import
+  // Handle PDF flight import — open file picker, send to backend, show preview
+  const handlePdfFlightImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      setPdfFlightLoading(true);
+      try {
+        const res = await flightsApi.parsePdf(id, file);
+        const detected = res.data.flights || [];
+        const detectedTotalPax = res.data.totalPax || 0;
+        const detectedDomesticHint = res.data.domesticPaxHint || 0;
+        if (detected.length === 0 && detectedTotalPax === 0 && detectedDomesticHint === 0) {
+          toast.error('PDF da IST↔TAS yoki domestic parvoz topilmadi');
+          return;
+        }
+        // Pre-select all detected flights
+        const selected = {};
+        detected.forEach((_, i) => { selected[i] = true; });
+        setPdfFlightResults(detected);
+        setPdfFlightSelected(selected);
+        setPdfFlightTotalPax(detectedTotalPax);
+        setPdfFlightDomesticPaxHint(detectedDomesticHint);
+        setPdfFlightPaxEdits({});
+        setPdfFlightNumberEdits({});
+        setPdfFlightModalOpen(true);
+      } catch (err) {
+        toast.error('PDF o\'qishda xatolik: ' + (err.response?.data?.error || err.message));
+      } finally {
+        setPdfFlightLoading(false);
+      }
+    };
+    input.click();
+  };
+
+  // Confirm PDF flight import — create selected flights
+  const confirmPdfFlightImport = async () => {
+    const toCreate = pdfFlightResults
+      .map((f, i) => ({ ...f, _idx: i }))
+      .filter(f => pdfFlightSelected[f._idx]);
+    if (toCreate.length === 0) { toast.error('Hech narsa tanlanmagan'); return; }
+
+    let created = 0;
+    for (const f of toCreate) {
+      try {
+        const finalPax = pdfFlightPaxEdits[f._idx] !== undefined ? pdfFlightPaxEdits[f._idx] : f.pax;
+        const finalFlightNumber = pdfFlightNumberEdits[f._idx] !== undefined ? pdfFlightNumberEdits[f._idx] : (f.flightNumber || '');
+        const airlineCode = finalFlightNumber.split(' ')[0];
+        const airlineName = airlineCode === 'TK' ? 'Turkish Airlines' : airlineCode === 'HY' ? 'Uzbekistan Airways' : airlineCode || '';
+        await flightsApi.create(id, {
+          type: f.type,
+          flightNumber: finalFlightNumber,
+          airline: airlineName,
+          route: `${f.departure}-${f.arrival}`,
+          departure: f.departure,
+          arrival: f.arrival,
+          date: f.date,
+          departureTime: f.departureTime || '',
+          arrivalTime: f.arrivalTime || '',
+          pax: finalPax,
+          price: 0,
+          tariff: 'economy',
+          notes: ''
+        });
+        created++;
+      } catch (err) {
+        console.error('Flight create error:', err);
+      }
+    }
+    setPdfFlightModalOpen(false);
+    await loadFlights();
+    toast.success(`${created} ta parvoz qo'shildi`);
+  };
+
   // Open flight modal for adding new flight
   const openFlightModal = () => {
     setEditingFlight(null);
@@ -8924,6 +9007,14 @@ export default function BookingDetail() {
                 {/* Action Buttons */}
                 <div className="flex gap-3">
                   <button
+                    onClick={handlePdfFlightImport}
+                    disabled={pdfFlightLoading}
+                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                  >
+                    <FileText className="w-5 h-5" />
+                    {pdfFlightLoading ? 'O\'qilmoqda...' : 'PDF dan PAX olish'}
+                  </button>
+                  <button
                     onClick={openFlightModal}
                     className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg hover:shadow-xl"
                   >
@@ -9621,6 +9712,133 @@ export default function BookingDetail() {
             </div>
             );
           })()}
+
+          {/* PDF Flight Import Preview Modal */}
+          {pdfFlightModalOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <FileText className="w-6 h-6" />
+                    PDF dan aniqlangan parvozlar
+                  </h3>
+                  <button onClick={() => setPdfFlightModalOpen(false)} className="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+                </div>
+                <div className="p-6">
+                  <p className="text-sm text-gray-500 mb-3">
+                    Parvozlarni tanlang va qo'shing. Flight raqami bo'sh bo'lsa — PDFdan ko'rib kiriting.
+                  </p>
+
+                  {/* Total PAX banner */}
+                  {pdfFlightTotalPax > 0 && (
+                    <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-4 text-sm">
+                      <span className="text-amber-600 font-bold">📋 Jami turist soni:</span>
+                      <span className="text-amber-800 font-black text-base">{pdfFlightTotalPax} PAX</span>
+                      <span className="text-amber-500 text-xs">(rooming list dan)</span>
+                    </div>
+                  )}
+
+                  {/* International flights */}
+                  {pdfFlightResults.filter(f => f.type === 'INTERNATIONAL').length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-bold text-blue-700 uppercase mb-2">✈️ International</h4>
+                      <div className="space-y-2">
+                        {pdfFlightResults.map((f, i) => f.type !== 'INTERNATIONAL' ? null : (
+                          <div key={i} className={`flex items-center gap-2 p-3 border-2 rounded-xl ${f.suggested ? 'border-dashed border-orange-300 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}>
+                            <input
+                              type="checkbox"
+                              checked={!!pdfFlightSelected[i]}
+                              onChange={e => setPdfFlightSelected(prev => ({ ...prev, [i]: e.target.checked }))}
+                              className="w-5 h-5 accent-blue-500 cursor-pointer shrink-0"
+                            />
+                            {f.suggested ? (
+                              <input
+                                type="text"
+                                placeholder="TK 369"
+                                value={pdfFlightNumberEdits[i] !== undefined ? pdfFlightNumberEdits[i] : ''}
+                                onChange={e => setPdfFlightNumberEdits(prev => ({ ...prev, [i]: e.target.value.toUpperCase() }))}
+                                className="w-20 text-center font-bold border-2 border-orange-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-orange-500 bg-white"
+                                onClick={e => e.stopPropagation()}
+                              />
+                            ) : (
+                              <span className="font-bold text-blue-700 w-16 shrink-0">{f.flightNumber}</span>
+                            )}
+                            <span className="text-gray-700 font-medium shrink-0">{f.departure} → {f.arrival}</span>
+                            <span className="text-gray-500 text-sm shrink-0">{f.date ? new Date(f.date).toLocaleDateString('de-DE') : '—'}</span>
+                            {!f.suggested && <span className="text-gray-500 text-sm shrink-0">{f.departureTime} – {f.arrivalTime}</span>}
+                            {f.suggested && <span className="text-orange-500 text-xs shrink-0">✏️ # kiriting</span>}
+                            <div className="flex items-center gap-1 ml-auto shrink-0">
+                              <input
+                                type="number" min="1"
+                                value={pdfFlightPaxEdits[i] !== undefined ? pdfFlightPaxEdits[i] : f.pax}
+                                onChange={e => setPdfFlightPaxEdits(prev => ({ ...prev, [i]: parseInt(e.target.value) || 1 }))}
+                                className="w-14 text-center font-bold border-2 border-blue-300 rounded-lg px-1 py-1 text-sm focus:outline-none focus:border-blue-500"
+                                onClick={e => e.stopPropagation()}
+                              />
+                              <span className="text-blue-700 font-bold text-sm">PAX</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Domestic flights */}
+                  {pdfFlightResults.filter(f => f.type === 'DOMESTIC').length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-bold text-emerald-700 uppercase mb-2">🛬 Domestic</h4>
+                      <div className="space-y-2">
+                        {pdfFlightResults.map((f, i) => f.type !== 'DOMESTIC' ? null : (
+                          <div key={i} className={`flex items-center gap-2 p-3 border-2 rounded-xl ${f.suggested ? 'border-dashed border-orange-300 bg-orange-50' : 'border-emerald-200 bg-emerald-50'}`}>
+                            <input
+                              type="checkbox"
+                              checked={!!pdfFlightSelected[i]}
+                              onChange={e => setPdfFlightSelected(prev => ({ ...prev, [i]: e.target.checked }))}
+                              className="w-5 h-5 accent-emerald-500 cursor-pointer shrink-0"
+                            />
+                            {f.suggested ? (
+                              <input
+                                type="text"
+                                placeholder="HY 56"
+                                value={pdfFlightNumberEdits[i] !== undefined ? pdfFlightNumberEdits[i] : ''}
+                                onChange={e => setPdfFlightNumberEdits(prev => ({ ...prev, [i]: e.target.value.toUpperCase() }))}
+                                className="w-20 text-center font-bold border-2 border-orange-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-orange-500 bg-white"
+                                onClick={e => e.stopPropagation()}
+                              />
+                            ) : (
+                              <span className="font-bold text-emerald-700 w-16 shrink-0">{f.flightNumber}</span>
+                            )}
+                            <span className="text-gray-700 font-medium shrink-0">{f.departure} → {f.arrival}</span>
+                            <span className="text-gray-500 text-sm shrink-0">{f.date && f.date !== '' ? new Date(f.date).toLocaleDateString('de-DE') : '—'}</span>
+                            {f.suggested && <span className="text-orange-500 text-xs shrink-0">✏️ # kiriting</span>}
+                            <div className="flex items-center gap-1 ml-auto shrink-0">
+                              <input
+                                type="number" min="1"
+                                value={pdfFlightPaxEdits[i] !== undefined ? pdfFlightPaxEdits[i] : f.pax}
+                                onChange={e => setPdfFlightPaxEdits(prev => ({ ...prev, [i]: parseInt(e.target.value) || 1 }))}
+                                className="w-14 text-center font-bold border-2 border-emerald-300 rounded-lg px-1 py-1 text-sm focus:outline-none focus:border-emerald-500"
+                                onClick={e => e.stopPropagation()}
+                              />
+                              <span className="text-emerald-700 font-bold text-sm">PAX</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <button onClick={() => setPdfFlightModalOpen(false)} className="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all">
+                      Bekor
+                    </button>
+                    <button onClick={confirmPdfFlightImport} className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all shadow-lg">
+                      Qo'shish ({Object.values(pdfFlightSelected).filter(Boolean).length} ta)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Railway Add/Edit Modal */}
           {railwayModalOpen && (

@@ -1978,6 +1978,159 @@ router.get('/:bookingId/tourists/export/pdf', authenticate, async (req, res) => 
 // FLIGHTS CRUD
 // ============================================
 
+// POST /api/bookings/:bookingId/parse-flight-pdf
+// Parse a "Final Rooming List" PDF and extract flights grouped by flight number with PAX counts
+router.post('/:bookingId/parse-flight-pdf', authenticate, upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'PDF fayl yuklanmadi' });
+    }
+
+    const pdfParse = require('pdf-parse');
+    const pdfData = await pdfParse(req.file.buffer);
+    const text = pdfData.text;
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+    // Helper: convert DD.MM.YYYY → YYYY-MM-DD (ISO)
+    const dmyToIso = (s) => {
+      const m = s && s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+    };
+
+    // Uzbekistan airport codes (for domestic detection)
+    const uzbekAirports = new Set(['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG', 'URG']);
+
+    // ── PASS 1: Parse per-group sections (each "Final Rooming List" block) ──
+    // Captures: tourName, startDate, endDate, totalPax per group
+    const groups = [];
+    let curGroup = null;
+    const tourDateRe = /(\d{2}\.\d{2}\.\d{4})\s*[–—\-]+\s*(\d{2}\.\d{2}\.\d{4})/;
+    const totalRe    = /TOTAL[^0-9]+(\d+)\s*PAX/i;
+    const domesticPaxRe = /^(\d+)\s*Pax:?\s*$/i;
+    let domesticPaxHint = 0;
+
+    for (const line of lines) {
+      if (/^Final Rooming List$/i.test(line)) { curGroup = null; continue; }
+
+      if (/^Tour:/i.test(line)) {
+        const dm = line.match(tourDateRe);
+        curGroup = { name: line, startDate: dm ? dm[1] : null, endDate: dm ? dm[2] : null, totalPax: 0 };
+        groups.push(curGroup);
+        continue;
+      }
+
+      if (curGroup) {
+        const tm = line.match(totalRe);
+        if (tm) { curGroup.totalPax = parseInt(tm[1], 10); continue; }
+      }
+
+      const dpm = line.match(domesticPaxRe);
+      if (dpm) { const n = parseInt(dpm[1], 10); if (n > domesticPaxHint) domesticPaxHint = n; }
+    }
+
+    // Total IST-TAS PAX = SUM of all groups (all groups share the arrival flight)
+    const totalPax = groups.reduce((s, g) => s + (g.totalPax || 0), 0);
+
+    // ── PASS 2: Parse individual PNR blocks for tourists with special flights ──
+    const pnrPattern = /^[A-Z0-9]{6}$/;
+    // "TK 368 V 2026-03-14 ISTTAS HK 01:45 08:35"
+    const indivFlightPattern = /^([A-Z]{2})\s+(\d{2,4})\s+[A-Z]\s+(\d{4}-\d{2}-\d{2})\s+([A-Z]{3})([A-Z]{3})\s+[A-Z]{2}\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})/;
+
+    const flightPaxMap  = new Map();
+    const flightInfoMap = new Map();
+    let inPnrBlock = false;
+
+    for (const line of lines) {
+      if (pnrPattern.test(line)) { inPnrBlock = true; continue; }
+      if (!inPnrBlock) continue;
+      if (/^(DOUBLE|TWIN|SINGLE|Tour:|Date:|TOTAL|Final Rooming)/i.test(line)) { inPnrBlock = false; continue; }
+
+      const m = line.match(indivFlightPattern);
+      if (m) {
+        const [, airline, num, date, dep, arr, depTime, arrTime] = m;
+        const flightNumber = `${airline} ${num}`;
+        const isIstTas  = (dep === 'IST' && arr === 'TAS') || (dep === 'TAS' && arr === 'IST');
+        const isDomestic = uzbekAirports.has(dep) && uzbekAirports.has(arr);
+        if (!isIstTas && !isDomestic) continue;
+        const key = `${flightNumber}|${dep}|${arr}|${date}`;
+        flightPaxMap.set(key, (flightPaxMap.get(key) || 0) + 1);
+        if (!flightInfoMap.has(key)) {
+          flightInfoMap.set(key, { flightNumber, departure: dep, arrival: arr, date, departureTime: depTime, arrivalTime: arrTime, type: isIstTas ? 'INTERNATIONAL' : 'DOMESTIC', suggested: false });
+        }
+      }
+    }
+
+    // ── Build detected flights ──
+    const result = [];
+    for (const [, pax] of flightPaxMap.entries()) {
+      const info = flightInfoMap.get([...flightPaxMap.keys()].find(k => flightPaxMap.get(k) === pax && flightInfoMap.has(k)));
+      if (info) result.push({ ...info, pax });
+    }
+    // Fix: rebuild properly
+    result.length = 0;
+    for (const [key, pax] of flightPaxMap.entries()) {
+      result.push({ ...flightInfoMap.get(key), pax });
+    }
+
+    // Auto-apply totalPax to IST-TAS arrival flights (1 per PNR → should be full group)
+    for (const r of result) {
+      if (r.type === 'INTERNATIONAL' && r.departure === 'IST' && totalPax > r.pax) {
+        r.pax = totalPax;
+      }
+    }
+
+    // ── PASS 3: Generate SUGGESTED flights (no flight# known, user fills in) ──
+    const suggestedFlights = [];
+
+    // If IST-TAS not detected at all from PNRs, add a full suggested entry
+    const hasIstTas = result.some(r => r.departure === 'IST' && r.arrival === 'TAS');
+    if (!hasIstTas && totalPax > 0) {
+      const startIso = groups.length > 0 ? dmyToIso(groups[0].startDate) : null;
+      suggestedFlights.push({
+        flightNumber: '', departure: 'IST', arrival: 'TAS',
+        date: startIso ? (() => { const d = new Date(startIso); d.setDate(d.getDate() + 1); return d.toISOString().slice(0,10); })() : '',
+        departureTime: '', arrivalTime: '', pax: totalPax, type: 'INTERNATIONAL', suggested: true
+      });
+    }
+
+    // Suggest TAS→IST return for the EARLIEST ending group (UZ-only group)
+    // Sort groups by endDate; the earliest usually returns via TAS-IST
+    const sortedByEnd = [...groups].filter(g => g.endDate).sort((a, b) => dmyToIso(a.endDate).localeCompare(dmyToIso(b.endDate)));
+    if (sortedByEnd.length > 0) {
+      const uzGroup = sortedByEnd[0]; // earliest = UZ-only
+      const returnIso = dmyToIso(uzGroup.endDate);
+      suggestedFlights.push({
+        flightNumber: '', departure: 'TAS', arrival: 'IST',
+        date: returnIso || '', departureTime: '', arrivalTime: '',
+        pax: uzGroup.totalPax, type: 'INTERNATIONAL', suggested: true
+      });
+    }
+
+    // Suggest domestic (UGC→TAS) if hint found
+    if (domesticPaxHint > 0) {
+      suggestedFlights.push({
+        flightNumber: '', departure: 'UGC', arrival: 'TAS',
+        date: '', departureTime: '', arrivalTime: '',
+        pax: domesticPaxHint, type: 'DOMESTIC', suggested: true
+      });
+    }
+
+    const allFlights = [...result, ...suggestedFlights];
+    allFlights.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'INTERNATIONAL' ? -1 : 1;
+      if ((a.suggested ? 1 : 0) !== (b.suggested ? 1 : 0)) return a.suggested ? 1 : -1;
+      return (a.date || '').localeCompare(b.date || '');
+    });
+
+    console.log(`✈️  PDF flight parse: groups=${groups.map(g=>g.totalPax).join('+')}=${totalPax} PAX, detected=${result.length}, suggested=${suggestedFlights.length}, domesticHint=${domesticPaxHint}`);
+    res.json({ flights: allFlights, totalPax, domesticPaxHint });
+
+  } catch (error) {
+    console.error('❌ parse-flight-pdf error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/bookings/:bookingId/flights - Get all flights for a booking
 router.get('/:bookingId/flights', authenticate, async (req, res) => {
   try {

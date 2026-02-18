@@ -141,7 +141,15 @@ export const flightsApi = {
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/flights/${id}`),
   // Flight sections (raw content from PDF)
   getSections: (bookingId) => api.get(`/bookings/${bookingId}/flight-sections`),
-  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/flight-sections`)
+  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/flight-sections`),
+  // Parse PDF to extract flights with PAX counts
+  parsePdf: (bookingId, file) => {
+    const formData = new FormData();
+    formData.append('pdf', file);
+    return api.post(`/bookings/${bookingId}/parse-flight-pdf`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
 };
 
 // API for railways
