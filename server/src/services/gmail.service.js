@@ -137,7 +137,7 @@ class GmailService {
       .map(email => `from:(${email})`)
       .join(' OR ');
 
-    const query = `is:unread has:attachment (${senderQuery})`;
+    const query = `has:attachment -label:PROCESSED (${senderQuery})`;
 
     console.log('📧 Gmail query:', query);
 
