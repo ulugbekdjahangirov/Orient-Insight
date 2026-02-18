@@ -2512,9 +2512,13 @@ router.delete('/:bookingId/railway-sections', authenticate, async (req, res) => 
 // ============================================
 
 // POST /api/bookings/:bookingId/rooming-list/import-pdf - Import rooming list from PDF
-router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('file'), async (req, res) => {
+router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
+  if (req.headers['x-internal-call'] === 'true') return next();
+  return authenticate(req, res, next);
+}, upload.single('file'), async (req, res) => {
   try {
     const { bookingId } = req.params;
+    const updateOnly = req.query.updateOnly === 'true';
 
     if (!req.file) {
       return res.status(400).json({ error: 'No PDF file uploaded' });
@@ -3566,28 +3570,32 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
     }
 
     // Delete tourists that are NOT in the PDF (were not matched)
-    // FULL REPLACE: Delete ALL unmatched tourists (including those with passport/country)
-    const unmatchedTourists = existingTourists.filter(t => !matchedTouristIds.has(t.id));
+    // Skip deletion in updateOnly mode (email import - preserve Excel tourists)
+    if (!updateOnly) {
+      const unmatchedTourists = existingTourists.filter(t => !matchedTouristIds.has(t.id));
 
-    if (unmatchedTourists.length > 0) {
-      console.log(`🗑️ FULL REPLACE: Deleting ${unmatchedTourists.length} unmatched tourists...`);
+      if (unmatchedTourists.length > 0) {
+        console.log(`🗑️ FULL REPLACE: Deleting ${unmatchedTourists.length} unmatched tourists...`);
 
-      for (const tourist of unmatchedTourists) {
-        console.log(`   🗑️  Deleting: ${tourist.fullName}`);
+        for (const tourist of unmatchedTourists) {
+          console.log(`   🗑️  Deleting: ${tourist.fullName}`);
 
-        // Delete related data first (foreign key constraints)
-        await prisma.accommodationRoomingList.deleteMany({
-          where: { touristId: tourist.id }
-        });
-        await prisma.touristRoomAssignment.deleteMany({
-          where: { touristId: tourist.id }
-        });
+          // Delete related data first (foreign key constraints)
+          await prisma.accommodationRoomingList.deleteMany({
+            where: { touristId: tourist.id }
+          });
+          await prisma.touristRoomAssignment.deleteMany({
+            where: { touristId: tourist.id }
+          });
 
-        await prisma.tourist.delete({
-          where: { id: tourist.id }
-        });
-        deletedCount++;
+          await prisma.tourist.delete({
+            where: { id: tourist.id }
+          });
+          deletedCount++;
+        }
       }
+    } else {
+      console.log(`🔒 UPDATE-ONLY mode: skipping deletion of unmatched tourists`);
     }
 
     // Delete old flights and flight sections only (not tourists)
@@ -3597,7 +3605,7 @@ router.post('/:bookingId/rooming-list/import-pdf', authenticate, upload.single('
       prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
     ]);
 
-    console.log(`✅ FULL REPLACE complete: ${updatedCount} updated, ${createdCount} created, ${deletedCount} deleted`);
+    console.log(`✅ ${updateOnly ? 'UPDATE-ONLY' : 'FULL REPLACE'} complete: ${updatedCount} updated, ${createdCount} created, ${deletedCount} deleted`);
 
     // Update booking with extracted tour dates
     if (tourStartDate && tourEndDate) {

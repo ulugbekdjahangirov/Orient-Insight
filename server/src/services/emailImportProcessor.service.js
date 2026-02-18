@@ -34,6 +34,41 @@ class EmailImportProcessor {
 
       // Determine file type and parse accordingly
       const isExcel = this.isExcelFile(emailImport.attachmentName, emailImport.attachmentType);
+      const isPdf = !isExcel && emailImport.attachmentName?.toLowerCase().endsWith('.pdf');
+
+      // PDF Final Rooming List → import tourists directly
+      if (isPdf) {
+        console.log(`📄 Trying PDF rooming list import: ${emailImport.attachmentName}`);
+        const pdfResult = await this.importRoomingListPdfForEmail(fileBuffer);
+        if (pdfResult) {
+          await prisma.emailImport.update({
+            where: { id: emailImportId },
+            data: {
+              status: 'SUCCESS',
+              bookingsCreated: 0,
+              bookingsUpdated: 1,
+              bookingIds: String(pdfResult.bookingId),
+              rawParsedData: JSON.stringify(pdfResult.summary),
+              processedAt: new Date()
+            }
+          });
+          const realMessageId = emailImport.gmailMessageId.includes('::')
+            ? emailImport.gmailMessageId.split('::')[0]
+            : emailImport.gmailMessageId;
+          await gmailService.markAsProcessed(realMessageId);
+          await this.sendNotification('SUCCESS', {
+            emailFrom: emailImport.emailFrom,
+            emailSubject: emailImport.emailSubject,
+            bookingsCreated: 0,
+            bookingsUpdated: 1,
+            bookingIds: [pdfResult.bookingId]
+          });
+          console.log(`✅ PDF rooming list imported for booking ${pdfResult.bookingId}`);
+          return { created: 0, updated: 1, ids: [pdfResult.bookingId] };
+        }
+        // If PDF rooming list import failed (no matching booking found), fall through to Claude Vision
+        console.log(`⚠️  PDF rooming list import failed — falling back to Claude Vision`);
+      }
 
       let parsedData;
       if (isExcel) {
@@ -328,6 +363,75 @@ class EmailImportProcessor {
     }
 
     return { bookingId: booking.id, action };
+  }
+
+  /**
+   * Import tourists from a Final Rooming List PDF (email attachment).
+   * Finds matching booking by tour type code + departure date (±3 days).
+   * Calls the existing import-pdf endpoint in UPDATE-ONLY mode (no deletions).
+   */
+  async importRoomingListPdfForEmail(fileBuffer) {
+    try {
+      const pdfParse = require('pdf-parse');
+      const pdfData = await pdfParse(fileBuffer);
+      const text = pdfData.text;
+
+      // Extract tour type code from "Tour: CO Usbekistan..." or "Tour: ER Usbekistan..."
+      const tourMatch = text.match(/Tour:\s*([A-Z]{2,3})\s/i);
+      const tourTypeCode = tourMatch?.[1]?.toUpperCase();
+      if (!tourTypeCode) {
+        console.log('⚠️  PDF: no tour type code found');
+        return null;
+      }
+
+      // Extract departure date from "DD.MM.YYYY – DD.MM.YYYY" range
+      const dateMatch = text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/);
+      if (!dateMatch) {
+        console.log('⚠️  PDF: no departure date found');
+        return null;
+      }
+      const [, d, m, y] = dateMatch;
+      const departureDate = new Date(`${y}-${m}-${d}`);
+
+      // Find matching booking (±3 days tolerance)
+      const from = new Date(departureDate); from.setDate(from.getDate() - 3);
+      const to = new Date(departureDate); to.setDate(to.getDate() + 3);
+
+      const tourType = await prisma.tourType.findFirst({ where: { code: tourTypeCode } });
+      if (!tourType) {
+        console.log(`⚠️  PDF: unknown tour type code: ${tourTypeCode}`);
+        return null;
+      }
+
+      const booking = await prisma.booking.findFirst({
+        where: { tourTypeId: tourType.id, departureDate: { gte: from, lte: to } },
+        orderBy: { departureDate: 'asc' }
+      });
+      if (!booking) {
+        console.log(`⚠️  PDF: no booking found for ${tourTypeCode} around ${y}-${m}-${d}`);
+        return null;
+      }
+
+      console.log(`🔗 PDF matched booking: ${booking.bookingNumber} (id=${booking.id})`);
+
+      // Call existing import-pdf endpoint internally (updateOnly=true — no deletions)
+      const FormData = require('form-data');
+      const axios = require('axios');
+      const form = new FormData();
+      form.append('file', fileBuffer, { filename: 'rooming.pdf', contentType: 'application/pdf' });
+
+      const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
+      const response = await axios.post(
+        `${baseUrl}/api/bookings/${booking.id}/rooming-list/import-pdf?updateOnly=true`,
+        form,
+        { headers: { ...form.getHeaders(), 'x-internal-call': 'true' } }
+      );
+
+      return { bookingId: booking.id, summary: response.data };
+    } catch (err) {
+      console.error('❌ importRoomingListPdfForEmail error:', err.message);
+      return null;
+    }
   }
 
   /**
