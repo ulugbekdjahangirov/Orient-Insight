@@ -66,17 +66,39 @@ class EmailImportProcessor {
           console.log(`✅ PDF rooming list imported for booking ${pdfResult.bookingId}`);
           return { created: 0, updated: 1, ids: [pdfResult.bookingId] };
         }
-        // If PDF rooming list import failed (no matching booking found), fall through to Claude Vision
-        console.log(`⚠️  PDF rooming list import failed — falling back to Claude Vision`);
+        // PDF rooming list not recognized — mark for manual review, no Claude Vision
+        console.log(`⚠️  PDF not recognized as rooming list — marking MANUAL_REVIEW`);
+        await prisma.emailImport.update({
+          where: { id: emailImportId },
+          data: {
+            status: 'MANUAL_REVIEW',
+            errorMessage: `PDF not recognized as Final Rooming List: ${emailImport.attachmentName}`,
+            retryCount: emailImport.retryCount,
+            processedAt: new Date()
+          }
+        });
+        return { created: 0, updated: 0, ids: [] };
+      }
+
+      // Images — skip Claude Vision, mark for manual review
+      if (!isExcel) {
+        console.log(`🖼️  Image/unknown file — marking MANUAL_REVIEW (Claude Vision disabled)`);
+        await prisma.emailImport.update({
+          where: { id: emailImportId },
+          data: {
+            status: 'MANUAL_REVIEW',
+            errorMessage: `Image/unknown file type — manual processing required: ${emailImport.attachmentName}`,
+            retryCount: emailImport.retryCount,
+            processedAt: new Date()
+          }
+        });
+        return { created: 0, updated: 0, ids: [] };
       }
 
       let parsedData;
       if (isExcel) {
         console.log(`📊 Parsing Excel file: ${emailImport.attachmentName}`);
         parsedData = excelParser.parseAgenturdaten(fileBuffer);
-      } else {
-        console.log(`🔍 Parsing screenshot with Claude AI...`);
-        parsedData = await claudeVision.parseBookingScreenshot(fileBuffer);
       }
 
       // Validate structure
@@ -376,16 +398,9 @@ class EmailImportProcessor {
       const pdfData = await pdfParse(fileBuffer);
       const text = pdfData.text;
 
-      // Extract tour type code from "Tour: CO Usbekistan..." or "Tour: ER Usbekistan..."
-      const tourMatch = text.match(/Tour:\s*([A-Z]{2,3})\s/i);
-      const tourTypeCode = tourMatch?.[1]?.toUpperCase();
-      if (!tourTypeCode) {
-        console.log('⚠️  PDF: no tour type code found');
-        return null;
-      }
-
-      // Extract departure date from "DD.MM.YYYY – DD.MM.YYYY" range
-      const dateMatch = text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/);
+      // Extract departure date from "Date: DD.MM.YYYY" or "DD.MM.YYYY – DD.MM.YYYY" range
+      const dateMatch = text.match(/(?:Date:|Datum:)?\s*(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/i)
+        || text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/);
       if (!dateMatch) {
         console.log('⚠️  PDF: no departure date found');
         return null;
@@ -397,24 +412,45 @@ class EmailImportProcessor {
       const from = new Date(departureDate); from.setDate(from.getDate() - 3);
       const to = new Date(departureDate); to.setDate(to.getDate() + 3);
 
-      const tourType = await prisma.tourType.findFirst({ where: { code: tourTypeCode } });
-      if (!tourType) {
-        console.log(`⚠️  PDF: unknown tour type code: ${tourTypeCode}`);
-        return null;
+      let booking = null;
+
+      // Try 1: extract 2-3 letter tour code ("Tour: ER Uzbekistan" or "Tour: CO ...")
+      const tourMatch = text.match(/Tour:\s*([A-Z]{2,3})\s/i);
+      const tourTypeCode = tourMatch?.[1]?.toUpperCase();
+      if (tourTypeCode) {
+        const tourType = await prisma.tourType.findFirst({ where: { code: tourTypeCode } });
+        if (tourType) {
+          booking = await prisma.booking.findFirst({
+            where: { tourTypeId: tourType.id, departureDate: { gte: from, lte: to } },
+            orderBy: { departureDate: 'asc' }
+          });
+        }
       }
 
-      const booking = await prisma.booking.findFirst({
-        where: { tourTypeId: tourType.id, departureDate: { gte: from, lte: to } },
-        orderBy: { departureDate: 'asc' }
-      });
+      // Try 2: date-only search (PDF format "Tour: Uzbekistan Date: 13.03.2026")
       if (!booking) {
-        console.log(`⚠️  PDF: no booking found for ${tourTypeCode} around ${y}-${m}-${d}`);
+        console.log(`⚠️  PDF: no tour code found — searching by date only (${y}-${m}-${d} ±3 days)`);
+        const candidates = await prisma.booking.findMany({
+          where: { departureDate: { gte: from, lte: to } },
+          orderBy: { departureDate: 'asc' }
+        });
+        if (candidates.length === 1) {
+          booking = candidates[0];
+          console.log(`✅ PDF: matched by date → ${booking.bookingNumber}`);
+        } else if (candidates.length > 1) {
+          console.log(`⚠️  PDF: ${candidates.length} bookings found for date range — ambiguous, skipping`);
+          return null;
+        }
+      }
+
+      if (!booking) {
+        console.log(`⚠️  PDF: no booking found around ${y}-${m}-${d}`);
         return null;
       }
 
       console.log(`🔗 PDF matched booking: ${booking.bookingNumber} (id=${booking.id})`);
 
-      // Call existing import-pdf endpoint internally (updateOnly=true — no deletions)
+      // Call existing import-pdf endpoint internally (FULL REPLACE — same as manual import)
       const FormData = require('form-data');
       const axios = require('axios');
       const form = new FormData();
@@ -422,7 +458,7 @@ class EmailImportProcessor {
 
       const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
       const response = await axios.post(
-        `${baseUrl}/api/bookings/${booking.id}/rooming-list/import-pdf?updateOnly=true`,
+        `${baseUrl}/api/bookings/${booking.id}/rooming-list/import-pdf`,
         form,
         { headers: { ...form.getHeaders(), 'x-internal-call': 'true' } }
       );

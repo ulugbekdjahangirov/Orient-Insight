@@ -86,10 +86,8 @@ async function processNewEmail(messageId) {
     const excelAttachments = emailDetails.attachments.filter(isExcelAttachment);
     const imageOrPdfAttachments = emailDetails.attachments.filter(isImageOrPdf);
 
-    // Use all Excel files if present, otherwise use first image/PDF
-    const attachmentsToProcess = excelAttachments.length > 0
-      ? excelAttachments
-      : imageOrPdfAttachments.slice(0, 1);
+    // Process ALL supported attachments: Excel files AND PDF/image files together
+    const attachmentsToProcess = [...excelAttachments, ...imageOrPdfAttachments];
 
     if (attachmentsToProcess.length === 0) {
       console.log(`⚠️  No supported attachment in email ${messageId}`);
