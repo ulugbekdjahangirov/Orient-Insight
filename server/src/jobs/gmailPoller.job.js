@@ -150,6 +150,9 @@ async function processNewEmail(messageId) {
       });
     }
 
+    // Mark email as processed (add PROCESSED label, remove UNREAD)
+    await gmailService.markAsProcessed(messageId);
+
   } catch (error) {
     console.error(`❌ Error processing email ${messageId}:`, error.message);
   }
