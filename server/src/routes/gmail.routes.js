@@ -5,7 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const gmailService = require('../services/gmail.service');
 const { pollGmailForBookings } = require('../jobs/gmailPoller.job');
-const { processEmailImport } = require('../services/emailImportProcessor.service');
+const emailImportProcessor = require('../services/emailImportProcessor.service');
 
 // ============================================
 // OAuth Routes
@@ -187,7 +187,7 @@ router.post('/imports/:id/retry', authenticate, requireAdmin, async (req, res) =
     });
 
     // Trigger reprocessing
-    processEmailImport(id).catch(err => {
+    emailImportProcessor.processEmailImport(id).catch(err => {
       console.error(`❌ Retry failed for import ${id}:`, err);
     });
 

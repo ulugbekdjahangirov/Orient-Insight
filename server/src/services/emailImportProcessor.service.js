@@ -375,15 +375,21 @@ class EmailImportProcessor {
 
     // SELECTIVE REPLACE: Delete only tourists with matching placement
     if (parsedBooking.tourists && parsedBooking.tourists.length > 0) {
-      // Delete existing tourists with same placement (Uzbekistan or Turkmenistan)
+      // Delete existing tourists with same placement OR null/empty accommodation
+      // This handles old tourists that were created before accommodation field was implemented
       const deletedCount = await prisma.tourist.deleteMany({
         where: {
           bookingId: booking.id,
-          accommodation: placement
+          OR: [
+            { accommodation: placement },
+            { accommodation: null },
+            { accommodation: '' },
+            { accommodation: 'Not assigned' }
+          ]
         }
       });
       if (deletedCount.count > 0) {
-        console.log(`🗑️  SELECTIVE REPLACE: Deleted ${deletedCount.count} ${placement} tourists from ${booking.bookingNumber}`);
+        console.log(`🗑️  SELECTIVE REPLACE: Deleted ${deletedCount.count} tourists (${placement} + null/empty) from ${booking.bookingNumber}`);
       }
 
       // Import all tourists from Excel with correct placement

@@ -221,12 +221,20 @@ export default function EmailImports() {
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium space-x-1">
                     {imp.status === 'SUCCESS' && (
-                      <button
-                        onClick={() => handleViewDetails(imp.id)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        Детали
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleViewDetails(imp.id)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          Детали
+                        </button>
+                        <button
+                          onClick={() => handleRetry(imp.id)}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Повторить
+                        </button>
+                      </>
                     )}
                     {(imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW') && (
                       <button
