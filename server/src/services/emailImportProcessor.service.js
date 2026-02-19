@@ -554,6 +554,12 @@ class EmailImportProcessor {
 
       console.log(`🔗 PDF matched booking: ${booking.bookingNumber} (id=${booking.id})`);
 
+      // Mark paxSource as PDF before import so EMAIL_TABLE can't override after
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { paxSource: 'PDF' }
+      });
+
       // Call existing import-pdf endpoint internally (FULL REPLACE — same as manual import)
       const FormData = require('form-data');
       const axios = require('axios');
