@@ -324,36 +324,21 @@ class EmailImportProcessor {
       console.log(`🔗 Matched booking: ${booking.bookingNumber}`);
     }
 
-    // Import tourists
+    // FULL REPLACE: Delete all existing tourists, then import fresh data from Excel
     if (parsedBooking.tourists && parsedBooking.tourists.length > 0) {
+      // Delete all existing tourists for this booking
+      const deletedCount = await prisma.tourist.deleteMany({
+        where: { bookingId: booking.id }
+      });
+      if (deletedCount.count > 0) {
+        console.log(`🗑️  FULL REPLACE: Deleted ${deletedCount.count} existing tourists from ${booking.bookingNumber}`);
+      }
+
+      // Import all tourists from Excel
       let touristsAdded = 0;
       for (const t of parsedBooking.tourists) {
-        // Check if tourist already exists in this booking
-        const existingTourist = await prisma.tourist.findFirst({
-          where: {
-            bookingId: booking.id,
-            lastName: t.lastName,
-            firstName: t.firstName
-          }
-        });
-
-        if (existingTourist) {
-          // Update existing tourist with fresh data
-          await prisma.tourist.update({
-            where: { id: existingTourist.id },
-            data: {
-              gender: t.gender || existingTourist.gender,
-              dateOfBirth: t.dateOfBirth ? this.parseDateString(t.dateOfBirth) : existingTourist.dateOfBirth,
-              passportNumber: t.passport || existingTourist.passportNumber,
-              passportExpiryDate: t.passportExpiry ? this.parseDateString(t.passportExpiry) : existingTourist.passportExpiryDate,
-              country: t.nationality || existingTourist.country,
-              roomPreference: t.roomType || existingTourist.roomPreference,
-              remarks: t.remarks || existingTourist.remarks
-            }
-          });
-        } else {
-          // Create new tourist
-          await prisma.tourist.create({
+        // Create new tourist
+        await prisma.tourist.create({
             data: {
               bookingId: booking.id,
               firstName: t.firstName || '',
