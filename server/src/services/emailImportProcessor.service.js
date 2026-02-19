@@ -678,7 +678,7 @@ class EmailImportProcessor {
       const paxText = $(cells[paxIdx]).text().trim();
       const pax = parseInt(paxText, 10);
 
-      if (!reisename || isNaN(pax) || pax <= 0) return;
+      if (!reisename || isNaN(pax) || pax < 0) return;
 
       rows.push({ reisename, departureDate: von, returnDate: bis, pax });
       console.log(`  → ${reisename} | Von: ${von} | Pax: ${pax}`);
@@ -733,12 +733,15 @@ class EmailImportProcessor {
           continue;
         }
 
-        // Check priority: skip if booking already has a higher-priority pax source
-        const currentPriority = PRIORITY.indexOf(booking.paxSource || 'EMAIL_TABLE');
-        const newPriority = PRIORITY.indexOf('EMAIL_TABLE');
-        if (currentPriority > newPriority) {
-          console.log(`⏭️  ${booking.bookingNumber}: skipping (existing source=${booking.paxSource} has higher priority)`);
-          continue;
+        // pax=0 means explicitly zero bookings — always update regardless of priority
+        // pax>0 means estimated count — skip if booking already has higher-priority source (EXCEL/PDF)
+        if (row.pax > 0) {
+          const currentPriority = PRIORITY.indexOf(booking.paxSource || 'EMAIL_TABLE');
+          const newPriority = PRIORITY.indexOf('EMAIL_TABLE');
+          if (currentPriority > newPriority) {
+            console.log(`⏭️  ${booking.bookingNumber}: skipping (existing source=${booking.paxSource} has higher priority)`);
+            continue;
+          }
         }
 
         // Update paxField, then recalculate pax = paxUzbekistan + paxTurkmenistan
