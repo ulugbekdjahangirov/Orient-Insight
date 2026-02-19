@@ -139,6 +139,7 @@ export default function EmailImports() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tour Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Результат</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сообщение</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
               </tr>
             </thead>
@@ -179,13 +180,26 @@ export default function EmailImports() {
                       '-'
                     )}
                   </td>
+                  <td className="px-6 py-4 text-sm">
+                    {imp.status === 'SUCCESS' ? (
+                      <span className="text-green-600 font-medium">✓</span>
+                    ) : imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' ? (
+                      <span className="text-red-700 text-xs">
+                        ⚠️ {imp.errorMessage || 'Неизвестная ошибка'}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleViewDetails(imp.id)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Детали
-                    </button>
+                    {imp.status === 'SUCCESS' && (
+                      <button
+                        onClick={() => handleViewDetails(imp.id)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        Детали
+                      </button>
+                    )}
                     {(imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW') && (
                       <button
                         onClick={() => handleRetry(imp.id)}
