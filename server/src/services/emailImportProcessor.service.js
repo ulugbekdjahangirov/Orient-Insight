@@ -666,11 +666,17 @@ class EmailImportProcessor {
 
     console.log(`📋 Table headers: ${headerCells.join(' | ')} (reisIdx=${reisIdx}, vonIdx=${vonIdx}, paxIdx=${paxIdx})`);
 
-    // Parse data rows (skip header row)
+    // Parse data rows — skip any row that contains <th> cells (header rows)
     $(targetTable).find('tr').each((i, row) => {
-      if (i === 0) return; // skip header
+      // Skip header rows (contain <th> cells)
+      if ($(row).find('th').length > 0) return;
+
       const cells = $(row).find('td');
       if (cells.length === 0) return;
+
+      // Guard: make sure we have enough cells
+      const maxIdx = Math.max(reisIdx, vonIdx, bisIdx, paxIdx);
+      if (cells.length <= maxIdx) return;
 
       const reisename = $(cells[reisIdx]).text().trim();
       const von = vonIdx >= 0 ? $(cells[vonIdx]).text().trim() : null;
@@ -678,7 +684,10 @@ class EmailImportProcessor {
       const paxText = $(cells[paxIdx]).text().trim();
       const pax = parseInt(paxText, 10);
 
-      if (!reisename || isNaN(pax) || pax < 0) return;
+      if (!reisename || isNaN(pax) || pax < 0) {
+        if (reisename) console.log(`  ⚠️  Skipped row: "${reisename}" | paxText="${paxText}"`);
+        return;
+      }
 
       rows.push({ reisename, departureDate: von, returnDate: bis, pax });
       console.log(`  → ${reisename} | Von: ${von} | Pax: ${pax}`);

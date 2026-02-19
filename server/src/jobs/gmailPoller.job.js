@@ -30,6 +30,10 @@ async function pollGmailForBookings() {
 
     console.log(`📬 Found ${messages.length} new emails`);
 
+    // Gmail returns newest-first — reverse so oldest is processed first,
+    // newest is processed last → newest email's data always wins (last import wins)
+    messages.reverse();
+
     for (const message of messages) {
       await processNewEmail(message.id);
     }
