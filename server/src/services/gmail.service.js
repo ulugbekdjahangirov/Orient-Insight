@@ -137,7 +137,7 @@ class GmailService {
       .map(email => `from:(${email})`)
       .join(' OR ');
 
-    const query = `has:attachment -label:PROCESSED newer_than:7d (${senderQuery})`;
+    const query = `has:attachment -label:PROCESSED newer_than:30d (${senderQuery})`;
 
     console.log('📧 Gmail query:', query);
 
