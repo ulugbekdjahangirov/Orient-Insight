@@ -339,24 +339,23 @@ class EmailImportProcessor {
       for (const t of parsedBooking.tourists) {
         // Create new tourist
         await prisma.tourist.create({
-            data: {
-              bookingId: booking.id,
-              firstName: t.firstName || '',
-              lastName: t.lastName || '',
-              fullName: t.fullName || `${t.firstName} ${t.lastName}`.trim(),
-              gender: t.gender,
-              dateOfBirth: t.dateOfBirth ? this.parseDateString(t.dateOfBirth) : null,
-              passportNumber: t.passport || null,
-              passportExpiryDate: t.passportExpiry ? this.parseDateString(t.passportExpiry) : null,
-              country: t.nationality || 'Deutschland',
-              roomPreference: t.roomType || 'SNGL',
-              accommodation: 'Not assigned',
-              remarks: [t.remarks, t.voyageOption].filter(Boolean).join('; ') || null,
-              notes: t.vegetarian ? 'Vegetarian' : null
-            }
-          });
-          touristsAdded++;
-        }
+          data: {
+            bookingId: booking.id,
+            firstName: t.firstName || '',
+            lastName: t.lastName || '',
+            fullName: t.fullName || `${t.firstName} ${t.lastName}`.trim(),
+            gender: t.gender,
+            dateOfBirth: t.dateOfBirth ? this.parseDateString(t.dateOfBirth) : null,
+            passportNumber: t.passport || null,
+            passportExpiryDate: t.passportExpiry ? this.parseDateString(t.passportExpiry) : null,
+            country: t.nationality || 'Deutschland',
+            roomPreference: t.roomType || 'SNGL',
+            accommodation: 'Not assigned',
+            remarks: [t.remarks, t.voyageOption].filter(Boolean).join('; ') || null,
+            notes: t.vegetarian ? 'Vegetarian' : null
+          }
+        });
+        touristsAdded++;
       }
 
       // Update booking PAX count
