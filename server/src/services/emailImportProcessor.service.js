@@ -432,11 +432,17 @@ class EmailImportProcessor {
         touristsAdded++;
       }
 
-      // Update booking PAX count
-      const totalTourists = await prisma.tourist.count({ where: { bookingId: booking.id } });
+      // Update booking PAX count (pax + paxUzbekistan + paxTurkmenistan)
+      const allTourists = await prisma.tourist.findMany({
+        where: { bookingId: booking.id },
+        select: { accommodation: true }
+      });
+      const totalTourists = allTourists.length;
+      const uzbekCount = allTourists.filter(t => (t.accommodation || '').toLowerCase().includes('uzbek')).length;
+      const turkCount = allTourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length;
       await prisma.booking.update({
         where: { id: booking.id },
-        data: { pax: totalTourists }
+        data: { pax: totalTourists, paxUzbekistan: uzbekCount, paxTurkmenistan: turkCount }
       });
 
       console.log(`👥 Imported ${touristsAdded} new tourists for booking ${booking.bookingNumber} (total: ${totalTourists})`);
