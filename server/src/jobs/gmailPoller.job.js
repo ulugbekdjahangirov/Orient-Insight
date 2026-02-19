@@ -119,13 +119,15 @@ async function processNewEmail(messageId) {
         || (att.filename && att.filename.toLowerCase().endsWith('.xls'));
     };
 
-    const isImageOrPdf = (att) => {
-      return att.mimeType.startsWith('image/') || att.mimeType === 'application/pdf';
+    const isPdfAttachment = (att) => {
+      return att.mimeType === 'application/pdf'
+        || (att.filename && att.filename.toLowerCase().endsWith('.pdf'));
     };
 
     const excelAttachments = emailDetails.attachments.filter(isExcelAttachment);
-    const imageOrPdfAttachments = emailDetails.attachments.filter(isImageOrPdf);
-    const attachmentsToProcess = [...excelAttachments, ...imageOrPdfAttachments];
+    const pdfAttachments   = emailDetails.attachments.filter(isPdfAttachment);
+    // Inline images (logos, signatures) are intentionally skipped
+    const attachmentsToProcess = [...excelAttachments, ...pdfAttachments];
 
     if (attachmentsToProcess.length === 0 && !bodyTableProcessed) {
       console.log(`⚠️  No processable content in email ${messageId}`);
