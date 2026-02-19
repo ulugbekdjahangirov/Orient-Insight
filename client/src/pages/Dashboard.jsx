@@ -15,7 +15,11 @@ import {
   PieChart as PieChartIcon,
   Hotel,
   Wallet,
-  DollarSign
+  DollarSign,
+  CheckCircle,
+  XCircle,
+  Activity,
+  BadgeCheck
 } from 'lucide-react';
 import {
   BarChart,
@@ -164,43 +168,55 @@ export default function Dashboard() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          icon={CalendarDays}
-          label="Всего бронирований"
-          value={stats?.overview.totalBookings || 0}
-          color="blue"
-        />
-        <StatCard
-          icon={Users}
-          label="Всего туристов"
-          value={stats?.overview.totalPax || 0}
-          color="green"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Предстоящие"
-          value={stats?.overview.upcomingBookings || 0}
-          color="purple"
-        />
-        <StatCard
-          icon={MapPin}
-          label="Активных гидов"
-          value={stats?.overview.guidesCount || 0}
-          color="amber"
-        />
-        <StatCard
-          icon={Hotel}
-          label="Hotels"
-          value={stats?.overview.hotelsCount || 0}
-          color="blue"
-        />
-        <StatCard
-          icon={Wallet}
-          label="OPEX"
-          value={stats?.overview.opexCount || 0}
-          color="green"
-        />
+      <div className="space-y-4">
+        {/* Row 1: totals */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <StatCard
+            icon={CalendarDays}
+            label="Всего бронирований"
+            value={stats?.overview.totalBookings || 0}
+            color="blue"
+          />
+          <StatCard
+            icon={Users}
+            label="Всего туристов"
+            value={stats?.overview.totalPax || 0}
+            color="green"
+          />
+        </div>
+        {/* Row 2: by status */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <StatCard
+            icon={CheckCircle}
+            label="Confirmed"
+            value={stats?.overview.confirmed || 0}
+            color="green"
+          />
+          <StatCard
+            icon={Activity}
+            label="In Progress"
+            value={stats?.overview.inProgress || 0}
+            color="purple"
+          />
+          <StatCard
+            icon={Clock}
+            label="Pending"
+            value={stats?.overview.pending || 0}
+            color="amber"
+          />
+          <StatCard
+            icon={XCircle}
+            label="Cancelled"
+            value={stats?.overview.cancelled || 0}
+            color="red"
+          />
+          <StatCard
+            icon={BadgeCheck}
+            label="Completed"
+            value={stats?.overview.completed || 0}
+            color="blue"
+          />
+        </div>
       </div>
 
       {/* Charts row */}
@@ -375,6 +391,12 @@ function StatCard({ icon: Icon, label, value, color }) {
       shadow: 'shadow-amber-500/30',
       bg: 'bg-gradient-to-br from-amber-100 to-orange-100',
       ring: 'ring-amber-200'
+    },
+    red: {
+      gradient: 'from-red-500 to-rose-600',
+      shadow: 'shadow-red-500/30',
+      bg: 'bg-gradient-to-br from-red-100 to-rose-100',
+      ring: 'ring-red-200'
     }
   };
 

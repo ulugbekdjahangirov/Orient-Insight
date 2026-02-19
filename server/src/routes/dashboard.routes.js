@@ -52,7 +52,8 @@ router.get('/stats', authenticate, async (req, res) => {
         pax: true,
         departureDate: true,
         endDate: true,
-        tourTypeId: true
+        tourTypeId: true,
+        status: true
       }
     });
 
@@ -74,7 +75,9 @@ router.get('/stats', authenticate, async (req, res) => {
     };
 
     allBookings.forEach(booking => {
-      const calculatedStatus = calculateStatus(booking.pax, booking.departureDate, booking.endDate);
+      const calculatedStatus = booking.status === 'CANCELLED'
+        ? 'CANCELLED'
+        : calculateStatus(booking.pax, booking.departureDate, booking.endDate);
       statusCounts[calculatedStatus]++;
       statusPaxSums[calculatedStatus] += booking.pax;
     });
@@ -153,6 +156,11 @@ router.get('/stats', authenticate, async (req, res) => {
       overview: {
         totalBookings: allBookings.length,
         totalPax: totalPax._sum.pax || 0,
+        confirmed: statusCounts.CONFIRMED,
+        inProgress: statusCounts.IN_PROGRESS,
+        pending: statusCounts.PENDING,
+        cancelled: statusCounts.CANCELLED,
+        completed: statusCounts.COMPLETED,
         thisMonthBookings,
         upcomingBookings,
         guidesCount,
