@@ -735,12 +735,19 @@ class EmailImportProcessor {
           continue;
         }
 
+        // Update paxField, then recalculate pax = paxUzbekistan + paxTurkmenistan
+        const updatedBooking = await prisma.booking.update({
+          where: { id: booking.id },
+          data: { [paxField]: row.pax, paxSource: 'EMAIL_TABLE' },
+          select: { paxUzbekistan: true, paxTurkmenistan: true }
+        });
+        const totalPax = (updatedBooking.paxUzbekistan || 0) + (updatedBooking.paxTurkmenistan || 0);
         await prisma.booking.update({
           where: { id: booking.id },
-          data: { [paxField]: row.pax, paxSource: 'EMAIL_TABLE' }
+          data: { pax: totalPax }
         });
 
-        console.log(`✅ ${booking.bookingNumber}: ${paxField} = ${row.pax} (EMAIL_TABLE)`);
+        console.log(`✅ ${booking.bookingNumber}: ${paxField} = ${row.pax}, pax = ${totalPax} (EMAIL_TABLE)`);
         updated++;
         ids.push(booking.id);
 
