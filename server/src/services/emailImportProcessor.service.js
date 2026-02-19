@@ -692,7 +692,6 @@ class EmailImportProcessor {
    * Priority: EMAIL_TABLE < EXCEL < PDF — never overrides higher-priority source.
    */
   async updateBookingsFromTableRows(rows) {
-    const PRIORITY = ['EMAIL_TABLE', 'EXCEL', 'PDF', 'MANUAL'];
     let updated = 0;
     const ids = [];
 
@@ -733,16 +732,8 @@ class EmailImportProcessor {
           continue;
         }
 
-        // pax=0 means explicitly zero bookings — always update regardless of priority
-        // pax>0 means estimated count — skip if booking already has higher-priority source (EXCEL/PDF)
-        if (row.pax > 0) {
-          const currentPriority = PRIORITY.indexOf(booking.paxSource || 'EMAIL_TABLE');
-          const newPriority = PRIORITY.indexOf('EMAIL_TABLE');
-          if (currentPriority > newPriority) {
-            console.log(`⏭️  ${booking.bookingNumber}: skipping (existing source=${booking.paxSource} has higher priority)`);
-            continue;
-          }
-        }
+        // Always update — last import wins.
+        // Same-email case: EMAIL_TABLE runs sync first, EXCEL runs via setImmediate after → EXCEL naturally overrides.
 
         // Update paxField, then recalculate pax = paxUzbekistan + paxTurkmenistan
         const updatedBooking = await prisma.booking.update({
