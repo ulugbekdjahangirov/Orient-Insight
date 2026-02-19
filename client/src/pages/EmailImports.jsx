@@ -130,37 +130,37 @@ export default function EmailImports() {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="w-full table-fixed divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Дата</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">От кого</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Тема</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Статус</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Tour Type</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Результат</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сообщение</th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Действия</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Дата</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[15%]">От кого</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[12%]">Тема</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[8%]">Статус</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Tour Type</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Результат</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[22%]">Сообщение</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[13%]">Действия</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {imports.map((imp) => (
                 <tr key={imp.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 truncate">
                     {formatDate(imp.emailDate)}
                   </td>
-                  <td className="px-3 py-3 text-xs text-gray-900 max-w-xs truncate">
+                  <td className="px-3 py-3 text-xs text-gray-900 truncate">
                     {imp.emailFrom}
                   </td>
-                  <td className="px-3 py-3 text-xs text-gray-900 max-w-sm truncate">
+                  <td className="px-3 py-3 text-xs text-gray-900 truncate">
                     {imp.emailSubject || '(Без темы)'}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap truncate">
                     <span className={`px-2 py-1 text-xs font-medium rounded ${STATUS_COLORS[imp.status]}`}>
                       {STATUS_LABELS[imp.status]}
                     </span>
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-gray-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-gray-900 truncate">
                     {imp.tourTypeCodes ? (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
                         {imp.tourTypeCodes}
@@ -169,7 +169,7 @@ export default function EmailImports() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 truncate">
                     {imp.status === 'SUCCESS' ? (
                       <span className="text-green-600">
                         +{imp.bookingsCreated} / ~{imp.bookingsUpdated}
@@ -180,7 +180,7 @@ export default function EmailImports() {
                       '-'
                     )}
                   </td>
-                  <td className="px-3 py-3 text-xs max-w-md truncate">
+                  <td className="px-3 py-3 text-xs truncate">
                     {imp.status === 'SUCCESS' ? (
                       <span className="text-green-600 font-medium">✓</span>
                     ) : imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' ? (
