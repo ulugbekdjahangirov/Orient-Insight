@@ -113,7 +113,7 @@ router.get('/imports', authenticate, async (req, res) => {
       prisma.emailImport.count({ where })
     ]);
 
-    // Enrich imports with tour type codes
+    // Enrich imports with booking numbers (e.g., "ER-01", "CO-03")
     const enrichedImports = await Promise.all(imports.map(async (imp) => {
       if (!imp.bookingIds) return { ...imp, tourTypeCodes: null };
 
@@ -122,14 +122,14 @@ router.get('/imports', authenticate, async (req, res) => {
 
       if (bookingIds.length === 0) return { ...imp, tourTypeCodes: null };
 
-      // Fetch tour types for these bookings
+      // Fetch booking numbers for these bookings
       const bookings = await prisma.booking.findMany({
         where: { id: { in: bookingIds } },
-        include: { tourType: { select: { code: true } } }
+        select: { bookingNumber: true }
       });
 
-      // Extract unique tour type codes
-      const tourTypeCodes = [...new Set(bookings.map(b => b.tourType.code))].join(', ');
+      // Extract booking numbers (e.g., "ER-01, CO-03")
+      const tourTypeCodes = bookings.map(b => b.bookingNumber).join(', ');
 
       return { ...imp, tourTypeCodes };
     }));
