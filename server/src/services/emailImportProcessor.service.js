@@ -324,20 +324,32 @@ class EmailImportProcessor {
       console.log(`🔗 Matched booking: ${booking.bookingNumber}`);
     }
 
-    // FULL REPLACE: Delete all existing tourists, then import fresh data from Excel
+    // Determine placement from Excel filename (Reisename)
+    // "Usbekistan" → Uzbekistan, "Usbekistan mit Verlängerung Turkmenistan" → Turkmenistan
+    const isUzbekistanOnly = parsedBooking.reisename &&
+      !parsedBooking.reisename.toLowerCase().includes('turkmenistan') &&
+      !parsedBooking.reisename.toLowerCase().includes('turkmen');
+    const placement = isUzbekistanOnly ? 'Uzbekistan' : 'Turkmenistan';
+
+    console.log(`📍 Excel placement detected: ${placement} (from: ${parsedBooking.reisename})`);
+
+    // SELECTIVE REPLACE: Delete only tourists with matching placement
     if (parsedBooking.tourists && parsedBooking.tourists.length > 0) {
-      // Delete all existing tourists for this booking
+      // Delete existing tourists with same placement (Uzbekistan or Turkmenistan)
       const deletedCount = await prisma.tourist.deleteMany({
-        where: { bookingId: booking.id }
+        where: {
+          bookingId: booking.id,
+          accommodation: placement
+        }
       });
       if (deletedCount.count > 0) {
-        console.log(`🗑️  FULL REPLACE: Deleted ${deletedCount.count} existing tourists from ${booking.bookingNumber}`);
+        console.log(`🗑️  SELECTIVE REPLACE: Deleted ${deletedCount.count} ${placement} tourists from ${booking.bookingNumber}`);
       }
 
-      // Import all tourists from Excel
+      // Import all tourists from Excel with correct placement
       let touristsAdded = 0;
       for (const t of parsedBooking.tourists) {
-        // Create new tourist
+        // Create new tourist with placement
         await prisma.tourist.create({
           data: {
             bookingId: booking.id,
@@ -350,7 +362,7 @@ class EmailImportProcessor {
             passportExpiryDate: t.passportExpiry ? this.parseDateString(t.passportExpiry) : null,
             country: t.nationality || 'Deutschland',
             roomPreference: t.roomType || 'SNGL',
-            accommodation: 'Not assigned',
+            accommodation: placement,
             remarks: [t.remarks, t.voyageOption].filter(Boolean).join('; ') || null,
             notes: t.vegetarian ? 'Vegetarian' : null
           }
