@@ -331,44 +331,27 @@ class EmailImportProcessor {
     const departureDate = this.parseDateString(parsedBooking.departureDate);
     const endDate = this.parseDateString(parsedBooking.returnArrivalDate);
 
-    // Find booking by tourType + departure date (within ±3 days tolerance)
+    // Find booking by tourType + EXACT departure date (no tolerance)
     let booking = null;
-    if (departureDate) {
-      const from = new Date(departureDate);
-      const to = new Date(departureDate);
-      from.setDate(from.getDate() - 3);
-      to.setDate(to.getDate() + 3);
-
-      booking = await prisma.booking.findFirst({
-        where: {
-          tourTypeId: tourType.id,
-          departureDate: { gte: from, lte: to }
-        },
-        orderBy: { departureDate: 'asc' }
-      });
+    if (!departureDate) {
+      throw new Error(`Excel faylda sana topilmadi: ${parsedBooking.departureDate}`);
     }
 
-    let action = 'updated';
+    booking = await prisma.booking.findFirst({
+      where: {
+        tourTypeId: tourType.id,
+        departureDate: departureDate  // ANIQ sana bo'yicha qidirish!
+      }
+    });
+
     if (!booking) {
-      // Create new booking from Excel data
-      const bookingNumber = `${tourTypeCode}-EXCEL-${parsedBooking.departureDate || 'unknown'}`;
-      booking = await prisma.booking.create({
-        data: {
-          bookingNumber,
-          tourTypeId: tourType.id,
-          departureDate,
-          arrivalDate: departureDate,
-          endDate,
-          status: 'PENDING',
-          pax: parsedBooking.tourists?.length || 0,
-          roomsDbl: 0, roomsTwn: 0, roomsSngl: 0, roomsTotal: 0
-        }
-      });
-      action = 'created';
-      console.log(`✨ Created booking from Excel: ${bookingNumber}`);
-    } else {
-      console.log(`🔗 Matched booking: ${booking.bookingNumber}`);
+      // Gruppa topilmadi - xato berish (yangi gruppa yaratmaymiz!)
+      const formattedDate = departureDate.toLocaleDateString('de-DE');
+      throw new Error(`Gruppa topilmadi: ${tourTypeCode} tour type, sana ${formattedDate}. Iltimos, avval gruppani yarating yoki sanani tekshiring.`);
     }
+
+    console.log(`🔗 Matched booking: ${booking.bookingNumber} (exact date match: ${departureDate.toLocaleDateString('de-DE')})`);
+    const action = 'updated';
 
     // Determine placement from Excel filename (Reisename)
     // ER: "Usbekistan" → Uzbekistan, "Usbekistan mit Verlängerung Turkmenistan" → Turkmenistan
