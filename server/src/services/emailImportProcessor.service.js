@@ -429,9 +429,12 @@ class EmailImportProcessor {
 
       // Try 2: date-only search (PDF format "Tour: Uzbekistan Date: 13.03.2026")
       if (!booking) {
-        console.log(`⚠️  PDF: no tour code found — searching by date only (${y}-${m}-${d} ±3 days)`);
+        // Use ±1 day for date-only (no tour code) to avoid matching nearby bookings
+        const from1 = new Date(departureDate); from1.setDate(from1.getDate() - 1);
+        const to1 = new Date(departureDate); to1.setDate(to1.getDate() + 1);
+        console.log(`⚠️  PDF: no tour code found — searching by date only (${y}-${m}-${d} ±1 day)`);
         const candidates = await prisma.booking.findMany({
-          where: { departureDate: { gte: from, lte: to } },
+          where: { departureDate: { gte: from1, lte: to1 } },
           orderBy: { departureDate: 'asc' }
         });
         if (candidates.length === 1) {
