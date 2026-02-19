@@ -137,6 +137,7 @@ export default function EmailImports() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">От кого</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Тема</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tour Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Результат</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
               </tr>
@@ -157,6 +158,15 @@ export default function EmailImports() {
                     <span className={`px-2 py-1 text-xs font-medium rounded ${STATUS_COLORS[imp.status]}`}>
                       {STATUS_LABELS[imp.status]}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {imp.tourTypeCodes ? (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                        {imp.tourTypeCodes}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {imp.status === 'SUCCESS' ? (

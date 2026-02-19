@@ -113,8 +113,29 @@ router.get('/imports', authenticate, async (req, res) => {
       prisma.emailImport.count({ where })
     ]);
 
+    // Enrich imports with tour type codes
+    const enrichedImports = await Promise.all(imports.map(async (imp) => {
+      if (!imp.bookingIds) return { ...imp, tourTypeCodes: null };
+
+      // Parse booking IDs (can be comma-separated)
+      const bookingIds = imp.bookingIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+
+      if (bookingIds.length === 0) return { ...imp, tourTypeCodes: null };
+
+      // Fetch tour types for these bookings
+      const bookings = await prisma.booking.findMany({
+        where: { id: { in: bookingIds } },
+        include: { tourType: { select: { code: true } } }
+      });
+
+      // Extract unique tour type codes
+      const tourTypeCodes = [...new Set(bookings.map(b => b.tourType.code))].join(', ');
+
+      return { ...imp, tourTypeCodes };
+    }));
+
     res.json({
-      imports,
+      imports: enrichedImports,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
