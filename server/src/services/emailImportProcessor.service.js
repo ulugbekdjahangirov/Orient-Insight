@@ -278,11 +278,28 @@ class EmailImportProcessor {
     // ER: "Usbekistan" or "Usbekistan mit Verlängerung Turkmenistan"
     const isER = (lowerName.includes('usbekistan') || lowerName.includes('uzbekistan')) &&
                  !lowerName.includes('comfortplus') &&
-                 !lowerName.includes('comfort');
+                 !lowerName.includes('comfort') &&
+                 !lowerName.includes('kasachstan') &&
+                 !lowerName.includes('kirgistan') &&
+                 !lowerName.includes('tadschikistan');
 
     // CO: "Usbekistan ComfortPlus" or "ComfortPlus"
     const isCO = (lowerName.includes('comfortplus') || lowerName.includes('comfort')) &&
                  (lowerName.includes('usbekistan') || lowerName.includes('uzbekistan'));
+
+    // KAS: "Kasachstan, Kirgistan und Usbekistan"
+    const isKAS = (lowerName.includes('kasachstan') || lowerName.includes('kazakhstan')) &&
+                  (lowerName.includes('kirgistan') || lowerName.includes('kyrgyzstan')) &&
+                  (lowerName.includes('usbekistan') || lowerName.includes('uzbekistan')) &&
+                  !lowerName.includes('turkmenistan') &&
+                  !lowerName.includes('tadschikistan');
+
+    // ZA: "Turkmenistan, Usbekistan, Tadschikistan, Kasachstan und Kirgistan" (all 5 countries)
+    const isZA = (lowerName.includes('turkmenistan') || lowerName.includes('turkmen')) &&
+                 (lowerName.includes('usbekistan') || lowerName.includes('uzbekistan')) &&
+                 (lowerName.includes('tadschikistan') || lowerName.includes('tajikistan')) &&
+                 (lowerName.includes('kasachstan') || lowerName.includes('kazakhstan')) &&
+                 (lowerName.includes('kirgistan') || lowerName.includes('kyrgyzstan'));
 
     if (isER) {
       tourTypeCode = 'ER';
@@ -290,6 +307,12 @@ class EmailImportProcessor {
     } else if (isCO) {
       tourTypeCode = 'CO';
       console.log(`📍 Usbekistan ComfortPlus Excel detected → forcing CO tour type`);
+    } else if (isKAS) {
+      tourTypeCode = 'KAS';
+      console.log(`📍 Kasachstan, Kirgistan und Usbekistan Excel detected → forcing KAS tour type`);
+    } else if (isZA) {
+      tourTypeCode = 'ZA';
+      console.log(`📍 Zentralasien (5 countries) Excel detected → forcing ZA tour type`);
     } else {
       tourTypeCode = excelParser.extractTourType(parsedBooking.reisename);
       if (!tourTypeCode) {
