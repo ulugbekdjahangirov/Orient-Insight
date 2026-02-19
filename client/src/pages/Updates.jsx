@@ -1203,6 +1203,38 @@ export default function Updates() {
               </table>
             </div>
           )}
+
+          {/* Total PAX Summary */}
+          {!loading && bookings.length > 0 && (() => {
+            const activeBookings = bookings.filter(b => b.status !== 'CANCELLED');
+            const totalPax     = activeBookings.reduce((s, b) => s + (b.pax || 0), 0);
+            const totalUzbek   = activeBookings.reduce((s, b) => s + (b.paxUzbekistan || 0), 0);
+            const totalTurkmen = activeBookings.reduce((s, b) => s + (b.paxTurkmenistan || 0), 0);
+            return (
+              <div className="mt-4 p-5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 shadow-md">
+                <div className="flex flex-wrap gap-6 items-center">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-600" />
+                    <span className="text-sm font-semibold text-gray-600">Total PAX:</span>
+                    <span className="text-2xl font-black text-indigo-700">{totalPax}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-600">Uzbekistan:</span>
+                    <span className="text-2xl font-black text-purple-700">{totalUzbek}</span>
+                  </div>
+                  {activeTab === 'ER' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-600">Turkmenistan:</span>
+                      <span className="text-2xl font-black text-pink-700">{totalTurkmen}</span>
+                    </div>
+                  )}
+                  <div className="ml-auto text-xs text-gray-500 font-semibold">
+                    {activeBookings.length} active · {bookings.filter(b => b.status === 'CANCELLED').length} cancelled
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
