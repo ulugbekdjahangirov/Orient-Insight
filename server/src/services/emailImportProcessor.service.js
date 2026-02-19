@@ -269,10 +269,22 @@ class EmailImportProcessor {
    * 2. Import tourists into found booking
    */
   async importExcelBooking(parsedBooking) {
-    const tourTypeCode = excelParser.extractTourType(parsedBooking.reisename);
-    if (!tourTypeCode) {
-      console.warn(`⚠️  Cannot determine tour type from: ${parsedBooking.reisename}`);
-      return null;
+    // Detect if this is Uzbekistan/Turkmenistan Excel (ER tours only)
+    const isUzbekistanExcel = parsedBooking.reisename &&
+      (parsedBooking.reisename.toLowerCase().includes('usbekistan') ||
+       parsedBooking.reisename.toLowerCase().includes('uzbekistan'));
+
+    // If Uzbekistan/Turkmenistan Excel → force ER tour type
+    let tourTypeCode;
+    if (isUzbekistanExcel) {
+      tourTypeCode = 'ER';
+      console.log(`📍 Uzbekistan/Turkmenistan Excel detected → forcing ER tour type`);
+    } else {
+      tourTypeCode = excelParser.extractTourType(parsedBooking.reisename);
+      if (!tourTypeCode) {
+        console.warn(`⚠️  Cannot determine tour type from: ${parsedBooking.reisename}`);
+        return null;
+      }
     }
 
     const tourType = await prisma.tourType.findFirst({ where: { code: tourTypeCode } });
