@@ -31,7 +31,12 @@ const statusClasses = {
 };
 
 export default function Updates() {
-  const [activeTab, setActiveTab] = useState('ER');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('updates_activeTab') || 'ER');
+
+  const handleTabChange = (code) => {
+    localStorage.setItem('updates_activeTab', code);
+    setActiveTab(code);
+  };
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tourTypes, setTourTypes] = useState([]);
@@ -858,7 +863,7 @@ export default function Updates() {
             return (
               <button
                 key={module.code}
-                onClick={() => setActiveTab(module.code)}
+                onClick={() => handleTabChange(module.code)}
                 className={`flex-1 px-6 py-4 text-base font-bold transition-all duration-300 rounded-2xl relative shadow-lg hover:shadow-xl ${
                   isActive
                     ? 'text-white scale-110 -translate-y-1'
