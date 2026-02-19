@@ -57,6 +57,16 @@ export default function Updates() {
     }
   }, [activeTab, tourTypes]);
 
+  // Auto-refresh every 30 seconds to pick up email imports
+  useEffect(() => {
+    if (tourTypes.length === 0) return;
+    const interval = setInterval(() => {
+      loadBookings();
+      loadAllBookingsCount();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [activeTab, tourTypes]);
+
   const loadTourTypes = async () => {
     try {
       const response = await tourTypesApi.getAll();
