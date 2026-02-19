@@ -32,6 +32,43 @@ class EmailImportProcessor {
       // Read attachment from disk
       const fileBuffer = await fs.readFile(emailImport.attachmentUrl);
 
+      // Handle EMAIL_BODY_TABLE (HTML PAX table from email body)
+      if (emailImport.attachmentName === 'EMAIL_BODY_TABLE') {
+        console.log(`📋 Processing HTML body PAX table from email`);
+        const html = fileBuffer.toString('utf-8');
+        const rows = await this.parseHtmlTableForPax(html);
+
+        if (rows.length === 0) {
+          await prisma.emailImport.update({
+            where: { id: emailImportId },
+            data: {
+              status: 'MANUAL_REVIEW',
+              errorMessage: 'No valid PAX rows found in HTML table',
+              processedAt: new Date()
+            }
+          });
+          return { created: 0, updated: 0, ids: [] };
+        }
+
+        console.log(`📊 Found ${rows.length} tour row(s) in HTML table`);
+        const result = await this.updateBookingsFromTableRows(rows);
+
+        await prisma.emailImport.update({
+          where: { id: emailImportId },
+          data: {
+            status: 'SUCCESS',
+            bookingsCreated: 0,
+            bookingsUpdated: result.updated,
+            bookingIds: result.ids.join(','),
+            rawParsedData: JSON.stringify(rows, null, 2),
+            processedAt: new Date()
+          }
+        });
+
+        console.log(`✅ HTML table processed: ${result.updated} booking(s) updated`);
+        return { created: 0, updated: result.updated, ids: result.ids };
+      }
+
       // Determine file type and parse accordingly
       const isExcel = this.isExcelFile(emailImport.attachmentName, emailImport.attachmentType);
       const isPdf = !isExcel && emailImport.attachmentName?.toLowerCase().endsWith('.pdf');
@@ -442,7 +479,7 @@ class EmailImportProcessor {
       const turkCount = allTourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length;
       await prisma.booking.update({
         where: { id: booking.id },
-        data: { pax: totalTourists, paxUzbekistan: uzbekCount, paxTurkmenistan: turkCount }
+        data: { pax: totalTourists, paxUzbekistan: uzbekCount, paxTurkmenistan: turkCount, paxSource: 'EXCEL' }
       });
 
       console.log(`👥 Imported ${touristsAdded} new tourists for booking ${booking.bookingNumber} (total: ${totalTourists})`);
@@ -535,6 +572,184 @@ class EmailImportProcessor {
       console.error('❌ importRoomingListPdfForEmail error:', err.message);
       return null;
     }
+  }
+
+  /**
+   * Map German Reisename to { tourCode, paxField }
+   * EMAIL_TABLE priorities:
+   *   "Turkmenistan, Usbekistan, Tadschikistan..." → ZA, paxUzbekistan
+   *   "Kasachstan, Kirgistan und Usbekistan"       → KAS, paxUzbekistan
+   *   "Usbekistan ComfortPlus"                     → CO, paxUzbekistan
+   *   "Usbekistan mit Verlängerung Turkmenistan"   → ER, paxTurkmenistan
+   *   "Usbekistan"                                 → ER, paxUzbekistan
+   */
+  mapReisename(reisename) {
+    const lower = reisename.toLowerCase();
+
+    const isZA = (lower.includes('turkmenistan') || lower.includes('turkmen')) &&
+                 (lower.includes('usbekistan') || lower.includes('uzbekistan')) &&
+                 (lower.includes('tadschikistan') || lower.includes('tajikistan')) &&
+                 (lower.includes('kasachstan') || lower.includes('kazakhstan')) &&
+                 (lower.includes('kirgistan') || lower.includes('kyrgyzstan'));
+
+    const isKAS = !isZA &&
+                  (lower.includes('kasachstan') || lower.includes('kazakhstan')) &&
+                  (lower.includes('kirgistan') || lower.includes('kyrgyzstan')) &&
+                  (lower.includes('usbekistan') || lower.includes('uzbekistan'));
+
+    const isCO = !isZA && !isKAS &&
+                 (lower.includes('comfortplus') || lower.includes('comfort plus')) &&
+                 (lower.includes('usbekistan') || lower.includes('uzbekistan'));
+
+    const isERTurkmen = !isZA && !isKAS && !isCO &&
+                        (lower.includes('usbekistan') || lower.includes('uzbekistan')) &&
+                        (lower.includes('turkmenistan') || lower.includes('turkmen'));
+
+    const isER = !isZA && !isKAS && !isCO && !isERTurkmen &&
+                 (lower.includes('usbekistan') || lower.includes('uzbekistan'));
+
+    if (isZA) return { tourCode: 'ZA', paxField: 'paxUzbekistan' };
+    if (isKAS) return { tourCode: 'KAS', paxField: 'paxUzbekistan' };
+    if (isCO) return { tourCode: 'CO', paxField: 'paxUzbekistan' };
+    if (isERTurkmen) return { tourCode: 'ER', paxField: 'paxTurkmenistan' };
+    if (isER) return { tourCode: 'ER', paxField: 'paxUzbekistan' };
+
+    return null;
+  }
+
+  /**
+   * Parse HTML email body to extract PAX table rows
+   * Expects columns: Reisename | Von | Bis | Gebuchte Pax
+   */
+  async parseHtmlTableForPax(html) {
+    const cheerio = require('cheerio');
+    const $ = cheerio.load(html);
+    const rows = [];
+
+    // Find the table that contains "Reisename" and "Pax"
+    let targetTable = null;
+    $('table').each((i, table) => {
+      const text = $(table).text();
+      if (text.toLowerCase().includes('reisename') && text.toLowerCase().includes('pax')) {
+        targetTable = table;
+        return false; // break each()
+      }
+    });
+
+    if (!targetTable) {
+      console.log('⚠️  parseHtmlTableForPax: no table with Reisename+Pax found');
+      return [];
+    }
+
+    // Get column headers from first row (th or td)
+    const headerCells = [];
+    $(targetTable).find('tr').first().find('th, td').each((i, el) => {
+      headerCells.push($(el).text().trim().toLowerCase());
+    });
+
+    const reisIdx = headerCells.findIndex(h => h.includes('reisename') || h === 'reise');
+    const vonIdx  = headerCells.findIndex(h => h === 'von' || h.startsWith('von'));
+    const bisIdx  = headerCells.findIndex(h => h === 'bis' || h.startsWith('bis'));
+    // "Gebuchte Pax" or just "Pax"
+    const paxIdx  = headerCells.findIndex(h => h.includes('pax'));
+
+    if (reisIdx === -1 || paxIdx === -1) {
+      console.log(`⚠️  parseHtmlTableForPax: required columns not found. Headers: ${headerCells.join(' | ')}`);
+      return [];
+    }
+
+    console.log(`📋 Table headers: ${headerCells.join(' | ')} (reisIdx=${reisIdx}, vonIdx=${vonIdx}, paxIdx=${paxIdx})`);
+
+    // Parse data rows (skip header row)
+    $(targetTable).find('tr').each((i, row) => {
+      if (i === 0) return; // skip header
+      const cells = $(row).find('td');
+      if (cells.length === 0) return;
+
+      const reisename = $(cells[reisIdx]).text().trim();
+      const von = vonIdx >= 0 ? $(cells[vonIdx]).text().trim() : null;
+      const bis = bisIdx >= 0 ? $(cells[bisIdx]).text().trim() : null;
+      const paxText = $(cells[paxIdx]).text().trim();
+      const pax = parseInt(paxText, 10);
+
+      if (!reisename || isNaN(pax) || pax <= 0) return;
+
+      rows.push({ reisename, departureDate: von, returnDate: bis, pax });
+      console.log(`  → ${reisename} | Von: ${von} | Pax: ${pax}`);
+    });
+
+    return rows;
+  }
+
+  /**
+   * Update booking pax fields from HTML table rows.
+   * Priority: EMAIL_TABLE < EXCEL < PDF — never overrides higher-priority source.
+   */
+  async updateBookingsFromTableRows(rows) {
+    const PRIORITY = ['EMAIL_TABLE', 'EXCEL', 'PDF', 'MANUAL'];
+    let updated = 0;
+    const ids = [];
+
+    for (const row of rows) {
+      try {
+        const mapped = this.mapReisename(row.reisename);
+        if (!mapped) {
+          console.log(`⚠️  Could not map tour type from: "${row.reisename}"`);
+          continue;
+        }
+
+        const { tourCode, paxField } = mapped;
+        const tourType = await prisma.tourType.findFirst({ where: { code: tourCode } });
+        if (!tourType) {
+          console.log(`⚠️  Tour type not found: ${tourCode}`);
+          continue;
+        }
+
+        // Parse departure date (DD.MM.YYYY)
+        const departureDate = this.parseDateString(row.departureDate);
+        if (!departureDate) {
+          console.log(`⚠️  Could not parse departure date: "${row.departureDate}" for ${row.reisename}`);
+          continue;
+        }
+
+        const d = departureDate.getUTCDate();
+        const m = departureDate.getUTCMonth();
+        const y = departureDate.getUTCFullYear();
+        const from = new Date(Date.UTC(y, m, d - 2));
+        const to   = new Date(Date.UTC(y, m, d + 2, 23, 59, 59));
+
+        const booking = await prisma.booking.findFirst({
+          where: { tourTypeId: tourType.id, departureDate: { gte: from, lte: to } }
+        });
+
+        if (!booking) {
+          console.log(`⚠️  No booking found for ${tourCode} around ${row.departureDate}`);
+          continue;
+        }
+
+        // Check priority: skip if booking already has a higher-priority pax source
+        const currentPriority = PRIORITY.indexOf(booking.paxSource || 'EMAIL_TABLE');
+        const newPriority = PRIORITY.indexOf('EMAIL_TABLE');
+        if (currentPriority > newPriority) {
+          console.log(`⏭️  ${booking.bookingNumber}: skipping (existing source=${booking.paxSource} has higher priority)`);
+          continue;
+        }
+
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { [paxField]: row.pax, paxSource: 'EMAIL_TABLE' }
+        });
+
+        console.log(`✅ ${booking.bookingNumber}: ${paxField} = ${row.pax} (EMAIL_TABLE)`);
+        updated++;
+        ids.push(booking.id);
+
+      } catch (err) {
+        console.error(`❌ updateBookingsFromTableRows error for "${row.reisename}":`, err.message);
+      }
+    }
+
+    return { updated, ids };
   }
 
   /**

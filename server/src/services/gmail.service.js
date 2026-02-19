@@ -137,7 +137,8 @@ class GmailService {
       .map(email => `from:(${email})`)
       .join(' OR ');
 
-    const query = `has:attachment -label:PROCESSED newer_than:7d (${senderQuery})`;
+    // No "has:attachment" filter — also pick up emails with only HTML body table
+    const query = `-label:PROCESSED newer_than:7d (${senderQuery})`;
 
     console.log('📧 Gmail query:', query);
 
@@ -203,8 +204,26 @@ class GmailService {
       subject,
       from,
       date,
-      attachments
+      attachments,
+      htmlBody: this.extractHtmlBody(message.payload)
     };
+  }
+
+  /**
+   * Recursively extract HTML body from email payload parts
+   */
+  extractHtmlBody(part) {
+    if (!part) return null;
+    if (part.mimeType === 'text/html' && part.body?.data) {
+      return Buffer.from(part.body.data, 'base64url').toString('utf-8');
+    }
+    if (part.parts) {
+      for (const subPart of part.parts) {
+        const html = this.extractHtmlBody(subPart);
+        if (html) return html;
+      }
+    }
+    return null;
   }
 
   /**

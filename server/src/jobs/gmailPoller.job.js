@@ -70,7 +70,48 @@ async function processNewEmail(messageId) {
       return;
     }
 
-    // Find first supported attachment: Excel, image, or PDF
+    const uploadDir = path.join(__dirname, '../../uploads/gmail');
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    // --- Check email body for HTML PAX table (Reisename / Gebuchte Pax) ---
+    let bodyTableProcessed = false;
+    try {
+      const html = emailDetails.htmlBody;
+      if (html && html.includes('Reisename') && html.includes('Pax')) {
+        const bodyUniqueKey = `${messageId}::BODY_TABLE`;
+        const existingBody = await prisma.emailImport.findFirst({
+          where: { gmailMessageId: bodyUniqueKey }
+        });
+        if (!existingBody) {
+          const htmlFilepath = path.join(uploadDir, `${Date.now()}-EMAIL_BODY.html`);
+          await fs.writeFile(htmlFilepath, html, 'utf-8');
+
+          const bodyImport = await prisma.emailImport.create({
+            data: {
+              gmailMessageId: bodyUniqueKey,
+              emailSubject: emailDetails.subject,
+              emailFrom: emailDetails.from,
+              emailDate: emailDetails.date,
+              attachmentName: 'EMAIL_BODY_TABLE',
+              attachmentUrl: htmlFilepath,
+              attachmentType: 'text/html',
+              status: 'PENDING'
+            }
+          });
+
+          // Process SYNCHRONOUSLY first so Excel attachment (if any) overrides after
+          await emailImportProcessor.processEmailImport(bodyImport.id);
+          bodyTableProcessed = true;
+          console.log(`📊 Body table EmailImport ${bodyImport.id} processed`);
+        } else {
+          bodyTableProcessed = true;
+        }
+      }
+    } catch (bodyErr) {
+      console.log(`⚠️  Could not process email body: ${bodyErr.message}`);
+    }
+
+    // --- Attachments ---
     const isExcelAttachment = (att) => {
       return att.mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         || att.mimeType === 'application/vnd.ms-excel'
@@ -82,23 +123,17 @@ async function processNewEmail(messageId) {
       return att.mimeType.startsWith('image/') || att.mimeType === 'application/pdf';
     };
 
-    // Collect all supported attachments
     const excelAttachments = emailDetails.attachments.filter(isExcelAttachment);
     const imageOrPdfAttachments = emailDetails.attachments.filter(isImageOrPdf);
-
-    // Process ALL supported attachments: Excel files AND PDF/image files together
     const attachmentsToProcess = [...excelAttachments, ...imageOrPdfAttachments];
 
-    if (attachmentsToProcess.length === 0) {
-      console.log(`⚠️  No supported attachment in email ${messageId}`);
+    if (attachmentsToProcess.length === 0 && !bodyTableProcessed) {
+      console.log(`⚠️  No processable content in email ${messageId}`);
       await gmailService.markAsProcessed(messageId);
       return;
     }
 
     console.log(`📎 Found ${attachmentsToProcess.length} attachment(s) to process`);
-
-    const uploadDir = path.join(__dirname, '../../uploads/gmail');
-    await fs.mkdir(uploadDir, { recursive: true });
 
     // Process each attachment
     for (const attachment of attachmentsToProcess) {

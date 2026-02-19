@@ -134,6 +134,7 @@ model Booking {
   pax             Int       @default(0) // Общее количество
   paxUzbekistan   Int?      // Туристы в Узбекистане
   paxTurkmenistan Int?      // Туристы в Туркменистане
+  paxSource       String?   // 'EMAIL_TABLE' | 'EXCEL' | 'PDF' | 'MANUAL'
   country         String?   // Страна группы (Germany, France, etc.)
 
   // Гид
