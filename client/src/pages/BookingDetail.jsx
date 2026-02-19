@@ -15244,7 +15244,13 @@ export default function BookingDetail() {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Arrival
-                  <span className="ml-1 text-xs font-normal text-gray-500">(auto: Tour Start + 1 day)</span>
+                  <span className="ml-1 text-xs font-normal text-gray-500">
+                    {booking?.tourType?.code === 'ZA'
+                      ? '(auto: Tour Start + 4 days)'
+                      : booking?.tourType?.code === 'KAS'
+                        ? '(auto: Tour Start + 14 days)'
+                        : '(auto: Tour Start + 1 day)'}
+                  </span>
                 </label>
                 <input
                   type="date"

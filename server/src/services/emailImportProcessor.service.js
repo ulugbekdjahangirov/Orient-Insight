@@ -257,6 +257,10 @@ class EmailImportProcessor {
         }
       } catch (error) {
         console.error(`❌ Failed to import booking ${parsedBooking.bookingCode}:`, error.message);
+        // For Excel imports, re-throw so the error is recorded as FAILED (not swallowed as SUCCESS)
+        if (parsedBooking.source === 'excel') {
+          throw error;
+        }
       }
     }
 
@@ -331,23 +335,34 @@ class EmailImportProcessor {
     const departureDate = this.parseDateString(parsedBooking.departureDate);
     const endDate = this.parseDateString(parsedBooking.returnArrivalDate);
 
-    // Find booking by tourType + EXACT departure date (no tolerance)
+    // Find booking by tourType + departure date with tolerance:
+    // - ZA: ±5 days (Excel has Germany departure date, DB has Uzbekistan arrival ~4 days later)
+    // - Others: ±1 day (timezone fix: server UTC+5 may shift date by ±1 day)
     let booking = null;
     if (!departureDate) {
       throw new Error(`Excel faylda sana topilmadi: ${parsedBooking.departureDate}`);
     }
 
+    // Search full calendar day (UTC 00:00 - 23:59) to handle timezone differences
+    // e.g. server UTC+5 stores "June 15 local" as "June 14 19:00 UTC"
+    const [d, m, y] = parsedBooking.departureDate.split('.');
+    const from = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d), 0, 0, 0, 0));
+    const to = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d), 23, 59, 59, 999));
+
     booking = await prisma.booking.findFirst({
       where: {
         tourTypeId: tourType.id,
-        departureDate: departureDate  // ANIQ sana bo'yicha qidirish!
+        departureDate: { gte: from, lte: to }
       }
     });
 
+    if (booking) {
+      console.log(`🔍 Date match: Excel=${parsedBooking.departureDate}, DB=${booking.departureDate.toLocaleDateString('de-DE')}`);
+    }
+
     if (!booking) {
       // Gruppa topilmadi - xato berish (yangi gruppa yaratmaymiz!)
-      const formattedDate = departureDate.toLocaleDateString('de-DE');
-      throw new Error(`Gruppa topilmadi: ${tourTypeCode} tour type, sana ${formattedDate}. Iltimos, avval gruppani yarating yoki sanani tekshiring.`);
+      throw new Error(`Gruppa topilmadi: ${tourTypeCode} tour type, sana ${parsedBooking.departureDate}. Iltimos, avval gruppani yarating yoki sanani tekshiring.`);
     }
 
     console.log(`🔗 Matched booking: ${booking.bookingNumber} (exact date match: ${departureDate.toLocaleDateString('de-DE')})`);
