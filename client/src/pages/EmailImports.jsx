@@ -81,6 +81,26 @@ export default function EmailImports() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    const filterText = statusFilter
+      ? `со статусом "${STATUS_LABELS[statusFilter]}"`
+      : 'все';
+
+    const message = `Вы уверены, что хотите удалить ${filterText} импорты?\n\nЭто действие:\n✅ Удалит записи импортов\n✅ Удалит загруженные файлы\n❌ НЕ удалит созданные бронирования\n\nПродолжить?`;
+
+    if (!confirm(message)) return;
+
+    try {
+      const params = statusFilter ? { status: statusFilter } : {};
+      const response = await gmailApi.bulkDeleteImports(params);
+      alert(`Успешно удалено: ${response.data.deletedCount} импорт(ов)`);
+      loadImports();
+    } catch (error) {
+      console.error('Failed to bulk delete imports:', error);
+      alert('Ошибка при массовом удалении');
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('ru-RU');
   };
@@ -89,12 +109,20 @@ export default function EmailImports() {
     <div className="max-w-full mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Email Импорты</h1>
-        <button
-          onClick={loadImports}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Обновить
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleBulkDelete}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Удалить все
+          </button>
+          <button
+            onClick={loadImports}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Обновить
+          </button>
+        </div>
       </div>
 
       {/* Status Filter */}

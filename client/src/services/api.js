@@ -277,6 +277,7 @@ export const gmailApi = {
   getImport: (id) => api.get(`/gmail/imports/${id}`),
   retryImport: (id) => api.post(`/gmail/imports/${id}/retry`),
   deleteImport: (id) => api.delete(`/gmail/imports/${id}`),
+  bulkDeleteImports: (params) => api.delete('/gmail/imports/bulk', { params }),
   // Settings
   getSettings: () => api.get('/gmail/settings'),
   updateSettings: (data) => api.post('/gmail/settings', data)

@@ -199,6 +199,53 @@ router.post('/imports/:id/retry', authenticate, requireAdmin, async (req, res) =
 });
 
 /**
+ * DELETE /api/gmail/imports/bulk - Bulk delete imports
+ * IMPORTANT: This route must come BEFORE /imports/:id to avoid matching "bulk" as an ID
+ */
+router.delete('/imports/bulk', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    // Build where clause
+    const where = status ? { status } : {};
+
+    // Get all matching imports
+    const imports = await prisma.emailImport.findMany({ where });
+
+    if (imports.length === 0) {
+      return res.json({ success: true, deletedCount: 0, message: 'No imports to delete' });
+    }
+
+    // Delete all attachment files
+    const fs = require('fs').promises;
+    let filesDeleted = 0;
+    for (const imp of imports) {
+      if (imp.attachmentUrl) {
+        try {
+          await fs.unlink(imp.attachmentUrl);
+          filesDeleted++;
+        } catch (err) {
+          console.warn('⚠️  Failed to delete attachment file:', err.message);
+        }
+      }
+    }
+
+    // Delete all records from database
+    const result = await prisma.emailImport.deleteMany({ where });
+
+    res.json({
+      success: true,
+      deletedCount: result.count,
+      filesDeleted,
+      message: `Deleted ${result.count} import(s) and ${filesDeleted} file(s)`
+    });
+  } catch (error) {
+    console.error('❌ Failed to bulk delete imports:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * DELETE /api/gmail/imports/:id - Delete import
  */
 router.delete('/imports/:id', authenticate, requireAdmin, async (req, res) => {
