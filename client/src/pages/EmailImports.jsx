@@ -86,7 +86,7 @@ export default function EmailImports() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-full mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Email Импорты</h1>
         <button
@@ -129,38 +129,38 @@ export default function EmailImports() {
           <div className="text-gray-500">Нет импортов</div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">От кого</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Тема</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tour Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Результат</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сообщение</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Дата</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">От кого</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Тема</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Статус</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Tour Type</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Результат</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сообщение</th>
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap">Действия</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {imports.map((imp) => (
                 <tr key={imp.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
                     {formatDate(imp.emailDate)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 py-3 text-xs text-gray-900 max-w-xs truncate">
                     {imp.emailFrom}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                  <td className="px-3 py-3 text-xs text-gray-900 max-w-sm truncate">
                     {imp.emailSubject || '(Без темы)'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded ${STATUS_COLORS[imp.status]}`}>
                       {STATUS_LABELS[imp.status]}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-gray-900">
                     {imp.tourTypeCodes ? (
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
                         {imp.tourTypeCodes}
@@ -169,7 +169,7 @@ export default function EmailImports() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
                     {imp.status === 'SUCCESS' ? (
                       <span className="text-green-600">
                         +{imp.bookingsCreated} / ~{imp.bookingsUpdated}
@@ -180,7 +180,7 @@ export default function EmailImports() {
                       '-'
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td className="px-3 py-3 text-xs max-w-md truncate">
                     {imp.status === 'SUCCESS' ? (
                       <span className="text-green-600 font-medium">✓</span>
                     ) : imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' ? (
@@ -191,7 +191,7 @@ export default function EmailImports() {
                       <span className="text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                  <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium space-x-1">
                     {imp.status === 'SUCCESS' && (
                       <button
                         onClick={() => handleViewDetails(imp.id)}
