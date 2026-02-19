@@ -2167,6 +2167,40 @@ export default function BookingDetail() {
           setErRoutes(sortRoutesByDate(mappedTemplateRoutes));
           }
         }
+        else if (['CO', 'KAS', 'ZA'].includes(b.tourType?.code)) {
+          // No saved routes - auto-load template from database (same as ER)
+          console.log(`📋 No routes saved, auto-loading ${b.tourType.code} template...`);
+          try {
+            const templateResponse = await routesApi.getTemplate(b.tourType.code);
+            const templates = templateResponse.data.templates;
+            if (templates && templates.length > 0) {
+              const bookingDepartureDate = b.departureDate ? new Date(b.departureDate) : null;
+              const totalPax = touristsRes.data.tourists?.length || 0;
+              const loadedRoutes = templates.map((template, index) => {
+                const daysToAdd = b.tourType.code === 'KAS' ? 14 : b.tourType.code === 'ZA' ? 4 : 1;
+                const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
+                const routeDate = arrivalDate ? format(addDays(arrivalDate, template.dayOffset), 'yyyy-MM-dd') : '';
+                return {
+                  id: index + 1,
+                  nomer: template.dayNumber?.toString() || '',
+                  sana: routeDate,
+                  dayOffset: template.dayOffset,
+                  shahar: template.city || '',
+                  route: template.routeName || '',
+                  person: totalPax.toString(),
+                  transportType: '',
+                  choiceTab: template.provider || '',
+                  choiceRate: template.optionRate || '',
+                  price: ''
+                };
+              });
+              setErRoutes(sortRoutesByDate(loadedRoutes));
+              console.log(`✅ ${b.tourType.code} template auto-loaded: ${loadedRoutes.length} routes`);
+            }
+          } catch (err) {
+            console.log(`⚠️ Could not auto-load ${b.tourType?.code} template: ${err.message}`);
+          }
+        }
         const uzbek = parseInt(b.paxUzbekistan) || 0;
         const turkmen = parseInt(b.paxTurkmenistan) || 0;
 
