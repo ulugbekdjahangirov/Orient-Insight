@@ -3897,17 +3897,17 @@ async function updateBookingPaxCount(bookingId) {
 
   // Update dates if we found tourist dates
   if (earliestCheckIn) {
-    // Updates.jsx sets tourist checkInDate differently per tour type:
-    // ER/CO: checkInDate = departureDate           → checkInOffset = 0
-    // KAS:   checkInDate = departureDate + 14      → checkInOffset = 14
-    // ZA:    checkInDate = (departureDate+4) + 4   → checkInOffset = 8
+    // Updates.jsx sets tourist checkInDate = actualDepartureDate (Uzbekistan arrival):
+    // ER/CO: checkInDate = departureDate      → checkInOffset = 0
+    // KAS:   checkInDate = departureDate + 14 → checkInOffset = 14
+    // ZA:    checkInDate = departureDate + 4  → checkInOffset = 4
     // So we reverse-calculate the actual departureDate from earliestCheckIn.
     const bookingForTourType = await prisma.booking.findUnique({
       where: { id: bookingId },
       select: { tourType: { select: { code: true } } }
     });
     const tourTypeCode = bookingForTourType?.tourType?.code;
-    const checkInOffset  = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 8 : 0);
+    const checkInOffset  = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 0);
     const arrivalOffset  = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 1);
 
     // Derived departureDate = earliestCheckIn - checkInOffset

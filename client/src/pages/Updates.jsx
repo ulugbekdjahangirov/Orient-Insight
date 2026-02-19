@@ -713,9 +713,8 @@ export default function Updates() {
           remarks: remarks,
           selected: true,
           // Set default check-in/out dates from booking (for calculating extra nights)
-          // ZA tours: Tourist arrival is +4 days after tour arrival in Uzbekistan
-          // Example: Excel 23.08 → actualDepartureDate 27.08 → checkInDate 31.08 (+4)
-          checkInDate: tourTypeCode === 'ZA' ? addDays(actualDepartureDate, 4) : actualDepartureDate,
+          // checkInDate = actualDepartureDate (Uzbekistan arrival day) for all tour types
+          checkInDate: actualDepartureDate,
           checkOutDate: endDate
         });
       }
