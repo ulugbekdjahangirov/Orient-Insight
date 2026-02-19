@@ -1361,7 +1361,8 @@ export default function BookingDetail() {
   }, [tourists.length, formData.departureDate, sevilVehicles, xayrullaVehicles, nosirVehicles]);
 
   // Auto-sync Arrival date with Tour Start date (departureDate + 1 day for ER/CO, +4 days for ZA, +14 days for KAS)
-  // Updates arrivalDate when departureDate changes
+  // Also auto-sync End Tour date for ER tours (departureDate + 13 days)
+  // Updates arrivalDate (and endDate for ER) when departureDate changes
   useEffect(() => {
     if (formData.departureDate) {
       const departureDate = new Date(formData.departureDate);
@@ -1373,10 +1374,15 @@ export default function BookingDetail() {
       // Auto-update if departureDate has changed (comparing with previous value)
       if (prevDepartureDateRef.current !== formData.departureDate) {
         // departureDate changed, update arrivalDate
-        setFormData(prev => ({
-          ...prev,
-          arrivalDate: expectedArrivalDateStr
-        }));
+        const updates = { arrivalDate: expectedArrivalDateStr };
+
+        // For ER tours: also auto-update endDate = departureDate + 13
+        if (tourTypeCode === 'ER') {
+          const expectedEndDate = addDays(departureDate, 13);
+          updates.endDate = format(expectedEndDate, 'yyyy-MM-dd');
+        }
+
+        setFormData(prev => ({ ...prev, ...updates }));
         prevDepartureDateRef.current = formData.departureDate;
       }
     }
