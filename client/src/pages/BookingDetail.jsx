@@ -1376,10 +1376,11 @@ export default function BookingDetail() {
         // departureDate changed, update arrivalDate
         const updates = { arrivalDate: expectedArrivalDateStr };
 
-        // For ER and CO tours: also auto-update endDate = departureDate + 13
+        // Auto-update endDate per tour type
         if (tourTypeCode === 'ER' || tourTypeCode === 'CO') {
-          const expectedEndDate = addDays(departureDate, 13);
-          updates.endDate = format(expectedEndDate, 'yyyy-MM-dd');
+          updates.endDate = format(addDays(departureDate, 13), 'yyyy-MM-dd');
+        } else if (tourTypeCode === 'KAS') {
+          updates.endDate = format(addDays(departureDate, 22), 'yyyy-MM-dd');
         }
 
         setFormData(prev => ({ ...prev, ...updates }));
