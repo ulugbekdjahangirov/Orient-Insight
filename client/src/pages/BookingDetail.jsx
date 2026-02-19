@@ -960,6 +960,7 @@ export default function BookingDetail() {
     paxUzbekistan: '',
     paxTurkmenistan: '',
     guideId: '',
+    secondGuideId: '',
     trainTickets: '',
     avia: '',
     roomsDbl: 0,
@@ -2193,6 +2194,7 @@ export default function BookingDetail() {
           paxUzbekistan: b.paxUzbekistan?.toString() || '',
           paxTurkmenistan: b.paxTurkmenistan?.toString() || '',
           guideId: b.guideId?.toString() || '',
+          secondGuideId: b.secondGuideId?.toString() || '',
           trainTickets: b.trainTickets || '',
           avia: b.avia || '',
           roomsDbl: b.roomsDbl || 0,
@@ -15197,6 +15199,28 @@ export default function BookingDetail() {
                 </select>
               </div>
 
+              {booking?.tourType?.code === 'ZA' && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Second Guide
+                  </label>
+                  <select
+                    name="secondGuideId"
+                    value={formData.secondGuideId}
+                    onChange={handleChange}
+                    disabled={!editing}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 transition-all duration-200 font-medium"
+                  >
+                    <option value="">Not assigned</option>
+                    {guides.map((guide) => (
+                      <option key={guide.id} value={guide.id}>
+                        {guide.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Group Country
@@ -15271,7 +15295,7 @@ export default function BookingDetail() {
 
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Tour End
+                  {booking?.tourType?.code === 'ZA' ? 'Jartepa' : 'Tour End'}
                 </label>
                 <input
                   type="date"
@@ -15282,6 +15306,35 @@ export default function BookingDetail() {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-50 transition-all duration-200 font-medium"
                 />
               </div>
+
+              {booking?.tourType?.code === 'ZA' && formData.endDate && (
+                <>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Oybek
+                      <span className="ml-1 text-xs font-normal text-gray-500">(auto: Jartepa + 4)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={format(addDays(new Date(formData.endDate), 4), 'yyyy-MM-dd')}
+                      disabled
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 font-medium text-gray-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      End
+                      <span className="ml-1 text-xs font-normal text-gray-500">(auto: Oybek + 1)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={format(addDays(new Date(formData.endDate), 5), 'yyyy-MM-dd')}
+                      disabled
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gray-50 font-medium text-gray-600"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
           )}

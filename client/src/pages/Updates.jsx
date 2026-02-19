@@ -1010,7 +1010,7 @@ export default function Updates() {
                       Arrival
                     </th>
                     <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                      Tour End
+                      {activeTab === 'ZA' ? 'Jartepa' : 'Tour End'}
                     </th>
                     <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-20">
                       Pax
@@ -1026,9 +1026,23 @@ export default function Updates() {
                     <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-32">
                       Guide
                     </th>
-                    <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-40">
-                      Train Tickets
-                    </th>
+                    {activeTab === 'ZA' ? (
+                      <>
+                        <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                          Oybek
+                        </th>
+                        <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                          End
+                        </th>
+                        <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-36">
+                          Second Guide
+                        </th>
+                      </>
+                    ) : (
+                      <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-40">
+                        Train Tickets
+                      </th>
+                    )}
                     <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
                       DBL
                     </th>
@@ -1110,11 +1124,25 @@ export default function Updates() {
                       <td className="px-4 py-4 text-sm text-gray-700 font-medium">
                         {booking.guide?.name || '-'}
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                        <span className="truncate max-w-[140px] block" title={booking.trainTickets || ''}>
-                          {booking.trainTickets || '-'}
-                        </span>
-                      </td>
+                      {activeTab === 'ZA' ? (
+                        <>
+                          <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                            {booking.endDate ? format(addDays(new Date(booking.endDate), 4), 'dd.MM.yyyy') : '-'}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                            {booking.endDate ? format(addDays(new Date(booking.endDate), 5), 'dd.MM.yyyy') : '-'}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                            {booking.secondGuide?.name || '-'}
+                          </td>
+                        </>
+                      ) : (
+                        <td className="px-4 py-4 text-sm text-gray-700 font-medium">
+                          <span className="truncate max-w-[140px] block" title={booking.trainTickets || ''}>
+                            {booking.trainTickets || '-'}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
                         {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : booking.roomsDbl.toFixed(1)) : '-'}
                       </td>

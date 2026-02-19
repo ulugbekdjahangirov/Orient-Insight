@@ -147,6 +147,7 @@ router.get('/', authenticate, async (req, res) => {
         include: {
           tourType: { select: { id: true, code: true, name: true, color: true } },
           guide: { select: { id: true, name: true, dayRate: true, halfDayRate: true } },
+          secondGuide: { select: { id: true, name: true } },
           createdBy: { select: { id: true, name: true } },
           tourists: { select: { id: true, roomNumber: true, roomPreference: true, accommodation: true } }
         },
@@ -286,6 +287,7 @@ router.post('/', authenticate, async (req, res) => {
       paxUzbekistan,
       paxTurkmenistan,
       guideId,
+      secondGuideId,
       trainTickets,
       avia,
       roomsDbl,
@@ -339,6 +341,7 @@ router.post('/', authenticate, async (req, res) => {
         paxUzbekistan: uzbek || null,
         paxTurkmenistan: turkmen || null,
         guideId: guideId ? parseInt(guideId) : null,
+        secondGuideId: secondGuideId ? parseInt(secondGuideId) : null,
         trainTickets,
         avia,
         roomsDbl: parseInt(roomsDbl) || 0,
@@ -355,7 +358,8 @@ router.post('/', authenticate, async (req, res) => {
       },
       include: {
         tourType: true,
-        guide: true
+        guide: true,
+        secondGuide: true
       }
     });
 
@@ -382,6 +386,7 @@ router.put('/:id', authenticate, async (req, res) => {
       paxUzbekistan,
       paxTurkmenistan,
       guideId,
+      secondGuideId,
       guideFullDays,
       guideHalfDays,
       mainGuideData,
@@ -452,6 +457,7 @@ router.put('/:id', authenticate, async (req, res) => {
     }
     if (status) updateData.status = status;
     if (guideId !== undefined) updateData.guideId = guideId ? parseInt(guideId) : null;
+    if (secondGuideId !== undefined) updateData.secondGuideId = secondGuideId ? parseInt(secondGuideId) : null;
     if (guideFullDays !== undefined) updateData.guideFullDays = parseFloat(guideFullDays) || 0;
     if (guideHalfDays !== undefined) updateData.guideHalfDays = parseFloat(guideHalfDays) || 0;
     if (mainGuideData !== undefined) updateData.mainGuideData = mainGuideData ? JSON.stringify(mainGuideData) : null;
@@ -483,6 +489,7 @@ router.put('/:id', authenticate, async (req, res) => {
       include: {
         tourType: true,
         guide: true,
+        secondGuide: true,
         createdBy: { select: { id: true, name: true } }
       }
     });

@@ -99,7 +99,8 @@ model Guide {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt @default(now())
 
-  bookings    Booking[]
+  bookings              Booking[] @relation("MainGuide")
+  bookingsAsSecondGuide Booking[] @relation("SecondGuide")
   guidePayments GuidePayment[]
 }
 
@@ -137,7 +138,9 @@ model Booking {
 
   // Гид
   guideId         Int?
-  guide           Guide?    @relation(fields: [guideId], references: [id])
+  guide           Guide?    @relation("MainGuide", fields: [guideId], references: [id])
+  secondGuideId   Int?
+  secondGuide     Guide?    @relation("SecondGuide", fields: [secondGuideId], references: [id])
   guideFullDays   Float?    @default(0)  // Количество полных дней работы гида
   guideHalfDays   Float?    @default(0)  // Количество половинных дней работы гида
   mainGuideData   String?                // JSON объект для основного гида (manual or selected)
