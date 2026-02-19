@@ -71,6 +71,8 @@ export default function Updates() {
   const [confirmedCount, setConfirmedCount] = useState(0);
   const [inProgressCount, setInProgressCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [cancelledCount, setCancelledCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
 
   const loadAllBookingsCount = async () => {
     try {
@@ -99,6 +101,8 @@ export default function Updates() {
       setConfirmedCount(debugData.statusCounts.CONFIRMED);
       setInProgressCount(debugData.statusCounts.IN_PROGRESS);
       setPendingCount(debugData.statusCounts.PENDING);
+      setCancelledCount(debugData.statusCounts.CANCELLED || 0);
+      setCompletedCount(debugData.statusCounts.COMPLETED || 0);
     } catch (error) {
       console.error('Error loading total bookings count:', error);
     }
@@ -839,6 +843,18 @@ export default function Updates() {
             <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 border-2 border-yellow-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
               <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
               <span className="text-white font-bold text-base">Pending: {pendingCount}</span>
+            </div>
+          )}
+          {cancelledCount > 0 && (
+            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 border-2 border-red-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-base">Cancelled: {cancelledCount}</span>
+            </div>
+          )}
+          {completedCount > 0 && (
+            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-slate-500 to-slate-600 border-2 border-slate-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-base">Completed: {completedCount}</span>
             </div>
           )}
         </div>
