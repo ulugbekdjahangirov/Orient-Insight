@@ -269,16 +269,27 @@ class EmailImportProcessor {
    * 2. Import tourists into found booking
    */
   async importExcelBooking(parsedBooking) {
-    // Detect if this is Uzbekistan/Turkmenistan Excel (ER tours only)
-    const isUzbekistanExcel = parsedBooking.reisename &&
-      (parsedBooking.reisename.toLowerCase().includes('usbekistan') ||
-       parsedBooking.reisename.toLowerCase().includes('uzbekistan'));
+    const reisename = parsedBooking.reisename || '';
+    const lowerName = reisename.toLowerCase();
 
-    // If Uzbekistan/Turkmenistan Excel → force ER tour type
+    // Detect tour type from Excel filename patterns
     let tourTypeCode;
-    if (isUzbekistanExcel) {
+
+    // ER: "Usbekistan" or "Usbekistan mit Verlängerung Turkmenistan"
+    const isER = (lowerName.includes('usbekistan') || lowerName.includes('uzbekistan')) &&
+                 !lowerName.includes('comfortplus') &&
+                 !lowerName.includes('comfort');
+
+    // CO: "Usbekistan ComfortPlus" or "ComfortPlus"
+    const isCO = (lowerName.includes('comfortplus') || lowerName.includes('comfort')) &&
+                 (lowerName.includes('usbekistan') || lowerName.includes('uzbekistan'));
+
+    if (isER) {
       tourTypeCode = 'ER';
       console.log(`📍 Uzbekistan/Turkmenistan Excel detected → forcing ER tour type`);
+    } else if (isCO) {
+      tourTypeCode = 'CO';
+      console.log(`📍 Usbekistan ComfortPlus Excel detected → forcing CO tour type`);
     } else {
       tourTypeCode = excelParser.extractTourType(parsedBooking.reisename);
       if (!tourTypeCode) {
@@ -337,13 +348,24 @@ class EmailImportProcessor {
     }
 
     // Determine placement from Excel filename (Reisename)
-    // "Usbekistan" → Uzbekistan, "Usbekistan mit Verlängerung Turkmenistan" → Turkmenistan
-    const isUzbekistanOnly = parsedBooking.reisename &&
-      !parsedBooking.reisename.toLowerCase().includes('turkmenistan') &&
-      !parsedBooking.reisename.toLowerCase().includes('turkmen');
-    const placement = isUzbekistanOnly ? 'Uzbekistan' : 'Turkmenistan';
+    // ER: "Usbekistan" → Uzbekistan, "Usbekistan mit Verlängerung Turkmenistan" → Turkmenistan
+    // CO: "Usbekistan ComfortPlus" → Uzbekistan (ComfortPlus has no Turkmenistan)
+    // KAS/ZA: always "Not assigned" (no Uzbekistan/Turkmenistan split)
+    let placement;
 
-    console.log(`📍 Excel placement detected: ${placement} (from: ${parsedBooking.reisename})`);
+    if (tourTypeCode === 'ER') {
+      // ER tours: check for Turkmenistan
+      const hasTurkmen = lowerName.includes('turkmenistan') || lowerName.includes('turkmen');
+      placement = hasTurkmen ? 'Turkmenistan' : 'Uzbekistan';
+    } else if (tourTypeCode === 'CO') {
+      // CO tours: always Uzbekistan (ComfortPlus)
+      placement = 'Uzbekistan';
+    } else {
+      // KAS, ZA: no placement split
+      placement = 'Not assigned';
+    }
+
+    console.log(`📍 Excel placement detected: ${placement} (${tourTypeCode} tour, from: ${parsedBooking.reisename})`);
 
     // SELECTIVE REPLACE: Delete only tourists with matching placement
     if (parsedBooking.tourists && parsedBooking.tourists.length > 0) {
