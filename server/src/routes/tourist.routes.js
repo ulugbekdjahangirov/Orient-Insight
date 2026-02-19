@@ -3897,15 +3897,30 @@ async function updateBookingPaxCount(bookingId) {
 
   // Update dates if we found tourist dates
   if (earliestCheckIn) {
-    // departureDate = earliest check-in (tour start, departure from home)
-    updateData.departureDate = earliestCheckIn;
+    // Updates.jsx sets tourist checkInDate differently per tour type:
+    // ER/CO: checkInDate = departureDate           → checkInOffset = 0
+    // KAS:   checkInDate = departureDate + 14      → checkInOffset = 14
+    // ZA:    checkInDate = (departureDate+4) + 4   → checkInOffset = 8
+    // So we reverse-calculate the actual departureDate from earliestCheckIn.
+    const bookingForTourType = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { tourType: { select: { code: true } } }
+    });
+    const tourTypeCode = bookingForTourType?.tourType?.code;
+    const checkInOffset  = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 8 : 0);
+    const arrivalOffset  = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 1);
 
-    // arrivalDate = earliest check-in + 1 day (arrival in Uzbekistan)
-    const arrivalDate = new Date(earliestCheckIn);
-    arrivalDate.setDate(arrivalDate.getDate() + 1);
+    // Derived departureDate = earliestCheckIn - checkInOffset
+    const derivedDepartureDate = new Date(earliestCheckIn);
+    derivedDepartureDate.setDate(derivedDepartureDate.getDate() - checkInOffset);
+    updateData.departureDate = derivedDepartureDate;
+
+    // arrivalDate = departureDate + arrivalOffset
+    const arrivalDate = new Date(derivedDepartureDate);
+    arrivalDate.setDate(arrivalDate.getDate() + arrivalOffset);
     updateData.arrivalDate = arrivalDate;
 
-    console.log(`📅 Updated dates from tourists: departureDate=${earliestCheckIn.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
+    console.log(`📅 Updated dates from tourists: departureDate=${derivedDepartureDate.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]} (${tourTypeCode} checkInOffset=${checkInOffset} arrivalOffset=${arrivalOffset})`);
   }
 
   if (latestCheckOut) {
