@@ -7896,48 +7896,54 @@ export default function BookingDetail() {
       const routesRes = await bookingsApi.getRoutes(id);
       let freshRoutes = routesRes.data.routes || [];
 
-      // Use booking.arrivalDate as the starting point for routes
-      // (dates are automatically calculated when PDF is imported)
-      const routeStartDate = new Date(booking.arrivalDate);
-      console.log(`📅 CO: Route dates will start from Arrival date: ${routeStartDate.toISOString().split('T')[0]}`);
+      // If no routes in DB yet, use current in-memory state (from Load Template)
+      let freshErRoutes;
+      if (freshRoutes.length === 0) {
+        console.log('📋 CO: No routes in database, using current state (template)');
+        freshErRoutes = [...erRoutes];
+      } else {
+        // Use booking.arrivalDate as the starting point for routes
+        const routeStartDate = new Date(booking.arrivalDate);
+        console.log(`📅 CO: Route dates will start from Arrival date: ${routeStartDate.toISOString().split('T')[0]}`);
 
-      // Recalculate route dates based on arrivalDate (accounting for dayNumber, not index)
-      freshRoutes = freshRoutes.map((route, index) => {
-        // Use dayNumber to calculate date (split routes share same dayNumber)
-        const dayOffset = (route.dayNumber || (index + 1)) - 1;
-        const routeDate = new Date(routeStartDate);
-        routeDate.setDate(routeDate.getDate() + dayOffset);
-        return {
-          ...route,
-          date: routeDate.toISOString().split('T')[0]
-        };
-      });
+        // Recalculate route dates based on arrivalDate (accounting for dayNumber, not index)
+        freshRoutes = freshRoutes.map((route, index) => {
+          const dayOffset = (route.dayNumber || (index + 1)) - 1;
+          const routeDate = new Date(routeStartDate);
+          routeDate.setDate(routeDate.getDate() + dayOffset);
+          return {
+            ...route,
+            date: routeDate.toISOString().split('T')[0]
+          };
+        });
 
-      console.log(`📅 CO: Recalculated ${freshRoutes.length} route dates starting from ${routeStartDate.toISOString().split('T')[0]}`);
+        console.log(`📅 CO: Recalculated ${freshRoutes.length} route dates starting from ${routeStartDate.toISOString().split('T')[0]}`);
 
-      // Map database routes to erRoutes format (using recalculated dates!)
-      const freshErRoutes = freshRoutes.map((dbRoute, index) => {
-        const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
-        return {
-          ...existingRoute,
-          id: dbRoute.id,
-          nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
-          sana: dbRoute.date, // Use the recalculated date from freshRoutes!
-          shahar: dbRoute.city || existingRoute.shahar || '',
-          sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
-          route: dbRoute.routeName || existingRoute.route || '',
-          person: dbRoute.personCount?.toString() || existingRoute.person || '0',
-          transportType: dbRoute.transportType || existingRoute.transportType || '',
-          choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
-          choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
-          price: dbRoute.price?.toString() || existingRoute.price || ''
-        };
-      });
+        // Map database routes to erRoutes format (using recalculated dates!)
+        freshErRoutes = freshRoutes.map((dbRoute, index) => {
+          const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
+          return {
+            ...existingRoute,
+            id: dbRoute.id,
+            nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
+            sana: dbRoute.date,
+            shahar: dbRoute.city || existingRoute.shahar || '',
+            sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
+            route: dbRoute.routeName || existingRoute.route || '',
+            person: dbRoute.personCount?.toString() || existingRoute.person || '0',
+            transportType: dbRoute.transportType || existingRoute.transportType || '',
+            choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
+            choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
+            price: dbRoute.price?.toString() || existingRoute.price || ''
+          };
+        });
 
-      console.log('📋 CO: Reloaded routes from database');
+        console.log('📋 CO: Reloaded routes from database');
+      }
 
       // Calculate PAX (CO groups have NO TKM split - all tourists go together)
-      const totalPax = tourists.length;
+      // Fallback to booking.pax if Final List tourists not yet added
+      const totalPax = tourists.length || parseInt(booking.pax) || 0;
       console.log(`🔧 CO Auto-fixing routes: PAX Total=${totalPax} (no UZB/TKM split)`);
 
       // Consolidate Fergana routes (CO groups ALWAYS have Fergana)
@@ -14683,7 +14689,7 @@ export default function BookingDetail() {
                         <span className="font-semibold text-gray-900">{route.shahar || 'Select city'}</span>
                       </div>
                       <button
-                        onClick={() => deleteERRoute(route.id)}
+                        onClick={() => handleDeleteRoute(route.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -14716,7 +14722,7 @@ export default function BookingDetail() {
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">👥 PAX</label>
                         <div className="text-sm font-bold text-gray-900 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 text-center">
-                          {route.paxCount || booking?.pax || 0}
+                          {route.person || booking?.pax || 0}
                         </div>
                       </div>
                       <div>
