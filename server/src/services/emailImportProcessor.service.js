@@ -343,11 +343,12 @@ class EmailImportProcessor {
       throw new Error(`Excel faylda sana topilmadi: ${parsedBooking.departureDate}`);
     }
 
-    // Search full calendar day (UTC 00:00 - 23:59) to handle timezone differences
-    // e.g. server UTC+5 stores "June 15 local" as "June 14 19:00 UTC"
+    // Search ±1 day to handle timezone differences
+    // Server UTC+5 stores "March 29 local midnight" as "March 28 19:00 UTC"
+    // So we search from day-1 to day+1 to catch both UTC and UTC+5 stored dates
     const [d, m, y] = parsedBooking.departureDate.split('.');
-    const from = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d), 0, 0, 0, 0));
-    const to = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d), 23, 59, 59, 999));
+    const from = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d) - 1, 0, 0, 0, 0));
+    const to = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, parseInt(d) + 1, 23, 59, 59, 999));
 
     booking = await prisma.booking.findFirst({
       where: {
