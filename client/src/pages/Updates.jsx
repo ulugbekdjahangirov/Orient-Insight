@@ -57,12 +57,13 @@ export default function Updates() {
     }
   }, [activeTab, tourTypes]);
 
-  // Auto-refresh every 30 seconds to pick up email imports
+  // Auto-refresh every 30 seconds to pick up email imports (only lightweight loadBookings)
   useEffect(() => {
     if (tourTypes.length === 0) return;
     const interval = setInterval(() => {
       loadBookings();
-      loadAllBookingsCount();
+      // loadAllBookingsCount removed from interval - it's a heavy query (loads all bookings)
+      // It's still called once on mount via the above useEffect
     }, 30000);
     return () => clearInterval(interval);
   }, [activeTab, tourTypes]);

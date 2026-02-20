@@ -33,7 +33,7 @@ router.get('/:bookingId/routes', authenticate, async (req, res) => {
 router.post('/:bookingId/routes', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { dayNumber, date, city, routeName, personCount, transportType, provider, optionRate, price, sortOrder } = req.body;
+    const { dayNumber, date, city, routeName, itinerary, personCount, transportType, provider, optionRate, price, sortOrder } = req.body;
 
     // Verify booking exists
     const booking = await prisma.booking.findUnique({
@@ -51,6 +51,7 @@ router.post('/:bookingId/routes', authenticate, async (req, res) => {
         date: date ? new Date(date) : null,
         city: city || null,
         routeName: routeName || '',
+        itinerary: itinerary || null,
         personCount: personCount || 0,
         transportType: transportType || null,
         provider: provider || null,

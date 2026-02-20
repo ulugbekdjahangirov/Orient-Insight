@@ -1221,15 +1221,8 @@ export default function BookingDetail() {
     }
   }, [tourServicesTab, activeTab, id, isNew]);
 
-  // Load accommodation-specific rooming lists for all accommodations
-  useEffect(() => {
-    if (accommodations.length > 0 && !isNew) {
-      // Load rooming lists for all accommodations to ensure calculations are accurate
-      accommodations.forEach(acc => {
-        loadAccommodationRoomingList(acc.id);
-      });
-    }
-  }, [accommodations.length, id]); // Trigger when accommodations count changes
+  // Note: Accommodation rooming lists are loaded in loadData (lines 1647-1666) using Promise.all
+  // Do NOT add a separate useEffect here - it causes sequential duplicate API calls (very slow)
 
   // Auto-populate route dates based on departure date (дата заезда)
   // Arrival in Tashkent = departure date + 1 day (tourists fly one day, arrive next day)
@@ -4932,20 +4925,22 @@ export default function BookingDetail() {
     try {
       setSaving(true);
 
-      // Delete existing accommodations if any
+      // Delete existing accommodations in parallel
       if (accommodations.length > 0) {
-        let deletedCount = 0;
-        for (const acc of accommodations) {
-          try {
-            await bookingsApi.deleteAccommodation(booking.id, acc.id);
-            deletedCount++;
-          } catch (error) {
-            // Ignore 404 errors (already deleted)
-            if (error.response?.status !== 404) {
-              console.warn('Failed to delete accommodation:', acc.id, error);
+        const deleteResults = await Promise.all(
+          accommodations.map(async acc => {
+            try {
+              await bookingsApi.deleteAccommodation(booking.id, acc.id);
+              return true;
+            } catch (error) {
+              if (error.response?.status !== 404) {
+                console.warn('Failed to delete accommodation:', acc.id, error);
+              }
+              return false;
             }
-          }
-        }
+          })
+        );
+        const deletedCount = deleteResults.filter(Boolean).length;
         if (deletedCount > 0) {
           toast(`Удалено размещений: ${deletedCount}`);
         }
@@ -5168,11 +5163,15 @@ export default function BookingDetail() {
         }
 
         // Create hotel for ALL tourists (simple logic)
+        // For ER tours: use UZ/TM split; for CO/KAS/ZA: use all tourists directly
+        const allGroupTourists = isERTour
+          ? [...uzbekistanTourists, ...turkmenistanTourists]
+          : tourists;
         accommodationsToCreate.push({
           hotel,
           startDay: stay.startDay,
           endDay: adjustedEndDay,
-          tourists: [...uzbekistanTourists, ...turkmenistanTourists],
+          tourists: allGroupTourists,
           groupName: 'All'
         });
       }
@@ -5492,165 +5491,111 @@ export default function BookingDetail() {
         toast.error('Не создано ни одного размещения');
       }
 
-      // CRITICAL FOR KAS TOURS: Update all tourists' checkInDate to Uzbekistan arrival
-      if (tourTypeCode === 'KAS') {
-        console.log('📅 KAS tour: Updating tourists checkInDate to Uzbekistan arrival:', format(baseDate, 'yyyy-MM-dd'));
-
+      // CRITICAL FOR KAS/ZA TOURS: Update all tourists' checkInDate to Uzbekistan arrival (parallel)
+      if (tourTypeCode === 'KAS' || tourTypeCode === 'ZA') {
+        const label = tourTypeCode === 'ZA' ? 'departureDate + 4' : 'Uzbekistan arrival';
+        console.log(`📅 ${tourTypeCode} tour: Updating tourists checkInDate to ${label}: ${format(baseDate, 'yyyy-MM-dd')}`);
         try {
-          for (const tourist of tourists) {
-            await touristsApi.update(booking.id, tourist.id, {
-              checkInDate: baseDate.toISOString()
-            });
-          }
+          await Promise.all(tourists.map(tourist =>
+            touristsApi.update(booking.id, tourist.id, { checkInDate: baseDate.toISOString() })
+          ));
           console.log(`✅ Updated ${tourists.length} tourists checkInDate to ${format(baseDate, 'yyyy-MM-dd')}`);
         } catch (error) {
           console.error('Error updating tourists:', error);
         }
       }
 
-      // CRITICAL FOR ZA TOURS: Update all tourists' checkInDate to Uzbekistan arrival (departureDate + 4)
-      if (tourTypeCode === 'ZA') {
-        console.log('📅 ZA tour: Updating tourists checkInDate to Uzbekistan arrival:', format(baseDate, 'yyyy-MM-dd'));
-
-        try {
-          for (const tourist of tourists) {
-            await touristsApi.update(booking.id, tourist.id, {
-              checkInDate: baseDate.toISOString()
-            });
-          }
-          console.log(`✅ Updated ${tourists.length} tourists checkInDate to ${format(baseDate, 'yyyy-MM-dd')}`);
-        } catch (error) {
-          console.error('Error updating tourists:', error);
-        }
-      }
-
-      // Reload data to get newly created accommodations
-      await loadData();
-
-      // CRITICAL FOR ER TOURS: Auto-recalculate totals after creating accommodations from itinerary
-      // This ensures correct costs considering:
-      // 1. Early arrivals (Baetgen at Arien Plaza: 5 nights instead of 2)
-      // 2. UZ/TM splits (Malika Khorazm: UZ tourists 2 nights, TM tourists 3 nights)
-      // DO NOT REMOVE this setTimeout logic - it's needed for accurate initial display
+      // Recalculate and update totals for all created accommodations, then reload once
       console.log('🔄 Recalculating totals for all accommodations...');
-      setTimeout(async () => {
-        try {
-          // Reload accommodations list
-          const accResponse = await bookingsApi.getAccommodations(booking.id);
-          const createdAccs = accResponse.data.accommodations;
+      try {
+        // Load fresh data after creation
+        const [accResponse, touristsResp] = await Promise.all([
+          bookingsApi.getAccommodations(booking.id),
+          touristsApi.getAll(booking.id)
+        ]);
+        const createdAccs = accResponse.data.accommodations;
+        const allTourists = touristsResp.data.tourists || [];
 
-          // Reload tourists with individual dates
-          const touristsResp = await touristsApi.getAll(booking.id);
-          const allTourists = touristsResp.data.tourists || [];
+        // Determine first accommodation (earliest check-in date)
+        const sortedAccs = [...createdAccs].sort((a, b) =>
+          new Date(a.checkInDate) - new Date(b.checkInDate)
+        );
+        const firstAccId = sortedAccs[0]?.id;
 
-          // Determine first accommodation (earliest check-in date)
-          const sortedAccs = [...createdAccs].sort((a, b) =>
-            new Date(a.checkInDate) - new Date(b.checkInDate)
-          );
-          const firstAccId = sortedAccs[0]?.id;
+        // Update all accommodations in parallel
+        await Promise.all(createdAccs.map(async acc => {
+          const accCheckIn = new Date(acc.checkInDate);
+          accCheckIn.setHours(0, 0, 0, 0);
+          const accCheckOut = new Date(acc.checkOutDate);
+          accCheckOut.setHours(0, 0, 0, 0);
 
-          for (const acc of createdAccs) {
-            // Calculate correct totalCost for this accommodation
-            const accCheckIn = new Date(acc.checkInDate);
-            accCheckIn.setHours(0, 0, 0, 0);
-            const accCheckOut = new Date(acc.checkOutDate);
-            accCheckOut.setHours(0, 0, 0, 0);
-
-            // Filter tourists for this hotel (by date overlap)
-            // NOTE: Room number is optional - manually added tourists won't have it
-            const accTourists = allTourists.filter(t => {
-              // Check date overlap if tourist has custom dates
-              if (t.checkInDate && t.checkOutDate) {
-                const touristCheckIn = new Date(t.checkInDate);
-                const touristCheckOut = new Date(t.checkOutDate);
-                touristCheckIn.setHours(0, 0, 0, 0);
-                touristCheckOut.setHours(0, 0, 0, 0);
-
-                // Tourist dates must overlap with accommodation dates
-                return touristCheckIn < accCheckOut && touristCheckOut > accCheckIn;
-              }
-
-              // If no custom dates, assume tourist is in this hotel
-              return true;
-            });
-
-            if (accTourists.length === 0 || !acc.rooms) continue;
-
-            // Check if this is the first accommodation
-            const isFirstAccommodation = acc.id === firstAccId;
-
-            // Calculate guest-nights per room type
-            const guestNightsPerRoomType = {};
-            accTourists.forEach(tourist => {
-              let checkIn = new Date(accCheckIn);
-              let checkOut = new Date(accCheckOut);
-
-              // Handle early arrival ONLY for first accommodation (like Baetgen at Arien Plaza)
-              if (isFirstAccommodation && tourist.checkInDate) {
-                const touristCheckIn = new Date(tourist.checkInDate);
-                touristCheckIn.setHours(0, 0, 0, 0);
-                const daysDiff = Math.round((accCheckIn - touristCheckIn) / (1000 * 60 * 60 * 24));
-
-                if (daysDiff >= 2) {
-                  // Early arrival - use tourist check-in but accommodation check-out
-                  checkIn = touristCheckIn;
-                }
-              }
-
-              const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
-
-              let roomType = (tourist.roomPreference || '').toUpperCase();
-              if (roomType === 'DOUBLE' || roomType === 'DZ') roomType = 'DBL';
-              if (roomType === 'TWIN') roomType = 'TWN';
-              if (roomType === 'SINGLE' || roomType === 'EZ') roomType = 'SNGL';
-
-              if (!guestNightsPerRoomType[roomType]) {
-                guestNightsPerRoomType[roomType] = 0;
-              }
-              guestNightsPerRoomType[roomType] += nights;
-            });
-
-            // Calculate totalCost from room-nights
-            let totalCost = 0;
-            acc.rooms.forEach(room => {
-              const pricePerNight = parseFloat(room.pricePerNight) || 0;
-              let normalizedRoomType = room.roomTypeCode?.toUpperCase();
-              if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
-              if (normalizedRoomType === 'TWIN') normalizedRoomType = 'TWN';
-              if (normalizedRoomType === 'SINGLE') normalizedRoomType = 'SNGL';
-
-              const guestNights = guestNightsPerRoomType[normalizedRoomType] || 0;
-              if (guestNights === 0) return;
-
-              // Convert guest-nights to room-nights
-              let roomNights;
-              if (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL') {
-                roomNights = guestNights / 2;
-              } else {
-                roomNights = guestNights;
-              }
-
-              totalCost += roomNights * pricePerNight;
-            });
-
-            // Update accommodation with correct totalCost
-            if (totalCost > 0) {
-              await bookingsApi.updateAccommodation(booking.id, acc.id, {
-                totalCost,
-                totalRooms: acc.rooms.reduce((sum, r) => sum + (r.roomsCount || 0), 0),
-                totalGuests: accTourists.length
-              });
-              console.log(`✅ Updated ${acc.hotel?.name}: ${totalCost.toLocaleString()} UZS`);
+          const accTourists = allTourists.filter(t => {
+            if (t.checkInDate && t.checkOutDate) {
+              const touristCheckIn = new Date(t.checkInDate);
+              const touristCheckOut = new Date(t.checkOutDate);
+              touristCheckIn.setHours(0, 0, 0, 0);
+              touristCheckOut.setHours(0, 0, 0, 0);
+              return touristCheckIn < accCheckOut && touristCheckOut > accCheckIn;
             }
-          }
+            return true;
+          });
 
-          // Final reload to show updated totals
-          await loadData();
-          console.log('✅ All totals updated');
-        } catch (error) {
-          console.error('Auto-update totals error:', error);
-        }
-      }, 1500);
+          if (accTourists.length === 0 || !acc.rooms) return;
+
+          const isFirstAccommodation = acc.id === firstAccId;
+          const guestNightsPerRoomType = {};
+
+          accTourists.forEach(tourist => {
+            let checkIn = new Date(accCheckIn);
+            let checkOut = new Date(accCheckOut);
+
+            if (isFirstAccommodation && tourist.checkInDate) {
+              const touristCheckIn = new Date(tourist.checkInDate);
+              touristCheckIn.setHours(0, 0, 0, 0);
+              const daysDiff = Math.round((accCheckIn - touristCheckIn) / (1000 * 60 * 60 * 24));
+              if (daysDiff >= 2) checkIn = touristCheckIn;
+            }
+
+            const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+            let roomType = (tourist.roomPreference || '').toUpperCase();
+            if (roomType === 'DOUBLE' || roomType === 'DZ') roomType = 'DBL';
+            if (roomType === 'TWIN') roomType = 'TWN';
+            if (roomType === 'SINGLE' || roomType === 'EZ') roomType = 'SNGL';
+            guestNightsPerRoomType[roomType] = (guestNightsPerRoomType[roomType] || 0) + nights;
+          });
+
+          let totalCost = 0;
+          acc.rooms.forEach(room => {
+            const pricePerNight = parseFloat(room.pricePerNight) || 0;
+            let normalizedRoomType = room.roomTypeCode?.toUpperCase();
+            if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
+            if (normalizedRoomType === 'TWIN') normalizedRoomType = 'TWN';
+            if (normalizedRoomType === 'SINGLE') normalizedRoomType = 'SNGL';
+            const guestNights = guestNightsPerRoomType[normalizedRoomType] || 0;
+            if (guestNights === 0) return;
+            const roomNights = (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL')
+              ? guestNights / 2
+              : guestNights;
+            totalCost += roomNights * pricePerNight;
+          });
+
+          if (totalCost > 0) {
+            await bookingsApi.updateAccommodation(booking.id, acc.id, {
+              totalCost,
+              totalRooms: acc.rooms.reduce((sum, r) => sum + (r.roomsCount || 0), 0),
+              totalGuests: accTourists.length
+            });
+            console.log(`✅ Updated ${acc.hotel?.name}: ${totalCost.toLocaleString()} UZS`);
+          }
+        }));
+
+        console.log('✅ All totals updated');
+      } catch (error) {
+        console.error('Auto-update totals error:', error);
+      }
+
+      // Single final reload
+      await loadData();
 
     } catch (error) {
       console.error('Auto-fill error:', error);
@@ -6967,11 +6912,19 @@ export default function BookingDetail() {
     }
 
     try {
+      // Fetch fresh DB itinerary values as fallback (in case ItineraryPreview saved since page load)
+      let dbItineraryMap = new Map();
+      try {
+        const freshRes = await bookingsApi.getRoutes(id);
+        const freshRoutes = freshRes.data.routes || [];
+        freshRoutes.forEach(r => { if (r.itinerary) dbItineraryMap.set(r.id, r.itinerary); });
+      } catch (e) { /* non-critical */ }
+
       const routesToSave = erRoutes.map((r, index) => ({
         dayNumber: index + 1,
         date: r.sana || null,
         city: r.shahar || null,
-        itinerary: r.sayohatDasturi || null,  // Save itinerary field
+        itinerary: r.sayohatDasturi || (r.id && dbItineraryMap.get(r.id)) || null,  // Preserve DB itinerary if local is empty
         routeName: r.route || '',
         personCount: parseInt(r.person) || 0,
         transportType: r.transportType || null,
@@ -16572,8 +16525,11 @@ export default function BookingDetail() {
 
                         // Use accommodation-specific rooming list if available, otherwise use filtered tourists
                         const accommodationRoomingList = accommodationRoomingLists[acc.id];
-                        // IMPORTANT: Only show tourists with room numbers (from rooming list PDF)
-                        const touristsToDisplay = (accommodationRoomingList || accTourists).filter(t => t.roomNumber);
+                        // Show tourists with room numbers if any have room numbers (PDF imported),
+                        // otherwise show all tourists (auto-filled from CO/KAS/ZA Hotels button)
+                        const baseList = accommodationRoomingList || accTourists;
+                        const hasAnyRoomNumbers = baseList.some(t => t.roomNumber);
+                        const touristsToDisplay = hasAnyRoomNumbers ? baseList.filter(t => t.roomNumber) : baseList;
 
                         // Use touristsToDisplay for counting (fixes mismatch between header count and actual list)
                         const displayCount = touristsToDisplay.length;

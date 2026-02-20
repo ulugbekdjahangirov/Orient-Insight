@@ -530,7 +530,6 @@ class EmailImportProcessor {
 
       // Try 2: date-only search (PDF format "Tour: Uzbekistan Date: 13.03.2026")
       if (!booking) {
-        // Use ±1 day for date-only (no tour code) to avoid matching nearby bookings
         const from1 = new Date(departureDate); from1.setDate(from1.getDate() - 1);
         const to1 = new Date(departureDate); to1.setDate(to1.getDate() + 1);
         console.log(`⚠️  PDF: no tour code found — searching by date only (${y}-${m}-${d} ±1 day)`);
@@ -542,7 +541,7 @@ class EmailImportProcessor {
           booking = candidates[0];
           console.log(`✅ PDF: matched by date → ${booking.bookingNumber}`);
         } else if (candidates.length > 1) {
-          console.log(`⚠️  PDF: ${candidates.length} bookings found for date range — ambiguous, skipping`);
+          console.log(`⚠️  PDF: ${candidates.length} bookings found — ambiguous, skipping`);
           return null;
         }
       }
@@ -554,30 +553,167 @@ class EmailImportProcessor {
 
       console.log(`🔗 PDF matched booking: ${booking.bookingNumber} (id=${booking.id})`);
 
-      // Mark paxSource as PDF before import so EMAIL_TABLE can't override after
+      // Parse tourists directly from the already-parsed text (no second pdfParse call)
+      // This avoids making an internal HTTP request (axios.post) which would cause
+      // a second pdfParse + SQLite write lock contention with manual imports
+      const pdfTourists = this._parseTouristsFromText(text, tourTypeCode);
+
+      if (pdfTourists.length === 0) {
+        console.log('⚠️  PDF email: no tourists parsed from text');
+        return null;
+      }
+
+      // Get existing tourists for this booking
+      const existingTourists = await prisma.tourist.findMany({
+        where: { bookingId: booking.id }
+      });
+
+      const matchedIds = new Set();
+      const toUpdate = [];
+      const toCreate = [];
+
+      for (const pdfT of pdfTourists) {
+        // Normalize name for matching (strip Mr./Mrs./Ms. prefix)
+        const pdfName = (pdfT.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+        const existing = existingTourists.find(t => {
+          const name = (t.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+          return name === pdfName;
+        });
+
+        if (existing) {
+          matchedIds.add(existing.id);
+          toUpdate.push({
+            id: existing.id,
+            data: {
+              roomPreference: pdfT.roomPreference,
+              accommodation: pdfT.accommodation,
+              roomNumber: pdfT.roomNumber || null
+            }
+          });
+        } else {
+          toCreate.push({
+            bookingId: booking.id,
+            fullName: pdfT.fullName || '',
+            firstName: '',
+            lastName: '',
+            gender: 'unknown',
+            roomPreference: pdfT.roomPreference,
+            accommodation: pdfT.accommodation,
+            roomNumber: pdfT.roomNumber || null
+          });
+        }
+      }
+
+      const toDeleteIds = existingTourists
+        .filter(t => !matchedIds.has(t.id))
+        .map(t => t.id);
+
+      // Execute all DB operations in a single transaction (one SQLite write lock)
+      await prisma.$transaction(async (tx) => {
+        for (const { id, data } of toUpdate) {
+          await tx.tourist.update({ where: { id }, data });
+        }
+        for (const data of toCreate) {
+          await tx.tourist.create({ data });
+        }
+        if (toDeleteIds.length > 0) {
+          await tx.accommodationRoomingList.deleteMany({ where: { touristId: { in: toDeleteIds } } });
+          await tx.touristRoomAssignment.deleteMany({ where: { touristId: { in: toDeleteIds } } });
+          await tx.tourist.deleteMany({ where: { id: { in: toDeleteIds } } });
+        }
+      });
+
+      // Mark paxSource as PDF
       await prisma.booking.update({
         where: { id: booking.id },
         data: { paxSource: 'PDF' }
       });
 
-      // Call existing import-pdf endpoint internally (FULL REPLACE — same as manual import)
-      const FormData = require('form-data');
-      const axios = require('axios');
-      const form = new FormData();
-      form.append('file', fileBuffer, { filename: 'rooming.pdf', contentType: 'application/pdf' });
+      const summary = { updated: toUpdate.length, created: toCreate.length, deleted: toDeleteIds.length };
+      console.log(`✅ PDF email import: ${summary.updated} updated, ${summary.created} created, ${summary.deleted} deleted`);
+      return { bookingId: booking.id, summary };
 
-      const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
-      const response = await axios.post(
-        `${baseUrl}/api/bookings/${booking.id}/rooming-list/import-pdf`,
-        form,
-        { headers: { ...form.getHeaders(), 'x-internal-call': 'true' } }
-      );
-
-      return { bookingId: booking.id, summary: response.data };
     } catch (err) {
       console.error('❌ importRoomingListPdfForEmail error:', err.message);
       return null;
     }
+  }
+
+  /**
+   * Parse tourists from already-parsed PDF text.
+   * Extracts name, room type, room number, and tour type (UZ/TM section).
+   */
+  _parseTouristsFromText(text, tourTypeCode) {
+    const tourists = [];
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+    let currentRoomType = null;
+    let currentAccommodation = 'Uzbekistan';
+    let roomCounters = { DBL: 0, TWN: 0, SNGL: 0 };
+    let roomPersonCount = 0;
+    let currentRoomNumber = null;
+
+    for (const line of lines) {
+      const lower = line.toLowerCase();
+
+      // Detect section (Uzbekistan / Turkmenistan)
+      if (lower.includes('tour:')) {
+        if ((lower.includes('turkmenistan') || lower.includes('turkmen')) && tourTypeCode === 'ER') {
+          currentAccommodation = 'Turkmenistan';
+        } else {
+          currentAccommodation = 'Uzbekistan';
+        }
+        roomPersonCount = 0;
+        continue;
+      }
+
+      // Room type headers
+      if (line === 'DOUBLE' || lower === 'double') {
+        currentRoomType = 'DBL'; roomPersonCount = 0; continue;
+      }
+      if (line === 'TWIN' || lower === 'twin') {
+        currentRoomType = 'TWN'; roomPersonCount = 0; continue;
+      }
+      if (line === 'SINGLE' || lower === 'single') {
+        currentRoomType = 'SNGL'; roomPersonCount = 0; continue;
+      }
+
+      // Skip section separators and totals
+      if (!currentRoomType) continue;
+      if (/^(TOTAL|Additional|Flights|Remark|Date|Tour|\/\/|\*|___)/i.test(line)) continue;
+      if (/^\d+\s+PAX/i.test(line)) continue;
+
+      // Tourist name lines: must start with Mr./Mrs./Ms.
+      if (/^(Mr\.|Mrs\.|Ms\.)/i.test(line)) {
+        roomPersonCount++;
+
+        // Assign room number
+        if (currentRoomType === 'DBL') {
+          if (roomPersonCount % 2 === 1) {
+            roomCounters.DBL++;
+            currentRoomNumber = `DBL-${roomCounters.DBL}`;
+          }
+          // 2nd person in DBL gets same room number
+        } else if (currentRoomType === 'TWN') {
+          if (roomPersonCount % 2 === 1) {
+            roomCounters.TWN++;
+            currentRoomNumber = `TWN-${roomCounters.TWN}`;
+          }
+        } else {
+          roomCounters.SNGL++;
+          currentRoomNumber = `SNGL-${roomCounters.SNGL}`;
+        }
+
+        tourists.push({
+          fullName: line.trim(),
+          roomPreference: currentRoomType,
+          accommodation: currentAccommodation,
+          roomNumber: currentRoomNumber
+        });
+      }
+    }
+
+    return tourists;
   }
 
   /**

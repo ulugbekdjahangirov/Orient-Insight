@@ -42,7 +42,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
         setHeaderData(JSON.parse(savedHeader));
       }
     }
-  }, [bookingId]);
+  }, [bookingId, booking?.departureDate, booking?.tourTypeId]);
 
   // Generate array of dates between start and end date
   const generateDateRange = (startDate, endDate) => {
@@ -138,6 +138,29 @@ export default function ItineraryPreview({ bookingId, booking }) {
         actualEndDate = booking?.endDate ? new Date(booking.endDate) : null;
       }
 
+      // If routes exist but have empty itinerary, try to fill from tour type template
+      const ttCode = typeof booking?.tourType === 'string'
+        ? booking?.tourType
+        : booking?.tourType?.code;
+      const hasEmptyItinerary = loadedRoutes.length > 0 && loadedRoutes.some(r => !r.itinerary);
+      if (hasEmptyItinerary && ttCode) {
+        try {
+          const templateRes = await routesApi.getTemplate(ttCode);
+          const templates = templateRes.data.templates || [];
+          if (templates.length > 0) {
+            loadedRoutes = loadedRoutes.map(route => {
+              if (route.itinerary) return route; // Already has itinerary
+              // Match by routeName
+              const match = templates.find(t => t.routeName === route.routeName && t.itinerary);
+              return match ? { ...route, itinerary: match.itinerary } : route;
+            });
+            console.log(`✅ [LOAD] Filled empty itinerary from ${ttCode} template`);
+          }
+        } catch (e) {
+          console.warn('⚠️ [LOAD] Could not load template for itinerary fill');
+        }
+      }
+
       // Auto-generate routes ONLY if completely empty (not if incomplete)
       // DO NOT reload if routes exist - this preserves user-edited "Sayohat dasturi" field
       const expectedDays = actualStartDate && actualEndDate
@@ -151,13 +174,13 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
         // Try to load from template first (for all tour types: ER, CO, KAS, ZA)
         let templateLoaded = false;
-        if (booking?.tourType) {
+        if (ttCode) {
           try {
-            const templateRes = await routesApi.getTemplate(booking.tourType);
+            const templateRes = await routesApi.getTemplate(ttCode);
             const templates = templateRes.data.templates || [];
 
             if (templates.length > 0) {
-              console.log(`Loading ${templates.length} routes from ${booking.tourType} template...`);
+              console.log(`Loading ${templates.length} routes from ${ttCode} template...`);
 
               // Delete existing routes if corrupt
               if (loadedRoutes.length > 0) {
@@ -172,8 +195,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
                 actualEndDate.toISOString().split('T')[0]
               );
 
-              // Create routes from template (PRESERVE any existing custom itinerary data!)
-              for (let i = 0; i < templates.length && i < expectedDates.length; i++) {
+              // Create routes from template — ALL template routes (not limited by date range)
+              for (let i = 0; i < templates.length; i++) {
                 const template = templates[i];
 
                 // Check if there's a localStorage backup for this day number
@@ -197,7 +220,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
                 const newRoute = {
                   dayNumber: i + 1,
-                  date: expectedDates[i],
+                  date: i < expectedDates.length ? expectedDates[i] : null, // Date if in range, else null
                   routeName: template.routeName || '',
                   city: template.city || '',
                   itinerary: customItinerary || template.itinerary || '', // CUSTOM DATA FIRST, then template
@@ -251,8 +274,11 @@ export default function ItineraryPreview({ bookingId, booking }) {
       const isERTour = tourTypeCode === 'ER';
 
       const sortedRoutes = [...loadedRoutes].sort((a, b) => {
-        // For non-ER tours (KAS, ZA, CO): sort purely by date
+        // For non-ER tours (KAS, ZA, CO): sort by date, null dates go last
         if (!isERTour) {
+          if (!a.date && !b.date) return a.id - b.id;
+          if (!a.date) return 1;  // a (no date) goes after b
+          if (!b.date) return -1; // b (no date) goes after a
           const dateA = new Date(a.date);
           const dateB = new Date(b.date);
           const dateDiff = dateA - dateB;
@@ -265,11 +291,14 @@ export default function ItineraryPreview({ bookingId, booking }) {
         const routeB = (b.routeName || '').toLowerCase();
 
         const getCategory = (routeName) => {
-          if (!routeName.includes('tashkent')) return 'middle';
-          if (routeName.includes('city tour')) return 'first';
-          if (routeName.includes('chimgan')) return 'first';
-          if (routeName.includes('vokzal')) return 'first';
-          if (routeName.includes('aeroport') || routeName.includes('aeroporti')) return 'last';
+          // Tashkent start routes (City Tour, Chimgan - first days)
+          if (routeName.includes('tashkent') || routeName.includes('toshkent')) {
+            if (routeName.includes('city tour') || routeName.includes('chimgan')) return 'first';
+          }
+          // Airport end routes — but NOT Urgench/Urganch (that's a mid-tour local transfer)
+          const hasAirport = routeName.includes('aeroport') || routeName.includes('airport');
+          const hasUrgench = routeName.includes('urgench') || routeName.includes('urganch');
+          if (hasAirport && !hasUrgench) return 'last';
           return 'middle';
         };
 
@@ -857,29 +886,29 @@ export default function ItineraryPreview({ bookingId, booking }) {
         // Don't fail the main save if localStorage fails
       }
 
-      // 3. For ER tours: also update the template so "Sayohat dasturi" is saved for all future groups
-      if (booking?.tourType === 'ER' && editingRoute.dayNumber) {
+      // 3. For all tour types (ER, CO, KAS, ZA): update template so "Sayohat dasturi" is shared across all groups
+      const tourTypeCode = typeof booking?.tourType === 'string'
+        ? booking?.tourType
+        : booking?.tourType?.code;
+      if (tourTypeCode && editingRoute.itinerary && editingRoute.routeName) {
         try {
           // Load current template
-          const templateRes = await routesApi.getTemplate('ER');
+          const templateRes = await routesApi.getTemplate(tourTypeCode);
           const templates = templateRes.data.templates || [];
 
-          // Find the template entry for this day number
-          const templateIndex = templates.findIndex(t => t.dayNumber === editingRoute.dayNumber);
+          // Find the template entry by routeName (most reliable match)
+          const templateIndex = templates.findIndex(t => t.routeName === editingRoute.routeName);
 
           if (templateIndex >= 0) {
-            // Update the template entry (city and itinerary are separate!)
+            // Update itinerary in template
             templates[templateIndex] = {
               ...templates[templateIndex],
-              routeName: editingRoute.routeName || templates[templateIndex].routeName,
-              city: editingRoute.city || templates[templateIndex].city,
-              itinerary: editingRoute.itinerary || templates[templateIndex].itinerary,
-              provider: editingRoute.provider || templates[templateIndex].provider
+              itinerary: editingRoute.itinerary
             };
 
             // Save updated template
-            await routesApi.saveTemplate('ER', templates);
-            console.log('✅ [SAVE] Template updated for day', editingRoute.dayNumber);
+            await routesApi.saveTemplate(tourTypeCode, templates);
+            console.log(`✅ [SAVE] ${tourTypeCode} template updated for route: ${editingRoute.routeName}`);
           }
         } catch (templateError) {
           console.warn('Could not update template:', templateError);
@@ -965,13 +994,14 @@ export default function ItineraryPreview({ bookingId, booking }) {
         const routeA = (a.routeName || '').toLowerCase();
         const routeB = (b.routeName || '').toLowerCase();
 
-        // Same simplified logic based on routeName
+        // Same logic: Tashkent start = first, airport routes (not Urgench) = last
         const getCategory = (routeName) => {
-          if (!routeName.includes('tashkent')) return 'middle';
-          if (routeName.includes('city tour')) return 'first';
-          if (routeName.includes('chimgan')) return 'first';
-          if (routeName.includes('vokzal')) return 'first';
-          if (routeName.includes('aeroport') || routeName.includes('aeroporti')) return 'last';
+          if (routeName.includes('tashkent') || routeName.includes('toshkent')) {
+            if (routeName.includes('city tour') || routeName.includes('chimgan')) return 'first';
+          }
+          const hasAirport = routeName.includes('aeroport') || routeName.includes('airport');
+          const hasUrgench = routeName.includes('urgench') || routeName.includes('urganch');
+          if (hasAirport && !hasUrgench) return 'last';
           return 'middle';
         };
 

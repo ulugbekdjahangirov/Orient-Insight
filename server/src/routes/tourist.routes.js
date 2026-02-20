@@ -3473,6 +3473,10 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
     // Track which tourists were matched from PDF
     const matchedTouristIds = new Set();
 
+    // Collect updates and creates to batch in one transaction
+    const touristsToUpdate = []; // { id, data }
+    const touristsToCreate = []; // { data, fullName, roomNumber }
+
     // Update or create tourists from PDF
     for (const pdfTourist of tourists) {
       // Try to find existing tourist by matching name
@@ -3533,15 +3537,12 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           }
         }
 
-        await prisma.tourist.update({
-          where: { id: existingTourist.id },
-          data: updateData
-        });
-
-        console.log(`   ✅ Updated: ${pdfTourist.fullName} (Room: ${pdfTourist.roomNumber})`);
+        // Collect for batch update
+        touristsToUpdate.push({ id: existingTourist.id, data: updateData, fullName: pdfTourist.fullName, roomNumber: pdfTourist.roomNumber });
+        matchedTouristIds.add(existingTourist.id);
         updatedCount++;
       } else {
-        // Create new tourist (only if not found in existing list)
+        // Collect for batch create
         const touristData = {
           bookingId: bookingIdInt,
           fullName: pdfTourist.fullName,
@@ -3553,21 +3554,26 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           accommodation: pdfTourist.tourType,
           remarks: pdfTourist.remarks && pdfTourist.remarks !== '-' ? pdfTourist.remarks : null
         };
+        if (pdfTourist.checkInDate) touristData.checkInDate = new Date(pdfTourist.checkInDate);
+        if (pdfTourist.checkOutDate) touristData.checkOutDate = new Date(pdfTourist.checkOutDate);
 
-        // Add dates if available
-        if (pdfTourist.checkInDate) {
-          touristData.checkInDate = new Date(pdfTourist.checkInDate);
-        }
-        if (pdfTourist.checkOutDate) {
-          touristData.checkOutDate = new Date(pdfTourist.checkOutDate);
-        }
-
-        const created = await prisma.tourist.create({ data: touristData });
-        matchedTouristIds.add(created.id); // Mark new tourist as matched
-        console.log(`   ➕ Created new: ${pdfTourist.fullName} (Room: ${pdfTourist.roomNumber})`);
+        touristsToCreate.push({ data: touristData, fullName: pdfTourist.fullName, roomNumber: pdfTourist.roomNumber });
         createdCount++;
       }
     }
+
+    // Execute all updates + creates in ONE transaction (SQLite lock acquired once)
+    await prisma.$transaction(async (tx) => {
+      for (const { id, data, fullName, roomNumber } of touristsToUpdate) {
+        await tx.tourist.update({ where: { id }, data });
+        console.log(`   ✅ Updated: ${fullName} (Room: ${roomNumber})`);
+      }
+      for (const { data, fullName, roomNumber } of touristsToCreate) {
+        const created = await tx.tourist.create({ data });
+        matchedTouristIds.add(created.id);
+        console.log(`   ➕ Created new: ${fullName} (Room: ${roomNumber})`);
+      }
+    });
 
     // Delete tourists that are NOT in the PDF (were not matched)
     // Skip deletion in updateOnly mode (email import - preserve Excel tourists)
@@ -3576,23 +3582,16 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
 
       if (unmatchedTourists.length > 0) {
         console.log(`🗑️ FULL REPLACE: Deleting ${unmatchedTourists.length} unmatched tourists...`);
+        unmatchedTourists.forEach(t => console.log(`   🗑️  Deleting: ${t.fullName}`));
 
-        for (const tourist of unmatchedTourists) {
-          console.log(`   🗑️  Deleting: ${tourist.fullName}`);
-
-          // Delete related data first (foreign key constraints)
-          await prisma.accommodationRoomingList.deleteMany({
-            where: { touristId: tourist.id }
-          });
-          await prisma.touristRoomAssignment.deleteMany({
-            where: { touristId: tourist.id }
-          });
-
-          await prisma.tourist.delete({
-            where: { id: tourist.id }
-          });
-          deletedCount++;
-        }
+        const unmatchedIds = unmatchedTourists.map(t => t.id);
+        // Batch delete related data + tourists in one transaction
+        await prisma.$transaction([
+          prisma.accommodationRoomingList.deleteMany({ where: { touristId: { in: unmatchedIds } } }),
+          prisma.touristRoomAssignment.deleteMany({ where: { touristId: { in: unmatchedIds } } }),
+          prisma.tourist.deleteMany({ where: { id: { in: unmatchedIds } } })
+        ]);
+        deletedCount = unmatchedTourists.length;
       }
     } else {
       console.log(`🔒 UPDATE-ONLY mode: skipping deletion of unmatched tourists`);
