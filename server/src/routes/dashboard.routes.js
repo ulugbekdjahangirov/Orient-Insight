@@ -184,10 +184,11 @@ router.get('/upcoming', authenticate, async (req, res) => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    // Fetch all upcoming bookings (status will be calculated on frontend)
+    // Fetch all upcoming bookings (exclude cancelled)
     const bookings = await prisma.booking.findMany({
       where: {
-        departureDate: { gte: now }
+        departureDate: { gte: now },
+        status: { not: 'CANCELLED' }
       },
       include: {
         tourType: { select: { code: true, name: true, color: true } },
