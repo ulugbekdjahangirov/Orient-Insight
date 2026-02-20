@@ -325,17 +325,19 @@ router.post('/', authenticate, async (req, res) => {
       autoStatus = 'IN_PROGRESS';
     }
 
-    // Calculate arrivalDate as departureDate + 1 day
+    // Calculate arrivalDate based on tour type (ZA: +4 days, KAS: +14 days, others: +1 day)
     const departureDateObj = new Date(departureDate);
+    const tourTypeForArrival = await prisma.tourType.findUnique({ where: { id: parseInt(tourTypeId) } });
+    const arrivalDaysToAdd = tourTypeForArrival?.code === 'ZA' ? 4 : tourTypeForArrival?.code === 'KAS' ? 14 : 1;
     const arrivalDateObj = new Date(departureDateObj);
-    arrivalDateObj.setDate(arrivalDateObj.getDate() + 1);
+    arrivalDateObj.setDate(arrivalDateObj.getDate() + arrivalDaysToAdd);
 
     const booking = await prisma.booking.create({
       data: {
         bookingNumber,
         tourTypeId: parseInt(tourTypeId),
         departureDate: departureDateObj,
-        arrivalDate: arrivalDateObj, // Always departureDate + 1 day
+        arrivalDate: arrivalDateObj,
         endDate: endDate ? new Date(endDate) : departureDateObj,
         pax: calculatedPax,
         paxUzbekistan: uzbek || null,
@@ -416,14 +418,26 @@ router.put('/:id', authenticate, async (req, res) => {
     if (tourTypeId) updateData.tourTypeId = parseInt(tourTypeId);
     if (country !== undefined) updateData.country = country || null;
 
-    // Handle dates - arrivalDate is always departureDate + 1 day
+    // Get current booking (with tourType) needed for arrivalDate and PAX calculations
+    const currentBooking = await prisma.booking.findUnique({
+      where: { id: parseInt(id) },
+      include: { tourType: true }
+    });
+
+    // Handle dates - arrivalDate depends on tour type (ZA: +4, KAS: +14, others: +1)
     if (departureDate) {
       const departureDateObj = new Date(departureDate);
+      let tourTypeCode = currentBooking?.tourType?.code;
+      if (tourTypeId) {
+        const tt = await prisma.tourType.findUnique({ where: { id: parseInt(tourTypeId) } });
+        tourTypeCode = tt?.code;
+      }
+      const daysToAdd = tourTypeCode === 'ZA' ? 4 : tourTypeCode === 'KAS' ? 14 : 1;
       const arrivalDateObj = new Date(departureDateObj);
-      arrivalDateObj.setDate(arrivalDateObj.getDate() + 1);
+      arrivalDateObj.setDate(arrivalDateObj.getDate() + daysToAdd);
 
       updateData.departureDate = departureDateObj;
-      updateData.arrivalDate = arrivalDateObj; // Auto-sync: departureDate + 1 day
+      updateData.arrivalDate = arrivalDateObj;
     }
     if (endDate) updateData.endDate = new Date(endDate);
 
@@ -434,9 +448,6 @@ router.put('/:id', authenticate, async (req, res) => {
     // Auto-calculate total PAX from Uzbekistan + Turkmenistan
     const uzbek = updateData.paxUzbekistan !== undefined ? updateData.paxUzbekistan : (paxUzbekistan !== undefined ? parseInt(paxUzbekistan) || 0 : 0);
     const turkmen = updateData.paxTurkmenistan !== undefined ? updateData.paxTurkmenistan : (paxTurkmenistan !== undefined ? parseInt(paxTurkmenistan) || 0 : 0);
-
-    // Get current booking to calculate accurate total
-    const currentBooking = await prisma.booking.findUnique({ where: { id: parseInt(id) } });
     const currentUzbek = updateData.paxUzbekistan !== undefined ? (updateData.paxUzbekistan || 0) : (currentBooking?.paxUzbekistan || 0);
     const currentTurkmen = updateData.paxTurkmenistan !== undefined ? (updateData.paxTurkmenistan || 0) : (currentBooking?.paxTurkmenistan || 0);
 
