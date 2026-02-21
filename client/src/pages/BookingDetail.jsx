@@ -1030,7 +1030,7 @@ export default function BookingDetail() {
     } catch (e) { /* ignore */ }
   };
 
-  const sendMealToTelegram = async (meal, mealDate, pax) => {
+  const sendMealToTelegram = async (meal, mealDate, pax, pricePerPerson) => {
     const restaurantName = meal.name || meal.restaurant || '';
     setSendingMeal(restaurantName);
     try {
@@ -1042,6 +1042,7 @@ export default function BookingDetail() {
         city: meal.city || '',
         mealDate: mealDateStr,
         pax,
+        pricePerPerson,
       });
       await loadMealConfirmations();
     } catch (err) {
@@ -11726,7 +11727,7 @@ export default function BookingDetail() {
                                 {hasChatId ? (
                                   <div className="flex flex-col items-center gap-1">
                                     <button
-                                      onClick={() => sendMealToTelegram(meal, mealDate, pax)}
+                                      onClick={() => sendMealToTelegram(meal, mealDate, pax, pricePerPerson)}
                                       disabled={sendingMeal === restaurantName}
                                       title="Telegram ga yuborish"
                                       className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"

@@ -964,7 +964,7 @@ router.put('/transport-settings', authenticate, async (req, res) => {
 router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { restaurantName, city, mealDate, pax } = req.body;
+    const { restaurantName, city, mealDate, pax, pricePerPerson } = req.body;
 
     if (!restaurantName) return res.status(400).json({ error: 'restaurantName required' });
 
@@ -1003,7 +1003,8 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
       `🍴 Restoran: *${restaurantName}*`,
       city     ? `🏙 Shahar: *${city}*`   : null,
       mealDate ? `📅 Sana: *${mealDate}*` : null,
-      pax      ? `👥 PAX: *${pax}* kishi` : null,
+      pax             ? `👥 Turist: *${pax}* kishi` : null,
+      pricePerPerson  ? `💰 Narx: *${Number(pricePerPerson).toLocaleString('ru-RU')}* UZS/kishi` : null,
       booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
     ].filter(Boolean).join('\n');
 
