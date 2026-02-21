@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi } from '../services/api';
 import { format, addDays, parseISO } from 'date-fns';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
@@ -42,7 +42,8 @@ import {
   Menu,
   Ban,
   Mail,
-  Send
+  Send,
+  Loader2
 } from 'lucide-react';
 import {
   isFileSystemAccessSupported,
@@ -423,6 +424,9 @@ export default function BookingDetail() {
   const [pdfFlightNumberEdits, setPdfFlightNumberEdits] = useState({});
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
+  const [mealConfirmations, setMealConfirmations] = useState([]);
+  const [mealChatIds, setMealChatIds] = useState({});
+  const [sendingMeal, setSendingMeal] = useState(null);
   const [sightseeingData, setSightseeingData] = useState([]); // Sightseeing from OPEX database
   const [showsData, setShowsData] = useState([]); // Shows from OPEX database
   const [flightForm, setFlightForm] = useState({
@@ -1011,6 +1015,42 @@ export default function BookingDetail() {
   };
 
   // Load meals data from OPEX API
+  const loadMealConfirmations = async () => {
+    if (!id) return;
+    try {
+      const res = await telegramApi.getMealConfirmations(id);
+      setMealConfirmations(res.data.confirmations || []);
+    } catch (e) { /* ignore */ }
+  };
+
+  const loadMealChatIds = async () => {
+    try {
+      const res = await telegramApi.getMealSettings();
+      setMealChatIds(res.data.chatIds || {});
+    } catch (e) { /* ignore */ }
+  };
+
+  const sendMealToTelegram = async (meal, mealDate, pax) => {
+    const restaurantName = meal.name || meal.restaurant || '';
+    setSendingMeal(restaurantName);
+    try {
+      const mealDateStr = mealDate
+        ? `${String(mealDate.getDate()).padStart(2,'0')}.${String(mealDate.getMonth()+1).padStart(2,'0')}.${mealDate.getFullYear()}`
+        : null;
+      await telegramApi.sendMeal(booking.id, {
+        restaurantName,
+        city: meal.city || '',
+        mealDate: mealDateStr,
+        pax,
+      });
+      await loadMealConfirmations();
+    } catch (err) {
+      alert('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingMeal(null);
+    }
+  };
+
   const loadMealsFromApi = async () => {
     if (!booking?.tourType?.code) return;
 
@@ -1098,6 +1138,8 @@ export default function BookingDetail() {
   useEffect(() => {
     if (booking?.tourType?.code) {
       loadMealsFromApi();
+      loadMealConfirmations();
+      loadMealChatIds();
     }
 
     // Listen for custom event from Opex page when meals are updated
@@ -11587,6 +11629,36 @@ export default function BookingDetail() {
               return sum + (pricePerPerson * pax);
             }, 0);
 
+            // Get meal date based on city using booking routes
+            const getMealDate = (meal) => {
+              const cityLower = (meal.city || '').toLowerCase();
+              if (cityLower === 'tashkent') {
+                return booking?.arrivalDate ? new Date(booking.arrivalDate) : null;
+              }
+              if (cityLower === 'nurata') {
+                // Day group leaves Asraf to Bukhara
+                const route = routes?.find(r =>
+                  r.routeName?.toLowerCase().includes('asraf') &&
+                  r.routeName?.toLowerCase().includes('bukhara')
+                );
+                return route?.date ? new Date(route.date) : null;
+              }
+              if (cityLower === 'khiva') {
+                // Day group arrives from Bukhara to Khiva
+                const route = routes?.find(r =>
+                  r.city?.toLowerCase() === 'khiva' &&
+                  r.routeName?.toLowerCase().includes('bukhara')
+                );
+                return route?.date ? new Date(route.date) : null;
+              }
+              return null;
+            };
+
+            const fmtMealDate = (d) => {
+              if (!d) return '—';
+              return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+            };
+
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500"></div>
@@ -11599,10 +11671,12 @@ export default function BookingDetail() {
                         <tr className="bg-gradient-to-r from-blue-500 to-blue-600 border-b-2 border-blue-700">
                           <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">#</th>
                           <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">CITY</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">DATE</th>
                           <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">RESTAURANT</th>
                           <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-blue-400">PRICE (UZS)</th>
                           <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">PAX</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-blue-400">TOTAL (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold text-white">TELEGRAM</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -11611,6 +11685,12 @@ export default function BookingDetail() {
                           const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
                           const pricePerPerson = parseFloat(priceStr) || 0;
                           const total = pricePerPerson * pax;
+                          const mealDate = getMealDate(meal);
+                          const restaurantName = meal.name || meal.restaurant || '';
+                          const hasChatId = !!mealChatIds[restaurantName];
+                          const conf = mealConfirmations
+                            .filter(c => c.restaurantName === restaurantName)
+                            .sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt))[0];
 
                           return (
                             <tr key={index} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
@@ -11625,6 +11705,9 @@ export default function BookingDetail() {
                                   <span className="font-medium text-gray-900">{meal.city || '-'}</span>
                                 </div>
                               </td>
+                              <td className="px-4 py-3 text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                                {fmtMealDate(mealDate)}
+                              </td>
                               <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
                                 {meal.name || meal.restaurant || '-'}
                               </td>
@@ -11636,8 +11719,37 @@ export default function BookingDetail() {
                               <td className="px-4 py-3 text-center font-bold text-blue-600 text-lg border-r border-gray-200">
                                 {pax}
                               </td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">
+                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
                                 {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {hasChatId ? (
+                                  <div className="flex flex-col items-center gap-1">
+                                    <button
+                                      onClick={() => sendMealToTelegram(meal, mealDate, pax)}
+                                      disabled={sendingMeal === restaurantName}
+                                      title="Telegram ga yuborish"
+                                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                      {sendingMeal === restaurantName
+                                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                                        : <Send className="w-3 h-3" />}
+                                      <span>Yuborish</span>
+                                    </button>
+                                    {conf && (
+                                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                                        conf.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                                        conf.status === 'REJECTED'  ? 'bg-red-100 text-red-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                      }`}>
+                                        {conf.status === 'CONFIRMED' ? '✅' : conf.status === 'REJECTED' ? '❌' : '🕐'}
+                                        {conf.status === 'CONFIRMED' ? 'Tasdiqladi' : conf.status === 'REJECTED' ? 'Rad qildi' : 'Kutilmoqda'}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-400">—</span>
+                                )}
                               </td>
                             </tr>
                           );
@@ -11645,7 +11757,7 @@ export default function BookingDetail() {
                       </tbody>
                       <tfoot>
                         <tr className="bg-gradient-to-r from-orange-100 to-orange-200 border-t-2 border-orange-300">
-                          <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                          <td colSpan="7" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
                             Grand Total:
                           </td>
                           <td className="px-4 py-4 text-right font-bold text-orange-700 text-xl">

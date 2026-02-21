@@ -188,6 +188,7 @@ model Booking {
   routes          Route[]
   telegramConfirmations TelegramConfirmation[]
   transportConfirmations TransportConfirmation[]
+  mealConfirmations      MealConfirmation[]
 
   // Tour services (Eintritt, Metro, Shou, Other)
   tourServices    TourService[]
@@ -976,6 +977,27 @@ model TransportConfirmation {
   sentAt      DateTime @default(now())
   respondedAt DateTime?
   createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+// ============================================
+// Module: Meal Confirmations (Restaurant Telegram)
+// ============================================
+
+model MealConfirmation {
+  id             Int      @id @default(autoincrement())
+  bookingId      Int
+  booking        Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  restaurantName String   // e.g. "Saida Opa", "Bek Tashkent"
+  city           String?  // e.g. "Tashkent"
+  mealDate       String?  // Formatted date string "DD.MM.YYYY"
+  pax            Int      @default(0)
+  status         String   @default("PENDING") // PENDING | CONFIRMED | REJECTED
+  confirmedBy    String?
+  sentAt         DateTime @default(now())
+  respondedAt    DateTime?
+  createdAt      DateTime @default(now())
 
   @@index([bookingId])
 }

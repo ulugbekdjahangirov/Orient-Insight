@@ -10,12 +10,16 @@ export default function GmailSettings() {
   const [message, setMessage] = useState(null);
   const [transportChatIds, setTransportChatIds] = useState({ sevil: '', xayrulla: '', nosir: '', hammasi: '' });
   const [savingTransport, setSavingTransport] = useState(false);
+  const [mealChatIds, setMealChatIds] = useState({});
+  const [newRestaurant, setNewRestaurant] = useState({ name: '', chatId: '' });
+  const [savingMeal, setSavingMeal] = useState(false);
 
   useEffect(() => {
     loadStatus();
     loadSettings();
     checkAuthCallback();
     loadTransportSettings();
+    loadMealSettings();
   }, []);
 
   const checkAuthCallback = () => {
@@ -126,6 +130,43 @@ export default function GmailSettings() {
       setTransportChatIds(res.data);
     } catch (e) {
       console.error('Failed to load transport settings:', e);
+    }
+  };
+
+  const loadMealSettings = async () => {
+    try {
+      const res = await telegramApi.getMealSettings();
+      setMealChatIds(res.data.chatIds || {});
+    } catch (e) {
+      console.error('Failed to load meal settings:', e);
+    }
+  };
+
+  const handleAddRestaurant = () => {
+    const name = newRestaurant.name.trim();
+    const chatId = newRestaurant.chatId.trim();
+    if (!name) return;
+    setMealChatIds(prev => ({ ...prev, [name]: chatId }));
+    setNewRestaurant({ name: '', chatId: '' });
+  };
+
+  const handleRemoveRestaurant = (name) => {
+    setMealChatIds(prev => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  };
+
+  const handleSaveMeal = async () => {
+    setSavingMeal(true);
+    try {
+      await telegramApi.saveMealSettings(mealChatIds);
+      setMessage({ type: 'success', text: 'Restoran Telegram sozlamalari saqlandi' });
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Saqlashda xatolik' });
+    } finally {
+      setSavingMeal(false);
     }
   };
 
@@ -288,6 +329,71 @@ export default function GmailSettings() {
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
         >
           {savingTransport ? 'Saqlanmoqda...' : 'Saqlash'}
+        </button>
+      </div>
+
+      {/* Restoran Telegram Settings */}
+      <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+        <h2 className="text-lg font-semibold mb-1">🍽 Restoran Telegram sozlamalari</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Har bir restoran uchun Telegram chat ID kiriting. Restoran nomi BookingDetail → Meals da ko'rsatilgan nom bilan bir xil bo'lishi kerak.
+        </p>
+        {/* Add new restaurant */}
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={newRestaurant.name}
+            onChange={e => setNewRestaurant(prev => ({ ...prev, name: e.target.value }))}
+            onKeyPress={e => e.key === 'Enter' && handleAddRestaurant()}
+            placeholder="Restoran nomi (masalan: Saida Opa)"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="text"
+            value={newRestaurant.chatId}
+            onChange={e => setNewRestaurant(prev => ({ ...prev, chatId: e.target.value }))}
+            onKeyPress={e => e.key === 'Enter' && handleAddRestaurant()}
+            placeholder="-123456789"
+            className="w-40 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleAddRestaurant}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+          >
+            Qo'shish
+          </button>
+        </div>
+        {/* Existing entries */}
+        <div className="space-y-2 mb-4">
+          {Object.keys(mealChatIds).length === 0 ? (
+            <div className="text-gray-500 text-sm">Hali restoran qo'shilmagan</div>
+          ) : (
+            Object.entries(mealChatIds).map(([name, chatId]) => (
+              <div key={name} className="flex items-center gap-3">
+                <label className="w-40 text-sm font-medium text-gray-700 flex-shrink-0">{name}</label>
+                <input
+                  type="text"
+                  value={chatId}
+                  onChange={e => setMealChatIds(prev => ({ ...prev, [name]: e.target.value }))}
+                  placeholder="-123456789"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={() => handleRemoveRestaurant(name)}
+                  className="text-red-600 hover:text-red-800 text-sm"
+                >
+                  O'chirish
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        <button
+          onClick={handleSaveMeal}
+          disabled={savingMeal}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+        >
+          {savingMeal ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
       </div>
 

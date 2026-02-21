@@ -30,6 +30,22 @@ async function setProviderChatId(provider, chatId) {
 
 const PROVIDER_LABELS = { sevil: 'Sevil aka', xayrulla: 'Xayrulla', nosir: 'Nosir aka', hammasi: 'Hammasi' };
 
+// ── Meal chat ID helpers ─────────────────────────────────────────────────────
+const MEAL_CHAT_IDS_KEY = 'MEAL_RESTAURANT_CHAT_IDS';
+async function getMealChatIds() {
+  try {
+    const s = await prisma.systemSetting.findUnique({ where: { key: MEAL_CHAT_IDS_KEY } });
+    return s ? JSON.parse(s.value) : {};
+  } catch { return {}; }
+}
+async function saveMealChatIds(map) {
+  await prisma.systemSetting.upsert({
+    where: { key: MEAL_CHAT_IDS_KEY },
+    update: { value: JSON.stringify(map) },
+    create: { key: MEAL_CHAT_IDS_KEY, value: JSON.stringify(map) }
+  });
+}
+
 function fmtDateUtil(d) {
   if (!d) return '—';
   const dt = new Date(d);
@@ -340,6 +356,80 @@ router.post('/webhook', async (req, res) => {
       return; // Don't continue to hotel confirm/reject handler
     }
     // ── End admin menu callbacks ───────────────────────────────────────────
+
+    // ── Meal (restoran) callbacks ──────────────────────────────────────────
+    if (data.startsWith('meal_confirm:') || data.startsWith('meal_reject:')) {
+      const parts = data.split(':');
+      const confId    = parseInt(parts[1]);
+      const isConfirm = data.startsWith('meal_confirm:');
+      const emoji     = isConfirm ? '✅' : '❌';
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isConfirm ? '✅ Tasdiqlandi! Rahmat.' : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      // Edit original message — remove buttons, show status
+      if (cb.message?.message_id && fromChatId) {
+        const statusLine = isConfirm
+          ? `\n\n✅ ${fromName} tomonidan tasdiqlandi`
+          : `\n\n❌ ${fromName} tomonidan rad qilindi`;
+        const original = cb.message.text || '';
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId,
+          message_id: cb.message.message_id,
+          text: original + statusLine,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [] })
+        }).catch(() => {});
+      }
+
+      // Update MealConfirmation
+      let mealConf = null;
+      try {
+        mealConf = await prisma.mealConfirmation.update({
+          where: { id: confId },
+          data: {
+            status: isConfirm ? 'CONFIRMED' : 'REJECTED',
+            confirmedBy: fromName,
+            respondedAt: new Date()
+          },
+          include: {
+            booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true, guide: { select: { name: true, phone: true } } } }
+          }
+        });
+      } catch (e) {
+        console.warn('MealConfirmation update warn:', e.message);
+      }
+
+      // Notify admin
+      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      if (adminChatId && mealConf) {
+        const { booking, restaurantName, city, mealDate, pax } = mealConf;
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const adminMsg = [
+          `${emoji} *${restaurantName}*`,
+          `📋 ${booking?.bookingNumber || `#${mealConf.bookingId}`}`,
+          city       ? `🏙 Shahar: *${city}*`    : null,
+          mealDate   ? `📅 Sana: *${mealDate}*`  : null,
+          pax        ? `👥 PAX: *${pax}* kishi`  : null,
+          booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
+          `🕐 ${fmtDateUtil(now)} ${timeStr}`
+        ].filter(Boolean).join('\n');
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: adminChatId,
+          text: adminMsg,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
+
+      console.log(`Meal callback: ${data} from ${fromName} confId=${confId}`);
+      return;
+    }
+    // ── End meal callbacks ──────────────────────────────────────────────────
 
     // ── Transport: approver callbacks (tr_approve / tr_decline) ───────────
     if (data.startsWith('tr_approve:') || data.startsWith('tr_decline:')) {
@@ -863,6 +953,124 @@ router.put('/transport-settings', authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save transport settings' });
+  }
+});
+
+// ============================================================
+// Meal Confirmations (Restoran Telegram)
+// ============================================================
+
+// POST /api/telegram/send-meal/:bookingId
+router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { restaurantName, city, mealDate, pax } = req.body;
+
+    if (!restaurantName) return res.status(400).json({ error: 'restaurantName required' });
+
+    const chatIds = await getMealChatIds();
+    const chatId = chatIds[restaurantName];
+    if (!chatId) {
+      return res.status(400).json({ error: `${restaurantName} uchun Telegram chat ID sozlanmagan (GmailSettings → Restoran)` });
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      select: {
+        bookingNumber: true,
+        pax: true,
+        guide: { select: { name: true, phone: true } }
+      }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking topilmadi' });
+
+    // Create confirmation record first (need id for callback_data)
+    const conf = await prisma.mealConfirmation.create({
+      data: {
+        bookingId: parseInt(bookingId),
+        restaurantName,
+        city: city || null,
+        mealDate: mealDate || null,
+        pax: parseInt(pax) || booking.pax || 0,
+        status: 'PENDING',
+        sentAt: new Date()
+      }
+    });
+
+    const msgText = [
+      `🍽 *Restoran so'rovi*`,
+      `📋 Booking: *${booking.bookingNumber}*`,
+      `🍴 Restoran: *${restaurantName}*`,
+      city     ? `🏙 Shahar: *${city}*`   : null,
+      mealDate ? `📅 Sana: *${mealDate}*` : null,
+      pax      ? `👥 PAX: *${pax}* kishi` : null,
+      booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+    ].filter(Boolean).join('\n');
+
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: chatId,
+      text: msgText,
+      parse_mode: 'Markdown',
+      reply_markup: JSON.stringify({
+        inline_keyboard: [[
+          { text: '✅ Tasdiqlash', callback_data: `meal_confirm:${conf.id}` },
+          { text: '❌ Rad qilish', callback_data: `meal_reject:${conf.id}` }
+        ]]
+      })
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Send meal telegram error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
+// GET /api/telegram/meal-confirmations
+router.get('/meal-confirmations', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.query;
+    const where = bookingId ? { bookingId: parseInt(bookingId) } : {};
+    const confirmations = await prisma.mealConfirmation.findMany({
+      where,
+      include: { booking: { select: { bookingNumber: true, departureDate: true } } },
+      orderBy: { sentAt: 'desc' }
+    });
+    res.json({ confirmations });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch meal confirmations' });
+  }
+});
+
+// DELETE /api/telegram/meal-confirmations/:id
+router.delete('/meal-confirmations/:id', authenticate, async (req, res) => {
+  try {
+    await prisma.mealConfirmation.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete' });
+  }
+});
+
+// GET /api/telegram/meal-settings
+router.get('/meal-settings', authenticate, async (req, res) => {
+  try {
+    const chatIds = await getMealChatIds();
+    res.json({ chatIds });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load meal settings' });
+  }
+});
+
+// PUT /api/telegram/meal-settings
+router.put('/meal-settings', authenticate, async (req, res) => {
+  try {
+    const { chatIds } = req.body;
+    await saveMealChatIds(chatIds || {});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save meal settings' });
   }
 });
 
