@@ -291,7 +291,8 @@ router.put('/:id', authenticate, async (req, res) => {
       dayRate,
       halfDayRate,
       city,
-      cityRate
+      cityRate,
+      telegramChatId
     } = req.body;
 
     // Базовые поля могут редактировать все авторизованные
@@ -310,6 +311,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (halfDayRate !== undefined) updateData.halfDayRate = parseFloat(halfDayRate);
     if (city !== undefined) updateData.city = city;
     if (cityRate !== undefined) updateData.cityRate = parseFloat(cityRate);
+    if (telegramChatId !== undefined) updateData.telegramChatId = telegramChatId || null;
 
     console.log('💾 Update data prepared:', updateData);
 

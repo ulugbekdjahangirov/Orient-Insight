@@ -427,6 +427,7 @@ export default function BookingDetail() {
   const [mealConfirmations, setMealConfirmations] = useState([]);
   const [mealChatIds, setMealChatIds] = useState({});
   const [sendingMeal, setSendingMeal] = useState(null);
+  const [sendingGuide, setSendingGuide] = useState(null); // 'main' | 'second' | 'bergreiseleiter' | null
   const [sightseeingData, setSightseeingData] = useState([]); // Sightseeing from OPEX database
   const [showsData, setShowsData] = useState([]); // Shows from OPEX database
   const [flightForm, setFlightForm] = useState({
@@ -1028,6 +1029,30 @@ export default function BookingDetail() {
       const res = await telegramApi.getMealSettings();
       setMealChatIds(res.data.chatIds || {});
     } catch (e) { /* ignore */ }
+  };
+
+  const sendGuideToTelegram = async (guideData, guideType) => {
+    const guideName = typeof guideData.guide === 'string'
+      ? guideData.guide
+      : guideData.guide?.name || guideData.name || '';
+    if (!guideName) return;
+    setSendingGuide(guideType);
+    try {
+      await telegramApi.sendGuide(booking.id, {
+        guideName,
+        guideType,
+        fullDays:     guideData.fullDays,
+        halfDays:     guideData.halfDays,
+        dayRate:      guideData.dayRate,
+        halfDayRate:  guideData.halfDayRate,
+        totalPayment: guideData.totalPayment,
+      });
+      alert(`✅ ${guideName} ga Telegram xabari yuborildi`);
+    } catch (err) {
+      alert('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingGuide(null);
+    }
   };
 
   const sendMealToTelegram = async (meal, mealDate, pax, pricePerPerson) => {
@@ -11437,6 +11462,14 @@ export default function BookingDetail() {
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-center gap-2">
                                 <button
+                                  onClick={() => sendGuideToTelegram(mainGuide, 'main')}
+                                  disabled={sendingGuide === 'main'}
+                                  className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Telegram ga yuborish"
+                                >
+                                  {sendingGuide === 'main' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                </button>
+                                <button
                                   onClick={() => openGuideModal('main')}
                                   className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
                                   title="Edit"
@@ -11504,6 +11537,14 @@ export default function BookingDetail() {
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-center gap-2">
                                 <button
+                                  onClick={() => sendGuideToTelegram(secondGuide, 'second')}
+                                  disabled={sendingGuide === 'second'}
+                                  className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Telegram ga yuborish"
+                                >
+                                  {sendingGuide === 'second' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                </button>
+                                <button
                                   onClick={() => openGuideModal('second')}
                                   className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
                                   title="Edit"
@@ -11570,6 +11611,14 @@ export default function BookingDetail() {
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => sendGuideToTelegram(bergreiseleiter, 'bergreiseleiter')}
+                                  disabled={sendingGuide === 'bergreiseleiter'}
+                                  className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Telegram ga yuborish"
+                                >
+                                  {sendingGuide === 'bergreiseleiter' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                </button>
                                 <button
                                   onClick={() => openGuideModal('bergreiseleiter')}
                                   className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"

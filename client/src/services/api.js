@@ -345,6 +345,7 @@ export const telegramApi = {
   deleteMealConfirmation: (id) => api.delete(`/telegram/meal-confirmations/${id}`),
   getMealSettings: () => api.get('/telegram/meal-settings'),
   saveMealSettings: (chatIds) => api.put('/telegram/meal-settings', { chatIds }),
+  sendGuide: (bookingId, data) => api.post(`/telegram/send-guide/${bookingId}`, data),
 };
 
 // API for OPEX configuration (Operational Expenses)

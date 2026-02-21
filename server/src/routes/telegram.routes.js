@@ -957,6 +957,65 @@ router.put('/transport-settings', authenticate, async (req, res) => {
 });
 
 // ============================================================
+// Guide Notifications (Gid Telegram)
+// ============================================================
+
+// POST /api/telegram/send-guide/:bookingId
+router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { guideName, guideType, fullDays, halfDays, dayRate, halfDayRate, totalPayment } = req.body;
+
+    if (!guideName) return res.status(400).json({ error: 'guideName required' });
+
+    const guide = await prisma.guide.findFirst({ where: { name: guideName } });
+    if (!guide?.telegramChatId) {
+      return res.status(400).json({ error: `${guideName} uchun Telegram chat ID sozlanmagan (Guides sahifasida)` });
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      include: { tourType: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const guideTypeLabel =
+      guideType === 'main'           ? 'Asosiy gid' :
+      guideType === 'second'         ? 'Ikkinchi gid' :
+      guideType === 'bergreiseleiter' ? 'Bergreiseleiter' : guideType;
+
+    const fmtDate = (d) => {
+      if (!d) return null;
+      const dt = new Date(d);
+      return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+    };
+
+    const msgText = [
+      `🧭 *Gid so'rovi*`,
+      `📋 Booking: *${booking.bookingNumber}*`,
+      `👤 Gid: *${guideName}*`,
+      `🏷 Tur: *${guideTypeLabel}*`,
+      booking.departureDate ? `📅 Jo'nash: *${fmtDate(booking.departureDate)}*` : null,
+      booking.arrivalDate   ? `🏁 Kelish: *${fmtDate(booking.arrivalDate)}*`   : null,
+      fullDays  ? `☀️ To'liq kunlar: *${fullDays}*`  : null,
+      halfDays  ? `🌤 Yarim kunlar: *${halfDays}*`   : null,
+      dayRate   ? `💰 Kunlik to'lov: *$${dayRate}*`  : null,
+      totalPayment ? `💵 Jami to'lov: *$${Math.round(totalPayment)}*` : null,
+    ].filter(Boolean).join('\n');
+
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: guide.telegramChatId,
+      text: msgText,
+      parse_mode: 'Markdown'
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('send-guide error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
 // Meal Confirmations (Restoran Telegram)
 // ============================================================
 

@@ -98,7 +98,8 @@ export default function Guides() {
       halfDayRate: 55,
       city: '',
       cityRate: 0,
-      notes: ''
+      notes: '',
+      telegramChatId: ''
     };
   }
 
@@ -146,6 +147,7 @@ export default function Guides() {
         bankCardNumber: guide.bankCardNumber || '',
         bankName: guide.bankName || '',
         mfo: guide.mfo || '',
+        telegramChatId: guide.telegramChatId || '',
         dayRate: guide.dayRate ?? 110,
         halfDayRate: guide.halfDayRate ?? 55,
         city: guide.city || '',
@@ -1290,6 +1292,16 @@ export default function Guides() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Telegram Chat ID</label>
+                    <input
+                      type="text"
+                      value={formData.telegramChatId}
+                      onChange={(e) => setFormData({ ...formData, telegramChatId: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 font-mono"
+                      placeholder="-123456789"
                     />
                   </div>
                   <div className="sm:col-span-2">
