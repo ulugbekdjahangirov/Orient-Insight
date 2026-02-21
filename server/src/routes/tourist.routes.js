@@ -5293,18 +5293,13 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
         <style>
           @page {
             size: A4 portrait;
-            margin: 15mm 12mm 15mm 12mm;
-          }
-          @page {
-            /* Remove browser headers and footers */
-            margin-top: 0;
-            margin-bottom: 0;
+            margin: 8mm 10mm 8mm 10mm;
           }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             font-family: 'Times New Roman', Times, serif;
             font-size: 9pt;
-            line-height: 1.2;
+            line-height: 1.15;
             color: #000;
           }
           .action-bar {
@@ -5364,17 +5359,17 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
             width: 100%;
             border: none;
             border-collapse: collapse;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
           }
           .date-hotel-row {
             width: 100%;
             border: none;
             border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-bottom: 6px;
           }
           .date-hotel-row td {
             vertical-align: top;
-            padding: 3px;
+            padding: 2px;
           }
           .date-cell {
             width: 50%;
@@ -5386,23 +5381,23 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
           }
           .zayvka-title {
             text-align: center;
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: bold;
-            margin: 15px 0;
+            margin: 6px 0;
             text-decoration: underline;
           }
           .intro-text {
-            margin-bottom: 15px;
+            margin-bottom: 6px;
             text-align: justify;
           }
           .summary-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
           }
           .summary-table th, .summary-table td {
             border: 1px solid #000;
-            padding: 4px;
+            padding: 3px;
             text-align: center;
             font-size: 8pt;
           }
@@ -5412,19 +5407,19 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
           }
           .rooming-title {
             text-align: center;
-            font-size: 12pt;
+            font-size: 11pt;
             font-weight: bold;
-            margin: 15px 0 10px 0;
+            margin: 6px 0 5px 0;
             text-decoration: underline;
           }
           .rooming-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-bottom: 6px;
           }
           .rooming-table th, .rooming-table td {
             border: 1px solid #000;
-            padding: 3px;
+            padding: 2px 3px;
             font-size: 8pt;
           }
           .rooming-table th {
@@ -5433,17 +5428,17 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
             text-align: center;
           }
           .footer-text {
-            margin: 15px 0;
+            margin: 6px 0;
             font-style: italic;
           }
           .signature-table {
             width: 100%;
             border: none;
             border-collapse: collapse;
-            margin-top: 30px;
+            margin-top: 12px;
           }
           .signature-table td {
-            padding: 5px;
+            padding: 3px;
           }
           .print-notice {
             background: #fff3cd;
@@ -5457,8 +5452,8 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
           .guide-info {
             background: #f8f9fa;
             border: 1px solid #dee2e6;
-            padding: 8px 12px;
-            margin: 15px 0;
+            padding: 5px 10px;
+            margin: 6px 0;
             border-radius: 4px;
             font-size: 9pt;
           }
@@ -6257,13 +6252,13 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
         <style>
           @page {
             size: A4 portrait;
-            margin: 15mm 12mm 15mm 12mm;
+            margin: 8mm 10mm 8mm 10mm;
           }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             font-family: 'Times New Roman', Times, serif;
             font-size: 9pt;
-            line-height: 1.2;
+            line-height: 1.15;
             color: #000;
           }
           .action-bar {
@@ -6302,27 +6297,27 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
               color-adjust: exact !important;
             }
           }
-          .header-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 10px; }
-          .date-hotel-row { width: 100%; border: none; border-collapse: collapse; margin-bottom: 15px; }
-          .date-hotel-row td { vertical-align: top; padding: 3px; }
+          .header-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 5px; }
+          .date-hotel-row { width: 100%; border: none; border-collapse: collapse; margin-bottom: 6px; }
+          .date-hotel-row td { vertical-align: top; padding: 2px; }
           .date-cell { width: 50%; text-align: left; }
           .hotel-cell { width: 50%; text-align: right; }
-          .zayvka-title { text-align: center; font-size: 14pt; font-weight: bold; margin: 15px 0; text-decoration: underline; }
-          .intro-text { margin-bottom: 15px; text-align: justify; }
-          .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          .summary-table th, .summary-table td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 8pt; }
+          .zayvka-title { text-align: center; font-size: 13pt; font-weight: bold; margin: 6px 0; text-decoration: underline; }
+          .intro-text { margin-bottom: 6px; text-align: justify; }
+          .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          .summary-table th, .summary-table td { border: 1px solid #000; padding: 3px; text-align: center; font-size: 8pt; }
           .summary-table th { background-color: #f0f0f0; font-weight: bold; }
-          .rooming-title { text-align: center; font-size: 12pt; font-weight: bold; margin: 15px 0 10px 0; text-decoration: underline; }
-          .rooming-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-          .rooming-table th, .rooming-table td { border: 1px solid #000; padding: 3px; font-size: 8pt; }
+          .rooming-title { text-align: center; font-size: 11pt; font-weight: bold; margin: 6px 0 5px 0; text-decoration: underline; }
+          .rooming-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+          .rooming-table th, .rooming-table td { border: 1px solid #000; padding: 2px 3px; font-size: 8pt; }
           .rooming-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; }
-          .footer-text { margin: 15px 0; font-style: italic; }
-          .signature-table { width: 100%; border: none; border-collapse: collapse; margin-top: 30px; }
-          .signature-table td { padding: 5px; }
+          .footer-text { margin: 6px 0; font-style: italic; }
+          .signature-table { width: 100%; border: none; border-collapse: collapse; margin-top: 12px; }
+          .signature-table td { padding: 3px; }
           .print-notice { background: #fff3cd; border: 1px solid #ffc107; padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 11px; color: #856404; }
           .visit-count-notice { background: #d4edda; border: 1px solid #28a745; padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; font-size: 11px; color: #155724; }
           @media print { .print-notice, .visit-count-notice { display: none; } }
-          .page-content { padding: 12mm; }
+          .page-content { padding: 0; }
         </style>
       </head>
       <body>
