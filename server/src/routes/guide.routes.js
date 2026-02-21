@@ -56,20 +56,8 @@ router.get('/', authenticate, async (req, res) => {
 
     // Обрабатываем данные в зависимости от роли
     const processedGuides = guides.map(guide => {
-      let processedGuide;
-
-      if (isAdmin) {
-        // Админ видит расшифрованные данные
-        processedGuide = decryptGuideData(guide);
-      } else {
-        // Менеджер видит замаскированные данные
-        processedGuide = maskGuideData(guide);
-      }
-
-      // Добавляем информацию о сроке действия паспорта
-      const passportStatus = checkPassportExpiry(guide.passportExpiryDate);
-      processedGuide.passportStatus = passportStatus;
-
+      const processedGuide = { ...guide };
+      processedGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
       return processedGuide;
     });
 
@@ -163,16 +151,10 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Гид не найден' });
     }
 
-    let processedGuide;
-    if (isAdmin) {
-      processedGuide = decryptGuideData(guide);
-    } else {
-      processedGuide = maskGuideData(guide);
-      // Скрываем платежи от менеджеров
+    const processedGuide = { ...guide };
+    if (!isAdmin) {
       processedGuide.guidePayments = [];
     }
-
-    // Добавляем статус паспорта
     processedGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
 
     res.json({ guide: processedGuide });
@@ -218,13 +200,6 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Гид с таким именем уже существует' });
     }
 
-    // Шифруем конфиденциальные данные
-    const encryptedData = encryptGuideData({
-      passportNumber,
-      bankAccountNumber,
-      bankCardNumber
-    });
-
     const guide = await prisma.guide.create({
       data: {
         name,
@@ -233,12 +208,12 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
         phone,
         email,
-        passportNumber: encryptedData.passportNumber,
+        passportNumber: passportNumber || null,
         passportIssueDate: passportIssueDate ? new Date(passportIssueDate) : null,
         passportExpiryDate: passportExpiryDate ? new Date(passportExpiryDate) : null,
         passportIssuedBy,
-        bankAccountNumber: encryptedData.bankAccountNumber,
-        bankCardNumber: encryptedData.bankCardNumber,
+        bankAccountNumber: bankAccountNumber || null,
+        bankCardNumber: bankCardNumber || null,
         bankName,
         mfo,
         address,
@@ -250,11 +225,8 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       }
     });
 
-    // Возвращаем расшифрованные данные админу
-    const responseGuide = decryptGuideData(guide);
-    responseGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
-
-    res.status(201).json({ guide: responseGuide });
+    guide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
+    res.status(201).json({ guide });
   } catch (error) {
     console.error('Create guide error:', error);
     res.status(500).json({ error: 'Ошибка создания гида' });
@@ -317,22 +289,12 @@ router.put('/:id', authenticate, async (req, res) => {
 
     // Конфиденциальные поля - только для админа
     if (isAdmin) {
-      if (passportNumber !== undefined) {
-        updateData.passportNumber = passportNumber ? encryptGuideData({ passportNumber }).passportNumber : null;
-      }
-      if (passportIssueDate !== undefined) {
-        updateData.passportIssueDate = passportIssueDate ? new Date(passportIssueDate) : null;
-      }
-      if (passportExpiryDate !== undefined) {
-        updateData.passportExpiryDate = passportExpiryDate ? new Date(passportExpiryDate) : null;
-      }
+      if (passportNumber !== undefined) updateData.passportNumber = passportNumber || null;
+      if (passportIssueDate !== undefined) updateData.passportIssueDate = passportIssueDate ? new Date(passportIssueDate) : null;
+      if (passportExpiryDate !== undefined) updateData.passportExpiryDate = passportExpiryDate ? new Date(passportExpiryDate) : null;
       if (passportIssuedBy !== undefined) updateData.passportIssuedBy = passportIssuedBy;
-      if (bankAccountNumber !== undefined) {
-        updateData.bankAccountNumber = bankAccountNumber ? encryptGuideData({ bankAccountNumber }).bankAccountNumber : null;
-      }
-      if (bankCardNumber !== undefined) {
-        updateData.bankCardNumber = bankCardNumber ? encryptGuideData({ bankCardNumber }).bankCardNumber : null;
-      }
+      if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber || null;
+      if (bankCardNumber !== undefined) updateData.bankCardNumber = bankCardNumber || null;
       if (bankName !== undefined) updateData.bankName = bankName;
       if (mfo !== undefined) updateData.mfo = mfo;
     }
@@ -345,14 +307,8 @@ router.put('/:id', authenticate, async (req, res) => {
       }
     });
 
-    let responseGuide;
-    if (isAdmin) {
-      responseGuide = decryptGuideData(guide);
-    } else {
-      responseGuide = maskGuideData(guide);
-    }
+    const responseGuide = { ...guide };
     responseGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
-
     res.json({ guide: responseGuide });
   } catch (error) {
     console.error('Update guide error:', error);
