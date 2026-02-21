@@ -338,13 +338,15 @@ class GmailService {
     ];
 
     for (const att of attachments) {
+      // Split base64 into 76-char lines per MIME spec (RFC 2045)
+      const b64 = att.content.toString('base64').match(/.{1,76}/g).join('\r\n');
       lines.push(
         `--${boundary}`,
         `Content-Type: ${att.mimeType}; name="${att.filename}"`,
         `Content-Disposition: attachment; filename="${att.filename}"`,
         `Content-Transfer-Encoding: base64`,
         ``,
-        att.content.toString('base64')
+        b64
       );
     }
 
