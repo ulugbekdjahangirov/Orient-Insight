@@ -19,7 +19,8 @@ import {
   DollarSign,
   FileText,
   Receipt,
-  X
+  X,
+  Handshake
 } from 'lucide-react';
 
 const navItems = [
@@ -34,6 +35,7 @@ const navItems = [
   { path: '/rechnung', icon: FileText, label: 'Invoice' },
   { path: '/ausgaben', icon: Receipt, label: 'Ausgaben' },
   { path: '/email-imports', icon: Mail, label: 'Email Imports' },
+  { path: '/partners', icon: Handshake, label: 'Hamkorlar' },
 ];
 
 const adminItems = [

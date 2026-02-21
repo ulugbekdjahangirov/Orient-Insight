@@ -186,6 +186,7 @@ model Booking {
 
   // Маршруты транспорта
   routes          Route[]
+  telegramConfirmations TelegramConfirmation[]
 
   // Tour services (Eintritt, Metro, Shou, Other)
   tourServices    TourService[]
@@ -307,6 +308,7 @@ model Hotel {
   bookingRooms   BookingRoom[]
   accommodations Accommodation[]
   images         HotelImage[]
+  telegramConfirmations TelegramConfirmation[]
 
   @@unique([name, cityId])
   @@index([cityId])
@@ -936,6 +938,26 @@ model EmailImport {
   @@index([status])
   @@index([emailFrom])
   @@index([emailDate])
+}
+
+// ============================================
+// Module: Telegram Confirmations (Hotel responses)
+// ============================================
+
+model TelegramConfirmation {
+  id          Int      @id @default(autoincrement())
+  bookingId   Int
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotelId     Int
+  hotel       Hotel    @relation(fields: [hotelId], references: [id])
+  status      String   @default("PENDING") // PENDING, CONFIRMED, WAITING, REJECTED
+  confirmedBy String?  // Kim javob berdi (Telegram da bosganning ismi)
+  sentAt      DateTime @default(now())
+  respondedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([hotelId])
 }
 
 // System settings (key-value store)

@@ -6394,7 +6394,7 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
       <p>Пожалуйста, ознакомьтесь с прикреплённым запросом на бронирование для группы <strong>${booking.bookingNumber}</strong>.</p>
       <p>С уважением,<br>Orient Insight</p>
     `;
-    const filename = `Zayavka_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+    const filename = `Заявка_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
 
     await gmailService.sendEmail({
       to: toEmail,
@@ -6453,7 +6453,7 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     const axios = require('axios');
     const FormData = require('form-data');
     const hotelName = hotel?.name || 'Hotel';
-    const filename = `Zayavka_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+    const filename = `Заявка_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
 
     const fmt = (d) => {
       if (!d) return '—';
@@ -6461,10 +6461,33 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
       return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
     };
 
+    // Fetch all tourists for this booking (needed for repeated hotel visit room calculation)
+    const allTourists = await prisma.tourist.findMany({
+      where: { bookingId: parseInt(bookingId) }
+    });
+
     const visitLines = accommodations.map((acc, i) => {
-      const dbl = acc.rooms.filter(r => r.type === 'DBL').reduce((s,r) => s+r.quantity, 0);
-      const twn = acc.rooms.filter(r => r.type === 'TWN').reduce((s,r) => s+r.quantity, 0);
-      const sngl = acc.rooms.filter(r => r.type === 'SNGL').reduce((s,r) => s+r.quantity, 0);
+      // Check if a previous accommodation in this booking also uses this same hotel
+      const isRepeatedHotel = i > 0 && accommodations.slice(0, i).some(prev => prev.hotelId === acc.hotelId);
+
+      let dbl = 0, twn = 0, sngl = 0;
+
+      if (isRepeatedHotel) {
+        // Repeated hotel visit: only UZ tourists (same logic as PDF)
+        const uzTourists = allTourists.filter(t => {
+          const p = (t.accommodation || '').toLowerCase();
+          return p.includes('uzbek') || p.includes('узбек') || p === 'uz';
+        });
+        dbl = Math.floor(uzTourists.filter(t => ['DBL','DOUBLE','DZ'].includes(t.roomPreference)).length / 2);
+        twn = Math.floor(uzTourists.filter(t => ['TWN','TWIN'].includes(t.roomPreference)).length / 2);
+        sngl = uzTourists.filter(t => ['SNGL','SINGLE','EZ'].includes(t.roomPreference)).length;
+      } else {
+        // First visit: use AccommodationRoom records
+        dbl = acc.rooms.filter(r => r.roomTypeCode === 'DBL').reduce((s,r) => s+r.roomsCount, 0);
+        twn = acc.rooms.filter(r => r.roomTypeCode === 'TWN').reduce((s,r) => s+r.roomsCount, 0);
+        sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s,r) => s+r.roomsCount, 0);
+      }
+
       const roomStr = [dbl&&`DBL:${dbl}`, twn&&`TWN:${twn}`, sngl&&`SNGL:${sngl}`].filter(Boolean).join(', ') || '—';
       const prefix = accommodations.length > 1 ? `${i+1}-zaezd: ` : '';
       return `${prefix}📅 ${fmt(acc.checkInDate)} → ${fmt(acc.checkOutDate)}  |  🛏 ${roomStr}`;
@@ -6487,6 +6510,7 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     const replyMarkup = JSON.stringify({
       inline_keyboard: [[
         { text: '✅ Tasdiqlash', callback_data: `confirm:${bookingId}:${hotelId}` },
+        { text: '⏳ Waiting List', callback_data: `waiting:${bookingId}:${hotelId}` },
         { text: '❌ Rad qilish', callback_data: `reject:${bookingId}:${hotelId}` }
       ]]
     });
@@ -6497,6 +6521,7 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     form.append('caption', caption);
     form.append('parse_mode', 'Markdown');
     form.append('reply_markup', replyMarkup);
+    form.append('protect_content', 'true');
 
     const token = process.env.TELEGRAM_BOT_TOKEN;
     await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
@@ -6504,6 +6529,21 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     });
 
     console.log(`✅ Telegram hotel request sent to chatId=${chatId} for ${booking.bookingNumber} - ${hotelName}`);
+
+    // Record TelegramConfirmation as PENDING
+    try {
+      await prisma.telegramConfirmation.create({
+        data: {
+          bookingId: parseInt(bookingId),
+          hotelId: parseInt(hotelId),
+          status: 'PENDING',
+          sentAt: new Date()
+        }
+      });
+    } catch (confErr) {
+      console.warn('TelegramConfirmation create warn:', confErr.message);
+    }
+
     res.json({ success: true, sentTo: chatId });
 
   } catch (error) {

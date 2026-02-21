@@ -325,6 +325,12 @@ export const pricesApi = {
   delete: (tourType, category, paxTier) => api.delete(`/prices/${tourType}/${category}/${paxTier}`)
 };
 
+// API for Telegram confirmations (Hamkorlar page)
+export const telegramApi = {
+  getConfirmations: () => api.get('/telegram/confirmations'),
+  deleteConfirmation: (id) => api.delete(`/telegram/confirmations/${id}`),
+};
+
 // API for OPEX configuration (Operational Expenses)
 export const opexApi = {
   // Get OPEX config for specific tour/category
