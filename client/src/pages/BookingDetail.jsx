@@ -868,6 +868,9 @@ export default function BookingDetail() {
   const [sendEmailModal, setSendEmailModal] = useState(null); // { hotelId, hotelName, hotelEmail }
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailInput, setEmailInput] = useState('');
+  const [sendTelegramModal, setSendTelegramModal] = useState(null); // { hotelId, hotelName, telegramChatId }
+  const [sendingTelegram, setSendingTelegram] = useState(false);
+  const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
 
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [accommodationFormOpen, setAccommodationFormOpen] = useState(false);
@@ -16436,6 +16439,21 @@ export default function BookingDetail() {
                           </button>
                           <button
                             onClick={() => {
+                              setSendTelegramModal({
+                                hotelId: acc.hotel?.id,
+                                hotelName: acc.hotel?.name || 'Hotel',
+                                telegramChatId: acc.hotel?.telegramChatId || ''
+                              });
+                              setTelegramChatIdInput(acc.hotel?.telegramChatId || '');
+                            }}
+                            className={`p-3 text-sky-600 bg-sky-50 hover:bg-sky-100 border-2 border-sky-200 hover:border-sky-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                            title="Hotelga Telegram yuborish"
+                          >
+                            <Send className="w-5 h-5" />
+                            {isMobile && <span className="font-medium">Telegram yuborish</span>}
+                          </button>
+                          <button
+                            onClick={() => {
                               setEditingAccommodation(acc);
                               setAccommodationFormOpen(true);
                             }}
@@ -18194,6 +18212,80 @@ export default function BookingDetail() {
                   className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {sendingEmail ? (
+                    <span>Yuborilmoqda...</span>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Yuborish
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Hotel Request Telegram Modal */}
+      {sendTelegramModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-sky-500 to-cyan-600 p-5 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Send className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Telegram orqali yuborish</h2>
+                  <p className="text-sky-100 text-sm">{sendTelegramModal.hotelName}</p>
+                </div>
+              </div>
+              <button onClick={() => setSendTelegramModal(null)} className="text-white/80 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Hotel Telegram Chat ID</label>
+                <input
+                  type="text"
+                  value={telegramChatIdInput}
+                  onChange={e => setTelegramChatIdInput(e.target.value)}
+                  placeholder="123456789"
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-sky-400 focus:outline-none"
+                />
+                {!sendTelegramModal.telegramChatId && (
+                  <p className="text-amber-600 text-xs mt-1">Hotel profilida Telegram Chat ID yo'q. Bu yerga kiriting yoki Hotels sahifasidan qo'shing.</p>
+                )}
+              </div>
+              <div className="bg-sky-50 rounded-xl p-4 text-sm text-sky-800">
+                <p className="font-semibold mb-1">Chat ID qanday topiladi?</p>
+                <p>Hotel menejeri botga xabar yuborgandan so'ng Hotels sahifasida <strong>Telegram Finder</strong> orqali topish mumkin.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setSendTelegramModal(null)}
+                  className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  disabled={!telegramChatIdInput || sendingTelegram}
+                  onClick={async () => {
+                    setSendingTelegram(true);
+                    try {
+                      await bookingsApi.sendHotelRequestTelegram(id, sendTelegramModal.hotelId, telegramChatIdInput);
+                      toast.success(`Zayavka Telegram orqali yuborildi!`);
+                      setSendTelegramModal(null);
+                    } catch (err) {
+                      toast.error(err.response?.data?.error || 'Telegram yuborishda xatolik');
+                    } finally {
+                      setSendingTelegram(false);
+                    }
+                  }}
+                  className="flex-1 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {sendingTelegram ? (
                     <span>Yuborilmoqda...</span>
                   ) : (
                     <>

@@ -36,7 +36,7 @@ export default function Hotels() {
   const [hotelModalOpen, setHotelModalOpen] = useState(false);
   const [editingHotel, setEditingHotel] = useState(null);
   const [hotelForm, setHotelForm] = useState({
-    name: '', cityId: '', address: '', phone: '', email: '',
+    name: '', cityId: '', address: '', phone: '', email: '', telegramChatId: '',
     website: '', stars: '', description: '', totalRooms: 0
   });
 
@@ -150,6 +150,7 @@ export default function Hotels() {
         address: hotel.address || '',
         phone: hotel.phone || '',
         email: hotel.email || '',
+        telegramChatId: hotel.telegramChatId || '',
         website: hotel.website || '',
         stars: hotel.stars || '',
         description: hotel.description || '',
@@ -161,7 +162,7 @@ export default function Hotels() {
         name: '',
         cityId: preselectedCityId || cities[0]?.id || '',
         address: '', phone: '',
-        email: '', website: '', stars: '', description: '', totalRooms: 0
+        email: '', telegramChatId: '', website: '', stars: '', description: '', totalRooms: 0
       });
     }
     setHotelModalOpen(true);
@@ -1074,6 +1075,17 @@ export default function Hotels() {
                     onChange={(e) => setHotelForm({ ...hotelForm, email: e.target.value })}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
                     placeholder="info@hotel.uz"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Telegram Chat ID</label>
+                  <input
+                    type="text"
+                    value={hotelForm.telegramChatId}
+                    onChange={(e) => setHotelForm({ ...hotelForm, telegramChatId: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all"
+                    placeholder="123456789"
                   />
                 </div>
 

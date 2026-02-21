@@ -6412,4 +6412,60 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
   }
 });
 
+// POST /api/bookings/:bookingId/send-hotel-request-telegram/:hotelId
+router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, async (req, res) => {
+  try {
+    const { bookingId, hotelId } = req.params;
+    const { chatId: overrideChatId } = req.body;
+
+    const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
+    const chatId = overrideChatId || hotel?.telegramChatId;
+    if (!chatId) {
+      return res.status(400).json({ error: 'Hotel Telegram Chat ID not found. Please add it to hotel profile.' });
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      include: { tourType: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Generate PDF via puppeteer
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+    const page = await browser.newPage();
+    const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`;
+    await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+    const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
+    const pdfBuffer = Buffer.from(pdfUint8);
+    await browser.close();
+
+    // Send via Telegram Bot API
+    const axios = require('axios');
+    const FormData = require('form-data');
+    const hotelName = hotel?.name || 'Hotel';
+    const filename = `Zayavka_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+    const caption = `📋 Заявка - ${booking.bookingNumber} - ${hotelName}`;
+
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
+    form.append('caption', caption);
+
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
+      headers: form.getHeaders()
+    });
+
+    console.log(`✅ Telegram hotel request sent to chatId=${chatId} for ${booking.bookingNumber} - ${hotelName}`);
+    res.json({ success: true, sentTo: chatId });
+
+  } catch (error) {
+    console.error('Send Telegram hotel request error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to send Telegram message: ' + (error.response?.data?.description || error.message) });
+  }
+});
+
 module.exports = router;

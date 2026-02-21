@@ -140,7 +140,7 @@ router.get('/:id', authenticate, async (req, res) => {
 // POST /api/hotels - Create hotel
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { name, cityId, address, phone, email, website, stars, description, totalRooms } = req.body;
+    const { name, cityId, address, phone, email, telegramChatId, website, stars, description, totalRooms } = req.body;
 
     // Validation
     if (!name || !cityId) {
@@ -179,6 +179,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         address,
         phone,
         email,
+        telegramChatId: telegramChatId || null,
         website,
         stars: stars || null,
         description,
@@ -201,7 +202,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 router.put('/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, cityId, address, phone, email, website, stars, description, isActive, totalRooms } = req.body;
+    const { name, cityId, address, phone, email, telegramChatId, website, stars, description, isActive, totalRooms } = req.body;
 
     // Validation
     if (name && (name.length < 2 || name.length > 100)) {
@@ -218,6 +219,7 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
     if (address !== undefined) updateData.address = address;
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email;
+    if (telegramChatId !== undefined) updateData.telegramChatId = telegramChatId || null;
     if (website !== undefined) updateData.website = website;
     if (stars !== undefined) updateData.stars = stars || null;
     if (description !== undefined) updateData.description = description;

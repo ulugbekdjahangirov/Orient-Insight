@@ -294,6 +294,7 @@ model Hotel {
   address     String?                  // Адрес
   phone       String?                  // Телефон
   email       String?                  // Email
+  telegramChatId String?              // Telegram Chat ID
   website     String?                  // Вебсайт
   stars       String?                  // Звёздность (1-5, Guesthouse, Yurta)
   description String?                  // Описание

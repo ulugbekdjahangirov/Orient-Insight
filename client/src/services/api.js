@@ -45,6 +45,7 @@ export const bookingsApi = {
   getHotelRequests: (bookingId) => api.get(`/bookings/${bookingId}/hotel-requests`),
   getHotelRequest: (bookingId, hotelId) => api.get(`/bookings/${bookingId}/hotel-requests/${hotelId}`),
   sendHotelRequest: (bookingId, hotelId, email) => api.post(`/bookings/${bookingId}/send-hotel-request/${hotelId}`, { email }),
+  sendHotelRequestTelegram: (bookingId, hotelId, chatId) => api.post(`/bookings/${bookingId}/send-hotel-request-telegram/${hotelId}`, { chatId }),
   // Cost Summary
   getCostSummary: (bookingId) => api.get(`/bookings/${bookingId}/cost-summary`),
   // Accommodations (новая структура размещения)
