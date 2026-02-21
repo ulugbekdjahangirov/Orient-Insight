@@ -6357,4 +6357,62 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
   }
 });
 
+// POST /api/bookings/:bookingId/send-hotel-request/:hotelId - Send hotel request PDF via Gmail
+router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req, res) => {
+  try {
+    const { bookingId, hotelId } = req.params;
+    const { email: overrideEmail } = req.body;
+
+    // Get hotel email
+    const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
+    const toEmail = overrideEmail || hotel?.email;
+    if (!toEmail) {
+      return res.status(400).json({ error: 'Hotel email not found. Please add email to hotel profile.' });
+    }
+
+    // Get booking info for subject
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      include: { tourType: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Generate HTML by calling the combined route internally via puppeteer
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+    const page = await browser.newPage();
+    const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`;
+    await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+    await browser.close();
+
+    // Send email via Gmail
+    const gmailService = require('../services/gmail.service');
+    const hotelName = hotel?.name || 'Hotel';
+    const subject = `Заявка - ${booking.bookingNumber} - ${hotelName}`;
+    const htmlBody = `
+      <p>Уважаемый отель ${hotelName},</p>
+      <p>Пожалуйста, ознакомьтесь с прикреплённым запросом на бронирование для группы <strong>${booking.bookingNumber}</strong>.</p>
+      <p>С уважением,<br>Orient Insight</p>
+    `;
+    const filename = `Zayavka_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+
+    await gmailService.sendEmail({
+      to: toEmail,
+      subject,
+      html: htmlBody,
+      attachments: [{ filename, mimeType: 'application/pdf', content: pdfBuffer }]
+    });
+
+    console.log(`✅ Hotel request sent to ${toEmail} for ${booking.bookingNumber} - ${hotelName}`);
+    res.json({ success: true, sentTo: toEmail });
+
+  } catch (error) {
+    console.error('Send hotel request error:', error);
+    res.status(500).json({ error: 'Failed to send email: ' + error.message });
+  }
+});
+
 module.exports = router;

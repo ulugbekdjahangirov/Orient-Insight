@@ -40,7 +40,9 @@ import {
   FolderOpen,
   CheckCircle2,
   Menu,
-  Ban
+  Ban,
+  Mail,
+  Send
 } from 'lucide-react';
 import {
   isFileSystemAccessSupported,
@@ -863,6 +865,10 @@ export default function BookingDetail() {
   }, [accommodations, accommodationRoomingLists, tourists]);
 
   // Room allocation modal
+  const [sendEmailModal, setSendEmailModal] = useState(null); // { hotelId, hotelName, hotelEmail }
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [accommodationFormOpen, setAccommodationFormOpen] = useState(false);
   const [editingAccommodation, setEditingAccommodation] = useState(null);
@@ -16414,6 +16420,22 @@ export default function BookingDetail() {
                           </button>
                           <button
                             onClick={() => {
+                              const hotelId = acc.hotel?.id;
+                              setSendEmailModal({
+                                hotelId,
+                                hotelName: acc.hotel?.name || 'Hotel',
+                                hotelEmail: acc.hotel?.email || ''
+                              });
+                              setEmailInput(acc.hotel?.email || '');
+                            }}
+                            className={`p-3 text-blue-600 bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                            title="Hotelga email yuborish (Gmail)"
+                          >
+                            <Mail className="w-5 h-5" />
+                            {isMobile && <span className="font-medium">Email yuborish</span>}
+                          </button>
+                          <button
+                            onClick={() => {
                               setEditingAccommodation(acc);
                               setAccommodationFormOpen(true);
                             }}
@@ -18110,6 +18132,80 @@ export default function BookingDetail() {
           onSave={() => loadData()}
           onClose={() => { setAccommodationFormOpen(false); setEditingAccommodation(null); }}
         />
+      )}
+
+      {/* Send Hotel Request Email Modal */}
+      {sendEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-5 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Mail className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Hotelga zayavka yuborish</h2>
+                  <p className="text-blue-100 text-sm">{sendEmailModal.hotelName}</p>
+                </div>
+              </div>
+              <button onClick={() => setSendEmailModal(null)} className="text-white/80 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Hotel email manzili</label>
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  placeholder="hotel@example.com"
+                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-blue-400 focus:outline-none"
+                />
+                {!sendEmailModal.hotelEmail && (
+                  <p className="text-amber-600 text-xs mt-1">Hotel profilida email yo'q. Bu yerga kiriting.</p>
+                )}
+              </div>
+              <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
+                <p><strong>Gmail:</strong> orientinsightreisen@gmail.com</p>
+                <p className="mt-1">Zayavka PDF fayl sifatida attach qilinib yuboriladi.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setSendEmailModal(null)}
+                  className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  disabled={!emailInput || sendingEmail}
+                  onClick={async () => {
+                    setSendingEmail(true);
+                    try {
+                      await bookingsApi.sendHotelRequest(id, sendEmailModal.hotelId, emailInput);
+                      toast.success(`Zayavka ${emailInput} ga yuborildi!`);
+                      setSendEmailModal(null);
+                    } catch (err) {
+                      toast.error(err.response?.data?.error || 'Email yuborishda xatolik');
+                    } finally {
+                      setSendingEmail(false);
+                    }
+                  }}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {sendingEmail ? (
+                    <span>Yuborilmoqda...</span>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Yuborish
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Guide Selection Modal */}

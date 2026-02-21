@@ -309,6 +309,50 @@ class GmailService {
 
     return JSON.parse(setting.value);
   }
+
+  /**
+   * Send email with optional PDF attachment via Gmail API
+   * @param {Object} options
+   * @param {string} options.to - Recipient email
+   * @param {string} options.subject - Email subject
+   * @param {string} options.html - Email HTML body
+   * @param {Array}  options.attachments - [{filename, mimeType, content (Buffer)}]
+   */
+  async sendEmail({ to, subject, html = '', attachments = [] }) {
+    await this.authenticate();
+    const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+
+    const boundary = `boundary_${Date.now()}`;
+    const lines = [
+      `From: Orient Insight <me>`,
+      `To: ${to}`,
+      `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/html; charset=utf-8`,
+      `Content-Transfer-Encoding: base64`,
+      ``,
+      Buffer.from(html).toString('base64'),
+    ];
+
+    for (const att of attachments) {
+      lines.push(
+        `--${boundary}`,
+        `Content-Type: ${att.mimeType}; name="${att.filename}"`,
+        `Content-Disposition: attachment; filename="${att.filename}"`,
+        `Content-Transfer-Encoding: base64`,
+        ``,
+        att.content.toString('base64')
+      );
+    }
+
+    lines.push(`--${boundary}--`);
+
+    const raw = Buffer.from(lines.join('\r\n')).toString('base64url');
+    await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
+  }
 }
 
 module.exports = new GmailService();
