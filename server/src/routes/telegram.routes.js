@@ -358,17 +358,18 @@ router.post('/webhook', async (req, res) => {
         show_alert: false
       }).catch(() => {});
 
-      // Edit message text to show status
+      // Edit caption to show status + remove buttons (document message uses editMessageCaption)
       if (cb.message?.message_id && fromChatId) {
         const statusLine = isConfirm
           ? `\n\n✅ ${fromName} tomonidan tasdiqlandi`
           : `\n\n❌ ${fromName} tomonidan rad qilindi`;
-        const originalText = cb.message.text || '';
-        await axios.post(`${BOT_API()}/editMessageText`, {
+        const originalCaption = cb.message.caption || '';
+        await axios.post(`${BOT_API()}/editMessageCaption`, {
           chat_id: fromChatId,
           message_id: cb.message.message_id,
-          text: originalText + statusLine,
-          parse_mode: 'Markdown'
+          caption: originalCaption + statusLine,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [] })
         }).catch(() => {});
       }
 
@@ -402,7 +403,7 @@ router.post('/webhook', async (req, res) => {
         const now = new Date();
         const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         const adminMsg = [
-          `${emoji} *Marshrut varaqasi (${providerLabel})*`,
+          `${emoji} *${providerLabel}*`,
           `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
           booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
           booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
