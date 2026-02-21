@@ -551,6 +551,7 @@ export default function Guides() {
               <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Гид</th>
               <th className="hidden lg:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Дата рождения</th>
               <th className="hidden md:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Контакты</th>
+              <th className="hidden md:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Telegram</th>
               <th className="hidden lg:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Паспорт</th>
               <th className="hidden xl:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Срок действия</th>
               {isAdmin && (
@@ -622,6 +623,15 @@ export default function Guides() {
                         </div>
                       )}
                     </div>
+                  </td>
+                  <td className="hidden md:table-cell px-6 py-4">
+                    {guide.telegramChatId ? (
+                      <code className="text-xs bg-sky-50 text-sky-700 px-2 py-1 rounded-lg font-mono border border-sky-200">
+                        {guide.telegramChatId}
+                      </code>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
+                    )}
                   </td>
                   <td className="hidden lg:table-cell px-6 py-4">
                     <div className="space-y-2">
