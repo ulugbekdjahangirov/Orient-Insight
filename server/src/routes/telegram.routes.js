@@ -1005,6 +1005,7 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
       mealDate ? `📅 Sana: *${mealDate}*` : null,
       pax             ? `👥 Turist: *${pax}* kishi` : null,
       pricePerPerson  ? `💰 Narx: *${Number(pricePerPerson).toLocaleString('ru-RU')}* UZS/kishi` : null,
+      (pricePerPerson && pax) ? `💵 Jami: *${(Number(pricePerPerson) * Number(pax)).toLocaleString('ru-RU')}* UZS` : null,
       booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
     ].filter(Boolean).join('\n');
 
