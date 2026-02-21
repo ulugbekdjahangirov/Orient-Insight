@@ -444,7 +444,7 @@ function TransportTab({ confirmations, onDelete }) {
                     {item.approvedBy && (
                       <span className="hidden sm:inline-flex items-center gap-1.5 mr-4">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          ✅ Tekshirdi
+                          👁 Tekshirdi
                         </span>
                         <span className="text-xs text-gray-600">{item.approvedBy}</span>
                       </span>
