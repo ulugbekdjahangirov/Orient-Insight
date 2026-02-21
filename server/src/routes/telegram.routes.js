@@ -408,7 +408,7 @@ router.post('/webhook', async (req, res) => {
           booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
           booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
-          `👤 ${providerLabel}: ${fromName}`,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
           `🕐 ${fmtDateUtil(now)} ${timeStr}`
         ].filter(Boolean).join('\n');
         await axios.post(`${BOT_API()}/sendMessage`, {
