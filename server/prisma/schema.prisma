@@ -87,6 +87,9 @@ model Guide {
   // Примечания
   notes       String?
 
+  // Telegram
+  telegramChatId String?
+
   // Payment rates (in USD)
   dayRate     Float?    @default(110)   // Full day rate in USD
   halfDayRate Float?    @default(55)    // Half day rate in USD
