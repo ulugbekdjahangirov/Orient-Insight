@@ -6477,18 +6477,26 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     const caption = [
       `🏨 *${hotelName}*`,
       `📋 Заявка: *${booking.bookingNumber}*`,
-      `👥 PAX: *${booking.pax || 0}* кишт`,
+      `👥 PAX: *${booking.pax || 0}* kishi`,
       ``,
       ...visitLines,
       ``,
       ...guideLines,
     ].filter(l => l !== undefined).join('\n');
 
+    const replyMarkup = JSON.stringify({
+      inline_keyboard: [[
+        { text: '✅ Tasdiqlash', callback_data: `confirm:${bookingId}:${hotelId}` },
+        { text: '❌ Rad qilish', callback_data: `reject:${bookingId}:${hotelId}` }
+      ]]
+    });
+
     const form = new FormData();
     form.append('chat_id', chatId);
     form.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
     form.append('caption', caption);
     form.append('parse_mode', 'Markdown');
+    form.append('reply_markup', replyMarkup);
 
     const token = process.env.TELEGRAM_BOT_TOKEN;
     await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
