@@ -6426,9 +6426,16 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
 
     const booking = await prisma.booking.findUnique({
       where: { id: parseInt(bookingId) },
-      include: { tourType: true }
+      include: { tourType: true, guide: true, secondGuide: true }
     });
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Get accommodations for this hotel (check-in/out dates, rooms, pax)
+    const accommodations = await prisma.accommodation.findMany({
+      where: { bookingId: parseInt(bookingId), hotelId: parseInt(hotelId) },
+      include: { rooms: true },
+      orderBy: { checkInDate: 'asc' }
+    });
 
     // Generate PDF via puppeteer
     const puppeteer = require('puppeteer');
@@ -6442,17 +6449,46 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     const pdfBuffer = Buffer.from(pdfUint8);
     await browser.close();
 
-    // Send via Telegram Bot API
+    // Build rich caption
     const axios = require('axios');
     const FormData = require('form-data');
     const hotelName = hotel?.name || 'Hotel';
     const filename = `Zayavka_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
-    const caption = `📋 Заявка - ${booking.bookingNumber} - ${hotelName}`;
+
+    const fmt = (d) => {
+      if (!d) return '—';
+      const dt = new Date(d);
+      return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+    };
+
+    const visitLines = accommodations.map((acc, i) => {
+      const dbl = acc.rooms.filter(r => r.type === 'DBL').reduce((s,r) => s+r.quantity, 0);
+      const twn = acc.rooms.filter(r => r.type === 'TWN').reduce((s,r) => s+r.quantity, 0);
+      const sngl = acc.rooms.filter(r => r.type === 'SNGL').reduce((s,r) => s+r.quantity, 0);
+      const roomStr = [dbl&&`DBL:${dbl}`, twn&&`TWN:${twn}`, sngl&&`SNGL:${sngl}`].filter(Boolean).join(', ') || '—';
+      const prefix = accommodations.length > 1 ? `${i+1}-zaezd: ` : '';
+      return `${prefix}📅 ${fmt(acc.checkInDate)} → ${fmt(acc.checkOutDate)}  |  🛏 ${roomStr}`;
+    });
+
+    const guideLines = [];
+    if (booking.guide) guideLines.push(`👤 Гид: ${booking.guide.name}${booking.guide.phone ? ` | 📞 ${booking.guide.phone}` : ''}`);
+    if (booking.secondGuide) guideLines.push(`👤 2-Гид: ${booking.secondGuide.name}${booking.secondGuide.phone ? ` | 📞 ${booking.secondGuide.phone}` : ''}`);
+
+    const caption = [
+      `🏨 *${hotelName}*`,
+      `📋 Заявка: *${booking.bookingNumber}*`,
+      `👥 PAX: *${booking.pax || 0}* кишт`,
+      ``,
+      ...visitLines,
+      ``,
+      ...guideLines,
+    ].filter(l => l !== undefined).join('\n');
 
     const form = new FormData();
     form.append('chat_id', chatId);
     form.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
     form.append('caption', caption);
+    form.append('parse_mode', 'Markdown');
 
     const token = process.env.TELEGRAM_BOT_TOKEN;
     await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
