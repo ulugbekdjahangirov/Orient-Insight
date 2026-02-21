@@ -7,6 +7,8 @@ const api = axios.create({
   }
 });
 
+export { api };
+
 // Интерцептор для обработки ошибок
 api.interceptors.response.use(
   response => response,
