@@ -329,6 +329,17 @@ export const pricesApi = {
 export const telegramApi = {
   getConfirmations: () => api.get('/telegram/confirmations'),
   deleteConfirmation: (id) => api.delete(`/telegram/confirmations/${id}`),
+  sendMarshrut: (bookingId, provider, pdfBlob, filename) => {
+    const form = new FormData();
+    form.append('pdf', pdfBlob, filename);
+    return api.post(`/telegram/send-marshrut/${bookingId}/${provider}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  getTransportConfirmations: () => api.get('/telegram/transport-confirmations'),
+  deleteTransportConfirmation: (id) => api.delete(`/telegram/transport-confirmations/${id}`),
+  getTransportSettings: () => api.get('/telegram/transport-settings'),
+  saveTransportSettings: (data) => api.put('/telegram/transport-settings', data),
 };
 
 // API for OPEX configuration (Operational Expenses)

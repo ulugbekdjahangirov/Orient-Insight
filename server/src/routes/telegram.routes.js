@@ -1,12 +1,40 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth.middleware');
 
 const prisma = new PrismaClient();
 const BOT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const CHATS_SETTING_KEY = 'TELEGRAM_KNOWN_CHATS';
+
+// multer: accept PDF blob in memory
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+
+// Helper: get/set provider chat ID from SystemSetting
+async function getProviderChatId(provider) {
+  const key = `TRANSPORT_${provider.toUpperCase()}_CHAT_ID`;
+  const s = await prisma.systemSetting.findUnique({ where: { key } });
+  return s?.value || null;
+}
+async function setProviderChatId(provider, chatId) {
+  const key = `TRANSPORT_${provider.toUpperCase()}_CHAT_ID`;
+  await prisma.systemSetting.upsert({
+    where: { key },
+    update: { value: chatId },
+    create: { key, value: chatId }
+  });
+}
+
+const PROVIDER_LABELS = { sevil: 'Sevil aka', xayrulla: 'Xayrulla', nosir: 'Nosir aka', hammasi: 'Hammasi' };
+
+function fmtDateUtil(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+}
 
 // Helper: load known chats from DB
 async function loadKnownChats() {
@@ -313,6 +341,87 @@ router.post('/webhook', async (req, res) => {
     }
     // ── End admin menu callbacks ───────────────────────────────────────────
 
+    // ── Transport (marshrut varaqasi) callbacks ────────────────────────────
+    if (data.startsWith('tr_confirm:') || data.startsWith('tr_reject:')) {
+      const parts = data.split(':');
+      const trAction = parts[0]; // tr_confirm | tr_reject
+      const trBookingId = parseInt(parts[1]);
+      const trProvider = parts[2]; // sevil | xayrulla | nosir
+
+      const isConfirm = trAction === 'tr_confirm';
+      const answerText = isConfirm ? '✅ Tasdiqlandi! Rahmat.' : '❌ Rad qilindi.';
+      const emoji = isConfirm ? '✅' : '❌';
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: answerText,
+        show_alert: false
+      }).catch(() => {});
+
+      // Edit message text to show status
+      if (cb.message?.message_id && fromChatId) {
+        const statusLine = isConfirm
+          ? `\n\n✅ ${fromName} tomonidan tasdiqlandi`
+          : `\n\n❌ ${fromName} tomonidan rad qilindi`;
+        const originalText = cb.message.text || '';
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId,
+          message_id: cb.message.message_id,
+          text: originalText + statusLine,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
+
+      // Update TransportConfirmation
+      try {
+        await prisma.transportConfirmation.updateMany({
+          where: { bookingId: trBookingId, provider: trProvider, status: 'PENDING' },
+          data: {
+            status: isConfirm ? 'CONFIRMED' : 'REJECTED',
+            confirmedBy: fromName,
+            respondedAt: new Date()
+          }
+        });
+      } catch (e) {
+        console.warn('TransportConfirmation update warn:', e.message);
+      }
+
+      // Notify admin
+      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      if (adminChatId) {
+        const booking = await prisma.booking.findUnique({
+          where: { id: trBookingId },
+          select: {
+            bookingNumber: true,
+            arrivalDate: true,
+            endDate: true,
+            guide: { select: { name: true, phone: true } }
+          }
+        });
+        const providerLabel = PROVIDER_LABELS[trProvider] || trProvider;
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const adminMsg = [
+          `${emoji} *Marshrut varaqasi (${providerLabel})*`,
+          `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
+          booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
+          booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
+          booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+          `👤 ${providerLabel}: ${fromName}`,
+          `🕐 ${fmtDateUtil(now)} ${timeStr}`
+        ].filter(Boolean).join('\n');
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: adminChatId,
+          text: adminMsg,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
+
+      console.log(`Transport callback: ${trAction} from ${fromName} for booking #${trBookingId} provider ${trProvider}`);
+      return;
+    }
+    // ── End transport callbacks ────────────────────────────────────────────
+
     const [action, bookingId, hotelId] = data.split(':');
     if (!action || !bookingId || !hotelId) return;
 
@@ -436,6 +545,150 @@ router.get('/confirmations', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Get confirmations error:', err.message);
     res.status(500).json({ error: 'Failed to fetch confirmations' });
+  }
+});
+
+// ============================================================
+// Transport Confirmations (Marshrut varaqasi)
+// ============================================================
+
+// POST /api/telegram/send-marshrut/:bookingId/:provider
+router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('pdf'), async (req, res) => {
+  try {
+    const { bookingId, provider } = req.params;
+    const VALID_PROVIDERS = ['sevil', 'xayrulla', 'nosir', 'hammasi'];
+    if (!VALID_PROVIDERS.includes(provider)) {
+      return res.status(400).json({ error: 'Invalid provider' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'PDF file required' });
+    }
+
+    const chatId = await getProviderChatId(provider);
+    if (!chatId) {
+      return res.status(400).json({ error: `${PROVIDER_LABELS[provider] || provider} uchun Telegram chat ID sozlanmagan` });
+    }
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      select: {
+        bookingNumber: true,
+        departureDate: true,
+        arrivalDate: true,
+        endDate: true,
+        pax: true,
+        guide: { select: { name: true, phone: true } }
+      }
+    });
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking topilmadi' });
+    }
+
+    const providerLabel = PROVIDER_LABELS[provider] || provider;
+    const caption = [
+      `🚌 *Marshrut varaqasi*`,
+      `📋 Booking: *${booking.bookingNumber}*`,
+      `🚗 Transport: *${providerLabel}*`,
+      booking.pax         ? `👥 PAX: *${booking.pax}* kishi`                      : null,
+      booking.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}`  : null,
+      booking.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`          : null,
+      booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+    ].filter(Boolean).join('\n');
+
+    const replyMarkup = JSON.stringify({
+      inline_keyboard: [[
+        { text: '✅ Tasdiqlash', callback_data: `tr_confirm:${bookingId}:${provider}` },
+        { text: '❌ Rad qilish', callback_data: `tr_reject:${bookingId}:${provider}` }
+      ]]
+    });
+
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('caption', caption);
+    form.append('parse_mode', 'Markdown');
+    form.append('reply_markup', replyMarkup);
+    form.append('document', req.file.buffer, {
+      filename: req.file.originalname || `${booking.bookingNumber}_marshrut.pdf`,
+      contentType: 'application/pdf'
+    });
+
+    await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
+      headers: form.getHeaders()
+    });
+
+    // Create TransportConfirmation
+    await prisma.transportConfirmation.create({
+      data: {
+        bookingId: parseInt(bookingId),
+        provider,
+        status: 'PENDING',
+        sentAt: new Date()
+      }
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Send marshrut telegram error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
+// GET /api/telegram/transport-confirmations
+router.get('/transport-confirmations', authenticate, async (req, res) => {
+  try {
+    const confirmations = await prisma.transportConfirmation.findMany({
+      include: {
+        booking: { select: { bookingNumber: true, departureDate: true } }
+      },
+      orderBy: { sentAt: 'desc' }
+    });
+    res.json({ confirmations });
+  } catch (err) {
+    console.error('Get transport confirmations error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch transport confirmations' });
+  }
+});
+
+// DELETE /api/telegram/transport-confirmations/:id
+router.delete('/transport-confirmations/:id', authenticate, async (req, res) => {
+  try {
+    await prisma.transportConfirmation.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete transport confirmation error:', err.message);
+    res.status(500).json({ error: 'Failed to delete' });
+  }
+});
+
+// GET /api/telegram/transport-settings
+router.get('/transport-settings', authenticate, async (req, res) => {
+  try {
+    const [sevil, xayrulla, nosir, hammasi] = await Promise.all([
+      getProviderChatId('sevil'),
+      getProviderChatId('xayrulla'),
+      getProviderChatId('nosir'),
+      getProviderChatId('hammasi')
+    ]);
+    res.json({ sevil: sevil || '', xayrulla: xayrulla || '', nosir: nosir || '', hammasi: hammasi || '' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load transport settings' });
+  }
+});
+
+// PUT /api/telegram/transport-settings
+router.put('/transport-settings', authenticate, async (req, res) => {
+  try {
+    const { sevil, xayrulla, nosir, hammasi } = req.body;
+    await Promise.all([
+      setProviderChatId('sevil',    String(sevil    || '').trim()),
+      setProviderChatId('xayrulla', String(xayrulla || '').trim()),
+      setProviderChatId('nosir',    String(nosir    || '').trim()),
+      setProviderChatId('hammasi',  String(hammasi  || '').trim())
+    ]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save transport settings' });
   }
 });
 

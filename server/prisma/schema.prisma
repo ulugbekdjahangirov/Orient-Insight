@@ -187,6 +187,7 @@ model Booking {
   // Маршруты транспорта
   routes          Route[]
   telegramConfirmations TelegramConfirmation[]
+  transportConfirmations TransportConfirmation[]
 
   // Tour services (Eintritt, Metro, Shou, Other)
   tourServices    TourService[]
@@ -958,6 +959,24 @@ model TelegramConfirmation {
 
   @@index([bookingId])
   @@index([hotelId])
+}
+
+// ============================================
+// Module: Transport Confirmations (marshrut varaqasi)
+// ============================================
+
+model TransportConfirmation {
+  id          Int      @id @default(autoincrement())
+  bookingId   Int
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider    String   // "sevil" | "xayrulla" | "nosir"
+  status      String   @default("PENDING") // PENDING | CONFIRMED | REJECTED
+  sentAt      DateTime @default(now())
+  respondedAt DateTime?
+  confirmedBy String?
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
 }
 
 // System settings (key-value store)

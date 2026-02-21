@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { bookingsApi, touristsApi, hotelsApi } from '../../services/api';
+import { bookingsApi, touristsApi, hotelsApi, telegramApi } from '../../services/api';
 import { routesApi, railwaysApi, flightsApi } from '../../services/api';
 import toast from 'react-hot-toast';
-import { MapPin, Printer, Loader2, Edit, Save, X, Download, Plus, Trash2, FileDown } from 'lucide-react';
+import { MapPin, Printer, Loader2, Edit, Save, X, Download, Plus, Trash2, FileDown, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -28,6 +28,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
     guidePhone: '+998 97 929 03 85'
   });
   const printRef = useRef(null);
+  const [sendingTelegram, setSendingTelegram] = useState({});
 
   useEffect(() => {
     loadItineraryData();
@@ -403,7 +404,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   // Export to PDF function
   // provider: 'all', 'xayrulla', 'sevil'
-  const exportToPDF = (provider = 'all') => {
+  const exportToPDF = (provider = 'all', returnBlob = false) => {
     try {
       const doc = new jsPDF('p', 'mm', 'a4');
       let yPos = 20;
@@ -725,18 +726,52 @@ export default function ItineraryPreview({ bookingId, booking }) {
         });
       }
 
-      // Save
+      // Save or return blob
       const providerSuffix = provider === 'xayrulla'
         ? ' (Xayrulla)'
         : provider === 'sevil'
         ? ' (Sevil)'
+        : provider === 'nosir'
+        ? ' (Nosir)'
         : '';
       const filename = `${booking?.bookingNumber || 'ER'} Marshrut varaqasi${providerSuffix}.pdf`;
+      if (returnBlob) return doc.output('blob');
       doc.save(filename);
       toast.success('PDF сақланди!');
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('PDF экспорт хатолиги');
+    }
+  };
+
+  const sendToTelegram = async (provider) => {
+    setSendingTelegram(prev => ({ ...prev, [provider]: true }));
+    try {
+      const blob = exportToPDF(provider, true);
+      if (!blob) throw new Error('PDF generatsiya qilishda xatolik');
+      const providerLabel = provider === 'xayrulla' ? 'Xayrulla' : provider === 'sevil' ? 'Sevil' : 'Nosir';
+      const filename = `${booking?.bookingNumber || 'ER'} Marshrut varaqasi (${providerLabel}).pdf`;
+      await telegramApi.sendMarshrut(booking.id, provider, blob, filename);
+      toast.success(`${providerLabel} ga muvaffaqiyatli yuborildi!`);
+    } catch (err) {
+      toast.error('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingTelegram(prev => ({ ...prev, [provider]: false }));
+    }
+  };
+
+  const sendToAllTelegram = async () => {
+    setSendingTelegram(prev => ({ ...prev, all: true }));
+    try {
+      const blob = exportToPDF('all', true);
+      if (!blob) throw new Error('PDF generatsiya qilishda xatolik');
+      const filename = `${booking?.bookingNumber || 'ER'} Marshrut varaqasi (Hammasi).pdf`;
+      await telegramApi.sendMarshrut(booking.id, 'hammasi', blob, filename);
+      toast.success('Muvaffaqiyatli yuborildi!');
+    } catch (err) {
+      toast.error('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingTelegram(prev => ({ ...prev, all: false }));
     }
   };
 
@@ -1234,36 +1269,90 @@ export default function ItineraryPreview({ bookingId, booking }) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-3 print:hidden">
-        {/* PDF Download Buttons */}
-        <button
-          onClick={() => exportToPDF('all')}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl"
-        >
-          <FileDown className="w-4 h-4" />
-          PDF (Hammasi)
-        </button>
-        <button
-          onClick={() => exportToPDF('xayrulla')}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-        >
-          <FileDown className="w-4 h-4" />
-          PDF (Xayrulla)
-        </button>
-        <button
-          onClick={() => exportToPDF('sevil')}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-        >
-          <FileDown className="w-4 h-4" />
-          PDF (Sevil)
-        </button>
-        <button
-          onClick={() => exportToPDF('nosir')}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-        >
-          <FileDown className="w-4 h-4" />
-          PDF (Nosir)
-        </button>
+      <div className="flex items-center justify-end gap-3 print:hidden flex-wrap">
+        {/* PDF (Hammasi) + Telegram (barchaga) */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => exportToPDF('all')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-l-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+          >
+            <FileDown className="w-4 h-4" />
+            PDF (Hammasi)
+          </button>
+          <button
+            onClick={sendToAllTelegram}
+            disabled={sendingTelegram['all']}
+            title="Barcha provayderga Telegram yuborish (Xayrulla + Sevil + Nosir)"
+            className="flex items-center px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+          >
+            {sendingTelegram['all']
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Xayrulla: PDF + Telegram */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => exportToPDF('xayrulla')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-l-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+          >
+            <FileDown className="w-4 h-4" />
+            PDF (Xayrulla)
+          </button>
+          <button
+            onClick={() => sendToTelegram('xayrulla')}
+            disabled={sendingTelegram['xayrulla']}
+            title="Xayrulla ga Telegram yuborish"
+            className="flex items-center px-3 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+          >
+            {sendingTelegram['xayrulla']
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Sevil: PDF + Telegram */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => exportToPDF('sevil')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-l-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+          >
+            <FileDown className="w-4 h-4" />
+            PDF (Sevil)
+          </button>
+          <button
+            onClick={() => sendToTelegram('sevil')}
+            disabled={sendingTelegram['sevil']}
+            title="Sevil ga Telegram yuborish"
+            className="flex items-center px-3 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+          >
+            {sendingTelegram['sevil']
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Nosir: PDF + Telegram */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => exportToPDF('nosir')}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-l-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+          >
+            <FileDown className="w-4 h-4" />
+            PDF (Nosir)
+          </button>
+          <button
+            onClick={() => sendToTelegram('nosir')}
+            disabled={sendingTelegram['nosir']}
+            title="Nosir ga Telegram yuborish"
+            className="flex items-center px-3 py-2.5 bg-blue-400 hover:bg-blue-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+          >
+            {sendingTelegram['nosir']
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Send className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Itinerary Document */}

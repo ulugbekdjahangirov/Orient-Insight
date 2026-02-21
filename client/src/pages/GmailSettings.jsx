@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { gmailApi } from '../services/api';
+import { gmailApi, telegramApi } from '../services/api';
 
 export default function GmailSettings() {
   const [loading, setLoading] = useState(true);
@@ -8,11 +8,14 @@ export default function GmailSettings() {
   const [newEmail, setNewEmail] = useState('');
   const [polling, setPolling] = useState(false);
   const [message, setMessage] = useState(null);
+  const [transportChatIds, setTransportChatIds] = useState({ sevil: '', xayrulla: '', nosir: '', hammasi: '' });
+  const [savingTransport, setSavingTransport] = useState(false);
 
   useEffect(() => {
     loadStatus();
     loadSettings();
     checkAuthCallback();
+    loadTransportSettings();
   }, []);
 
   const checkAuthCallback = () => {
@@ -114,6 +117,27 @@ export default function GmailSettings() {
     } catch (error) {
       console.error('Failed to save settings:', error);
       setMessage({ type: 'error', text: 'Ошибка сохранения настроек' });
+    }
+  };
+
+  const loadTransportSettings = async () => {
+    try {
+      const res = await telegramApi.getTransportSettings();
+      setTransportChatIds(res.data);
+    } catch (e) {
+      console.error('Failed to load transport settings:', e);
+    }
+  };
+
+  const handleSaveTransport = async () => {
+    setSavingTransport(true);
+    try {
+      await telegramApi.saveTransportSettings(transportChatIds);
+      setMessage({ type: 'success', text: 'Transport Telegram sozlamalari saqlandi' });
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Saqlashda xatolik' });
+    } finally {
+      setSavingTransport(false);
     }
   };
 
@@ -229,6 +253,41 @@ export default function GmailSettings() {
           className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
         >
           Сохранить настройки
+        </button>
+      </div>
+
+      {/* Transport Telegram Settings */}
+      <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+        <h2 className="text-lg font-semibold mb-1">🚌 Transport Telegram sozlamalari</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Marshrut varaqasini Telegram orqali provayderga yuborish uchun har bir provayder uchun chat ID kiriting.
+          Chat ID ni bilish uchun provayderdan bot ga xabar yozishini so'rang, keyin GmailSettings → Known chats dan ID ni oling.
+        </p>
+        <div className="space-y-3 mb-4">
+          {[
+            { key: 'xayrulla', label: 'Xayrulla',  placeholder: '-123456789' },
+            { key: 'sevil',    label: 'Sevil aka',  placeholder: '-123456789' },
+            { key: 'nosir',    label: 'Nosir aka',  placeholder: '-123456789' },
+            { key: 'hammasi',  label: 'Hammasi',    placeholder: '-123456789 (barcha PDF tasdiqlash uchun)' },
+          ].map(({ key, label, placeholder }) => (
+            <div key={key} className="flex items-center gap-3">
+              <label className="w-28 text-sm font-medium text-gray-700 flex-shrink-0">{label}</label>
+              <input
+                type="text"
+                value={transportChatIds[key] || ''}
+                onChange={e => setTransportChatIds(prev => ({ ...prev, [key]: e.target.value }))}
+                placeholder={placeholder}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={handleSaveTransport}
+          disabled={savingTransport}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+        >
+          {savingTransport ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
       </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { telegramApi } from '../services/api';
-import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck } from 'lucide-react';
 
 const TABS = [
   { id: 'hotels', label: 'Hotels', icon: Building2 },
@@ -317,6 +317,146 @@ function BookingsGroupedTab({ confirmations, onDelete }) {
   );
 }
 
+const PROVIDER_CONFIG = {
+  sevil:    { label: 'Sevil aka',  color: 'bg-emerald-100 text-emerald-800' },
+  xayrulla: { label: 'Xayrulla',   color: 'bg-yellow-100 text-yellow-800' },
+  nosir:    { label: 'Nosir aka',  color: 'bg-blue-100 text-blue-800' },
+};
+
+function ProviderBadge({ provider }) {
+  const cfg = PROVIDER_CONFIG[provider] || { label: provider, color: 'bg-gray-100 text-gray-700' };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
+      <Truck className="w-3 h-3" /> {cfg.label}
+    </span>
+  );
+}
+
+function TransportTab({ confirmations, onDelete }) {
+  const [deletingId, setDeletingId] = useState(null);
+  const [openBookings, setOpenBookings] = useState({});
+
+  const toggleBooking = (bookingId) => {
+    setOpenBookings(prev => ({ ...prev, [bookingId]: !prev[bookingId] }));
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Bu qatorni o\'chirishni tasdiqlaysizmi?')) return;
+    setDeletingId(id);
+    try {
+      await telegramApi.deleteTransportConfirmation(id);
+      onDelete(id);
+    } catch {
+      alert('O\'chirishda xatolik');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Group by bookingId
+  const grouped = {};
+  confirmations.forEach(c => {
+    const key = c.bookingId;
+    if (!grouped[key]) {
+      grouped[key] = {
+        bookingId: c.bookingId,
+        bookingNumber: c.booking?.bookingNumber || `#${c.bookingId}`,
+        departureDate: c.booking?.departureDate,
+        items: []
+      };
+    }
+    grouped[key].items.push(c);
+  });
+
+  const groups = Object.values(grouped).sort((a, b) => a.bookingNumber.localeCompare(b.bookingNumber));
+
+  if (groups.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <Bus className="w-12 h-12 mb-3 opacity-30" />
+        <p className="text-sm">Hali hech qanday marshrut varaqasi yuborilmagan</p>
+        <p className="text-xs mt-1">Marshrut varaqasi Telegram orqali provayderga yuborilgandan so'ng ko'rinadi</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {groups.map(group => {
+        const isOpen = !!openBookings[group.bookingId];
+        const statusCounts = {};
+        group.items.forEach(c => { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; });
+        const statusSummary = [
+          statusCounts.CONFIRMED && `✅ ${statusCounts.CONFIRMED}`,
+          statusCounts.PENDING   && `🕐 ${statusCounts.PENDING}`,
+          statusCounts.REJECTED  && `❌ ${statusCounts.REJECTED}`,
+        ].filter(Boolean).join('  ');
+
+        return (
+          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <button
+              onClick={() => toggleBooking(group.bookingId)}
+              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+            >
+              {isOpen
+                ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              }
+              <div className="flex-1 min-w-0">
+                <Link
+                  to={`/bookings/${group.bookingId}`}
+                  onClick={e => e.stopPropagation()}
+                  className="font-semibold text-primary-600 hover:underline"
+                >
+                  {group.bookingNumber}
+                </Link>
+                {group.departureDate && (
+                  <span className="ml-2 text-xs text-gray-500">{formatDate(group.departureDate)}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {statusSummary && <span className="text-sm">{statusSummary}</span>}
+                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                  {group.items.length} ta
+                </span>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="divide-y divide-gray-50">
+                {group.items.map(item => (
+                  <div key={item.id} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors group/row">
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                      <ProviderBadge provider={item.provider} />
+                    </div>
+                    <StatusBadge status={item.status} />
+                    <span className="text-xs text-gray-400 hidden sm:block">
+                      {item.confirmedBy || '—'}
+                    </span>
+                    <span className="text-xs text-gray-400 hidden md:block">
+                      {item.respondedAt ? formatDateTime(item.respondedAt) : formatDateTime(item.sentAt)}
+                    </span>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deletingId === item.id}
+                      className="opacity-0 group-hover/row:opacity-100 p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 flex-shrink-0"
+                      title="O'chirish"
+                    >
+                      {deletingId === item.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ComingSoonTab({ label }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-gray-400">
@@ -344,6 +484,7 @@ export default function Partners() {
   const [hotelSubTab, setHotelSubTab] = useState('ER');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [transportConfirmations, setTransportConfirmations] = useState([]);
   const [confirmations, setConfirmations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -355,8 +496,12 @@ export default function Partners() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const res = await telegramApi.getConfirmations();
-      setConfirmations(res.data.confirmations || []);
+      const [hotelRes, transportRes] = await Promise.all([
+        telegramApi.getConfirmations(),
+        telegramApi.getTransportConfirmations()
+      ]);
+      setConfirmations(hotelRes.data.confirmations || []);
+      setTransportConfirmations(transportRes.data.confirmations || []);
     } catch (err) {
       setError('Ma\'lumotlarni yuklashda xatolik');
       console.error(err);
@@ -553,7 +698,12 @@ export default function Partners() {
             );
           })()}
           {activeTab === 'restoran' && <ComingSoonTab label="Restoran" />}
-          {activeTab === 'transport' && <ComingSoonTab label="Transport" />}
+          {activeTab === 'transport' && (
+            <TransportTab
+              confirmations={transportConfirmations}
+              onDelete={(id) => setTransportConfirmations(prev => prev.filter(c => c.id !== id))}
+            />
+          )}
           {activeTab === 'gidlar' && <ComingSoonTab label="Gidlar" />}
         </>
       )}
