@@ -969,11 +969,12 @@ model TransportConfirmation {
   id          Int      @id @default(autoincrement())
   bookingId   Int
   booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  provider    String   // "sevil" | "xayrulla" | "nosir"
-  status      String   @default("PENDING") // PENDING | CONFIRMED | REJECTED
+  provider    String   // "sevil" | "xayrulla" | "nosir" | "hammasi"
+  status      String   @default("PENDING_APPROVAL") // PENDING_APPROVAL | APPROVED | REJECTED_BY_APPROVER | PENDING | CONFIRMED | REJECTED
+  approvedBy  String?  // Approver (tekshirdi) ismi — 1-bosqich
+  confirmedBy String?  // Provider (tasdiqladi) ismi — 2-bosqich
   sentAt      DateTime @default(now())
   respondedAt DateTime?
-  confirmedBy String?
   createdAt   DateTime @default(now())
 
   @@index([bookingId])

@@ -11,10 +11,13 @@ const TABS = [
 ];
 
 const STATUS_CONFIG = {
-  PENDING:   { label: 'Kutilmoqda', color: 'bg-yellow-100 text-yellow-800', icon: '🕐' },
-  CONFIRMED: { label: 'Tasdiqladi', color: 'bg-green-100 text-green-800',  icon: '✅' },
-  WAITING:   { label: 'Waiting List', color: 'bg-blue-100 text-blue-800',  icon: '⏳' },
-  REJECTED:  { label: 'Rad qildi',  color: 'bg-red-100 text-red-800',     icon: '❌' },
+  PENDING:              { label: 'Kutilmoqda',             color: 'bg-yellow-100 text-yellow-800', icon: '🕐' },
+  CONFIRMED:            { label: 'Tasdiqladi',             color: 'bg-green-100 text-green-800',   icon: '✅' },
+  WAITING:              { label: 'Waiting List',           color: 'bg-blue-100 text-blue-800',     icon: '⏳' },
+  REJECTED:             { label: 'Rad qildi',              color: 'bg-red-100 text-red-800',       icon: '❌' },
+  PENDING_APPROVAL:     { label: 'Tasdiqlash kutilmoqda',  color: 'bg-amber-100 text-amber-800',   icon: '🕐' },
+  APPROVED:             { label: 'Provayderga yuborildi',  color: 'bg-blue-100 text-blue-800',     icon: '🔄' },
+  REJECTED_BY_APPROVER: { label: 'Rad etildi (admin)',     color: 'bg-red-100 text-red-800',       icon: '❌' },
 };
 
 function formatDate(dateStr) {
@@ -387,9 +390,12 @@ function TransportTab({ confirmations, onDelete }) {
         const statusCounts = {};
         group.items.forEach(c => { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; });
         const statusSummary = [
-          statusCounts.CONFIRMED && `✅ ${statusCounts.CONFIRMED}`,
-          statusCounts.PENDING   && `🕐 ${statusCounts.PENDING}`,
-          statusCounts.REJECTED  && `❌ ${statusCounts.REJECTED}`,
+          statusCounts.CONFIRMED            && `✅ ${statusCounts.CONFIRMED}`,
+          statusCounts.APPROVED             && `🔄 ${statusCounts.APPROVED}`,
+          statusCounts.PENDING_APPROVAL     && `🕐 ${statusCounts.PENDING_APPROVAL}`,
+          statusCounts.PENDING              && `🕐 ${statusCounts.PENDING}`,
+          statusCounts.REJECTED             && `❌ ${statusCounts.REJECTED}`,
+          statusCounts.REJECTED_BY_APPROVER && `❌ ${statusCounts.REJECTED_BY_APPROVER}`,
         ].filter(Boolean).join('  ');
 
         return (
@@ -423,16 +429,32 @@ function TransportTab({ confirmations, onDelete }) {
             </button>
 
             {isOpen && (
-              <div className="divide-y divide-gray-50">
-                {group.items.map(item => (
-                  <div key={item.id} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors group/row">
+              <div className="divide-y divide-gray-100">
+                {group.items.map(item => {
+                  const rowBg = item.status === 'CONFIRMED'
+                    ? 'bg-green-50'
+                    : (item.status === 'REJECTED' || item.status === 'REJECTED_BY_APPROVER')
+                    ? 'bg-red-50'
+                    : 'bg-amber-50';
+                  return (
+                  <div key={item.id} className={`px-5 py-3 flex items-center gap-4 transition-colors group/row ${rowBg}`}>
                     <div className="flex-1 min-w-0 flex items-center gap-3">
                       <ProviderBadge provider={item.provider} />
                     </div>
+                    {item.approvedBy && (
+                      <span className="hidden sm:inline-flex items-center gap-1.5 mr-4">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          ✅ Tekshirdi
+                        </span>
+                        <span className="text-xs text-gray-600">{item.approvedBy}</span>
+                      </span>
+                    )}
                     <StatusBadge status={item.status} />
-                    <span className="text-xs text-gray-400 hidden sm:block">
-                      {item.confirmedBy || '—'}
-                    </span>
+                    {item.confirmedBy && (
+                      <span className="text-xs text-gray-500 hidden sm:block">
+                        {item.confirmedBy}
+                      </span>
+                    )}
                     <span className="text-xs text-gray-400 hidden md:block">
                       {item.respondedAt ? formatDateTime(item.respondedAt) : formatDateTime(item.sentAt)}
                     </span>
@@ -447,7 +469,8 @@ function TransportTab({ confirmations, onDelete }) {
                         : <Trash2 className="w-3.5 h-3.5" />}
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -482,6 +505,7 @@ const STATUS_FILTERS = [
 export default function Partners() {
   const [activeTab, setActiveTab] = useState('hotels');
   const [hotelSubTab, setHotelSubTab] = useState('ER');
+  const [transportSubTab, setTransportSubTab] = useState('ER');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [transportConfirmations, setTransportConfirmations] = useState([]);
@@ -698,12 +722,47 @@ export default function Partners() {
             );
           })()}
           {activeTab === 'restoran' && <ComingSoonTab label="Restoran" />}
-          {activeTab === 'transport' && (
-            <TransportTab
-              confirmations={transportConfirmations}
-              onDelete={(id) => setTransportConfirmations(prev => prev.filter(c => c.id !== id))}
-            />
-          )}
+          {activeTab === 'transport' && (() => {
+            const trCounts = {};
+            transportConfirmations.forEach(c => {
+              const type = (c.booking?.bookingNumber || '').split('-')[0] || '?';
+              trCounts[type] = (trCounts[type] || 0) + 1;
+            });
+            const trFiltered = transportConfirmations.filter(c =>
+              (c.booking?.bookingNumber || '').startsWith(transportSubTab + '-')
+            );
+            return (
+              <>
+                {/* Sub-tabs */}
+                <div className="flex gap-1 mb-4">
+                  {HOTEL_SUB_TABS.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setTransportSubTab(sub)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        transportSubTab === sub
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {sub}
+                      {trCounts[sub] ? (
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          transportSubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {trCounts[sub]}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+                <TransportTab
+                  confirmations={trFiltered}
+                  onDelete={(id) => setTransportConfirmations(prev => prev.filter(c => c.id !== id))}
+                />
+              </>
+            );
+          })()}
           {activeTab === 'gidlar' && <ComingSoonTab label="Gidlar" />}
         </>
       )}

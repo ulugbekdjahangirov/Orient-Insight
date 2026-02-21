@@ -341,6 +341,143 @@ router.post('/webhook', async (req, res) => {
     }
     // ── End admin menu callbacks ───────────────────────────────────────────
 
+    // ── Transport: approver callbacks (tr_approve / tr_decline) ───────────
+    if (data.startsWith('tr_approve:') || data.startsWith('tr_decline:')) {
+      const parts = data.split(':');
+      const trAction   = parts[0]; // tr_approve | tr_decline
+      const trBookingId = parseInt(parts[1]);
+      const trProvider  = parts[2]; // sevil | xayrulla | nosir
+      const isApprove   = trAction === 'tr_approve';
+      const providerLabel = PROVIDER_LABELS[trProvider] || trProvider;
+
+      // Find pending confirmation
+      const confirmation = await prisma.transportConfirmation.findFirst({
+        where: { bookingId: trBookingId, provider: trProvider, status: 'PENDING_APPROVAL' },
+        include: {
+          booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true, guide: { select: { name: true, phone: true } } } }
+        }
+      });
+
+      if (!confirmation) {
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+          callback_query_id: callbackQueryId,
+          text: '⚠️ Allaqachon ishlov berilgan yoki topilmadi.',
+          show_alert: true
+        }).catch(() => {});
+        return;
+      }
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isApprove ? `✅ ${providerLabel} ga yuborilmoqda...` : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      if (isApprove) {
+        // Get provider's chat ID
+        const providerChatId = await getProviderChatId(trProvider);
+        if (!providerChatId) {
+          await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+            callback_query_id: callbackQueryId,
+            text: `❌ ${providerLabel} uchun chat ID topilmadi!`,
+            show_alert: true
+          }).catch(() => {});
+          return;
+        }
+
+        // Re-use Telegram file_id from the approver's document message
+        const fileId = cb.message?.document?.file_id;
+        if (!fileId) {
+          console.error('tr_approve: no document file_id in callback message');
+          return;
+        }
+
+        const booking = confirmation.booking;
+        const providerCaption = [
+          `🚌 *Marshrut varaqasi*`,
+          `📋 Booking: *${booking.bookingNumber}*`,
+          `🚗 Transport: *${providerLabel}*`,
+          booking.pax         ? `👥 PAX: *${booking.pax}* kishi`                      : null,
+          booking.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}`  : null,
+          booking.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`          : null,
+          booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+        ].filter(Boolean).join('\n');
+
+        // Send to provider using Telegram file_id (no re-upload needed)
+        await axios.post(`${BOT_API()}/sendDocument`, {
+          chat_id: providerChatId,
+          document: fileId,
+          caption: providerCaption,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: '✅ Tasdiqlash', callback_data: `tr_confirm:${trBookingId}:${trProvider}` },
+              { text: '❌ Rad qilish', callback_data: `tr_reject:${trBookingId}:${trProvider}` }
+            ]]
+          })
+        }).catch(err => console.error('tr_approve sendDocument error:', err.response?.data || err.message));
+
+        // Update confirmation: APPROVED — store approver name in approvedBy
+        await prisma.transportConfirmation.update({
+          where: { id: confirmation.id },
+          data: { status: 'APPROVED', approvedBy: fromName, respondedAt: new Date() }
+        });
+
+        // Edit approver message: remove buttons, show result
+        if (cb.message?.message_id && fromChatId) {
+          const originalCaption = cb.message.caption || '';
+          await axios.post(`${BOT_API()}/editMessageCaption`, {
+            chat_id: fromChatId,
+            message_id: cb.message.message_id,
+            caption: originalCaption + `\n\n✅ ${fromName} tasdiqladi — ${providerLabel} ga yuborildi`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+
+      } else {
+        // Declined by approver
+        await prisma.transportConfirmation.update({
+          where: { id: confirmation.id },
+          data: { status: 'REJECTED_BY_APPROVER', approvedBy: fromName, respondedAt: new Date() }
+        });
+
+        // Edit approver message
+        if (cb.message?.message_id && fromChatId) {
+          const originalCaption = cb.message.caption || '';
+          await axios.post(`${BOT_API()}/editMessageCaption`, {
+            chat_id: fromChatId,
+            message_id: cb.message.message_id,
+            caption: originalCaption + `\n\n❌ ${fromName} tomonidan rad qilindi`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+
+        // Notify admin
+        const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+        if (adminChatId) {
+          const booking = confirmation.booking;
+          const adminMsg = [
+            `❌ *${providerLabel}* uchun marshrut varaqasi rad etildi`,
+            `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
+            booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
+            booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
+            `👤 RAD ETDI: ${fromName}`,
+          ].filter(Boolean).join('\n');
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: adminChatId,
+            text: adminMsg,
+            parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
+      }
+
+      console.log(`Transport approver callback: ${trAction} from ${fromName} for booking #${trBookingId} provider ${trProvider}`);
+      return;
+    }
+    // ── End approver callbacks ──────────────────────────────────────────────
+
     // ── Transport (marshrut varaqasi) callbacks ────────────────────────────
     if (data.startsWith('tr_confirm:') || data.startsWith('tr_reject:')) {
       const parts = data.split(':');
@@ -373,10 +510,20 @@ router.post('/webhook', async (req, res) => {
         }).catch(() => {});
       }
 
-      // Update TransportConfirmation
+      // Fetch confirmation to get approvedBy (tekshirdi) before updating
+      let trApprovedBy = null;
+      try {
+        const existing = await prisma.transportConfirmation.findFirst({
+          where: { bookingId: trBookingId, provider: trProvider, status: { in: ['PENDING', 'APPROVED'] } },
+          select: { approvedBy: true }
+        });
+        trApprovedBy = existing?.approvedBy || null;
+      } catch (e) { /* ignore */ }
+
+      // Update TransportConfirmation (handles both hammasi PENDING and 2-stage APPROVED)
       try {
         await prisma.transportConfirmation.updateMany({
-          where: { bookingId: trBookingId, provider: trProvider, status: 'PENDING' },
+          where: { bookingId: trBookingId, provider: trProvider, status: { in: ['PENDING', 'APPROVED'] } },
           data: {
             status: isConfirm ? 'CONFIRMED' : 'REJECTED',
             confirmedBy: fromName,
@@ -408,6 +555,7 @@ router.post('/webhook', async (req, res) => {
           booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
           booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+          trApprovedBy         ? `👁 TEKSHIRDI: ${trApprovedBy}`                       : null,
           `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
           `🕐 ${fmtDateUtil(now)} ${timeStr}`
         ].filter(Boolean).join('\n');
@@ -565,11 +713,6 @@ router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('
       return res.status(400).json({ error: 'PDF file required' });
     }
 
-    const chatId = await getProviderChatId(provider);
-    if (!chatId) {
-      return res.status(400).json({ error: `${PROVIDER_LABELS[provider] || provider} uchun Telegram chat ID sozlanmagan` });
-    }
-
     const booking = await prisma.booking.findUnique({
       where: { id: parseInt(bookingId) },
       select: {
@@ -586,47 +729,77 @@ router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('
     }
 
     const providerLabel = PROVIDER_LABELS[provider] || provider;
-    const caption = [
+    const buildCaption = (label) => [
       `🚌 *Marshrut varaqasi*`,
       `📋 Booking: *${booking.bookingNumber}*`,
-      `🚗 Transport: *${providerLabel}*`,
+      `🚗 Transport: *${label}*`,
       booking.pax         ? `👥 PAX: *${booking.pax}* kishi`                      : null,
       booking.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}`  : null,
       booking.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`          : null,
       booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
     ].filter(Boolean).join('\n');
 
-    const replyMarkup = JSON.stringify({
-      inline_keyboard: [[
-        { text: '✅ Tasdiqlash', callback_data: `tr_confirm:${bookingId}:${provider}` },
-        { text: '❌ Rad qilish', callback_data: `tr_reject:${bookingId}:${provider}` }
-      ]]
-    });
-
     const token = process.env.TELEGRAM_BOT_TOKEN;
-    const form = new FormData();
-    form.append('chat_id', chatId);
-    form.append('caption', caption);
-    form.append('parse_mode', 'Markdown');
-    form.append('reply_markup', replyMarkup);
-    form.append('document', req.file.buffer, {
-      filename: req.file.originalname || `${booking.bookingNumber}_marshrut.pdf`,
-      contentType: 'application/pdf'
-    });
 
-    await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
-      headers: form.getHeaders()
-    });
-
-    // Create TransportConfirmation
-    await prisma.transportConfirmation.create({
-      data: {
-        bookingId: parseInt(bookingId),
-        provider,
-        status: 'PENDING',
-        sentAt: new Date()
+    if (provider === 'hammasi') {
+      // ── Direct send: no 2-stage for "hammasi" ──────────────────────────────
+      const chatId = await getProviderChatId('hammasi');
+      if (!chatId) {
+        return res.status(400).json({ error: 'Hammasi uchun Telegram chat ID sozlanmagan' });
       }
-    });
+      const replyMarkup = JSON.stringify({
+        inline_keyboard: [[
+          { text: '✅ Tasdiqlash', callback_data: `tr_confirm:${bookingId}:hammasi` },
+          { text: '❌ Rad qilish', callback_data: `tr_reject:${bookingId}:hammasi` }
+        ]]
+      });
+      const form = new FormData();
+      form.append('chat_id', chatId);
+      form.append('caption', buildCaption(providerLabel));
+      form.append('parse_mode', 'Markdown');
+      form.append('reply_markup', replyMarkup);
+      form.append('document', req.file.buffer, {
+        filename: req.file.originalname || `${booking.bookingNumber}_marshrut.pdf`,
+        contentType: 'application/pdf'
+      });
+      await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
+        headers: form.getHeaders()
+      });
+      await prisma.transportConfirmation.create({
+        data: { bookingId: parseInt(bookingId), provider: 'hammasi', status: 'PENDING', sentAt: new Date() }
+      });
+
+    } else {
+      // ── 2-stage: send to approver (hammasi) first ──────────────────────────
+      const approverChatId = await getProviderChatId('hammasi');
+      if (!approverChatId) {
+        return res.status(400).json({ error: 'Tasdiqlash uchun Hammasi chat ID sozlanmagan (GmailSettings → Transport)' });
+      }
+      const approveMarkup = JSON.stringify({
+        inline_keyboard: [[
+          { text: `✅ ${providerLabel} ga yuborish`, callback_data: `tr_approve:${bookingId}:${provider}` },
+          { text: '❌ Rad qilish',                   callback_data: `tr_decline:${bookingId}:${provider}` }
+        ]]
+      });
+      const approverCaption = buildCaption(providerLabel) +
+        `\n\n⚠️ _Tasdiqlasangiz, ${providerLabel} ga avtomatik yuboriladi_`;
+
+      const form = new FormData();
+      form.append('chat_id', approverChatId);
+      form.append('caption', approverCaption);
+      form.append('parse_mode', 'Markdown');
+      form.append('reply_markup', approveMarkup);
+      form.append('document', req.file.buffer, {
+        filename: req.file.originalname || `${booking.bookingNumber}_marshrut.pdf`,
+        contentType: 'application/pdf'
+      });
+      await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
+        headers: form.getHeaders()
+      });
+      await prisma.transportConfirmation.create({
+        data: { bookingId: parseInt(bookingId), provider, status: 'PENDING_APPROVAL', sentAt: new Date() }
+      });
+    }
 
     res.json({ success: true });
   } catch (err) {
