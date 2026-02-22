@@ -604,6 +604,7 @@ export default function BookingDetail() {
   // World Insight email send state
   const [worldInsightModal, setWorldInsightModal] = useState(false);
   const [worldInsightEmail, setWorldInsightEmail] = useState('');
+  const [worldInsightName, setWorldInsightName] = useState('Celinda');
   const [worldInsightFirma, setWorldInsightFirma] = useState('Orient Insight');
   const [worldInsightDocType, setWorldInsightDocType] = useState('rechnung'); // 'rechnung' | 'neue-rechnung' | 'gutschrift'
   const [sendingWorldInsight, setSendingWorldInsight] = useState(false);
@@ -638,6 +639,7 @@ export default function BookingDetail() {
       const isNeueRechnung = worldInsightDocType === 'neue-rechnung';
       const form = new FormData();
       form.append('docType', worldInsightDocType);
+      form.append('recipientName', worldInsightName.trim() || 'Celinda');
       if (!isGutschrift) {
         const hotellisteBlob = hotellisteRef.current?.generateBlob();
         if (!hotellisteBlob) throw new Error('Hotelliste PDF generatsiya qilishda xatolik');
@@ -18707,6 +18709,16 @@ ${rowsHtml}
                     </label>
                   ))}
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Empfänger Name</label>
+                <input
+                  type="text"
+                  value={worldInsightName}
+                  onChange={e => setWorldInsightName(e.target.value)}
+                  placeholder="Celinda"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">E-Mail Adresse</label>

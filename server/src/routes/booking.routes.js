@@ -2772,7 +2772,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
 ]), async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { email, docType } = req.body;
+    const { email, docType, recipientName } = req.body;
 
     if (!email) return res.status(400).json({ error: 'E-Mail Adresse fehlt' });
 
@@ -2822,7 +2822,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
       : `Hotelliste & Rechnung für die ${tourName} (${bookingNum})`;
     const html = `
 <div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.6">
-  <p>Liebe Celinda,</p>
+  <p>Liebe ${recipientName || 'Celinda'},</p>
   <p>${
       docType === 'neue-rechnung'
         ? 'Im Anhang findest du die neue <strong>Hotelliste</strong> sowie die neue <strong>Rechnung</strong> für folgende Gruppe:'
