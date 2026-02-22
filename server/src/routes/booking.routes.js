@@ -2805,20 +2805,30 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
       : '—';
     const pax = booking.pax || '—';
 
-    const subject = `Hotelliste & Rechnung – ${bookingNum}`;
+    // Tour name mapping
+    const tourNames = {
+      ER:  'Erlebnisreisen Usbekistan mit Turkmenistan',
+      CO:  'Comfort Tour Usbekistan',
+      KAS: 'KAS Tour Usbekistan',
+      ZA:  'ZA Tour Usbekistan',
+    };
+    const tourName = tourNames[booking.tourType?.code] || booking.tourType?.name || 'Tour';
+
+    const subject = `Hotelliste & Rechnung für die ${tourName} (${bookingNum})`;
     const html = `
 <div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.6">
-  <p>Sehr geehrte Damen und Herren,</p>
-  <p>im Anhang erhalten Sie die <strong>Hotelliste</strong> und die <strong>Rechnung</strong> für folgende Gruppe:</p>
+  <p>Liebe Celinda,</p>
+  <p>im Anhang erhältst du die <strong>Hotelliste</strong> und die <strong>Rechnung</strong> für folgende Gruppe:</p>
   <table style="margin:16px 0;border-collapse:collapse">
+    <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reise:</td><td>${tourName} (Usbekistan Teil)</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Buchungsnummer:</td><td>${bookingNum}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reisedatum:</td><td>${dateRange}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Teilnehmerzahl:</td><td>${pax} Personen</td></tr>
   </table>
-  <p>Bei Rückfragen stehen wir Ihnen gerne zur Verfügung.</p>
+  <p>Bei Fragen melde dich gerne bei uns.</p>
   <br>
-  <p style="color:#444">Mit freundlichen Grüßen,<br>
-  <strong>Orient Insight</strong>, Usbekistan<br>
+  <p style="color:#444">Viele Grüße,<br>
+  <strong>Ulugbek &amp; Siroj</strong><br>
   <span style="color:#888;font-size:12px">orientinsightreisen@gmail.com | orient-insight.uz</span></p>
 </div>`;
 
