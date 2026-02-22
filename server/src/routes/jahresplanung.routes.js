@@ -268,6 +268,64 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       { headers: form.getHeaders() }
     );
 
+    // ── Interactive confirmation message ──────────────────────────────────
+    const sections = req.body.sections ? JSON.parse(req.body.sections) : [];
+    const allRows = [];
+    for (const sec of sections) {
+      for (const row of sec.rows) {
+        if (!row.cancelled && row.bookingId) {
+          allRows.push({ ...row, sectionLabel: sec.label || null });
+        }
+      }
+    }
+
+    if (allRows.length > 0) {
+      // Build message text
+      const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
+      let msgLines = [`📋 *Jahresplanung ${year} — ${tourLabel}*`, `🏨 *${hotel.name}*`, ''];
+      let lastLabel = null;
+      allRows.forEach((row, i) => {
+        if (row.sectionLabel && row.sectionLabel !== lastLabel) {
+          msgLines.push(`*${row.sectionLabel}:*`);
+          lastLabel = row.sectionLabel;
+        }
+        msgLines.push(`${ST_ICON.PENDING} ${i + 1}. ${row.group} | ${row.checkIn} → ${row.checkOut} | ${row.pax} pax | DBL:${row.dbl} TWN:${row.twn} SNGL:${row.sngl}`);
+      });
+
+      // Build inline keyboard — one row per group + bulk row at bottom
+      const keyboard = allRows.map(row => ([
+        { text: `✅ ${row.group}`, callback_data: `jp_c:${row.bookingId}:${hotelId}` },
+        { text: '⏳ WL',           callback_data: `jp_w:${row.bookingId}:${hotelId}` },
+        { text: '❌ Rad',          callback_data: `jp_r:${row.bookingId}:${hotelId}` },
+      ]));
+      keyboard.push([
+        { text: '✅ Barchasini',     callback_data: `jp_ca:${hotelId}` },
+        { text: '⏳ WL barchasi',    callback_data: `jp_wa:${hotelId}` },
+        { text: '❌ Barchasini rad', callback_data: `jp_ra:${hotelId}` },
+      ]);
+
+      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        chat_id: hotel.telegramChatId,
+        text: msgLines.join('\n'),
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard }
+      });
+
+      // Store row data in SystemSetting for webhook rebuilding
+      await prisma.systemSetting.upsert({
+        where: { key: `JP_SECTIONS_${hotelId}` },
+        update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, rows: allRows }) },
+        create: { key: `JP_SECTIONS_${hotelId}`, value: JSON.stringify({ year, tourType, hotelName: hotel.name, rows: allRows }) }
+      });
+
+      // Delete old confirmations and create fresh PENDING ones
+      const bookingIds = allRows.map(r => r.bookingId);
+      await prisma.telegramConfirmation.deleteMany({ where: { bookingId: { in: bookingIds }, hotelId } });
+      await prisma.telegramConfirmation.createMany({
+        data: allRows.map(r => ({ bookingId: r.bookingId, hotelId, status: 'PENDING' }))
+      });
+    }
+
     console.log(`Jahresplanung Telegram sent: ${hotel.name} → ${hotel.telegramChatId}`);
     res.json({ success: true });
   } catch (err) {

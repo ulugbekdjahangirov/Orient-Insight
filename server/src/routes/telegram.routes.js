@@ -661,6 +661,90 @@ router.post('/webhook', async (req, res) => {
     }
     // ── End transport callbacks ────────────────────────────────────────────
 
+    // ── Jahresplanung (JP) confirmation callbacks ─────────────────────────
+    if (data.startsWith('jp_')) {
+      const parts = data.split(':');
+      const action = parts[0];
+      const isBulk = action === 'jp_ca' || action === 'jp_wa' || action === 'jp_ra';
+      const jpHotelId = parseInt(isBulk ? parts[1] : parts[2]);
+      const jpBookingId = isBulk ? null : parseInt(parts[1]);
+
+      const newStatus = (action === 'jp_c' || action === 'jp_ca') ? 'CONFIRMED'
+                      : (action === 'jp_w' || action === 'jp_wa') ? 'WAITING'
+                      : 'REJECTED';
+      const answerText = newStatus === 'CONFIRMED' ? '✅ Tasdiqlandi!'
+                       : newStatus === 'WAITING'   ? "⏳ WL ga qo'shildi."
+                       : '❌ Rad qilindi.';
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: answerText, show_alert: false
+      }).catch(() => {});
+
+      // Load stored rows
+      const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${jpHotelId}` } });
+      if (!setting) { console.warn(`JP_SECTIONS not found for hotelId ${jpHotelId}`); return; }
+      const { year, tourType, hotelName, rows } = JSON.parse(setting.value);
+      const allBookingIds = rows.map(r => r.bookingId);
+      const targetIds = isBulk ? allBookingIds : [jpBookingId];
+
+      // Update confirmation statuses (allow changing previous answer too)
+      await prisma.telegramConfirmation.updateMany({
+        where: { bookingId: { in: targetIds }, hotelId: jpHotelId },
+        data: { status: newStatus, confirmedBy: fromName, respondedAt: new Date() }
+      }).catch(() => {});
+
+      // Get all current statuses to rebuild message
+      const confirmations = await prisma.telegramConfirmation.findMany({
+        where: { hotelId: jpHotelId, bookingId: { in: allBookingIds } }
+      });
+      const statusMap = {};
+      for (const c of confirmations) {
+        if (!statusMap[c.bookingId]) statusMap[c.bookingId] = c.status;
+      }
+
+      // Rebuild message text with current statuses
+      const TOUR_LABELS = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+      const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
+      let msgLines = [`📋 Jahresplanung ${year} — ${TOUR_LABELS[tourType] || tourType}`, `🏨 ${hotelName}`, ''];
+      let lastLabel = null;
+      rows.forEach((row, i) => {
+        if (row.sectionLabel && row.sectionLabel !== lastLabel) {
+          msgLines.push(`${row.sectionLabel}:`);
+          lastLabel = row.sectionLabel;
+        }
+        const icon = ST_ICON[statusMap[row.bookingId]] || '⬜';
+        msgLines.push(`${icon} ${i + 1}. ${row.group} | ${row.checkIn} → ${row.checkOut} | ${row.pax} pax | DBL:${row.dbl} TWN:${row.twn} SNGL:${row.sngl}`);
+      });
+
+      // Rebuild inline keyboard reflecting current statuses
+      const keyboard = rows.map(row => {
+        const st = statusMap[row.bookingId] || 'PENDING';
+        return [
+          { text: st === 'CONFIRMED' ? `✅ ${row.group} ✓` : `✅ ${row.group}`, callback_data: `jp_c:${row.bookingId}:${jpHotelId}` },
+          { text: st === 'WAITING'   ? '⏳ WL ✓'           : '⏳ WL',           callback_data: `jp_w:${row.bookingId}:${jpHotelId}` },
+          { text: st === 'REJECTED'  ? '❌ Rad ✓'          : '❌ Rad',          callback_data: `jp_r:${row.bookingId}:${jpHotelId}` },
+        ];
+      });
+      keyboard.push([
+        { text: '✅ Barchasini',     callback_data: `jp_ca:${jpHotelId}` },
+        { text: '⏳ WL barchasi',    callback_data: `jp_wa:${jpHotelId}` },
+        { text: '❌ Barchasini rad', callback_data: `jp_ra:${jpHotelId}` },
+      ]);
+
+      // Edit the original message to reflect updated statuses
+      const msgId  = cb.message?.message_id;
+      const chatId = cb.message?.chat?.id;
+      if (msgId && chatId) {
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: chatId, message_id: msgId,
+          text: msgLines.join('\n'),
+          reply_markup: { inline_keyboard: keyboard }
+        }).catch(e => console.warn('JP editMessageText error:', e.response?.data || e.message));
+      }
+      return;
+    }
+    // ── End JP callbacks ──────────────────────────────────────────────────
+
     const [action, bookingId, hotelId] = data.split(':');
     if (!action || !bookingId || !hotelId) return;
 

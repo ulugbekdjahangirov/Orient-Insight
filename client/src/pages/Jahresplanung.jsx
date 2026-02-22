@@ -488,7 +488,7 @@ function buildPdfPayload(hotelData, tourType, overrides) {
 
   function buildSection(rows, label) {
     const dataRows = rows.map((b, i) => ({
-      no: i + 1, group: b.bookingNumber, country,
+      no: i + 1, group: b.bookingNumber, bookingId: b.bookingId, country,
       pax: b.pax || 0,
       checkIn: formatDate(b.checkInDate), checkOut: formatDate(b.checkOutDate),
       dbl: b.dbl || 0, twn: b.twn || 0, sngl: b.sngl || 0,
@@ -1014,8 +1014,9 @@ function HotelsTab({ tourType }) {
     if (!hotel.telegramChatId) { toast.error(`${hotel.name} — Telegram yo'q`); return; }
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
+      const payload = buildPdfPayload(hotelData, tourType, overrides);
       const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
-      await jahresplanungApi.sendHotelTelegram(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType);
+      await jahresplanungApi.sendHotelTelegram(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType, payload.sections);
       toast.success(`Telegram → ${hotel.name}`);
     } catch (err) {
       toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));
