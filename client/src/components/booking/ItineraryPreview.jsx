@@ -242,7 +242,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
         // If no template, generate empty routes
         if (!templateLoaded) {
           console.log('Generating empty routes from booking dates...');
-          const expectedDates = generateDateRange(booking.arrivalDate, booking.endDate);
+          const expectedDates = generateDateRange(booking.departureDate, booking.endDate);
 
           for (const date of expectedDates) {
             const newRoute = {
@@ -1002,8 +1002,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
         const lastDate = new Date(lastRoute.date);
         nextDate = new Date(lastDate);
         nextDate.setDate(nextDate.getDate() + 1);
-      } else if (booking?.arrivalDate) {
-        nextDate = new Date(booking.arrivalDate);
+      } else if (booking?.departureDate) {
+        nextDate = new Date(booking.departureDate);
       }
 
       console.log('Creating route with date:', nextDate.toISOString().split('T')[0]);
