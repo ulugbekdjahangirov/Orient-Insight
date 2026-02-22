@@ -680,11 +680,11 @@ router.post('/webhook', async (req, res) => {
         callback_query_id: callbackQueryId, text: answerText, show_alert: false
       }).catch(() => {});
 
-      // Load stored rows
+      // Load stored groups
       const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${jpHotelId}` } });
       if (!setting) { console.warn(`JP_SECTIONS not found for hotelId ${jpHotelId}`); return; }
-      const { year, tourType, hotelName, rows } = JSON.parse(setting.value);
-      const allBookingIds = rows.map(r => r.bookingId);
+      const { year, tourType, hotelName, groups } = JSON.parse(setting.value);
+      const allBookingIds = groups.map(g => g.bookingId);
       const targetIds = isBulk ? allBookingIds : [jpBookingId];
 
       // Update confirmation statuses (allow changing previous answer too)
@@ -702,27 +702,27 @@ router.post('/webhook', async (req, res) => {
         if (!statusMap[c.bookingId]) statusMap[c.bookingId] = c.status;
       }
 
-      // Rebuild message text with current statuses
+      // Rebuild message — grouped by booking, all visits shown together
       const TOUR_LABELS = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
       let msgLines = [`📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`, `🏨 ${hotelName}`, ''];
-      let lastLabel = null;
-      rows.forEach((row, i) => {
-        if (row.sectionLabel && row.sectionLabel !== lastLabel) {
-          msgLines.push(`${row.sectionLabel}:`);
-          lastLabel = row.sectionLabel;
+      for (const grp of groups) {
+        const st = statusMap[grp.bookingId] || 'PENDING';
+        msgLines.push(`${grp.no}. ${grp.group}`);
+        for (const v of grp.visits) {
+          const visitLabel = v.sectionLabel ? `${v.sectionLabel}: ` : '';
+          msgLines.push(`   ${visitLabel}${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
         }
-        const icon = ST_ICON[statusMap[row.bookingId]] || '⬜';
-        msgLines.push(`${icon} ${i + 1}. ${row.group} | ${row.checkIn} → ${row.checkOut} | ${row.pax} pax | DBL:${row.dbl} TWN:${row.twn} SNGL:${row.sngl}`);
-      });
+        msgLines.push('');
+      }
 
       // Rebuild inline keyboard reflecting current statuses
-      const keyboard = rows.map(row => {
-        const st = statusMap[row.bookingId] || 'PENDING';
+      const keyboard = groups.map(grp => {
+        const st = statusMap[grp.bookingId] || 'PENDING';
         return [
-          { text: st === 'CONFIRMED' ? `✅ ${row.group} ✓` : `✅ ${row.group}`, callback_data: `jp_c:${row.bookingId}:${jpHotelId}` },
-          { text: st === 'WAITING'   ? '⏳ WL ✓'           : '⏳ WL',           callback_data: `jp_w:${row.bookingId}:${jpHotelId}` },
-          { text: st === 'REJECTED'  ? '❌ Rad ✓'          : '❌ Rad',          callback_data: `jp_r:${row.bookingId}:${jpHotelId}` },
+          { text: st === 'CONFIRMED' ? `✅ ${grp.group} ✓` : `✅ ${grp.group}`, callback_data: `jp_c:${grp.bookingId}:${jpHotelId}` },
+          { text: st === 'WAITING'   ? '⏳ WL ✓'           : '⏳ WL',           callback_data: `jp_w:${grp.bookingId}:${jpHotelId}` },
+          { text: st === 'REJECTED'  ? '❌ Rad ✓'          : '❌ Rad',          callback_data: `jp_r:${grp.bookingId}:${jpHotelId}` },
         ];
       });
       keyboard.push([

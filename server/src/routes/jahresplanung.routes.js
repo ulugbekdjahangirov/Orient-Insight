@@ -270,33 +270,46 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
 
     // ── Interactive confirmation message ──────────────────────────────────
     const sections = req.body.sections ? JSON.parse(req.body.sections) : [];
-    const allRows = [];
+
+    // Group rows by bookingId — each booking shows all its visits together
+    const groupedMap = new Map();
+    let grpNo = 0;
     for (const sec of sections) {
       for (const row of sec.rows) {
         if (!row.cancelled && row.bookingId) {
-          allRows.push({ ...row, sectionLabel: sec.label || null });
+          if (!groupedMap.has(row.bookingId)) {
+            grpNo++;
+            groupedMap.set(row.bookingId, { bookingId: row.bookingId, group: row.group, no: grpNo, visits: [] });
+          }
+          groupedMap.get(row.bookingId).visits.push({
+            sectionLabel: sec.label || null,
+            checkIn: row.checkIn, checkOut: row.checkOut,
+            pax: row.pax, dbl: row.dbl, twn: row.twn, sngl: row.sngl
+          });
         }
       }
     }
+    const groups = Array.from(groupedMap.values());
 
-    if (allRows.length > 0) {
-      // Build message text
+    if (groups.length > 0) {
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
-      let msgLines = [`📋 *Заявка ${year} — ${tourLabel}*`, `🏨 *${hotel.name}*`, ''];
-      let lastLabel = null;
-      allRows.forEach((row, i) => {
-        if (row.sectionLabel && row.sectionLabel !== lastLabel) {
-          msgLines.push(`*${row.sectionLabel}:*`);
-          lastLabel = row.sectionLabel;
-        }
-        msgLines.push(`${ST_ICON.PENDING} ${i + 1}. ${row.group} | ${row.checkIn} → ${row.checkOut} | ${row.pax} pax | DBL:${row.dbl} TWN:${row.twn} SNGL:${row.sngl}`);
-      });
 
-      // Build inline keyboard — one row per group + bulk row at bottom
-      const keyboard = allRows.map(row => ([
-        { text: `✅ ${row.group}`, callback_data: `jp_c:${row.bookingId}:${hotelId}` },
-        { text: '⏳ WL',           callback_data: `jp_w:${row.bookingId}:${hotelId}` },
-        { text: '❌ Rad',          callback_data: `jp_r:${row.bookingId}:${hotelId}` },
+      // Build message text — each booking grouped with all its visits
+      let msgLines = [`📋 *Заявка ${year} — ${tourLabel}*`, `🏨 *${hotel.name}*`, ''];
+      for (const grp of groups) {
+        msgLines.push(`*${grp.no}. ${grp.group}*`);
+        for (const v of grp.visits) {
+          const visitLabel = v.sectionLabel ? `${v.sectionLabel}: ` : '';
+          msgLines.push(`   ${visitLabel}${ST_ICON.PENDING} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
+        }
+        msgLines.push('');
+      }
+
+      // Build inline keyboard — one row per booking + bulk row at bottom
+      const keyboard = groups.map(grp => ([
+        { text: `✅ ${grp.group}`, callback_data: `jp_c:${grp.bookingId}:${hotelId}` },
+        { text: '⏳ WL',           callback_data: `jp_w:${grp.bookingId}:${hotelId}` },
+        { text: '❌ Rad',          callback_data: `jp_r:${grp.bookingId}:${hotelId}` },
       ]));
       keyboard.push([
         { text: '✅ Barchasini',     callback_data: `jp_ca:${hotelId}` },
@@ -311,18 +324,18 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         reply_markup: { inline_keyboard: keyboard }
       });
 
-      // Store row data in SystemSetting for webhook rebuilding
+      // Store grouped data in SystemSetting for webhook rebuilding
       await prisma.systemSetting.upsert({
         where: { key: `JP_SECTIONS_${hotelId}` },
-        update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, rows: allRows }) },
-        create: { key: `JP_SECTIONS_${hotelId}`, value: JSON.stringify({ year, tourType, hotelName: hotel.name, rows: allRows }) }
+        update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, groups }) },
+        create: { key: `JP_SECTIONS_${hotelId}`, value: JSON.stringify({ year, tourType, hotelName: hotel.name, groups }) }
       });
 
-      // Delete old confirmations and create fresh PENDING ones
-      const bookingIds = allRows.map(r => r.bookingId);
-      await prisma.telegramConfirmation.deleteMany({ where: { bookingId: { in: bookingIds }, hotelId } });
+      // One TelegramConfirmation per unique booking
+      const uniqueBookingIds = groups.map(g => g.bookingId);
+      await prisma.telegramConfirmation.deleteMany({ where: { bookingId: { in: uniqueBookingIds }, hotelId } });
       await prisma.telegramConfirmation.createMany({
-        data: allRows.map(r => ({ bookingId: r.bookingId, hotelId, status: 'PENDING' }))
+        data: groups.map(g => ({ bookingId: g.bookingId, hotelId, status: 'PENDING' }))
       });
     }
 
