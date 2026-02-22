@@ -602,6 +602,7 @@ export default function BookingDetail() {
   // World Insight email send state
   const [worldInsightModal, setWorldInsightModal] = useState(false);
   const [worldInsightEmail, setWorldInsightEmail] = useState('');
+  const [worldInsightFirma, setWorldInsightFirma] = useState('Orient Insight');
   const [sendingWorldInsight, setSendingWorldInsight] = useState(false);
 
   const sendToWorldInsight = async () => {
@@ -609,14 +610,21 @@ export default function BookingDetail() {
     setSendingWorldInsight(true);
     try {
       const hotellisteBlob = hotellisteRef.current?.generateBlob();
-      const rechnungBlob = rechnungRef.current?.generateOrientInsightBlob();
       if (!hotellisteBlob) throw new Error('Hotelliste PDF generatsiya qilishda xatolik');
+
+      const isInfuturestorm = worldInsightFirma === 'INFUTURESTORM';
+      const rechnungBlob = isInfuturestorm
+        ? rechnungRef.current?.generateInfuturestormBlob()
+        : rechnungRef.current?.generateOrientInsightBlob();
       if (!rechnungBlob) throw new Error('Rechnung PDF generatsiya qilishda xatolik');
 
+      const bookingNum = booking?.bookingNumber || 'booking';
+      const firmaLabel = isInfuturestorm ? 'INFUTURESTORM' : 'OrientInsight';
       const form = new FormData();
-      form.append('hotelliste', hotellisteBlob, `Hotelliste_${booking?.bookingNumber || 'booking'}.pdf`);
-      form.append('rechnung', rechnungBlob, `Rechnung_OrientInsight_${booking?.bookingNumber || 'booking'}.pdf`);
+      form.append('hotelliste', hotellisteBlob, `Hotelliste_${bookingNum}.pdf`);
+      form.append('rechnung', rechnungBlob, `Rechnung_${firmaLabel}_${bookingNum}.pdf`);
       form.append('email', worldInsightEmail.trim());
+      form.append('firma', worldInsightFirma);
 
       await worldInsightApi.sendDocuments(id, form);
       toast.success(`World Insight ga yuborildi: ${worldInsightEmail}`);
@@ -18654,6 +18662,24 @@ ${rowsHtml}
               </button>
             </div>
             <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Rechnung Firma</label>
+                <div className="flex gap-3">
+                  {['Orient Insight', 'INFUTURESTORM'].map(firma => (
+                    <label key={firma} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all ${worldInsightFirma === firma ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <input
+                        type="radio"
+                        name="wiRechnungFirma"
+                        value={firma}
+                        checked={worldInsightFirma === firma}
+                        onChange={() => setWorldInsightFirma(firma)}
+                        className="accent-green-600"
+                      />
+                      <span className="text-sm font-medium">{firma}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">E-Mail Adresse</label>
                 <input

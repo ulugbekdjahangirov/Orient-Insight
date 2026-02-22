@@ -839,7 +839,8 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   };
 
   useImperativeHandle(ref, () => ({
-    generateOrientInsightBlob: () => generateOrientInsightPDF(true)
+    generateOrientInsightBlob: () => generateOrientInsightPDF(true),
+    generateInfuturestormBlob: () => generateInfuturestormPDF(true)
   }));
 
   // Generate Orient Insight PDF
@@ -1095,7 +1096,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   };
 
   // Generate INFUTURESTORM PDF
-  const generateInfuturestormPDF = () => {
+  const generateInfuturestormPDF = (returnBlob = false) => {
     console.log('📄 Generating INFUTURESTORM Rechnung PDF...');
 
     try {
@@ -1324,9 +1325,10 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       doc.setFont('helvetica', 'bold');
       doc.text('INFUTURESTORM PTE. LTD', 15, yPos);
 
-      // Save PDF
+      // Save or return blob
       const docType = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
       const filename = `${docType}_INFUTURESTORM_${booking?.bookingNumber || 'invoice'}.pdf`;
+      if (returnBlob) return doc.output('blob');
       doc.save(filename);
       toast.success('INFUTURESTORM PDF сақланди!');
     } catch (error) {
