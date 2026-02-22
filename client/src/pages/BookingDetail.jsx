@@ -12235,6 +12235,86 @@ export default function BookingDetail() {
                 return dateA - dateB;
               });
 
+            // ── Eintritt Vouchers PDF ──────────────────────────────────────────
+            const downloadEintrittVouchers = () => {
+              const bookingNum = booking?.bookingNumber || '';
+              const paxCount = visibleEntries[0]?.pax ?? tourists?.length ?? 0;
+              const guideName = mainGuide?.guide
+                ? (typeof mainGuide.guide === 'string'
+                    ? mainGuide.guide
+                    : mainGuide.guide?.name || '')
+                : '';
+              const cityRuMap = {
+                tashkent: 'Ташкент', samarkand: 'Самарканд', bukhara: 'Бухара',
+                khiva: 'Хива', kokand: 'Коканд', nurata: 'Нурата', nurota: 'Нурата',
+                fergana: 'Фергана', asraf: 'Асраф',
+              };
+              const fmtDate = (d) => {
+                if (!d) return '';
+                const dt = new Date(d);
+                if (isNaN(dt.getTime())) return '';
+                return String(dt.getDate()).padStart(2, '0') + '.' +
+                  String(dt.getMonth() + 1).padStart(2, '0') + '.' + dt.getFullYear();
+              };
+              const ADDR = `140100, Shota Rustavelli, 45., Samarkand, Uzbekistan.<br>
+Tel.: +998 93 348 42 08<br>
+Email: orientinsightreisen@gmail.com<br>
+License №T-0084-08 from 2021-04-26`;
+              const COMPANY = `"ORIENT INSIGHT"<br>LLC<br>Travel Company`;
+
+              const makeVoucher = (entry) => {
+                if (!entry) return `<div style="flex:1;margin:2mm;"></div>`;
+                const cityKey = (entry.city || '').toLowerCase().trim();
+                const cityRu = cityRuMap[cityKey] || entry.city || '';
+                return `<div style="flex:1;border:1px solid #000;margin:2mm;">
+  <div style="display:flex;border-bottom:1px solid #000;">
+    <div style="flex:3;padding:2mm 3mm;font-size:7.5pt;border-right:1px solid #000;line-height:1.5;">${ADDR}</div>
+    <div style="flex:1;padding:2mm;text-align:center;font-weight:bold;font-size:8pt;display:flex;align-items:center;justify-content:center;line-height:1.5;">${COMPANY}</div>
+  </div>
+  <div style="padding:3mm 4mm;">
+    <div style="font-weight:bold;text-align:center;margin-bottom:2mm;font-size:9pt;">VOUCHER № ${bookingNum}</div>
+    <div style="font-weight:bold;margin-bottom:2.5mm;font-size:8.5pt;">Предъявить в&nbsp; ${entry.name}</div>
+    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Страна:</span><span style="font-size:8pt;">Германия</span></div>
+    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Количество туристов:</span><span style="font-size:8pt;">${paxCount}</span></div>
+    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">№ группы:</span><span style="font-size:8pt;">${bookingNum}</span></div>
+    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Дата:</span><span style="font-size:8pt;">${fmtDate(entry.date)}</span></div>
+    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Ф.И.О. гида:</span><span style="font-size:8pt;">${guideName}</span></div>
+    <div style="display:flex;"><span style="min-width:48mm;font-size:8pt;">Город:</span><span style="font-size:8pt;">${cityRu}</span></div>
+  </div>
+</div>`;
+              };
+
+              let rowsHtml = '';
+              for (let i = 0; i < visibleEntries.length; i += 2) {
+                const left = visibleEntries[i];
+                const right = visibleEntries[i + 1];
+                const pageBreak = i > 0 && i % 4 === 0
+                  ? 'page-break-before:always;' : '';
+                rowsHtml += `<div style="display:flex;${pageBreak}">
+  ${makeVoucher(left)}
+  ${makeVoucher(right)}
+</div>`;
+              }
+
+              const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Vouchers ${bookingNum}</title>
+<style>
+  @page { margin: 8mm; size: A4 portrait; }
+  @media print { .no-print { display: none !important; } }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; }
+  .print-btn { margin: 8px; padding: 8px 20px; background: #2563eb; color: #fff;
+    border: none; cursor: pointer; font-size: 14px; border-radius: 4px; }
+</style></head><body>
+<button class="print-btn no-print" onclick="window.print()">&#128438; Печать / Сохранить как PDF</button>
+${rowsHtml}
+</body></html>`;
+
+              const win = window.open('', '_blank');
+              if (win) { win.document.write(html); win.document.close(); }
+            };
+            // ─────────────────────────────────────────────────────────────────
+
             return (
               <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500"></div>
@@ -12243,12 +12323,23 @@ export default function BookingDetail() {
                     <span className="text-3xl">🎫</span>
                     Eintritt (Entrance Fees) - {booking?.tourType?.code || 'ER'} Tour
                   </h3>
-                  <button
-                    onClick={() => openTourServiceModal('EINTRITT')}
-                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg"
-                  >
-                    + Add Custom
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {visibleEntries.length > 0 && (
+                      <button
+                        onClick={downloadEintrittVouchers}
+                        className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-rose-700 transition-all shadow-lg flex items-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        PDF Vouchers
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openTourServiceModal('EINTRITT')}
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg"
+                    >
+                      + Add Custom
+                    </button>
+                  </div>
                 </div>
                 {visibleEntries.length > 0 ? (
                   <table className="w-full border-collapse">
