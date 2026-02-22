@@ -18,43 +18,51 @@ router.get('/hotels', authenticate, async (req, res) => {
     const tourType = req.query.tourType || 'ER';
 
     const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
-    const endDate = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+    const endDate   = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
-    const accommodations = await prisma.accommodation.findMany({
-      where: {
-        checkInDate: { gte: startDate, lt: endDate },
-        booking: {
-          tourType: { code: tourType }
-        }
-      },
+    function addDays(date, days) {
+      return new Date(new Date(date).getTime() + days * 24 * 60 * 60 * 1000);
+    }
+    function daysBetween(d1, d2) {
+      return Math.round((new Date(d2) - new Date(d1)) / (24 * 60 * 60 * 1000));
+    }
+
+    // ── Step 1: ALL accommodations for this tourType (any year)
+    //    Used for: hotel discovery + offset derivation
+    const allAccommodations = await prisma.accommodation.findMany({
+      where: { booking: { tourType: { code: tourType } } },
       include: {
         hotel: { include: { city: true } },
         booking: {
-          select: {
-            id: true,
-            bookingNumber: true,
-            pax: true,
-            status: true,
-            departureDate: true
-          }
+          select: { id: true, bookingNumber: true, pax: true, status: true, departureDate: true }
         },
         rooms: true
       },
       orderBy: [{ checkInDate: 'asc' }]
     });
 
-    // Group by hotel
+    // ── Step 2: Build hotel reference map (hotel info + per-booking offset data, any year)
+    // hotelRefMap: hotelId → { hotel, refBookings: Map<bookingId, [acc, ...]> }
+    const hotelRefMap = new Map();
+    for (const acc of allAccommodations) {
+      if (!hotelRefMap.has(acc.hotelId)) {
+        hotelRefMap.set(acc.hotelId, { hotel: acc.hotel, refBookings: new Map() });
+      }
+      const hr = hotelRefMap.get(acc.hotelId);
+      if (!hr.refBookings.has(acc.bookingId)) hr.refBookings.set(acc.bookingId, []);
+      hr.refBookings.get(acc.bookingId).push(acc);
+    }
+
+    // ── Step 3: Build display hotelMap — only REAL entries for target year
     const hotelMap = new Map();
-    for (const acc of accommodations) {
-      const hotelId = acc.hotelId;
-      if (!hotelMap.has(hotelId)) {
-        hotelMap.set(hotelId, {
-          hotel: acc.hotel,
-          bookings: []
-        });
+    for (const acc of allAccommodations) {
+      const checkIn = new Date(acc.checkInDate);
+      if (checkIn < startDate || checkIn >= endDate) continue; // skip non-year entries
+
+      if (!hotelMap.has(acc.hotelId)) {
+        hotelMap.set(acc.hotelId, { hotel: acc.hotel, bookings: [] });
       }
 
-      // Calculate rooms from AccommodationRoom
       let dbl = 0, twn = 0, sngl = 0;
       for (const room of acc.rooms) {
         const code = (room.roomTypeCode || '').toUpperCase();
@@ -64,28 +72,91 @@ router.get('/hotels', authenticate, async (req, res) => {
       }
 
       const isCancelled = acc.booking.status === 'CANCELLED';
-      hotelMap.get(hotelId).bookings.push({
-        bookingId: acc.bookingId,
+      hotelMap.get(acc.hotelId).bookings.push({
+        bookingId:    acc.bookingId,
         bookingNumber: acc.booking.bookingNumber,
-        pax: isCancelled ? 0 : (acc.booking.pax || 0),
-        status: acc.booking.status,
-        checkInDate: acc.checkInDate,
+        pax:          isCancelled ? 0 : (acc.booking.pax || 0),
+        status:       acc.booking.status,
+        checkInDate:  acc.checkInDate,
         checkOutDate: acc.checkOutDate,
-        nights: acc.nights || 0,
-        totalRooms: isCancelled ? 0 : (acc.totalRooms || 0),
-        dbl: isCancelled ? 0 : dbl,
-        twn: isCancelled ? 0 : twn,
+        nights:       acc.nights || 0,
+        totalRooms:   isCancelled ? 0 : (acc.totalRooms || 0),
+        dbl:  isCancelled ? 0 : dbl,
+        twn:  isCancelled ? 0 : twn,
         sngl: isCancelled ? 0 : sngl,
         notes: acc.notes
       });
     }
 
-    // Sort hotels alphabetically, sort bookings by checkInDate
+    // ── Step 4: Get all target-year bookings for virtual entry generation
+    const yearBookings = await prisma.booking.findMany({
+      where: {
+        tourType: { code: tourType },
+        departureDate: { gte: startDate, lt: endDate }
+      },
+      select: { id: true, bookingNumber: true, pax: true, status: true, departureDate: true },
+      orderBy: { bookingNumber: 'asc' }
+    });
+
+    // ── Step 5: For every hotel ever used by this tourType,
+    //    fill missing year-bookings with virtual (planned) entries
+    for (const [hotelId, hotelRef] of hotelRefMap.entries()) {
+      // Ensure hotel exists in display map
+      if (!hotelMap.has(hotelId)) {
+        hotelMap.set(hotelId, { hotel: hotelRef.hotel, bookings: [] });
+      }
+      const hotelData = hotelMap.get(hotelId);
+
+      const existingIds = new Set(hotelData.bookings.map(b => b.bookingId));
+      const missingBookings = yearBookings.filter(b => !existingIds.has(b.id));
+      if (missingBookings.length === 0) continue;
+
+      // Derive offsets from ANY reference booking (prefer latest year)
+      // Sort refBookings by departure date desc to pick most recent
+      const refEntries = Array.from(hotelRef.refBookings.entries())
+        .sort((a, b) => new Date(b[1][0].booking.departureDate) - new Date(a[1][0].booking.departureDate));
+
+      let offsets = [];
+      for (const [, accs] of refEntries) {
+        const refDep = new Date(accs[0].booking.departureDate);
+        const sorted = [...accs].sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate));
+        offsets = sorted.map(e => ({
+          checkInOffset:  daysBetween(refDep, e.checkInDate),
+          checkOutOffset: daysBetween(refDep, e.checkOutDate),
+          nights: e.nights || daysBetween(e.checkInDate, e.checkOutDate)
+        }));
+        break;
+      }
+      if (offsets.length === 0) continue;
+
+      missingBookings.forEach(b => {
+        const dep = b.departureDate;
+        offsets.forEach(off => {
+          hotelData.bookings.push({
+            bookingId:     b.id,
+            bookingNumber: b.bookingNumber,
+            pax:           16,
+            status:        b.status,
+            checkInDate:   addDays(dep, off.checkInOffset),
+            checkOutDate:  addDays(dep, off.checkOutOffset),
+            nights:        off.nights,
+            totalRooms:    12,
+            dbl: 4, twn: 4, sngl: 4,
+            isVirtual: true
+          });
+        });
+      });
+    }
+
+    // Sort hotels alphabetically, bookings by bookingNumber then checkInDate
     const hotels = Array.from(hotelMap.values())
       .sort((a, b) => a.hotel.name.localeCompare(b.hotel.name))
       .map(h => ({
         ...h,
-        bookings: h.bookings.sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate))
+        bookings: h.bookings.sort((a, b) =>
+          a.bookingNumber.localeCompare(b.bookingNumber) ||
+          new Date(a.checkInDate) - new Date(b.checkInDate)
+        )
       }));
 
     res.json({ hotels, year, tourType });
@@ -200,6 +271,20 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
   } catch (err) {
     console.error('Send hotel telegram error:', err);
     res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
+// GET /api/jahresplanung/all-hotels — active hotels with city info (for hotel picker)
+router.get('/all-hotels', authenticate, async (req, res) => {
+  try {
+    const hotels = await prisma.hotel.findMany({
+      where: { isActive: true },
+      include: { city: true },
+      orderBy: [{ city: { sortOrder: 'asc' } }, { city: { name: 'asc' } }, { name: 'asc' }]
+    });
+    res.json(hotels);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

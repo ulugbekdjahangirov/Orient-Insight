@@ -395,7 +395,8 @@ export const jahresplanungApi = {
     return api.post(`/jahresplanung/send-hotel-telegram/${hotelId}`, form, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-  }
+  },
+  getAllHotels: () => api.get('/jahresplanung/all-hotels')
 };
 
 export default api;

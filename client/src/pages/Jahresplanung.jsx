@@ -1,354 +1,894 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import {
   Building2, UtensilsCrossed, Bus, Download, Mail, Send,
-  ChevronDown, ChevronRight, Loader2, Calendar
+  ChevronDown, ChevronRight, Loader2, MapPin, ArrowRightLeft, Plus, X
 } from 'lucide-react';
 import { jahresplanungApi } from '../services/api';
 
+const YEAR = 2026;
 const TOUR_TYPES = ['ER', 'CO', 'KAS', 'ZA'];
-
 const MAIN_TABS = [
   { id: 'hotels', label: 'Hotels', icon: Building2 },
   { id: 'restoran', label: 'Restoran', icon: UtensilsCrossed },
   { id: 'transport', label: 'Transport', icon: Bus },
 ];
+const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+const CITY_ORDER = ['Tashkent', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'];
 
-const TOUR_NAMES = {
-  ER: 'Erlebnisreisen',
-  CO: 'ComfortPlus',
-  KAS: 'Kasachstan',
-  ZA: 'Zentralasien'
-};
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+function getCityOrder(city) {
+  const i = CITY_ORDER.indexOf(city);
+  return i === -1 ? 999 : i;
 }
 
-function generateHotelPDF(hotelData, year, tourType, returnBlob = false) {
-  const { hotel, bookings } = hotelData;
-  const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+// City-level key for hotel assignment: which hotel this booking goes to within a city
+function cityAssignKey(cityName, b) {
+  return `${cityName}_${b.bookingId}_${new Date(b.checkInDate).toISOString().slice(0, 10)}`;
+}
 
+// Compute effective hotel list for a city (original + extras) with bookings distributed by assignments
+function computeCityHotels(cityName, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels) {
+  const extraIds = cityExtraHotels[cityName] || [];
+  const extraObjs = extraIds
+    .map(id => allHotels.find(h => h.id === id))
+    .filter(Boolean)
+    .filter(h => !originalHotels.find(oh => oh.hotel.id === h.id))
+    .map(h => ({ hotel: h, bookings: [], isExtra: true }));
+
+  const allDisplay = [...originalHotels.map(h => ({ ...h, isExtra: false })), ...extraObjs];
+
+  // Pre-compute visitIndex for every row across all original hotels
+  // visitIndex = 0 (first stay), 1 (second stay) based on checkInDate order per booking
+  const visitIndexMap = {}; // `${bookingId}_${checkIn_iso}` → index
+  for (const hd of originalHotels) {
+    const byBookingId = {};
+    for (const b of hd.bookings) {
+      if (!byBookingId[b.bookingId]) byBookingId[b.bookingId] = [];
+      byBookingId[b.bookingId].push(b);
+    }
+    for (const rows of Object.values(byBookingId)) {
+      rows.sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate));
+      rows.forEach((r, i) => {
+        visitIndexMap[`${r.bookingId}_${new Date(r.checkInDate).toISOString().slice(0, 10)}`] = i;
+      });
+    }
+  }
+
+  // Collect all unique bookings from original hotels (with visitIndex)
+  const allBookings = [];
+  const seen = new Set();
+  for (const hd of originalHotels) {
+    for (const b of hd.bookings) {
+      const iso = new Date(b.checkInDate).toISOString().slice(0, 10);
+      const k = `${b.bookingId}_${iso}`;
+      if (!seen.has(k)) {
+        seen.add(k);
+        const visitIndex = visitIndexMap[k] ?? 0;
+        allBookings.push({ ...b, originalHotelId: hd.hotel.id, visitIndex });
+      }
+    }
+  }
+
+  // Distribute bookings to hotels
+  const map = {};
+  for (const hd of allDisplay) map[hd.hotel.id] = [];
+
+  for (const b of allBookings) {
+    const ck = cityAssignKey(cityName, b);
+    const targetId = bookingHotelAssign[ck] ?? b.originalHotelId;
+    if (map[targetId] !== undefined) map[targetId].push(b);
+    else map[b.originalHotelId]?.push(b);
+  }
+
+  return allDisplay.map(hd => ({ ...hd, bookings: map[hd.hotel.id] || [] }));
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+}
+
+// Split bookings into first/second visits.
+// If bookings have visitIndex (from computeCityHotels), use it directly.
+// Otherwise fall back to count-based split (original behavior).
+function splitVisits(bookings) {
+  if (bookings.length > 0 && 'visitIndex' in bookings[0]) {
+    const first = bookings
+      .filter(b => (b.visitIndex ?? 0) === 0)
+      .sort((a, b) => a.bookingNumber.localeCompare(b.bookingNumber) || new Date(a.checkInDate) - new Date(b.checkInDate));
+    const second = bookings
+      .filter(b => b.visitIndex === 1)
+      .sort((a, b) => a.bookingNumber.localeCompare(b.bookingNumber) || new Date(a.checkInDate) - new Date(b.checkInDate));
+    return { first, second, hasSplit: second.length > 0 };
+  }
+  // Fallback: count-based
+  const byBooking = {};
+  bookings.forEach(b => {
+    if (!byBooking[b.bookingId]) byBooking[b.bookingId] = [];
+    byBooking[b.bookingId].push(b);
+  });
+  Object.values(byBooking).forEach(arr =>
+    arr.sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate))
+  );
+  const sortedIds = Object.keys(byBooking).sort((a, b) =>
+    byBooking[a][0].bookingNumber.localeCompare(byBooking[b][0].bookingNumber)
+  );
+  const first = [], second = [];
+  sortedIds.forEach(id => {
+    first.push(byBooking[id][0]);
+    if (byBooking[id][1]) second.push(byBooking[id][1]);
+  });
+  return { first, second, hasSplit: second.length > 0 };
+}
+
+// Row key for override state
+function rowKey(hotelId, b) {
+  return `${hotelId}_${b.bookingId}_${b.checkInDate}`;
+}
+
+// Click-to-edit numeric cell
+function EditCell({ value, onChange }) {
+  const [editing, setEditing] = useState(false);
+  const [tmp, setTmp] = useState(String(value ?? 0));
+
+  useEffect(() => { setTmp(String(value ?? 0)); }, [value]);
+
+  const commit = () => {
+    const parsed = parseInt(tmp);
+    onChange(isNaN(parsed) ? 0 : parsed);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        type="number" min="0"
+        value={tmp}
+        onChange={e => setTmp(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => e.key === 'Enter' && commit()}
+        className="w-14 text-center border border-blue-400 rounded px-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+        autoFocus
+      />
+    );
+  }
+  return (
+    <span
+      onClick={() => setEditing(true)}
+      className="cursor-pointer hover:bg-amber-50 hover:text-amber-700 rounded px-1 py-0.5 transition-colors select-none"
+      title="Tahrirlash uchun bosing"
+    >
+      {value ?? 0}
+    </span>
+  );
+}
+
+// Status dropdown cell — bitta ustunda OK/WL/✕ tanlov
+const STATUS_OPTIONS = [
+  { value: 'confirmed', label: 'OK', activeCls: 'bg-green-500 text-white', idleCls: 'bg-green-50 text-green-700 hover:bg-green-100' },
+  { value: 'waiting',   label: 'WL', activeCls: 'bg-amber-400 text-white', idleCls: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
+  { value: 'cancelled', label: '✕',  activeCls: 'bg-red-500 text-white',   idleCls: 'bg-red-50 text-red-700 hover:bg-red-100' },
+];
+function StatusCell({ k, rowStatuses, setRowStatus }) {
+  const [open, setOpen] = useState(false);
+  const status = rowStatuses[k];
+  const current = STATUS_OPTIONS.find(o => o.value === status);
+  return (
+    <div className="relative flex justify-center">
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`px-2 py-0.5 rounded text-xs font-bold min-w-[30px] transition-colors ${
+          current ? current.activeCls : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+        }`}
+      >
+        {current ? current.label : '—'}
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-1.5 flex gap-1">
+          {STATUS_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { setRowStatus(k, status === opt.value ? null : opt.value); setOpen(false); }}
+              className={`px-2.5 py-1 rounded text-xs font-bold transition-colors ${
+                status === opt.value ? opt.activeCls : opt.idleCls
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Small hotel-switch button in each row (shown when city has 2+ hotels)
+function HotelSwitcher({ cityKey, currentHotelId, cityHotels, onMove }) {
+  const [open, setOpen] = useState(false);
+  const others = cityHotels.filter(h => h.hotel.id !== currentHotelId);
+  if (others.length === 0) return null;
+  return (
+    <div className="relative inline-block">
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+      <button
+        onClick={() => setOpen(v => !v)}
+        title="Hotelni almashtirish"
+        className="text-gray-300 hover:text-blue-500 transition-colors ml-1"
+      >
+        <ArrowRightLeft className="w-3 h-3" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-xl py-1 min-w-[170px]">
+          <div className="px-3 py-1 text-xs text-gray-400 font-medium border-b border-gray-100">Ko'chirish →</div>
+          {others.map(h => (
+            <button
+              key={h.hotel.id}
+              onClick={() => { onMove(cityKey, h.hotel.id); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-gray-700 flex items-center gap-2"
+            >
+              <Building2 className="w-3 h-3 text-blue-400 flex-shrink-0" />
+              {h.hotel.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Hotel replace/swap button — shown on every hotel card header (fixed positioning)
+function HotelSwapButton({ currentHotelId, availableHotels, onReplace }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+  if (availableHotels.length === 0) return null;
+
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX });
+    }
+    setOpen(v => !v);
+  };
+
+  return (
+    <div className="inline-block">
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+      <button
+        ref={btnRef}
+        onClick={handleOpen}
+        title="Hotelni almashtirish"
+        className="p-1 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
+      >
+        <ArrowRightLeft className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div
+          style={{ position: 'fixed', top: pos.top, left: pos.left }}
+          className="z-50 bg-white border border-gray-200 rounded-lg shadow-xl py-1 min-w-[230px] max-h-52 overflow-y-auto"
+        >
+          <div className="px-3 py-1.5 text-xs text-gray-400 font-medium border-b border-gray-100">Hotel almashtirish →</div>
+          {availableHotels.map(h => (
+            <button
+              key={h.id}
+              onClick={() => { onReplace(h); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 text-gray-700"
+            >
+              <span className="font-medium">{h.name}</span>
+              {h.city?.name && h.city.name !== availableHotels[0]?.city?.name && (
+                <span className="text-gray-400 ml-1">({h.city.name})</span>
+              )}
+              {h.email && <div className="text-gray-400">{h.email}</div>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Add extra hotel button for a city (uses fixed positioning to escape overflow:hidden parents)
+function AddHotelButton({ cityName, availableHotels, onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+  if (availableHotels.length === 0) return null;
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX });
+    }
+    setOpen(v => !v);
+  };
+
+  return (
+    <div className="inline-block">
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+      <button
+        ref={btnRef}
+        onClick={handleOpen}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-200 transition-colors"
+      >
+        <Plus className="w-3.5 h-3.5" /> Hotel qo'shish
+      </button>
+      {open && (
+        <div
+          style={{ position: 'fixed', top: pos.top, left: pos.left }}
+          className="z-50 bg-white border border-gray-200 rounded-lg shadow-xl py-1 min-w-[220px] max-h-52 overflow-y-auto"
+        >
+          {availableHotels.map(h => (
+            <button
+              key={h.id}
+              onClick={() => { onAdd(h); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 text-gray-700"
+            >
+              <span className="font-medium">{h.name}</span>
+              {h.email && <span className="text-gray-400 ml-1.5">{h.email}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Booking table for one visit group (Первый заезд or Второй заезд or no split)
+function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatuses, setRowStatus, visitLabel,
+  cityName, cityHotels, onMoveBooking }) {
+  const getVal = (b, field) => {
+    const k = rowKey(hotelId, b);
+    return overrides[k]?.[field] !== undefined ? overrides[k][field] : (b[field] ?? 0);
+  };
+  const setVal = (b, field, val) => setOverrideVal(rowKey(hotelId, b), field, val);
+
+  const active = bookings.filter(b => b.status !== 'CANCELLED');
+  const totalPax = active.reduce((s, b) => s + getVal(b, 'pax'), 0);
+  const totalDbl = active.reduce((s, b) => s + getVal(b, 'dbl'), 0);
+  const totalTwn = active.reduce((s, b) => s + getVal(b, 'twn'), 0);
+  const totalSngl = active.reduce((s, b) => s + getVal(b, 'sngl'), 0);
+  const totalRooms = totalDbl + totalTwn + totalSngl;
+
+  return (
+    <div className="border-t border-gray-100">
+      {visitLabel && (
+        <div className="bg-indigo-50 px-4 py-1.5 text-xs font-semibold text-indigo-700 uppercase tracking-wider border-b border-indigo-100">
+          {visitLabel}
+        </div>
+      )}
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
+            <th className="px-4 py-2 text-left font-medium">Группа</th>
+            <th className="px-4 py-2 text-left font-medium">Заезд</th>
+            <th className="px-4 py-2 text-left font-medium">Выезд</th>
+            <th className="px-4 py-2 text-center font-medium">Ночей</th>
+            <th className="px-4 py-2 text-center font-medium">PAX</th>
+            <th className="px-4 py-2 text-center font-medium">DBL</th>
+            <th className="px-4 py-2 text-center font-medium">TWN</th>
+            <th className="px-4 py-2 text-center font-medium">SNGL</th>
+            <th className="px-4 py-2 text-center font-medium">Итого</th>
+            <th className="px-3 py-2 text-center font-medium text-gray-500">Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bookings.map(b => {
+            const cancelled = b.status === 'CANCELLED';
+            const pax = getVal(b, 'pax');
+            const dbl = getVal(b, 'dbl');
+            const twn = getVal(b, 'twn');
+            const sngl = getVal(b, 'sngl');
+            const k = rowKey(hotelId, b);
+            const localStatus = rowStatuses[k];
+
+            const rowBg = localStatus === 'confirmed' ? 'bg-green-50'
+                        : localStatus === 'waiting'   ? 'bg-amber-50'
+                        : localStatus === 'cancelled' ? 'bg-red-100'
+                        : cancelled                   ? 'bg-red-50'
+                        :                               'hover:bg-gray-50';
+
+            return (
+              <tr key={k} className={`border-b transition-colors ${rowBg}`}>
+                <td className="px-4 py-1.5">
+                  <div className="flex items-center">
+                    <Link
+                      to={`/bookings/${b.bookingId}`}
+                      className={`font-medium text-sm ${cancelled ? 'text-red-400 line-through' : 'text-primary-600 hover:underline'}`}
+                    >
+                      {b.bookingNumber}
+                    </Link>
+                    {cancelled && (
+                      <span className="ml-2 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">СТОРНО</span>
+                    )}
+                    {!cancelled && cityHotels && cityHotels.length > 1 && (
+                      <HotelSwitcher
+                        cityKey={cityAssignKey(cityName, b)}
+                        currentHotelId={hotelId}
+                        cityHotels={cityHotels}
+                        onMove={onMoveBooking}
+                      />
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-1.5 text-gray-600 text-sm">{formatDate(b.checkInDate)}</td>
+                <td className="px-4 py-1.5 text-gray-600 text-sm">{formatDate(b.checkOutDate)}</td>
+                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">{b.nights || '—'}</td>
+                <td className={`px-4 py-1.5 text-center font-medium text-sm ${cancelled ? 'text-red-400' : ''}`}>
+                  {cancelled ? pax : <EditCell value={pax} onChange={v => setVal(b, 'pax', v)} />}
+                </td>
+                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">
+                  {cancelled ? dbl : <EditCell value={dbl} onChange={v => setVal(b, 'dbl', v)} />}
+                </td>
+                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">
+                  {cancelled ? twn : <EditCell value={twn} onChange={v => setVal(b, 'twn', v)} />}
+                </td>
+                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">
+                  {cancelled ? sngl : <EditCell value={sngl} onChange={v => setVal(b, 'sngl', v)} />}
+                </td>
+                <td className="px-4 py-1.5 text-center font-medium text-gray-700 text-sm">
+                  {cancelled ? 0 : (dbl + twn + sngl) || '—'}
+                </td>
+                <td className="px-3 py-1.5 text-center">
+                  <StatusCell k={k} rowStatuses={rowStatuses} setRowStatus={setRowStatus} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="bg-blue-50 font-semibold text-sm border-t-2 border-blue-100">
+            <td className="px-4 py-2 text-gray-500 text-xs" colSpan={4}>
+              Итого ({active.length} группы, аннуляции не считаются)
+            </td>
+            <td className="px-4 py-2 text-center text-blue-700">{totalPax || '—'}</td>
+            <td className="px-4 py-2 text-center text-blue-700">{totalDbl || '—'}</td>
+            <td className="px-4 py-2 text-center text-blue-700">{totalTwn || '—'}</td>
+            <td className="px-4 py-2 text-center text-blue-700">{totalSngl || '—'}</td>
+            <td className="px-4 py-2 text-center text-blue-700">{totalRooms || '—'}</td>
+            <td />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function generateHotelPDF(hotelData, tourType, overrides, returnBlob = false) {
+  const { hotel, bookings } = hotelData;
+
+  // Apply overrides
+  const resolved = bookings.map(b => {
+    const k = rowKey(hotel.id, b);
+    const o = overrides[k] || {};
+    const cancelled = b.status === 'CANCELLED';
+    return {
+      ...b,
+      pax:  cancelled ? 0 : (o.pax  !== undefined ? o.pax  : (b.pax  || 0)),
+      dbl:  cancelled ? 0 : (o.dbl  !== undefined ? o.dbl  : (b.dbl  || 0)),
+      twn:  cancelled ? 0 : (o.twn  !== undefined ? o.twn  : (b.twn  || 0)),
+      sngl: cancelled ? 0 : (o.sngl !== undefined ? o.sngl : (b.sngl || 0)),
+    };
+  });
+
+  const { first, second, hasSplit } = splitVisits(resolved);
   const cityName = hotel.city?.name || '';
   const tourLabel = TOUR_NAMES[tourType] || tourType;
 
-  // Header
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
+  const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
   doc.text(hotel.name, 14, 18);
+  doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+  doc.text(`${cityName}  |  ${tourLabel}  |  ${YEAR}`, 14, 26);
 
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${cityName}  |  ${tourLabel}  |  ${year}`, 14, 26);
+  const HEAD = [['Группа','Заезд','Выезд','Ночей','PAX','DBL','TWN','SNGL','Итого','Статус']];
+  const COL_STYLES = {
+    0:{cellWidth:25}, 1:{cellWidth:28}, 2:{cellWidth:28},
+    3:{cellWidth:18,halign:'center'}, 4:{cellWidth:16,halign:'center'},
+    5:{cellWidth:16,halign:'center'}, 6:{cellWidth:16,halign:'center'},
+    7:{cellWidth:16,halign:'center'}, 8:{cellWidth:20,halign:'center'}, 9:{cellWidth:22}
+  };
 
-  // Table
-  const tableHead = [['Gruppe', 'Anreise', 'Abreise', 'Nächte', 'PAX', 'DBL', 'TWN', 'EZ', 'Gesamt', 'Status']];
+  function buildRows(rows) {
+    const body = rows.map(b => [
+      b.bookingNumber, formatDate(b.checkInDate), formatDate(b.checkOutDate),
+      b.nights||0, b.pax||0, b.dbl||0, b.twn||0, b.sngl||0,
+      (b.dbl||0)+(b.twn||0)+(b.sngl||0),
+      b.status==='CANCELLED' ? 'СТОРНО' : ''
+    ]);
+    const active = rows.filter(b => b.status!=='CANCELLED');
+    const tot = active.reduce((a,b)=>({
+      pax:a.pax+(b.pax||0), dbl:a.dbl+(b.dbl||0), twn:a.twn+(b.twn||0),
+      sngl:a.sngl+(b.sngl||0), rooms:a.rooms+(b.dbl||0)+(b.twn||0)+(b.sngl||0)
+    }), {pax:0,dbl:0,twn:0,sngl:0,rooms:0});
+    body.push(['ИТОГО','','','',tot.pax,tot.dbl,tot.twn,tot.sngl,tot.rooms,'']);
+    return { body, count: rows.length };
+  }
 
-  const tableBody = bookings.map(b => [
-    b.bookingNumber,
-    formatDate(b.checkInDate),
-    formatDate(b.checkOutDate),
-    b.nights || 0,
-    b.pax || 0,
-    b.dbl || 0,
-    b.twn || 0,
-    b.sngl || 0,
-    (b.dbl || 0) + (b.twn || 0) + (b.sngl || 0),
-    b.status === 'CANCELLED' ? 'STORNO' : ''
-  ]);
-
-  // Summary row
-  const active = bookings.filter(b => b.status !== 'CANCELLED');
-  const totals = active.reduce((acc, b) => ({
-    pax: acc.pax + (b.pax || 0),
-    dbl: acc.dbl + (b.dbl || 0),
-    twn: acc.twn + (b.twn || 0),
-    sngl: acc.sngl + (b.sngl || 0),
-    rooms: acc.rooms + (b.dbl || 0) + (b.twn || 0) + (b.sngl || 0)
-  }), { pax: 0, dbl: 0, twn: 0, sngl: 0, rooms: 0 });
-
-  tableBody.push(['GESAMT', '', '', '', totals.pax, totals.dbl, totals.twn, totals.sngl, totals.rooms, '']);
-
-  autoTable(doc, {
-    startY: 32,
-    head: tableHead,
-    body: tableBody,
-    theme: 'grid',
-    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-    bodyStyles: { fontSize: 9 },
-    columnStyles: {
-      0: { cellWidth: 25 },
-      1: { cellWidth: 28 },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 18, halign: 'center' },
-      4: { cellWidth: 16, halign: 'center' },
-      5: { cellWidth: 16, halign: 'center' },
-      6: { cellWidth: 16, halign: 'center' },
-      7: { cellWidth: 16, halign: 'center' },
-      8: { cellWidth: 20, halign: 'center' },
-      9: { cellWidth: 22 }
-    },
-    didParseCell: (data) => {
-      const rowIdx = data.row.index;
-      if (rowIdx < bookings.length && bookings[rowIdx]?.status === 'CANCELLED') {
-        data.cell.styles.fillColor = [255, 210, 210];
-        data.cell.styles.textColor = [160, 0, 0];
-      }
-      // GESAMT row
-      if (rowIdx === bookings.length) {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [220, 235, 250];
-      }
+  function addTable(startY, rows, title) {
+    if (title) {
+      doc.setFontSize(10); doc.setFont('helvetica','bold');
+      doc.text(title, 14, startY - 2);
     }
-  });
+    const { body, count } = buildRows(rows);
+    autoTable(doc, {
+      startY, head: HEAD, body,
+      theme: 'grid',
+      headStyles: { fillColor:[41,128,185], textColor:255, fontStyle:'bold', fontSize:9 },
+      bodyStyles: { fontSize:9 },
+      columnStyles: COL_STYLES,
+      didParseCell(data) {
+        const ri = data.row.index;
+        if (ri < rows.length && rows[ri]?.status === 'CANCELLED') {
+          data.cell.styles.fillColor = [255,210,210];
+          data.cell.styles.textColor = [160,0,0];
+        }
+        if (ri === count) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [220,235,250];
+        }
+      }
+    });
+    return doc.lastAutoTable.finalY + 8;
+  }
+
+  let y = 32;
+  if (hasSplit) {
+    y = addTable(y, first, 'Первый заезд');
+    y = addTable(y, second, 'Второй заезд');
+  } else {
+    addTable(y, resolved, null);
+  }
 
   if (returnBlob) return doc.output('blob');
-  const filename = `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
-  doc.save(filename);
+  doc.save(`${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`);
 }
 
-function HotelsTab({ year, tourType }) {
+function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverrideVal, rowStatuses, setRowStatus,
+  onEmail, onTelegram, sendingEmail, sendingTelegram, onPDF,
+  cityName, cityHotels, onMoveBooking, isExtra, onRemoveHotel,
+  availableHotelsForSwap, onReplaceHotel }) {
+  const { hotel, bookings } = hotelData;
+  const { first, second, hasSplit } = splitVisits(bookings);
+
+  const getVal = (b, field) => {
+    const k = rowKey(hotel.id, b);
+    return overrides[k]?.[field] !== undefined ? overrides[k][field] : (b[field] ?? 0);
+  };
+  const active = bookings.filter(b => b.status !== 'CANCELLED');
+  const totalPax   = active.reduce((s,b) => s + getVal(b,'pax'), 0);
+  const totalRooms = active.reduce((s,b) => s + getVal(b,'dbl') + getVal(b,'twn') + getVal(b,'sngl'), 0);
+  const sharedProps = { hotelId: hotel.id, overrides, setOverrideVal, rowStatuses, setRowStatus,
+    cityName, cityHotels, onMoveBooking };
+
+  return (
+    <div className={`bg-white border rounded-lg overflow-hidden ${isExtra ? 'border-blue-200' : 'border-gray-200'}`}>
+      <div className="px-4 py-3 flex items-center gap-3">
+        <button onClick={onToggle} className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
+          {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+          <Building2 className={`w-4 h-4 flex-shrink-0 ${isExtra ? 'text-blue-500' : 'text-blue-400'}`} />
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+            <span className="font-medium text-gray-800 text-sm">{hotel.name}</span>
+            {isExtra && <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">qo'shimcha</span>}
+            {hotel.email && <span className="text-xs text-gray-400">{hotel.email}</span>}
+            {availableHotelsForSwap && availableHotelsForSwap.length > 0 && (
+              <HotelSwapButton
+                currentHotelId={hotel.id}
+                availableHotels={availableHotelsForSwap}
+                onReplace={onReplaceHotel}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 mr-2 text-xs text-gray-500">
+            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{bookings.length} группа</span>
+            <span>{totalPax} PAX</span>
+            <span>{totalRooms} ном.</span>
+          </div>
+        </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button onClick={() => onPDF(hotelData)} className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors" title="PDF">
+            <Download className="w-3.5 h-3.5" /> PDF
+          </button>
+          <button onClick={() => onEmail(hotelData)} disabled={!!sendingEmail} className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.email||"Email yo'q"}>
+            {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Mail className="w-3.5 h-3.5"/>} Email
+          </button>
+          <button onClick={() => onTelegram(hotelData)} disabled={!!sendingTelegram} className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.telegramChatId?'TG':"Telegram yo'q"}>
+            {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>} TG
+          </button>
+          {isExtra && (
+            <button onClick={onRemoveHotel} title="Hotelni olib tashlash"
+              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isOpen && (
+        hasSplit ? (
+          <>
+            <BookingsTable bookings={first}  {...sharedProps} visitLabel="Первый заезд" />
+            <BookingsTable bookings={second} {...sharedProps} visitLabel="Второй заезд" />
+          </>
+        ) : (
+          <BookingsTable bookings={bookings} {...sharedProps} visitLabel={null} />
+        )
+      )}
+    </div>
+  );
+}
+
+function HotelsTab({ tourType }) {
   const [loading, setLoading] = useState(true);
   const [hotels, setHotels] = useState([]);
   const [openHotels, setOpenHotels] = useState({});
+  const [openCities, setOpenCities] = useState({});
   const [sendingEmail, setSendingEmail] = useState({});
   const [sendingTelegram, setSendingTelegram] = useState({});
+  const [overrides, setOverrides] = useState({});
+  const [rowStatuses, setRowStatuses] = useState({});
+  // Extra hotels added per city: { cityName: [hotelId, ...] }
+  const [cityExtraHotels, setCityExtraHotels] = useState({});
+  // Booking → hotel assignment within city: { cityAssignKey: hotelId }
+  const [bookingHotelAssign, setBookingHotelAssign] = useState({});
+  // All hotels from DB (for picker)
+  const [allHotels, setAllHotels] = useState([]);
 
+  // Load all hotels once
   useEffect(() => {
-    loadData();
-  }, [year, tourType]);
+    jahresplanungApi.getAllHotels()
+      .then(res => setAllHotels(res.data))
+      .catch(() => {});
+  }, []);
+
+  // Load persisted state when tourType changes
+  useEffect(() => {
+    const load = (key, setter) => {
+      try { const s = localStorage.getItem(key); setter(s ? JSON.parse(s) : {}); } catch { setter({}); }
+    };
+    load(`jp_overrides_${YEAR}_${tourType}`, setOverrides);
+    load(`jp_statuses_${YEAR}_${tourType}`, setRowStatuses);
+    load(`jp_cityExtras_${YEAR}_${tourType}`, setCityExtraHotels);
+    load(`jp_hotelAssign_${YEAR}_${tourType}`, setBookingHotelAssign);
+  }, [tourType]);
+
+  useEffect(() => { loadData(); }, [tourType]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await jahresplanungApi.getHotels(year, tourType);
+      const res = await jahresplanungApi.getHotels(YEAR, tourType);
       setHotels(res.data.hotels);
+      const cities = {};
+      res.data.hotels.forEach(h => { cities[h.hotel.city?.name || 'Бошқа'] = true; });
+      setOpenCities(cities);
     } catch (err) {
       toast.error("Ma'lumot yuklanmadi: " + err.message);
-    } finally {
-      setLoading(false);
+    } finally { setLoading(false); }
+  };
+
+  const setOverrideVal = (key, field, val) => {
+    setOverrides(prev => {
+      const next = { ...prev, [key]: { ...(prev[key]||{}), [field]: val } };
+      try { localStorage.setItem(`jp_overrides_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  const setRowStatus = (key, status) => {
+    setRowStatuses(prev => {
+      const next = { ...prev };
+      if (status === null || status === undefined) delete next[key];
+      else next[key] = status;
+      try { localStorage.setItem(`jp_statuses_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleAddHotel = (cityName, hotel, currentCityHotels) => {
+    // 1. Add new hotel to city extras
+    const newExtras = { ...cityExtraHotels };
+    if (!(newExtras[cityName] || []).includes(hotel.id)) {
+      newExtras[cityName] = [...(newExtras[cityName] || []), hotel.id];
+    }
+    setCityExtraHotels(newExtras);
+    try { localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(newExtras)); } catch {}
+
+    // 2. Auto-assign non-confirmed bookings to the new hotel
+    if (currentCityHotels && currentCityHotels.length > 0) {
+      setBookingHotelAssign(prev => {
+        const next = { ...prev };
+        for (const hd of currentCityHotels) {
+          for (const b of hd.bookings) {
+            const status = rowStatuses[rowKey(hd.hotel.id, b)];
+            // Move if NOT confirmed (null = unset, 'waiting', 'cancelled')
+            if (status !== 'confirmed') {
+              next[cityAssignKey(cityName, b)] = hotel.id;
+            }
+          }
+        }
+        try { localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+        return next;
+      });
     }
   };
 
-  const toggleHotel = (hotelId) => {
-    setOpenHotels(prev => ({ ...prev, [hotelId]: !prev[hotelId] }));
+  const handleReplaceHotel = (cityName, oldHotelId, currentBookings, newHotel) => {
+    // 1. Add new hotel to city extras
+    const newExtras = { ...cityExtraHotels };
+    if (!(newExtras[cityName] || []).includes(newHotel.id)) {
+      newExtras[cityName] = [...(newExtras[cityName] || []), newHotel.id];
+    }
+    // 2. If old hotel was extra, remove it from extras
+    if ((newExtras[cityName] || []).includes(oldHotelId)) {
+      newExtras[cityName] = newExtras[cityName].filter(id => id !== oldHotelId);
+    }
+    setCityExtraHotels(newExtras);
+    try { localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(newExtras)); } catch {}
+
+    // 3. Move all bookings from old hotel → new hotel
+    setBookingHotelAssign(prev => {
+      const next = { ...prev };
+      for (const b of currentBookings) {
+        next[cityAssignKey(cityName, b)] = newHotel.id;
+      }
+      try { localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
-  const handlePDF = (hotelData) => {
-    generateHotelPDF(hotelData, year, tourType);
+  const handleRemoveHotel = (cityName, hotelId) => {
+    // Clean up any assignments pointing to this hotel (they fall back to original)
+    setBookingHotelAssign(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => { if (next[k] === hotelId) delete next[k]; });
+      try { localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    setCityExtraHotels(prev => {
+      const next = { ...prev, [cityName]: (prev[cityName] || []).filter(id => id !== hotelId) };
+      try { localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
+
+  const handleMoveBooking = (cityKey, newHotelId) => {
+    setBookingHotelAssign(prev => {
+      const next = { ...prev, [cityKey]: newHotelId };
+      try { localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handlePDF = (hotelData) => generateHotelPDF(hotelData, tourType, overrides);
 
   const handleEmail = async (hotelData) => {
     const { hotel } = hotelData;
-    if (!hotel.email) {
-      toast.error(`${hotel.name} — email manzil yo'q`);
-      return;
-    }
+    if (!hotel.email) { toast.error(`${hotel.name} — email yo'q`); return; }
     setSendingEmail(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      const blob = generateHotelPDF(hotelData, year, tourType, true);
-      const filename = `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
-      await jahresplanungApi.sendHotelEmail(hotel.id, blob, filename, year, tourType);
+      const blob = generateHotelPDF(hotelData, tourType, overrides, true);
+      await jahresplanungApi.sendHotelEmail(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType);
       toast.success(`Email yuborildi → ${hotel.email}`);
     } catch (err) {
-      toast.error('Email yuborishda xatolik: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setSendingEmail(prev => ({ ...prev, [hotel.id]: false }));
-    }
+      toast.error('Email xatolik: ' + (err.response?.data?.error || err.message));
+    } finally { setSendingEmail(prev => ({ ...prev, [hotel.id]: false })); }
   };
 
   const handleTelegram = async (hotelData) => {
     const { hotel } = hotelData;
-    if (!hotel.telegramChatId) {
-      toast.error(`${hotel.name} — Telegram chat ID yo'q`);
-      return;
-    }
+    if (!hotel.telegramChatId) { toast.error(`${hotel.name} — Telegram yo'q`); return; }
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      const blob = generateHotelPDF(hotelData, year, tourType, true);
-      const filename = `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
-      await jahresplanungApi.sendHotelTelegram(hotel.id, blob, filename, year, tourType);
-      toast.success(`Telegram ga yuborildi → ${hotel.name}`);
+      const blob = generateHotelPDF(hotelData, tourType, overrides, true);
+      await jahresplanungApi.sendHotelTelegram(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType);
+      toast.success(`Telegram → ${hotel.name}`);
     } catch (err) {
-      toast.error('Telegram yuborishda xatolik: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setSendingTelegram(prev => ({ ...prev, [hotel.id]: false }));
-    }
+      toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));
+    } finally { setSendingTelegram(prev => ({ ...prev, [hotel.id]: false })); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary-600"/></div>;
 
-  if (hotels.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-        <Building2 className="w-12 h-12 mb-3 opacity-30" />
-        <p className="text-sm">{year} yil uchun {tourType} tur bo'yicha hotel ma'lumoti topilmadi</p>
-        <p className="text-xs mt-1">Bookings ichida Accommodations qo'shilganda bu yerda ko'rinadi</p>
-      </div>
-    );
-  }
+  if (hotels.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+      <Building2 className="w-12 h-12 mb-3 opacity-30"/>
+      <p className="text-sm">{YEAR} yil uchun {tourType} — hotel ma'lumoti topilmadi</p>
+      <p className="text-xs mt-1">Bookings ichida Accommodations qo'shilganda ko'rinadi</p>
+    </div>
+  );
+
+  // Group by city
+  const cityMap = {};
+  hotels.forEach(hd => {
+    const c = hd.hotel.city?.name || 'Бошқа';
+    if (!cityMap[c]) cityMap[c] = [];
+    cityMap[c].push(hd);
+  });
+  const sortedCities = Object.keys(cityMap).sort((a,b) => getCityOrder(a) - getCityOrder(b));
 
   return (
-    <div className="space-y-3">
-      {hotels.map(hotelData => {
-        const { hotel, bookings } = hotelData;
-        const isOpen = !!openHotels[hotel.id];
-        const active = bookings.filter(b => b.status !== 'CANCELLED');
-        const totalPax = active.reduce((s, b) => s + (b.pax || 0), 0);
-        const totalRooms = active.reduce((s, b) => s + (b.dbl || 0) + (b.twn || 0) + (b.sngl || 0), 0);
+    <div className="space-y-4">
+      {/* Edit hint */}
+      <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
+        💡 PAX, DBL, TWN, ЕД ustunlaridagi raqamlarni bosib tahrirlash mumkin
+      </div>
+
+      {sortedCities.map(city => {
+        const originalHotels = cityMap[city];
+        // Compute effective hotel list with booking distribution
+        const displayHotels = computeCityHotels(city, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels);
+        const isCityOpen = openCities[city] !== false;
+        const totalGroups = displayHotels.reduce((s,hd) => s + hd.bookings.filter(b=>b.status!=='CANCELLED').length, 0);
+        const totalPax = displayHotels.reduce((s,hd) => {
+          return s + hd.bookings.filter(b=>b.status!=='CANCELLED').reduce((ss,b)=>{
+            const k = rowKey(hd.hotel.id, b);
+            return ss + (overrides[k]?.pax ?? b.pax ?? 0);
+          }, 0);
+        }, 0);
+
+        // Hotels available to add/swap in this city (same city, not already displayed)
+        const displayHotelIds = new Set(displayHotels.map(h => h.hotel.id));
+        const availableToAdd = allHotels.filter(h => h.city?.name === city && !displayHotelIds.has(h.id));
 
         return (
-          <div key={hotel.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {/* Hotel header */}
-            <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-              <button
-                onClick={() => toggleHotel(hotel.id)}
-                className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
-              >
-                {isOpen
-                  ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                }
-                <Building2 className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-800">{hotel.name}</h3>
-                  <p className="text-xs text-gray-500">
-                    {hotel.city?.name}
-                    {hotel.email && <span className="ml-2 text-gray-400">· {hotel.email}</span>}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5 text-sm text-gray-600 flex-shrink-0 mr-2">
-                  <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                    {bookings.length} guruh
-                  </span>
-                  <span className="text-xs text-gray-500">{totalPax} PAX</span>
-                  <span className="text-xs text-gray-500">{totalRooms} xona</span>
-                </div>
-              </button>
-
-              {/* Action buttons */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button
-                  onClick={() => handlePDF(hotelData)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors"
-                  title="PDF yuklab olish"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  PDF
-                </button>
-                <button
-                  onClick={() => handleEmail(hotelData)}
-                  disabled={!!sendingEmail[hotel.id]}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                  title={hotel.email || "Email yo'q"}
-                >
-                  {sendingEmail[hotel.id]
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <Mail className="w-3.5 h-3.5" />
-                  }
-                  Email
-                </button>
-                <button
-                  onClick={() => handleTelegram(hotelData)}
-                  disabled={!!sendingTelegram[hotel.id]}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                  title={hotel.telegramChatId ? 'Telegram ga yuborish' : "Telegram chat ID yo'q"}
-                >
-                  {sendingTelegram[hotel.id]
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <Send className="w-3.5 h-3.5" />
-                  }
-                  TG
-                </button>
+          <div key={city} className="rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenCities(prev => ({ ...prev, [city]: !prev[city] }))}
+              className="w-full bg-gray-800 text-white px-5 py-3.5 flex items-center gap-3 hover:bg-gray-700 transition-colors text-left"
+            >
+              {isCityOpen ? <ChevronDown className="w-4 h-4 text-gray-300 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0"/>}
+              <MapPin className="w-5 h-5 text-blue-400 flex-shrink-0"/>
+              <span className="font-semibold text-base flex-1">{city}</span>
+              <div className="flex items-center gap-3 text-sm text-gray-300">
+                <span>{displayHotels.length} отель</span>
+                <span>·</span>
+                <span>{totalGroups} группы</span>
+                <span>·</span>
+                <span>{totalPax} PAX</span>
               </div>
-            </div>
+            </button>
 
-            {/* Bookings table */}
-            {isOpen && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
-                      <th className="px-4 py-2.5 text-left font-medium">Gruppe</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Anreise</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Abreise</th>
-                      <th className="px-4 py-2.5 text-center font-medium">Nächte</th>
-                      <th className="px-4 py-2.5 text-center font-medium">PAX</th>
-                      <th className="px-4 py-2.5 text-center font-medium">DBL</th>
-                      <th className="px-4 py-2.5 text-center font-medium">TWN</th>
-                      <th className="px-4 py-2.5 text-center font-medium">EZ</th>
-                      <th className="px-4 py-2.5 text-center font-medium">Gesamt</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map(b => (
-                      <tr
-                        key={b.bookingId + '_' + b.checkInDate}
-                        className={`border-b border-gray-50 transition-colors ${
-                          b.status === 'CANCELLED'
-                            ? 'bg-red-50'
-                            : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        <td className="px-4 py-2.5">
-                          <Link
-                            to={`/bookings/${b.bookingId}`}
-                            className={`font-medium ${b.status === 'CANCELLED' ? 'text-red-400 line-through' : 'text-primary-600 hover:underline'}`}
-                          >
-                            {b.bookingNumber}
-                          </Link>
-                          {b.status === 'CANCELLED' && (
-                            <span className="ml-2 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
-                              STORNO
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-gray-600">{formatDate(b.checkInDate)}</td>
-                        <td className="px-4 py-2.5 text-gray-600">{formatDate(b.checkOutDate)}</td>
-                        <td className="px-4 py-2.5 text-center text-gray-600">{b.nights || '—'}</td>
-                        <td className={`px-4 py-2.5 text-center font-medium ${b.status === 'CANCELLED' ? 'text-red-400' : ''}`}>
-                          {b.pax || '—'}
-                        </td>
-                        <td className="px-4 py-2.5 text-center text-gray-600">{b.dbl || '—'}</td>
-                        <td className="px-4 py-2.5 text-center text-gray-600">{b.twn || '—'}</td>
-                        <td className="px-4 py-2.5 text-center text-gray-600">{b.sngl || '—'}</td>
-                        <td className="px-4 py-2.5 text-center font-medium text-gray-700">
-                          {((b.dbl || 0) + (b.twn || 0) + (b.sngl || 0)) || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {/* Summary footer */}
-                  <tfoot>
-                    <tr className="bg-blue-50 font-semibold text-gray-800 text-sm border-t-2 border-blue-100">
-                      <td className="px-4 py-2.5 text-gray-600 text-xs" colSpan={4}>
-                        Jami ({active.length} guruh, storno hisobga olinmagan)
-                      </td>
-                      <td className="px-4 py-2.5 text-center text-blue-700">{totalPax || '—'}</td>
-                      <td className="px-4 py-2.5 text-center text-blue-700">
-                        {active.reduce((s, b) => s + (b.dbl || 0), 0) || '—'}
-                      </td>
-                      <td className="px-4 py-2.5 text-center text-blue-700">
-                        {active.reduce((s, b) => s + (b.twn || 0), 0) || '—'}
-                      </td>
-                      <td className="px-4 py-2.5 text-center text-blue-700">
-                        {active.reduce((s, b) => s + (b.sngl || 0), 0) || '—'}
-                      </td>
-                      <td className="px-4 py-2.5 text-center text-blue-700">{totalRooms || '—'}</td>
-                    </tr>
-                  </tfoot>
-                </table>
+            {isCityOpen && (
+              <div className="bg-gray-50 p-3 space-y-2">
+                {displayHotels.map(hd => (
+                  <HotelCard
+                    key={hd.hotel.id}
+                    hotelData={hd}
+                    tourType={tourType}
+                    isOpen={!!openHotels[hd.hotel.id]}
+                    onToggle={() => setOpenHotels(prev => ({ ...prev, [hd.hotel.id]: !prev[hd.hotel.id] }))}
+                    overrides={overrides}
+                    setOverrideVal={setOverrideVal}
+                    rowStatuses={rowStatuses}
+                    setRowStatus={setRowStatus}
+                    sendingEmail={sendingEmail[hd.hotel.id]}
+                    sendingTelegram={sendingTelegram[hd.hotel.id]}
+                    onEmail={handleEmail}
+                    onTelegram={handleTelegram}
+                    onPDF={handlePDF}
+                    cityName={city}
+                    cityHotels={displayHotels}
+                    onMoveBooking={handleMoveBooking}
+                    isExtra={!!hd.isExtra}
+                    onRemoveHotel={() => handleRemoveHotel(city, hd.hotel.id)}
+                    availableHotelsForSwap={allHotels.filter(h => h.city?.name === city && h.id !== hd.hotel.id)}
+                    onReplaceHotel={newHotel => handleReplaceHotel(city, hd.hotel.id, hd.bookings, newHotel)}
+                  />
+                ))}
+                {availableToAdd.length > 0 && (
+                  <div className="pt-1">
+                    <AddHotelButton
+                      cityName={city}
+                      availableHotels={availableToAdd}
+                      onAdd={h => handleAddHotel(city, h, displayHotels)}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -359,99 +899,50 @@ function HotelsTab({ year, tourType }) {
 }
 
 export default function Jahresplanung() {
-  const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState(currentYear);
   const [mainTab, setMainTab] = useState('hotels');
   const [tourTab, setTourTab] = useState('ER');
 
-  const years = [currentYear - 1, currentYear, currentYear + 1];
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Jahresplanung</h1>
-          <p className="text-sm text-gray-500 mt-1">Yillik reja — hotellar, restoranlar, transport</p>
-        </div>
-
-        {/* Year selector */}
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-400" />
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden bg-white">
-            {years.map(y => (
-              <button
-                key={y}
-                onClick={() => setYear(y)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-r border-gray-200 last:border-r-0 ${
-                  year === y
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {y}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Jahresplanung {YEAR}</h1>
+        <p className="text-sm text-gray-500 mt-1">Yillik reja — hotellar, restoranlar, transport</p>
       </div>
 
-      {/* Main tabs */}
       <div className="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
         {MAIN_TABS.map(tab => {
           const Icon = tab.icon;
           return (
-            <button
-              key={tab.id}
-              onClick={() => setMainTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                mainTab === tab.id
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+            <button key={tab.id} onClick={() => setMainTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mainTab===tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              <Icon className="w-4 h-4" />
-              {tab.label}
+              <Icon className="w-4 h-4"/> {tab.label}
             </button>
           );
         })}
       </div>
 
-      {/* Tour type sub-tabs */}
       <div className="flex gap-2 mb-5">
         {TOUR_TYPES.map(t => (
-          <button
-            key={t}
-            onClick={() => setTourTab(t)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              tourTab === t
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+          <button key={t} onClick={() => setTourTab(t)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${tourTab===t ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
           >
             {t}
           </button>
         ))}
       </div>
 
-      {/* Content area */}
-      {mainTab === 'hotels' && (
-        <HotelsTab year={year} tourType={tourTab} />
-      )}
-
-      {mainTab === 'restoran' && (
+      {mainTab==='hotels' && <HotelsTab tourType={tourTab}/>}
+      {mainTab==='restoran' && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <UtensilsCrossed className="w-12 h-12 mb-3 opacity-30" />
-          <p className="text-sm font-medium">Restoran moduli</p>
-          <p className="text-xs mt-1">Tez orada qo'shiladi</p>
+          <UtensilsCrossed className="w-12 h-12 mb-3 opacity-30"/>
+          <p className="text-sm font-medium">Restoran moduli — tez orada</p>
         </div>
       )}
-
-      {mainTab === 'transport' && (
+      {mainTab==='transport' && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <Bus className="w-12 h-12 mb-3 opacity-30" />
-          <p className="text-sm font-medium">Transport moduli</p>
-          <p className="text-xs mt-1">Tez orada qo'shiladi</p>
+          <Bus className="w-12 h-12 mb-3 opacity-30"/>
+          <p className="text-sm font-medium">Transport moduli — tez orada</p>
         </div>
       )}
     </div>
