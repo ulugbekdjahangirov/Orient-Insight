@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle } from 'react';
 import { format } from 'date-fns';
-import { Download, Printer } from 'lucide-react';
+import { Download, Printer, Mail } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const HotellisteDocument = ({ booking, tourists, accommodations, guide }) => {
+const HotellisteDocument = React.forwardRef(function HotellisteDocument({ booking, tourists, accommodations, guide, onWorldInsightSend }, ref) {
   const [emergencyContacts, setEmergencyContacts] = useState([
     { name: 'Miliev Siroj', phone: '+998 97 928 28 14' },
     { name: 'Djahangirov Ulugbek', phone: '+998 93 348 42 08' }
@@ -48,8 +48,12 @@ const HotellisteDocument = ({ booking, tourists, accommodations, guide }) => {
     return '-';
   };
 
+  useImperativeHandle(ref, () => ({
+    generateBlob: () => generatePDF(true)
+  }));
+
   // Generate PDF
-  const generatePDF = () => {
+  const generatePDF = (returnBlob = false) => {
     console.log('📄 Starting PDF generation...');
     console.log('Booking:', booking);
     console.log('Accommodations:', accommodations);
@@ -209,8 +213,9 @@ const HotellisteDocument = ({ booking, tourists, accommodations, guide }) => {
       yPos += 7;
       doc.text('Orient Insight Team', 15, yPos);
 
-      // Save PDF
+      // Save or return blob
       const filename = `Hotelliste_${booking?.bookingNumber || 'booking'}.pdf`;
+      if (returnBlob) return doc.output('blob');
       doc.save(filename);
       toast.success('PDF сақланди!');
     } catch (error) {
@@ -228,7 +233,7 @@ const HotellisteDocument = ({ booking, tourists, accommodations, guide }) => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Action buttons */}
-        <div className="flex gap-3 justify-end print:hidden">
+        <div className="flex gap-3 justify-end print:hidden flex-wrap">
           <button
             onClick={generatePDF}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
@@ -236,6 +241,16 @@ const HotellisteDocument = ({ booking, tourists, accommodations, guide }) => {
             <Download className="w-5 h-5" />
             Скачать PDF
           </button>
+          {onWorldInsightSend && (
+            <button
+              onClick={onWorldInsightSend}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl hover:from-green-700 hover:to-emerald-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+              title="Hotelliste + Rechnung als eine E-Mail an World Insight senden"
+            >
+              <Mail className="w-5 h-5" />
+              An World Insight senden
+            </button>
+          )}
           <button
             onClick={handlePrint}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl hover:from-gray-800 hover:to-gray-900 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
@@ -411,6 +426,6 @@ const HotellisteDocument = ({ booking, tourists, accommodations, guide }) => {
       `}</style>
     </div>
   );
-};
+});
 
 export default HotellisteDocument;

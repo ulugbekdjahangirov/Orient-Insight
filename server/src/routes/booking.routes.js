@@ -2760,6 +2760,94 @@ router.get('/:id/storno-combined/:hotelId', async (req, res) => {
   }
 });
 
+// POST /api/bookings/:bookingId/send-world-insight
+// Send Hotelliste + Rechnung PDFs as one email to World Insight (German language)
+const multerWI = require('multer');
+const uploadWI = multerWI({ storage: multerWI.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const gmailServiceWI = require('../services/gmail.service');
+
+router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
+  { name: 'hotelliste', maxCount: 1 },
+  { name: 'rechnung', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { email } = req.body;
+
+    if (!email) return res.status(400).json({ error: 'E-Mail Adresse fehlt' });
+
+    const hotellisteFile = req.files?.['hotelliste']?.[0];
+    const rechnungFile   = req.files?.['rechnung']?.[0];
+    if (!hotellisteFile) return res.status(400).json({ error: 'Hotelliste PDF fehlt' });
+    if (!rechnungFile)   return res.status(400).json({ error: 'Rechnung PDF fehlt' });
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      select: {
+        bookingNumber: true,
+        departureDate: true,
+        endDate: true,
+        pax: true,
+        tourType: { select: { name: true, code: true } }
+      }
+    });
+    if (!booking) return res.status(404).json({ error: 'Buchung nicht gefunden' });
+
+    const fmtDE = (d) => {
+      if (!d) return '—';
+      const dt = new Date(d);
+      return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+    };
+
+    const bookingNum = booking.bookingNumber || `#${bookingId}`;
+    const dateRange  = (booking.departureDate && booking.endDate)
+      ? `${fmtDE(booking.departureDate)} – ${fmtDE(booking.endDate)}`
+      : '—';
+    const pax = booking.pax || '—';
+
+    const subject = `Hotelliste & Rechnung – ${bookingNum}`;
+    const html = `
+<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.6">
+  <p>Sehr geehrte Damen und Herren,</p>
+  <p>im Anhang erhalten Sie die <strong>Hotelliste</strong> und die <strong>Rechnung</strong> für folgende Gruppe:</p>
+  <table style="margin:16px 0;border-collapse:collapse">
+    <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Buchungsnummer:</td><td>${bookingNum}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reisedatum:</td><td>${dateRange}</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Teilnehmerzahl:</td><td>${pax} Personen</td></tr>
+  </table>
+  <p>Bei Rückfragen stehen wir Ihnen gerne zur Verfügung.</p>
+  <br>
+  <p style="color:#444">Mit freundlichen Grüßen,<br>
+  <strong>Orient Insight</strong>, Usbekistan<br>
+  <span style="color:#888;font-size:12px">orientinsightreisen@gmail.com | orient-insight.uz</span></p>
+</div>`;
+
+    await gmailServiceWI.sendEmail({
+      to: email,
+      subject,
+      html,
+      attachments: [
+        {
+          filename: hotellisteFile.originalname || `Hotelliste_${bookingNum}.pdf`,
+          content: hotellisteFile.buffer,
+          mimeType: 'application/pdf'
+        },
+        {
+          filename: rechnungFile.originalname || `Rechnung_OrientInsight_${bookingNum}.pdf`,
+          content: rechnungFile.buffer,
+          mimeType: 'application/pdf'
+        }
+      ]
+    });
+
+    console.log(`World Insight email sent: ${bookingNum} → ${email}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Send world insight error:', err.message);
+    res.status(500).json({ error: err.message || 'E-Mail konnte nicht gesendet werden' });
+  }
+});
+
 module.exports = router;
 
 

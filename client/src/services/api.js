@@ -367,4 +367,12 @@ export const opexApi = {
   delete: (tourType, category) => api.delete(`/opex/${tourType}/${category}`)
 };
 
+// World Insight email API (Hotelliste + Rechnung combined send)
+export const worldInsightApi = {
+  sendDocuments: (bookingId, formData) =>
+    api.post(`/bookings/${bookingId}/send-world-insight`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+};
+
 export default api;

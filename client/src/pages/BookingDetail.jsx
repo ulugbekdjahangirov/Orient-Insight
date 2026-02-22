@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, worldInsightApi } from '../services/api';
 import { format, addDays, parseISO } from 'date-fns';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
@@ -594,6 +594,39 @@ export default function BookingDetail() {
 
   // Track previous departureDate to detect when it changes
   const prevDepartureDateRef = useRef(null);
+
+  // Refs for Hotelliste + Rechnung PDF blob generation (World Insight email)
+  const hotellisteRef = useRef(null);
+  const rechnungRef = useRef(null);
+
+  // World Insight email send state
+  const [worldInsightModal, setWorldInsightModal] = useState(false);
+  const [worldInsightEmail, setWorldInsightEmail] = useState('');
+  const [sendingWorldInsight, setSendingWorldInsight] = useState(false);
+
+  const sendToWorldInsight = async () => {
+    if (!worldInsightEmail.trim()) return;
+    setSendingWorldInsight(true);
+    try {
+      const hotellisteBlob = hotellisteRef.current?.generateBlob();
+      const rechnungBlob = rechnungRef.current?.generateOrientInsightBlob();
+      if (!hotellisteBlob) throw new Error('Hotelliste PDF generatsiya qilishda xatolik');
+      if (!rechnungBlob) throw new Error('Rechnung PDF generatsiya qilishda xatolik');
+
+      const form = new FormData();
+      form.append('hotelliste', hotellisteBlob, `Hotelliste_${booking?.bookingNumber || 'booking'}.pdf`);
+      form.append('rechnung', rechnungBlob, `Rechnung_OrientInsight_${booking?.bookingNumber || 'booking'}.pdf`);
+      form.append('email', worldInsightEmail.trim());
+
+      await worldInsightApi.sendDocuments(id, form);
+      toast.success(`World Insight ga yuborildi: ${worldInsightEmail}`);
+      setWorldInsightModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message || 'Email yuborishda xatolik');
+    } finally {
+      setSendingWorldInsight(false);
+    }
+  };
 
   // Calculate room counts from tourists' roomPreference/roomNumber
   // Room numbers are unique per accommodation group (Uzbekistan vs Turkmenistan)
@@ -10792,18 +10825,20 @@ export default function BookingDetail() {
             </div>
           )}
 
-          {/* Hotelliste Tab Content */}
-          {documentsTab === 'hotelliste' && (
+          {/* Hotelliste Tab Content — always mounted for World Insight email blob generation */}
+          <div style={{ display: documentsTab === 'hotelliste' ? 'block' : 'none' }}>
             <HotellisteDocument
+              ref={hotellisteRef}
               booking={booking}
               tourists={tourists}
               accommodations={accommodations}
               guide={booking?.guide}
+              onWorldInsightSend={() => { setWorldInsightEmail(''); setWorldInsightModal(true); }}
             />
-          )}
+          </div>
 
-          {/* Rechnung Tab Content */}
-          {documentsTab === 'rechnung' && (
+          {/* Rechnung Tab Content — always mounted for World Insight email blob generation */}
+          <div style={{ display: documentsTab === 'rechnung' ? 'block' : 'none' }}>
             <div className="space-y-4">
               {/* Firma Selector */}
               <div className="bg-white p-4 rounded-xl shadow border border-gray-200">
@@ -10822,13 +10857,15 @@ export default function BookingDetail() {
               </div>
 
               <RechnungDocument
+                ref={rechnungRef}
                 booking={booking}
                 tourists={tourists}
                 invoice={rechnungInvoice}
                 sequentialNumber={rechnungSequentialNumber}
+                onWorldInsightSend={() => { setWorldInsightEmail(''); setWorldInsightModal(true); }}
               />
             </div>
-          )}
+          </div>
 
           {/* Neue Rechnung Tab Content */}
           {documentsTab === 'neue-rechnung' && (
@@ -18601,6 +18638,62 @@ ${rowsHtml}
           onSave={() => loadData()}
           onClose={() => { setAccommodationFormOpen(false); setEditingAccommodation(null); }}
         />
+      )}
+
+      {/* World Insight Email Modal */}
+      {worldInsightModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-700 p-5 rounded-t-2xl flex items-center justify-between">
+              <div>
+                <h3 className="text-white font-bold text-lg">An World Insight senden</h3>
+                <p className="text-green-100 text-sm">Hotelliste + Rechnung (Orient Insight)</p>
+              </div>
+              <button onClick={() => setWorldInsightModal(false)} className="text-white hover:text-green-200 p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">E-Mail Adresse</label>
+                <input
+                  type="email"
+                  value={worldInsightEmail}
+                  onChange={e => setWorldInsightEmail(e.target.value)}
+                  placeholder="world-insight@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  onKeyDown={e => e.key === 'Enter' && !sendingWorldInsight && sendToWorldInsight()}
+                  autoFocus
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Gesendet von: <span className="font-mono">orientinsightreisen@gmail.com</span>
+              </p>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setWorldInsightModal(false)}
+                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  disabled={!worldInsightEmail.trim() || sendingWorldInsight}
+                  onClick={sendToWorldInsight}
+                  className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {sendingWorldInsight ? (
+                    <span>Wird gesendet...</span>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      Senden
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Send Hotel Request Email Modal */}

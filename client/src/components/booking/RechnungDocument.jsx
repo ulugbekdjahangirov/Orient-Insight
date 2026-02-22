@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle } from 'react';
 import { format } from 'date-fns';
-import { Download, Printer, Plus, Trash2, Edit2 } from 'lucide-react';
+import { Download, Printer, Plus, Trash2, Edit2, Mail } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import api, { invoicesApi, pricesApi } from '../../services/api';
 
-const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0 }) => {
+const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0, onWorldInsightSend }, ref) {
   // Format number with space as thousands separator (1234 → 1 234)
   const formatNumber = (num) => {
     if (num === null || num === undefined || num === '') return '';
@@ -838,8 +838,12 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
     return 'für die Erlebnisreisen Usbekistan';
   };
 
+  useImperativeHandle(ref, () => ({
+    generateOrientInsightBlob: () => generateOrientInsightPDF(true)
+  }));
+
   // Generate Orient Insight PDF
-  const generateOrientInsightPDF = () => {
+  const generateOrientInsightPDF = (returnBlob = false) => {
     console.log('📄 Generating Orient Insight Rechnung PDF...');
 
     try {
@@ -1078,9 +1082,10 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       doc.setFont('helvetica', 'bold');
       doc.text('ORIENT INSIGHT GmbH', 15, yPos);
 
-      // Save PDF
+      // Save or return blob
       const docType = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
       const filename = `${docType}_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
+      if (returnBlob) return doc.output('blob');
       doc.save(filename);
       toast.success('Orient Insight PDF сақланди!');
     } catch (error) {
@@ -1369,7 +1374,7 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-amber-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Action buttons */}
-        <div className="flex gap-3 justify-end print:hidden">
+        <div className="flex gap-3 justify-end print:hidden flex-wrap">
           <button
             onClick={addItem}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
@@ -1384,6 +1389,16 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
             <Download className="w-5 h-5" />
             PDF (Orient Insight)
           </button>
+          {onWorldInsightSend && (
+            <button
+              onClick={onWorldInsightSend}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl hover:from-emerald-700 hover:to-teal-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+              title="Hotelliste + Rechnung als eine E-Mail an World Insight senden"
+            >
+              <Mail className="w-5 h-5" />
+              An World Insight senden
+            </button>
+          )}
           <button
             onClick={generateInfuturestormPDF}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
@@ -1667,6 +1682,6 @@ const RechnungDocument = ({ booking, tourists, showThreeRows = false, invoice = 
       `}</style>
     </div>
   );
-};
+});
 
 export default RechnungDocument;
