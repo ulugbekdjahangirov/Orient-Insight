@@ -5,6 +5,8 @@ const multer = require('multer');
 const FormData = require('form-data');
 const axios = require('axios');
 const gmailService = require('../services/gmail.service');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -271,6 +273,191 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
   } catch (err) {
     console.error('Send hotel telegram error:', err);
     res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
+// POST /api/jahresplanung/generate-pdf — server-side PDF via puppeteer (supports Cyrillic)
+router.post('/generate-pdf', authenticate, async (req, res) => {
+  try {
+    const { hotelName, tourType, year, sections } = req.body;
+    const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+    const tourLabel = TOUR_NAMES[tourType] || tourType;
+
+    // Logo
+    const logoPath = path.join(__dirname, '../../uploads/logo.png');
+    let logoHtml = '<div style="font-size:18pt;font-weight:bold;color:#D4842F;margin-bottom:8px">ORIENT INSIGHT</div>';
+    try {
+      if (fs.existsSync(logoPath)) {
+        const dataUrl = `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`;
+        logoHtml = `<img src="${dataUrl}" alt="Orient Insight" style="width:180px;height:auto;margin-bottom:8px" />`;
+      }
+    } catch {}
+
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2,'0')}.${String(today.getMonth()+1).padStart(2,'0')}.${today.getFullYear()}`;
+
+    // Build sections HTML
+    let sectionsHtml = '';
+    for (const sec of sections) {
+      if (sec.label) {
+        sectionsHtml += `<div class="section-label">${sec.label}</div>`;
+      }
+      sectionsHtml += `
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Группа</th>
+            <th>Страна</th>
+            <th>PAX</th>
+            <th>Заезд</th>
+            <th>Выезд</th>
+            <th>DBL</th>
+            <th>TWN</th>
+            <th>SNGL</th>
+            <th>Тип номера</th>
+          </tr>
+        </thead>
+        <tbody>`;
+      for (const row of sec.rows) {
+        if (row.isTotal) {
+          sectionsHtml += `<tr class="row-total">
+            <td></td>
+            <td style="text-align:left;">ИТОГО</td>
+            <td></td>
+            <td>${row.pax}</td>
+            <td></td>
+            <td></td>
+            <td>${row.dbl}</td>
+            <td>${row.twn}</td>
+            <td>${row.sngl}</td>
+            <td></td>
+          </tr>`;
+        } else {
+          const cls = row.cancelled ? 'class="row-cancelled"' : '';
+          sectionsHtml += `<tr ${cls}>
+            <td>${row.no}</td>
+            <td style="text-align:left;">${row.group}</td>
+            <td>${row.cancelled ? 'СТОРНО' : row.country}</td>
+            <td>${row.pax}</td>
+            <td>${row.checkIn}</td>
+            <td>${row.checkOut}</td>
+            <td>${row.dbl}</td>
+            <td>${row.twn}</td>
+            <td>${row.sngl}</td>
+            <td>${row.cancelled ? '' : 'стандарт'}</td>
+          </tr>`;
+        }
+      }
+      sectionsHtml += `</tbody></table>`;
+    }
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4 portrait; margin: 15mm 12mm 15mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Tinos', 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.3; color: #000; }
+    .header-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 10px; }
+    .date-hotel-row { width: 100%; border: none; border-collapse: collapse; margin-bottom: 15px; }
+    .date-hotel-row td { vertical-align: top; padding: 3px; }
+    .zayvka-title { text-align: center; font-size: 14pt; font-weight: bold; margin: 15px 0; text-decoration: underline; }
+    .intro-text { margin-bottom: 15px; text-align: justify; }
+    .section-label { margin: 14px 0 5px 0; font-size: 11pt; font-weight: bold; }
+    .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+    .summary-table th, .summary-table td { border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 8pt; }
+    .summary-table th { background-color: #f0f0f0; font-weight: bold; }
+    .row-cancelled { background: #ffd2d2; color: #a00000; }
+    .row-total { background: #dce3fa; font-weight: bold; }
+    .signature-table { width: 100%; border: none; border-collapse: collapse; margin-top: 25px; font-size: 9pt; }
+    .signature-table td { padding: 5px; }
+  </style>
+</head>
+<body>
+  <!-- Logo + Company Info -->
+  <table class="header-table">
+    <tr>
+      <td style="width:100%;text-align:center;">
+        ${logoHtml}
+        <div style="font-size:9pt;margin-top:6px;">
+          <strong>Республика Узбекистан,</strong><br>
+          г.Самарканд, Шота Руставели, дом 45<br>
+          Тел/fax.: +998 933484208, +998 97 9282814<br>
+          E-Mail: orientinsightreisen@gmail.com<br>
+          Website: orient-insight.uz
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Date and Hotel -->
+  <table class="date-hotel-row">
+    <tr>
+      <td style="width:50%;text-align:left;"><strong>Дата:</strong> ${dateStr}</td>
+      <td style="width:50%;text-align:right;">
+        <strong>Директору гостиницы</strong><br>
+        <strong>${hotelName}</strong>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Title -->
+  <div class="zayvka-title">ЗАЯВКА ${year} — ${tourLabel}</div>
+
+  <div class="intro-text">
+    ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.
+  </div>
+
+  ${sectionsHtml}
+
+  <p style="font-style:italic;font-size:9pt;margin-top:6px;">Оплату гости производят на месте.</p>
+
+  <table class="signature-table">
+    <tr>
+      <td style="width:45%;font-weight:bold;"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+      <td style="width:35%;text-align:center;">_________________________</td>
+      <td style="width:20%;text-align:right;font-weight:bold;"><strong>Милиев С.Р.</strong></td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfUint8 = await page.pdf({ format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }, printBackground: true });
+    await browser.close();
+
+    const pdfBuffer = Buffer.isBuffer(pdfUint8) ? pdfUint8 : Buffer.from(pdfUint8);
+    console.log(`PDF generated: ${pdfBuffer.length} bytes for ${hotelName}`);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Content-Disposition', `attachment; filename="${year}_${tourType}_${hotelName.replace(/[^a-zA-Z0-9_.\-]/g,'_')}.pdf"`);
+    res.end(pdfBuffer);
+  } catch (err) {
+    console.error('Jahresplanung generate-pdf error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/jahresplanung/logo — returns Orient Insight logo as base64 data URL
+router.get('/logo', authenticate, async (req, res) => {
+  try {
+    const logoPath = path.join(__dirname, '../../uploads/logo.png');
+    if (fs.existsSync(logoPath)) {
+      const buf = fs.readFileSync(logoPath);
+      res.json({ dataUrl: `data:image/png;base64,${buf.toString('base64')}` });
+    } else {
+      res.json({ dataUrl: null });
+    }
+  } catch (err) {
+    res.json({ dataUrl: null });
   }
 });
 

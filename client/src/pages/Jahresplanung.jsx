@@ -464,8 +464,58 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
   );
 }
 
-function generateHotelPDF(hotelData, tourType, overrides, returnBlob = false) {
+const TOUR_COUNTRY = { ER: 'Германия', CO: 'Германия', KAS: 'Казахстан', ZA: 'Германия' };
+
+// Build structured data for server-side PDF generation
+function buildPdfPayload(hotelData, tourType, overrides) {
   const { hotel, bookings } = hotelData;
+  const country = TOUR_COUNTRY[tourType] || 'Германия';
+
+  const resolved = bookings.map(b => {
+    const k = rowKey(hotel.id, b);
+    const o = overrides[k] || {};
+    const cancelled = b.status === 'CANCELLED';
+    return {
+      ...b,
+      pax:  cancelled ? 0 : (o.pax  !== undefined ? o.pax  : (b.pax  || 0)),
+      dbl:  cancelled ? 0 : (o.dbl  !== undefined ? o.dbl  : (b.dbl  || 0)),
+      twn:  cancelled ? 0 : (o.twn  !== undefined ? o.twn  : (b.twn  || 0)),
+      sngl: cancelled ? 0 : (o.sngl !== undefined ? o.sngl : (b.sngl || 0)),
+    };
+  });
+
+  const { first, second, third, hasSplit, hasThird } = splitVisits(resolved);
+
+  function buildSection(rows, label) {
+    const dataRows = rows.map((b, i) => ({
+      no: i + 1, group: b.bookingNumber, country,
+      pax: b.pax || 0,
+      checkIn: formatDate(b.checkInDate), checkOut: formatDate(b.checkOutDate),
+      dbl: b.dbl || 0, twn: b.twn || 0, sngl: b.sngl || 0,
+      cancelled: b.status === 'CANCELLED',
+    }));
+    return { label: label || null, rows: dataRows };
+  }
+
+  const sections = hasSplit
+    ? [buildSection(first, 'Первый заезд'), buildSection(second, 'Второй заезд'),
+       ...(hasThird ? [buildSection(third, 'Третий заезд')] : [])]
+    : [buildSection(resolved, null)];
+
+  return { hotelName: hotel.name, cityName: hotel.city?.name || '', tourType, year: YEAR, sections };
+}
+
+// Fetch PDF blob from server
+async function fetchHotelPdfBlob(hotelData, tourType, overrides) {
+  const payload = buildPdfPayload(hotelData, tourType, overrides);
+  const res = await jahresplanungApi.generatePDF(payload);
+  return new Blob([res.data], { type: 'application/pdf' });
+}
+
+// Legacy stub — replaced by server-side PDF (kept to avoid breaking callers during transition)
+function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlob = false) {
+  const { hotel, bookings } = hotelData;
+  const PW = 210, M = 15; // portrait A4, margins
 
   // Apply overrides
   const resolved = bookings.map(b => {
@@ -482,77 +532,204 @@ function generateHotelPDF(hotelData, tourType, overrides, returnBlob = false) {
   });
 
   const { first, second, third, hasSplit, hasThird } = splitVisits(resolved);
-  const cityName = hotel.city?.name || '';
   const tourLabel = TOUR_NAMES[tourType] || tourType;
+  const country = TOUR_COUNTRY[tourType] || 'Германия';
+  const today = formatDate(new Date().toISOString());
 
-  const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
-  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
-  doc.text(hotel.name, 14, 18);
-  doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-  doc.text(`${cityName}  |  ${tourLabel}  |  ${YEAR}`, 14, 26);
+  const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
+  let y = 12;
 
-  const HEAD = [['Группа','Заезд','Выезд','Ночей','PAX','DBL','TWN','SNGL','Итого','Статус']];
-  const COL_STYLES = {
-    0:{cellWidth:25}, 1:{cellWidth:28}, 2:{cellWidth:28},
-    3:{cellWidth:18,halign:'center'}, 4:{cellWidth:16,halign:'center'},
-    5:{cellWidth:16,halign:'center'}, 6:{cellWidth:16,halign:'center'},
-    7:{cellWidth:16,halign:'center'}, 8:{cellWidth:20,halign:'center'}, 9:{cellWidth:22}
+  // ── 1. Logo ──────────────────────────────────────────────────────────────
+  if (logoDataUrl) {
+    const lw = 42, lh = 37;
+    doc.addImage(logoDataUrl, 'PNG', (PW - lw) / 2, y, lw, lh);
+    y += lh + 4;
+  } else {
+    y += 10;
+  }
+
+  // ── 2. Company info (centered, via autoTable for Cyrillic support) ────────
+  autoTable(doc, {
+    startY: y,
+    body: [
+      [{ content: 'Республика Узбекистан,', styles: { fontStyle: 'bold' } }],
+      [{ content: 'г.Самарканд, Шота Руставели, дом 45' }],
+      [{ content: 'Тел/fax.: +998 933484208, +998 97 9282814' }],
+      [{ content: 'E-Mail: orientinsightreisen@gmail.com' }],
+      [{ content: 'Website: orient-insight.uz' }],
+    ],
+    theme: 'plain',
+    tableWidth: PW - 2 * M,
+    margin: { left: M, right: M },
+    styles: { fontSize: 9, halign: 'center', cellPadding: 0.6 },
+  });
+  y = doc.lastAutoTable.finalY + 7;
+
+  // ── 3. Date + Hotel recipient ─────────────────────────────────────────────
+  const cw = (PW - 2 * M) / 2;
+  autoTable(doc, {
+    startY: y,
+    body: [[
+      { content: `Дата: ${today}`, styles: { halign: 'left', fontStyle: 'bold' } },
+      { content: `Директору гостиницы\n${hotel.name}`, styles: { halign: 'right', fontStyle: 'bold' } },
+    ]],
+    theme: 'plain',
+    tableWidth: PW - 2 * M,
+    margin: { left: M, right: M },
+    styles: { fontSize: 9, cellPadding: 1 },
+    columnStyles: { 0: { cellWidth: cw }, 1: { cellWidth: cw } },
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // ── 4. Title ──────────────────────────────────────────────────────────────
+  autoTable(doc, {
+    startY: y,
+    body: [[{ content: `JAHRESPLANUNG ${YEAR} — ${tourLabel}` }]],
+    theme: 'plain',
+    tableWidth: PW - 2 * M,
+    margin: { left: M, right: M },
+    styles: { fontSize: 13, fontStyle: 'bold', halign: 'center', cellPadding: 1,
+      textColor: [0, 0, 0], lineColor: [0, 0, 0] },
+    didParseCell(data) {
+      // underline via bottom border only
+      data.cell.styles.lineWidth = { bottom: 0.4, top: 0, left: 0, right: 0 };
+    }
+  });
+  y = doc.lastAutoTable.finalY + 4;
+
+  // ── 5. Intro text ─────────────────────────────────────────────────────────
+  autoTable(doc, {
+    startY: y,
+    body: [[{ content: 'ООО "ORIENT INSIGHT" приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.' }]],
+    theme: 'plain',
+    tableWidth: PW - 2 * M,
+    margin: { left: M, right: M },
+    styles: { fontSize: 9, cellPadding: 1 },
+  });
+  y = doc.lastAutoTable.finalY + 4;
+
+  // ── 6. Data tables ────────────────────────────────────────────────────────
+  // Columns: №, Группа, Страна, PAX, Заезд, Выезд, DBL, TWN, SNGL, Тип номера
+  const HEAD = [[
+    { content: '№', styles: { halign: 'center' } },
+    { content: 'Группа', styles: { halign: 'center' } },
+    { content: 'Страна', styles: { halign: 'center' } },
+    { content: 'PAX', styles: { halign: 'center' } },
+    { content: 'Заезд', styles: { halign: 'center' } },
+    { content: 'Выезд', styles: { halign: 'center' } },
+    { content: 'DBL', styles: { halign: 'center' } },
+    { content: 'TWN', styles: { halign: 'center' } },
+    { content: 'SNGL', styles: { halign: 'center' } },
+    { content: 'Тип номера', styles: { halign: 'center' } },
+  ]];
+  // widths: 7+22+20+13+25+25+14+14+14+26 = 180mm
+  const CS = {
+    0:{ cellWidth:7,  halign:'center' },
+    1:{ cellWidth:22 },
+    2:{ cellWidth:20, halign:'center' },
+    3:{ cellWidth:13, halign:'center' },
+    4:{ cellWidth:25, halign:'center' },
+    5:{ cellWidth:25, halign:'center' },
+    6:{ cellWidth:14, halign:'center' },
+    7:{ cellWidth:14, halign:'center' },
+    8:{ cellWidth:14, halign:'center' },
+    9:{ cellWidth:26, halign:'center' },
   };
 
   function buildRows(rows) {
-    const body = rows.map(b => [
-      b.bookingNumber, formatDate(b.checkInDate), formatDate(b.checkOutDate),
-      b.nights||0, b.pax||0, b.dbl||0, b.twn||0, b.sngl||0,
-      (b.dbl||0)+(b.twn||0)+(b.sngl||0),
-      b.status==='CANCELLED' ? 'СТОРНО' : ''
+    const body = rows.map((b, i) => [
+      i + 1,
+      b.bookingNumber,
+      b.status === 'CANCELLED' ? 'СТОРНО' : country,
+      b.pax || 0,
+      formatDate(b.checkInDate),
+      formatDate(b.checkOutDate),
+      b.dbl  || 0,
+      b.twn  || 0,
+      b.sngl || 0,
+      b.status === 'CANCELLED' ? '' : 'стандарт',
     ]);
-    const active = rows.filter(b => b.status!=='CANCELLED');
-    const tot = active.reduce((a,b)=>({
-      pax:a.pax+(b.pax||0), dbl:a.dbl+(b.dbl||0), twn:a.twn+(b.twn||0),
-      sngl:a.sngl+(b.sngl||0), rooms:a.rooms+(b.dbl||0)+(b.twn||0)+(b.sngl||0)
-    }), {pax:0,dbl:0,twn:0,sngl:0,rooms:0});
-    body.push(['ИТОГО','','','',tot.pax,tot.dbl,tot.twn,tot.sngl,tot.rooms,'']);
+    const active = rows.filter(b => b.status !== 'CANCELLED');
+    const tot = active.reduce((a, b) => ({
+      pax: a.pax + (b.pax||0), dbl: a.dbl + (b.dbl||0),
+      twn: a.twn + (b.twn||0), sngl: a.sngl + (b.sngl||0),
+    }), { pax:0, dbl:0, twn:0, sngl:0 });
+    body.push(['', 'ИТОГО', '', tot.pax, '', '', tot.dbl, tot.twn, tot.sngl, '']);
     return { body, count: rows.length };
   }
 
-  function addTable(startY, rows, title) {
-    if (title) {
-      doc.setFontSize(10); doc.setFont('helvetica','bold');
-      doc.text(title, 14, startY - 2);
-    }
+  function addTable(startY, rows, sectionTitle) {
     const { body, count } = buildRows(rows);
     autoTable(doc, {
-      startY, head: HEAD, body,
+      startY,
+      head: HEAD,
+      body,
       theme: 'grid',
-      headStyles: { fillColor:[41,128,185], textColor:255, fontStyle:'bold', fontSize:9 },
-      bodyStyles: { fontSize:9 },
-      columnStyles: COL_STYLES,
+      tableWidth: PW - 2 * M,
+      margin: { left: M, right: M },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: CS,
       didParseCell(data) {
         const ri = data.row.index;
         if (ri < rows.length && rows[ri]?.status === 'CANCELLED') {
-          data.cell.styles.fillColor = [255,210,210];
-          data.cell.styles.textColor = [160,0,0];
+          data.cell.styles.fillColor = [255, 210, 210];
+          data.cell.styles.textColor = [160, 0, 0];
         }
         if (ri === count) {
           data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fillColor = [220,235,250];
+          data.cell.styles.fillColor = [220, 235, 250];
+        }
+      },
+      didDrawPage(data) {
+        if (sectionTitle && data.pageNumber === 1 && data.cursor?.y === startY) {
+          // section label drawn by autoTable willDrawCell isn't needed — handled below
         }
       }
     });
-    return doc.lastAutoTable.finalY + 8;
+    // Draw section title above table
+    if (sectionTitle) {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text(sectionTitle, M, startY - 1);
+    }
+    return doc.lastAutoTable.finalY + 6;
   }
 
-  let y = 32;
   if (hasSplit) {
-    y = addTable(y, first, 'Первый заезд');
-    y = addTable(y, second, 'Второй заезд');
-    if (hasThird) addTable(y, third, 'Третий заезд');
+    y = addTable(y + 4, first,  'Первый заезд');
+    y = addTable(y + 4, second, 'Второй заезд');
+    if (hasThird) y = addTable(y + 4, third, 'Третий заезд');
   } else {
-    addTable(y, resolved, null);
+    y = addTable(y, resolved, null);
   }
+
+  // ── 7. Footer ─────────────────────────────────────────────────────────────
+  y += 2;
+  autoTable(doc, {
+    startY: y,
+    body: [[{ content: 'Оплату гости производят на месте.', styles: { fontStyle: 'italic' } }]],
+    theme: 'plain',
+    tableWidth: PW - 2 * M,
+    margin: { left: M, right: M },
+    styles: { fontSize: 9, cellPadding: 0.5 },
+  });
+  y = doc.lastAutoTable.finalY + 6;
+  autoTable(doc, {
+    startY: y,
+    body: [[
+      { content: 'Директор ООО «ORIENT INSIGHT»', styles: { fontStyle: 'bold', halign: 'left' } },
+      { content: '_________________________', styles: { halign: 'center' } },
+      { content: 'Милиев С.Р.', styles: { fontStyle: 'bold', halign: 'right' } },
+    ]],
+    theme: 'plain',
+    tableWidth: PW - 2 * M,
+    margin: { left: M, right: M },
+    styles: { fontSize: 9, cellPadding: 0.5 },
+    columnStyles: { 0: { cellWidth: 65 }, 1: { cellWidth: 65 }, 2: { cellWidth: 50 } },
+  });
 
   if (returnBlob) return doc.output('blob');
-  doc.save(`${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`);
+  doc.save(`${YEAR}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`);
 }
 
 function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverrideVal, rowStatuses, setRowStatus,
@@ -645,13 +822,17 @@ function HotelsTab({ tourType }) {
   const [bookingHotelAssign, setBookingHotelAssign] = useState({});
   // All hotels from DB (for picker)
   const [allHotels, setAllHotels] = useState([]);
+  const [logoDataUrl, setLogoDataUrl] = useState(null);
   const saveTimerRef = useRef(null);
   const loadingRef = useRef(false);
 
-  // Load all hotels once
+  // Load all hotels + logo once
   useEffect(() => {
     jahresplanungApi.getAllHotels()
       .then(res => setAllHotels(res.data))
+      .catch(() => {});
+    jahresplanungApi.getLogo()
+      .then(res => { if (res.data?.dataUrl) setLogoDataUrl(res.data.dataUrl); })
       .catch(() => {});
   }, []);
 
@@ -800,14 +981,27 @@ function HotelsTab({ tourType }) {
     });
   };
 
-  const handlePDF = (hotelData) => generateHotelPDF(hotelData, tourType, overrides);
+  const handlePDF = async (hotelData) => {
+    setSendingEmail(prev => ({ ...prev, [`pdf_${hotelData.hotel.id}`]: true }));
+    try {
+      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${YEAR}_${tourType}_${hotelData.hotel.name.replace(/\s+/g,'_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error('PDF xatolik: ' + (err.response?.data?.error || err.message));
+    } finally { setSendingEmail(prev => ({ ...prev, [`pdf_${hotelData.hotel.id}`]: false })); }
+  };
 
   const handleEmail = async (hotelData) => {
     const { hotel } = hotelData;
     if (!hotel.email) { toast.error(`${hotel.name} — email yo'q`); return; }
     setSendingEmail(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      const blob = generateHotelPDF(hotelData, tourType, overrides, true);
+      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
       await jahresplanungApi.sendHotelEmail(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType);
       toast.success(`Email yuborildi → ${hotel.email}`);
     } catch (err) {
@@ -820,7 +1014,7 @@ function HotelsTab({ tourType }) {
     if (!hotel.telegramChatId) { toast.error(`${hotel.name} — Telegram yo'q`); return; }
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      const blob = generateHotelPDF(hotelData, tourType, overrides, true);
+      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
       await jahresplanungApi.sendHotelTelegram(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType);
       toast.success(`Telegram → ${hotel.name}`);
     } catch (err) {

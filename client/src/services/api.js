@@ -397,6 +397,8 @@ export const jahresplanungApi = {
     });
   },
   getAllHotels: () => api.get('/jahresplanung/all-hotels'),
+  getLogo: () => api.get('/jahresplanung/logo'),
+  generatePDF: (data) => api.post('/jahresplanung/generate-pdf', data, { responseType: 'arraybuffer' }),
   getState: (year, tourType) => api.get('/jahresplanung/state', { params: { year, tourType } }),
   saveState: (year, tourType, data) => api.put('/jahresplanung/state', { year, tourType, ...data }),
 };
