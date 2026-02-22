@@ -375,4 +375,27 @@ export const worldInsightApi = {
     })
 };
 
+// API for Jahresplanung (Annual Planning)
+export const jahresplanungApi = {
+  getHotels: (year, tourType) => api.get('/jahresplanung/hotels', { params: { year, tourType } }),
+  sendHotelEmail: (hotelId, pdfBlob, filename, year, tourType) => {
+    const form = new FormData();
+    form.append('pdf', pdfBlob, filename);
+    form.append('year', year);
+    form.append('tourType', tourType);
+    return api.post(`/jahresplanung/send-hotel-email/${hotelId}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  sendHotelTelegram: (hotelId, pdfBlob, filename, year, tourType) => {
+    const form = new FormData();
+    form.append('pdf', pdfBlob, filename);
+    form.append('year', year);
+    form.append('tourType', tourType);
+    return api.post(`/jahresplanung/send-hotel-telegram/${hotelId}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
+};
+
 export default api;

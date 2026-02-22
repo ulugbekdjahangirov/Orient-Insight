@@ -19,6 +19,7 @@ import Settings from './pages/Settings';
 import GmailSettings from './pages/GmailSettings';
 import EmailImports from './pages/EmailImports';
 import Partners from './pages/Partners';
+import Jahresplanung from './pages/Jahresplanung';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -90,6 +91,7 @@ export default function App() {
         />
         <Route path="email-imports" element={<EmailImports />} />
         <Route path="partners" element={<Partners />} />
+        <Route path="jahresplanung" element={<Jahresplanung />} />
         <Route
           path="settings"
           element={

@@ -20,6 +20,7 @@ const tourServiceRoutes = require('./routes/tourservice.routes');
 const invoiceRoutes = require('./routes/invoice.routes');
 const priceRoutes = require('./routes/price.routes');
 const opexRoutes = require('./routes/opex.routes');
+const jahresplanungRoutes = require('./routes/jahresplanung.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -68,6 +69,7 @@ app.use('/api/telegram', telegramRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/prices', priceRoutes);
 app.use('/api/opex', opexRoutes);
+app.use('/api/jahresplanung', jahresplanungRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

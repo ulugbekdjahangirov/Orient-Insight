@@ -20,13 +20,15 @@ import {
   FileText,
   Receipt,
   X,
-  Handshake
+  Handshake,
+  CalendarRange
 } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/updates', icon: Bell, label: 'Updates' },
   { path: '/bookings', icon: CalendarDays, label: 'Bookings' },
+  { path: '/jahresplanung', icon: CalendarRange, label: 'Jahresplanung' },
   { path: '/guides', icon: Users, label: 'Guides' },
   { path: '/tour-types', icon: MapPin, label: 'Tours' },
   { path: '/hotels', icon: Building2, label: 'Hotels' },
