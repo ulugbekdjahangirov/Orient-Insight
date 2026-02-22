@@ -12002,39 +12002,112 @@ export default function BookingDetail() {
               return null;
             };
 
-            // Get arrival date - for ER tours, ALWAYS use departureDate + 1 (reliable calculation)
-            // Because tourist check-in dates may not be filled yet or include early arrivals
+            // CO tour: Tashkent → Kokand → Samarkand → Bukhara → Khiva
+            const getCOAttractionDate = (name, arrival) => {
+              // Day 0 (arr+0): Tashkent — Hast Imam, Kukeldash
+              if (name.includes('hast') || name.includes('imam') || name.includes('kukeldash') || name.includes('madrasah'))
+                return format(arrival, 'yyyy-MM-dd');
+              // Day 2 (arr+2): Kokand — Khudayar Khan, Jami Mosque
+              if (name.includes('khudayar') || name.includes('jami'))
+                return format(addDays(arrival, 2), 'yyyy-MM-dd');
+              // Day 4 (arr+4): Samarkand day 1 — Registan, Bibi-Khanym, Shah-i-Zinda, Daniel, Afrosiyob
+              if (name.includes('registan') || name.includes('bibi') || name.includes('khanum') ||
+                  name.includes('shah') || name.includes('zinda') || name.includes('daniel') || name.includes('afrosiyob'))
+                return format(addDays(arrival, 4), 'yyyy-MM-dd');
+              // Day 5 (arr+5): Samarkand day 2 — Amir Temur, Ulugbek, Konigil
+              if (name.includes('amir') || name.includes('temur') || name.includes('ulugbek') ||
+                  name.includes('ulug bek') || name.includes('konigil') || name.includes('paper') || name.includes('workshop'))
+                return format(addDays(arrival, 5), 'yyyy-MM-dd');
+              // Day 7 (arr+7): Bukhara day 1 — Samanid, Chashma Ayub, Ark, Kalon, Magoki Attori
+              if (name.includes('samanid') || (name.includes('chashma') && name.includes('ayub')) ||
+                  name.includes('ark') || name.includes('kalon') || name.includes('kalyan') ||
+                  name.includes('magoki') || name.includes('attori'))
+                return format(addDays(arrival, 7), 'yyyy-MM-dd');
+              // Day 8 (arr+8): Bukhara day 2 — Naqshband, Mohi Khosa
+              if (name.includes('naqshband') || name.includes('mohi') || name.includes('khosa') || name.includes('xosa'))
+                return format(addDays(arrival, 8), 'yyyy-MM-dd');
+              // Day 10 (arr+10): Khiva — Itchan Kala, Pahlavon Mahmud, Oqshayx Bobo
+              if (name.includes('itchan') || name.includes('ichan') || name.includes('kala') ||
+                  name.includes('pahlavon') || name.includes('mahmud') || name.includes('oqshayx') || name.includes('bobo'))
+                return format(addDays(arrival, 10), 'yyyy-MM-dd');
+              return null;
+            };
+
+            // KAS tour: Fergana/Kokand → Bukhara → Samarkand → Tashkent
+            const getKASAttractionDate = (name, arrival) => {
+              // Day 1 (arr+1): Kokand — Khudayar Khan, Jami Mosque
+              if (name.includes('khudayar') || name.includes('jami'))
+                return format(addDays(arrival, 1), 'yyyy-MM-dd');
+              // Day 2 (arr+2): Bukhara day 1 — Samanid, Chashma Ayub, Ark, Kalon, Magoki Attori
+              if (name.includes('samanid') || (name.includes('chashma') && name.includes('ayub')) ||
+                  name.includes('ark') || name.includes('kalon') || name.includes('kalyan') ||
+                  name.includes('magoki') || name.includes('attori'))
+                return format(addDays(arrival, 2), 'yyyy-MM-dd');
+              // Day 3 (arr+3): Bukhara day 2 — Mohi Khosa
+              if (name.includes('mohi') || name.includes('khosa') || name.includes('xosa'))
+                return format(addDays(arrival, 3), 'yyyy-MM-dd');
+              // Day 5 (arr+5): Samarkand day 1 — Amir Temur, Registan, Bibi-Khanym, Shah-i-Zinda, Daniel
+              if (name.includes('amir') || name.includes('temur') || name.includes('registan') ||
+                  name.includes('bibi') || name.includes('khanum') || name.includes('shah') ||
+                  name.includes('zinda') || name.includes('daniel'))
+                return format(addDays(arrival, 5), 'yyyy-MM-dd');
+              // Day 6 (arr+6): Samarkand day 2 — Ulugbek, Konigil
+              if (name.includes('ulugbek') || name.includes('ulug bek') ||
+                  name.includes('konigil') || name.includes('paper') || name.includes('workshop'))
+                return format(addDays(arrival, 6), 'yyyy-MM-dd');
+              // Day 8 (arr+8): Tashkent — Hast Imam, Kukeldash
+              if (name.includes('hast') || name.includes('imam') || name.includes('kukeldash') || name.includes('madrasah'))
+                return format(addDays(arrival, 8), 'yyyy-MM-dd');
+              return null;
+            };
+
+            // ZA tour: Bukhara → Samarkand
+            const getZAAttractionDate = (name, arrival) => {
+              // Day 1 (arr+1): Bukhara day 1 — Samanid, Chashma Ayub, Ark, Kalon, Magoki Attori
+              if (name.includes('samanid') || (name.includes('chashma') && name.includes('ayub')) ||
+                  name.includes('ark') || name.includes('kalon') || name.includes('kalyan') ||
+                  name.includes('magoki') || name.includes('attori'))
+                return format(addDays(arrival, 1), 'yyyy-MM-dd');
+              // Day 2 (arr+2): Bukhara day 2 — Mohi Khosa
+              if (name.includes('mohi') || name.includes('khosa') || name.includes('xosa'))
+                return format(addDays(arrival, 2), 'yyyy-MM-dd');
+              // Day 4 (arr+4): Samarkand day 1 — Registan, Bibi-Khanym, Shah-i-Zinda, Daniel, Amir Temur
+              if (name.includes('registan') || name.includes('bibi') || name.includes('khanum') ||
+                  name.includes('shah') || name.includes('zinda') || name.includes('daniel') ||
+                  name.includes('amir') || name.includes('temur'))
+                return format(addDays(arrival, 4), 'yyyy-MM-dd');
+              // Day 5 (arr+5): Samarkand day 2 — Ulugbek, Konigil
+              if (name.includes('ulugbek') || name.includes('ulug bek') ||
+                  name.includes('konigil') || name.includes('paper') || name.includes('workshop'))
+                return format(addDays(arrival, 5), 'yyyy-MM-dd');
+              return null;
+            };
+
+            // Dispatcher: get auto-date for any tour type
+            const getAttractionDate = (attractionName, arrDate) => {
+              if (!arrDate || !attractionName) return null;
+              const arr = new Date(arrDate);
+              const n = attractionName.toLowerCase().trim().replace(/\s+/g, ' ');
+              const code = booking?.tourType?.code;
+              if (code === 'ER')  return getERAttractionDate(attractionName, arrDate);
+              if (code === 'CO')  return getCOAttractionDate(n, arr);
+              if (code === 'KAS') return getKASAttractionDate(n, arr);
+              if (code === 'ZA')  return getZAAttractionDate(n, arr);
+              return null;
+            };
+
+            // Get arrival date — always calculate from departureDate + tour-specific offset
             let arrivalDate = null;
 
-            if (booking?.tourType?.code === 'ER' && booking?.departureDate) {
-              // For ER tours: arrival is ALWAYS departureDate + 1 day (12.10 → 13.10)
-              // This is the main group arrival, excluding early arrivals like Baetgen
-              arrivalDate = format(addDays(new Date(booking.departureDate), 1), 'yyyy-MM-dd');
-              console.log('✈️ ER Tour - Using departureDate + 1:', arrivalDate);
-            } else if (tourists && tourists.length > 0) {
-              // For other tour types, use tourist check-in dates
-              const dateCounts = {};
-              tourists
-                .filter(t => t.checkInDate)
-                .forEach(t => {
-                  const dateStr = format(new Date(t.checkInDate), 'yyyy-MM-dd');
-                  dateCounts[dateStr] = (dateCounts[dateStr] || 0) + 1;
-                });
-
-              console.log('📊 Tourist check-in dates:', dateCounts);
-
-              if (Object.keys(dateCounts).length > 0) {
-                const sortedDates = Object.entries(dateCounts)
-                  .sort((a, b) => b[1] - a[1]);
-                arrivalDate = sortedDates[0][0];
-                console.log('✅ Most common arrival:', arrivalDate);
-              }
+            if (booking?.departureDate) {
+              const code = booking?.tourType?.code;
+              const daysOffset = code === 'KAS' ? 14 : code === 'ZA' ? 4 : 1; // ER + CO = +1
+              arrivalDate = format(addDays(new Date(booking.departureDate), daysOffset), 'yyyy-MM-dd');
             }
 
             // Final fallback: use booking departure date
             if (!arrivalDate && booking?.departureDate) {
               arrivalDate = booking.departureDate;
-              console.log('🔄 Using booking departure date:', arrivalDate);
             }
 
             console.log('🔍 Final Eintritt Arrival Date:', arrivalDate);
@@ -12047,10 +12120,8 @@ export default function BookingDetail() {
               const itemName = item.name.toLowerCase().trim();
               const savedEntry = savedEntriesMap.get(itemName);
 
-              // Calculate auto-date for ER tours
-              const autoDate = booking?.tourType?.code === 'ER'
-                ? getERAttractionDate(item.name, arrivalDate)
-                : null;
+              // Calculate auto-date based on tour type
+              const autoDate = getAttractionDate(item.name, arrivalDate);
 
               if (savedEntry) {
                 // Use saved entry data, but use auto-date if saved date is null/invalid
@@ -12110,10 +12181,8 @@ export default function BookingDetail() {
               const pricePerPerson = savedEntry.pricePerPerson || 0;
               const totalPrice = pricePerPerson * currentPax;
 
-              // Try auto-date for ER tours (e.g. Magoki Attori name mismatch with template)
-              const customAutoDate = booking?.tourType?.code === 'ER'
-                ? getERAttractionDate(savedEntry.name, arrivalDate)
-                : null;
+              // Try auto-date for custom entries that didn't match template names
+              const customAutoDate = getAttractionDate(savedEntry.name, arrivalDate);
 
               // Validate saved date against booking departure (±60 days)
               let customHasValidDate = false;
@@ -12148,8 +12217,14 @@ export default function BookingDetail() {
                 return true; // Show all others
               })
               .sort((a, b) => {
-                // Sort by city in tour order: Tashkent → Samarkand → Nurota/Nurata → Bukhara → Khiva
-                const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'nurata': 3, 'bukhara': 4, 'khiva': 5 };
+                // Sort by city in tour order (each tour type has different itinerary)
+                const cityOrders = {
+                  ER:  { tashkent: 1, samarkand: 2, nurota: 3, nurata: 3, bukhara: 4, khiva: 5 },
+                  CO:  { tashkent: 1, kokand: 2, samarkand: 3, bukhara: 4, khiva: 5 },
+                  KAS: { kokand: 1, fergana: 1, bukhara: 2, samarkand: 3, tashkent: 4 },
+                  ZA:  { bukhara: 1, samarkand: 2, tashkent: 3 },
+                };
+                const cityOrder = cityOrders[booking?.tourType?.code] || cityOrders.ER;
                 const cityA = (a.city || '').toLowerCase().trim();
                 const cityB = (b.city || '').toLowerCase().trim();
                 const orderA = cityOrder[cityA] || 999;
