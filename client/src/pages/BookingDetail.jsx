@@ -12242,7 +12242,8 @@ export default function BookingDetail() {
               const guideName = mainGuide?.guide
                 ? (typeof mainGuide.guide === 'string'
                     ? mainGuide.guide
-                    : mainGuide.guide?.name || '')
+                    : [mainGuide.guide?.firstName, mainGuide.guide?.lastName].filter(Boolean).join(' ')
+                      || mainGuide.guide?.name || '')
                 : '';
               const cityRuMap = {
                 tashkent: 'Ташкент', samarkand: 'Самарканд', bukhara: 'Бухара',
@@ -12288,7 +12289,7 @@ License №T-0084-08 from 2021-04-26`;
               for (let i = 0; i < visibleEntries.length; i += 2) {
                 const left = visibleEntries[i];
                 const right = visibleEntries[i + 1];
-                const pageBreak = i > 0 && i % 4 === 0
+                const pageBreak = i > 0 && i % 8 === 0
                   ? 'page-break-before:always;' : '';
                 rowsHtml += `<div style="display:flex;${pageBreak}">
   ${makeVoucher(left)}
