@@ -598,12 +598,21 @@ export default function BookingDetail() {
   // Refs for Hotelliste + Rechnung PDF blob generation (World Insight email)
   const hotellisteRef = useRef(null);
   const rechnungRef = useRef(null);
+  const neueRechnungRef = useRef(null);
+  const gutschriftRef = useRef(null);
 
   // World Insight email send state
   const [worldInsightModal, setWorldInsightModal] = useState(false);
   const [worldInsightEmail, setWorldInsightEmail] = useState('');
   const [worldInsightFirma, setWorldInsightFirma] = useState('Orient Insight');
+  const [worldInsightDocType, setWorldInsightDocType] = useState('rechnung'); // 'rechnung' | 'neue-rechnung' | 'gutschrift'
   const [sendingWorldInsight, setSendingWorldInsight] = useState(false);
+
+  const openWorldInsightModal = (docType) => {
+    setWorldInsightDocType(docType);
+    setWorldInsightEmail('');
+    setWorldInsightModal(true);
+  };
 
   const sendToWorldInsight = async () => {
     if (!worldInsightEmail.trim()) return;
@@ -612,17 +621,24 @@ export default function BookingDetail() {
       const hotellisteBlob = hotellisteRef.current?.generateBlob();
       if (!hotellisteBlob) throw new Error('Hotelliste PDF generatsiya qilishda xatolik');
 
+      const activeRef = worldInsightDocType === 'neue-rechnung' ? neueRechnungRef
+        : worldInsightDocType === 'gutschrift' ? gutschriftRef
+        : rechnungRef;
+
       const isInfuturestorm = worldInsightFirma === 'INFUTURESTORM';
       const rechnungBlob = isInfuturestorm
-        ? rechnungRef.current?.generateInfuturestormBlob()
-        : rechnungRef.current?.generateOrientInsightBlob();
+        ? activeRef.current?.generateInfuturestormBlob()
+        : activeRef.current?.generateOrientInsightBlob();
       if (!rechnungBlob) throw new Error('Rechnung PDF generatsiya qilishda xatolik');
 
       const bookingNum = booking?.bookingNumber || 'booking';
       const firmaLabel = isInfuturestorm ? 'INFUTURESTORM' : 'OrientInsight';
+      const docLabel = worldInsightDocType === 'neue-rechnung' ? 'NeueRechnung'
+        : worldInsightDocType === 'gutschrift' ? 'Gutschrift'
+        : 'Rechnung';
       const form = new FormData();
       form.append('hotelliste', hotellisteBlob, `Hotelliste_${bookingNum}.pdf`);
-      form.append('rechnung', rechnungBlob, `Rechnung_${firmaLabel}_${bookingNum}.pdf`);
+      form.append('rechnung', rechnungBlob, `${docLabel}_${firmaLabel}_${bookingNum}.pdf`);
       form.append('email', worldInsightEmail.trim());
       form.append('firma', worldInsightFirma);
 
@@ -10870,13 +10886,13 @@ export default function BookingDetail() {
                 tourists={tourists}
                 invoice={rechnungInvoice}
                 sequentialNumber={rechnungSequentialNumber}
-                onWorldInsightSend={() => { setWorldInsightEmail(''); setWorldInsightModal(true); }}
+                onWorldInsightSend={() => openWorldInsightModal('rechnung')}
               />
             </div>
           </div>
 
-          {/* Neue Rechnung Tab Content */}
-          {documentsTab === 'neue-rechnung' && (
+          {/* Neue Rechnung Tab Content — always mounted for World Insight email */}
+          <div style={{ display: documentsTab === 'neue-rechnung' ? 'block' : 'none' }}>
             <div className="space-y-4">
               {/* Firma Selector */}
               <div className="bg-white p-4 rounded-xl shadow border border-gray-200">
@@ -10895,6 +10911,7 @@ export default function BookingDetail() {
               </div>
 
               <RechnungDocument
+                ref={neueRechnungRef}
                 booking={booking}
                 tourists={tourists}
                 showThreeRows={true}
@@ -10903,12 +10920,13 @@ export default function BookingDetail() {
                 previousInvoiceNumber={rechnungSequentialNumber > 0 ? rechnungSequentialNumber.toString() : ''}
                 previousInvoiceAmount={rechnungInvoice?.totalAmount || 0}
                 sequentialNumber={neueRechnungSequentialNumber}
+                onWorldInsightSend={() => openWorldInsightModal('neue-rechnung')}
               />
             </div>
-          )}
+          </div>
 
-          {/* Gutschrift Tab Content */}
-          {documentsTab === 'gutschrift' && (
+          {/* Gutschrift Tab Content — always mounted for World Insight email */}
+          <div style={{ display: documentsTab === 'gutschrift' ? 'block' : 'none' }}>
             <div className="space-y-4">
               {/* Firma Selector */}
               <div className="bg-white p-4 rounded-xl shadow border border-gray-200">
@@ -10927,6 +10945,7 @@ export default function BookingDetail() {
               </div>
 
               <RechnungDocument
+                ref={gutschriftRef}
                 booking={booking}
                 tourists={tourists}
                 showThreeRows={true}
@@ -10935,9 +10954,10 @@ export default function BookingDetail() {
                 previousInvoiceNumber={rechnungSequentialNumber > 0 ? rechnungSequentialNumber.toString() : ''}
                 previousInvoiceAmount={rechnungInvoice?.totalAmount || 0}
                 sequentialNumber={gutschriftSequentialNumber}
+                onWorldInsightSend={() => openWorldInsightModal('gutschrift')}
               />
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -18655,7 +18675,9 @@ ${rowsHtml}
             <div className="bg-gradient-to-r from-green-600 to-emerald-700 p-5 rounded-t-2xl flex items-center justify-between">
               <div>
                 <h3 className="text-white font-bold text-lg">An World Insight senden</h3>
-                <p className="text-green-100 text-sm">Hotelliste + Rechnung (Orient Insight)</p>
+                <p className="text-green-100 text-sm">
+                  Hotelliste + {worldInsightDocType === 'neue-rechnung' ? 'Neue Rechnung' : worldInsightDocType === 'gutschrift' ? 'Gutschrift' : 'Rechnung'}
+                </p>
               </div>
               <button onClick={() => setWorldInsightModal(false)} className="text-white hover:text-green-200 p-1">
                 <X className="w-5 h-5" />
