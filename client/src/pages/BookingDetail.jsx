@@ -12060,7 +12060,7 @@ export default function BookingDetail() {
               return null;
             };
 
-            // ZA tour: Bukhara → Samarkand
+            // ZA tour: Bukhara → Samarkand (only ONE Samarkand sightseeing day: arr+4)
             const getZAAttractionDate = (name, arrival) => {
               // Day 1 (arr+1): Bukhara day 1 — Samanid, Chashma Ayub, Ark, Kalon, Magoki Attori
               if (name.includes('samanid') || (name.includes('chashma') && name.includes('ayub')) ||
@@ -12070,15 +12070,12 @@ export default function BookingDetail() {
               // Day 2 (arr+2): Bukhara day 2 — Mohi Khosa
               if (name.includes('mohi') || name.includes('khosa') || name.includes('xosa'))
                 return format(addDays(arrival, 2), 'yyyy-MM-dd');
-              // Day 4 (arr+4): Samarkand day 1 — Registan, Bibi-Khanym, Shah-i-Zinda, Daniel, Amir Temur
+              // Day 4 (arr+4): ALL Samarkand items — only one sightseeing day (arr+5 = departure to Jartepa)
               if (name.includes('registan') || name.includes('bibi') || name.includes('khanum') ||
                   name.includes('shah') || name.includes('zinda') || name.includes('daniel') ||
-                  name.includes('amir') || name.includes('temur'))
+                  name.includes('amir') || name.includes('temur') || name.includes('ulugbek') ||
+                  name.includes('ulug bek') || name.includes('konigil') || name.includes('paper') || name.includes('workshop'))
                 return format(addDays(arrival, 4), 'yyyy-MM-dd');
-              // Day 5 (arr+5): Samarkand day 2 — Ulugbek, Konigil
-              if (name.includes('ulugbek') || name.includes('ulug bek') ||
-                  name.includes('konigil') || name.includes('paper') || name.includes('workshop'))
-                return format(addDays(arrival, 5), 'yyyy-MM-dd');
               return null;
             };
 
