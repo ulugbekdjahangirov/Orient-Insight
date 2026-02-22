@@ -618,11 +618,10 @@ export default function BookingDetail() {
     if (!worldInsightEmail.trim()) return;
     setSendingWorldInsight(true);
     try {
-      const hotellisteBlob = hotellisteRef.current?.generateBlob();
-      if (!hotellisteBlob) throw new Error('Hotelliste PDF generatsiya qilishda xatolik');
+      const isGutschrift = worldInsightDocType === 'gutschrift';
 
       const activeRef = worldInsightDocType === 'neue-rechnung' ? neueRechnungRef
-        : worldInsightDocType === 'gutschrift' ? gutschriftRef
+        : isGutschrift ? gutschriftRef
         : rechnungRef;
 
       const isInfuturestorm = worldInsightFirma === 'INFUTURESTORM';
@@ -634,10 +633,14 @@ export default function BookingDetail() {
       const bookingNum = booking?.bookingNumber || 'booking';
       const firmaLabel = isInfuturestorm ? 'INFUTURESTORM' : 'OrientInsight';
       const docLabel = worldInsightDocType === 'neue-rechnung' ? 'NeueRechnung'
-        : worldInsightDocType === 'gutschrift' ? 'Gutschrift'
+        : isGutschrift ? 'Gutschrift'
         : 'Rechnung';
       const form = new FormData();
-      form.append('hotelliste', hotellisteBlob, `Hotelliste_${bookingNum}.pdf`);
+      if (!isGutschrift) {
+        const hotellisteBlob = hotellisteRef.current?.generateBlob();
+        if (!hotellisteBlob) throw new Error('Hotelliste PDF generatsiya qilishda xatolik');
+        form.append('hotelliste', hotellisteBlob, `Hotelliste_${bookingNum}.pdf`);
+      }
       form.append('rechnung', rechnungBlob, `${docLabel}_${firmaLabel}_${bookingNum}.pdf`);
       form.append('email', worldInsightEmail.trim());
       form.append('firma', worldInsightFirma);
@@ -18676,7 +18679,7 @@ ${rowsHtml}
               <div>
                 <h3 className="text-white font-bold text-lg">An World Insight senden</h3>
                 <p className="text-green-100 text-sm">
-                  Hotelliste + {worldInsightDocType === 'neue-rechnung' ? 'Neue Rechnung' : worldInsightDocType === 'gutschrift' ? 'Gutschrift' : 'Rechnung'}
+                  {worldInsightDocType === 'gutschrift' ? 'Gutschrift' : `Hotelliste + ${worldInsightDocType === 'neue-rechnung' ? 'Neue Rechnung' : 'Rechnung'}`}
                 </p>
               </div>
               <button onClick={() => setWorldInsightModal(false)} className="text-white hover:text-green-200 p-1">

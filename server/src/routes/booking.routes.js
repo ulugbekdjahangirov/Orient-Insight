@@ -2776,10 +2776,9 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
 
     if (!email) return res.status(400).json({ error: 'E-Mail Adresse fehlt' });
 
-    const hotellisteFile = req.files?.['hotelliste']?.[0];
+    const hotellisteFile = req.files?.['hotelliste']?.[0] || null; // optional for Gutschrift
     const rechnungFile   = req.files?.['rechnung']?.[0];
-    if (!hotellisteFile) return res.status(400).json({ error: 'Hotelliste PDF fehlt' });
-    if (!rechnungFile)   return res.status(400).json({ error: 'Rechnung PDF fehlt' });
+    if (!rechnungFile) return res.status(400).json({ error: 'Rechnung PDF fehlt' });
 
     const booking = await prisma.booking.findUnique({
       where: { id: parseInt(bookingId) },
@@ -2834,23 +2833,21 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
   <span style="color:#888;font-size:12px">orientinsightreisen@gmail.com | orient-insight.uz</span></p>
 </div>`;
 
-    await gmailServiceWI.sendEmail({
-      to: email,
-      subject,
-      html,
-      attachments: [
-        {
-          filename: hotellisteFile.originalname || `Hotelliste_${bookingNum}.pdf`,
-          content: hotellisteFile.buffer,
-          mimeType: 'application/pdf'
-        },
-        {
-          filename: rechnungFile.originalname || `Rechnung_OrientInsight_${bookingNum}.pdf`,
-          content: rechnungFile.buffer,
-          mimeType: 'application/pdf'
-        }
-      ]
+    const attachments = [];
+    if (hotellisteFile) {
+      attachments.push({
+        filename: hotellisteFile.originalname || `Hotelliste_${bookingNum}.pdf`,
+        content: hotellisteFile.buffer,
+        mimeType: 'application/pdf'
+      });
+    }
+    attachments.push({
+      filename: rechnungFile.originalname || `Rechnung_${bookingNum}.pdf`,
+      content: rechnungFile.buffer,
+      mimeType: 'application/pdf'
     });
+
+    await gmailServiceWI.sendEmail({ to: email, subject, html, attachments });
 
     console.log(`World Insight email sent: ${bookingNum} → ${email}`);
     res.json({ success: true });
