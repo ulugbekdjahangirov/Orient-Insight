@@ -292,43 +292,47 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
     const groups = Array.from(groupedMap.values());
 
     if (groups.length > 0) {
-      const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
+      const TG_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+      const header = `📋 *Заявка ${year} — ${tourLabel}*  🏨 *${hotel.name}*`;
 
-      // Build message text — each booking grouped with all its visits
-      let msgLines = [`📋 *Заявка ${year} — ${tourLabel}*`, `🏨 *${hotel.name}*`, ''];
+      // Send one message per booking — visits + confirm buttons right below
       for (const grp of groups) {
-        msgLines.push(`*${grp.no}. ${grp.group}*`);
+        const lines = [header, '', `*${grp.no}. ${grp.group}*`];
         for (const v of grp.visits) {
-          const visitLabel = v.sectionLabel ? `${v.sectionLabel}: ` : '';
-          msgLines.push(`   ${visitLabel}${ST_ICON.PENDING} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
+          const lbl = v.sectionLabel ? `${v.sectionLabel}: ` : '';
+          lines.push(`   ${lbl}⬜ ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
         }
-        msgLines.push('');
+        const msgRes = await axios.post(`${TG_API}/sendMessage`, {
+          chat_id: hotel.telegramChatId,
+          text: lines.join('\n'),
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[
+            { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}` },
+            { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}` },
+            { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}` },
+          ]]}
+        });
+        grp.msgId = msgRes.data?.result?.message_id || null;
       }
 
-      // Build inline keyboard — one row per booking + bulk row at bottom
-      const keyboard = groups.map(grp => ([
-        { text: `✅ ${grp.group}`, callback_data: `jp_c:${grp.bookingId}:${hotelId}` },
-        { text: '⏳ WL',           callback_data: `jp_w:${grp.bookingId}:${hotelId}` },
-        { text: '❌ Rad',          callback_data: `jp_r:${grp.bookingId}:${hotelId}` },
-      ]));
-      keyboard.push([
-        { text: '✅ Barchasini',     callback_data: `jp_ca:${hotelId}` },
-        { text: '⏳ WL barchasi',    callback_data: `jp_wa:${hotelId}` },
-        { text: '❌ Barchasini rad', callback_data: `jp_ra:${hotelId}` },
-      ]);
-
-      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      // Final bulk-action message
+      const bulkRes = await axios.post(`${TG_API}/sendMessage`, {
         chat_id: hotel.telegramChatId,
-        text: msgLines.join('\n'),
+        text: `${header}\n\nBarcha *${groups.length}* ta gruppa uchun:`,
         parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: keyboard }
+        reply_markup: { inline_keyboard: [[
+          { text: '✅ Barchasini',     callback_data: `jp_ca:${hotelId}` },
+          { text: '⏳ WL barchasi',    callback_data: `jp_wa:${hotelId}` },
+          { text: '❌ Barchasini rad', callback_data: `jp_ra:${hotelId}` },
+        ]]}
       });
+      const bulkMsgId = bulkRes.data?.result?.message_id || null;
 
-      // Store grouped data in SystemSetting for webhook rebuilding
+      // Store for webhook rebuilding (includes msgId per group + chatId)
       await prisma.systemSetting.upsert({
         where: { key: `JP_SECTIONS_${hotelId}` },
-        update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, groups }) },
-        create: { key: `JP_SECTIONS_${hotelId}`, value: JSON.stringify({ year, tourType, hotelName: hotel.name, groups }) }
+        update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) },
+        create: { key: `JP_SECTIONS_${hotelId}`, value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) }
       });
 
       // One TelegramConfirmation per unique booking

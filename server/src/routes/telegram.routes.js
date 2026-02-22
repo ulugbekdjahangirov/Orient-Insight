@@ -683,17 +683,18 @@ router.post('/webhook', async (req, res) => {
       // Load stored groups
       const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${jpHotelId}` } });
       if (!setting) { console.warn(`JP_SECTIONS not found for hotelId ${jpHotelId}`); return; }
-      const { year, tourType, hotelName, groups } = JSON.parse(setting.value);
+      const { year, tourType, hotelName, chatId: storedChatId, groups, bulkMsgId } = JSON.parse(setting.value);
       const allBookingIds = groups.map(g => g.bookingId);
       const targetIds = isBulk ? allBookingIds : [jpBookingId];
+      const editChatId = cb.message?.chat?.id || storedChatId;
 
-      // Update confirmation statuses (allow changing previous answer too)
+      // Update confirmation statuses
       await prisma.telegramConfirmation.updateMany({
         where: { bookingId: { in: targetIds }, hotelId: jpHotelId },
         data: { status: newStatus, confirmedBy: fromName, respondedAt: new Date() }
       }).catch(() => {});
 
-      // Get all current statuses to rebuild message
+      // Get all current statuses
       const confirmations = await prisma.telegramConfirmation.findMany({
         where: { hotelId: jpHotelId, bookingId: { in: allBookingIds } }
       });
@@ -702,44 +703,51 @@ router.post('/webhook', async (req, res) => {
         if (!statusMap[c.bookingId]) statusMap[c.bookingId] = c.status;
       }
 
-      // Rebuild message — grouped by booking, all visits shown together
       const TOUR_LABELS = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
-      let msgLines = [`📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`, `🏨 ${hotelName}`, ''];
-      for (const grp of groups) {
-        const st = statusMap[grp.bookingId] || 'PENDING';
-        msgLines.push(`${grp.no}. ${grp.group}`);
+      const header = `📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}  🏨 ${hotelName}`;
+
+      // Helper — build one group's message text + keyboard
+      function buildGrpMsg(grp, st) {
+        const lines = [header, '', `*${grp.no}. ${grp.group}*`];
         for (const v of grp.visits) {
-          const visitLabel = v.sectionLabel ? `${v.sectionLabel}: ` : '';
-          msgLines.push(`   ${visitLabel}${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
+          const lbl = v.sectionLabel ? `${v.sectionLabel}: ` : '';
+          lines.push(`   ${lbl}${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
         }
-        msgLines.push('');
+        const btnConfirm = st === 'CONFIRMED' ? '✅ Tasdiqlandi ✓' : '✅ Tasdiqlash';
+        const btnWl      = st === 'WAITING'   ? '⏳ WL ✓'          : '⏳ WL';
+        const btnRad     = st === 'REJECTED'  ? '❌ Rad ✓'         : '❌ Rad etish';
+        return {
+          text: lines.join('\n'),
+          keyboard: [[
+            { text: btnConfirm, callback_data: `jp_c:${grp.bookingId}:${jpHotelId}` },
+            { text: btnWl,      callback_data: `jp_w:${grp.bookingId}:${jpHotelId}` },
+            { text: btnRad,     callback_data: `jp_r:${grp.bookingId}:${jpHotelId}` },
+          ]]
+        };
       }
 
-      // Rebuild inline keyboard reflecting current statuses
-      const keyboard = groups.map(grp => {
-        const st = statusMap[grp.bookingId] || 'PENDING';
-        return [
-          { text: st === 'CONFIRMED' ? `✅ ${grp.group} ✓` : `✅ ${grp.group}`, callback_data: `jp_c:${grp.bookingId}:${jpHotelId}` },
-          { text: st === 'WAITING'   ? '⏳ WL ✓'           : '⏳ WL',           callback_data: `jp_w:${grp.bookingId}:${jpHotelId}` },
-          { text: st === 'REJECTED'  ? '❌ Rad ✓'          : '❌ Rad',          callback_data: `jp_r:${grp.bookingId}:${jpHotelId}` },
-        ];
-      });
-      keyboard.push([
-        { text: '✅ Barchasini',     callback_data: `jp_ca:${jpHotelId}` },
-        { text: '⏳ WL barchasi',    callback_data: `jp_wa:${jpHotelId}` },
-        { text: '❌ Barchasini rad', callback_data: `jp_ra:${jpHotelId}` },
-      ]);
-
-      // Edit the original message to reflect updated statuses
-      const msgId  = cb.message?.message_id;
-      const chatId = cb.message?.chat?.id;
-      if (msgId && chatId) {
-        await axios.post(`${BOT_API()}/editMessageText`, {
-          chat_id: chatId, message_id: msgId,
-          text: msgLines.join('\n'),
-          reply_markup: { inline_keyboard: keyboard }
-        }).catch(e => console.warn('JP editMessageText error:', e.response?.data || e.message));
+      if (isBulk) {
+        // Edit ALL individual group messages
+        for (const grp of groups) {
+          if (!grp.msgId) continue;
+          const { text, keyboard } = buildGrpMsg(grp, newStatus);
+          await axios.post(`${BOT_API()}/editMessageText`, {
+            chat_id: storedChatId, message_id: grp.msgId,
+            text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
+          }).catch(() => {});
+        }
+      } else {
+        // Edit only this booking's message
+        const grp = groups.find(g => g.bookingId === jpBookingId);
+        const msgId = cb.message?.message_id;
+        if (grp && msgId && editChatId) {
+          const { text, keyboard } = buildGrpMsg(grp, newStatus);
+          await axios.post(`${BOT_API()}/editMessageText`, {
+            chat_id: editChatId, message_id: msgId,
+            text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
+          }).catch(e => console.warn('JP editMessageText error:', e.response?.data || e.message));
+        }
       }
       return;
     }
