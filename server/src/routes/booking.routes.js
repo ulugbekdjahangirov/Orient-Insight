@@ -2808,7 +2808,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
     // Tour name mapping
     const tourNames = {
       ER:  'Erlebnisreisen Usbekistan mit Turkmenistan',
-      CO:  'Comfort Tour Usbekistan',
+      CO:  'Usbekistan ComfortPlus Reisen',
       KAS: 'KAS Tour Usbekistan',
       ZA:  'ZA Tour Usbekistan',
     };
