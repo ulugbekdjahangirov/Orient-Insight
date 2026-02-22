@@ -635,11 +635,14 @@ export default function BookingDetail() {
       const docLabel = worldInsightDocType === 'neue-rechnung' ? 'NeueRechnung'
         : isGutschrift ? 'Gutschrift'
         : 'Rechnung';
+      const isNeueRechnung = worldInsightDocType === 'neue-rechnung';
       const form = new FormData();
+      form.append('docType', worldInsightDocType);
       if (!isGutschrift) {
         const hotellisteBlob = hotellisteRef.current?.generateBlob();
         if (!hotellisteBlob) throw new Error('Hotelliste PDF generatsiya qilishda xatolik');
-        form.append('hotelliste', hotellisteBlob, `Hotelliste_${bookingNum}.pdf`);
+        const hotellisteFilename = isNeueRechnung ? `Neue_Hotelliste_${bookingNum}.pdf` : `Hotelliste_${bookingNum}.pdf`;
+        form.append('hotelliste', hotellisteBlob, hotellisteFilename);
       }
       form.append('rechnung', rechnungBlob, `${docLabel}_${firmaLabel}_${bookingNum}.pdf`);
       form.append('email', worldInsightEmail.trim());

@@ -2772,7 +2772,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
 ]), async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { email } = req.body;
+    const { email, docType } = req.body;
 
     if (!email) return res.status(400).json({ error: 'E-Mail Adresse fehlt' });
 
@@ -2815,7 +2815,11 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
     const tourCode = booking.tourType?.code;
     const reiseLabel = tourCode === 'CO' ? tourName : `${tourName} (Usbekistan Teil)`;
 
-    const subject = `Hotelliste & Rechnung für die ${tourName} (${bookingNum})`;
+    const subject = docType === 'neue-rechnung'
+      ? `Neue Hotelliste & Neue Rechnung für die ${tourName} (${bookingNum})`
+      : docType === 'gutschrift'
+      ? `Gutschrift für die ${tourName} (${bookingNum})`
+      : `Hotelliste & Rechnung für die ${tourName} (${bookingNum})`;
     const html = `
 <div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.6">
   <p>Liebe Celinda,</p>
