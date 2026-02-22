@@ -666,8 +666,9 @@ router.post('/webhook', async (req, res) => {
       const parts = data.split(':');
       const action = parts[0];
       const isBulk = action === 'jp_ca' || action === 'jp_wa' || action === 'jp_ra';
-      const jpHotelId = parseInt(isBulk ? parts[1] : parts[2]);
+      const jpHotelId  = parseInt(isBulk ? parts[1] : parts[2]);
       const jpBookingId = isBulk ? null : parseInt(parts[1]);
+      const jpVisitIdx  = isBulk ? null : (parts[3] !== undefined ? parseInt(parts[3]) : null);
 
       const newStatus = (action === 'jp_c' || action === 'jp_ca') ? 'CONFIRMED'
                       : (action === 'jp_w' || action === 'jp_wa') ? 'WAITING'
@@ -683,72 +684,91 @@ router.post('/webhook', async (req, res) => {
       // Load stored groups
       const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${jpHotelId}` } });
       if (!setting) { console.warn(`JP_SECTIONS not found for hotelId ${jpHotelId}`); return; }
-      const { year, tourType, hotelName, chatId: storedChatId, groups, bulkMsgId } = JSON.parse(setting.value);
-      const allBookingIds = groups.map(g => g.bookingId);
-      const targetIds = isBulk ? allBookingIds : [jpBookingId];
+      const stored = JSON.parse(setting.value);
+      const { year, tourType, hotelName, chatId: storedChatId, bulkMsgId } = stored;
+      const groups = stored.groups;
       const editChatId = cb.message?.chat?.id || storedChatId;
-
-      // Update confirmation statuses
-      await prisma.telegramConfirmation.updateMany({
-        where: { bookingId: { in: targetIds }, hotelId: jpHotelId },
-        data: { status: newStatus, confirmedBy: fromName, respondedAt: new Date() }
-      }).catch(() => {});
-
-      // Get all current statuses
-      const confirmations = await prisma.telegramConfirmation.findMany({
-        where: { hotelId: jpHotelId, bookingId: { in: allBookingIds } }
-      });
-      const statusMap = {};
-      for (const c of confirmations) {
-        if (!statusMap[c.bookingId]) statusMap[c.bookingId] = c.status;
-      }
 
       const TOUR_LABELS = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
-      const header = `📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}  🏨 ${hotelName}`;
+      const header = `📋 *Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}*  🏨 *${hotelName}*`;
 
-      // Helper — build one group's message text + keyboard
-      function buildGrpMsg(grp, st) {
-        const lines = [header, '', `*${grp.no}. ${grp.group}*`];
-        for (const v of grp.visits) {
-          const lbl = v.sectionLabel ? `${v.sectionLabel}: ` : '';
-          lines.push(`   ${lbl}${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
-        }
-        const btnConfirm = st === 'CONFIRMED' ? '✅ Tasdiqlandi ✓' : '✅ Tasdiqlash';
-        const btnWl      = st === 'WAITING'   ? '⏳ WL ✓'          : '⏳ WL';
-        const btnRad     = st === 'REJECTED'  ? '❌ Rad ✓'         : '❌ Rad etish';
+      // Helper — build one visit's message + keyboard
+      function buildVisitMsg(grp, v, st) {
+        const visitTitle = v.sectionLabel
+          ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
+          : `*${grp.no}. ${grp.group}*`;
+        const lines = [header, '', visitTitle,
+          `${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
+        ];
         return {
           text: lines.join('\n'),
           keyboard: [[
-            { text: btnConfirm, callback_data: `jp_c:${grp.bookingId}:${jpHotelId}` },
-            { text: btnWl,      callback_data: `jp_w:${grp.bookingId}:${jpHotelId}` },
-            { text: btnRad,     callback_data: `jp_r:${grp.bookingId}:${jpHotelId}` },
+            { text: st === 'CONFIRMED' ? '✅ Tasdiqlandi ✓' : '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
+            { text: st === 'WAITING'   ? '⏳ WL ✓'          : '⏳ WL',         callback_data: `jp_w:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
+            { text: st === 'REJECTED'  ? '❌ Rad ✓'         : '❌ Rad etish',  callback_data: `jp_r:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
           ]]
         };
       }
 
       if (isBulk) {
-        // Edit ALL individual group messages
+        // Update status of ALL visits in SystemSetting
         for (const grp of groups) {
-          if (!grp.msgId) continue;
-          const { text, keyboard } = buildGrpMsg(grp, newStatus);
-          await axios.post(`${BOT_API()}/editMessageText`, {
-            chat_id: storedChatId, message_id: grp.msgId,
-            text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
-          }).catch(() => {});
+          for (const v of grp.visits) v.status = newStatus;
+        }
+        // Update DB records
+        const allBookingIds = groups.map(g => g.bookingId);
+        await prisma.telegramConfirmation.updateMany({
+          where: { bookingId: { in: allBookingIds }, hotelId: jpHotelId },
+          data: { status: newStatus, confirmedBy: fromName, respondedAt: new Date() }
+        }).catch(() => {});
+        // Edit all visit messages
+        for (const grp of groups) {
+          for (const v of grp.visits) {
+            if (!v.msgId) continue;
+            const { text, keyboard } = buildVisitMsg(grp, v, newStatus);
+            await axios.post(`${BOT_API()}/editMessageText`, {
+              chat_id: storedChatId, message_id: v.msgId,
+              text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
+            }).catch(() => {});
+          }
         }
       } else {
-        // Edit only this booking's message
-        const grp = groups.find(g => g.bookingId === jpBookingId);
-        const msgId = cb.message?.message_id;
-        if (grp && msgId && editChatId) {
-          const { text, keyboard } = buildGrpMsg(grp, newStatus);
-          await axios.post(`${BOT_API()}/editMessageText`, {
-            chat_id: editChatId, message_id: msgId,
-            text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
-          }).catch(e => console.warn('JP editMessageText error:', e.response?.data || e.message));
+        // Find and update this specific visit
+        let targetGrp = null, targetVisit = null;
+        for (const grp of groups) {
+          const v = grp.visits.find(v => v.visitIdx === jpVisitIdx && grp.bookingId === jpBookingId);
+          if (v) { targetGrp = grp; targetVisit = v; break; }
+        }
+        if (targetVisit) {
+          targetVisit.status = newStatus;
+          // Update DB: if ALL visits of this booking confirmed → CONFIRMED, else PENDING
+          const allVisitsOfBooking = targetGrp.visits;
+          const overallStatus = allVisitsOfBooking.every(v => v.status === 'CONFIRMED') ? 'CONFIRMED'
+                              : allVisitsOfBooking.some(v => v.status === 'WAITING')   ? 'WAITING'
+                              : 'PENDING';
+          await prisma.telegramConfirmation.updateMany({
+            where: { bookingId: jpBookingId, hotelId: jpHotelId },
+            data: { status: overallStatus, confirmedBy: fromName, respondedAt: new Date() }
+          }).catch(() => {});
+          // Edit this visit's message
+          const msgId = cb.message?.message_id;
+          if (msgId && editChatId) {
+            const { text, keyboard } = buildVisitMsg(targetGrp, targetVisit, newStatus);
+            await axios.post(`${BOT_API()}/editMessageText`, {
+              chat_id: editChatId, message_id: msgId,
+              text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
+            }).catch(e => console.warn('JP editMessageText error:', e.response?.data || e.message));
+          }
         }
       }
+
+      // Save updated statuses back to SystemSetting
+      stored.groups = groups;
+      await prisma.systemSetting.update({
+        where: { key: `JP_SECTIONS_${jpHotelId}` },
+        data: { value: JSON.stringify(stored) }
+      }).catch(() => {});
       return;
     }
     // ── End JP callbacks ──────────────────────────────────────────────────

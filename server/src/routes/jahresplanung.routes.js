@@ -295,30 +295,46 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       const TG_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
       const header = `📋 *Заявка ${year} — ${tourLabel}*  🏨 *${hotel.name}*`;
 
-      // Send one message per booking — visits + confirm buttons right below
+      // Assign global visitIdx to each visit across all groups
+      let visitIdx = 0;
       for (const grp of groups) {
-        const lines = [header, '', `*${grp.no}. ${grp.group}*`];
         for (const v of grp.visits) {
-          const lbl = v.sectionLabel ? `${v.sectionLabel}: ` : '';
-          lines.push(`   ${lbl}⬜ ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`);
+          v.visitIdx = visitIdx++;
+          v.status = 'PENDING';
+          v.msgId = null;
         }
-        const msgRes = await axios.post(`${TG_API}/sendMessage`, {
-          chat_id: hotel.telegramChatId,
-          text: lines.join('\n'),
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[
-            { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}` },
-            { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}` },
-            { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}` },
-          ]]}
-        });
-        grp.msgId = msgRes.data?.result?.message_id || null;
+      }
+
+      // Send ONE message per visit — each with its own confirm buttons
+      for (const grp of groups) {
+        for (const v of grp.visits) {
+          const visitTitle = v.sectionLabel
+            ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
+            : `*${grp.no}. ${grp.group}*`;
+          const lines = [
+            header, '',
+            visitTitle,
+            `⬜ ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
+          ];
+          const msgRes = await axios.post(`${TG_API}/sendMessage`, {
+            chat_id: hotel.telegramChatId,
+            text: lines.join('\n'),
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: [[
+              { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+              { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+              { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+            ]]}
+          });
+          v.msgId = msgRes.data?.result?.message_id || null;
+        }
       }
 
       // Final bulk-action message
+      const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
       const bulkRes = await axios.post(`${TG_API}/sendMessage`, {
         chat_id: hotel.telegramChatId,
-        text: `${header}\n\nBarcha *${groups.length}* ta gruppa uchun:`,
+        text: `${header}\n\nBarcha *${totalVisits}* ta zaezd uchun:`,
         parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[
           { text: '✅ Barchasini',     callback_data: `jp_ca:${hotelId}` },
@@ -328,7 +344,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       });
       const bulkMsgId = bulkRes.data?.result?.message_id || null;
 
-      // Store for webhook rebuilding (includes msgId per group + chatId)
+      // Store for webhook rebuilding
       await prisma.systemSetting.upsert({
         where: { key: `JP_SECTIONS_${hotelId}` },
         update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) },
