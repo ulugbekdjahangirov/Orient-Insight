@@ -2813,6 +2813,8 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
       ZA:  'ZA Tour Usbekistan',
     };
     const tourName = tourNames[booking.tourType?.code] || booking.tourType?.name || 'Tour';
+    const tourCode = booking.tourType?.code;
+    const reiseLabel = tourCode === 'CO' ? tourName : `${tourName} (Usbekistan Teil)`;
 
     const subject = `Hotelliste & Rechnung für die ${tourName} (${bookingNum})`;
     const html = `
@@ -2820,7 +2822,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
   <p>Liebe Celinda,</p>
   <p>im Anhang erhältst du die <strong>Hotelliste</strong> und die <strong>Rechnung</strong> für folgende Gruppe:</p>
   <table style="margin:16px 0;border-collapse:collapse">
-    <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reise:</td><td>${tourName} (Usbekistan Teil)</td></tr>
+    <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reise:</td><td>${reiseLabel}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Buchungsnummer:</td><td>${bookingNum}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reisedatum:</td><td>${dateRange}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Teilnehmerzahl:</td><td>${pax} Personen</td></tr>
