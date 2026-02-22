@@ -12046,15 +12046,14 @@ export default function BookingDetail() {
               // Day 3 (arr+3): Bukhara day 2 — Mohi Khosa
               if (name.includes('mohi') || name.includes('khosa') || name.includes('xosa'))
                 return format(addDays(arrival, 3), 'yyyy-MM-dd');
-              // Day 5 (arr+5): Samarkand day 1 — Amir Temur, Registan, Bibi-Khanym, Shah-i-Zinda, Daniel
-              if (name.includes('amir') || name.includes('temur') || name.includes('registan') ||
-                  name.includes('bibi') || name.includes('khanum') || name.includes('shah') ||
-                  name.includes('zinda') || name.includes('daniel'))
+              // Day 4 (arr+4): Samarkand arrival day — Registan, Amir Temur (afternoon sightseeing)
+              if (name.includes('registan') || name.includes('amir') || name.includes('temur'))
+                return format(addDays(arrival, 4), 'yyyy-MM-dd');
+              // Day 5 (arr+5): Samarkand full day — Bibi-Khanym, Shah-i-Zinda, Daniel, Ulugbek, Konigil
+              if (name.includes('bibi') || name.includes('khanum') || name.includes('shah') ||
+                  name.includes('zinda') || name.includes('daniel') || name.includes('ulugbek') ||
+                  name.includes('ulug bek') || name.includes('konigil') || name.includes('paper') || name.includes('workshop'))
                 return format(addDays(arrival, 5), 'yyyy-MM-dd');
-              // Day 6 (arr+6): Samarkand day 2 — Ulugbek, Konigil
-              if (name.includes('ulugbek') || name.includes('ulug bek') ||
-                  name.includes('konigil') || name.includes('paper') || name.includes('workshop'))
-                return format(addDays(arrival, 6), 'yyyy-MM-dd');
               // Day 8 (arr+8): Tashkent — Hast Imam, Kukeldash
               if (name.includes('hast') || name.includes('imam') || name.includes('kukeldash') || name.includes('madrasah'))
                 return format(addDays(arrival, 8), 'yyyy-MM-dd');
