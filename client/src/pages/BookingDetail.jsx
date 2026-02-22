@@ -12056,14 +12056,16 @@ export default function BookingDetail() {
                 // Use saved entry data, but use auto-date if saved date is null/invalid
                 savedEntriesMap.delete(itemName); // Mark as used
 
-                // Check if saved date is valid (can be parsed and is in year 2024+)
+                // Check if saved date is valid — must be within ±60 days of booking departure
                 let hasValidDate = false;
                 if (savedEntry.date && savedEntry.date !== 'null' && savedEntry.date !== 'undefined') {
                   try {
                     const parsedDate = new Date(savedEntry.date);
-                    const year = parsedDate.getFullYear();
-                    // Valid if it's a real date and year is 2024 or later
-                    hasValidDate = !isNaN(parsedDate.getTime()) && year >= 2024 && year <= 2030;
+                    const depDate = booking?.departureDate ? new Date(booking.departureDate) : null;
+                    if (!isNaN(parsedDate.getTime()) && depDate) {
+                      const diffDays = Math.abs((parsedDate - depDate) / (1000 * 60 * 60 * 24));
+                      hasValidDate = diffDays <= 60;
+                    }
                   } catch (e) {
                     hasValidDate = false;
                   }
@@ -12108,14 +12110,31 @@ export default function BookingDetail() {
               const pricePerPerson = savedEntry.pricePerPerson || 0;
               const totalPrice = pricePerPerson * currentPax;
 
+              // Try auto-date for ER tours (e.g. Magoki Attori name mismatch with template)
+              const customAutoDate = booking?.tourType?.code === 'ER'
+                ? getERAttractionDate(savedEntry.name, arrivalDate)
+                : null;
+
+              // Validate saved date against booking departure (±60 days)
+              let customHasValidDate = false;
+              if (savedEntry.date && savedEntry.date !== 'null' && savedEntry.date !== 'undefined') {
+                try {
+                  const parsedDate = new Date(savedEntry.date);
+                  const depDate = booking?.departureDate ? new Date(booking.departureDate) : null;
+                  if (!isNaN(parsedDate.getTime()) && depDate) {
+                    customHasValidDate = Math.abs((parsedDate - depDate) / (1000 * 60 * 60 * 24)) <= 60;
+                  }
+                } catch (e) {}
+              }
+
               allEntries.push({
                 id: savedEntry.id,
                 name: savedEntry.name,
                 city: null,
-                date: savedEntry.date,
+                date: customHasValidDate ? savedEntry.date : customAutoDate,
                 pricePerPerson: pricePerPerson,
-                pax: currentPax, // Use tourists count from Final List
-                price: totalPrice, // Recalculate with current PAX
+                pax: currentPax,
+                price: totalPrice,
                 isTemplate: false
               });
             });
@@ -12129,13 +12148,17 @@ export default function BookingDetail() {
                 return true; // Show all others
               })
               .sort((a, b) => {
-                // Sort by city in tour order: Tashkent → Samarkand → Nurota → Bukhara → Khiva
-                const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                // Sort by city in tour order: Tashkent → Samarkand → Nurota/Nurata → Bukhara → Khiva
+                const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'nurata': 3, 'bukhara': 4, 'khiva': 5 };
                 const cityA = (a.city || '').toLowerCase().trim();
                 const cityB = (b.city || '').toLowerCase().trim();
                 const orderA = cityOrder[cityA] || 999;
                 const orderB = cityOrder[cityB] || 999;
-                return orderA - orderB;
+                if (orderA !== orderB) return orderA - orderB;
+                // Same city: sort by date
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                return dateA - dateB;
               });
 
             return (
