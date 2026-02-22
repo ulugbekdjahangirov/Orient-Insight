@@ -2823,7 +2823,13 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
     const html = `
 <div style="font-family:Arial,sans-serif;font-size:14px;color:#222;line-height:1.6">
   <p>Liebe Celinda,</p>
-  <p>im Anhang erhältst du die <strong>Hotelliste</strong> und die <strong>Rechnung</strong> für folgende Gruppe:</p>
+  <p>${
+      docType === 'neue-rechnung'
+        ? 'Im Anhang findest du die neue <strong>Hotelliste</strong> sowie die neue <strong>Rechnung</strong> für folgende Gruppe:'
+        : docType === 'gutschrift'
+        ? 'Im Anhang findest du die <strong>Gutschrift</strong> für folgende Gruppe:'
+        : 'Im Anhang findest du die <strong>Hotelliste</strong> sowie die <strong>Rechnung</strong> für folgende Gruppe:'
+    }</p>
   <table style="margin:16px 0;border-collapse:collapse">
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reise:</td><td>${reiseLabel}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Buchungsnummer:</td><td>${bookingNum}</td></tr>
