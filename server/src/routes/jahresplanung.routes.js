@@ -274,6 +274,35 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
   }
 });
 
+// GET /api/jahresplanung/state?year=2026&tourType=ER
+router.get('/state', authenticate, async (req, res) => {
+  try {
+    const { year, tourType } = req.query;
+    const key = `JP_STATE_${year}_${tourType}`;
+    const s = await prisma.systemSetting.findUnique({ where: { key } });
+    res.json(s ? JSON.parse(s.value) : null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/jahresplanung/state
+router.put('/state', authenticate, async (req, res) => {
+  try {
+    const { year, tourType, overrides, statuses, cityExtras, hotelAssign } = req.body;
+    const key = `JP_STATE_${year}_${tourType}`;
+    const value = JSON.stringify({ overrides, statuses, cityExtras, hotelAssign });
+    await prisma.systemSetting.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/jahresplanung/all-hotels — active hotels with city info (for hotel picker)
 router.get('/all-hotels', authenticate, async (req, res) => {
   try {

@@ -645,6 +645,8 @@ function HotelsTab({ tourType }) {
   const [bookingHotelAssign, setBookingHotelAssign] = useState({});
   // All hotels from DB (for picker)
   const [allHotels, setAllHotels] = useState([]);
+  const saveTimerRef = useRef(null);
+  const loadingRef = useRef(false);
 
   // Load all hotels once
   useEffect(() => {
@@ -653,16 +655,43 @@ function HotelsTab({ tourType }) {
       .catch(() => {});
   }, []);
 
-  // Load persisted state when tourType changes
+  // Load persisted state when tourType changes — localStorage first (instant), then DB (authoritative)
   useEffect(() => {
-    const load = (key, setter) => {
-      try { const s = localStorage.getItem(key); setter(s ? JSON.parse(s) : {}); } catch { setter({}); }
-    };
-    load(`jp_overrides_${YEAR}_${tourType}`, setOverrides);
-    load(`jp_statuses_${YEAR}_${tourType}`, setRowStatuses);
-    load(`jp_cityExtras_${YEAR}_${tourType}`, setCityExtraHotels);
-    load(`jp_hotelAssign_${YEAR}_${tourType}`, setBookingHotelAssign);
+    loadingRef.current = true;
+    const fromLS = (key) => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : {}; } catch { return {}; } };
+    setOverrides(fromLS(`jp_overrides_${YEAR}_${tourType}`));
+    setRowStatuses(fromLS(`jp_statuses_${YEAR}_${tourType}`));
+    setCityExtraHotels(fromLS(`jp_cityExtras_${YEAR}_${tourType}`));
+    setBookingHotelAssign(fromLS(`jp_hotelAssign_${YEAR}_${tourType}`));
+
+    jahresplanungApi.getState(YEAR, tourType)
+      .then(res => {
+        if (res.data) {
+          const { overrides: o = {}, statuses: s = {}, cityExtras: c = {}, hotelAssign: h = {} } = res.data;
+          setOverrides(o); setRowStatuses(s); setCityExtraHotels(c); setBookingHotelAssign(h);
+          try {
+            localStorage.setItem(`jp_overrides_${YEAR}_${tourType}`, JSON.stringify(o));
+            localStorage.setItem(`jp_statuses_${YEAR}_${tourType}`, JSON.stringify(s));
+            localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(c));
+            localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(h));
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => { loadingRef.current = false; });
   }, [tourType]);
+
+  // Debounced save to DB on any state change (skip during initial load)
+  useEffect(() => {
+    if (loadingRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      jahresplanungApi.saveState(YEAR, tourType, {
+        overrides, statuses: rowStatuses, cityExtras: cityExtraHotels, hotelAssign: bookingHotelAssign
+      }).catch(() => {});
+    }, 1500);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [overrides, rowStatuses, cityExtraHotels, bookingHotelAssign]);
 
   useEffect(() => { loadData(); }, [tourType]);
 
@@ -907,7 +936,7 @@ function HotelsTab({ tourType }) {
 
 export default function Jahresplanung() {
   const [mainTab, setMainTab] = useState('hotels');
-  const [tourTab, setTourTab] = useState('ER');
+  const [tourTab, setTourTab] = useState(() => localStorage.getItem('jp_tourTab') || 'ER');
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -931,7 +960,7 @@ export default function Jahresplanung() {
 
       <div className="flex gap-2 mb-5">
         {TOUR_TYPES.map(t => (
-          <button key={t} onClick={() => setTourTab(t)}
+          <button key={t} onClick={() => { setTourTab(t); localStorage.setItem('jp_tourTab', t); }}
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${tourTab===t ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
           >
             {t}

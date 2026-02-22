@@ -396,7 +396,9 @@ export const jahresplanungApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  getAllHotels: () => api.get('/jahresplanung/all-hotels')
+  getAllHotels: () => api.get('/jahresplanung/all-hotels'),
+  getState: (year, tourType) => api.get('/jahresplanung/state', { params: { year, tourType } }),
+  saveState: (year, tourType, data) => api.put('/jahresplanung/state', { year, tourType, ...data }),
 };
 
 export default api;
