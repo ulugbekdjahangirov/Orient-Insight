@@ -1081,7 +1081,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
   };
 
   const autoFillDates = async () => {
-    if (!booking?.arrivalDate || !booking?.endDate) {
+    if (!booking?.departureDate || !booking?.endDate) {
       toast.error('Booking sanalar topilmadi');
       return;
     }
@@ -1099,7 +1099,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
         }
 
         // Generate all dates from scratch
-        const allDates = generateDateRange(booking.arrivalDate, booking.endDate);
+        const allDates = generateDateRange(booking.departureDate, booking.endDate);
 
         toast.info(`${allDates.length} та янги сана яратилмоқда...`);
 
@@ -1119,7 +1119,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
         toast.success(`Ҳамма ўчирилди ва ${allDates.length} та янги сана яратилди`);
       } else {
         // Only add missing dates
-        const expectedDates = generateDateRange(booking.arrivalDate, booking.endDate);
+        const expectedDates = generateDateRange(booking.departureDate, booking.endDate);
         const existingDates = new Set(routes.map(r => r.date?.split('T')[0]));
         const missingDates = expectedDates.filter(date => !existingDates.has(date));
 
