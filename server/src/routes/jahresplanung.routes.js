@@ -447,12 +447,10 @@ router.post('/generate-pdf', authenticate, async (req, res) => {
 <html>
 <head>
   <meta charset="UTF-8">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <style>
     @page { size: A4 portrait; margin: 15mm 12mm 15mm 12mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Tinos', 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.3; color: #000; }
+    body { font-family: 'DejaVu Serif', 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.3; color: #000; }
     .header-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 10px; }
     .date-hotel-row { width: 100%; border: none; border-collapse: collapse; margin-bottom: 15px; }
     .date-hotel-row td { vertical-align: top; padding: 3px; }
@@ -520,7 +518,7 @@ router.post('/generate-pdf', authenticate, async (req, res) => {
     const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
     const pdfUint8 = await page.pdf({ format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }, printBackground: true });
     await browser.close();
 
