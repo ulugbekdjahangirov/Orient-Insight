@@ -543,64 +543,64 @@ export default function Guides() {
       {activeTab === 'information' && (
         <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-primary-100 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-transparent to-indigo-50/30 pointer-events-none"></div>
-        <div className="relative overflow-x-auto">
-        <table className="w-full">
+        <div className="relative">
+        <table className="w-full table-fixed">
           <thead className="bg-gradient-to-r from-primary-600 via-primary-500 to-indigo-600 relative">
             <tr>
-              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider w-8 border-r border-primary-400/30"></th>
-              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Гид</th>
-              <th className="hidden lg:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Дата рождения</th>
-              <th className="hidden md:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Контакты</th>
-              <th className="hidden md:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Telegram</th>
-              <th className="hidden lg:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Паспорт</th>
-              <th className="hidden xl:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Срок действия</th>
+              <th className="w-8 px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30"></th>
+              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Гид</th>
+              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Тугилган</th>
+              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Контакты</th>
+              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Telegram</th>
+              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Паспорт</th>
+              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Срок</th>
               {isAdmin && (
                 <>
-                  <th className="hidden xl:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Счет</th>
-                  <th className="hidden xl:table-cell px-6 py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Банк</th>
+                  <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Счет</th>
+                  <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Банк</th>
                 </>
               )}
-              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Туры</th>
-              <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Статус</th>
-              <th className="px-3 md:px-6 py-4 md:py-5 text-right text-xs font-black text-white uppercase tracking-wider">Действия</th>
+              <th className="w-16 px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Туры</th>
+              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Статус</th>
+              <th className="px-2 py-3 text-right text-xs font-black text-white uppercase tracking-wider">Действия</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {guides.map((guide, idx) => (
               <>
                 <tr key={guide.id} className={!guide.isActive ? 'bg-gray-50/70 opacity-70' : `hover:bg-gradient-to-r hover:from-primary-50/80 hover:via-indigo-50/50 hover:to-purple-50/30 transition-all duration-300 hover:shadow-md ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                  <td className="px-3 md:px-6 py-4">
+                  <td className="px-2 py-3">
                     <button
                       onClick={() => toggleTours(guide.id)}
-                      className="p-2 md:p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-100 rounded-lg transition-all duration-200"
+                      className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-100 rounded-lg transition-all duration-200"
                     >
                       {expandedTours === guide.id ? (
-                        <ChevronUp className="w-5 h-5" />
+                        <ChevronUp className="w-4 h-4" />
                       ) : (
-                        <ChevronDown className="w-5 h-5" />
+                        <ChevronDown className="w-4 h-4" />
                       )}
                     </button>
                   </td>
-                  <td className="px-3 md:px-6 py-4">
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
-                        <User className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                  <td className="px-2 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow">
+                        <User className="w-4 h-4 text-white" />
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm md:text-base text-gray-900">{guide.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-xs text-gray-900 truncate">{guide.name}</p>
                         {(guide.firstName || guide.lastName) && (
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-xs text-gray-500 truncate">
                             {guide.firstName} {guide.lastName}
                           </p>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="hidden md:table-cell px-6 py-4">
-                    <div className="text-sm font-medium text-gray-700">
+                  <td className="px-2 py-3">
+                    <div className="text-xs font-medium text-gray-700">
                       {guide.dateOfBirth ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg">
-                          <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-lg whitespace-nowrap">
+                          <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
                           {format(new Date(guide.dateOfBirth), 'dd.MM.yyyy')}
                         </span>
                       ) : (
@@ -608,61 +608,61 @@ export default function Guides() {
                       )}
                     </div>
                   </td>
-                  <td className="px-3 md:px-6 py-4">
-                    <div className="space-y-1.5 text-xs md:text-sm">
+                  <td className="px-2 py-3">
+                    <div className="space-y-1 text-xs">
                       {guide.phone && (
-                        <div className="flex items-center gap-1 md:gap-2 text-gray-700">
-                          <Phone className="w-4 h-4 text-primary-500" />
+                        <div className="flex items-center gap-1 text-gray-700">
+                          <Phone className="w-3 h-3 text-primary-500 shrink-0" />
                           <span className="font-medium">{guide.phone}</span>
                         </div>
                       )}
                       {guide.email && (
-                        <div className="flex items-center gap-1 md:gap-2 text-gray-700">
-                          <Mail className="w-4 h-4 text-primary-500" />
+                        <div className="flex items-center gap-1 text-gray-700">
+                          <Mail className="w-3 h-3 text-primary-500 shrink-0" />
                           <span className="font-medium truncate">{guide.email}</span>
                         </div>
                       )}
                     </div>
                   </td>
-                  <td className="hidden md:table-cell px-6 py-4">
+                  <td className="px-2 py-3">
                     {guide.telegramChatId ? (
-                      <code className="text-xs bg-sky-50 text-sky-700 px-2 py-1 rounded-lg font-mono border border-sky-200">
+                      <code className="text-xs bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-mono border border-sky-200 break-all">
                         {guide.telegramChatId}
                       </code>
                     ) : (
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
-                  <td className="hidden lg:table-cell px-6 py-4">
-                    <div className="space-y-2">
+                  <td className="px-2 py-3">
+                    <div className="space-y-1">
                       {guide.passportNumber && (
-                        <div className="flex items-center gap-2">
-                          <code className="text-xs bg-primary-50 text-primary-700 px-3 py-1 rounded-lg font-semibold border border-primary-200">
-                            {showSensitive[guide.id] && isAdmin ? guide.passportNumber : guide.passportNumber}
+                        <div className="flex items-center gap-1">
+                          <code className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded font-semibold border border-primary-200 whitespace-nowrap">
+                            {guide.passportNumber}
                           </code>
                           {isAdmin && (
                             <button
                               onClick={() => toggleSensitive(guide.id)}
-                              className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
+                              className="p-1 text-gray-400 hover:text-primary-600 rounded transition-all"
                             >
-                              {showSensitive[guide.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              {showSensitive[guide.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                             </button>
                           )}
                         </div>
                       )}
                       {guide.passportIssueDate && (
-                        <div className="text-xs text-gray-600 font-medium">
-                          до {format(new Date(guide.passportIssueDate), 'dd.MM.yyyy')}
+                        <div className="text-xs text-gray-500">
+                          до {format(new Date(guide.passportIssueDate), 'dd.MM.yy')}
                         </div>
                       )}
                       {!guide.passportNumber && <span className="text-xs text-gray-400">—</span>}
                     </div>
                   </td>
-                  <td className="hidden lg:table-cell px-6 py-4">
-                    <div className="space-y-2">
+                  <td className="px-2 py-3">
+                    <div className="space-y-1">
                       {guide.passportExpiryDate ? (
-                        <div className="flex flex-col gap-2">
-                          <span className="text-xs text-gray-700 font-semibold">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-gray-700 font-semibold whitespace-nowrap">
                             {format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')}
                           </span>
                           {getPassportStatusBadge(guide.passportStatus)}
@@ -674,81 +674,77 @@ export default function Guides() {
                   </td>
                   {isAdmin && (
                     <>
-                      <td className="hidden xl:table-cell px-6 py-4">
-                        <div className="space-y-1.5 text-xs">
+                      <td className="px-2 py-3">
+                        <div className="space-y-1 text-xs">
                           {guide.bankAccountNumber && (
-                            <div className="flex items-center gap-2 text-gray-700">
-                              <CreditCard className="w-4 h-4 text-green-500" />
-                              <span className="font-medium">{guide.bankAccountNumber}</span>
+                            <div className="text-gray-700">
+                              <span className="font-medium break-all">{guide.bankAccountNumber}</span>
                             </div>
                           )}
                           {guide.mfo && (
-                            <div className="text-gray-600 font-medium ml-6">
-                              МФО: {guide.mfo}
-                            </div>
+                            <div className="text-gray-500">МФО: {guide.mfo}</div>
                           )}
                           {!guide.bankAccountNumber && !guide.mfo && (
                             <span className="text-gray-400">—</span>
                           )}
                         </div>
                       </td>
-                      <td className="hidden xl:table-cell px-6 py-4">
-                      <div className="space-y-1.5 text-xs">
-                        {guide.bankCardNumber && (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <CreditCard className="w-4 h-4 text-green-500" />
-                            <span className="font-medium">{guide.bankCardNumber}</span>
-                          </div>
-                        )}
-                        {guide.bankName && (
-                          <div className="text-gray-600 font-medium ml-6">{guide.bankName}</div>
-                        )}
-                        {!guide.bankCardNumber && !guide.bankName && (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </div>
-                    </td>
+                      <td className="px-2 py-3">
+                        <div className="space-y-1 text-xs">
+                          {guide.bankCardNumber && (
+                            <div className="text-gray-700">
+                              <span className="font-medium break-all">{guide.bankCardNumber}</span>
+                            </div>
+                          )}
+                          {guide.bankName && (
+                            <div className="text-gray-500">{guide.bankName}</div>
+                          )}
+                          {!guide.bankCardNumber && !guide.bankName && (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </div>
+                      </td>
                     </>
                   )}
-                  <td className="hidden md:table-cell px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-xs font-bold shadow-sm">
-                      <FileText className="w-3.5 h-3.5" />
-                      {guide._count?.bookings || 0} туров
+                  <td className="px-2 py-3">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-xs font-bold shadow-sm whitespace-nowrap">
+                      <FileText className="w-3 h-3" />
+                      {guide._count?.bookings || 0}
                     </span>
                   </td>
-                  <td className="px-3 md:px-6 py-4">
-                    <span className={`inline-flex items-center px-2 md:px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
+                  <td className="px-2 py-3">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap ${
                       guide.isActive
                         ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
                         : 'bg-gray-200 text-gray-600'
                     }`}>
-                      {guide.isActive ? 'Активен' : 'Неактивен'}
+                      {guide.isActive ? 'Актив' : 'Нет'}
                     </span>
                   </td>
-                  <td className="px-3 md:px-6 py-4">
-                    <div className="flex items-center justify-end gap-1 md:gap-2">
+                  <td className="px-2 py-3">
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => openModal(guide)}
-                        className="p-3 md:p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+                        className="p-1.5 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 flex items-center justify-center"
                         title="Редактировать"
                       >
-                        <Edit className="w-5 h-5 md:w-4 md:h-4" />
+                        <Edit className="w-3.5 h-3.5" />
                       </button>
                       {isAdmin && (
                         <>
                           <button
                             onClick={() => toggleActive(guide)}
-                            className="p-3 md:p-2 text-gray-400 hover:text-white hover:bg-yellow-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-yellow-500 rounded-lg transition-all duration-200 flex items-center justify-center"
                             title={guide.isActive ? 'Деактивировать' : 'Активировать'}
                           >
-                            <Shield className="w-5 h-5 md:w-4 md:h-4" />
+                            <Shield className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleDelete(guide)}
-                            className="p-3 md:p-2 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 flex items-center justify-center"
                             title="Удалить"
                           >
-                            <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </>
                       )}

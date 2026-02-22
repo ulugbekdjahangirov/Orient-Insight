@@ -343,6 +343,7 @@ export const telegramApi = {
   sendMeal: (bookingId, data) => api.post(`/telegram/send-meal/${bookingId}`, data),
   getMealConfirmations: (bookingId) => api.get('/telegram/meal-confirmations', bookingId ? { params: { bookingId } } : {}),
   deleteMealConfirmation: (id) => api.delete(`/telegram/meal-confirmations/${id}`),
+  getGuideAssignments: () => api.get('/telegram/guide-assignments'),
   getMealSettings: () => api.get('/telegram/meal-settings'),
   saveMealSettings: (chatIds) => api.put('/telegram/meal-settings', { chatIds }),
   sendGuide: (bookingId, data) => api.post(`/telegram/send-guide/${bookingId}`, data),

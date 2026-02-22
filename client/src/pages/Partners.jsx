@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { telegramApi } from '../services/api';
-import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck } from 'lucide-react';
+import { telegramApi, api } from '../services/api';
+import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck, Send, Copy, X } from 'lucide-react';
 
 const TABS = [
   { id: 'hotels', label: 'Hotels', icon: Building2 },
@@ -480,12 +480,110 @@ function TransportTab({ confirmations, onDelete }) {
   );
 }
 
-function ComingSoonTab({ label }) {
+const GUIDE_STATUS_CONFIG = {
+  ASSIGNED:  { label: 'Tayinlandi',    color: 'bg-green-100 text-green-800',  icon: '✅' },
+  NO_GUIDE:  { label: 'Gid yo\'q',     color: 'bg-gray-100 text-gray-500',    icon: '—'  },
+};
+
+function GuideStatusBadge({ status }) {
+  const cfg = GUIDE_STATUS_CONFIG[status] || GUIDE_STATUS_CONFIG.NO_GUIDE;
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-      <Clock className="w-12 h-12 mb-3 opacity-30" />
-      <p className="text-sm font-medium">{label} — tez kunda</p>
-      <p className="text-xs mt-1">Bu bo'lim ishlab chiqilmoqda</p>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
+      {cfg.icon} {cfg.label}
+    </span>
+  );
+}
+
+function GidlarTab({ assignments }) {
+  const [openBookings, setOpenBookings] = useState({});
+
+  const toggleBooking = (bookingId) => {
+    setOpenBookings(prev => ({ ...prev, [bookingId]: !prev[bookingId] }));
+  };
+
+  // Group by booking
+  const grouped = {};
+  assignments.forEach(a => {
+    if (!grouped[a.bookingId]) {
+      grouped[a.bookingId] = {
+        bookingId: a.bookingId,
+        bookingNumber: a.bookingNumber,
+        departureDate: a.departureDate,
+        items: []
+      };
+    }
+    grouped[a.bookingId].items.push(a);
+  });
+
+  const groups = Object.values(grouped).sort((a, b) =>
+    a.bookingNumber.localeCompare(b.bookingNumber)
+  );
+
+  if (groups.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <Users className="w-12 h-12 mb-3 opacity-30" />
+        <p className="text-sm">Bu tur uchun hali gid tayinlanmagan</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {groups.map(group => {
+        const isOpen = !!openBookings[group.bookingId];
+        const assigned = group.items.filter(i => i.status === 'ASSIGNED').length;
+        return (
+          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <button
+              onClick={() => toggleBooking(group.bookingId)}
+              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+            >
+              {isOpen
+                ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              }
+              <div className="flex-1 min-w-0">
+                <Link
+                  to={`/bookings/${group.bookingId}`}
+                  onClick={e => e.stopPropagation()}
+                  className="font-semibold text-primary-600 hover:underline"
+                >
+                  {group.bookingNumber}
+                </Link>
+                {group.departureDate && (
+                  <span className="ml-2 text-xs text-gray-500">{formatDate(group.departureDate)}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {assigned > 0 && <span className="text-sm">✅ {assigned}</span>}
+                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                  {group.items.length} ta gid
+                </span>
+              </div>
+            </button>
+            {isOpen && (
+              <div className="divide-y divide-gray-50">
+                {group.items.map(item => (
+                  <div key={item.bookingId + '-' + (item.guideId || 'none')} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors">
+                    <Users className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-gray-800 text-sm">
+                        {item.guideName || '—'}
+                      </span>
+                      {item.hasTelegram && (
+                        <span className="ml-2 text-xs text-sky-500">📱 Telegram</span>
+                      )}
+                    </div>
+                    <GuideStatusBadge status={item.status} />
+                    <span className="text-xs text-gray-400">{item.pax} PAX</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -656,8 +754,17 @@ export default function Partners() {
   const [activeTab, setActiveTab] = useState('hotels');
   const [hotelSubTab, setHotelSubTab] = useState('ER');
   const [transportSubTab, setTransportSubTab] = useState('ER');
+  const [restoranSubTab, setRestoranSubTab] = useState('ER');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [transportSearchQuery, setTransportSearchQuery] = useState('');
+  const [transportStatusFilter, setTransportStatusFilter] = useState('ALL');
+  const [restoranSearchQuery, setRestoranSearchQuery] = useState('');
+  const [restoranStatusFilter, setRestoranStatusFilter] = useState('ALL');
+  const [gidlarSubTab, setGidlarSubTab] = useState('ER');
+  const [gidlarSearchQuery, setGidlarSearchQuery] = useState('');
+  const [gidlarStatusFilter, setGidlarStatusFilter] = useState('ALL');
+  const [guideAssignments, setGuideAssignments] = useState([]);
   const [transportConfirmations, setTransportConfirmations] = useState([]);
   const [mealConfirmations, setMealConfirmations] = useState([]);
   const [confirmations, setConfirmations] = useState([]);
@@ -667,18 +774,45 @@ export default function Partners() {
   const countdownRef = useRef(null);
   const refreshRef = useRef(null);
 
+  // Telegram Finder
+  const [telegramFinderOpen, setTelegramFinderOpen] = useState(false);
+  const [telegramChats, setTelegramChats] = useState([]);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [copiedChatId, setCopiedChatId] = useState(null);
+
+  const openTelegramFinder = async () => {
+    setTelegramFinderOpen(true);
+    setTelegramLoading(true);
+    try {
+      const res = await api.get('/telegram/updates');
+      setTelegramChats(res.data.chats || []);
+    } catch {
+      // silent
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  const copyChatId = (chatId) => {
+    navigator.clipboard.writeText(chatId);
+    setCopiedChatId(chatId);
+    setTimeout(() => setCopiedChatId(null), 2000);
+  };
+
   const loadConfirmations = async (silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [hotelRes, transportRes, mealRes] = await Promise.all([
+      const [hotelRes, transportRes, mealRes, guideRes] = await Promise.all([
         telegramApi.getConfirmations(),
         telegramApi.getTransportConfirmations(),
-        telegramApi.getMealConfirmations()
+        telegramApi.getMealConfirmations(),
+        telegramApi.getGuideAssignments()
       ]);
       setConfirmations(hotelRes.data.confirmations || []);
       setTransportConfirmations(transportRes.data.confirmations || []);
       setMealConfirmations(mealRes.data.confirmations || []);
+      setGuideAssignments(guideRes.data.assignments || []);
     } catch (err) {
       setError('Ma\'lumotlarni yuklashda xatolik');
       console.error(err);
@@ -723,15 +857,25 @@ export default function Partners() {
           <h1 className="text-2xl font-bold text-gray-900">Hamkorlar</h1>
           <p className="text-sm text-gray-500 mt-0.5">Hotel, restoran, transport va gidlar bilan hamkorlik holatlari</p>
         </div>
-        <button
-          onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Yangilash
-          <span className="text-xs text-gray-400 ml-1">{countdown}s</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openTelegramFinder}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold transition-colors"
+            title="Telegram Chat ID topish"
+          >
+            <Send className="w-4 h-4" />
+            Telegram Finder
+          </button>
+          <button
+            onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Yangilash
+            <span className="text-xs text-gray-400 ml-1">{countdown}s</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -874,21 +1018,114 @@ export default function Partners() {
               </>
             );
           })()}
-          {activeTab === 'restoran' && (
-            <RestoranTab
-              confirmations={mealConfirmations}
-              onDelete={(id) => setMealConfirmations(prev => prev.filter(c => c.id !== id))}
-            />
-          )}
+          {activeTab === 'restoran' && (() => {
+            const rCounts = {};
+            mealConfirmations.forEach(c => {
+              const type = (c.booking?.bookingNumber || '').split('-')[0] || '?';
+              rCounts[type] = (rCounts[type] || 0) + 1;
+            });
+            const rq = restoranSearchQuery.trim().toLowerCase();
+            const rFiltered = mealConfirmations.filter(c => {
+              if (!(c.booking?.bookingNumber || '').startsWith(restoranSubTab + '-')) return false;
+              if (restoranStatusFilter !== 'ALL' && c.status !== restoranStatusFilter) return false;
+              if (rq) {
+                const bookingNum = (c.booking?.bookingNumber || '').toLowerCase();
+                const restName = (c.restaurant?.name || c.restaurantName || '').toLowerCase();
+                if (!bookingNum.includes(rq) && !restName.includes(rq)) return false;
+              }
+              return true;
+            });
+            return (
+              <>
+                {/* Sub-tabs */}
+                <div className="flex gap-1 mb-4">
+                  {HOTEL_SUB_TABS.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setRestoranSubTab(sub)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        restoranSubTab === sub
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {sub}
+                      {rCounts[sub] ? (
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          restoranSubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {rCounts[sub]}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search + Status filter */}
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <div className="relative flex-1 min-w-48">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={restoranSearchQuery}
+                      onChange={e => setRestoranSearchQuery(e.target.value)}
+                      placeholder="Booking raqami yoki restoran nomi..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    {restoranSearchQuery && (
+                      <button
+                        onClick={() => setRestoranSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {STATUS_FILTERS.filter(sf => ['ALL','PENDING','CONFIRMED','REJECTED'].includes(sf.id)).map(sf => (
+                      <button
+                        key={sf.id}
+                        onClick={() => setRestoranStatusFilter(sf.id)}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                          restoranStatusFilter === sf.id
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {sf.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(rq || restoranStatusFilter !== 'ALL') && (
+                  <p className="text-xs text-gray-400 mb-3">{rFiltered.length} ta natija topildi</p>
+                )}
+
+                <RestoranTab
+                  confirmations={rFiltered}
+                  onDelete={(id) => setMealConfirmations(prev => prev.filter(c => c.id !== id))}
+                />
+              </>
+            );
+          })()}
           {activeTab === 'transport' && (() => {
             const trCounts = {};
             transportConfirmations.forEach(c => {
               const type = (c.booking?.bookingNumber || '').split('-')[0] || '?';
               trCounts[type] = (trCounts[type] || 0) + 1;
             });
-            const trFiltered = transportConfirmations.filter(c =>
-              (c.booking?.bookingNumber || '').startsWith(transportSubTab + '-')
-            );
+            const tq = transportSearchQuery.trim().toLowerCase();
+            const trFiltered = transportConfirmations.filter(c => {
+              if (!(c.booking?.bookingNumber || '').startsWith(transportSubTab + '-')) return false;
+              if (transportStatusFilter !== 'ALL' && c.status !== transportStatusFilter) return false;
+              if (tq) {
+                const bookingNum = (c.booking?.bookingNumber || '').toLowerCase();
+                const provider = (c.provider || '').toLowerCase();
+                if (!bookingNum.includes(tq) && !provider.includes(tq)) return false;
+              }
+              return true;
+            });
             return (
               <>
                 {/* Sub-tabs */}
@@ -914,6 +1151,48 @@ export default function Partners() {
                     </button>
                   ))}
                 </div>
+
+                {/* Search + Status filter */}
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <div className="relative flex-1 min-w-48">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={transportSearchQuery}
+                      onChange={e => setTransportSearchQuery(e.target.value)}
+                      placeholder="Booking raqami yoki provayder nomi..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    {transportSearchQuery && (
+                      <button
+                        onClick={() => setTransportSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {STATUS_FILTERS.map(sf => (
+                      <button
+                        key={sf.id}
+                        onClick={() => setTransportStatusFilter(sf.id)}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                          transportStatusFilter === sf.id
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {sf.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(tq || transportStatusFilter !== 'ALL') && (
+                  <p className="text-xs text-gray-400 mb-3">{trFiltered.length} ta natija topildi</p>
+                )}
+
                 <TransportTab
                   confirmations={trFiltered}
                   onDelete={(id) => setTransportConfirmations(prev => prev.filter(c => c.id !== id))}
@@ -921,8 +1200,155 @@ export default function Partners() {
               </>
             );
           })()}
-          {activeTab === 'gidlar' && <ComingSoonTab label="Gidlar" />}
+          {activeTab === 'gidlar' && (() => {
+            const gCounts = {};
+            guideAssignments.forEach(a => {
+              const type = (a.bookingNumber || '').split('-')[0] || '?';
+              gCounts[type] = (gCounts[type] || 0) + 1;
+            });
+            const gq = gidlarSearchQuery.trim().toLowerCase();
+            const gFiltered = guideAssignments.filter(a => {
+              if (!(a.bookingNumber || '').startsWith(gidlarSubTab + '-')) return false;
+              if (gidlarStatusFilter !== 'ALL' && a.status !== gidlarStatusFilter) return false;
+              if (gq) {
+                const bookingNum = (a.bookingNumber || '').toLowerCase();
+                const guideName = (a.guideName || '').toLowerCase();
+                if (!bookingNum.includes(gq) && !guideName.includes(gq)) return false;
+              }
+              return true;
+            });
+            return (
+              <>
+                {/* Sub-tabs */}
+                <div className="flex gap-1 mb-4">
+                  {HOTEL_SUB_TABS.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setGidlarSubTab(sub)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        gidlarSubTab === sub
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {sub}
+                      {gCounts[sub] ? (
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          gidlarSubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {gCounts[sub]}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search + Status filter */}
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <div className="relative flex-1 min-w-48">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={gidlarSearchQuery}
+                      onChange={e => setGidlarSearchQuery(e.target.value)}
+                      placeholder="Booking raqami yoki gid ismi..."
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                    {gidlarSearchQuery && (
+                      <button
+                        onClick={() => setGidlarSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {[
+                      { id: 'ALL',      label: 'Barchasi' },
+                      { id: 'ASSIGNED', label: '✅ Tayinlandi' },
+                      { id: 'NO_GUIDE', label: '— Gid yo\'q' },
+                    ].map(sf => (
+                      <button
+                        key={sf.id}
+                        onClick={() => setGidlarStatusFilter(sf.id)}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                          gidlarStatusFilter === sf.id
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {sf.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {(gq || gidlarStatusFilter !== 'ALL') && (
+                  <p className="text-xs text-gray-400 mb-3">{gFiltered.length} ta natija topildi</p>
+                )}
+
+                <GidlarTab assignments={gFiltered} />
+              </>
+            );
+          })()}
         </>
+      )}
+
+      {/* Telegram Finder Modal */}
+      {telegramFinderOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
+            <div className="bg-gradient-to-r from-sky-500 to-cyan-600 p-5 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Send className="w-6 h-6 text-white" />
+                <div>
+                  <h2 className="text-lg font-bold text-white">Telegram Finder</h2>
+                  <p className="text-sky-100 text-xs">Botga xabar yuborgan odamlarning Chat ID lari</p>
+                </div>
+              </div>
+              <button onClick={() => setTelegramFinderOpen(false)} className="text-white/80 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              {telegramLoading ? (
+                <div className="text-center py-8 text-gray-500">Yuklanmoqda...</div>
+              ) : telegramChats.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Send className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                  <p className="font-medium">Hech kim xabar yubormagan</p>
+                  <p className="text-sm mt-1">Hotel menejeri <strong>@OrientInsight_bot</strong> ga istalgan xabar yuborgandan so'ng bu yerda ko'rinadi.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {telegramChats.map(chat => (
+                    <div key={chat.chatId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 truncate">{chat.name}</p>
+                        <p className="text-xs text-gray-500">{chat.username || chat.type} · {new Date(chat.date).toLocaleString('ru')}</p>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">"{chat.lastMessage}"</p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                        <code className="text-sm font-mono bg-sky-100 text-sky-700 px-2 py-1 rounded">{chat.chatId}</code>
+                        <button
+                          onClick={() => copyChatId(chat.chatId)}
+                          className="p-2 text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
+                          title="Nusxalash"
+                        >
+                          {copiedChatId === chat.chatId ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100">
+              <p className="text-xs text-gray-500 text-center">Chat ID ni nusxalab hotel profilida <strong>Telegram Chat ID</strong> maydoniga joylashtiring</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

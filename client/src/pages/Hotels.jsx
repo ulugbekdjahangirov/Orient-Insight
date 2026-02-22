@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { hotelsApi, citiesApi, api } from '../services/api';
+import { hotelsApi, citiesApi } from '../services/api';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import {
   Plus, Edit, Trash2, Building2, MapPin, X, Save,
   ChevronDown, ChevronRight, Search, Bed, DollarSign,
   Star, Phone, Mail, Globe, Image, Upload, Calendar, Tag,
-  Users, Home, Sparkles, Send, Copy, CheckCircle
+  Users, Home, Sparkles
 } from 'lucide-react';
 
 export default function Hotels() {
@@ -33,30 +33,6 @@ export default function Hotels() {
   const [expandedHotels, setExpandedHotels] = useState({});
 
   // Hotel modal
-  const [telegramFinderOpen, setTelegramFinderOpen] = useState(false);
-  const [telegramChats, setTelegramChats] = useState([]);
-  const [telegramLoading, setTelegramLoading] = useState(false);
-  const [copiedChatId, setCopiedChatId] = useState(null);
-
-  const openTelegramFinder = async () => {
-    setTelegramFinderOpen(true);
-    setTelegramLoading(true);
-    try {
-      const res = await api.get('/telegram/updates');
-      setTelegramChats(res.data.chats || []);
-    } catch {
-      toast.error('Telegram updates yuklanmadi');
-    } finally {
-      setTelegramLoading(false);
-    }
-  };
-
-  const copyChatId = (chatId) => {
-    navigator.clipboard.writeText(chatId);
-    setCopiedChatId(chatId);
-    setTimeout(() => setCopiedChatId(null), 2000);
-  };
-
   const [hotelModalOpen, setHotelModalOpen] = useState(false);
   const [editingHotel, setEditingHotel] = useState(null);
   const [hotelForm, setHotelForm] = useState({
@@ -594,14 +570,6 @@ export default function Hotels() {
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                onClick={openTelegramFinder}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-semibold text-sm transition-all min-h-[44px]"
-                title="Telegram Chat ID topish"
-              >
-                <Send className="w-4 h-4" />
-                <span className="hidden sm:inline">Telegram Finder</span>
-              </button>
               <button
                 onClick={() => openHotelModal()}
                 className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-600 text-white rounded-xl md:rounded-2xl hover:shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
@@ -1777,61 +1745,6 @@ export default function Hotels() {
         </div>
       )}
 
-      {/* Telegram Finder Modal */}
-      {telegramFinderOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
-            <div className="bg-gradient-to-r from-sky-500 to-cyan-600 p-5 rounded-t-2xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Send className="w-6 h-6 text-white" />
-                <div>
-                  <h2 className="text-lg font-bold text-white">Telegram Finder</h2>
-                  <p className="text-sky-100 text-xs">Botga xabar yuborgan odamlarning Chat ID lari</p>
-                </div>
-              </div>
-              <button onClick={() => setTelegramFinderOpen(false)} className="text-white/80 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-4 overflow-y-auto flex-1">
-              {telegramLoading ? (
-                <div className="text-center py-8 text-gray-500">Yuklanmoqda...</div>
-              ) : telegramChats.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Send className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Hech kim xabar yubormagan</p>
-                  <p className="text-sm mt-1">Hotel menejeri <strong>@OrientInsight_bot</strong> ga istalgan xabar yuborgandan so'ng bu yerda ko'rinadi.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {telegramChats.map(chat => (
-                    <div key={chat.chatId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-800 truncate">{chat.name}</p>
-                        <p className="text-xs text-gray-500">{chat.username || chat.type} · {new Date(chat.date).toLocaleString('ru')}</p>
-                        <p className="text-xs text-gray-400 truncate mt-0.5">"{chat.lastMessage}"</p>
-                      </div>
-                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                        <code className="text-sm font-mono bg-sky-100 text-sky-700 px-2 py-1 rounded">{chat.chatId}</code>
-                        <button
-                          onClick={() => copyChatId(chat.chatId)}
-                          className="p-2 text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
-                          title="Nusxalash"
-                        >
-                          {copiedChatId === chat.chatId ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t border-gray-100">
-              <p className="text-xs text-gray-500 text-center">Chat ID ni nusxalab hotel profilida <strong>Telegram Chat ID</strong> maydoniga joylashtiring</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

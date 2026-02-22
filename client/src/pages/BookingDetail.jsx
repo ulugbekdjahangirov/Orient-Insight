@@ -7126,8 +7126,8 @@ export default function BookingDetail() {
       const totalPax = tourists.length || 0;
 
       const loadedRoutes = templates.map((template, index) => {
-        // ZA tours: arrival = departure + 4 days. Other tours: arrival = departure + 1
-        const daysToAdd = tourTypeCode === 'ZA' ? 4 : 1;
+        // ZA: departure + 4, KAS: departure + 14, others: departure + 1
+        const daysToAdd = tourTypeCode === 'ZA' ? 4 : tourTypeCode === 'KAS' ? 14 : 1;
         const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
         const routeDate = arrivalDate ? format(addDays(arrivalDate, template.dayOffset), 'yyyy-MM-dd') : '';
 
@@ -8083,16 +8083,16 @@ export default function BookingDetail() {
 
           // CO: DYNAMIC split - calculate optimal Staria + PKW combination
           const stariaCapacity = 5;
-          const pkwCapacity = 3;
 
-          // Maximize Staria usage (more efficient)
+          // Maximize Staria usage
           const stariaCount = Math.floor(ferganaPax / stariaCapacity);
           const remaining = ferganaPax % stariaCapacity;
 
-          // Calculate PKWs for remaining passengers
-          const pkwCount = remaining > 0 ? Math.ceil(remaining / pkwCapacity) : 0;
+          // Rule: 1-2 remaining → PKW, 3-4 remaining → extra Staria
+          const extraStaria = remaining >= 3 ? 1 : 0;
+          const pkwCount = remaining > 0 && remaining <= 2 ? 1 : 0;
 
-          console.log(`    → CO: ${ferganaPax} PAX → ${stariaCount}× Staria (${stariaCount * 5} PAX) + ${pkwCount}× PKW (${remaining} PAX)`);
+          console.log(`    → CO: ${ferganaPax} PAX → ${stariaCount + extraStaria}× Staria + ${pkwCount}× PKW (${remaining} remaining)`);
 
           const stariaPrice = getPriceFromOpex(provider, 'Staria', rateType);
           const pkwPrice = getPriceFromOpex(provider, 'PKW', rateType);
@@ -8101,7 +8101,7 @@ export default function BookingDetail() {
           // Generate unique split group ID (using date + route name)
           const splitGroupId = `${route.sana}_${route.route}`;
 
-          // Add Staria routes
+          // Add full Staria routes (5 PAX each)
           for (let i = 0; i < stariaCount; i++) {
             splitRoutes.push({
               ...route,
@@ -8116,8 +8116,23 @@ export default function BookingDetail() {
             });
           }
 
-          // Add PKW routes
-          for (let i = 0; i < pkwCount; i++) {
+          // Add extra partial Staria (3-4 PAX) if needed
+          if (extraStaria) {
+            splitRoutes.push({
+              ...route,
+              person: remaining.toString(),
+              choiceTab: provider,
+              transportType: 'Staria',
+              choiceRate: rateType,
+              price: stariaPrice || route.price,
+              isSplit: true,
+              splitGroup: splitGroupId,
+              splitIndex: stariaCount
+            });
+          }
+
+          // Add PKW route (1-2 PAX) if needed
+          if (pkwCount > 0) {
             splitRoutes.push({
               ...route,
               person: remaining.toString(),
@@ -8127,11 +8142,11 @@ export default function BookingDetail() {
               price: pkwPrice || route.price,
               isSplit: true,
               splitGroup: splitGroupId,
-              splitIndex: stariaCount + i
+              splitIndex: stariaCount + extraStaria
             });
           }
 
-          console.log(`    → CO: Split result: ${stariaCount}× Staria ($${stariaPrice} each) + ${pkwCount}× PKW ($${pkwPrice} each)`);
+          console.log(`    → CO: Split result: ${stariaCount + extraStaria}× Staria ($${stariaPrice} each) + ${pkwCount}× PKW ($${pkwPrice} each)`);
           console.log(`    → CO: All split routes marked with splitGroup="${splitGroupId}"`);
           return splitRoutes;
         }
@@ -8282,6 +8297,46 @@ export default function BookingDetail() {
     console.log('🟡 Running KAS fix logic...');
 
     try {
+      // Load fresh vehicle data directly from API (avoid stale closure issues)
+      let freshVehicleGroups = {};
+      try {
+        const vehicleRes = await transportApi.getAll();
+        freshVehicleGroups = vehicleRes.data.grouped || {};
+        console.log('🚗 KAS: Loaded fresh vehicles from API:', Object.keys(freshVehicleGroups).map(k => `${k}:${freshVehicleGroups[k]?.length}`).join(', '));
+      } catch (e) {
+        console.warn('⚠️ KAS: Could not load fresh vehicles, using state fallback');
+      }
+
+      // Helper: find best vehicle from fresh API data
+      const findBestVehicleKAS = (provider, pax) => {
+        const vehicles = freshVehicleGroups[provider] || getVehiclesByProvider(provider);
+        if (!vehicles || vehicles.length === 0) return '';
+        const suitable = vehicles.filter(v => {
+          const personRange = v.person || '';
+          if (personRange.includes('-')) {
+            const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
+            return !isNaN(min) && !isNaN(max) && pax >= min && pax <= max;
+          }
+          const seats = parseInt(v.seats);
+          return !isNaN(seats) && seats >= pax;
+        });
+        // Sort: prefer smaller capacity that fits, Yutong over Sprinter
+        suitable.sort((a, b) => {
+          if (a.name?.toLowerCase().includes('yutong') && b.name?.toLowerCase().includes('sprinter')) return -1;
+          if (a.name?.toLowerCase().includes('sprinter') && b.name?.toLowerCase().includes('yutong')) return 1;
+          return parseInt(a.seats) - parseInt(b.seats);
+        });
+        const best = suitable[0];
+        if (best) {
+          console.log(`    🚗 findBestVehicleKAS(${provider}, ${pax}): suitable=[${suitable.map(v=>v.name).join(',')}] → "${best.name}"`);
+          return best.name;
+        }
+        // Fallback: largest vehicle by seats
+        const largest = [...vehicles].sort((a, b) => parseInt(b.seats) - parseInt(a.seats))[0];
+        console.log(`    ⚠️ findBestVehicleKAS(${provider}, ${pax}): no suitable, fallback largest="${largest?.name}"`);
+        return largest?.name || '';
+      };
+
       // Reload routes from database
       const routesRes = await bookingsApi.getRoutes(id);
       const freshRoutes = routesRes.data.routes || [];
@@ -8306,13 +8361,11 @@ export default function BookingDetail() {
       });
 
       console.log(`📋 KAS: Reloaded ${freshErRoutes.length} routes from database`);
-      freshErRoutes.forEach((r, i) => {
-        console.log(`  Route ${i+1}: ${r.route} (date: ${r.sana}, city: ${r.shahar})`);
-      });
 
       // Calculate PAX (KAS groups: all tourists go together, no split)
-      const totalPax = tourists.length;
-      console.log(`🔧 KAS Auto-fixing routes: PAX Total=${totalPax} (no UZB/TKM split)`);
+      // Fallback to booking.pax if Final List is empty
+      const totalPax = tourists.length > 0 ? tourists.length : (booking?.pax || parseInt(formData.pax) || 0);
+      console.log(`🔧 KAS Auto-fixing routes: PAX Total=${totalPax} (tourists=${tourists.length}, booking.pax=${booking?.pax})`);
 
       // Fix each route
       const fixedRoutes = freshErRoutes.map((route, index) => {
@@ -8330,16 +8383,21 @@ export default function BookingDetail() {
           console.log(`  ⬆️ Upgraded generic 'sevil' to 'sevil-kas' for route: ${route.route}`);
         }
 
-        // Get best vehicle for route
-        const vehicle = getBestVehicleForRoute(provider, routePax);
+        // Get best vehicle for route (using fresh API data)
+        const vehicle = findBestVehicleKAS(provider, routePax);
 
         // Get rate type
         let rate = '';
         const routeLower = route.route.toLowerCase();
         if (routeLower.includes('city tour')) {
           rate = provider === 'xayrulla' ? 'cityTour' : 'tagRate';
-        } else if (routeLower.includes('dostlik') || routeLower.includes('fergana')) {
-          // Dostlik-Fergana and Fergana-Qoqon use Nosir
+        } else if (routeLower.includes('dostlik')) {
+          rate = 'dostlik';
+        } else if (routeLower.includes('qoqon')) {
+          rate = 'qoqon';
+        } else if (routeLower.includes('margilan')) {
+          rate = 'margilan';
+        } else if (routeLower.includes('fergana')) {
           rate = 'toshkent';
         } else if (routeLower.includes('airport') || routeLower.includes('pickup') || routeLower.includes('drop')) {
           rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
@@ -8347,7 +8405,7 @@ export default function BookingDetail() {
           rate = provider === 'xayrulla' ? 'vstrecha' : 'pickupDropoff';
         } else {
           // Inter-city routes
-          if (provider.includes('sevil')) rate = 'tagRate';  // Changed to .includes() for sevil-kas, sevil-er, etc.
+          if (provider.includes('sevil')) rate = 'tagRate';
           else if (provider === 'xayrulla') rate = 'tag';
           else if (provider === 'nosir') rate = 'toshkent';
         }
@@ -8490,6 +8548,46 @@ export default function BookingDetail() {
     console.log('🟣 Running ZA fix logic...');
 
     try {
+      // Load fresh vehicle data directly from API (avoid stale closure issues)
+      let freshVehicleGroups = {};
+      try {
+        const vehicleRes = await transportApi.getAll();
+        freshVehicleGroups = vehicleRes.data.grouped || {};
+        console.log('🚗 ZA: Loaded fresh vehicles from API:', Object.keys(freshVehicleGroups).map(k => `${k}:${freshVehicleGroups[k]?.length}`).join(', '));
+      } catch (e) {
+        console.warn('⚠️ ZA: Could not load fresh vehicles, using state fallback');
+      }
+
+      // Helper: find best vehicle from fresh API data
+      const findBestVehicleZA = (provider, pax) => {
+        const vehicles = freshVehicleGroups[provider] || getVehiclesByProvider(provider);
+        if (!vehicles || vehicles.length === 0) return '';
+        const suitable = vehicles.filter(v => {
+          const personRange = v.person || '';
+          if (personRange.includes('-')) {
+            const [min, max] = personRange.split('-').map(n => parseInt(n.trim()));
+            return !isNaN(min) && !isNaN(max) && pax >= min && pax <= max;
+          }
+          const seats = parseInt(v.seats);
+          return !isNaN(seats) && seats >= pax;
+        });
+        // Sort: prefer smaller capacity that fits, Yutong over Sprinter
+        suitable.sort((a, b) => {
+          if (a.name?.toLowerCase().includes('yutong') && b.name?.toLowerCase().includes('sprinter')) return -1;
+          if (a.name?.toLowerCase().includes('sprinter') && b.name?.toLowerCase().includes('yutong')) return 1;
+          return parseInt(a.seats) - parseInt(b.seats);
+        });
+        const best = suitable[0];
+        if (best) {
+          console.log(`    🚗 findBestVehicleZA(${provider}, ${pax}): suitable=[${suitable.map(v=>v.name).join(',')}] → "${best.name}"`);
+          return best.name;
+        }
+        // Fallback: largest vehicle by seats
+        const largest = [...vehicles].sort((a, b) => parseInt(b.seats) - parseInt(a.seats))[0];
+        console.log(`    ⚠️ findBestVehicleZA(${provider}, ${pax}): no suitable, fallback largest="${largest?.name}"`);
+        return largest?.name || '';
+      };
+
       // Reload routes from database
       const routesRes = await bookingsApi.getRoutes(id);
       const freshRoutes = routesRes.data.routes || [];
@@ -8524,8 +8622,9 @@ export default function BookingDetail() {
       console.log(`📋 ZA: Working with ${freshErRoutes.length} routes`);
 
       // Calculate PAX (ZA groups: all tourists go together, no split)
-      const totalPax = tourists.length;
-      console.log(`🔧 ZA Auto-fixing routes: PAX Total=${totalPax}`);
+      // Fallback to booking.pax if Final List is empty
+      const totalPax = tourists.length > 0 ? tourists.length : (booking?.pax || parseInt(formData.pax) || 0);
+      console.log(`🔧 ZA Auto-fixing routes: PAX Total=${totalPax} (tourists=${tourists.length}, booking.pax=${booking?.pax})`);
 
       // Fix each route
       const fixedRoutes = freshErRoutes.map((route, index) => {
@@ -8569,8 +8668,8 @@ export default function BookingDetail() {
           rate = 'tagRate';
         }
 
-        // Get best vehicle for route
-        const vehicle = getBestVehicleForRoute(provider, routePax);
+        // Get best vehicle for route (using fresh API data)
+        const vehicle = findBestVehicleZA(provider, routePax);
         const price = getPriceFromOpex(provider, vehicle, rate);
 
         console.log(`  ZA Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);

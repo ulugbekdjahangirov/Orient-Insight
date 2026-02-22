@@ -960,6 +960,42 @@ router.put('/transport-settings', authenticate, async (req, res) => {
 // Guide Notifications (Gid Telegram)
 // ============================================================
 
+// GET /api/telegram/guide-assignments — bookings with guide info
+router.get('/guide-assignments', authenticate, async (req, res) => {
+  try {
+    const bookings = await prisma.booking.findMany({
+      select: {
+        id: true,
+        bookingNumber: true,
+        departureDate: true,
+        pax: true,
+        status: true,
+        guide: { select: { id: true, name: true, telegramChatId: true } }
+      },
+      orderBy: { bookingNumber: 'asc' }
+    });
+
+    const result = bookings.map(b => ({
+      id: b.id,
+      bookingId: b.id,
+      bookingNumber: b.bookingNumber,
+      departureDate: b.departureDate,
+      pax: b.pax,
+      bookingStatus: b.status,
+      guideId: b.guide?.id || null,
+      guideName: b.guide?.name || null,
+      hasTelegram: !!(b.guide?.telegramChatId),
+      status: b.guide ? 'ASSIGNED' : 'NO_GUIDE',
+      booking: { bookingNumber: b.bookingNumber, departureDate: b.departureDate }
+    }));
+
+    res.json({ assignments: result });
+  } catch (err) {
+    console.error('guide-assignments error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/telegram/send-guide/:bookingId
 router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
   try {
