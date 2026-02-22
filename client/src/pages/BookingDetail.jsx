@@ -12264,23 +12264,23 @@ License №T-0084-08 from 2021-04-26`;
               const COMPANY = `"ORIENT INSIGHT"<br>LLC<br>Travel Company`;
 
               const makeVoucher = (entry) => {
-                if (!entry) return `<div style="flex:1;margin:2mm;"></div>`;
+                if (!entry) return `<div style="flex:1;margin:1mm;"></div>`;
                 const cityKey = (entry.city || '').toLowerCase().trim();
                 const cityRu = cityRuMap[cityKey] || entry.city || '';
-                return `<div style="flex:1;border:1px solid #000;margin:2mm;">
+                return `<div style="flex:1;border:1px solid #000;margin:1mm;">
   <div style="display:flex;border-bottom:1px solid #000;">
-    <div style="flex:3;padding:2mm 3mm;font-size:7.5pt;border-right:1px solid #000;line-height:1.5;">${ADDR}</div>
-    <div style="flex:1;padding:2mm;text-align:center;font-weight:bold;font-size:8pt;display:flex;align-items:center;justify-content:center;line-height:1.5;">${COMPANY}</div>
+    <div style="flex:3;padding:1.5mm 2mm;font-size:6.5pt;border-right:1px solid #000;line-height:1.35;">${ADDR}</div>
+    <div style="flex:1;padding:1.5mm;text-align:center;font-weight:bold;font-size:7pt;display:flex;align-items:center;justify-content:center;line-height:1.35;">${COMPANY}</div>
   </div>
-  <div style="padding:3mm 4mm;">
-    <div style="font-weight:bold;text-align:center;margin-bottom:2mm;font-size:9pt;">VOUCHER № ${bookingNum}</div>
-    <div style="font-weight:bold;margin-bottom:2.5mm;font-size:8.5pt;">Предъявить в&nbsp; ${entry.name}</div>
-    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Страна:</span><span style="font-size:8pt;">Германия</span></div>
-    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Количество туристов:</span><span style="font-size:8pt;">${paxCount}</span></div>
-    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">№ группы:</span><span style="font-size:8pt;">${bookingNum}</span></div>
-    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Дата:</span><span style="font-size:8pt;">${fmtDate(entry.date)}</span></div>
-    <div style="display:flex;margin-bottom:1.5mm;"><span style="min-width:48mm;font-size:8pt;">Ф.И.О. гида:</span><span style="font-size:8pt;">${guideName}</span></div>
-    <div style="display:flex;"><span style="min-width:48mm;font-size:8pt;">Город:</span><span style="font-size:8pt;">${cityRu}</span></div>
+  <div style="padding:2mm 3mm;">
+    <div style="font-weight:bold;text-align:center;margin-bottom:1mm;font-size:8pt;">VOUCHER № ${bookingNum}</div>
+    <div style="font-weight:bold;margin-bottom:1.5mm;font-size:7.5pt;">Предъявить в&nbsp; ${entry.name}</div>
+    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Страна:</span><span style="font-size:7pt;">Германия</span></div>
+    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Количество туристов:</span><span style="font-size:7pt;">${paxCount}</span></div>
+    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">№ группы:</span><span style="font-size:7pt;">${bookingNum}</span></div>
+    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Дата:</span><span style="font-size:7pt;">${fmtDate(entry.date)}</span></div>
+    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Ф.И.О. гида:</span><span style="font-size:7pt;">${guideName}</span></div>
+    <div style="display:flex;"><span style="min-width:44mm;font-size:7pt;">Город:</span><span style="font-size:7pt;">${cityRu}</span></div>
   </div>
 </div>`;
               };
@@ -12290,7 +12290,7 @@ License №T-0084-08 from 2021-04-26`;
                 const left = visibleEntries[i];
                 const right = visibleEntries[i + 1];
                 const pageBreak = i > 0 && i % 8 === 0
-                  ? 'page-break-before:always;' : '';
+                  ? 'break-before:page;page-break-before:always;' : '';
                 rowsHtml += `<div style="display:flex;${pageBreak}">
   ${makeVoucher(left)}
   ${makeVoucher(right)}
@@ -12300,7 +12300,7 @@ License №T-0084-08 from 2021-04-26`;
               const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Vouchers ${bookingNum}</title>
 <style>
-  @page { margin: 8mm; size: A4 portrait; }
+  @page { margin: 6mm; size: A4 portrait; }
   @media print { .no-print { display: none !important; } }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; }
