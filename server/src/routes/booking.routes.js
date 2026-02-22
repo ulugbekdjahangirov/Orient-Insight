@@ -2809,8 +2809,8 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
     const tourNames = {
       ER:  'Erlebnisreisen Usbekistan mit Turkmenistan',
       CO:  'Usbekistan ComfortPlus Reisen',
-      KAS: 'KAS Tour Usbekistan',
-      ZA:  'ZA Tour Usbekistan',
+      KAS: 'Kasachstan, Kirgistan und Usbekistan Reisen',
+      ZA:  'Zentralasien Erlebnisreisen',
     };
     const tourName = tourNames[booking.tourType?.code] || booking.tourType?.name || 'Tour';
     const tourCode = booking.tourType?.code;
