@@ -207,7 +207,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
 
     setImporting(true);
     try {
-      const response = await touristsApi.import(bookingId, selected);
+      const response = await touristsApi.import(bookingId, selected, { replaceAll: true });
       toast.success(response.data.message);
       setImportModalOpen(false);
       setImportPreview(null);

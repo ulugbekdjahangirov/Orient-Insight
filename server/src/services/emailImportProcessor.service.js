@@ -430,19 +430,25 @@ class EmailImportProcessor {
     if (parsedBooking.tourists && parsedBooking.tourists.length > 0) {
       // Delete existing tourists with same placement OR null/empty accommodation
       // This handles old tourists that were created before accommodation field was implemented
+      // For KAS/ZA: also delete 'Uzbekistan' tourists since these tours have no country split
+      const deleteOrConditions = [
+        { accommodation: placement },
+        { accommodation: null },
+        { accommodation: '' },
+        { accommodation: 'Not assigned' }
+      ];
+      if (tourTypeCode === 'KAS' || tourTypeCode === 'ZA') {
+        deleteOrConditions.push({ accommodation: 'Uzbekistan' });
+        deleteOrConditions.push({ accommodation: 'Turkmenistan' });
+      }
       const deletedCount = await prisma.tourist.deleteMany({
         where: {
           bookingId: booking.id,
-          OR: [
-            { accommodation: placement },
-            { accommodation: null },
-            { accommodation: '' },
-            { accommodation: 'Not assigned' }
-          ]
+          OR: deleteOrConditions
         }
       });
       if (deletedCount.count > 0) {
-        console.log(`🗑️  SELECTIVE REPLACE: Deleted ${deletedCount.count} tourists (${placement} + null/empty) from ${booking.bookingNumber}`);
+        console.log(`🗑️  SELECTIVE REPLACE: Deleted ${deletedCount.count} tourists (${placement} + null/empty${tourTypeCode === 'KAS' || tourTypeCode === 'ZA' ? ' + Uzbekistan/Turkmenistan' : ''}) from ${booking.bookingNumber}`);
       }
 
       // Import all tourists from Excel with correct placement
