@@ -2839,8 +2839,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
   <p>Bei Fragen kannst du dich gerne bei uns melden.</p>
   <br>
   <p style="color:#444">Viele Grüße,<br>
-  <strong>Ulugbek &amp; Siroj</strong><br>
-  <span style="color:#888;font-size:12px">orientinsightreisen@gmail.com | orient-insight.uz</span></p>
+  <strong>Ulugbek &amp; Siroj</strong></p>
 </div>`;
 
     const attachments = [];
