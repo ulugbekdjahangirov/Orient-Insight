@@ -17,10 +17,16 @@ const MAIN_TABS = [
   { id: 'transport', label: 'Transport', icon: Bus },
 ];
 const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
-const CITY_ORDER = ['Tashkent', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'];
+const CITY_ORDER = {
+  ER:  ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'],
+  CO:  ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'],
+  KAS: ['Fergana', 'Bukhara', 'Samarkand', 'Tashkent'],
+  ZA:  ['Bukhara', 'Samarkand', 'Tashkent'],
+};
 
-function getCityOrder(city) {
-  const i = CITY_ORDER.indexOf(city);
+function getCityOrder(city, tourType) {
+  const order = CITY_ORDER[tourType] || CITY_ORDER.ER;
+  const i = order.indexOf(city);
   return i === -1 ? 999 : i;
 }
 
@@ -92,18 +98,16 @@ function formatDate(d) {
   return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
 }
 
-// Split bookings into first/second visits.
+// Split bookings into first/second/third visits.
 // If bookings have visitIndex (from computeCityHotels), use it directly.
 // Otherwise fall back to count-based split (original behavior).
 function splitVisits(bookings) {
+  const sortFn = (a, b) => a.bookingNumber.localeCompare(b.bookingNumber) || new Date(a.checkInDate) - new Date(b.checkInDate);
   if (bookings.length > 0 && 'visitIndex' in bookings[0]) {
-    const first = bookings
-      .filter(b => (b.visitIndex ?? 0) === 0)
-      .sort((a, b) => a.bookingNumber.localeCompare(b.bookingNumber) || new Date(a.checkInDate) - new Date(b.checkInDate));
-    const second = bookings
-      .filter(b => b.visitIndex === 1)
-      .sort((a, b) => a.bookingNumber.localeCompare(b.bookingNumber) || new Date(a.checkInDate) - new Date(b.checkInDate));
-    return { first, second, hasSplit: second.length > 0 };
+    const first  = bookings.filter(b => (b.visitIndex ?? 0) === 0).sort(sortFn);
+    const second = bookings.filter(b => b.visitIndex === 1).sort(sortFn);
+    const third  = bookings.filter(b => b.visitIndex === 2).sort(sortFn);
+    return { first, second, third, hasSplit: second.length > 0, hasThird: third.length > 0 };
   }
   // Fallback: count-based
   const byBooking = {};
@@ -117,12 +121,13 @@ function splitVisits(bookings) {
   const sortedIds = Object.keys(byBooking).sort((a, b) =>
     byBooking[a][0].bookingNumber.localeCompare(byBooking[b][0].bookingNumber)
   );
-  const first = [], second = [];
+  const first = [], second = [], third = [];
   sortedIds.forEach(id => {
     first.push(byBooking[id][0]);
     if (byBooking[id][1]) second.push(byBooking[id][1]);
+    if (byBooking[id][2]) third.push(byBooking[id][2]);
   });
-  return { first, second, hasSplit: second.length > 0 };
+  return { first, second, third, hasSplit: second.length > 0, hasThird: third.length > 0 };
 }
 
 // Row key for override state
@@ -476,7 +481,7 @@ function generateHotelPDF(hotelData, tourType, overrides, returnBlob = false) {
     };
   });
 
-  const { first, second, hasSplit } = splitVisits(resolved);
+  const { first, second, third, hasSplit, hasThird } = splitVisits(resolved);
   const cityName = hotel.city?.name || '';
   const tourLabel = TOUR_NAMES[tourType] || tourType;
 
@@ -541,6 +546,7 @@ function generateHotelPDF(hotelData, tourType, overrides, returnBlob = false) {
   if (hasSplit) {
     y = addTable(y, first, 'Первый заезд');
     y = addTable(y, second, 'Второй заезд');
+    if (hasThird) addTable(y, third, 'Третий заезд');
   } else {
     addTable(y, resolved, null);
   }
@@ -554,7 +560,7 @@ function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverri
   cityName, cityHotels, onMoveBooking, isExtra, onRemoveHotel,
   availableHotelsForSwap, onReplaceHotel }) {
   const { hotel, bookings } = hotelData;
-  const { first, second, hasSplit } = splitVisits(bookings);
+  const { first, second, third, hasSplit, hasThird } = splitVisits(bookings);
 
   const getVal = (b, field) => {
     const k = rowKey(hotel.id, b);
@@ -614,6 +620,7 @@ function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverri
           <>
             <BookingsTable bookings={first}  {...sharedProps} visitLabel="Первый заезд" />
             <BookingsTable bookings={second} {...sharedProps} visitLabel="Второй заезд" />
+            {hasThird && <BookingsTable bookings={third} {...sharedProps} visitLabel="Третий заезд" />}
           </>
         ) : (
           <BookingsTable bookings={bookings} {...sharedProps} visitLabel={null} />
@@ -809,7 +816,7 @@ function HotelsTab({ tourType }) {
     if (!cityMap[c]) cityMap[c] = [];
     cityMap[c].push(hd);
   });
-  const sortedCities = Object.keys(cityMap).sort((a,b) => getCityOrder(a) - getCityOrder(b));
+  const sortedCities = Object.keys(cityMap).sort((a,b) => getCityOrder(a, tourType) - getCityOrder(b, tourType));
 
   return (
     <div className="space-y-4">
