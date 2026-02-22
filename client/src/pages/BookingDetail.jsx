@@ -12264,37 +12264,38 @@ License №T-0084-08 from 2021-04-26`;
               const COMPANY = `"ORIENT INSIGHT"<br>LLC<br>Travel Company`;
 
               const makeVoucher = (entry) => {
-                if (!entry) return `<div style="flex:1;margin:1mm;"></div>`;
+                if (!entry) return `<div style="flex:1;margin:1.5mm;"></div>`;
                 const cityKey = (entry.city || '').toLowerCase().trim();
                 const cityRu = cityRuMap[cityKey] || entry.city || '';
-                return `<div style="flex:1;border:1px solid #000;margin:1mm;">
+                return `<div style="flex:1;border:1px solid #000;margin:1.5mm;display:flex;flex-direction:column;">
   <div style="display:flex;border-bottom:1px solid #000;">
-    <div style="flex:3;padding:1.5mm 2mm;font-size:6.5pt;border-right:1px solid #000;line-height:1.35;">${ADDR}</div>
-    <div style="flex:1;padding:1.5mm;text-align:center;font-weight:bold;font-size:7pt;display:flex;align-items:center;justify-content:center;line-height:1.35;">${COMPANY}</div>
+    <div style="flex:3;padding:1.8mm 2.5mm;font-size:7pt;border-right:1px solid #000;line-height:1.4;">${ADDR}</div>
+    <div style="flex:1;padding:1.5mm;text-align:center;font-weight:bold;font-size:7.5pt;display:flex;align-items:center;justify-content:center;line-height:1.4;">${COMPANY}</div>
   </div>
-  <div style="padding:2mm 3mm;">
-    <div style="font-weight:bold;text-align:center;margin-bottom:1mm;font-size:8pt;">VOUCHER № ${bookingNum}</div>
-    <div style="font-weight:bold;margin-bottom:1.5mm;font-size:7.5pt;">Предъявить в&nbsp; ${entry.name}</div>
-    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Страна:</span><span style="font-size:7pt;">Германия</span></div>
-    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Количество туристов:</span><span style="font-size:7pt;">${paxCount}</span></div>
-    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">№ группы:</span><span style="font-size:7pt;">${bookingNum}</span></div>
-    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Дата:</span><span style="font-size:7pt;">${fmtDate(entry.date)}</span></div>
-    <div style="display:flex;margin-bottom:0.8mm;"><span style="min-width:44mm;font-size:7pt;">Ф.И.О. гида:</span><span style="font-size:7pt;">${guideName}</span></div>
-    <div style="display:flex;"><span style="min-width:44mm;font-size:7pt;">Город:</span><span style="font-size:7pt;">${cityRu}</span></div>
+  <div style="padding:2.5mm 3.5mm;flex:1;display:flex;flex-direction:column;justify-content:center;">
+    <div style="font-weight:bold;text-align:center;margin-bottom:1.5mm;font-size:8.5pt;">VOUCHER № ${bookingNum}</div>
+    <div style="font-weight:bold;margin-bottom:1.8mm;font-size:8pt;">Предъявить в&nbsp; ${entry.name}</div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Страна:</span><span style="font-size:7.5pt;">Германия</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Количество туристов:</span><span style="font-size:7.5pt;">${paxCount}</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">№ группы:</span><span style="font-size:7.5pt;">${bookingNum}</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Дата:</span><span style="font-size:7.5pt;">${fmtDate(entry.date)}</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Ф.И.О. гида:</span><span style="font-size:7.5pt;">${guideName}</span></div>
+    <div style="display:flex;"><span style="min-width:46mm;font-size:7.5pt;">Город:</span><span style="font-size:7.5pt;">${cityRu}</span></div>
   </div>
 </div>`;
               };
 
+              // Group into pages of 8, each page fills full A4 height
               let rowsHtml = '';
-              for (let i = 0; i < visibleEntries.length; i += 2) {
-                const left = visibleEntries[i];
-                const right = visibleEntries[i + 1];
-                const pageBreak = i > 0 && i % 8 === 0
-                  ? 'break-before:page;page-break-before:always;' : '';
-                rowsHtml += `<div style="display:flex;${pageBreak}">
-  ${makeVoucher(left)}
-  ${makeVoucher(right)}
-</div>`;
+              for (let p = 0; p < visibleEntries.length; p += 8) {
+                const pageEntries = visibleEntries.slice(p, p + 8);
+                while (pageEntries.length < 8) pageEntries.push(null);
+                let pageRows = '';
+                for (let r = 0; r < 4; r++) {
+                  pageRows += `<div style="flex:1;display:flex;">${makeVoucher(pageEntries[r*2])}${makeVoucher(pageEntries[r*2+1])}</div>`;
+                }
+                const pb = p > 0 ? 'break-before:page;page-break-before:always;' : '';
+                rowsHtml += `<div style="display:flex;flex-direction:column;height:calc(297mm - 12mm);${pb}">${pageRows}</div>`;
               }
 
               const html = `<!DOCTYPE html>
