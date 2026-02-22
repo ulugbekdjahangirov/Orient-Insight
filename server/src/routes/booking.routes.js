@@ -2836,7 +2836,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Reisedatum:</td><td>${dateRange}</td></tr>
     <tr><td style="padding:4px 12px 4px 0;color:#555;font-weight:bold">Teilnehmerzahl:</td><td>${pax} Personen</td></tr>
   </table>
-  <p>Bei Fragen melde dich gerne bei uns.</p>
+  <p>Bei Fragen kannst du dich gerne bei uns melden.</p>
   <br>
   <p style="color:#444">Viele Grüße,<br>
   <strong>Ulugbek &amp; Siroj</strong><br>
