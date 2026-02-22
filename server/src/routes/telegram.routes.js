@@ -705,7 +705,7 @@ router.post('/webhook', async (req, res) => {
       // Rebuild message text with current statuses
       const TOUR_LABELS = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
-      let msgLines = [`📋 Jahresplanung ${year} — ${TOUR_LABELS[tourType] || tourType}`, `🏨 ${hotelName}`, ''];
+      let msgLines = [`📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`, `🏨 ${hotelName}`, ''];
       let lastLabel = null;
       rows.forEach((row, i) => {
         if (row.sectionLabel && row.sectionLabel !== lastLabel) {

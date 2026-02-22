@@ -251,7 +251,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
     const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
     const tourLabel = tourNames[tourType] || tourType;
 
-    const caption = `📅 *Jahresplanung ${year}*\n🏨 *${hotel.name}*\n🗺 ${tourLabel} gruppalar uchun yillik zayavka`;
+    const caption = `📅 *Заявка ${year}*\n🏨 *${hotel.name}*\n🗺 ${tourLabel} gruppalar uchun yillik zayavka`;
 
     const form = new FormData();
     form.append('chat_id', hotel.telegramChatId);
@@ -282,7 +282,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
     if (allRows.length > 0) {
       // Build message text
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
-      let msgLines = [`📋 *Jahresplanung ${year} — ${tourLabel}*`, `🏨 *${hotel.name}*`, ''];
+      let msgLines = [`📋 *Заявка ${year} — ${tourLabel}*`, `🏨 *${hotel.name}*`, ''];
       let lastLabel = null;
       allRows.forEach((row, i) => {
         if (row.sectionLabel && row.sectionLabel !== lastLabel) {
