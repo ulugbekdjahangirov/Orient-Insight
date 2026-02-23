@@ -434,6 +434,18 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
   }
 });
 
+// ── Persistent Puppeteer browser (reused across requests — saves 2-4s per PDF)
+const puppeteer = require('puppeteer');
+let _pdfBrowser = null;
+async function getPdfBrowser() {
+  if (!_pdfBrowser || !_pdfBrowser.connected) {
+    _pdfBrowser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+  }
+  return _pdfBrowser;
+}
+
 // ── Shared helper: generate PDF buffer via Puppeteer ─────────────────────────
 async function generatePdfBuffer(hotelName, tourType, year, sections) {
     const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
@@ -580,16 +592,17 @@ async function generatePdfBuffer(hotelName, tourType, year, sections) {
 </body>
 </html>`;
 
-    const puppeteer = require('puppeteer');
-    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+    const browser = await getPdfBrowser();
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
-    const pdfUint8 = await page.pdf({ format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }, printBackground: true });
-    await browser.close();
-
-    const pdfBuffer = Buffer.isBuffer(pdfUint8) ? pdfUint8 : Buffer.from(pdfUint8);
-    console.log(`PDF generated: ${pdfBuffer.length} bytes for ${hotelName}`);
-    return pdfBuffer;
+    try {
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      const pdfUint8 = await page.pdf({ format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }, printBackground: true });
+      const pdfBuffer = Buffer.isBuffer(pdfUint8) ? pdfUint8 : Buffer.from(pdfUint8);
+      console.log(`PDF generated: ${pdfBuffer.length} bytes for ${hotelName}`);
+      return pdfBuffer;
+    } finally {
+      await page.close(); // close page but keep browser alive for next request
+    }
 }
 
 // POST /api/jahresplanung/generate-pdf — server-side PDF via puppeteer (supports Cyrillic)
