@@ -701,16 +701,16 @@ router.post('/webhook', async (req, res) => {
         const lines = [header, '', visitTitle,
           `${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
         ];
-        // PENDING/WAITING — keep buttons; CONFIRMED/REJECTED — remove keyboard
-        const showButtons = st === 'PENDING' || st === 'WAITING';
-        return {
-          text: lines.join('\n'),
-          keyboard: showButtons ? [[
+        // PENDING — 3 buttons; WAITING — 2 buttons (no WL); CONFIRMED/REJECTED — no buttons
+        const keyboard = st === 'PENDING' ? [[
             { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
             { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
             { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
-          ]] : []
-        };
+          ]] : st === 'WAITING' ? [[
+            { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
+            { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
+          ]] : [];
+        return { text: lines.join('\n'), keyboard };
       }
 
       if (isBulk) {
