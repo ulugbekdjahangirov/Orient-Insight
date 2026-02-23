@@ -351,12 +351,6 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         create: { key: `JP_SECTIONS_${hotelId}`, value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) }
       });
 
-      // One TelegramConfirmation per unique booking
-      const uniqueBookingIds = groups.map(g => g.bookingId);
-      await prisma.telegramConfirmation.deleteMany({ where: { bookingId: { in: uniqueBookingIds }, hotelId } });
-      await prisma.telegramConfirmation.createMany({
-        data: groups.map(g => ({ bookingId: g.bookingId, hotelId, status: 'PENDING' }))
-      });
     }
 
     console.log(`Jahresplanung Telegram sent: ${hotel.name} → ${hotel.telegramChatId}`);

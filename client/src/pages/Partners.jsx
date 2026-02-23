@@ -759,6 +759,7 @@ function JpStatusBadge({ status }) {
 
 function Hotels2026Tab({ sections, subTab }) {
   const [openHotels, setOpenHotels] = useState({});
+  const [openGroups, setOpenGroups] = useState({});
 
   const filtered = sections.filter(s => s.tourType === subTab);
   const sorted = [...filtered].sort((a, b) => (a.hotelName || '').localeCompare(b.hotelName || ''));
@@ -767,7 +768,7 @@ function Hotels2026Tab({ sections, subTab }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
         <CalendarRange className="w-12 h-12 mb-3 opacity-30" />
-        <p className="text-sm">Bu tur uchun hali Zaявka yuborilmagan</p>
+        <p className="text-sm">Bu tur uchun hali Заявка yuborilmagan</p>
         <p className="text-xs mt-1">Заявка 2026 sahifasidan Telegram orqali hotel ga yuborilgandan so'ng ko'rinadi</p>
       </div>
     );
@@ -776,7 +777,7 @@ function Hotels2026Tab({ sections, subTab }) {
   return (
     <div className="space-y-3">
       {sorted.map(hotel => {
-        const isOpen = !!openHotels[hotel.hotelId];
+        const isHotelOpen = !!openHotels[hotel.hotelId];
         const allVisits = hotel.groups?.flatMap(g => g.visits || []) || [];
         const statusCounts = {};
         allVisits.forEach(v => { statusCounts[v.status] = (statusCounts[v.status] || 0) + 1; });
@@ -793,7 +794,7 @@ function Hotels2026Tab({ sections, subTab }) {
               onClick={() => setOpenHotels(prev => ({ ...prev, [hotel.hotelId]: !prev[hotel.hotelId] }))}
               className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
             >
-              {isOpen
+              {isHotelOpen
                 ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
               }
@@ -810,36 +811,63 @@ function Hotels2026Tab({ sections, subTab }) {
               </div>
             </button>
 
-            {isOpen && (
+            {isHotelOpen && (
               <div className="divide-y divide-gray-100">
-                {(hotel.groups || []).map(grp => (
-                  <div key={grp.bookingId} className="px-5 py-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Link
-                        to={`/bookings/${grp.bookingId}`}
-                        className="font-semibold text-sm text-primary-600 hover:underline"
+                {(hotel.groups || []).map(grp => {
+                  const grpKey = `${hotel.hotelId}-${grp.bookingId}`;
+                  const isGrpOpen = !!openGroups[grpKey];
+                  const grpVisits = grp.visits || [];
+                  const grpCounts = {};
+                  grpVisits.forEach(v => { grpCounts[v.status] = (grpCounts[v.status] || 0) + 1; });
+                  const grpSummary = [
+                    grpCounts.CONFIRMED && `✅ ${grpCounts.CONFIRMED}`,
+                    grpCounts.WAITING   && `⏳ ${grpCounts.WAITING}`,
+                    grpCounts.PENDING   && `⬜ ${grpCounts.PENDING}`,
+                    grpCounts.REJECTED  && `❌ ${grpCounts.REJECTED}`,
+                  ].filter(Boolean).join('  ');
+                  return (
+                    <div key={grpKey}>
+                      <button
+                        onClick={() => setOpenGroups(prev => ({ ...prev, [grpKey]: !prev[grpKey] }))}
+                        className="w-full px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
                       >
-                        {grp.group}
-                      </Link>
-                      <span className="text-xs text-gray-400">({(grp.visits || []).length} zaezd)</span>
-                    </div>
-                    <div className="space-y-1 pl-3">
-                      {(grp.visits || []).map(v => (
-                        <div key={v.visitIdx} className="flex items-center gap-3 text-sm">
-                          <span className="text-gray-500 min-w-0 flex-1">
-                            {v.sectionLabel
-                              ? <span className="text-xs text-gray-400 mr-1">{v.sectionLabel}:</span>
-                              : null
-                            }
-                            <span className="font-mono text-xs">{v.checkIn} → {v.checkOut}</span>
-                            <span className="ml-2 text-xs text-gray-400">{v.pax} pax · DBL:{v.dbl} TWN:{v.twn} SNGL:{v.sngl}</span>
-                          </span>
-                          <JpStatusBadge status={v.status} />
+                        {isGrpOpen
+                          ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          : <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        }
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <Link
+                            to={`/bookings/${grp.bookingId}`}
+                            onClick={e => e.stopPropagation()}
+                            className="font-semibold text-sm text-primary-600 hover:underline"
+                          >
+                            {grp.group}
+                          </Link>
+                          <span className="text-xs text-gray-400">{grpVisits.length} zaezd</span>
                         </div>
-                      ))}
+                        <div className="flex-shrink-0">
+                          {grpSummary && <span className="text-xs">{grpSummary}</span>}
+                        </div>
+                      </button>
+                      {isGrpOpen && (
+                        <div className="bg-gray-50 border-t border-gray-100 divide-y divide-gray-100">
+                          {grpVisits.map(v => (
+                            <div key={v.visitIdx} className="px-8 py-2.5 flex items-center gap-3">
+                              <div className="flex-1 min-w-0">
+                                {v.sectionLabel && (
+                                  <span className="text-xs font-medium text-gray-500 mr-2">{v.sectionLabel}</span>
+                                )}
+                                <span className="font-mono text-xs text-gray-700">{v.checkIn} → {v.checkOut}</span>
+                                <span className="ml-3 text-xs text-gray-400">{v.pax} pax · DBL:{v.dbl} TWN:{v.twn} SNGL:{v.sngl}</span>
+                              </div>
+                              <JpStatusBadge status={v.status} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

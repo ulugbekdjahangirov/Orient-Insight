@@ -717,12 +717,6 @@ router.post('/webhook', async (req, res) => {
         for (const grp of groups) {
           for (const v of grp.visits) v.status = newStatus;
         }
-        // Update DB records
-        const allBookingIds = groups.map(g => g.bookingId);
-        await prisma.telegramConfirmation.updateMany({
-          where: { bookingId: { in: allBookingIds }, hotelId: jpHotelId },
-          data: { status: newStatus, confirmedBy: fromName, respondedAt: new Date() }
-        }).catch(() => {});
         // Edit all visit messages
         for (const grp of groups) {
           for (const v of grp.visits) {
@@ -743,15 +737,6 @@ router.post('/webhook', async (req, res) => {
         }
         if (targetVisit) {
           targetVisit.status = newStatus;
-          // Update DB: if ALL visits of this booking confirmed → CONFIRMED, else PENDING
-          const allVisitsOfBooking = targetGrp.visits;
-          const overallStatus = allVisitsOfBooking.every(v => v.status === 'CONFIRMED') ? 'CONFIRMED'
-                              : allVisitsOfBooking.some(v => v.status === 'WAITING')   ? 'WAITING'
-                              : 'PENDING';
-          await prisma.telegramConfirmation.updateMany({
-            where: { bookingId: jpBookingId, hotelId: jpHotelId },
-            data: { status: overallStatus, confirmedBy: fromName, respondedAt: new Date() }
-          }).catch(() => {});
           // Edit this visit's message
           const msgId = cb.message?.message_id;
           if (msgId && editChatId) {
