@@ -870,11 +870,20 @@ function HotelsTab({ tourType }) {
       for (const hd of hotelsList) {
         const sec = sections.find(sec2 => sec2.hotelId === hd.hotel.id);
         if (!sec) continue;
+        // Build visit-index map: for each bookingId, sort rows by checkInDate → index 0,1,2...
+        const bookingVisitOrder = {};
+        for (const b of hd.bookings) {
+          if (!bookingVisitOrder[b.bookingId]) bookingVisitOrder[b.bookingId] = [];
+          bookingVisitOrder[b.bookingId].push(b);
+        }
+        for (const arr of Object.values(bookingVisitOrder)) {
+          arr.sort((a, b2) => new Date(a.checkInDate) - new Date(b2.checkInDate));
+        }
         for (const b of hd.bookings) {
           const grp = (sec.groups || []).find(g => g.bookingId === b.bookingId);
           if (!grp) continue;
           const k = rowKey(hd.hotel.id, b);
-          // Try date match first (handles multi-visit bookings correctly)
+          // Try date match first (most accurate)
           let applied = false;
           for (const v of (grp.visits || [])) {
             if (!v.status || v.status === 'PENDING') continue;
@@ -884,11 +893,17 @@ function HotelsTab({ tourType }) {
             const isoDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : null;
             if (!isoDate || k.includes(isoDate)) { merged[k] = rowVal; applied = true; break; }
           }
-          // Fallback: JP_SECTIONS dates may be stale (virtual algorithm changed reference booking).
-          // For single-visit bookings, apply status regardless of date mismatch.
-          if (!applied && grp.visits?.length === 1) {
-            const v = grp.visits[0];
-            if (v.status && v.status !== 'PENDING') {
+          // Fallback: match by visit index (handles date mismatch from non-round dep timestamps
+          // or algorithm changes — N-th backend booking ↔ N-th JP_SECTIONS visit, both sorted by date)
+          if (!applied) {
+            const arr = bookingVisitOrder[b.bookingId] || [];
+            const visitIdx = arr.indexOf(b);
+            const sortedVisits = [...(grp.visits || [])].sort((a, b2) => {
+              const toIso = s2 => { const p = (s2||'').split('.'); return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:''; };
+              return toIso(a.checkIn).localeCompare(toIso(b2.checkIn));
+            });
+            const v = visitIdx >= 0 ? sortedVisits[visitIdx] : null;
+            if (v && v.status && v.status !== 'PENDING') {
               const rowVal = JP_TO_ROW[v.status];
               if (rowVal) merged[k] = rowVal;
             }
