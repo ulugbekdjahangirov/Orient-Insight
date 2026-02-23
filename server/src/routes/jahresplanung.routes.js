@@ -297,11 +297,13 @@ router.post('/send-hotel-email/:hotelId', authenticate, upload.single('pdf'), as
 });
 
 // POST /api/jahresplanung/send-hotel-telegram/:hotelId
-// Accepts JSON { year, tourType, sections } — generates PDF internally, then sends to Telegram
-router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
+// Accepts FormData: pdf (file) + year + tourType + sections (JSON string)
+router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'), async (req, res) => {
   try {
     const hotelId = parseInt(req.params.hotelId);
-    const { year, tourType, sections = [] } = req.body;
+    const { year, tourType } = req.body;
+    const sections = JSON.parse(req.body.sections || '[]');
+    const pdfBuffer = req.file?.buffer;
 
     const hotel = await prisma.hotel.findUnique({
       where: { id: hotelId },
@@ -321,10 +323,23 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
 
     const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
     const tourLabel = tourNames[tourType] || tourType;
+    const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-    // ── Send a brief text message first (PDF skipped for speed — use Email/PDF button for full doc)
+    // ── 1. Send PDF document first (if provided)
+    if (pdfBuffer) {
+      const docForm = new FormData();
+      docForm.append('chat_id', hotel.telegramChatId);
+      docForm.append('document', pdfBuffer, {
+        filename: `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`,
+        contentType: 'application/pdf'
+      });
+      docForm.append('caption', `📅 Jahresplanung ${year} — ${tourLabel}\n🏨 ${hotel.name}`);
+      await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
+    }
+
+    // ── 2. Intro text message
     const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
-    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    await axios.post(`${TG_BASE}/sendMessage`, {
       chat_id: hotel.telegramChatId,
       text: intro,
       parse_mode: 'Markdown'
@@ -353,7 +368,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
     const groups = Array.from(groupedMap.values());
 
     if (groups.length > 0) {
-      const TG_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+      const TG_API = TG_BASE;
       const header = `📋 *Заявка ${year} — ${tourLabel}*  🏨 *${hotel.name}*`;
 
       // Assign global visitIdx to each visit across all groups
