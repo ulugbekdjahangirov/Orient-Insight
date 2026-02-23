@@ -999,7 +999,7 @@ const STATUS_FILTERS = [
 ];
 
 export default function Partners() {
-  const [activeTab, setActiveTab] = useState('hotels');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('partners_activeTab') || 'hotels');
   const [hotelSubTab, setHotelSubTab] = useState('ER');
   const [transportSubTab, setTransportSubTab] = useState('ER');
   const [restoranSubTab, setRestoranSubTab] = useState('ER');
@@ -1137,7 +1137,7 @@ export default function Partners() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-white text-gray-900 shadow-sm'
