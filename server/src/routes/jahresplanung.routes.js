@@ -13,6 +13,48 @@ const prisma = new PrismaClient();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
+// ── Hardcoded city-level offsets (days from departureDate) per tour type.
+//    These are the SOURCE OF TRUTH for virtual (planned) entries.
+//    Derived from ER-01 real accommodations; stays reliable regardless of DB data quality.
+//
+//    ER schedule (arrival = dep+1):
+//      Tashkent initial  : dep+1  (2 nights → checkout dep+3)
+//      Samarkand         : dep+3  (3 nights → checkout dep+6)
+//      Asraf             : dep+6  (1 night  → checkout dep+7)
+//      Bukhara           : dep+7  (3 nights → checkout dep+10)
+//      Khiva             : dep+10 (3 nights → checkout dep+13)
+//      Tashkent return   : dep+12 (1 night  → checkout dep+13)
+const TOUR_CITY_OFFSETS = {
+  ER: {
+    tashkent:  [
+      { checkInOffset: 1,  nights: 2 },  // arrival / initial Tashkent
+      { checkInOffset: 12, nights: 1 },  // return Tashkent
+    ],
+    samarkand: [{ checkInOffset: 3,  nights: 3 }],
+    asraf:     [{ checkInOffset: 6,  nights: 1 }],
+    bukhara:   [{ checkInOffset: 7,  nights: 3 }],
+    khiva:     [{ checkInOffset: 10, nights: 3 }],
+  }
+  // CO, KAS, ZA: add here once city offsets are confirmed
+};
+
+/** Returns hardcoded offsets for (tourType, cityName), or null if not defined. */
+function getHardcodedOffsets(tourType, cityName) {
+  const typeMap = TOUR_CITY_OFFSETS[tourType];
+  if (!typeMap || !cityName) return null;
+  const key = cityName.trim().toLowerCase();
+  for (const [mapKey, offsets] of Object.entries(typeMap)) {
+    if (key.includes(mapKey) || mapKey.includes(key)) {
+      return offsets.map(o => ({
+        checkInOffset:  o.checkInOffset,
+        checkOutOffset: o.checkInOffset + o.nights,
+        nights:         o.nights
+      }));
+    }
+  }
+  return null;
+}
+
 // GET /api/jahresplanung/hotels?year=2026&tourType=ER
 router.get('/hotels', authenticate, async (req, res) => {
   try {
@@ -113,30 +155,32 @@ router.get('/hotels', authenticate, async (req, res) => {
       const missingBookings = yearBookings.filter(b => !existingIds.has(b.id));
       if (missingBookings.length === 0) continue;
 
-      // Derive offsets — prefer reference booking whose checkIn is in the target year,
-      // then fall back to most recent departure date. This prevents negative offsets
-      // when a hotel has a stale accommodation with checkIn in a past year.
-      const refEntries = Array.from(hotelRef.refBookings.entries())
-        .sort((a, b) => {
-          const aInYear = new Date(a[1][0].checkInDate).getFullYear() === year ? 1 : 0;
-          const bInYear = new Date(b[1][0].checkInDate).getFullYear() === year ? 1 : 0;
-          if (aInYear !== bInYear) return bInYear - aInYear; // target-year checkIn first
-          return new Date(b[1][0].booking.departureDate) - new Date(a[1][0].booking.departureDate);
-        });
+      // ── Try hardcoded city offsets first (reliable, data-independent)
+      let offsets = getHardcodedOffsets(tourType, hotelRef.hotel.city?.name);
 
-      let offsets = [];
-      for (const [, accs] of refEntries) {
-        const refDep = new Date(accs[0].booking.departureDate);
-        const sorted = [...accs].sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate));
-        const candidate = sorted.map(e => ({
-          checkInOffset:  daysBetween(refDep, e.checkInDate),
-          checkOutOffset: daysBetween(refDep, e.checkOutDate),
-          nights: e.nights || daysBetween(e.checkInDate, e.checkOutDate)
-        }));
-        // Skip references with unreasonable offsets (e.g. checkIn > 90 days before departure)
-        if (candidate.every(o => o.checkInOffset >= -90)) { offsets = candidate; break; }
+      // ── Fallback: derive offsets from reference booking (used for CO / KAS / ZA)
+      if (!offsets) {
+        const refEntries = Array.from(hotelRef.refBookings.entries())
+          .sort((a, b) => {
+            const aInYear = new Date(a[1][0].checkInDate).getFullYear() === year ? 1 : 0;
+            const bInYear = new Date(b[1][0].checkInDate).getFullYear() === year ? 1 : 0;
+            if (aInYear !== bInYear) return bInYear - aInYear;
+            return new Date(b[1][0].booking.departureDate) - new Date(a[1][0].booking.departureDate);
+          });
+
+        offsets = [];
+        for (const [, accs] of refEntries) {
+          const refDep = new Date(accs[0].booking.departureDate);
+          const sorted = [...accs].sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate));
+          const candidate = sorted.map(e => ({
+            checkInOffset:  daysBetween(refDep, e.checkInDate),
+            checkOutOffset: daysBetween(refDep, e.checkOutDate),
+            nights: e.nights || daysBetween(e.checkInDate, e.checkOutDate)
+          }));
+          if (candidate.every(o => o.checkInOffset >= -90)) { offsets = candidate; break; }
+        }
+        if (offsets.length === 0) continue;
       }
-      if (offsets.length === 0) continue;
 
       missingBookings.forEach(b => {
         const dep = b.departureDate;

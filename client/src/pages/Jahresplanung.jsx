@@ -484,7 +484,10 @@ function buildPdfPayload(hotelData, tourType, overrides) {
     };
   });
 
-  const { first, second, third, hasSplit, hasThird } = splitVisits(resolved);
+  // Cancelled bookings are excluded from PDF (not relevant for hotel pre-booking)
+  const activeResolved = resolved.filter(b => b.status !== 'CANCELLED');
+
+  const { first, second, third, hasSplit, hasThird } = splitVisits(activeResolved);
 
   function buildSection(rows, label) {
     const dataRows = rows.map((b, i) => ({
@@ -492,7 +495,7 @@ function buildPdfPayload(hotelData, tourType, overrides) {
       pax: b.pax || 0,
       checkIn: formatDate(b.checkInDate), checkOut: formatDate(b.checkOutDate),
       dbl: b.dbl || 0, twn: b.twn || 0, sngl: b.sngl || 0,
-      cancelled: b.status === 'CANCELLED',
+      cancelled: false,
     }));
     return { label: label || null, rows: dataRows };
   }
@@ -500,7 +503,7 @@ function buildPdfPayload(hotelData, tourType, overrides) {
   const sections = hasSplit
     ? [buildSection(first, 'Первый заезд'), buildSection(second, 'Второй заезд'),
        ...(hasThird ? [buildSection(third, 'Третий заезд')] : [])]
-    : [buildSection(resolved, null)];
+    : [buildSection(activeResolved, null)];
 
   return { hotelName: hotel.name, cityName: hotel.city?.name || '', tourType, year: YEAR, sections };
 }
@@ -531,7 +534,8 @@ function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlo
     };
   });
 
-  const { first, second, third, hasSplit, hasThird } = splitVisits(resolved);
+  const activeResolved = resolved.filter(b => b.status !== 'CANCELLED');
+  const { first, second, third, hasSplit, hasThird } = splitVisits(activeResolved);
   const tourLabel = TOUR_NAMES[tourType] || tourType;
   const country = TOUR_COUNTRY[tourType] || 'Германия';
   const today = formatDate(new Date().toISOString());
@@ -700,7 +704,7 @@ function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlo
     y = addTable(y + 4, second, 'Второй заезд');
     if (hasThird) y = addTable(y + 4, third, 'Третий заезд');
   } else {
-    y = addTable(y, resolved, null);
+    y = addTable(y, activeResolved, null);
   }
 
   // ── 7. Footer ─────────────────────────────────────────────────────────────
