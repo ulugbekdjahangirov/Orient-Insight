@@ -693,7 +693,7 @@ router.post('/webhook', async (req, res) => {
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
       const header = `📋 *Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}*  🏨 *${hotelName}*`;
 
-      // Helper — build one visit's message + keyboard
+      // Helper — build one visit's message + keyboard (keyboard removed after action)
       function buildVisitMsg(grp, v, st) {
         const visitTitle = v.sectionLabel
           ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
@@ -701,13 +701,14 @@ router.post('/webhook', async (req, res) => {
         const lines = [header, '', visitTitle,
           `${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
         ];
+        // After action — remove keyboard, only icon remains in text
         return {
           text: lines.join('\n'),
-          keyboard: [[
-            { text: st === 'CONFIRMED' ? '✅ Tasdiqlandi ✓' : '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
-            { text: st === 'WAITING'   ? '⏳ WL ✓'          : '⏳ WL',         callback_data: `jp_w:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
-            { text: st === 'REJECTED'  ? '❌ Rad ✓'         : '❌ Rad etish',  callback_data: `jp_r:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
-          ]]
+          keyboard: st === 'PENDING' ? [[
+            { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
+            { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
+            { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
+          ]] : []
         };
       }
 
