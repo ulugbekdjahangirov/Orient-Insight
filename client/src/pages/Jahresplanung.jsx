@@ -1057,8 +1057,7 @@ function HotelsTab({ tourType }) {
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
       const payload = buildPdfPayload(hotelData, tourType, overrides);
-      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
-      await jahresplanungApi.sendHotelTelegram(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType, payload.sections);
+      await jahresplanungApi.sendHotelTelegram(hotel.id, YEAR, tourType, payload.sections);
       toast.success(`Telegram → ${hotel.name}`);
     } catch (err) {
       toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));

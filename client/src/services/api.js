@@ -387,16 +387,8 @@ export const jahresplanungApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  sendHotelTelegram: (hotelId, pdfBlob, filename, year, tourType, sections) => {
-    const form = new FormData();
-    form.append('pdf', pdfBlob, filename);
-    form.append('year', year);
-    form.append('tourType', tourType);
-    if (sections) form.append('sections', JSON.stringify(sections));
-    return api.post(`/jahresplanung/send-hotel-telegram/${hotelId}`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-  },
+  sendHotelTelegram: (hotelId, year, tourType, sections) =>
+    api.post(`/jahresplanung/send-hotel-telegram/${hotelId}`, { year, tourType, sections }),
   getAllHotels: () => api.get('/jahresplanung/all-hotels'),
   getLogo: () => api.get('/jahresplanung/logo'),
   generatePDF: (data) => api.post('/jahresplanung/generate-pdf', data, { responseType: 'arraybuffer' }),

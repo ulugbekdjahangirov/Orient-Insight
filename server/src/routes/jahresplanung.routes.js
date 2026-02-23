@@ -297,16 +297,11 @@ router.post('/send-hotel-email/:hotelId', authenticate, upload.single('pdf'), as
 });
 
 // POST /api/jahresplanung/send-hotel-telegram/:hotelId
-// Sends annual plan PDF to hotel's Telegram chat
-router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'), async (req, res) => {
+// Accepts JSON { year, tourType, sections } — generates PDF internally, then sends to Telegram
+router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.hotelId);
-    const { year, tourType } = req.body;
-    const pdfFile = req.file;
-
-    if (!pdfFile) {
-      return res.status(400).json({ error: 'PDF fayl yuklanmadi' });
-    }
+    const { year, tourType, sections = [] } = req.body;
 
     const hotel = await prisma.hotel.findUnique({
       where: { id: hotelId },
@@ -327,16 +322,17 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
     const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
     const tourLabel = tourNames[tourType] || tourType;
 
+    // ── Generate PDF server-side (no round-trip to frontend)
+    const pdfBuffer = await generatePdfBuffer(hotel.name, tourType, year, sections);
+    const filename = `${year}_${tourType}_${hotel.name.replace(/[^a-zA-Z0-9_.\-]/g, '_')}.pdf`;
+
     const caption = `📅 *Заявка ${year}*\n🏨 *${hotel.name}*\n🗺 ${tourLabel} gruppalar uchun yillik zayavka`;
 
     const form = new FormData();
     form.append('chat_id', hotel.telegramChatId);
     form.append('caption', caption);
     form.append('parse_mode', 'Markdown');
-    form.append('document', pdfFile.buffer, {
-      filename: pdfFile.originalname,
-      contentType: 'application/pdf'
-    });
+    form.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
 
     await axios.post(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`,
@@ -344,8 +340,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       { headers: form.getHeaders() }
     );
 
-    // ── Interactive confirmation message ──────────────────────────────────
-    const sections = req.body.sections ? JSON.parse(req.body.sections) : [];
+    // ── Interactive confirmation messages ─────────────────────────────────
 
     // Group rows by bookingId — each booking shows all its visits together
     const groupedMap = new Map();
@@ -381,9 +376,11 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         }
       }
 
-      // Send ONE message per visit — each with its own confirm buttons
-      for (const grp of groups) {
-        for (const v of grp.visits) {
+      // Send visit messages in parallel batches of 10 (much faster than sequential)
+      const allVisits = groups.flatMap(grp => grp.visits.map(v => ({ grp, v })));
+      const BATCH = 10;
+      for (let i = 0; i < allVisits.length; i += BATCH) {
+        await Promise.all(allVisits.slice(i, i + BATCH).map(async ({ grp, v }) => {
           const visitTitle = v.sectionLabel
             ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
             : `*${grp.no}. ${grp.group}*`;
@@ -403,7 +400,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
             ]]}
           });
           v.msgId = msgRes.data?.result?.message_id || null;
-        }
+        }));
       }
 
       // Final bulk-action message
@@ -437,10 +434,8 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
   }
 });
 
-// POST /api/jahresplanung/generate-pdf — server-side PDF via puppeteer (supports Cyrillic)
-router.post('/generate-pdf', authenticate, async (req, res) => {
-  try {
-    const { hotelName, tourType, year, sections } = req.body;
+// ── Shared helper: generate PDF buffer via Puppeteer ─────────────────────────
+async function generatePdfBuffer(hotelName, tourType, year, sections) {
     const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
     const tourLabel = TOUR_NAMES[tourType] || tourType;
 
@@ -594,7 +589,14 @@ router.post('/generate-pdf', authenticate, async (req, res) => {
 
     const pdfBuffer = Buffer.isBuffer(pdfUint8) ? pdfUint8 : Buffer.from(pdfUint8);
     console.log(`PDF generated: ${pdfBuffer.length} bytes for ${hotelName}`);
+    return pdfBuffer;
+}
 
+// POST /api/jahresplanung/generate-pdf — server-side PDF via puppeteer (supports Cyrillic)
+router.post('/generate-pdf', authenticate, async (req, res) => {
+  try {
+    const { hotelName, tourType, year, sections } = req.body;
+    const pdfBuffer = await generatePdfBuffer(hotelName, tourType, year, sections);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', pdfBuffer.length);
     res.setHeader('Content-Disposition', `attachment; filename="${year}_${tourType}_${hotelName.replace(/[^a-zA-Z0-9_.\-]/g,'_')}.pdf"`);
