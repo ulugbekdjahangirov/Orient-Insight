@@ -835,38 +835,35 @@ function fmtDep(dateStr) {
 }
 
 function RestoranCard({ restaurant, open, onToggle, tourType }) {
-  const { name, city, pricePerPerson, hasTelegram, bookings } = restaurant;
+  const { name, city, hasTelegram, bookings } = restaurant;
 
   const confirmedCount = bookings.filter(b => b.confirmation?.status === 'CONFIRMED').length;
   const pendingCount   = bookings.filter(b => b.confirmation?.status === 'PENDING').length;
   const totalPax       = bookings.reduce((s, b) => s + (b.pax || 0), 0);
-  const totalPrice     = bookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
 
   const handlePdf = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     doc.setFontSize(13);
     doc.text(`JAHRESPLANUNG ${YEAR} — Restoran (${tourType})`, 14, 15);
     doc.setFontSize(10);
-    doc.text(`${name}${city ? ` · ${city}` : ''} — ${pricePerPerson.toLocaleString('ru-RU')} UZS/kishi`, 14, 22);
+    doc.text(`${name}${city ? ` · ${city}` : ''}`, 14, 22);
 
     const rows = bookings.map(b => [
       b.bookingNumber,
       b.pax,
-      pricePerPerson.toLocaleString('ru-RU'),
-      b.totalPrice.toLocaleString('ru-RU'),
-      b.confirmation?.mealDate || fmtDep(b.departureDate),
+      b.mealDate || '—',
       b.confirmation ? (MEAL_STATUS_CFG[b.confirmation.status]?.label || b.confirmation.status) : '—',
     ]);
 
     autoTable(doc, {
       startY: 27,
-      head: [['Gruppe', 'PAX', 'Narx/kishi (UZS)', 'Jami (UZS)', 'Sana', 'Holat']],
+      head: [['Gruppe', 'PAX', 'Sana', 'Holat']],
       body: rows,
-      foot: [['GESAMT', totalPax, pricePerPerson.toLocaleString('ru-RU'), totalPrice.toLocaleString('ru-RU'), '', '']],
+      foot: [['GESAMT', totalPax, '', '']],
       headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold', fontSize: 9 },
       footStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138], fontStyle: 'bold' },
       bodyStyles: { fontSize: 9 },
-      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+      columnStyles: { 1: { halign: 'right' } },
       alternateRowStyles: { fillColor: [249, 250, 251] },
     });
 
@@ -882,8 +879,7 @@ function RestoranCard({ restaurant, open, onToggle, tourType }) {
           <div className="text-left">
             <div className="font-semibold text-gray-900">{name}</div>
             <div className="text-xs text-gray-500">
-              {city && <span>{city} · </span>}
-              {pricePerPerson > 0 ? <span>{pricePerPerson.toLocaleString('ru-RU')} UZS/kishi</span> : <span>Narx belgilanmagan</span>}
+              {city && <span>{city}</span>}
               {hasTelegram && <span className="ml-2 text-blue-500">· TG ✓</span>}
             </div>
           </div>
@@ -913,8 +909,6 @@ function RestoranCard({ restaurant, open, onToggle, tourType }) {
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                 <th className="px-4 py-2 text-left font-medium">Gruppe</th>
                 <th className="px-4 py-2 text-right font-medium">PAX</th>
-                <th className="px-4 py-2 text-right font-medium">Narx/kishi</th>
-                <th className="px-4 py-2 text-right font-medium">Jami (UZS)</th>
                 <th className="px-4 py-2 text-left font-medium">Sana</th>
                 <th className="px-4 py-2 text-left font-medium">Holat</th>
               </tr>
@@ -928,12 +922,8 @@ function RestoranCard({ restaurant, open, onToggle, tourType }) {
                     </Link>
                   </td>
                   <td className="px-4 py-2 text-right text-gray-700">{b.pax}</td>
-                  <td className="px-4 py-2 text-right text-gray-500 text-xs">{pricePerPerson > 0 ? pricePerPerson.toLocaleString('ru-RU') : '—'}</td>
-                  <td className="px-4 py-2 text-right font-medium text-gray-800">
-                    {b.totalPrice > 0 ? b.totalPrice.toLocaleString('ru-RU') : '—'}
-                  </td>
-                  <td className="px-4 py-2 text-gray-500 text-xs">
-                    {b.confirmation?.mealDate || fmtDep(b.departureDate)}
+                  <td className="px-4 py-2 text-gray-700 text-xs font-medium">
+                    {b.mealDate || '—'}
                   </td>
                   <td className="px-4 py-2">
                     {b.confirmation
@@ -949,8 +939,6 @@ function RestoranCard({ restaurant, open, onToggle, tourType }) {
                 <tr className="bg-blue-50 border-t-2 border-blue-200">
                   <td className="px-4 py-2 font-bold text-blue-900 text-sm">GESAMT</td>
                   <td className="px-4 py-2 text-right font-bold text-blue-900">{totalPax}</td>
-                  <td className="px-4 py-2 text-right text-blue-700 text-xs">{pricePerPerson > 0 ? pricePerPerson.toLocaleString('ru-RU') : '—'}</td>
-                  <td className="px-4 py-2 text-right font-bold text-blue-900">{totalPrice > 0 ? totalPrice.toLocaleString('ru-RU') : '—'}</td>
                   <td colSpan={2}></td>
                 </tr>
               </tfoot>

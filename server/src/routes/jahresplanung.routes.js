@@ -854,6 +854,34 @@ router.get('/jp-sections', authenticate, async (req, res) => {
 });
 
 // ── GET /api/jahresplanung/meals?year=2026&tourType=ER ─────────────────────
+// City aliases: special cities not in TOUR_CITY_OFFSETS mapped to nearest city offset
+const CITY_MEAL_ALIASES = {
+  nurata:    'bukhara',   // ER: on the road Asraf → Bukhara, same arrival day as Bukhara
+  qizilqum:  'khiva',    // CO: on the road Bukhara → Khiva, same arrival day as Khiva
+  navoi:     'bukhara',  // near Bukhara route
+};
+
+function getMealDayOffset(tourType, cityName) {
+  if (!cityName) return null;
+  const key = cityName.trim().toLowerCase();
+  const typeMap = TOUR_CITY_OFFSETS[tourType];
+  if (!typeMap) return null;
+  // Check alias first
+  const aliasKey = CITY_MEAL_ALIASES[key];
+  if (aliasKey && typeMap[aliasKey]) return typeMap[aliasKey][0].checkInOffset;
+  // Direct match
+  for (const [mapKey, offsets] of Object.entries(typeMap)) {
+    if (key.includes(mapKey) || mapKey.includes(key)) return offsets[0].checkInOffset;
+  }
+  return null;
+}
+
+function addDaysFmt(dateStr, days) {
+  if (!dateStr || days === null) return null;
+  const d = new Date(new Date(dateStr).getTime() + days * 86400000);
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
 router.get('/meals', authenticate, async (req, res) => {
   try {
     const { year = 2026, tourType = 'ER' } = req.query;
@@ -897,19 +925,20 @@ router.get('/meals', authenticate, async (req, res) => {
 
     // 5. Build restaurant → bookings structure
     const restaurants = mealItems.map(meal => {
-      const pricePerPerson = parseFloat((meal.price || '0').toString().replace(/\s/g, '')) || 0;
+      const dayOffset = getMealDayOffset(tourType, meal.city);
       const bookings = allBookings.map(booking => {
-        // Latest MealConfirmation for this booking + restaurant
         const conf = confirmations.find(
           c => c.bookingId === booking.id && c.restaurantName === meal.name
         );
+        // Computed date: from MealConfirmation if sent, otherwise from departure + city offset
+        const computedDate = conf?.mealDate || addDaysFmt(booking.departureDate, dayOffset);
         return {
           bookingId:     booking.id,
           bookingNumber: booking.bookingNumber,
           pax:           booking.pax || 0,
           departureDate: booking.departureDate,
           bookingStatus: booking.status,
-          totalPrice:    pricePerPerson * (booking.pax || 0),
+          mealDate:      computedDate,
           confirmation:  conf ? {
             id:          conf.id,
             status:      conf.status,
@@ -921,10 +950,9 @@ router.get('/meals', authenticate, async (req, res) => {
         };
       });
       return {
-        name:          meal.name,
-        city:          meal.city || '',
-        pricePerPerson,
-        hasTelegram:   !!chatIds[meal.name],
+        name:        meal.name,
+        city:        meal.city || '',
+        hasTelegram: !!chatIds[meal.name],
         bookings
       };
     });
