@@ -769,6 +769,50 @@ router.post('/webhook', async (req, res) => {
         data: { value: JSON.stringify(stored) }
       }).catch(() => {});
 
+      // Sync to JP_STATE statuses (so Jahresplanung page reflects Telegram responses)
+      try {
+        const JP_TO_ROW = { CONFIRMED: 'confirmed', WAITING: 'waiting', REJECTED: 'cancelled', PENDING: null };
+        const rowVal = JP_TO_ROW[newStatus];
+        // Collect affected visits (bookingId + checkIn)
+        const affected = isBulk
+          ? groups.flatMap(g => (g.visits || []).map(v => ({ bookingId: g.bookingId, checkIn: v.checkIn })))
+          : (() => {
+              const g = groups.find(g => g.bookingId === jpBookingId);
+              const v = g?.visits.find(v => v.visitIdx === jpVisitIdx);
+              return v ? [{ bookingId: jpBookingId, checkIn: v.checkIn }] : [];
+            })();
+
+        const stateSetting = await prisma.systemSetting.findUnique({
+          where: { key: `JP_STATE_${year}_${tourType}` }
+        });
+        if (stateSetting && affected.length > 0) {
+          const stateData = JSON.parse(stateSetting.value);
+          const rowSt = stateData.statuses || {};
+
+          for (const { bookingId, checkIn } of affected) {
+            // Convert "DD.MM.YYYY" → "YYYY-MM-DD"
+            const parts = (checkIn || '').split('.');
+            const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : '';
+            const prefix = `${jpHotelId}_${bookingId}_`;
+
+            Object.keys(rowSt).forEach(k => {
+              if (k.startsWith(prefix) && (!isoDate || k.includes(isoDate))) {
+                if (rowVal === null) delete rowSt[k];
+                else rowSt[k] = rowVal;
+              }
+            });
+          }
+
+          stateData.statuses = rowSt;
+          await prisma.systemSetting.update({
+            where: { key: `JP_STATE_${year}_${tourType}` },
+            data: { value: JSON.stringify(stateData) }
+          }).catch(() => {});
+        }
+      } catch (syncErr) {
+        console.warn('JP_STATE sync warn:', syncErr.message);
+      }
+
       // Admin notification
       const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
       if (adminChatId) {

@@ -836,7 +836,7 @@ function HotelsTab({ tourType }) {
       .catch(() => {});
   }, []);
 
-  // Load persisted state when tourType changes — localStorage first (instant), then DB (authoritative)
+  // Combined load: hotels + state + jpSections (localhost first for instant UX, then DB authoritative)
   useEffect(() => {
     loadingRef.current = true;
     const fromLS = (key) => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : {}; } catch { return {}; } };
@@ -844,22 +844,53 @@ function HotelsTab({ tourType }) {
     setRowStatuses(fromLS(`jp_statuses_${YEAR}_${tourType}`));
     setCityExtraHotels(fromLS(`jp_cityExtras_${YEAR}_${tourType}`));
     setBookingHotelAssign(fromLS(`jp_hotelAssign_${YEAR}_${tourType}`));
+    setLoading(true);
 
-    jahresplanungApi.getState(YEAR, tourType)
-      .then(res => {
-        if (res.data) {
-          const { overrides: o = {}, statuses: s = {}, cityExtras: c = {}, hotelAssign: h = {} } = res.data;
-          setOverrides(o); setRowStatuses(s); setCityExtraHotels(c); setBookingHotelAssign(h);
-          try {
-            localStorage.setItem(`jp_overrides_${YEAR}_${tourType}`, JSON.stringify(o));
-            localStorage.setItem(`jp_statuses_${YEAR}_${tourType}`, JSON.stringify(s));
-            localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(c));
-            localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(h));
-          } catch {}
+    Promise.all([
+      jahresplanungApi.getHotels(YEAR, tourType),
+      jahresplanungApi.getState(YEAR, tourType),
+      jahresplanungApi.getJpSections().catch(() => ({ data: [] }))
+    ]).then(([hotelsRes, stateRes, jpRes]) => {
+      const hotelsList = hotelsRes.data.hotels || [];
+      setHotels(hotelsList);
+      const cities = {};
+      hotelsList.forEach(h => { cities[h.hotel.city?.name || 'Бошқа'] = true; });
+      setOpenCities(cities);
+
+      const { overrides: o = {}, statuses: s = {}, cityExtras: c = {}, hotelAssign: h = {} } = stateRes.data || {};
+      const sections = jpRes.data || [];
+
+      // Merge JP_SECTIONS Telegram statuses into rowStatuses (use actual rowKeys from hotels data)
+      const JP_TO_ROW = { CONFIRMED: 'confirmed', WAITING: 'waiting', REJECTED: 'cancelled' };
+      const merged = { ...s };
+      for (const hd of hotelsList) {
+        const sec = sections.find(sec2 => sec2.hotelId === hd.hotel.id);
+        if (!sec) continue;
+        for (const b of hd.bookings) {
+          const grp = (sec.groups || []).find(g => g.bookingId === b.bookingId);
+          if (!grp) continue;
+          for (const v of (grp.visits || [])) {
+            if (!v.status || v.status === 'PENDING') continue;
+            const rowVal = JP_TO_ROW[v.status];
+            if (!rowVal) continue;
+            const dateParts = (v.checkIn || '').split('.');
+            const isoDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : null;
+            const k = rowKey(hd.hotel.id, b);
+            if (!isoDate || k.includes(isoDate)) merged[k] = rowVal;
+          }
         }
-      })
-      .catch(() => {})
-      .finally(() => { loadingRef.current = false; });
+      }
+
+      setOverrides(o); setRowStatuses(merged); setCityExtraHotels(c); setBookingHotelAssign(h);
+      try {
+        localStorage.setItem(`jp_overrides_${YEAR}_${tourType}`, JSON.stringify(o));
+        localStorage.setItem(`jp_statuses_${YEAR}_${tourType}`, JSON.stringify(merged));
+        localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(c));
+        localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(h));
+      } catch {}
+    }).catch(err => {
+      toast.error("Ma'lumot yuklanmadi: " + err.message);
+    }).finally(() => { setLoading(false); loadingRef.current = false; });
   }, [tourType]);
 
   // Debounced save to DB on any state change (skip during initial load)
@@ -873,21 +904,6 @@ function HotelsTab({ tourType }) {
     }, 1500);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [overrides, rowStatuses, cityExtraHotels, bookingHotelAssign]);
-
-  useEffect(() => { loadData(); }, [tourType]);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const res = await jahresplanungApi.getHotels(YEAR, tourType);
-      setHotels(res.data.hotels);
-      const cities = {};
-      res.data.hotels.forEach(h => { cities[h.hotel.city?.name || 'Бошқа'] = true; });
-      setOpenCities(cities);
-    } catch (err) {
-      toast.error("Ma'lumot yuklanmadi: " + err.message);
-    } finally { setLoading(false); }
-  };
 
   const setOverrideVal = (key, field, val) => {
     setOverrides(prev => {
@@ -904,6 +920,17 @@ function HotelsTab({ tourType }) {
       try { localStorage.setItem(`jp_statuses_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
       return next;
     });
+    // Sync to JP_SECTIONS (Hotels 2026)
+    try {
+      const parts = key.split('_');
+      if (parts.length >= 2) {
+        const hotelId = parseInt(parts[0]);
+        const bookingId = parseInt(parts[1]);
+        const JP_STATUS = { confirmed: 'CONFIRMED', waiting: 'WAITING', cancelled: 'REJECTED' };
+        const jpStatus = JP_STATUS[status] || 'PENDING';
+        jahresplanungApi.updateVisitStatus(hotelId, bookingId, jpStatus).catch(() => {});
+      }
+    } catch {}
   };
 
   const handleAddHotel = (cityName, hotel, currentCityHotels) => {

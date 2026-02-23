@@ -403,6 +403,8 @@ export const jahresplanungApi = {
   getState: (year, tourType) => api.get('/jahresplanung/state', { params: { year, tourType } }),
   saveState: (year, tourType, data) => api.put('/jahresplanung/state', { year, tourType, ...data }),
   getJpSections: () => api.get('/jahresplanung/jp-sections'),
+  updateVisitStatus: (hotelId, bookingId, status) =>
+    api.put(`/jahresplanung/jp-sections/${hotelId}/visit-status`, { bookingId, status }),
 };
 
 export default api;

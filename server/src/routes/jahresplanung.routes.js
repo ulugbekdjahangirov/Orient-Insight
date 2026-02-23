@@ -587,6 +587,35 @@ router.get('/all-hotels', authenticate, async (req, res) => {
   }
 });
 
+// PUT /api/jahresplanung/jp-sections/:hotelId/visit-status — update visit status from Jahresplanung UI
+router.put('/jp-sections/:hotelId/visit-status', authenticate, async (req, res) => {
+  try {
+    const hotelId = parseInt(req.params.hotelId);
+    const { bookingId, status } = req.body; // status: CONFIRMED|WAITING|PENDING|REJECTED
+
+    const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    if (!setting) return res.status(404).json({ error: 'JP_SECTIONS not found' });
+
+    const stored = JSON.parse(setting.value);
+    let updated = false;
+    stored.groups?.forEach(grp => {
+      if (grp.bookingId === parseInt(bookingId)) {
+        grp.visits?.forEach(v => { v.status = status; updated = true; });
+      }
+    });
+    if (!updated) return res.status(404).json({ error: 'Booking not found in JP_SECTIONS' });
+
+    await prisma.systemSetting.update({
+      where: { key: `JP_SECTIONS_${hotelId}` },
+      data: { value: JSON.stringify(stored) }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/jahresplanung/jp-sections — all JP_SECTIONS data for Partners Hotels2026 tab
 router.get('/jp-sections', authenticate, async (req, res) => {
   try {
