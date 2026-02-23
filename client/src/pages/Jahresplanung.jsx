@@ -858,7 +858,7 @@ function HotelsTab({ tourType }) {
       setOpenCities(cities);
 
       const { overrides: o = {}, statuses: s = {}, cityExtras: c = {}, hotelAssign: h = {} } = stateRes.data || {};
-      const sections = jpRes.data || [];
+      const sections = jpRes.data?.sections || [];
 
       // Merge JP_SECTIONS Telegram statuses into rowStatuses (use actual rowKeys from hotels data)
       const JP_TO_ROW = { CONFIRMED: 'confirmed', WAITING: 'waiting', REJECTED: 'cancelled' };
