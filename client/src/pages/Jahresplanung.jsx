@@ -811,6 +811,225 @@ function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverri
   );
 }
 
+// ── RestoranTab ────────────────────────────────────────────────────────────
+
+const MEAL_STATUS_CFG = {
+  PENDING:   { color: 'bg-yellow-100 text-yellow-800', label: 'Kutilmoqda', icon: '🕐' },
+  CONFIRMED: { color: 'bg-green-100 text-green-800',   label: 'Tasdiqladi', icon: '✅' },
+  REJECTED:  { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',  icon: '❌' },
+};
+
+function MealStatusBadge({ status, confirmedBy }) {
+  const cfg = MEAL_STATUS_CFG[status] || { color: 'bg-gray-100 text-gray-600', label: status, icon: '?' };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`} title={confirmedBy || ''}>
+      {cfg.icon} {cfg.label}
+    </span>
+  );
+}
+
+function fmtDep(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+function RestoranCard({ restaurant, open, onToggle, tourType }) {
+  const { name, city, pricePerPerson, hasTelegram, bookings } = restaurant;
+
+  const confirmedCount = bookings.filter(b => b.confirmation?.status === 'CONFIRMED').length;
+  const pendingCount   = bookings.filter(b => b.confirmation?.status === 'PENDING').length;
+  const totalPax       = bookings.reduce((s, b) => s + (b.pax || 0), 0);
+  const totalPrice     = bookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
+
+  const handlePdf = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    doc.setFontSize(13);
+    doc.text(`JAHRESPLANUNG ${YEAR} — Restoran (${tourType})`, 14, 15);
+    doc.setFontSize(10);
+    doc.text(`${name}${city ? ` · ${city}` : ''} — ${pricePerPerson.toLocaleString('ru-RU')} UZS/kishi`, 14, 22);
+
+    const rows = bookings.map(b => [
+      b.bookingNumber,
+      b.pax,
+      pricePerPerson.toLocaleString('ru-RU'),
+      b.totalPrice.toLocaleString('ru-RU'),
+      b.confirmation?.mealDate || fmtDep(b.departureDate),
+      b.confirmation ? (MEAL_STATUS_CFG[b.confirmation.status]?.label || b.confirmation.status) : '—',
+    ]);
+
+    autoTable(doc, {
+      startY: 27,
+      head: [['Gruppe', 'PAX', 'Narx/kishi (UZS)', 'Jami (UZS)', 'Sana', 'Holat']],
+      body: rows,
+      foot: [['GESAMT', totalPax, pricePerPerson.toLocaleString('ru-RU'), totalPrice.toLocaleString('ru-RU'), '', '']],
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+      footStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138], fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
+    });
+
+    doc.save(`${YEAR}_Restoran_${tourType}_${name}.pdf`);
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-3">
+      {/* Header */}
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center gap-3">
+          <UtensilsCrossed className="w-4 h-4 text-orange-500 flex-shrink-0" />
+          <div className="text-left">
+            <div className="font-semibold text-gray-900">{name}</div>
+            <div className="text-xs text-gray-500">
+              {city && <span>{city} · </span>}
+              {pricePerPerson > 0 ? <span>{pricePerPerson.toLocaleString('ru-RU')} UZS/kishi</span> : <span>Narx belgilanmagan</span>}
+              {hasTelegram && <span className="ml-2 text-blue-500">· TG ✓</span>}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs">
+            {confirmedCount > 0 && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{confirmedCount}✅</span>}
+            {pendingCount > 0   && <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{pendingCount}🕐</span>}
+            <span className="text-gray-400">{bookings.length} guruh · {totalPax} pax</span>
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); handlePdf(); }}
+            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+            title="PDF yuklab olish"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+          {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+        </div>
+      </button>
+
+      {/* Table */}
+      {open && (
+        <div className="border-t border-gray-100 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                <th className="px-4 py-2 text-left font-medium">Gruppe</th>
+                <th className="px-4 py-2 text-right font-medium">PAX</th>
+                <th className="px-4 py-2 text-right font-medium">Narx/kishi</th>
+                <th className="px-4 py-2 text-right font-medium">Jami (UZS)</th>
+                <th className="px-4 py-2 text-left font-medium">Sana</th>
+                <th className="px-4 py-2 text-left font-medium">Holat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map(b => (
+                <tr key={b.bookingId} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-2">
+                    <Link to={`/bookings/${b.bookingId}`} className="text-blue-600 hover:underline font-mono text-xs font-medium">
+                      {b.bookingNumber}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-right text-gray-700">{b.pax}</td>
+                  <td className="px-4 py-2 text-right text-gray-500 text-xs">{pricePerPerson > 0 ? pricePerPerson.toLocaleString('ru-RU') : '—'}</td>
+                  <td className="px-4 py-2 text-right font-medium text-gray-800">
+                    {b.totalPrice > 0 ? b.totalPrice.toLocaleString('ru-RU') : '—'}
+                  </td>
+                  <td className="px-4 py-2 text-gray-500 text-xs">
+                    {b.confirmation?.mealDate || fmtDep(b.departureDate)}
+                  </td>
+                  <td className="px-4 py-2">
+                    {b.confirmation
+                      ? <MealStatusBadge status={b.confirmation.status} confirmedBy={b.confirmation.confirmedBy} />
+                      : <span className="text-xs text-gray-300">—</span>
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {bookings.length > 0 && (
+              <tfoot>
+                <tr className="bg-blue-50 border-t-2 border-blue-200">
+                  <td className="px-4 py-2 font-bold text-blue-900 text-sm">GESAMT</td>
+                  <td className="px-4 py-2 text-right font-bold text-blue-900">{totalPax}</td>
+                  <td className="px-4 py-2 text-right text-blue-700 text-xs">{pricePerPerson > 0 ? pricePerPerson.toLocaleString('ru-RU') : '—'}</td>
+                  <td className="px-4 py-2 text-right font-bold text-blue-900">{totalPrice > 0 ? totalPrice.toLocaleString('ru-RU') : '—'}</td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RestoranTab({ tourType }) {
+  const [loading, setLoading] = useState(true);
+  const [restaurants, setRestaurants] = useState([]);
+  const [openCards, setOpenCards] = useState({});
+
+  useEffect(() => {
+    setLoading(true);
+    setRestaurants([]);
+    jahresplanungApi.getMeals(YEAR, tourType)
+      .then(res => setRestaurants(res.data.restaurants || []))
+      .catch(() => setRestaurants([]))
+      .finally(() => setLoading(false));
+  }, [tourType]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-gray-400">
+        <Loader2 className="w-6 h-6 animate-spin mr-2" />
+        <span className="text-sm">Yuklanmoqda...</span>
+      </div>
+    );
+  }
+
+  if (!restaurants.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <UtensilsCrossed className="w-10 h-10 mb-3 opacity-30" />
+        <p className="text-sm font-medium">Restoran ma'lumotlari topilmadi</p>
+        <p className="text-xs mt-1 text-gray-400">OPEX → Meals → {tourType} tabida restoranlar qo'shing</p>
+      </div>
+    );
+  }
+
+  const totalBookings = restaurants[0]?.bookings.length || 0;
+  const confirmedTotal = restaurants.reduce((s, r) =>
+    s + r.bookings.filter(b => b.confirmation?.status === 'CONFIRMED').length, 0);
+  const totalRestaurants = restaurants.length;
+
+  return (
+    <div>
+      {/* Summary header */}
+      <div className="flex items-center gap-4 mb-4 px-1 text-sm text-gray-500">
+        <span>{totalRestaurants} ta restoran</span>
+        <span className="text-gray-300">·</span>
+        <span>{totalBookings} ta guruh</span>
+        {confirmedTotal > 0 && (
+          <>
+            <span className="text-gray-300">·</span>
+            <span className="text-green-600 font-medium">{confirmedTotal} ta tasdiqlangan</span>
+          </>
+        )}
+      </div>
+
+      {restaurants.map(rest => (
+        <RestoranCard
+          key={rest.name}
+          restaurant={rest}
+          tourType={tourType}
+          open={!!openCards[rest.name]}
+          onToggle={() => setOpenCards(prev => ({ ...prev, [rest.name]: !prev[rest.name] }))}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── End RestoranTab ─────────────────────────────────────────────────────────
+
 function HotelsTab({ tourType }) {
   const [loading, setLoading] = useState(true);
   const [hotels, setHotels] = useState([]);
@@ -1223,12 +1442,7 @@ export default function Jahresplanung() {
       </div>
 
       {mainTab==='hotels' && <HotelsTab tourType={tourTab}/>}
-      {mainTab==='restoran' && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <UtensilsCrossed className="w-12 h-12 mb-3 opacity-30"/>
-          <p className="text-sm font-medium">Restoran moduli — tez orada</p>
-        </div>
-      )}
+      {mainTab==='restoran' && <RestoranTab tourType={tourTab}/>}
       {mainTab==='transport' && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
           <Bus className="w-12 h-12 mb-3 opacity-30"/>

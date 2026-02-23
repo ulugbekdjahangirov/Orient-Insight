@@ -411,6 +411,7 @@ export const jahresplanungApi = {
     api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}`, { params: { tourType } }),
   deleteJpVisit: (hotelId, bookingId, visitIdx, tourType) =>
     api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}/visit/${visitIdx}`, { params: { tourType } }),
+  getMeals: (year, tourType) => api.get('/jahresplanung/meals', { params: { year, tourType } }),
 };
 
 export default api;

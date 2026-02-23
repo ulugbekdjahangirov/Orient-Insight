@@ -853,4 +853,87 @@ router.get('/jp-sections', authenticate, async (req, res) => {
   }
 });
 
+// ── GET /api/jahresplanung/meals?year=2026&tourType=ER ─────────────────────
+router.get('/meals', authenticate, async (req, res) => {
+  try {
+    const { year = 2026, tourType = 'ER' } = req.query;
+    const yearInt = parseInt(year);
+
+    // 1. Load OPEX meal items for this tourType
+    const opexSetting = await prisma.opexConfig.findUnique({
+      where: { tourType_category: { tourType, category: 'meal' } }
+    });
+    const mealItems = opexSetting ? JSON.parse(opexSetting.itemsJson) : [];
+
+    // 2. Load bookings for this tourType in target year (not CANCELLED)
+    const allBookings = await prisma.booking.findMany({
+      where: {
+        tourType: { code: tourType },
+        status: { not: 'CANCELLED' },
+        departureDate: {
+          gte: new Date(`${yearInt}-01-01`),
+          lt:  new Date(`${yearInt + 1}-01-01`)
+        }
+      },
+      select: { id: true, bookingNumber: true, pax: true, departureDate: true, status: true },
+      orderBy: { bookingNumber: 'asc' }
+    });
+
+    // 3. Load MealConfirmations for those bookings
+    const bookingIds = allBookings.map(b => b.id);
+    const confirmations = bookingIds.length > 0
+      ? await prisma.mealConfirmation.findMany({
+          where: { bookingId: { in: bookingIds } },
+          orderBy: { sentAt: 'desc' }
+        })
+      : [];
+
+    // 4. Load restaurant Telegram chat IDs
+    let chatIds = {};
+    try {
+      const s = await prisma.systemSetting.findUnique({ where: { key: 'MEAL_RESTAURANT_CHAT_IDS' } });
+      if (s) chatIds = JSON.parse(s.value);
+    } catch {}
+
+    // 5. Build restaurant → bookings structure
+    const restaurants = mealItems.map(meal => {
+      const pricePerPerson = parseFloat((meal.price || '0').toString().replace(/\s/g, '')) || 0;
+      const bookings = allBookings.map(booking => {
+        // Latest MealConfirmation for this booking + restaurant
+        const conf = confirmations.find(
+          c => c.bookingId === booking.id && c.restaurantName === meal.name
+        );
+        return {
+          bookingId:     booking.id,
+          bookingNumber: booking.bookingNumber,
+          pax:           booking.pax || 0,
+          departureDate: booking.departureDate,
+          bookingStatus: booking.status,
+          totalPrice:    pricePerPerson * (booking.pax || 0),
+          confirmation:  conf ? {
+            id:          conf.id,
+            status:      conf.status,
+            confirmedBy: conf.confirmedBy,
+            mealDate:    conf.mealDate,
+            sentAt:      conf.sentAt,
+            respondedAt: conf.respondedAt
+          } : null
+        };
+      });
+      return {
+        name:          meal.name,
+        city:          meal.city || '',
+        pricePerPerson,
+        hasTelegram:   !!chatIds[meal.name],
+        bookings
+      };
+    });
+
+    res.json({ restaurants, year: yearInt, tourType });
+  } catch (err) {
+    console.error('JP meals error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
