@@ -1071,7 +1071,8 @@ function HotelsTab({ tourType }) {
     if (!hotel.telegramChatId) { toast.error(`${hotel.name} — Telegram yo'q`); return; }
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
+      // Use client-side jsPDF (avoids Puppeteer timeout issues on server)
+      const blob = generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, true);
       const payload = buildPdfPayload(hotelData, tourType, overrides);
       const filename = `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
       await jahresplanungApi.sendHotelTelegram(hotel.id, blob, filename, YEAR, tourType, payload.sections);
