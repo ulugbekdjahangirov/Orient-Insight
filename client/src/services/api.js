@@ -402,6 +402,7 @@ export const jahresplanungApi = {
   generatePDF: (data) => api.post('/jahresplanung/generate-pdf', data, { responseType: 'arraybuffer' }),
   getState: (year, tourType) => api.get('/jahresplanung/state', { params: { year, tourType } }),
   saveState: (year, tourType, data) => api.put('/jahresplanung/state', { year, tourType, ...data }),
+  getJpSections: () => api.get('/jahresplanung/jp-sections'),
 };
 
 export default api;

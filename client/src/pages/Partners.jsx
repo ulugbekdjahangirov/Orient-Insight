@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { telegramApi, api } from '../services/api';
-import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck, Send, Copy, X } from 'lucide-react';
+import { telegramApi, api, jahresplanungApi } from '../services/api';
+import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck, Send, Copy, X, CalendarRange } from 'lucide-react';
 
 const TABS = [
   { id: 'hotels', label: 'Hotels', icon: Building2 },
   { id: 'restoran', label: 'Restoran', icon: UtensilsCrossed },
   { id: 'transport', label: 'Transport', icon: Bus },
   { id: 'gidlar', label: 'Gidlar', icon: Users },
+  { id: 'hotels2026', label: 'Hotels 2026', icon: CalendarRange },
+  { id: 'transport2026', label: 'Transport 2026', icon: CalendarRange },
 ];
 
 const STATUS_CONFIG = {
@@ -738,6 +740,125 @@ function RestoranTab({ confirmations, onDelete }) {
   );
 }
 
+const JP_STATUS_ICONS = { CONFIRMED: '✅', WAITING: '⏳', PENDING: '⬜', REJECTED: '❌' };
+const JP_STATUS_COLORS = {
+  CONFIRMED: 'bg-green-100 text-green-800',
+  WAITING:   'bg-blue-100 text-blue-800',
+  PENDING:   'bg-yellow-100 text-yellow-800',
+  REJECTED:  'bg-red-100 text-red-800',
+};
+
+function JpStatusBadge({ status }) {
+  const color = JP_STATUS_COLORS[status] || JP_STATUS_COLORS.PENDING;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${color}`}>
+      {JP_STATUS_ICONS[status] || '⬜'} {status === 'CONFIRMED' ? 'Tasdiqlandi' : status === 'WAITING' ? 'WL' : status === 'REJECTED' ? 'Rad etildi' : 'Kutilmoqda'}
+    </span>
+  );
+}
+
+function Hotels2026Tab({ sections, subTab }) {
+  const [openHotels, setOpenHotels] = useState({});
+
+  const filtered = sections.filter(s => s.tourType === subTab);
+  const sorted = [...filtered].sort((a, b) => (a.hotelName || '').localeCompare(b.hotelName || ''));
+
+  if (sorted.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <CalendarRange className="w-12 h-12 mb-3 opacity-30" />
+        <p className="text-sm">Bu tur uchun hali Zaявka yuborilmagan</p>
+        <p className="text-xs mt-1">Заявка 2026 sahifasidan Telegram orqali hotel ga yuborilgandan so'ng ko'rinadi</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {sorted.map(hotel => {
+        const isOpen = !!openHotels[hotel.hotelId];
+        const allVisits = hotel.groups?.flatMap(g => g.visits || []) || [];
+        const statusCounts = {};
+        allVisits.forEach(v => { statusCounts[v.status] = (statusCounts[v.status] || 0) + 1; });
+        const statusSummary = [
+          statusCounts.CONFIRMED && `✅ ${statusCounts.CONFIRMED}`,
+          statusCounts.WAITING   && `⏳ ${statusCounts.WAITING}`,
+          statusCounts.PENDING   && `⬜ ${statusCounts.PENDING}`,
+          statusCounts.REJECTED  && `❌ ${statusCounts.REJECTED}`,
+        ].filter(Boolean).join('  ');
+
+        return (
+          <div key={hotel.hotelId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setOpenHotels(prev => ({ ...prev, [hotel.hotelId]: !prev[hotel.hotelId] }))}
+              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+            >
+              {isOpen
+                ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              }
+              <Building2 className="w-5 h-5 text-gray-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-800">{hotel.hotelName}</h3>
+                <p className="text-xs text-gray-400">Заявка {hotel.year} · {hotel.tourType}</p>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {statusSummary && <span className="text-sm">{statusSummary}</span>}
+                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                  {(hotel.groups || []).length} ta guruh
+                </span>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="divide-y divide-gray-100">
+                {(hotel.groups || []).map(grp => (
+                  <div key={grp.bookingId} className="px-5 py-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Link
+                        to={`/bookings/${grp.bookingId}`}
+                        className="font-semibold text-sm text-primary-600 hover:underline"
+                      >
+                        {grp.group}
+                      </Link>
+                      <span className="text-xs text-gray-400">({(grp.visits || []).length} zaezd)</span>
+                    </div>
+                    <div className="space-y-1 pl-3">
+                      {(grp.visits || []).map(v => (
+                        <div key={v.visitIdx} className="flex items-center gap-3 text-sm">
+                          <span className="text-gray-500 min-w-0 flex-1">
+                            {v.sectionLabel
+                              ? <span className="text-xs text-gray-400 mr-1">{v.sectionLabel}:</span>
+                              : null
+                            }
+                            <span className="font-mono text-xs">{v.checkIn} → {v.checkOut}</span>
+                            <span className="ml-2 text-xs text-gray-400">{v.pax} pax · DBL:{v.dbl} TWN:{v.twn} SNGL:{v.sngl}</span>
+                          </span>
+                          <JpStatusBadge status={v.status} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Transport2026Tab() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+      <Bus className="w-12 h-12 mb-3 opacity-30" />
+      <p className="text-sm font-medium">Transport 2026 — tez kunda</p>
+      <p className="text-xs mt-1">Yillik transport rejalashtirishni kuzatib borish moduli ishlab chiqilmoqda</p>
+    </div>
+  );
+}
+
 const AUTO_REFRESH_SEC = 30;
 
 const HOTEL_SUB_TABS = ['ER', 'CO', 'KAS', 'ZA'];
@@ -768,6 +889,8 @@ export default function Partners() {
   const [transportConfirmations, setTransportConfirmations] = useState([]);
   const [mealConfirmations, setMealConfirmations] = useState([]);
   const [confirmations, setConfirmations] = useState([]);
+  const [jpSections, setJpSections] = useState([]);
+  const [hotels2026SubTab, setHotels2026SubTab] = useState('ER');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(AUTO_REFRESH_SEC);
@@ -803,16 +926,18 @@ export default function Partners() {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const [hotelRes, transportRes, mealRes, guideRes] = await Promise.all([
+      const [hotelRes, transportRes, mealRes, guideRes, jpRes] = await Promise.all([
         telegramApi.getConfirmations(),
         telegramApi.getTransportConfirmations(),
         telegramApi.getMealConfirmations(),
-        telegramApi.getGuideAssignments()
+        telegramApi.getGuideAssignments(),
+        jahresplanungApi.getJpSections(),
       ]);
       setConfirmations(hotelRes.data.confirmations || []);
       setTransportConfirmations(transportRes.data.confirmations || []);
       setMealConfirmations(mealRes.data.confirmations || []);
       setGuideAssignments(guideRes.data.assignments || []);
+      setJpSections(jpRes.data.sections || []);
     } catch (err) {
       setError('Ma\'lumotlarni yuklashda xatolik');
       console.error(err);
@@ -1292,6 +1417,41 @@ export default function Partners() {
               </>
             );
           })()}
+          {activeTab === 'hotels2026' && (() => {
+            const h2Counts = {};
+            jpSections.forEach(s => {
+              h2Counts[s.tourType] = (h2Counts[s.tourType] || 0) + 1;
+            });
+            return (
+              <>
+                {/* Sub-tabs */}
+                <div className="flex gap-1 mb-4">
+                  {HOTEL_SUB_TABS.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setHotels2026SubTab(sub)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        hotels2026SubTab === sub
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {sub}
+                      {h2Counts[sub] ? (
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          hotels2026SubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {h2Counts[sub]}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+                <Hotels2026Tab sections={jpSections} subTab={hotels2026SubTab} />
+              </>
+            );
+          })()}
+          {activeTab === 'transport2026' && <Transport2026Tab />}
         </>
       )}
 
