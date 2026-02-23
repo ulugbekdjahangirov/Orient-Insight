@@ -714,15 +714,18 @@ router.post('/webhook', async (req, res) => {
       }
 
       if (isBulk) {
-        // Update status of ALL visits in SystemSetting
+        // Update status — skip visits already CONFIRMED or REJECTED (don't overwrite final decisions)
         for (const grp of groups) {
-          for (const v of grp.visits) v.status = newStatus;
+          for (const v of grp.visits) {
+            if (v.status === 'CONFIRMED' || v.status === 'REJECTED') continue;
+            v.status = newStatus;
+          }
         }
-        // Edit all visit messages
+        // Edit visit messages (only those whose status changed, i.e. not already CONFIRMED/REJECTED before bulk)
         for (const grp of groups) {
           for (const v of grp.visits) {
             if (!v.msgId) continue;
-            const { text, keyboard } = buildVisitMsg(grp, v, newStatus);
+            const { text, keyboard } = buildVisitMsg(grp, v, v.status);
             await axios.post(`${BOT_API()}/editMessageText`, {
               chat_id: storedChatId, message_id: v.msgId,
               text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
@@ -772,14 +775,13 @@ router.post('/webhook', async (req, res) => {
       // Sync to JP_STATE statuses (so Jahresplanung page reflects Telegram responses)
       try {
         const JP_TO_ROW = { CONFIRMED: 'confirmed', WAITING: 'waiting', REJECTED: 'cancelled', PENDING: null };
-        const rowVal = JP_TO_ROW[newStatus];
-        // Collect affected visits (bookingId + checkIn)
+        // For bulk: carry each visit's actual status (some may be skipped/unchanged)
         const affected = isBulk
-          ? groups.flatMap(g => (g.visits || []).map(v => ({ bookingId: g.bookingId, checkIn: v.checkIn })))
+          ? groups.flatMap(g => (g.visits || []).map(v => ({ bookingId: g.bookingId, checkIn: v.checkIn, status: v.status })))
           : (() => {
               const g = groups.find(g => g.bookingId === jpBookingId);
               const v = g?.visits.find(v => v.visitIdx === jpVisitIdx);
-              return v ? [{ bookingId: jpBookingId, checkIn: v.checkIn }] : [];
+              return v ? [{ bookingId: jpBookingId, checkIn: v.checkIn, status: v.status }] : [];
             })();
 
         const stateSetting = await prisma.systemSetting.findUnique({
@@ -789,11 +791,12 @@ router.post('/webhook', async (req, res) => {
           const stateData = JSON.parse(stateSetting.value);
           const rowSt = stateData.statuses || {};
 
-          for (const { bookingId, checkIn } of affected) {
+          for (const { bookingId, checkIn, status } of affected) {
             // Convert "DD.MM.YYYY" → "YYYY-MM-DD"
             const parts = (checkIn || '').split('.');
             const isoDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : '';
             const prefix = `${jpHotelId}_${bookingId}_`;
+            const rowVal = JP_TO_ROW[status]; // use each visit's actual status
 
             Object.keys(rowSt).forEach(k => {
               if (k.startsWith(prefix) && (!isoDate || k.includes(isoDate))) {
