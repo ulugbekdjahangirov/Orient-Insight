@@ -939,6 +939,15 @@ function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
                                   <span className="font-mono text-xs text-gray-700">{v.checkIn} → {v.checkOut}</span>
                                   <span className="ml-3 text-xs text-gray-400">{v.pax} pax · DBL:{v.dbl} TWN:{v.twn} SNGL:{v.sngl}</span>
                                 </div>
+                                {v.confirmedBy && v.status !== 'PENDING' && (
+                                  <span className="text-xs text-gray-400 flex-shrink-0">
+                                    👤 {v.confirmedBy}
+                                    {v.respondedAt && (() => {
+                                      const d = new Date(v.respondedAt);
+                                      return ` · ${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                                    })()}
+                                  </span>
+                                )}
                                 <JpStatusBadge status={v.status} />
                                 <button
                                   onClick={(e) => handleDeleteVisit(e, hotel.hotelId, grp.bookingId, v.visitIdx)}

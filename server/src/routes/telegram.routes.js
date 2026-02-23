@@ -713,12 +713,15 @@ router.post('/webhook', async (req, res) => {
         return { text: lines.join('\n'), keyboard };
       }
 
+      const respondedAt = new Date().toISOString();
       if (isBulk) {
         // Update status — skip visits already CONFIRMED or REJECTED (don't overwrite final decisions)
         for (const grp of groups) {
           for (const v of grp.visits) {
             if (v.status === 'CONFIRMED' || v.status === 'REJECTED') continue;
             v.status = newStatus;
+            v.confirmedBy = fromName;
+            v.respondedAt = respondedAt;
           }
         }
         // Edit visit messages (only those whose status changed, i.e. not already CONFIRMED/REJECTED before bulk)
@@ -741,6 +744,8 @@ router.post('/webhook', async (req, res) => {
         }
         if (targetVisit) {
           targetVisit.status = newStatus;
+          targetVisit.confirmedBy = fromName;
+          targetVisit.respondedAt = respondedAt;
           // Edit this visit's message
           const msgId = cb.message?.message_id;
           if (msgId && editChatId) {
