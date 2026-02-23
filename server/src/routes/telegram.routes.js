@@ -770,6 +770,42 @@ router.post('/webhook', async (req, res) => {
         where: { key: `JP_SECTIONS_${jpHotelId}` },
         data: { value: JSON.stringify(stored) }
       }).catch(() => {});
+
+      // Admin notification
+      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      if (adminChatId) {
+        const emoji = newStatus === 'CONFIRMED' ? '✅' : newStatus === 'WAITING' ? '⏳' : '❌';
+        const actionLabel = newStatus === 'CONFIRMED' ? 'Tasdiqladi' : newStatus === 'WAITING' ? 'WL ga qo\'shdi' : 'Rad etdi';
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+        let adminLines;
+        if (isBulk) {
+          const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
+          adminLines = [
+            `${emoji} *${hotelName}* — ${actionLabel} (barcha)`,
+            `📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`,
+            `📊 Jami ${totalVisits} ta zaezd`,
+            `👤 ${fromName}`,
+            `🕐 ${timeStr}`
+          ];
+        } else {
+          const grp = groups.find(g => g.bookingId === jpBookingId);
+          const v = grp?.visits.find(v => v.visitIdx === jpVisitIdx);
+          adminLines = [
+            `${emoji} *${hotelName}* — ${actionLabel}`,
+            `📋 ${grp?.group || ''}${v?.sectionLabel ? ` — ${v.sectionLabel}` : ''}`,
+            `📅 ${v?.checkIn || ''} → ${v?.checkOut || ''}`,
+            `👤 ${fromName}`,
+            `🕐 ${timeStr}`
+          ];
+        }
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: adminChatId,
+          text: adminLines.join('\n'),
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
       return;
     }
     // ── End JP callbacks ──────────────────────────────────────────────────
