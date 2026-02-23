@@ -113,21 +113,28 @@ router.get('/hotels', authenticate, async (req, res) => {
       const missingBookings = yearBookings.filter(b => !existingIds.has(b.id));
       if (missingBookings.length === 0) continue;
 
-      // Derive offsets from ANY reference booking (prefer latest year)
-      // Sort refBookings by departure date desc to pick most recent
+      // Derive offsets — prefer reference booking whose checkIn is in the target year,
+      // then fall back to most recent departure date. This prevents negative offsets
+      // when a hotel has a stale accommodation with checkIn in a past year.
       const refEntries = Array.from(hotelRef.refBookings.entries())
-        .sort((a, b) => new Date(b[1][0].booking.departureDate) - new Date(a[1][0].booking.departureDate));
+        .sort((a, b) => {
+          const aInYear = new Date(a[1][0].checkInDate).getFullYear() === year ? 1 : 0;
+          const bInYear = new Date(b[1][0].checkInDate).getFullYear() === year ? 1 : 0;
+          if (aInYear !== bInYear) return bInYear - aInYear; // target-year checkIn first
+          return new Date(b[1][0].booking.departureDate) - new Date(a[1][0].booking.departureDate);
+        });
 
       let offsets = [];
       for (const [, accs] of refEntries) {
         const refDep = new Date(accs[0].booking.departureDate);
         const sorted = [...accs].sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate));
-        offsets = sorted.map(e => ({
+        const candidate = sorted.map(e => ({
           checkInOffset:  daysBetween(refDep, e.checkInDate),
           checkOutOffset: daysBetween(refDep, e.checkOutDate),
           nights: e.nights || daysBetween(e.checkInDate, e.checkOutDate)
         }));
-        break;
+        // Skip references with unreasonable offsets (e.g. checkIn > 90 days before departure)
+        if (candidate.every(o => o.checkInOffset >= -90)) { offsets = candidate; break; }
       }
       if (offsets.length === 0) continue;
 
