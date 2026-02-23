@@ -745,10 +745,37 @@ router.delete('/jp-sections/:hotelId/group/:bookingId', authenticate, async (req
 });
 
 // DELETE /api/jahresplanung/jp-sections/:hotelId — delete entire hotel JP_SECTIONS
+// Also clears this hotel's rowStatuses from all JP_STATE entries (Jahresplanung statuses)
 router.delete('/jp-sections/:hotelId', authenticate, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.hotelId);
+
+    // 1. Delete JP_SECTIONS
     await prisma.systemSetting.deleteMany({ where: { key: `JP_SECTIONS_${hotelId}` } });
+
+    // 2. Clear rowStatuses for this hotel from all JP_STATE_* entries
+    const prefix = `${hotelId}_`;
+    const jpStates = await prisma.systemSetting.findMany({
+      where: { key: { startsWith: 'JP_STATE_' } }
+    });
+    for (const state of jpStates) {
+      try {
+        const data = JSON.parse(state.value);
+        if (data.statuses) {
+          const cleaned = Object.fromEntries(
+            Object.entries(data.statuses).filter(([k]) => !k.startsWith(prefix))
+          );
+          if (Object.keys(cleaned).length !== Object.keys(data.statuses).length) {
+            data.statuses = cleaned;
+            await prisma.systemSetting.update({
+              where: { key: state.key },
+              data: { value: JSON.stringify(data) }
+            });
+          }
+        }
+      } catch {}
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
