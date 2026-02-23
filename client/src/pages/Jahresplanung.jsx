@@ -869,14 +869,25 @@ function HotelsTab({ tourType }) {
         for (const b of hd.bookings) {
           const grp = (sec.groups || []).find(g => g.bookingId === b.bookingId);
           if (!grp) continue;
+          const k = rowKey(hd.hotel.id, b);
+          // Try date match first (handles multi-visit bookings correctly)
+          let applied = false;
           for (const v of (grp.visits || [])) {
             if (!v.status || v.status === 'PENDING') continue;
             const rowVal = JP_TO_ROW[v.status];
             if (!rowVal) continue;
             const dateParts = (v.checkIn || '').split('.');
             const isoDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : null;
-            const k = rowKey(hd.hotel.id, b);
-            if (!isoDate || k.includes(isoDate)) merged[k] = rowVal;
+            if (!isoDate || k.includes(isoDate)) { merged[k] = rowVal; applied = true; break; }
+          }
+          // Fallback: JP_SECTIONS dates may be stale (virtual algorithm changed reference booking).
+          // For single-visit bookings, apply status regardless of date mismatch.
+          if (!applied && grp.visits?.length === 1) {
+            const v = grp.visits[0];
+            if (v.status && v.status !== 'PENDING') {
+              const rowVal = JP_TO_ROW[v.status];
+              if (rowVal) merged[k] = rowVal;
+            }
           }
         }
       }
