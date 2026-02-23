@@ -701,10 +701,11 @@ router.post('/webhook', async (req, res) => {
         const lines = [header, '', visitTitle,
           `${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
         ];
-        // After action — remove keyboard, only icon remains in text
+        // PENDING/WAITING — keep buttons; CONFIRMED/REJECTED — remove keyboard
+        const showButtons = st === 'PENDING' || st === 'WAITING';
         return {
           text: lines.join('\n'),
-          keyboard: st === 'PENDING' ? [[
+          keyboard: showButtons ? [[
             { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
             { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
             { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${jpHotelId}:${v.visitIdx}` },
@@ -751,7 +752,7 @@ router.post('/webhook', async (req, res) => {
 
       // Remove bulk action keyboard if all visits are now non-PENDING
       if (bulkMsgId && storedChatId) {
-        const allActioned = groups.every(g => g.visits.every(v => v.status !== 'PENDING'));
+        const allActioned = groups.every(g => g.visits.every(v => v.status === 'CONFIRMED' || v.status === 'REJECTED'));
         if (allActioned) {
           await axios.post(`${BOT_API()}/editMessageReplyMarkup`, {
             chat_id: storedChatId,
