@@ -757,9 +757,28 @@ function JpStatusBadge({ status }) {
   );
 }
 
-function Hotels2026Tab({ sections, subTab }) {
+function Hotels2026Tab({ sections, subTab, onDeleteGroup, onDeleteVisit }) {
   const [openHotels, setOpenHotels] = useState({});
   const [openGroups, setOpenGroups] = useState({});
+  const [deletingKey, setDeletingKey] = useState(null);
+
+  const handleDeleteGroup = async (e, hotelId, bookingId) => {
+    e.stopPropagation();
+    const key = `grp-${hotelId}-${bookingId}`;
+    setDeletingKey(key);
+    try { await onDeleteGroup(hotelId, bookingId); }
+    catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingKey(null); }
+  };
+
+  const handleDeleteVisit = async (e, hotelId, bookingId, visitIdx) => {
+    e.stopPropagation();
+    const key = `visit-${hotelId}-${bookingId}-${visitIdx}`;
+    setDeletingKey(key);
+    try { await onDeleteVisit(hotelId, bookingId, visitIdx); }
+    catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingKey(null); }
+  };
 
   const filtered = sections.filter(s => s.tourType === subTab);
   // Sort by city route order, then by hotel name within same city
@@ -851,11 +870,12 @@ function Hotels2026Tab({ sections, subTab }) {
                     grpCounts.PENDING   && `⬜ ${grpCounts.PENDING}`,
                     grpCounts.REJECTED  && `❌ ${grpCounts.REJECTED}`,
                   ].filter(Boolean).join('  ');
+                  const delGrpKey = `grp-${hotel.hotelId}-${grp.bookingId}`;
                   return (
                     <div key={grpKey}>
-                      <button
+                      <div
                         onClick={() => setOpenGroups(prev => ({ ...prev, [grpKey]: !prev[grpKey] }))}
-                        className="w-full px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+                        className="w-full px-5 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors cursor-pointer group"
                       >
                         {isGrpOpen
                           ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
@@ -871,24 +891,47 @@ function Hotels2026Tab({ sections, subTab }) {
                           </Link>
                           <span className="text-xs text-gray-400">{grpVisits.length} zaezd</span>
                         </div>
-                        <div className="flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           {grpSummary && <span className="text-xs">{grpSummary}</span>}
+                          <button
+                            onClick={(e) => handleDeleteGroup(e, hotel.hotelId, grp.bookingId)}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-all"
+                            title="Guruhni o'chirish"
+                          >
+                            {deletingKey === delGrpKey
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Trash2 className="w-3.5 h-3.5" />
+                            }
+                          </button>
                         </div>
-                      </button>
+                      </div>
                       {isGrpOpen && (
                         <div className="bg-gray-50 border-t border-gray-100 divide-y divide-gray-100">
-                          {grpVisits.map(v => (
-                            <div key={v.visitIdx} className="px-8 py-2.5 flex items-center gap-3">
-                              <div className="flex-1 min-w-0">
-                                {v.sectionLabel && (
-                                  <span className="text-xs font-medium text-gray-500 mr-2">{v.sectionLabel}</span>
-                                )}
-                                <span className="font-mono text-xs text-gray-700">{v.checkIn} → {v.checkOut}</span>
-                                <span className="ml-3 text-xs text-gray-400">{v.pax} pax · DBL:{v.dbl} TWN:{v.twn} SNGL:{v.sngl}</span>
+                          {grpVisits.map(v => {
+                            const delVisitKey = `visit-${hotel.hotelId}-${grp.bookingId}-${v.visitIdx}`;
+                            return (
+                              <div key={v.visitIdx} className="px-8 py-2.5 flex items-center gap-3 group/visit hover:bg-gray-100 transition-colors">
+                                <div className="flex-1 min-w-0">
+                                  {v.sectionLabel && (
+                                    <span className="text-xs font-medium text-gray-500 mr-2">{v.sectionLabel}</span>
+                                  )}
+                                  <span className="font-mono text-xs text-gray-700">{v.checkIn} → {v.checkOut}</span>
+                                  <span className="ml-3 text-xs text-gray-400">{v.pax} pax · DBL:{v.dbl} TWN:{v.twn} SNGL:{v.sngl}</span>
+                                </div>
+                                <JpStatusBadge status={v.status} />
+                                <button
+                                  onClick={(e) => handleDeleteVisit(e, hotel.hotelId, grp.bookingId, v.visitIdx)}
+                                  className="opacity-0 group-hover/visit:opacity-100 p-1 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-all"
+                                  title="Zaezdni o'chirish"
+                                >
+                                  {deletingKey === delVisitKey
+                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    : <Trash2 className="w-3.5 h-3.5" />
+                                  }
+                                </button>
                               </div>
-                              <JpStatusBadge status={v.status} />
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -1501,7 +1544,30 @@ export default function Partners() {
                     </button>
                   ))}
                 </div>
-                <Hotels2026Tab sections={jpSections} subTab={hotels2026SubTab} />
+                <Hotels2026Tab
+                  sections={jpSections}
+                  subTab={hotels2026SubTab}
+                  onDeleteGroup={async (hotelId, bookingId) => {
+                    if (!window.confirm('Bu guruhni o\'chirishni tasdiqlaysizmi?')) return;
+                    await jahresplanungApi.deleteJpGroup(hotelId, bookingId);
+                    setJpSections(prev => prev.map(s => {
+                      if (s.hotelId !== hotelId) return s;
+                      return { ...s, groups: (s.groups || []).filter(g => g.bookingId !== bookingId) };
+                    }));
+                  }}
+                  onDeleteVisit={async (hotelId, bookingId, visitIdx) => {
+                    if (!window.confirm('Bu zaezdni o\'chirishni tasdiqlaysizmi?')) return;
+                    await jahresplanungApi.deleteJpVisit(hotelId, bookingId, visitIdx);
+                    setJpSections(prev => prev.map(s => {
+                      if (s.hotelId !== hotelId) return s;
+                      const groups = (s.groups || []).map(g => {
+                        if (g.bookingId !== bookingId) return g;
+                        return { ...g, visits: (g.visits || []).filter(v => v.visitIdx !== visitIdx) };
+                      }).filter(g => g.visits && g.visits.length > 0);
+                      return { ...s, groups };
+                    }));
+                  }}
+                />
               </>
             );
           })()}

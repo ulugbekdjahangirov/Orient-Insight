@@ -405,6 +405,10 @@ export const jahresplanungApi = {
   getJpSections: () => api.get('/jahresplanung/jp-sections'),
   updateVisitStatus: (hotelId, bookingId, status) =>
     api.put(`/jahresplanung/jp-sections/${hotelId}/visit-status`, { bookingId, status }),
+  deleteJpGroup: (hotelId, bookingId) =>
+    api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}`),
+  deleteJpVisit: (hotelId, bookingId, visitIdx) =>
+    api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}/visit/${visitIdx}`),
 };
 
 export default api;

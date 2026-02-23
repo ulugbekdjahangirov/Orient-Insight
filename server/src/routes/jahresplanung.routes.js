@@ -616,6 +616,56 @@ router.put('/jp-sections/:hotelId/visit-status', authenticate, async (req, res) 
   }
 });
 
+// DELETE /api/jahresplanung/jp-sections/:hotelId/group/:bookingId/visit/:visitIdx
+router.delete('/jp-sections/:hotelId/group/:bookingId/visit/:visitIdx', authenticate, async (req, res) => {
+  try {
+    const hotelId = parseInt(req.params.hotelId);
+    const bookingId = parseInt(req.params.bookingId);
+    const visitIdx = parseInt(req.params.visitIdx);
+
+    const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    if (!setting) return res.status(404).json({ error: 'JP_SECTIONS not found' });
+
+    const stored = JSON.parse(setting.value);
+    stored.groups = (stored.groups || []).map(grp => {
+      if (grp.bookingId !== bookingId) return grp;
+      return { ...grp, visits: (grp.visits || []).filter(v => v.visitIdx !== visitIdx) };
+    }).filter(grp => grp.visits && grp.visits.length > 0);
+
+    await prisma.systemSetting.update({
+      where: { key: `JP_SECTIONS_${hotelId}` },
+      data: { value: JSON.stringify(stored) }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/jahresplanung/jp-sections/:hotelId/group/:bookingId
+router.delete('/jp-sections/:hotelId/group/:bookingId', authenticate, async (req, res) => {
+  try {
+    const hotelId = parseInt(req.params.hotelId);
+    const bookingId = parseInt(req.params.bookingId);
+
+    const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    if (!setting) return res.status(404).json({ error: 'JP_SECTIONS not found' });
+
+    const stored = JSON.parse(setting.value);
+    stored.groups = (stored.groups || []).filter(grp => grp.bookingId !== bookingId);
+
+    await prisma.systemSetting.update({
+      where: { key: `JP_SECTIONS_${hotelId}` },
+      data: { value: JSON.stringify(stored) }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/jahresplanung/jp-sections — all JP_SECTIONS data for Partners Hotels2026 tab
 router.get('/jp-sections', authenticate, async (req, res) => {
   try {
