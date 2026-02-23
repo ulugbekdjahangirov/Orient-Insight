@@ -682,8 +682,33 @@ router.post('/webhook', async (req, res) => {
         callback_query_id: callbackQueryId, text: answerText, show_alert: false
       }).catch(() => {});
 
-      // Load stored groups
-      const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${jpHotelId}` } });
+      // Load stored groups — support both new format (JP_SECTIONS_{id}_{tourType}) and old format
+      let setting = null;
+      if (!isBulk) {
+        // For individual visit: find the JP_SECTIONS that contains this bookingId
+        const candidates = await prisma.systemSetting.findMany({
+          where: { key: { startsWith: `JP_SECTIONS_${jpHotelId}` } }
+        });
+        for (const c of candidates) {
+          try {
+            const d = JSON.parse(c.value);
+            if ((d.groups || []).some(g => g.bookingId === jpBookingId)) { setting = c; break; }
+          } catch {}
+        }
+      } else {
+        // For bulk: find the JP_SECTIONS whose bulkMsgId matches this callback message
+        const candidates = await prisma.systemSetting.findMany({
+          where: { key: { startsWith: `JP_SECTIONS_${jpHotelId}` } }
+        });
+        const cbMsgId = cb.message?.message_id;
+        // Match by bulkMsgId to find the correct tourType entry
+        setting = candidates.find(c => {
+          try {
+            const d = JSON.parse(c.value);
+            return d.bulkMsgId != null && d.bulkMsgId === cbMsgId;
+          } catch { return false; }
+        }) || candidates[0] || null;
+      }
       if (!setting) { console.warn(`JP_SECTIONS not found for hotelId ${jpHotelId}`); return; }
       const stored = JSON.parse(setting.value);
       const { year, tourType, hotelName, chatId: storedChatId, bulkMsgId } = stored;
@@ -760,7 +785,17 @@ router.post('/webhook', async (req, res) => {
       }
 
       // Remove bulk action keyboard if all visits are now non-PENDING
-      if (bulkMsgId && storedChatId) {
+      if (isBulk && cb.message?.message_id && editChatId) {
+        const allActioned = groups.every(g => g.visits.every(v => v.status === 'CONFIRMED' || v.status === 'REJECTED'));
+        if (allActioned) {
+          await axios.post(`${BOT_API()}/editMessageReplyMarkup`, {
+            chat_id: editChatId,
+            message_id: cb.message.message_id,
+            reply_markup: { inline_keyboard: [] }
+          }).catch(() => {});
+        }
+      } else if (!isBulk && bulkMsgId && storedChatId) {
+        // After individual confirm — check if all done and remove bulk button
         const allActioned = groups.every(g => g.visits.every(v => v.status === 'CONFIRMED' || v.status === 'REJECTED'));
         if (allActioned) {
           await axios.post(`${BOT_API()}/editMessageReplyMarkup`, {
@@ -774,7 +809,7 @@ router.post('/webhook', async (req, res) => {
       // Save updated statuses back to SystemSetting
       stored.groups = groups;
       await prisma.systemSetting.update({
-        where: { key: `JP_SECTIONS_${jpHotelId}` },
+        where: { key: setting.key },
         data: { value: JSON.stringify(stored) }
       }).catch(() => {});
 
@@ -824,38 +859,39 @@ router.post('/webhook', async (req, res) => {
 
       // Admin notification
       const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      console.log(`JP admin notify: adminChatId=${adminChatId} hotelId=${jpHotelId} isBulk=${isBulk} newStatus=${newStatus}`);
       if (adminChatId) {
         const emoji = newStatus === 'CONFIRMED' ? '✅' : newStatus === 'WAITING' ? '⏳' : '❌';
-        const actionLabel = newStatus === 'CONFIRMED' ? 'Tasdiqladi' : newStatus === 'WAITING' ? 'WL ga qo\'shdi' : 'Rad etdi';
+        const actionLabel = newStatus === 'CONFIRMED' ? 'Tasdiqladi' : newStatus === 'WAITING' ? "WL ga qo'shdi" : 'Rad etdi';
         const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000); // UTC+5 Tashkent
         const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
 
-        let adminLines;
+        let adminText;
         if (isBulk) {
           const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
-          adminLines = [
-            `${emoji} *${hotelName}* — ${actionLabel} (barcha)`,
-            `📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`,
-            `📊 Jami ${totalVisits} ta zaezd`,
+          adminText = [
+            `${emoji} ${hotelName} — ${actionLabel} (barcha)`,
+            `Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`,
+            `Jami ${totalVisits} ta zaezd`,
             `👤 ${fromName}`,
             `🕐 ${timeStr}`
-          ];
+          ].join('\n');
         } else {
           const grp = groups.find(g => g.bookingId === jpBookingId);
           const v = grp?.visits.find(v => v.visitIdx === jpVisitIdx);
-          adminLines = [
-            `${emoji} *${hotelName}* — ${actionLabel}`,
-            `📋 ${grp?.group || ''}${v?.sectionLabel ? ` — ${v.sectionLabel}` : ''}`,
-            `📅 ${v?.checkIn || ''} → ${v?.checkOut || ''}`,
+          adminText = [
+            `${emoji} ${hotelName} — ${actionLabel}`,
+            `${grp?.group || ''}${v?.sectionLabel ? ` — ${v.sectionLabel}` : ''}`,
+            `${v?.checkIn || ''} → ${v?.checkOut || ''}`,
             `👤 ${fromName}`,
             `🕐 ${timeStr}`
-          ];
+          ].join('\n');
         }
+        console.log(`JP admin notify text: ${adminText.substring(0, 80)}`);
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: adminChatId,
-          text: adminLines.join('\n'),
-          parse_mode: 'Markdown'
-        }).catch(() => {});
+          text: adminText
+        }).catch(e => console.warn('JP admin notify error:', e.response?.data || e.message));
       }
       return;
     }

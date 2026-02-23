@@ -403,14 +403,14 @@ export const jahresplanungApi = {
   getState: (year, tourType) => api.get('/jahresplanung/state', { params: { year, tourType } }),
   saveState: (year, tourType, data) => api.put('/jahresplanung/state', { year, tourType, ...data }),
   getJpSections: () => api.get('/jahresplanung/jp-sections'),
-  updateVisitStatus: (hotelId, bookingId, status) =>
-    api.put(`/jahresplanung/jp-sections/${hotelId}/visit-status`, { bookingId, status }),
-  deleteJpHotel: (hotelId) =>
-    api.delete(`/jahresplanung/jp-sections/${hotelId}`),
-  deleteJpGroup: (hotelId, bookingId) =>
-    api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}`),
-  deleteJpVisit: (hotelId, bookingId, visitIdx) =>
-    api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}/visit/${visitIdx}`),
+  updateVisitStatus: (hotelId, bookingId, status, tourType) =>
+    api.put(`/jahresplanung/jp-sections/${hotelId}/visit-status`, { bookingId, status, tourType }),
+  deleteJpHotel: (hotelId, tourType) =>
+    api.delete(`/jahresplanung/jp-sections/${hotelId}`, { params: { tourType } }),
+  deleteJpGroup: (hotelId, bookingId, tourType) =>
+    api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}`, { params: { tourType } }),
+  deleteJpVisit: (hotelId, bookingId, visitIdx, tourType) =>
+    api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}/visit/${visitIdx}`, { params: { tourType } }),
 };
 
 export default api;

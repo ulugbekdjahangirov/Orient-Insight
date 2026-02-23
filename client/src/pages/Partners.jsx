@@ -762,30 +762,30 @@ function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
   const [openGroups, setOpenGroups] = useState({});
   const [deletingKey, setDeletingKey] = useState(null);
 
-  const handleDeleteHotel = async (e, hotelId) => {
+  const handleDeleteHotel = async (e, hotelId, tourType) => {
     e.stopPropagation();
     if (!window.confirm('Bu hotelning barcha ma\'lumotlarini o\'chirishni tasdiqlaysizmi?')) return;
-    const key = `hotel-${hotelId}`;
+    const key = `hotel-${hotelId}-${tourType}`;
     setDeletingKey(key);
-    try { await onDeleteHotel(hotelId); }
+    try { await onDeleteHotel(hotelId, tourType); }
     catch { alert('O\'chirishda xatolik'); }
     finally { setDeletingKey(null); }
   };
 
-  const handleDeleteGroup = async (e, hotelId, bookingId) => {
+  const handleDeleteGroup = async (e, hotelId, bookingId, tourType) => {
     e.stopPropagation();
     const key = `grp-${hotelId}-${bookingId}`;
     setDeletingKey(key);
-    try { await onDeleteGroup(hotelId, bookingId); }
+    try { await onDeleteGroup(hotelId, bookingId, tourType); }
     catch { alert('O\'chirishda xatolik'); }
     finally { setDeletingKey(null); }
   };
 
-  const handleDeleteVisit = async (e, hotelId, bookingId, visitIdx) => {
+  const handleDeleteVisit = async (e, hotelId, bookingId, visitIdx, tourType) => {
     e.stopPropagation();
     const key = `visit-${hotelId}-${bookingId}-${visitIdx}`;
     setDeletingKey(key);
-    try { await onDeleteVisit(hotelId, bookingId, visitIdx); }
+    try { await onDeleteVisit(hotelId, bookingId, visitIdx, tourType); }
     catch { alert('O\'chirishda xatolik'); }
     finally { setDeletingKey(null); }
   };
@@ -867,11 +867,11 @@ function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
                 </div>
               </button>
               <button
-                onClick={(e) => handleDeleteHotel(e, hotel.hotelId)}
+                onClick={(e) => handleDeleteHotel(e, hotel.hotelId, hotel.tourType)}
                 className="opacity-0 group-hover/hotel:opacity-100 mr-3 p-1.5 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-all flex-shrink-0"
                 title="Hotelni o'chirish"
               >
-                {deletingKey === `hotel-${hotel.hotelId}`
+                {deletingKey === `hotel-${hotel.hotelId}-${hotel.tourType}`
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <Trash2 className="w-4 h-4" />}
               </button>
@@ -915,7 +915,7 @@ function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {grpSummary && <span className="text-xs">{grpSummary}</span>}
                           <button
-                            onClick={(e) => handleDeleteGroup(e, hotel.hotelId, grp.bookingId)}
+                            onClick={(e) => handleDeleteGroup(e, hotel.hotelId, grp.bookingId, hotel.tourType)}
                             className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-all"
                             title="Guruhni o'chirish"
                           >
@@ -950,7 +950,7 @@ function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
                                 )}
                                 <JpStatusBadge status={v.status} />
                                 <button
-                                  onClick={(e) => handleDeleteVisit(e, hotel.hotelId, grp.bookingId, v.visitIdx)}
+                                  onClick={(e) => handleDeleteVisit(e, hotel.hotelId, grp.bookingId, v.visitIdx, hotel.tourType)}
                                   className="opacity-0 group-hover/visit:opacity-100 p-1 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-all"
                                   title="Zaezdni o'chirish"
                                 >
@@ -1577,23 +1577,23 @@ export default function Partners() {
                 <Hotels2026Tab
                   sections={jpSections}
                   subTab={hotels2026SubTab}
-                  onDeleteHotel={async (hotelId) => {
-                    await jahresplanungApi.deleteJpHotel(hotelId);
-                    setJpSections(prev => prev.filter(s => s.hotelId !== hotelId));
+                  onDeleteHotel={async (hotelId, tourType) => {
+                    await jahresplanungApi.deleteJpHotel(hotelId, tourType);
+                    setJpSections(prev => prev.filter(s => !(s.hotelId === hotelId && s.tourType === tourType)));
                   }}
-                  onDeleteGroup={async (hotelId, bookingId) => {
+                  onDeleteGroup={async (hotelId, bookingId, tourType) => {
                     if (!window.confirm('Bu guruhni o\'chirishni tasdiqlaysizmi?')) return;
-                    await jahresplanungApi.deleteJpGroup(hotelId, bookingId);
+                    await jahresplanungApi.deleteJpGroup(hotelId, bookingId, tourType);
                     setJpSections(prev => prev.map(s => {
-                      if (s.hotelId !== hotelId) return s;
+                      if (s.hotelId !== hotelId || s.tourType !== tourType) return s;
                       return { ...s, groups: (s.groups || []).filter(g => g.bookingId !== bookingId) };
                     }));
                   }}
-                  onDeleteVisit={async (hotelId, bookingId, visitIdx) => {
+                  onDeleteVisit={async (hotelId, bookingId, visitIdx, tourType) => {
                     if (!window.confirm('Bu zaezdni o\'chirishni tasdiqlaysizmi?')) return;
-                    await jahresplanungApi.deleteJpVisit(hotelId, bookingId, visitIdx);
+                    await jahresplanungApi.deleteJpVisit(hotelId, bookingId, visitIdx, tourType);
                     setJpSections(prev => prev.map(s => {
-                      if (s.hotelId !== hotelId) return s;
+                      if (s.hotelId !== hotelId || s.tourType !== tourType) return s;
                       const groups = (s.groups || []).map(g => {
                         if (g.bookingId !== bookingId) return g;
                         return { ...g, visits: (g.visits || []).filter(v => v.visitIdx !== visitIdx) };

@@ -419,11 +419,12 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       });
       const bulkMsgId = bulkRes.data?.result?.message_id || null;
 
-      // Store for webhook rebuilding
+      // Store for webhook rebuilding (key includes tourType so same hotel can have multiple tour entries)
+      const jpKey = `JP_SECTIONS_${hotelId}_${tourType}`;
       await prisma.systemSetting.upsert({
-        where: { key: `JP_SECTIONS_${hotelId}` },
+        where: { key: jpKey },
         update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) },
-        create: { key: `JP_SECTIONS_${hotelId}`, value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) }
+        create: { key: jpKey, value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) }
       });
 
     }
@@ -684,9 +685,15 @@ router.get('/all-hotels', authenticate, async (req, res) => {
 router.put('/jp-sections/:hotelId/visit-status', authenticate, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.hotelId);
-    const { bookingId, status } = req.body; // status: CONFIRMED|WAITING|PENDING|REJECTED
+    const { bookingId, status, tourType } = req.body; // status: CONFIRMED|WAITING|PENDING|REJECTED
 
-    const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    // Try new tourType-keyed format first, then fall back to old format
+    const key = tourType ? `JP_SECTIONS_${hotelId}_${tourType}` : `JP_SECTIONS_${hotelId}`;
+    let setting = await prisma.systemSetting.findUnique({ where: { key } });
+    if (!setting && tourType) {
+      // Fallback to old format
+      setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    }
     if (!setting) return res.status(404).json({ error: 'JP_SECTIONS not found' });
 
     const stored = JSON.parse(setting.value);
@@ -699,7 +706,7 @@ router.put('/jp-sections/:hotelId/visit-status', authenticate, async (req, res) 
     if (!updated) return res.status(404).json({ error: 'Booking not found in JP_SECTIONS' });
 
     await prisma.systemSetting.update({
-      where: { key: `JP_SECTIONS_${hotelId}` },
+      where: { key: setting.key },
       data: { value: JSON.stringify(stored) }
     });
     res.json({ success: true });
@@ -715,8 +722,10 @@ router.delete('/jp-sections/:hotelId/group/:bookingId/visit/:visitIdx', authenti
     const hotelId = parseInt(req.params.hotelId);
     const bookingId = parseInt(req.params.bookingId);
     const visitIdx = parseInt(req.params.visitIdx);
+    const tourType = req.query.tourType;
 
-    const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    const key = tourType ? `JP_SECTIONS_${hotelId}_${tourType}` : `JP_SECTIONS_${hotelId}`;
+    const setting = await prisma.systemSetting.findUnique({ where: { key } });
     if (!setting) return res.status(404).json({ error: 'JP_SECTIONS not found' });
 
     const stored = JSON.parse(setting.value);
@@ -726,7 +735,7 @@ router.delete('/jp-sections/:hotelId/group/:bookingId/visit/:visitIdx', authenti
     }).filter(grp => grp.visits && grp.visits.length > 0);
 
     await prisma.systemSetting.update({
-      where: { key: `JP_SECTIONS_${hotelId}` },
+      where: { key },
       data: { value: JSON.stringify(stored) }
     });
     res.json({ success: true });
@@ -741,15 +750,17 @@ router.delete('/jp-sections/:hotelId/group/:bookingId', authenticate, async (req
   try {
     const hotelId = parseInt(req.params.hotelId);
     const bookingId = parseInt(req.params.bookingId);
+    const tourType = req.query.tourType;
 
-    const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    const key = tourType ? `JP_SECTIONS_${hotelId}_${tourType}` : `JP_SECTIONS_${hotelId}`;
+    const setting = await prisma.systemSetting.findUnique({ where: { key } });
     if (!setting) return res.status(404).json({ error: 'JP_SECTIONS not found' });
 
     const stored = JSON.parse(setting.value);
     stored.groups = (stored.groups || []).filter(grp => grp.bookingId !== bookingId);
 
     await prisma.systemSetting.update({
-      where: { key: `JP_SECTIONS_${hotelId}` },
+      where: { key },
       data: { value: JSON.stringify(stored) }
     });
     res.json({ success: true });
@@ -759,14 +770,19 @@ router.delete('/jp-sections/:hotelId/group/:bookingId', authenticate, async (req
   }
 });
 
-// DELETE /api/jahresplanung/jp-sections/:hotelId — delete entire hotel JP_SECTIONS
-// Also clears this hotel's rowStatuses from all JP_STATE entries (Jahresplanung statuses)
+// DELETE /api/jahresplanung/jp-sections/:hotelId — delete entire hotel JP_SECTIONS (specific tourType)
+// Also clears this hotel's rowStatuses from JP_STATE entries
 router.delete('/jp-sections/:hotelId', authenticate, async (req, res) => {
   try {
     const hotelId = parseInt(req.params.hotelId);
+    const tourType = req.query.tourType;
 
-    // 1. Delete JP_SECTIONS
-    await prisma.systemSetting.deleteMany({ where: { key: `JP_SECTIONS_${hotelId}` } });
+    // 1. Delete JP_SECTIONS (new format key with tourType, and old format for compat)
+    if (tourType) {
+      await prisma.systemSetting.deleteMany({ where: { key: { in: [`JP_SECTIONS_${hotelId}_${tourType}`, `JP_SECTIONS_${hotelId}`] } } });
+    } else {
+      await prisma.systemSetting.deleteMany({ where: { key: { startsWith: `JP_SECTIONS_${hotelId}` } } });
+    }
 
     // 2. Clear rowStatuses for this hotel from all JP_STATE_* entries
     const prefix = `${hotelId}_`;
