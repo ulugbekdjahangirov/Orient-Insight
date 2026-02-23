@@ -762,21 +762,47 @@ function Hotels2026Tab({ sections, subTab }) {
   const [openGroups, setOpenGroups] = useState({});
 
   const filtered = sections.filter(s => s.tourType === subTab);
-  const sorted = [...filtered].sort((a, b) => (a.hotelName || '').localeCompare(b.hotelName || ''));
+  // Sort by city route order, then by hotel name within same city
+  const sorted = [...filtered].sort((a, b) => {
+    const orderDiff = (a.citySortOrder ?? 999) - (b.citySortOrder ?? 999);
+    if (orderDiff !== 0) return orderDiff;
+    return (a.hotelName || '').localeCompare(b.hotelName || '');
+  });
+
+  // Group by city for city section headers
+  const byCityOrder = [];
+  let lastCity = null;
+  sorted.forEach(hotel => {
+    const city = hotel.cityName || '—';
+    if (city !== lastCity) {
+      byCityOrder.push({ type: 'city', name: city });
+      lastCity = city;
+    }
+    byCityOrder.push({ type: 'hotel', hotel });
+  });
 
   if (sorted.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
         <CalendarRange className="w-12 h-12 mb-3 opacity-30" />
         <p className="text-sm">Bu tur uchun hali Заявка yuborilmagan</p>
-        <p className="text-xs mt-1">Заявка 2026 sahifasidan Telegram orqali hotel ga yuborilgandan so'ng ko'rinadi</p>
+        <p className="text-xs mt-1">Заявка 2026 sahifasidan Telegram orqali hotelga yuborilgandan so'ng ko'rinadi</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {sorted.map(hotel => {
+    <div className="space-y-2">
+      {byCityOrder.map((item, idx) => {
+        if (item.type === 'city') {
+          return (
+            <div key={`city-${idx}`} className="flex items-center gap-2 pt-3 pb-1 px-1">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{item.name}</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+          );
+        }
+        const hotel = item.hotel;
         const isHotelOpen = !!openHotels[hotel.hotelId];
         const allVisits = hotel.groups?.flatMap(g => g.visits || []) || [];
         const statusCounts = {};
