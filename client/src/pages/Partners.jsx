@@ -757,10 +757,20 @@ function JpStatusBadge({ status }) {
   );
 }
 
-function Hotels2026Tab({ sections, subTab, onDeleteGroup, onDeleteVisit }) {
+function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDeleteVisit }) {
   const [openHotels, setOpenHotels] = useState({});
   const [openGroups, setOpenGroups] = useState({});
   const [deletingKey, setDeletingKey] = useState(null);
+
+  const handleDeleteHotel = async (e, hotelId) => {
+    e.stopPropagation();
+    if (!window.confirm('Bu hotelning barcha ma\'lumotlarini o\'chirishni tasdiqlaysizmi?')) return;
+    const key = `hotel-${hotelId}`;
+    setDeletingKey(key);
+    try { await onDeleteHotel(hotelId); }
+    catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingKey(null); }
+  };
 
   const handleDeleteGroup = async (e, hotelId, bookingId) => {
     e.stopPropagation();
@@ -834,27 +844,38 @@ function Hotels2026Tab({ sections, subTab, onDeleteGroup, onDeleteVisit }) {
         ].filter(Boolean).join('  ');
 
         return (
-          <div key={hotel.hotelId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <button
-              onClick={() => setOpenHotels(prev => ({ ...prev, [hotel.hotelId]: !prev[hotel.hotelId] }))}
-              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
-            >
-              {isHotelOpen
-                ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              }
-              <Building2 className="w-5 h-5 text-gray-500 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-800">{hotel.hotelName}</h3>
-                <p className="text-xs text-gray-400">Заявка {hotel.year} · {hotel.tourType}</p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                {statusSummary && <span className="text-sm">{statusSummary}</span>}
-                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
-                  {(hotel.groups || []).length} ta guruh
-                </span>
-              </div>
-            </button>
+          <div key={hotel.hotelId} className="group/hotel bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-gray-50 border-b border-gray-200 flex items-center">
+              <button
+                onClick={() => setOpenHotels(prev => ({ ...prev, [hotel.hotelId]: !prev[hotel.hotelId] }))}
+                className="flex-1 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              >
+                {isHotelOpen
+                  ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                }
+                <Building2 className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-gray-800">{hotel.hotelName}</h3>
+                  <p className="text-xs text-gray-400">Заявка {hotel.year} · {hotel.tourType}</p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  {statusSummary && <span className="text-sm">{statusSummary}</span>}
+                  <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                    {(hotel.groups || []).length} ta guruh
+                  </span>
+                </div>
+              </button>
+              <button
+                onClick={(e) => handleDeleteHotel(e, hotel.hotelId)}
+                className="opacity-0 group-hover/hotel:opacity-100 mr-3 p-1.5 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 transition-all flex-shrink-0"
+                title="Hotelni o'chirish"
+              >
+                {deletingKey === `hotel-${hotel.hotelId}`
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Trash2 className="w-4 h-4" />}
+              </button>
+            </div>
 
             {isHotelOpen && (
               <div className="divide-y divide-gray-100">
@@ -1547,6 +1568,10 @@ export default function Partners() {
                 <Hotels2026Tab
                   sections={jpSections}
                   subTab={hotels2026SubTab}
+                  onDeleteHotel={async (hotelId) => {
+                    await jahresplanungApi.deleteJpHotel(hotelId);
+                    setJpSections(prev => prev.filter(s => s.hotelId !== hotelId));
+                  }}
                   onDeleteGroup={async (hotelId, bookingId) => {
                     if (!window.confirm('Bu guruhni o\'chirishni tasdiqlaysizmi?')) return;
                     await jahresplanungApi.deleteJpGroup(hotelId, bookingId);
