@@ -219,7 +219,7 @@ router.get('/hotels', authenticate, async (req, res) => {
             checkOutDate:  addDays(dep, off.checkOutOffset),
             nights:        off.nights,
             totalRooms:    12,
-            dbl: 4, twn: 4, sngl: 4,
+            dbl: tourType === 'CO' ? 3 : 4, twn: tourType === 'CO' ? 3 : 4, sngl: 4,
             isVirtual: true
           });
         });
@@ -322,23 +322,13 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
     const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
     const tourLabel = tourNames[tourType] || tourType;
 
-    // ── Generate PDF server-side (no round-trip to frontend)
-    const pdfBuffer = await generatePdfBuffer(hotel.name, tourType, year, sections);
-    const filename = `${year}_${tourType}_${hotel.name.replace(/[^a-zA-Z0-9_.\-]/g, '_')}.pdf`;
-
-    const caption = `📅 *Заявка ${year}*\n🏨 *${hotel.name}*\n🗺 ${tourLabel} gruppalar uchun yillik zayavka`;
-
-    const form = new FormData();
-    form.append('chat_id', hotel.telegramChatId);
-    form.append('caption', caption);
-    form.append('parse_mode', 'Markdown');
-    form.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
-
-    await axios.post(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`,
-      form,
-      { headers: form.getHeaders() }
-    );
+    // ── Send a brief text message first (PDF skipped for speed — use Email/PDF button for full doc)
+    const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: hotel.telegramChatId,
+      text: intro,
+      parse_mode: 'Markdown'
+    });
 
     // ── Interactive confirmation messages ─────────────────────────────────
 
@@ -377,31 +367,28 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
       }
 
       // Send visit messages in parallel batches of 10 (much faster than sequential)
-      const allVisits = groups.flatMap(grp => grp.visits.map(v => ({ grp, v })));
-      const BATCH = 10;
-      for (let i = 0; i < allVisits.length; i += BATCH) {
-        await Promise.all(allVisits.slice(i, i + BATCH).map(async ({ grp, v }) => {
-          const visitTitle = v.sectionLabel
-            ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
-            : `*${grp.no}. ${grp.group}*`;
-          const lines = [
-            header, '',
-            visitTitle,
-            `⬜ ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
-          ];
-          const msgRes = await axios.post(`${TG_API}/sendMessage`, {
-            chat_id: hotel.telegramChatId,
-            text: lines.join('\n'),
-            parse_mode: 'Markdown',
-            reply_markup: { inline_keyboard: [[
-              { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-              { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-              { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-            ]]}
-          });
-          v.msgId = msgRes.data?.result?.message_id || null;
-        }));
-      }
+      // Send all visit messages simultaneously — no batching
+      await Promise.all(groups.flatMap(grp => grp.visits.map(async v => {
+        const visitTitle = v.sectionLabel
+          ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
+          : `*${grp.no}. ${grp.group}*`;
+        const lines = [
+          header, '',
+          visitTitle,
+          `⬜ ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
+        ];
+        const msgRes = await axios.post(`${TG_API}/sendMessage`, {
+          chat_id: hotel.telegramChatId,
+          text: lines.join('\n'),
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[
+            { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+            { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+            { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+          ]]}
+        });
+        v.msgId = msgRes.data?.result?.message_id || null;
+      })));
 
       // Final bulk-action message
       const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
