@@ -256,7 +256,8 @@ router.post('/webhook', async (req, res) => {
     const callbackQueryId = cb.id;
     const data = cb.data || '';
     const fromUser = cb.from;
-    const fromName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || fromUser.username || 'Noma\'lum';
+    const fromDisplayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ');
+    const fromName = [fromDisplayName, fromUser.username ? `@${fromUser.username}` : ''].filter(Boolean).join(' ') || 'Noma\'lum';
     const fromChatId = cb.message?.chat?.id;
 
     // Also save chat from callback
@@ -407,8 +408,8 @@ router.post('/webhook', async (req, res) => {
       const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
       if (adminChatId && mealConf) {
         const { booking, restaurantName, city, mealDate, pax } = mealConf;
-        const now = new Date();
-        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000); // UTC+5 Tashkent
+        const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
         const adminMsg = [
           `${emoji} *${restaurantName}*`,
           `📋 ${booking?.bookingNumber || `#${mealConf.bookingId}`}`,
@@ -637,8 +638,8 @@ router.post('/webhook', async (req, res) => {
           }
         });
         const providerLabel = PROVIDER_LABELS[trProvider] || trProvider;
-        const now = new Date();
-        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000); // UTC+5 Tashkent
+        const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
         const adminMsg = [
           `${emoji} *${providerLabel}*`,
           `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
@@ -826,8 +827,8 @@ router.post('/webhook', async (req, res) => {
       if (adminChatId) {
         const emoji = newStatus === 'CONFIRMED' ? '✅' : newStatus === 'WAITING' ? '⏳' : '❌';
         const actionLabel = newStatus === 'CONFIRMED' ? 'Tasdiqladi' : newStatus === 'WAITING' ? 'WL ga qo\'shdi' : 'Rad etdi';
-        const now = new Date();
-        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000); // UTC+5 Tashkent
+        const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
 
         let adminLines;
         if (isBulk) {
