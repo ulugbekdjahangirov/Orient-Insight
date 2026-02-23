@@ -25,6 +25,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 //      Khiva             : dep+10 (3 nights → checkout dep+13)
 //      Tashkent return   : dep+12 (1 night  → checkout dep+13)
 const TOUR_CITY_OFFSETS = {
+  // ER (arrival = dep+1): Tashkent 2n → Samarkand 3n → Asraf 1n → Bukhara 3n → Khiva 3n → Tashkent 1n
   ER: {
     tashkent:  [
       { checkInOffset: 1,  nights: 2 },  // arrival / initial Tashkent
@@ -34,8 +35,32 @@ const TOUR_CITY_OFFSETS = {
     asraf:     [{ checkInOffset: 6,  nights: 1 }],
     bukhara:   [{ checkInOffset: 7,  nights: 3 }],
     khiva:     [{ checkInOffset: 10, nights: 3 }],
-  }
-  // CO, KAS, ZA: add here once city offsets are confirmed
+  },
+  // CO (arrival = dep+1): Tashkent 2n → Fergana 1n → Tashkent 1n → Samarkand 2n → Bukhara 3n → Khiva 2n → Tashkent 1n
+  CO: {
+    tashkent:  [
+      { checkInOffset: 1,  nights: 2 },  // arrival Tashkent
+      { checkInOffset: 4,  nights: 1 },  // Tashkent transit (after Fergana)
+      { checkInOffset: 12, nights: 1 },  // return Tashkent
+    ],
+    fergana:   [{ checkInOffset: 3,  nights: 1 }],
+    samarkand: [{ checkInOffset: 5,  nights: 2 }],
+    bukhara:   [{ checkInOffset: 7,  nights: 3 }],
+    khiva:     [{ checkInOffset: 10, nights: 2 }],
+  },
+  // KAS (arrival = dep+14): Fergana 1n → [travel] → Bukhara 2n → Samarkand 2n → Tashkent 2n
+  KAS: {
+    fergana:   [{ checkInOffset: 14, nights: 1 }],
+    bukhara:   [{ checkInOffset: 16, nights: 2 }],
+    samarkand: [{ checkInOffset: 18, nights: 2 }],
+    tashkent:  [{ checkInOffset: 20, nights: 2 }],
+  },
+  // ZA (arrival = dep+4): Bukhara 3n → Samarkand 2n → [border] → Tashkent 1n
+  ZA: {
+    bukhara:   [{ checkInOffset: 4,  nights: 3 }],
+    samarkand: [{ checkInOffset: 7,  nights: 2 }],
+    tashkent:  [{ checkInOffset: 10, nights: 1 }],
+  },
 };
 
 /** Returns hardcoded offsets for (tourType, cityName), or null if not defined. */
