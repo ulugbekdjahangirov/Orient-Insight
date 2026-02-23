@@ -267,7 +267,7 @@ router.post('/send-hotel-email/:hotelId', authenticate, upload.single('pdf'), as
       return res.status(400).json({ error: `${hotel.name} hotelida email manzil yo'q` });
     }
 
-    const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+    const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'KAS', ZA: 'ZA' };
     const tourLabel = tourNames[tourType] || tourType;
 
     const subject = `Jahresplanung ${year} — ${tourLabel} (${hotel.name})`;
@@ -321,7 +321,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN sozlanmagan' });
     }
 
-    const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+    const tourNames = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'KAS', ZA: 'ZA' };
     const tourLabel = tourNames[tourType] || tourType;
     const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
@@ -451,7 +451,7 @@ async function getPdfBrowser() {
 
 // ── Shared helper: generate PDF buffer via Puppeteer ─────────────────────────
 async function generatePdfBuffer(hotelName, tourType, year, sections) {
-    const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+    const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'KAS', ZA: 'ZA' };
     const tourLabel = TOUR_NAMES[tourType] || tourType;
 
     // Logo

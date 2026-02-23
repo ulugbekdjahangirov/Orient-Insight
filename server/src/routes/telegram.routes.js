@@ -715,7 +715,7 @@ router.post('/webhook', async (req, res) => {
       const groups = stored.groups;
       const editChatId = cb.message?.chat?.id || storedChatId;
 
-      const TOUR_LABELS = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+      const TOUR_LABELS = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'KAS', ZA: 'ZA' };
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
       const header = `📋 *Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}*  🏨 *${hotelName}*`;
 
