@@ -749,6 +749,18 @@ router.post('/webhook', async (req, res) => {
         }
       }
 
+      // Remove bulk action keyboard if all visits are now non-PENDING
+      if (bulkMsgId && storedChatId) {
+        const allActioned = groups.every(g => g.visits.every(v => v.status !== 'PENDING'));
+        if (allActioned) {
+          await axios.post(`${BOT_API()}/editMessageReplyMarkup`, {
+            chat_id: storedChatId,
+            message_id: bulkMsgId,
+            reply_markup: { inline_keyboard: [] }
+          }).catch(() => {});
+        }
+      }
+
       // Save updated statuses back to SystemSetting
       stored.groups = groups;
       await prisma.systemSetting.update({
