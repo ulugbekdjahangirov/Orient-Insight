@@ -343,7 +343,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
       // Auto-fill departure times for routes that don't have them yet (silent, no toast)
       const emptyTimeRoutes = sortedRoutes.filter(r => !r.departureTime);
       if (emptyTimeRoutes.length > 0) {
-        const timeUpdates = calcRoutesTimes(sortedRoutes, loadedFlights, loadedRailways)
+        const timeUpdates = calcRoutesTimes(sortedRoutes, loadedFlights, loadedRailways, ttCode)
           .filter(({ route }) => !route.departureTime);
         if (timeUpdates.length > 0) {
           await Promise.all(timeUpdates.map(({ route, time }) =>
@@ -1175,18 +1175,24 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   // =====================================================================
   // Shared helper: compute departure time for each route
-  // Rules:
-  //   Row 0 (arrival): intl flight arrivalTime
+  // ER rules:
+  //   Row 0: intl flight arrivalTime
   //   Chimgan: 08:30
-  //   Train Station Drop-off: railway.departureTime - 1h
-  //   First Samarkand City Tour: railway.arrivalTime
-  //   Khiva - Urgench: domestic flight departureTime - 3h
-  //   Khiva - Shovot: 08:00
+  //   Train Station Drop-off: railway[0].departureTime - 1h
+  //   First Samarkand City Tour: railway[0].arrivalTime
+  //   Khiva-Urgench: domestic flight departureTime - 3h
+  //   Khiva-Shovot: 08:00
   //   Airport Pickup: domestic flight arrivalTime
   //   Airport Drop-off: intl flight departureTime - 3h
   //   All other middle rows: 08:30
+  // CO extra rules (2 railways: Tashkent→Qoqon, Tashkent→Samarkand):
+  //   1st Train Station Drop-off (day 3): railway→Qoqon departureTime - 1h
+  //   Qoqon - Fergana: railway→Qoqon arrivalTime
+  //   Fergana - Tashkent: 08:30
+  //   2nd Train Station Drop-off (day 5): railway→Samarkand departureTime - 1h
+  //   First Samarkand City Tour: railway→Samarkand arrivalTime
   // =====================================================================
-  const calcRoutesTimes = (routesList, flightsList, railwaysList) => {
+  const calcRoutesTimes = (routesList, flightsList, railwaysList, tourType) => {
     const subHours = (time, h) => {
       if (!time || !time.includes(':')) return null;
       const [hh, mm] = time.split(':').map(Number);
@@ -1202,9 +1208,23 @@ export default function ItineraryPreview({ bookingId, booking }) {
       intlFlights.filter(f => f.departureTime).slice(-1)[0] ||
       intlFlights[intlFlights.length - 1];
     const domesticFlight = flightsList.find(f => f.type === 'DOMESTIC');
-    const mainRailway = railwaysList[0];
+
+    // CO has 2 railways: Tashkent→Qoqon (day 3) and Tashkent→Samarkand (day 5)
+    const railwayToFergana = railwaysList.find(r =>
+      (r.arrival || '').toLowerCase().match(/qoqon|farg|fergana/)
+    ) || (tourType === 'CO' ? railwaysList[0] : null);
+    const railwayToSamarkand = railwaysList.find(r =>
+      (r.arrival || '').toLowerCase().match(/samarkand|samarqand/)
+    ) || (tourType === 'CO' ? railwaysList[1] : null);
+
+    // For ER: single railway = railwaysList[0]
+    // For CO: "main" railway for Samarkand leg = railwayToSamarkand
+    const mainRailway = tourType === 'CO'
+      ? (railwayToSamarkand || railwaysList[1] || railwaysList[0])
+      : railwaysList[0];
 
     let firstSamarkandDone = false;
+    let trainDropOffCount = 0;
     const result = [];
 
     routesList.forEach((route, idx) => {
@@ -1212,11 +1232,25 @@ export default function ItineraryPreview({ bookingId, booking }) {
       let time = null;
 
       if (idx === 0) {
+        // Row 1: arrival → intl flight arrivalTime
         time = intlArrivalFlight?.arrivalTime || null;
       } else if (rn.includes('chimgan')) {
         time = '08:30';
       } else if (rn.includes('train station') && rn.includes('drop')) {
-        time = mainRailway?.departureTime ? subHours(mainRailway.departureTime, 1) : null;
+        trainDropOffCount++;
+        if (tourType === 'CO' && trainDropOffCount === 1) {
+          // CO day 3: Tashkent → Qoqon train
+          time = railwayToFergana?.departureTime ? subHours(railwayToFergana.departureTime, 1) : null;
+        } else {
+          // CO day 5 or ER: Tashkent → Samarkand train
+          time = mainRailway?.departureTime ? subHours(mainRailway.departureTime, 1) : null;
+        }
+      } else if (rn.includes('qoqon')) {
+        // CO: Qoqon - Fergana → first railway arrivalTime (arrival in Qoqon)
+        time = railwayToFergana?.arrivalTime || null;
+      } else if (tourType === 'CO' && rn.includes('fergana') && rn.includes('tashkent')) {
+        // CO: Fergana - Tashkent (car) → 08:30
+        time = '08:30';
       } else if ((rn.includes('samarkand') || rn.includes('samarqand')) && rn.includes('city tour') && !firstSamarkandDone) {
         time = mainRailway?.arrivalTime || null;
         firstSamarkandDone = true;
@@ -1240,7 +1274,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   // Button handler: force-refill ALL rows (overwrite existing times too)
   const autoFillTimes = async () => {
-    const updates = calcRoutesTimes(routes, flights, railways);
+    const tourType = typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code;
+    const updates = calcRoutesTimes(routes, flights, railways, tourType);
     if (updates.length === 0) {
       toast.info("Vaqt to'ldirish uchun flight/railway ma'lumoti topilmadi");
       return;
