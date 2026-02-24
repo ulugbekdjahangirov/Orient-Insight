@@ -907,21 +907,22 @@ function TransportTab({ tourType }) {
     }, 1000);
   };
 
-  const updateOverride = (provider, bookingId, changes) => {
-    const k = `${provider}_${bookingId}`;
-    saveOverrides({ ...manualOverrides, [k]: { ...(manualOverrides[k] || {}), ...changes } });
+  // Override key uses original segment von as stable ID
+  const ovrKey = (provider, bookingId, segVon) => `${provider}_${bookingId}_${segVon}`;
+
+  const getSegEffective = (provider, bookingId, seg) => {
+    const k = ovrKey(provider, bookingId, seg.von);
+    const ovr = manualOverrides[k];
+    return {
+      von: ovr?.vonOverride ?? seg.von,
+      bis: ovr?.bisOverride ?? seg.bis,
+      pax: ovr?.paxOverride ?? seg.pax ?? 16,
+    };
   };
 
-  // Get effective von/bis/pax for a provider+booking (override > route data)
-  const getEffective = (provider, bookingId) => {
-    const bk = String(bookingId);
-    const route = routeMap[provider]?.[bk];
-    const ovr   = manualOverrides[`${provider}_${bk}`];
-    return {
-      von: ovr?.vonOverride ?? route?.von ?? null,
-      bis: ovr?.bisOverride ?? route?.bis ?? null,
-      pax: ovr?.paxOverride ?? route?.pax ?? 16,
-    };
+  const updateSegOverride = (provider, bookingId, segVon, changes) => {
+    const k = ovrKey(provider, bookingId, segVon);
+    saveOverrides({ ...manualOverrides, [k]: { ...(manualOverrides[k] || {}), ...changes } });
   };
 
   if (loading) {
@@ -933,44 +934,60 @@ function TransportTab({ tourType }) {
     );
   }
 
-  // Bookings without any route data at all
   const bookingsWithNoRoutes = bookings.filter(b => {
     const k = String(b.id);
     return !TRANSPORT_PROVIDERS.some(p => routeMap[p.id]?.[k]);
   });
 
-  const renderRow = (provider, booking) => {
-    const { von, bis, pax } = getEffective(provider, booking.id);
+  // Render all segments for a booking under a given provider
+  // First segment shows booking number; subsequent ones show └ indent
+  const renderBookingSegments = (provider, booking) => {
+    const bk = String(booking.id);
+    const data = routeMap[provider]?.[bk];
+    if (!data?.segments?.length) return null;
     const isCancelled = booking.status === 'CANCELLED';
-    return (
-      <div key={booking.id} className={`px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''}`}>
-        <Link
-          to={`/bookings/${booking.id}`}
-          className="font-semibold text-sm text-primary-600 hover:underline w-16 flex-shrink-0"
+    const segments = data.segments;
+
+    return segments.map((seg, idx) => {
+      const { von, bis, pax } = getSegEffective(provider, bk, seg);
+      return (
+        <div
+          key={`${bk}_${seg.von}`}
+          className={`px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''} ${idx > 0 ? 'bg-gray-50/50' : ''}`}
         >
-          {booking.bookingNumber}
-        </Link>
+          {/* Booking link — only first segment shows it prominently */}
+          <div className="w-16 flex-shrink-0">
+            {idx === 0 ? (
+              <Link to={`/bookings/${booking.id}`}
+                className="font-semibold text-sm text-primary-600 hover:underline">
+                {booking.bookingNumber}
+              </Link>
+            ) : (
+              <span className="text-xs text-gray-300 pl-2">└</span>
+            )}
+          </div>
 
-        {/* Von → Bis */}
-        <div className="flex items-center gap-1.5 text-sm text-gray-700">
-          <DateCell
-            value={von}
-            onChange={v => updateOverride(provider, booking.id, { vonOverride: v })}
-          />
-          <span className="text-gray-300 text-xs">→</span>
-          <DateCell
-            value={bis}
-            onChange={v => updateOverride(provider, booking.id, { bisOverride: v })}
-          />
-        </div>
+          {/* Von → Bis */}
+          <div className="flex items-center gap-1.5 text-sm text-gray-700">
+            <DateCell
+              value={von}
+              onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v })}
+            />
+            <span className="text-gray-300 text-xs">→</span>
+            <DateCell
+              value={bis}
+              onChange={v => updateSegOverride(provider, bk, seg.von, { bisOverride: v })}
+            />
+          </div>
 
-        {/* PAX */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-400">PAX:</span>
-          <EditCell value={pax} onChange={v => updateOverride(provider, booking.id, { paxOverride: v })} />
+          {/* PAX */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-400">PAX:</span>
+            <EditCell value={pax} onChange={v => updateSegOverride(provider, bk, seg.von, { paxOverride: v })} />
+          </div>
         </div>
-      </div>
-    );
+      );
+    });
   };
 
   return (
@@ -981,15 +998,11 @@ function TransportTab({ tourType }) {
         {TRANSPORT_PROVIDERS.map(p => {
           const cnt = Object.keys(routeMap[p.id] || {}).length;
           return cnt > 0 ? (
-            <span key={p.id} className={`${p.headerText}`}>
-              {p.label}: {cnt}
-            </span>
+            <span key={p.id} className={p.headerText}>{p.label}: {cnt}</span>
           ) : null;
         })}
         {bookingsWithNoRoutes.length > 0 && (
-          <span className="text-amber-500 text-xs">
-            {bookingsWithNoRoutes.length} ta route yo&apos;q
-          </span>
+          <span className="text-amber-500 text-xs">{bookingsWithNoRoutes.length} ta route yo&apos;q</span>
         )}
       </div>
 
@@ -998,6 +1011,9 @@ function TransportTab({ tourType }) {
         const provBookingIds = Object.keys(routeMap[prov.id] || {});
         const items = bookings.filter(b => provBookingIds.includes(String(b.id)));
         const isOpen = !!openProviders[prov.id];
+        // Total segment count
+        const segCount = items.reduce((s, b) =>
+          s + (routeMap[prov.id]?.[String(b.id)]?.segments?.length || 0), 0);
         return (
           <div key={prov.id} className={`mb-3 rounded-xl border overflow-hidden ${prov.border}`}>
             <button
@@ -1007,9 +1023,16 @@ function TransportTab({ tourType }) {
               {isOpen ? <ChevronDown className="w-4 h-4 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 flex-shrink-0"/>}
               <Bus className={`w-4 h-4 flex-shrink-0 ${prov.headerText}`}/>
               <span className={`font-semibold ${prov.headerText}`}>{prov.label}</span>
-              <span className="ml-auto text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">
-                {items.length} ta guruh
-              </span>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">
+                  {items.length} ta guruh
+                </span>
+                {segCount > items.length && (
+                  <span className="text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-400">
+                    {segCount} ta zayezd
+                  </span>
+                )}
+              </div>
             </button>
 
             {isOpen && (
@@ -1024,7 +1047,7 @@ function TransportTab({ tourType }) {
                     Bu provayder uchun route&apos;lar topilmadi
                   </div>
                 ) : (
-                  items.map(b => renderRow(prov.id, b))
+                  items.map(b => renderBookingSegments(prov.id, b))
                 )}
               </div>
             )}

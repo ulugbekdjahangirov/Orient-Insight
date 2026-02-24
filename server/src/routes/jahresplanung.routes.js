@@ -1116,36 +1116,51 @@ router.get('/transport', authenticate, async (req, res) => {
       orderBy: { date: 'asc' }
     });
 
-    // Build routeMap: provider → bookingId → { von, bis, pax }
-    // A booking can appear under MULTIPLE providers (Xayrulla for Tashkent segments,
-    // Nosir for Fergana, Sevil for Samarkand/Bukhara/Khiva)
+    // Cluster consecutive dates into segments.
+    // Gap > 1 day between consecutive route dates → new segment.
+    function clusterDates(sortedEntries) {
+      const segments = [];
+      let segMin = null, segMax = null, segPax = 0;
+      for (const { date: d, personCount: pc } of sortedEntries) {
+        const pax = pc || 0;
+        if (!segMin) {
+          segMin = d; segMax = d; segPax = pax;
+        } else {
+          const gapDays = Math.round((d - segMax) / 86400000);
+          if (gapDays > 1) {
+            segments.push({ von: segMin.toISOString().slice(0, 10), bis: segMax.toISOString().slice(0, 10), pax: segPax });
+            segMin = d; segMax = d; segPax = pax;
+          } else {
+            if (d > segMax) segMax = d;
+            if (pax > segPax) segPax = pax;
+          }
+        }
+      }
+      if (segMin) segments.push({ von: segMin.toISOString().slice(0, 10), bis: segMax.toISOString().slice(0, 10), pax: segPax });
+      return segments;
+    }
+
+    // Collect all route dates per provider+booking
     const raw = { sevil: {}, xayrulla: {}, nosir: {} };
     for (const r of routes) {
       const norm = normalizeProvider(r.provider);
       if (!norm || !r.date) continue;
       const k = String(r.bookingId);
-      if (!raw[norm][k]) raw[norm][k] = { min: null, max: null, maxPax: 0 };
-      const d = new Date(r.date);
-      const e = raw[norm][k];
-      if (!e.min || d < e.min) e.min = d;
-      if (!e.max || d > e.max) e.max = d;
-      if ((r.personCount || 0) > e.maxPax) e.maxPax = r.personCount || 0;
+      if (!raw[norm][k]) raw[norm][k] = [];
+      raw[norm][k].push({ date: new Date(r.date), personCount: r.personCount || 0 });
     }
 
-    // Convert to plain objects
+    // Build routeMap: provider → bookingId → { segments: [{ von, bis, pax }, ...] }
     const routeMap = {};
     for (const [prov, bookMap] of Object.entries(raw)) {
       routeMap[prov] = {};
-      for (const [bId, d] of Object.entries(bookMap)) {
-        routeMap[prov][bId] = {
-          von: d.min ? d.min.toISOString().slice(0, 10) : null,
-          bis: d.max ? d.max.toISOString().slice(0, 10) : null,
-          pax: d.maxPax || 16
-        };
+      for (const [bId, entries] of Object.entries(bookMap)) {
+        entries.sort((a, b) => a.date - b.date);
+        routeMap[prov][bId] = { segments: clusterDates(entries) };
       }
     }
 
-    // Manual overrides: key = "{provider}_{bookingId}"
+    // Manual overrides: key = "{provider}_{bookingId}_{segVon}" → { vonOverride, bisOverride, paxOverride }
     const setting = await prisma.systemSetting.findUnique({
       where: { key: `JP_TRANSPORT_${year}_${tourType}` }
     });
