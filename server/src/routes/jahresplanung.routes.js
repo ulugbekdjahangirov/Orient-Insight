@@ -1024,32 +1024,44 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
       await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
     }
 
-    // 2. Summary message
-    const lines = [`🍽 *Заявка ${year} — ${tourLabel}*`, `🏪 *${restaurantName}*`, ''];
-    for (const b of bookings) {
-      lines.push(`📋 ${b.bookingNumber} | ${b.mealDate || '—'} | ${b.pax} pax`);
-    }
+    // 2. Intro message
     await axios.post(`${TG_BASE}/sendMessage`, {
       chat_id: chatId,
-      text: lines.join('\n'),
+      text: `🍽 *Заявка ${year} — ${tourLabel}*\n🏪 *${restaurantName}*\n\nQuyida har bir guruh uchun tasdiqlash so'rovi:`,
       parse_mode: 'Markdown'
     });
 
-    // 3. Create/update MealConfirmation records (PENDING)
+    // 3. Per-booking: upsert MealConfirmation → send message with confirm/reject buttons
     for (const b of bookings) {
+      // Upsert MealConfirmation
+      let conf;
       const existing = await prisma.mealConfirmation.findFirst({
         where: { bookingId: b.bookingId, restaurantName }
       });
       if (existing) {
-        await prisma.mealConfirmation.update({
+        conf = await prisma.mealConfirmation.update({
           where: { id: existing.id },
           data: { status: 'PENDING', sentAt: new Date(), mealDate: b.mealDate || null, pax: b.pax }
         });
       } else {
-        await prisma.mealConfirmation.create({
+        conf = await prisma.mealConfirmation.create({
           data: { bookingId: b.bookingId, restaurantName, city: '', mealDate: b.mealDate || null, pax: b.pax, status: 'PENDING', sentAt: new Date() }
         });
       }
+
+      // Send individual message with confirm/reject buttons
+      const msgText = `🍽 *${restaurantName}*\n📋 *${b.bookingNumber}*\n📅 ${b.mealDate || '—'} | 👥 ${b.pax} pax`;
+      await axios.post(`${TG_BASE}/sendMessage`, {
+        chat_id: chatId,
+        text: msgText,
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({
+          inline_keyboard: [[
+            { text: '✅ Tasdiqlash', callback_data: `meal_confirm:${conf.id}` },
+            { text: '❌ Rad qilish', callback_data: `meal_reject:${conf.id}` }
+          ]]
+        })
+      });
     }
 
     res.json({ success: true, count: bookings.length });
