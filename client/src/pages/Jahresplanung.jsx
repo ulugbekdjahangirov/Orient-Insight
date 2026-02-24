@@ -940,57 +940,50 @@ function TransportTab({ tourType }) {
   });
 
   // Render all segments for a booking under a given provider
-  // First segment shows booking number; subsequent ones show └ indent
+  // All segments of a booking on ONE row, date pairs shown inline
   const renderBookingSegments = (provider, booking) => {
     const bk = String(booking.id);
     const data = routeMap[provider]?.[bk];
     if (!data?.segments?.length) return null;
     const isCancelled = booking.status === 'CANCELLED';
     const segments = data.segments;
+    // PAX from first segment (same for all)
+    const { pax } = getSegEffective(provider, bk, segments[0]);
 
-    return segments.map((seg, idx) => {
-      const { von, bis, pax } = getSegEffective(provider, bk, seg);
-      const displayPax = pax || 16;
-      return (
-        <div
-          key={`${bk}_${seg.von}`}
-          className={`px-4 py-2 flex items-center gap-x-6 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''} ${idx > 0 ? 'bg-gray-50/50' : ''}`}
-        >
-          {/* Guruh — faqat birinchi segment */}
-          <div className="w-16 flex-shrink-0">
-            {idx === 0 ? (
-              <Link to={`/bookings/${booking.id}`}
-                className="font-semibold text-sm text-primary-600 hover:underline">
-                {booking.bookingNumber}
-              </Link>
-            ) : (
-              <span className="text-xs text-gray-300 pl-2">└</span>
-            )}
-          </div>
-
-          {/* PAX */}
-          <div className="w-12 flex-shrink-0">
-            <EditCell value={displayPax} onChange={v => updateSegOverride(provider, bk, seg.von, { paxOverride: v })} />
-          </div>
-
-          {/* Boshlanishi */}
-          <div className="w-24 flex-shrink-0">
-            <DateCell
-              value={von}
-              onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v })}
-            />
-          </div>
-
-          {/* Tugashi */}
-          <div className="w-24 flex-shrink-0">
-            <DateCell
-              value={bis}
-              onChange={v => updateSegOverride(provider, bk, seg.von, { bisOverride: v })}
-            />
-          </div>
+    return (
+      <div
+        key={bk}
+        className={`px-4 py-2.5 flex items-center gap-x-5 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''}`}
+      >
+        {/* Guruh */}
+        <div className="w-16 flex-shrink-0">
+          <Link to={`/bookings/${booking.id}`}
+            className="font-semibold text-sm text-primary-600 hover:underline">
+            {booking.bookingNumber}
+          </Link>
         </div>
-      );
-    });
+
+        {/* PAX */}
+        <div className="w-10 flex-shrink-0">
+          <EditCell value={pax} onChange={v => segments.forEach(s => updateSegOverride(provider, bk, s.von, { paxOverride: v }))} />
+        </div>
+
+        {/* Barcha segmentlar inline */}
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
+          {segments.map((seg, idx) => {
+            const { von, bis } = getSegEffective(provider, bk, seg);
+            return (
+              <div key={seg.von} className="flex items-center gap-1">
+                {idx > 0 && <span className="text-gray-200 mr-2">·</span>}
+                <DateCell value={von} onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v })} />
+                <span className="text-gray-300 text-xs mx-0.5">→</span>
+                <DateCell value={bis} onChange={v => updateSegOverride(provider, bk, seg.von, { bisOverride: v })} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1040,11 +1033,10 @@ function TransportTab({ tourType }) {
 
             {isOpen && (
               <div className="bg-white">
-                <div className="px-4 py-1.5 flex items-center gap-x-6 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                <div className="px-4 py-1.5 flex items-center gap-x-5 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
                   <span className="w-16">Guruh</span>
-                  <span className="w-12">PAX</span>
-                  <span className="w-24">Boshlanishi</span>
-                  <span className="w-24">Tugashi</span>
+                  <span className="w-10">PAX</span>
+                  <span>Boshlanishi → Tugashi</span>
                 </div>
                 {items.length === 0 ? (
                   <div className="px-5 py-5 text-center text-xs text-gray-400">
