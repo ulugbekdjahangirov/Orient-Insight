@@ -882,9 +882,6 @@ router.get('/jp-sections', authenticate, async (req, res) => {
 });
 
 // ── GET /api/jahresplanung/meals?year=2026&tourType=ER ─────────────────────
-// Per-tourType base offset added to ALL meal dates (e.g. CO flights arrive overnight → meals start dep+2)
-const MEAL_BASE_OFFSETS = { CO: 1 };
-
 // City aliases: special cities not in TOUR_CITY_OFFSETS mapped to nearest city offset
 const CITY_MEAL_ALIASES = {
   nurata:    'bukhara',   // ER: on the road Asraf → Bukhara, same arrival day as Bukhara
@@ -957,11 +954,9 @@ router.get('/meals', authenticate, async (req, res) => {
     } catch {}
 
     // 5. Build restaurant → bookings structure
-    const mealBaseOffset = MEAL_BASE_OFFSETS[tourType] || 0;
     const restaurants = mealItems.map(meal => {
       // meal.dayOffset overrides auto-computed city offset (for same-city restaurants on different days)
-      const cityOffset = meal.dayOffset != null ? meal.dayOffset : getMealDayOffset(tourType, meal.city);
-      const dayOffset = cityOffset != null ? cityOffset + mealBaseOffset : null;
+      const dayOffset = meal.dayOffset != null ? meal.dayOffset : getMealDayOffset(tourType, meal.city);
       const bookings = allBookings.map(booking => {
         const conf = confirmations.find(
           c => c.bookingId === booking.id && c.restaurantName === meal.name
