@@ -822,9 +822,14 @@ const MEAL_STATUS_CFG = {
 function MealStatusBadge({ status, confirmedBy }) {
   const cfg = MEAL_STATUS_CFG[status] || { color: 'bg-gray-100 text-gray-600', label: status, icon: '?' };
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`} title={confirmedBy || ''}>
-      {cfg.icon} {cfg.label}
-    </span>
+    <div className="flex flex-col gap-0.5">
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
+        {cfg.icon} {cfg.label}
+      </span>
+      {confirmedBy && (
+        <span className="text-xs text-gray-400 pl-1">{confirmedBy}</span>
+      )}
+    </div>
   );
 }
 
