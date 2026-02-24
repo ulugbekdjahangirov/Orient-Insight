@@ -7704,6 +7704,12 @@ export default function BookingDetail() {
           continue;
         }
 
+        // Skip routes with empty/blank route name (will be removed from DB)
+        if (!route.route || !route.route.trim()) {
+          console.log(`⏭️ ER: Removing blank route (no name) on ${route.sana}`);
+          continue;
+        }
+
         const routeName = route.route || '';
         const routeDate = route.sana;
         const routeVehicle = route.transportType || 'NONE'; // Use 'NONE' if no vehicle set
