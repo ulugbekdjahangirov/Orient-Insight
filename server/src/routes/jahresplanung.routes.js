@@ -955,7 +955,8 @@ router.get('/meals', authenticate, async (req, res) => {
 
     // 5. Build restaurant → bookings structure
     const restaurants = mealItems.map(meal => {
-      const dayOffset = getMealDayOffset(tourType, meal.city);
+      // meal.dayOffset overrides auto-computed city offset (for same-city restaurants on different days)
+      const dayOffset = meal.dayOffset != null ? meal.dayOffset : getMealDayOffset(tourType, meal.city);
       const bookings = allBookings.map(booking => {
         const conf = confirmations.find(
           c => c.bookingId === booking.id && c.restaurantName === meal.name
