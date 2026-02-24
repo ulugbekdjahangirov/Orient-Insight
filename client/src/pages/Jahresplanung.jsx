@@ -966,7 +966,7 @@ function TransportTab({ tourType }) {
     const cols = ['Guruh', 'PAX'];
     template.forEach(type => {
       if (type === 'single') { cols.push('Vokzal'); }
-      else { cols.push('Boshlanishi'); cols.push('Tugashi'); }
+      else { cols.push('Von'); cols.push('Bis'); }
     });
 
     const fmtD = (d) => {
@@ -1216,9 +1216,9 @@ function TransportTab({ tourType }) {
                           </div>
                         ) : (
                           <div style={{ width: SEG_W.multi, flexShrink: 0 }} className="flex items-center">
-                            <span>Boshlanishi</span>
+                            <span>Von</span>
                             <span className="mx-1.5 text-gray-300">→</span>
-                            <span>Tugashi</span>
+                            <span>Bis</span>
                           </div>
                         )}
                       </div>
