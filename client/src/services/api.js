@@ -414,6 +414,15 @@ export const jahresplanungApi = {
   deleteJpVisit: (hotelId, bookingId, visitIdx, tourType) =>
     api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}/visit/${visitIdx}`, { params: { tourType } }),
   getMeals: (year, tourType) => api.get('/jahresplanung/meals', { params: { year, tourType } }),
+  sendMealTelegram: (restaurantName, year, tourType, pdfBlob, bookings) => {
+    const form = new FormData();
+    form.append('pdf', pdfBlob, `${year}_${tourType}_${restaurantName}.pdf`);
+    form.append('restaurantName', restaurantName);
+    form.append('year', String(year));
+    form.append('tourType', tourType);
+    form.append('bookings', JSON.stringify(bookings));
+    return api.post('/jahresplanung/send-meal-telegram', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 export default api;

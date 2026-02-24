@@ -995,4 +995,68 @@ router.get('/meals', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/jahresplanung/send-meal-telegram
+router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (req, res) => {
+  try {
+    const { restaurantName, year, tourType } = req.body;
+    const bookings = JSON.parse(req.body.bookings || '[]');
+
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    if (!TELEGRAM_BOT_TOKEN) return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN sozlanmagan' });
+
+    const s = await prisma.systemSetting.findUnique({ where: { key: 'MEAL_RESTAURANT_CHAT_IDS' } });
+    const chatIds = s ? JSON.parse(s.value) : {};
+    const chatId = chatIds[restaurantName];
+    if (!chatId) return res.status(400).json({ error: `${restaurantName} uchun Telegram chat ID topilmadi` });
+
+    const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+    const tourLabel = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tourType] || tourType;
+
+    // 1. Send PDF
+    if (req.file) {
+      const docForm = new FormData();
+      docForm.append('chat_id', chatId);
+      docForm.append('document', req.file.buffer, {
+        filename: `${year}_${tourType}_${restaurantName}.pdf`,
+        contentType: 'application/pdf'
+      });
+      docForm.append('caption', `🍽 Jahresplanung ${year} — ${tourLabel}\n🏪 ${restaurantName}`);
+      await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
+    }
+
+    // 2. Summary message
+    const lines = [`🍽 *Заявка ${year} — ${tourLabel}*`, `🏪 *${restaurantName}*`, ''];
+    for (const b of bookings) {
+      lines.push(`📋 ${b.bookingNumber} | ${b.mealDate || '—'} | ${b.pax} pax`);
+    }
+    await axios.post(`${TG_BASE}/sendMessage`, {
+      chat_id: chatId,
+      text: lines.join('\n'),
+      parse_mode: 'Markdown'
+    });
+
+    // 3. Create/update MealConfirmation records (PENDING)
+    for (const b of bookings) {
+      const existing = await prisma.mealConfirmation.findFirst({
+        where: { bookingId: b.bookingId, restaurantName }
+      });
+      if (existing) {
+        await prisma.mealConfirmation.update({
+          where: { id: existing.id },
+          data: { status: 'PENDING', sentAt: new Date(), mealDate: b.mealDate || null, pax: b.pax }
+        });
+      } else {
+        await prisma.mealConfirmation.create({
+          data: { bookingId: b.bookingId, restaurantName, city: '', mealDate: b.mealDate || null, pax: b.pax, status: 'PENDING', sentAt: new Date() }
+        });
+      }
+    }
+
+    res.json({ success: true, count: bookings.length });
+  } catch (err) {
+    console.error('send-meal-telegram error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

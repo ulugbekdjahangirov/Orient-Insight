@@ -834,7 +834,7 @@ function fmtDep(dateStr) {
   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
-function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverride }) {
+function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverride, sendingTelegram, onSendTelegram }) {
   const { name, city, hasTelegram, bookings } = restaurant;
   const [editingCell, setEditingCell] = useState(null); // `${bookingId}_pax` or `${bookingId}_date`
   const [editValue, setEditValue] = useState('');
@@ -885,20 +885,16 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
     return `${d}.${m}.${y}`;
   };
 
-  const handlePdf = () => {
+  const buildDoc = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     doc.setFontSize(13);
     doc.text(`JAHRESPLANUNG ${YEAR} — Restoran (${tourType})`, 14, 15);
     doc.setFontSize(10);
     doc.text(`${name}${city ? ` · ${city}` : ''}`, 14, 22);
-
     const rows = bookings.map(b => [
-      b.bookingNumber,
-      getEffPax(b),
-      getEffDate(b) || '—',
+      b.bookingNumber, getEffPax(b), getEffDate(b) || '—',
       b.confirmation ? (MEAL_STATUS_CFG[b.confirmation.status]?.label || b.confirmation.status) : '—',
     ]);
-
     autoTable(doc, {
       startY: 27,
       head: [['Gruppe', 'PAX', 'Sana', 'Holat']],
@@ -910,8 +906,22 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
       columnStyles: { 1: { halign: 'right' } },
       alternateRowStyles: { fillColor: [249, 250, 251] },
     });
+    return doc;
+  };
 
-    doc.save(`${YEAR}_Restoran_${tourType}_${name}.pdf`);
+  const handlePdf = () => {
+    buildDoc().save(`${YEAR}_Restoran_${tourType}_${name}.pdf`);
+  };
+
+  const handleTelegram = () => {
+    const blob = buildDoc().output('blob');
+    const bookingsData = bookings.map(b => ({
+      bookingId: b.bookingId,
+      bookingNumber: b.bookingNumber,
+      pax: getEffPax(b),
+      mealDate: getEffDate(b) || null,
+    }));
+    onSendTelegram(blob, bookingsData);
   };
 
   return (
@@ -941,6 +951,19 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
           >
             <Download className="w-3.5 h-3.5" />
           </button>
+          {hasTelegram && (
+            <button
+              onClick={e => { e.stopPropagation(); handleTelegram(); }}
+              disabled={sendingTelegram}
+              className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600 disabled:opacity-50 transition-colors"
+              title="Telegram ga yuborish"
+            >
+              {sendingTelegram
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Send className="w-3.5 h-3.5" />
+              }
+            </button>
+          )}
           {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
         </div>
       </button>
@@ -1047,6 +1070,7 @@ function RestoranTab({ tourType }) {
   const [loading, setLoading] = useState(true);
   const [restaurants, setRestaurants] = useState([]);
   const [openCards, setOpenCards] = useState({});
+  const [sendingTelegram, setSendingTelegram] = useState({});
   const [overrides, setOverrides] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`jp_meal_overrides_${YEAR}_${tourType}`) || '{}'); }
     catch { return {}; }
@@ -1080,14 +1104,31 @@ function RestoranTab({ tourType }) {
     });
   };
 
-  useEffect(() => {
+  const loadRestaurants = () => {
     setLoading(true);
-    setRestaurants([]);
     jahresplanungApi.getMeals(YEAR, tourType)
       .then(res => setRestaurants(res.data.restaurants || []))
       .catch(() => setRestaurants([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setRestaurants([]);
+    loadRestaurants();
   }, [tourType]);
+
+  const handleSendTelegram = async (restaurant, blob, bookingsData) => {
+    setSendingTelegram(prev => ({ ...prev, [restaurant.name]: true }));
+    try {
+      await jahresplanungApi.sendMealTelegram(restaurant.name, YEAR, tourType, blob, bookingsData);
+      toast.success(`${restaurant.name} ga yuborildi ✅`);
+      loadRestaurants(); // refresh confirmations
+    } catch (err) {
+      toast.error('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingTelegram(prev => ({ ...prev, [restaurant.name]: false }));
+    }
+  };
 
   if (loading) {
     return (
@@ -1137,6 +1178,8 @@ function RestoranTab({ tourType }) {
           onToggle={() => setOpenCards(prev => ({ ...prev, [rest.name]: !prev[rest.name] }))}
           overrides={overrides}
           onOverride={handleOverride}
+          sendingTelegram={!!sendingTelegram[rest.name]}
+          onSendTelegram={(blob, bookingsData) => handleSendTelegram(rest, blob, bookingsData)}
         />
       ))}
     </div>
