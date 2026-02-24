@@ -6303,17 +6303,17 @@ export default function BookingDetail() {
     });
 
     if (suitable.length > 0) {
-      // For xayrulla and sevil: prefer Yutong over Sprinter when both match
       if (provider === 'xayrulla' || provider === 'sevil' || provider?.startsWith('sevil-')) {
         const yutong = suitable.find(v => v.name.toLowerCase().includes('yutong'));
         const sprinter = suitable.find(v => v.name.toLowerCase().includes('sprinter'));
         const karotishka = suitable.find(v => v.name.toLowerCase().includes('karotishka'));
-        if (yutong && sprinter) {
-          return yutong.name; // Yutong preferred over Sprinter
-        }
-        // For xayrulla: prefer Karotishka over Sprinter (Sprinter is only for Chimgan 9-16 pax)
+        // For xayrulla: Karotishka over Sprinter (Sprinter only for Chimgan), checked before Yutong
         if (provider === 'xayrulla' && karotishka && sprinter) {
           return karotishka.name;
+        }
+        // Yutong preferred over Sprinter (17+ pax)
+        if (yutong && sprinter) {
+          return yutong.name;
         }
       }
       return suitable[0].name;
