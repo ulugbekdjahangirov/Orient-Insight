@@ -826,6 +826,31 @@ const TRANSPORT_PROVIDERS = [
   { id: 'nosir',    label: 'Nosir',    bg: 'bg-purple-50', border: 'border-purple-200', headerText: 'text-purple-700', pillActive: 'bg-purple-500 text-white', pillInactive: 'bg-purple-50 text-purple-600 border border-purple-200' },
 ];
 
+// tourType → providers that show the Vokzal (single-day train station) column
+// Only CO/Xayrulla has Vokzal; ER/KAS/ZA never show it
+const VOKZAL_MAP = { CO: new Set(['xayrulla']) };
+
+// tourType → providers that show "N-zayezd" labels on column headers (only when 2+ segments)
+const ZAYEZD_LABEL_MAP = {
+  ER: new Set(['xayrulla']),
+  CO: new Set(['xayrulla']),
+};
+
+// Extra days added to bis per tourType+provider (last working day not in routes DB)
+// CO/Sevil: +1 (Khiva → Urgench transfer)
+// ER/Sevil: +3 (Khiva → split group: half Tashkent, half Turkmenistan → last tour day)
+const PROVIDER_BIS_EXTRA = {
+  CO:  { sevil: 1 },
+  ER:  { sevil: 3 },
+  KAS: { sevil: 0 },
+  ZA:  { sevil: 0 },
+};
+
+// Max multi-day segments to display per tourType+provider (undefined = no limit)
+const MAX_MULTI_MAP = {
+  ER: { sevil: 1 },
+};
+
 // Provider display order per tourType (default: sevil, xayrulla, nosir)
 const PROVIDER_ORDER = {
   ER:  ['xayrulla', 'sevil'],
@@ -874,7 +899,7 @@ function DateCell({ value, onChange }) {
   return (
     <span
       onClick={() => setEditing(true)}
-      className="cursor-pointer hover:bg-amber-50 hover:text-amber-700 rounded px-1 py-0.5 transition-colors select-none text-xs"
+      className="cursor-pointer hover:bg-amber-50 hover:text-amber-700 rounded px-1 py-0.5 transition-colors select-none text-sm"
       title="Tahrirlash uchun bosing"
     >
       {value ? formatDate(value) : <span className="text-gray-300">—</span>}
@@ -928,9 +953,12 @@ function TransportTab({ tourType }) {
   const getSegEffective = (provider, bookingId, seg) => {
     const k = ovrKey(provider, bookingId, seg.von);
     const ovr = manualOverrides[k];
+    const bisRaw = ovr?.bisOverride ?? seg.bis;
+    const extra = !ovr?.bisOverride && (PROVIDER_BIS_EXTRA[tourType]?.[provider] ?? 0);
+    const bis = (extra && bisRaw) ? addDaysLocal(bisRaw, extra) : bisRaw;
     return {
       von: ovr?.vonOverride ?? seg.von,
-      bis: ovr?.bisOverride ?? seg.bis,
+      bis,
       pax: ovr?.paxOverride ?? 16,
     };
   };
@@ -941,7 +969,7 @@ function TransportTab({ tourType }) {
   };
 
   // Column template: derived from the booking with the most segments
-  // Returns ['multi','single','multi'] style array
+  // Returns ['multi','single','multi'] style array; single-day cols hidden for non-Vokzal providers
   const getColTemplate = (provId) => {
     const provData = routeMap[provId] || {};
     let best = [];
@@ -949,12 +977,35 @@ function TransportTab({ tourType }) {
       const segs = provData[bkId]?.segments || [];
       if (segs.length > best.length) best = segs;
     }
-    return best.map(s => s.von === s.bis ? 'single' : 'multi');
+    const raw = best.map(s => s.von === s.bis ? 'single' : 'multi');
+    const showVokzal = VOKZAL_MAP[tourType]?.has(provId);
+    const filtered = showVokzal ? raw : raw.filter(t => t !== 'single');
+    const maxMulti = MAX_MULTI_MAP[tourType]?.[provId];
+    if (maxMulti !== undefined) {
+      let mCnt = 0;
+      return filtered.filter(t => { if (t === 'multi') { mCnt++; return mCnt <= maxMulti; } return true; });
+    }
+    return filtered;
   };
 
-  // Fixed pixel widths for aligned columns
-  const SEG_W = { multi: 204, single: 88 };
-  const SEP_MX = 16; // mx between separator and cells (px each side)
+  // Returns visible segments for a provider+booking (respects Vokzal filter + max multi cap)
+  const getVisibleSegs = (provider, bookingId, allSegs) => {
+    const showVokzal = VOKZAL_MAP[tourType]?.has(provider);
+    const maxMulti = MAX_MULTI_MAP[tourType]?.[provider];
+    let mCnt = 0;
+    return allSegs.filter(seg => {
+      const { von, bis } = getSegEffective(provider, bookingId, seg);
+      const isSingle = von === bis;
+      if (isSingle && !showVokzal) return false;
+      if (!isSingle) { mCnt++; if (maxMulti !== undefined && mCnt > maxMulti) return false; }
+      return true;
+    });
+  };
+
+  // Fixed pixel widths for aligned columns — Von and Bis are SEPARATE columns
+  const COL_W = 112; // width of each date column (Von or Bis)
+  const COL_GAP = 16; // gap between Von and Bis within one segment
+  const SEP_MX = 28; // margin on each side of segment separator
 
   // Generate PDF for a provider's bookings
   const generateTransportPDF = (provId, items) => {
@@ -977,8 +1028,9 @@ function TransportTab({ tourType }) {
 
     const rows = items.map(b => {
       const bk = String(b.id);
-      const segs = routeMap[provId]?.[bk]?.segments || [];
-      const { pax } = getSegEffective(provId, bk, segs[0] || { von: null, bis: null });
+      const allSegs = routeMap[provId]?.[bk]?.segments || [];
+      const segs = getVisibleSegs(provId, bk, allSegs);
+      const { pax } = getSegEffective(provId, bk, allSegs[0] || { von: null, bis: null });
       const row = [b.bookingNumber, String(pax)];
       segs.forEach(seg => {
         const { von, bis } = getSegEffective(provId, bk, seg);
@@ -1039,8 +1091,9 @@ function TransportTab({ tourType }) {
 
       const dataLines = items.map(b => {
         const bk = String(b.id);
-        const segs = routeMap[provId]?.[bk]?.segments || [];
-        const { pax } = getSegEffective(provId, bk, segs[0] || { von: null, bis: null });
+        const allSegs = routeMap[provId]?.[bk]?.segments || [];
+        const segs = getVisibleSegs(provId, bk, allSegs);
+        const { pax } = getSegEffective(provId, bk, allSegs[0] || { von: null, bis: null });
         const cells = [pad(b.bookingNumber, 5), pad(pax, 3)];
         segs.forEach((seg, i) => {
           const { von, bis } = getSegEffective(provId, bk, seg);
@@ -1088,51 +1141,64 @@ function TransportTab({ tourType }) {
     return (
       <div
         key={bk}
-        className={`px-4 py-2 flex items-center border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''}`}
+        className={`px-8 py-3 flex items-center border-b border-gray-100 last:border-0 ${isCancelled ? 'bg-red-50' : ''}`}
       >
         {/* Guruh */}
-        <div className="w-16 flex-shrink-0 mr-5">
+        <div className="w-20 flex-shrink-0 mr-8">
           <Link to={`/bookings/${booking.id}`}
-            className="font-semibold text-sm text-primary-600 hover:underline">
+            className={`font-semibold text-base hover:underline ${isCancelled ? 'text-red-400 line-through' : 'text-primary-600'}`}>
             {booking.bookingNumber}
           </Link>
         </div>
 
         {/* PAX */}
-        <div className="w-10 flex-shrink-0 mr-5">
+        <div className="w-10 flex-shrink-0 mr-8 text-base font-medium text-gray-700">
           <EditCell value={pax} onChange={v => segments.forEach(s => updateSegOverride(provider, bk, s.von, { paxOverride: v }))} />
         </div>
 
-        {/* Sanalar — fixed width per segment, aligned with header */}
-        <div className="flex items-center">
-          {segments.map((seg, idx) => {
+
+        {/* Sanalar */}
+        <div className="flex items-center flex-1">
+          {getVisibleSegs(provider, bk, segments)
+            .map((seg, idx) => {
             const { von, bis } = getSegEffective(provider, bk, seg);
             const isSingleDay = von === bis;
             return (
               <div key={seg.von} className="flex items-center flex-shrink-0">
                 {idx > 0 && (
-                  <div
-                    className="bg-gray-300 flex-shrink-0"
-                    style={{ width: 2, height: 24, marginLeft: SEP_MX, marginRight: SEP_MX }}
+                  <div className="bg-gray-200 flex-shrink-0"
+                    style={{ width: 1, height: 28, marginLeft: SEP_MX, marginRight: SEP_MX }}
                   />
                 )}
                 {isSingleDay ? (
-                  <div style={{ width: SEG_W.single, flexShrink: 0 }} className="flex justify-center">
+                  <div style={{ width: COL_W }} className="flex justify-center">
                     <DateCell
                       value={von}
                       onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v, bisOverride: v })}
                     />
                   </div>
                 ) : (
-                  <div style={{ width: SEG_W.multi, flexShrink: 0 }} className="flex items-center gap-1">
-                    <DateCell value={von} onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v })} />
-                    <span className="text-gray-300 text-xs mx-0.5">→</span>
-                    <DateCell value={bis} onChange={v => updateSegOverride(provider, bk, seg.von, { bisOverride: v })} />
+                  <div className="flex items-center flex-shrink-0">
+                    <div style={{ width: COL_W }} className="flex justify-center">
+                      <DateCell value={von} onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v })} />
+                    </div>
+                    <div style={{ width: COL_GAP }} />
+                    <div style={{ width: COL_W }} className="flex justify-center">
+                      <DateCell value={bis} onChange={v => updateSegOverride(provider, bk, seg.von, { bisOverride: v })} />
+                    </div>
                   </div>
                 )}
               </div>
             );
           })}
+          {/* Status badge — pushed to right edge */}
+          <div className="ml-auto pl-4">
+            {isCancelled ? (
+              <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-600 text-sm font-bold rounded-lg">✕ Bekor</span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-lg">✓ OK</span>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1200,40 +1266,45 @@ function TransportTab({ tourType }) {
                 {/* Column header — 1-zayezd / Vokzal / 2-zayezd with Von→Bis sub-labels */}
                 {(() => {
                   const template = getColTemplate(prov.id);
+                  const totalMulti = template.filter(t => t === 'multi').length;
+                  const showZayezdLabel = (ZAYEZD_LABEL_MAP[tourType]?.has(prov.id) ?? false) && totalMulti > 1;
                   let multiCount = 0;
                   return (
-                    <div className="px-4 py-2 flex items-end text-xs bg-gray-50 border-b border-gray-100">
-                      <span className="w-16 flex-shrink-0 mr-5 text-gray-400 pb-0.5">Guruh</span>
-                      <span className="w-10 flex-shrink-0 mr-5 text-gray-400 pb-0.5">PAX</span>
-                      <div className="flex items-end">
+                    <div className="px-8 py-2.5 flex items-end text-xs bg-gray-50 border-b border-gray-200">
+                      <span className="w-20 flex-shrink-0 mr-8 text-gray-400 font-medium">Guruh</span>
+                      <span className="w-10 flex-shrink-0 mr-8 text-gray-400 font-medium">PAX</span>
+                      <div className="flex items-end flex-1">
                         {template.map((type, idx) => {
                           if (type !== 'single') multiCount++;
-                          const zayezdLabel = type === 'single' ? null : `${multiCount}-zayezd`;
                           return (
                             <div key={idx} className="flex items-end flex-shrink-0">
                               {idx > 0 && (
-                                <div
-                                  className="bg-gray-300 flex-shrink-0"
-                                  style={{ width: 2, height: 36, marginLeft: SEP_MX, marginRight: SEP_MX }}
+                                <div className="bg-gray-200 flex-shrink-0"
+                                  style={{ width: 1, height: 32, marginLeft: SEP_MX, marginRight: SEP_MX }}
                                 />
                               )}
                               {type === 'single' ? (
-                                <div style={{ width: SEG_W.single, flexShrink: 0 }} className="text-center text-gray-500 font-medium pb-0.5">
+                                <div style={{ width: COL_W }} className="text-center text-gray-400 font-medium">
                                   Vokzal
                                 </div>
                               ) : (
-                                <div style={{ width: SEG_W.multi, flexShrink: 0 }} className="flex flex-col">
-                                  <span className="text-gray-500 font-semibold mb-0.5">{zayezdLabel}</span>
-                                  <div className="flex items-center text-gray-400">
-                                    <span>Von</span>
-                                    <span className="mx-1.5 text-gray-300">→</span>
-                                    <span>Bis</span>
+                                <div className="flex flex-col flex-shrink-0">
+                                  {showZayezdLabel && (
+                                    <span style={{ width: COL_W * 2 + COL_GAP }} className="text-center text-gray-500 font-semibold mb-1">
+                                      {multiCount}-zayezd
+                                    </span>
+                                  )}
+                                  <div className="flex items-center">
+                                    <span style={{ width: COL_W }} className="text-center text-gray-400 font-medium">Von</span>
+                                    <div style={{ width: COL_GAP }} />
+                                    <span style={{ width: COL_W }} className="text-center text-gray-400 font-medium">Bis</span>
                                   </div>
                                 </div>
                               )}
                             </div>
                           );
                         })}
+                        <span className="ml-auto pl-6 text-gray-400 font-medium">Status</span>
                       </div>
                     </div>
                   );
