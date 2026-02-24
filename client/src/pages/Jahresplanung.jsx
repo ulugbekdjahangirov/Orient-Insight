@@ -871,40 +871,56 @@ function DateCell({ value, onChange }) {
 function TransportTab({ tourType }) {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
-  const [assignments, setAssignments] = useState(() => {
+  // manualAssignments: stored in DB (user-set), keyed by bookingId string
+  const [manualAssignments, setManualAssignments] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`jp_transport_${YEAR}_${tourType}`) || '{}'); }
     catch { return {}; }
   });
+  // suggestions: auto-derived from route data, keyed by bookingId string
+  const [suggestions, setSuggestions] = useState({});
   const [openProviders, setOpenProviders] = useState({ sevil: true, xayrulla: true, nosir: true, unassigned: true });
   const saveTimerRef = useRef(null);
 
   useEffect(() => {
-    try { setAssignments(JSON.parse(localStorage.getItem(`jp_transport_${YEAR}_${tourType}`) || '{}')); }
-    catch { setAssignments({}); }
+    try { setManualAssignments(JSON.parse(localStorage.getItem(`jp_transport_${YEAR}_${tourType}`) || '{}')); }
+    catch { setManualAssignments({}); }
     setLoading(true);
     setBookings([]);
     jahresplanungApi.getTransport(YEAR, tourType)
       .then(res => {
         setBookings(res.data.bookings || []);
-        const db = res.data.assignments || {};
-        setAssignments(db);
-        try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(db)); } catch {}
+        const manual = res.data.manualAssignments || {};
+        const sugg   = res.data.suggestions || {};
+        setManualAssignments(manual);
+        setSuggestions(sugg);
+        try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(manual)); } catch {}
       })
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
   }, [tourType]);
 
+  // Effective assignment = manual if exists, else suggestion (auto)
+  const getEffective = (bookingId) => {
+    const k = String(bookingId);
+    if (manualAssignments[k]) return { ...manualAssignments[k], isAuto: false };
+    if (suggestions[k])       return { ...suggestions[k], pax: 16, vonOverride: suggestions[k].von, bisOverride: suggestions[k].bis, isAuto: true };
+    return null;
+  };
+
+  const saveManual = (next) => {
+    setManualAssignments(next);
+    try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      jahresplanungApi.saveTransport(YEAR, tourType, next).catch(() => {});
+    }, 1000);
+  };
+
   const updateAssignment = (bookingId, changes) => {
-    setAssignments(prev => {
-      const k = String(bookingId);
-      const next = { ...prev, [k]: { ...(prev[k] || { pax: 16 }), ...changes } };
-      try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        jahresplanungApi.saveTransport(YEAR, tourType, next).catch(() => {});
-      }, 1000);
-      return next;
-    });
+    const k = String(bookingId);
+    const current = manualAssignments[k] || getEffective(bookingId) || { pax: 16 };
+    const { isAuto: _drop, ...base } = current; // strip isAuto flag
+    saveManual({ ...manualAssignments, [k]: { ...base, ...changes } });
   };
 
   const offsets = TRANSPORT_OFFSETS[tourType] || { von: 1, bis: 13 };
@@ -923,22 +939,22 @@ function TransportTab({ tourType }) {
     );
   }
 
-  // Group bookings by assigned provider
+  // Group bookings by effective provider
   const grouped = { sevil: [], xayrulla: [], nosir: [], unassigned: [] };
   bookings.forEach(b => {
-    const asgn = assignments[String(b.id)];
+    const asgn = getEffective(b.id);
     const p = asgn?.provider;
     if (p && grouped[p]) grouped[p].push(b);
     else grouped.unassigned.push(b);
   });
 
   const renderRow = (booking) => {
-    const k = String(booking.id);
-    const asgn = assignments[k] || {};
+    const asgn = getEffective(booking.id) || {};
     const pax = asgn.pax ?? 16;
     const von = getVon(booking, asgn);
     const bis = getBis(booking, asgn);
     const isCancelled = booking.status === 'CANCELLED';
+    const isAuto = !!asgn.isAuto;
 
     return (
       <div key={booking.id} className={`px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''}`}>
@@ -968,6 +984,11 @@ function TransportTab({ tourType }) {
           <EditCell value={pax} onChange={v => updateAssignment(booking.id, { pax: v })} />
         </div>
 
+        {/* Auto badge */}
+        {isAuto && (
+          <span className="text-xs text-gray-400 italic hidden sm:inline">avto</span>
+        )}
+
         {/* Provider pills */}
         <div className="flex gap-1 ml-auto">
           {TRANSPORT_PROVIDERS.map(p => (
@@ -985,6 +1006,8 @@ function TransportTab({ tourType }) {
   };
 
   const totalAssigned = bookings.length - grouped.unassigned.length;
+  const autoCount = bookings.filter(b => getEffective(b.id)?.isAuto).length;
+  const manualCount = totalAssigned - autoCount;
 
   return (
     <div>
@@ -992,7 +1015,8 @@ function TransportTab({ tourType }) {
       <div className="flex items-center gap-4 mb-4 px-1 text-sm text-gray-500">
         <span>{bookings.length} ta guruh</span>
         <span className="text-gray-300">·</span>
-        <span>{totalAssigned} ta tayinlangan</span>
+        {autoCount > 0 && <span className="text-blue-600">{autoCount} avto</span>}
+        {manualCount > 0 && <span className="text-green-600">{manualCount} qo&apos;lda</span>}
         {grouped.unassigned.length > 0 && (
           <>
             <span className="text-gray-300">·</span>

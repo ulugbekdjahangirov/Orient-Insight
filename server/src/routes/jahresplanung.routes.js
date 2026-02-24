@@ -1075,6 +1075,16 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
 // Transport planning endpoints
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Normalize route provider → 'sevil' | 'xayrulla' | 'nosir' | null
+function normalizeProvider(p) {
+  if (!p) return null;
+  const s = p.toLowerCase();
+  if (s.startsWith('sevil')) return 'sevil';
+  if (s === 'xayrulla') return 'xayrulla';
+  if (s === 'nosir') return 'nosir';
+  return null;
+}
+
 // GET /api/jahresplanung/transport?year=2026&tourType=ER
 router.get('/transport', authenticate, async (req, res) => {
   try {
@@ -1099,12 +1109,55 @@ router.get('/transport', authenticate, async (req, res) => {
       orderBy: { bookingNumber: 'asc' }
     });
 
+    // Fetch all routes for these bookings to derive provider assignments
+    const bookingIds = bookings.map(b => b.id);
+    const routes = await prisma.route.findMany({
+      where: { bookingId: { in: bookingIds }, date: { not: null } },
+      select: { bookingId: true, date: true, provider: true },
+      orderBy: { date: 'asc' }
+    });
+
+    // Group routes: bookingId → normalized provider → { count, minDate, maxDate }
+    const routeMap = {};
+    for (const r of routes) {
+      const norm = normalizeProvider(r.provider);
+      if (!norm || !r.date) continue;
+      const k = String(r.bookingId);
+      if (!routeMap[k]) routeMap[k] = {};
+      if (!routeMap[k][norm]) routeMap[k][norm] = { count: 0, min: null, max: null };
+      const d = new Date(r.date);
+      const entry = routeMap[k][norm];
+      entry.count++;
+      if (!entry.min || d < entry.min) entry.min = d;
+      if (!entry.max || d > entry.max) entry.max = d;
+    }
+
+    // Build suggestions: per booking → dominant provider + von/bis from routes
+    const suggestions = {};
+    for (const [k, provMap] of Object.entries(routeMap)) {
+      // Pick provider with most routes as dominant
+      const sorted = Object.entries(provMap).sort((a, b) => b[1].count - a[1].count);
+      const [domProvider, domData] = sorted[0];
+      suggestions[k] = {
+        provider: domProvider,
+        von: domData.min ? domData.min.toISOString().slice(0, 10) : null,
+        bis: domData.max ? domData.max.toISOString().slice(0, 10) : null,
+        byProvider: Object.fromEntries(
+          Object.entries(provMap).map(([p, d]) => [p, {
+            count: d.count,
+            von: d.min ? d.min.toISOString().slice(0, 10) : null,
+            bis: d.max ? d.max.toISOString().slice(0, 10) : null,
+          }])
+        )
+      };
+    }
+
     const setting = await prisma.systemSetting.findUnique({
       where: { key: `JP_TRANSPORT_${year}_${tourType}` }
     });
-    const assignments = setting ? JSON.parse(setting.value) : {};
+    const manualAssignments = setting ? JSON.parse(setting.value) : {};
 
-    res.json({ bookings, assignments, year, tourType });
+    res.json({ bookings, manualAssignments, suggestions, year, tourType });
   } catch (err) {
     console.error('Jahresplanung transport error:', err);
     res.status(500).json({ error: err.message });
