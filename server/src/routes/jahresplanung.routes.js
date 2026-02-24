@@ -1071,4 +1071,61 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Transport planning endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/jahresplanung/transport?year=2026&tourType=ER
+router.get('/transport', authenticate, async (req, res) => {
+  try {
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const tourType = req.query.tourType || 'ER';
+
+    const startDate = new Date(`${year}-01-01T00:00:00.000Z`);
+    const endDate   = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        tourType: { code: tourType },
+        departureDate: { gte: startDate, lt: endDate }
+      },
+      select: {
+        id: true,
+        bookingNumber: true,
+        pax: true,
+        status: true,
+        departureDate: true
+      },
+      orderBy: { bookingNumber: 'asc' }
+    });
+
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: `JP_TRANSPORT_${year}_${tourType}` }
+    });
+    const assignments = setting ? JSON.parse(setting.value) : {};
+
+    res.json({ bookings, assignments, year, tourType });
+  } catch (err) {
+    console.error('Jahresplanung transport error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/jahresplanung/transport
+router.put('/transport', authenticate, async (req, res) => {
+  try {
+    const { year, tourType, data } = req.body;
+    const key = `JP_TRANSPORT_${year}_${tourType}`;
+    await prisma.systemSetting.upsert({
+      where: { key },
+      create: { key, value: JSON.stringify(data) },
+      update: { value: JSON.stringify(data) }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Jahresplanung transport save error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

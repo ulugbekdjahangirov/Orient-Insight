@@ -811,6 +811,265 @@ function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverri
   );
 }
 
+// ── TransportTab ─────────────────────────────────────────────────────────────
+
+const TRANSPORT_OFFSETS = {
+  ER:  { von: 1,  bis: 13 },
+  CO:  { von: 1,  bis: 13 },
+  KAS: { von: 14, bis: 22 },
+  ZA:  { von: 4,  bis: 11 },
+};
+
+const TRANSPORT_PROVIDERS = [
+  { id: 'sevil',    label: 'Sevil',    bg: 'bg-blue-50',   border: 'border-blue-200',   headerText: 'text-blue-700',   pillActive: 'bg-blue-500 text-white',   pillInactive: 'bg-blue-50 text-blue-600 border border-blue-200'   },
+  { id: 'xayrulla', label: 'Xayrulla', bg: 'bg-green-50',  border: 'border-green-200',  headerText: 'text-green-700',  pillActive: 'bg-green-500 text-white',  pillInactive: 'bg-green-50 text-green-600 border border-green-200'  },
+  { id: 'nosir',    label: 'Nosir',    bg: 'bg-purple-50', border: 'border-purple-200', headerText: 'text-purple-700', pillActive: 'bg-purple-500 text-white', pillInactive: 'bg-purple-50 text-purple-600 border border-purple-200' },
+];
+
+function addDaysLocal(isoDate, days) {
+  // Add days to a date string in local time to avoid UTC offset issues
+  const [y, m, d] = isoDate.slice(0, 10).split('-').map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+function DateCell({ value, onChange }) {
+  const [editing, setEditing] = useState(false);
+  const [tmp, setTmp] = useState(value || '');
+
+  useEffect(() => { setTmp(value || ''); }, [value]);
+
+  const commit = () => {
+    onChange(tmp || null);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        type="date"
+        value={tmp}
+        onChange={e => setTmp(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => e.key === 'Enter' && commit()}
+        className="border border-blue-400 rounded px-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white h-6"
+        autoFocus
+      />
+    );
+  }
+  return (
+    <span
+      onClick={() => setEditing(true)}
+      className="cursor-pointer hover:bg-amber-50 hover:text-amber-700 rounded px-1 py-0.5 transition-colors select-none text-xs"
+      title="Tahrirlash uchun bosing"
+    >
+      {value ? formatDate(value) : <span className="text-gray-300">—</span>}
+    </span>
+  );
+}
+
+function TransportTab({ tourType }) {
+  const [loading, setLoading] = useState(true);
+  const [bookings, setBookings] = useState([]);
+  const [assignments, setAssignments] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`jp_transport_${YEAR}_${tourType}`) || '{}'); }
+    catch { return {}; }
+  });
+  const [openProviders, setOpenProviders] = useState({ sevil: true, xayrulla: true, nosir: true, unassigned: true });
+  const saveTimerRef = useRef(null);
+
+  useEffect(() => {
+    try { setAssignments(JSON.parse(localStorage.getItem(`jp_transport_${YEAR}_${tourType}`) || '{}')); }
+    catch { setAssignments({}); }
+    setLoading(true);
+    setBookings([]);
+    jahresplanungApi.getTransport(YEAR, tourType)
+      .then(res => {
+        setBookings(res.data.bookings || []);
+        const db = res.data.assignments || {};
+        setAssignments(db);
+        try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(db)); } catch {}
+      })
+      .catch(() => setBookings([]))
+      .finally(() => setLoading(false));
+  }, [tourType]);
+
+  const updateAssignment = (bookingId, changes) => {
+    setAssignments(prev => {
+      const k = String(bookingId);
+      const next = { ...prev, [k]: { ...(prev[k] || { pax: 16 }), ...changes } };
+      try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        jahresplanungApi.saveTransport(YEAR, tourType, next).catch(() => {});
+      }, 1000);
+      return next;
+    });
+  };
+
+  const offsets = TRANSPORT_OFFSETS[tourType] || { von: 1, bis: 13 };
+
+  const getVon = (booking, asgn) =>
+    asgn?.vonOverride || addDaysLocal(booking.departureDate, offsets.von);
+  const getBis = (booking, asgn) =>
+    asgn?.bisOverride || addDaysLocal(booking.departureDate, offsets.bis);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-gray-400">
+        <Loader2 className="w-6 h-6 animate-spin mr-2"/>
+        <span className="text-sm">Yuklanmoqda...</span>
+      </div>
+    );
+  }
+
+  // Group bookings by assigned provider
+  const grouped = { sevil: [], xayrulla: [], nosir: [], unassigned: [] };
+  bookings.forEach(b => {
+    const asgn = assignments[String(b.id)];
+    const p = asgn?.provider;
+    if (p && grouped[p]) grouped[p].push(b);
+    else grouped.unassigned.push(b);
+  });
+
+  const renderRow = (booking) => {
+    const k = String(booking.id);
+    const asgn = assignments[k] || {};
+    const pax = asgn.pax ?? 16;
+    const von = getVon(booking, asgn);
+    const bis = getBis(booking, asgn);
+    const isCancelled = booking.status === 'CANCELLED';
+
+    return (
+      <div key={booking.id} className={`px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''}`}>
+        <Link
+          to={`/bookings/${booking.id}`}
+          className="font-semibold text-sm text-primary-600 hover:underline w-16 flex-shrink-0"
+        >
+          {booking.bookingNumber}
+        </Link>
+
+        {/* Von → Bis */}
+        <div className="flex items-center gap-1 text-sm text-gray-600">
+          <DateCell
+            value={von}
+            onChange={v => updateAssignment(booking.id, { vonOverride: v })}
+          />
+          <span className="text-gray-300 text-xs">→</span>
+          <DateCell
+            value={bis}
+            onChange={v => updateAssignment(booking.id, { bisOverride: v })}
+          />
+        </div>
+
+        {/* PAX */}
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-gray-400">PAX:</span>
+          <EditCell value={pax} onChange={v => updateAssignment(booking.id, { pax: v })} />
+        </div>
+
+        {/* Provider pills */}
+        <div className="flex gap-1 ml-auto">
+          {TRANSPORT_PROVIDERS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => updateAssignment(booking.id, { provider: asgn?.provider === p.id ? null : p.id })}
+              className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${asgn?.provider === p.id ? p.pillActive : p.pillInactive}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const totalAssigned = bookings.length - grouped.unassigned.length;
+
+  return (
+    <div>
+      {/* Summary */}
+      <div className="flex items-center gap-4 mb-4 px-1 text-sm text-gray-500">
+        <span>{bookings.length} ta guruh</span>
+        <span className="text-gray-300">·</span>
+        <span>{totalAssigned} ta tayinlangan</span>
+        {grouped.unassigned.length > 0 && (
+          <>
+            <span className="text-gray-300">·</span>
+            <span className="text-amber-600 font-medium">{grouped.unassigned.length} ta tayinlanmagan</span>
+          </>
+        )}
+      </div>
+
+      {/* Provider accordions */}
+      {TRANSPORT_PROVIDERS.map(prov => {
+        const items = grouped[prov.id] || [];
+        const isOpen = !!openProviders[prov.id];
+        return (
+          <div key={prov.id} className={`mb-3 rounded-xl border overflow-hidden ${prov.border}`}>
+            <button
+              onClick={() => setOpenProviders(p => ({ ...p, [prov.id]: !p[prov.id] }))}
+              className={`w-full flex items-center gap-3 px-5 py-3 ${prov.bg} hover:brightness-95 transition-all`}
+            >
+              {isOpen ? <ChevronDown className="w-4 h-4 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 flex-shrink-0"/>}
+              <Bus className={`w-4 h-4 flex-shrink-0 ${prov.headerText}`}/>
+              <span className={`font-semibold ${prov.headerText}`}>{prov.label}</span>
+              <span className="ml-auto text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">
+                {items.length} ta guruh
+              </span>
+            </button>
+
+            {isOpen && (
+              <div className="bg-white">
+                <div className="px-4 py-1.5 grid grid-cols-[4rem_1fr_auto] gap-3 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                  <span>Guruh</span>
+                  <span>Von → Bis</span>
+                  <span className="text-right">Provayder</span>
+                </div>
+                {items.length === 0 ? (
+                  <div className="px-5 py-5 text-center text-xs text-gray-400">
+                    Hali bu provayderga guruh tayinlanmagan. Pastdagi &quot;Tayinlanmagan&quot; bo&apos;limidan tayinlang.
+                  </div>
+                ) : (
+                  items.map(renderRow)
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Unassigned */}
+      {grouped.unassigned.length > 0 && (
+        <div className="mb-3 rounded-xl border border-amber-200 overflow-hidden">
+          <button
+            onClick={() => setOpenProviders(p => ({ ...p, unassigned: !p.unassigned }))}
+            className="w-full flex items-center gap-3 px-5 py-3 bg-amber-50 hover:brightness-95 transition-all"
+          >
+            {openProviders.unassigned ? <ChevronDown className="w-4 h-4 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 flex-shrink-0"/>}
+            <span className="font-semibold text-amber-700">Tayinlanmagan</span>
+            <span className="ml-auto text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">
+              {grouped.unassigned.length} ta
+            </span>
+          </button>
+          {openProviders.unassigned && (
+            <div className="bg-white">
+              <div className="px-4 py-1.5 grid grid-cols-[4rem_1fr_auto] gap-3 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                <span>Guruh</span>
+                <span>Von → Bis</span>
+                <span className="text-right">Provayder</span>
+              </div>
+              {grouped.unassigned.map(renderRow)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── End TransportTab ──────────────────────────────────────────────────────────
+
 // ── RestoranTab ────────────────────────────────────────────────────────────
 
 const MEAL_STATUS_CFG = {
@@ -1603,12 +1862,7 @@ export default function Jahresplanung() {
 
       {mainTab==='hotels' && <HotelsTab tourType={tourTab}/>}
       {mainTab==='restoran' && <RestoranTab tourType={tourTab}/>}
-      {mainTab==='transport' && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <Bus className="w-12 h-12 mb-3 opacity-30"/>
-          <p className="text-sm font-medium">Transport moduli — tez orada</p>
-        </div>
-      )}
+      {mainTab==='transport' && <TransportTab tourType={tourTab}/>}
     </div>
   );
 }

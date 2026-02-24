@@ -423,6 +423,8 @@ export const jahresplanungApi = {
     form.append('bookings', JSON.stringify(bookings));
     return api.post('/jahresplanung/send-meal-telegram', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  getTransport: (year, tourType) => api.get('/jahresplanung/transport', { params: { year, tourType } }),
+  saveTransport: (year, tourType, data) => api.put('/jahresplanung/transport', { year, tourType, data }),
 };
 
 export default api;
