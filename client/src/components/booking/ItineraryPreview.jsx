@@ -331,13 +331,31 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
       // Load railways
       const railwaysRes = await bookingsApi.getRailways(bookingId);
-      setRailways(railwaysRes.data.railways || []);
+      const loadedRailways = railwaysRes.data.railways || [];
+      setRailways(loadedRailways);
 
       // Load flights
       const flightsRes = await bookingsApi.getFlights(bookingId);
       const loadedFlights = flightsRes.data.flights || [];
       console.log('Loaded flights:', loadedFlights);
       setFlights(loadedFlights);
+
+      // Auto-fill departure times for routes that don't have them yet (silent, no toast)
+      const emptyTimeRoutes = sortedRoutes.filter(r => !r.departureTime);
+      if (emptyTimeRoutes.length > 0) {
+        const timeUpdates = calcRoutesTimes(sortedRoutes, loadedFlights, loadedRailways)
+          .filter(({ route }) => !route.departureTime);
+        if (timeUpdates.length > 0) {
+          await Promise.all(timeUpdates.map(({ route, time }) =>
+            routesApi.update(bookingId, route.id, { ...route, departureTime: time })
+          ));
+          timeUpdates.forEach(({ route, time }) => {
+            const r = sortedRoutes.find(s => s.id === route.id);
+            if (r) r.departureTime = time;
+          });
+          console.log(`⏰ Auto-filled ${timeUpdates.length} departure times`);
+        }
+      }
 
       // Tourists already loaded above for date calculation, just set state
       setTourists(touristsData || []);
@@ -1156,7 +1174,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
   };
 
   // =====================================================================
-  // Auto-fill Vaqt (departure time) for each route row
+  // Shared helper: compute departure time for each route
   // Rules:
   //   Row 0 (arrival): intl flight arrivalTime
   //   Chimgan: 08:30
@@ -1168,8 +1186,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
   //   Airport Drop-off: intl flight departureTime - 3h
   //   All other middle rows: 08:30
   // =====================================================================
-  const autoFillTimes = async () => {
-    const subtractHours = (time, h) => {
+  const calcRoutesTimes = (routesList, flightsList, railwaysList) => {
+    const subHours = (time, h) => {
       if (!time || !time.includes(':')) return null;
       const [hh, mm] = time.split(':').map(Number);
       const total = hh * 60 + mm - h * 60;
@@ -1177,69 +1195,60 @@ export default function ItineraryPreview({ bookingId, booking }) {
       return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
     };
 
-    const intlFlights = flights.filter(f => ['INTERNATIONAL', 'BUSINESS', 'ECONOM'].includes(f.type));
-    // Arrival flight: first intl with arrivalTime set
+    const intlFlights = flightsList.filter(f => ['INTERNATIONAL', 'BUSINESS', 'ECONOM'].includes(f.type));
     const intlArrivalFlight = intlFlights.find(f => f.arrivalTime) || intlFlights[0];
-    // Departure flight: last intl that departs from Tashkent (or last intl overall)
     const intlDepartureFlight =
       intlFlights.find(f => (f.departure || '').toLowerCase().includes('tashkent') && f.departureTime) ||
       intlFlights.filter(f => f.departureTime).slice(-1)[0] ||
       intlFlights[intlFlights.length - 1];
-
-    const domesticFlight = flights.find(f => f.type === 'DOMESTIC');
-    const mainRailway = railways[0]; // First railway = Tashkent → Samarkand
+    const domesticFlight = flightsList.find(f => f.type === 'DOMESTIC');
+    const mainRailway = railwaysList[0];
 
     let firstSamarkandDone = false;
-    const updates = [];
+    const result = [];
 
-    routes.forEach((route, idx) => {
+    routesList.forEach((route, idx) => {
       const rn = (route.routeName || '').toLowerCase();
       let time = null;
 
       if (idx === 0) {
-        // Day 1 arrival: international flight arrival time
         time = intlArrivalFlight?.arrivalTime || null;
       } else if (rn.includes('chimgan')) {
-        // Day 2 Chimgan: fixed 08:30
         time = '08:30';
       } else if (rn.includes('train station') && rn.includes('drop')) {
-        // Train Station Drop-off: train departure - 1 hour
-        time = mainRailway?.departureTime ? subtractHours(mainRailway.departureTime, 1) : null;
+        time = mainRailway?.departureTime ? subHours(mainRailway.departureTime, 1) : null;
       } else if ((rn.includes('samarkand') || rn.includes('samarqand')) && rn.includes('city tour') && !firstSamarkandDone) {
-        // First Samarkand City Tour: train arrival time
         time = mainRailway?.arrivalTime || null;
         firstSamarkandDone = true;
       } else if (rn.includes('khiva') && (rn.includes('urgench') || rn.includes('urganch'))) {
-        // Khiva - Urgench: domestic flight departure - 3 hours
-        time = domesticFlight?.departureTime ? subtractHours(domesticFlight.departureTime, 3) : null;
+        time = domesticFlight?.departureTime ? subHours(domesticFlight.departureTime, 3) : null;
       } else if (rn.includes('shovot')) {
-        // Khiva - Shovot: fixed 08:00
         time = '08:00';
       } else if (rn.includes('airport') && (rn.includes('pickup') || rn.includes('pick up'))) {
-        // Airport Pickup: domestic flight arrival time
         time = domesticFlight?.arrivalTime || null;
       } else if (rn.includes('airport') && rn.includes('drop')) {
-        // Airport Drop-off: international departure - 3 hours
-        time = intlDepartureFlight?.departureTime ? subtractHours(intlDepartureFlight.departureTime, 3) : null;
+        time = intlDepartureFlight?.departureTime ? subHours(intlDepartureFlight.departureTime, 3) : null;
       } else {
-        // All other middle rows: 08:30
         time = '08:30';
       }
 
-      if (time !== null) {
-        updates.push({ route, time });
-      }
+      if (time !== null) result.push({ route, time });
     });
 
+    return result;
+  };
+
+  // Button handler: force-refill ALL rows (overwrite existing times too)
+  const autoFillTimes = async () => {
+    const updates = calcRoutesTimes(routes, flights, railways);
     if (updates.length === 0) {
       toast.info("Vaqt to'ldirish uchun flight/railway ma'lumoti topilmadi");
       return;
     }
-
     try {
-      for (const { route, time } of updates) {
-        await routesApi.update(bookingId, route.id, { ...route, departureTime: time });
-      }
+      await Promise.all(updates.map(({ route, time }) =>
+        routesApi.update(bookingId, route.id, { ...route, departureTime: time })
+      ));
       toast.success(`${updates.length} ta qatorga vaqt to'ldirildi ✅`);
       loadItineraryData();
     } catch (err) {
