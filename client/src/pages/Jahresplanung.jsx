@@ -916,7 +916,7 @@ function TransportTab({ tourType }) {
     return {
       von: ovr?.vonOverride ?? seg.von,
       bis: ovr?.bisOverride ?? seg.bis,
-      pax: ovr?.paxOverride ?? (seg.pax > 0 ? seg.pax : 16),
+      pax: ovr?.paxOverride ?? 16,
     };
   };
 
