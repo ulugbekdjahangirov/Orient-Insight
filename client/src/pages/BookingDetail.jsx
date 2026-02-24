@@ -7493,9 +7493,11 @@ export default function BookingDetail() {
 
       console.log('📋 Reloaded routes from database with city and itinerary (Sayohat dasturi) preserved');
 
-      // Calculate PAX counts
-      const paxUzb = tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length;
-      const paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length;
+      // Calculate PAX counts (fallback to booking-level fields if Final List tourists not loaded)
+      const paxUzb = tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length
+        || parseInt(formData.paxUzbekistan) || parseInt(booking?.paxUzbekistan) || 0;
+      const paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length
+        || parseInt(formData.paxTurkmenistan) || parseInt(booking?.paxTurkmenistan) || 0;
       const totalPax = paxUzb + paxTkm;
 
       console.log(`🔧 Auto-fixing routes: PAX Total=${totalPax}, UZB=${paxUzb}, TKM=${paxTkm}`);
