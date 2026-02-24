@@ -8414,6 +8414,10 @@ export default function BookingDetail() {
           const seats = parseInt(v.seats);
           return !isNaN(seats) && seats >= pax;
         });
+        // For xayrulla: prefer Karotishka over Sprinter (Sprinter only for Chimgan)
+        const karotishka = suitable.find(v => v.name?.toLowerCase().includes('karotishka'));
+        const sprinter = suitable.find(v => v.name?.toLowerCase().includes('sprinter'));
+        if (provider === 'xayrulla' && karotishka && sprinter) return karotishka.name;
         // Sort: prefer smaller capacity that fits, Yutong over Sprinter
         suitable.sort((a, b) => {
           if (a.name?.toLowerCase().includes('yutong') && b.name?.toLowerCase().includes('sprinter')) return -1;
@@ -8665,6 +8669,10 @@ export default function BookingDetail() {
           const seats = parseInt(v.seats);
           return !isNaN(seats) && seats >= pax;
         });
+        // For xayrulla: prefer Karotishka over Sprinter (Sprinter only for Chimgan)
+        const karotishka = suitable.find(v => v.name?.toLowerCase().includes('karotishka'));
+        const sprinter = suitable.find(v => v.name?.toLowerCase().includes('sprinter'));
+        if (provider === 'xayrulla' && karotishka && sprinter) return karotishka.name;
         // Sort: prefer smaller capacity that fits, Yutong over Sprinter
         suitable.sort((a, b) => {
           if (a.name?.toLowerCase().includes('yutong') && b.name?.toLowerCase().includes('sprinter')) return -1;
