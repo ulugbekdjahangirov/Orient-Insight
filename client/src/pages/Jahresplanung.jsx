@@ -916,7 +916,7 @@ function TransportTab({ tourType }) {
     return {
       von: ovr?.vonOverride ?? seg.von,
       bis: ovr?.bisOverride ?? seg.bis,
-      pax: ovr?.paxOverride ?? seg.pax ?? 16,
+      pax: ovr?.paxOverride ?? (seg.pax > 0 ? seg.pax : 16),
     };
   };
 
@@ -950,12 +950,13 @@ function TransportTab({ tourType }) {
 
     return segments.map((seg, idx) => {
       const { von, bis, pax } = getSegEffective(provider, bk, seg);
+      const displayPax = pax || 16;
       return (
         <div
           key={`${bk}_${seg.von}`}
-          className={`px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''} ${idx > 0 ? 'bg-gray-50/50' : ''}`}
+          className={`px-4 py-2 flex items-center gap-x-6 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''} ${idx > 0 ? 'bg-gray-50/50' : ''}`}
         >
-          {/* Booking link — only first segment shows it prominently */}
+          {/* Guruh — faqat birinchi segment */}
           <div className="w-16 flex-shrink-0">
             {idx === 0 ? (
               <Link to={`/bookings/${booking.id}`}
@@ -967,23 +968,25 @@ function TransportTab({ tourType }) {
             )}
           </div>
 
-          {/* Von → Bis */}
-          <div className="flex items-center gap-1.5 text-sm text-gray-700">
+          {/* PAX */}
+          <div className="w-12 flex-shrink-0">
+            <EditCell value={displayPax} onChange={v => updateSegOverride(provider, bk, seg.von, { paxOverride: v })} />
+          </div>
+
+          {/* Boshlanishi */}
+          <div className="w-24 flex-shrink-0">
             <DateCell
               value={von}
               onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v })}
             />
-            <span className="text-gray-300 text-xs">→</span>
+          </div>
+
+          {/* Tugashi */}
+          <div className="w-24 flex-shrink-0">
             <DateCell
               value={bis}
               onChange={v => updateSegOverride(provider, bk, seg.von, { bisOverride: v })}
             />
-          </div>
-
-          {/* PAX */}
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-400">PAX:</span>
-            <EditCell value={pax} onChange={v => updateSegOverride(provider, bk, seg.von, { paxOverride: v })} />
           </div>
         </div>
       );
@@ -1037,10 +1040,11 @@ function TransportTab({ tourType }) {
 
             {isOpen && (
               <div className="bg-white">
-                <div className="px-4 py-1.5 flex gap-4 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                <div className="px-4 py-1.5 flex items-center gap-x-6 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
                   <span className="w-16">Guruh</span>
-                  <span>Von → Bis</span>
-                  <span className="ml-4">PAX</span>
+                  <span className="w-12">PAX</span>
+                  <span className="w-24">Boshlanishi</span>
+                  <span className="w-24">Tugashi</span>
                 </div>
                 {items.length === 0 ? (
                   <div className="px-5 py-5 text-center text-xs text-gray-400">
