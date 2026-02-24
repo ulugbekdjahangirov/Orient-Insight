@@ -826,6 +826,17 @@ const TRANSPORT_PROVIDERS = [
   { id: 'nosir',    label: 'Nosir',    bg: 'bg-purple-50', border: 'border-purple-200', headerText: 'text-purple-700', pillActive: 'bg-purple-500 text-white', pillInactive: 'bg-purple-50 text-purple-600 border border-purple-200' },
 ];
 
+// Provider display order per tourType (default: sevil, xayrulla, nosir)
+const PROVIDER_ORDER = {
+  CO: ['xayrulla', 'nosir', 'sevil'],
+};
+
+function getOrderedProviders(tourType) {
+  const order = PROVIDER_ORDER[tourType];
+  if (!order) return TRANSPORT_PROVIDERS;
+  return order.map(id => TRANSPORT_PROVIDERS.find(p => p.id === id)).filter(Boolean);
+}
+
 function addDaysLocal(isoDate, days) {
   // Add days to a date string in local time to avoid UTC offset issues
   const [y, m, d] = isoDate.slice(0, 10).split('-').map(Number);
@@ -1129,7 +1140,7 @@ function TransportTab({ tourType }) {
       {/* Summary */}
       <div className="flex items-center gap-4 mb-4 px-1 text-sm text-gray-500">
         <span>{bookings.length} ta guruh</span>
-        {TRANSPORT_PROVIDERS.map(p => {
+        {getOrderedProviders(tourType).map(p => {
           const cnt = Object.keys(routeMap[p.id] || {}).length;
           return cnt > 0 ? (
             <span key={p.id} className={p.headerText}>{p.label}: {cnt}</span>
@@ -1141,7 +1152,7 @@ function TransportTab({ tourType }) {
       </div>
 
       {/* Provider accordions */}
-      {TRANSPORT_PROVIDERS.map(prov => {
+      {getOrderedProviders(tourType).map(prov => {
         const provBookingIds = Object.keys(routeMap[prov.id] || {});
         const items = bookings.filter(b => provBookingIds.includes(String(b.id)));
         const isOpen = !!openProviders[prov.id];
