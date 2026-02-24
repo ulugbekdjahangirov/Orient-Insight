@@ -878,8 +878,10 @@ function getMealDayOffset(tourType, cityName) {
 
 function addDaysFmt(dateStr, days) {
   if (!dateStr || days === null) return null;
-  const d = new Date(new Date(dateStr).getTime() + days * 86400000);
-  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+  // Use UTC methods to avoid timezone shift (dates stored as midnight UTC+5 = 19:00 UTC prev day)
+  const base = new Date(dateStr);
+  const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() + days));
+  return `${String(d.getUTCDate()).padStart(2,'0')}.${String(d.getUTCMonth()+1).padStart(2,'0')}.${d.getUTCFullYear()}`;
 }
 
 router.get('/meals', authenticate, async (req, res) => {
@@ -930,8 +932,8 @@ router.get('/meals', authenticate, async (req, res) => {
         const conf = confirmations.find(
           c => c.bookingId === booking.id && c.restaurantName === meal.name
         );
-        // Computed date: from MealConfirmation if sent, otherwise from departure + city offset
-        const computedDate = conf?.mealDate || addDaysFmt(booking.departureDate, dayOffset);
+        // Always use computed date (dep + city offset) — MealConf.mealDate can be wrong
+        const computedDate = addDaysFmt(booking.departureDate, dayOffset);
         return {
           bookingId:     booking.id,
           bookingNumber: booking.bookingNumber,
