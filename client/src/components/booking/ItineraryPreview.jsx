@@ -1175,22 +1175,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   // =====================================================================
   // Shared helper: compute departure time for each route
-  // ER rules:
-  //   Row 0: intl flight arrivalTime
-  //   Chimgan: 08:30
-  //   Train Station Drop-off: railway[0].departureTime - 1h
-  //   First Samarkand City Tour: railway[0].arrivalTime
-  //   Khiva-Urgench: domestic flight departureTime - 3h
-  //   Khiva-Shovot: 08:00
-  //   Airport Pickup: domestic flight arrivalTime
-  //   Airport Drop-off: intl flight departureTime - 3h
-  //   All other middle rows: 08:30
-  // CO extra rules (2 railways: Tashkent→Qoqon, Tashkent→Samarkand):
-  //   1st Train Station Drop-off (day 3): railway→Qoqon departureTime - 1h
-  //   Qoqon - Fergana: railway→Qoqon arrivalTime
-  //   Fergana - Tashkent: 08:30
-  //   2nd Train Station Drop-off (day 5): railway→Samarkand departureTime - 1h
-  //   First Samarkand City Tour: railway→Samarkand arrivalTime
+  // ER/CO/KAS/ZA rules documented inline below
   // =====================================================================
   const calcRoutesTimes = (routesList, flightsList, railwaysList, tourType) => {
     const subHours = (time, h) => {
@@ -1223,6 +1208,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
       ? (railwayToSamarkand || railwaysList[1] || railwaysList[0])
       : railwaysList[0];
 
+    // KAS: last railway = train arriving in Tashkent (from Samarkand)
+    const kasLastRailway = railwaysList[railwaysList.length - 1] || railwaysList[0];
+
     let firstSamarkandDone = false;
     let trainDropOffCount = 0;
     const result = [];
@@ -1232,8 +1220,16 @@ export default function ItineraryPreview({ bookingId, booking }) {
       let time = null;
 
       if (idx === 0) {
-        // Row 1: arrival → intl flight arrivalTime
-        time = intlArrivalFlight?.arrivalTime || null;
+        if (tourType === 'KAS') {
+          // KAS: Dostlik - Fergana — train arrival at Dostlik from Kazakhstan
+          time = railwaysList[0]?.arrivalTime || '08:30';
+        } else if (tourType === 'ZA') {
+          // ZA: Olot - Bukhara — land border, fixed 08:30
+          time = '08:30';
+        } else {
+          // ER/CO: intl flight arrival in Tashkent
+          time = intlArrivalFlight?.arrivalTime || null;
+        }
       } else if (rn.includes('chimgan')) {
         time = '08:30';
       } else if (rn.includes('train station') && rn.includes('drop')) {
@@ -1245,6 +1241,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
           // CO day 5 or ER: Tashkent → Samarkand train
           time = mainRailway?.departureTime ? subHours(mainRailway.departureTime, 1) : null;
         }
+      } else if (rn.includes('train station') && rn.includes('pickup')) {
+        // KAS: Train Station Pickup in Tashkent — last railway arrivalTime
+        time = kasLastRailway?.arrivalTime || '08:30';
       } else if (rn.includes('qoqon')) {
         // CO: Qoqon - Fergana → first railway arrivalTime (arrival in Qoqon)
         time = railwayToFergana?.arrivalTime || null;
@@ -1263,6 +1262,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
       } else if (rn.includes('airport') && rn.includes('drop')) {
         time = intlDepartureFlight?.departureTime ? subHours(intlDepartureFlight.departureTime, 3) : null;
       } else {
+        // All other rows (Bukhara, Samarkand middle days, ZA routes, etc.)
         time = '08:30';
       }
 
