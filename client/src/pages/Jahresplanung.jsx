@@ -1112,8 +1112,8 @@ function TransportTab({ tourType }) {
               <div key={seg.von} className="flex items-center flex-shrink-0">
                 {idx > 0 && (
                   <div
-                    className="bg-gray-200 flex-shrink-0"
-                    style={{ width: 1, height: 20, marginLeft: SEP_MX, marginRight: SEP_MX }}
+                    className="bg-gray-300 flex-shrink-0"
+                    style={{ width: 2, height: 24, marginLeft: SEP_MX, marginRight: SEP_MX }}
                   />
                 )}
                 {isSingleDay ? (
@@ -1197,34 +1197,47 @@ function TransportTab({ tourType }) {
 
             {isOpen && (
               <div className="bg-white">
-                {/* Column header — labels aligned with booking rows */}
-                <div className="px-4 py-1.5 flex items-center text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
-                  <span className="w-16 flex-shrink-0 mr-5">Guruh</span>
-                  <span className="w-10 flex-shrink-0 mr-5">PAX</span>
-                  <div className="flex items-center">
-                    {getColTemplate(prov.id).map((type, idx) => (
-                      <div key={idx} className="flex items-center flex-shrink-0">
-                        {idx > 0 && (
-                          <div
-                            className="bg-gray-300 flex-shrink-0"
-                            style={{ width: 1, height: 12, marginLeft: SEP_MX, marginRight: SEP_MX }}
-                          />
-                        )}
-                        {type === 'single' ? (
-                          <div style={{ width: SEG_W.single, flexShrink: 0 }} className="text-center">
-                            Vokzal
-                          </div>
-                        ) : (
-                          <div style={{ width: SEG_W.multi, flexShrink: 0 }} className="flex items-center">
-                            <span>Von</span>
-                            <span className="mx-1.5 text-gray-300">→</span>
-                            <span>Bis</span>
-                          </div>
-                        )}
+                {/* Column header — 1-zayezd / Vokzal / 2-zayezd with Von→Bis sub-labels */}
+                {(() => {
+                  const template = getColTemplate(prov.id);
+                  let multiCount = 0;
+                  return (
+                    <div className="px-4 py-2 flex items-end text-xs bg-gray-50 border-b border-gray-100">
+                      <span className="w-16 flex-shrink-0 mr-5 text-gray-400 pb-0.5">Guruh</span>
+                      <span className="w-10 flex-shrink-0 mr-5 text-gray-400 pb-0.5">PAX</span>
+                      <div className="flex items-end">
+                        {template.map((type, idx) => {
+                          if (type !== 'single') multiCount++;
+                          const zayezdLabel = type === 'single' ? null : `${multiCount}-zayezd`;
+                          return (
+                            <div key={idx} className="flex items-end flex-shrink-0">
+                              {idx > 0 && (
+                                <div
+                                  className="bg-gray-300 flex-shrink-0"
+                                  style={{ width: 2, height: 36, marginLeft: SEP_MX, marginRight: SEP_MX }}
+                                />
+                              )}
+                              {type === 'single' ? (
+                                <div style={{ width: SEG_W.single, flexShrink: 0 }} className="text-center text-gray-500 font-medium pb-0.5">
+                                  Vokzal
+                                </div>
+                              ) : (
+                                <div style={{ width: SEG_W.multi, flexShrink: 0 }} className="flex flex-col">
+                                  <span className="text-gray-500 font-semibold mb-0.5">{zayezdLabel}</span>
+                                  <div className="flex items-center text-gray-400">
+                                    <span>Von</span>
+                                    <span className="mx-1.5 text-gray-300">→</span>
+                                    <span>Bis</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  );
+                })()}
                 {items.length === 0 ? (
                   <div className="px-5 py-5 text-center text-xs text-gray-400">
                     Bu provayder uchun route&apos;lar topilmadi
