@@ -7199,7 +7199,7 @@ export default function BookingDetail() {
 
       // Calculate dates and populate routes
       const bookingDepartureDate = booking?.departureDate ? new Date(booking.departureDate) : formData.departureDate ? new Date(formData.departureDate) : null;
-      const totalPax = tourists.length || 0;
+      const totalPax = tourists.length || parseInt(booking?.pax) || parseInt(formData.pax) || 0;
 
       const loadedRoutes = templates.map((template, index) => {
         // ZA: departure + 4, KAS: departure + 14, others: departure + 1
