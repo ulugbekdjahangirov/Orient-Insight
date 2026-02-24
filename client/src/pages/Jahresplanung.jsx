@@ -951,19 +951,17 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
           >
             <Download className="w-3.5 h-3.5" />
           </button>
-          {hasTelegram && (
-            <button
-              onClick={e => { e.stopPropagation(); handleTelegram(); }}
-              disabled={sendingTelegram}
-              className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600 disabled:opacity-50 transition-colors"
-              title="Telegram ga yuborish"
-            >
-              {sendingTelegram
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Send className="w-3.5 h-3.5" />
-              }
-            </button>
-          )}
+          <button
+            onClick={e => { e.stopPropagation(); handleTelegram(); }}
+            disabled={sendingTelegram}
+            className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600 disabled:opacity-50 transition-colors"
+            title="Telegram ga yuborish"
+          >
+            {sendingTelegram
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Send className="w-3.5 h-3.5" />
+            }
+          </button>
           {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
         </div>
       </button>
