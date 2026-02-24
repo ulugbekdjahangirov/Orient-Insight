@@ -879,6 +879,7 @@ function TransportTab({ tourType }) {
     catch { return {}; }
   });
   const [openProviders, setOpenProviders] = useState({ sevil: true, xayrulla: true, nosir: true });
+  const [sendingTransportTg, setSendingTransportTg] = useState({});
   const saveTimerRef = useRef(null);
 
   useEffect(() => {
@@ -940,6 +941,70 @@ function TransportTab({ tourType }) {
   // Fixed pixel widths for aligned columns
   const SEG_W = { multi: 204, single: 88 };
   const SEP_MX = 16; // mx between separator and cells (px each side)
+
+  // Generate PDF for a provider's bookings
+  const generateTransportPDF = (provId, items) => {
+    const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
+    const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+    const template = getColTemplate(provId);
+
+    // Column headers
+    const cols = ['Guruh', 'PAX'];
+    template.forEach(type => {
+      if (type === 'single') { cols.push('Vokzal'); }
+      else { cols.push('Boshlanishi'); cols.push('Tugashi'); }
+    });
+
+    const fmtD = (d) => {
+      if (!d) return '—';
+      const dt = new Date(d);
+      return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+    };
+
+    const rows = items.map(b => {
+      const bk = String(b.id);
+      const segs = routeMap[provId]?.[bk]?.segments || [];
+      const { pax } = getSegEffective(provId, bk, segs[0] || { von: null, bis: null });
+      const row = [b.bookingNumber, String(pax)];
+      segs.forEach(seg => {
+        const { von, bis } = getSegEffective(provId, bk, seg);
+        if (von === bis) { row.push(fmtD(von)); }
+        else { row.push(fmtD(von)); row.push(fmtD(bis)); }
+      });
+      return row;
+    });
+
+    doc.setFontSize(13);
+    doc.setTextColor(30, 30, 30);
+    doc.text(`Transport Rejasi ${YEAR} — ${tourType} (${prov?.label || provId})`, 14, 16);
+
+    autoTable(doc, {
+      head: [cols],
+      body: rows,
+      startY: 22,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 248, 255] },
+    });
+
+    return doc.output('blob');
+  };
+
+  // Send transport PDF to provider's Telegram
+  const handleTransportTelegram = async (provId, items) => {
+    setSendingTransportTg(p => ({ ...p, [provId]: true }));
+    try {
+      const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
+      const blob = generateTransportPDF(provId, items);
+      const filename = `${YEAR}_${tourType}_Transport_${prov?.label || provId}.pdf`;
+      await jahresplanungApi.sendTransportTelegram(provId, YEAR, tourType, blob, filename);
+      toast.success(`Telegram → ${prov?.label || provId}`);
+    } catch (err) {
+      toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingTransportTg(p => ({ ...p, [provId]: false }));
+    }
+  };
 
   if (loading) {
     return (
@@ -1059,6 +1124,18 @@ function TransportTab({ tourType }) {
                     {segCount} ta zayezd
                   </span>
                 )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleTransportTelegram(prov.id, items); }}
+                  disabled={!!sendingTransportTg[prov.id] || items.length === 0}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                  title={`Telegram ga yuborish — ${prov.label}`}
+                >
+                  {sendingTransportTg[prov.id]
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin"/>
+                    : <Send className="w-3.5 h-3.5"/>
+                  }
+                  TG
+                </button>
               </div>
             </button>
 

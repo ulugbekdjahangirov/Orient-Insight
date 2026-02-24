@@ -437,6 +437,49 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
   }
 });
 
+// POST /api/jahresplanung/send-transport-telegram/:provider
+// provider = sevil | xayrulla | nosir
+router.post('/send-transport-telegram/:provider', authenticate, upload.single('pdf'), async (req, res) => {
+  try {
+    const provider = req.params.provider.toLowerCase();
+    const { year, tourType } = req.body;
+    const pdfBuffer = req.file?.buffer;
+
+    const settingKey = `TRANSPORT_${provider.toUpperCase()}_CHAT_ID`;
+    const setting = await prisma.systemSetting.findUnique({ where: { key: settingKey } });
+    const chatId = setting?.value;
+    if (!chatId) {
+      return res.status(400).json({ error: `${provider} uchun Telegram chat ID sozlanmagan (${settingKey})` });
+    }
+
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    if (!TELEGRAM_BOT_TOKEN) {
+      return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN sozlanmagan' });
+    }
+
+    const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+    const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[provider] || provider;
+    const tourLabel = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tourType] || tourType;
+
+    if (pdfBuffer) {
+      const docForm = new FormData();
+      docForm.append('chat_id', chatId);
+      docForm.append('document', pdfBuffer, {
+        filename: `${year}_${tourType}_Transport_${providerLabel}.pdf`,
+        contentType: 'application/pdf'
+      });
+      docForm.append('caption', `🚌 Transport Rejasi ${year} — ${tourLabel}\n👤 ${providerLabel}`);
+      await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
+    }
+
+    console.log(`Transport Telegram sent: ${providerLabel} → ${chatId}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Send transport telegram error:', err);
+    res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
 // ── Persistent Puppeteer browser (reused across requests — saves 2-4s per PDF)
 const puppeteer = require('puppeteer');
 let _pdfBrowser = null;
