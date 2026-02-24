@@ -749,6 +749,7 @@ model Route {
   // Транспорт
   personCount     Int       @default(0)    // Количество человек
   transportType   String?                  // Тип транспорта (Joylong, Starex, etc.)
+  departureTime   String?                  // Departure time (e.g. "08:00")
 
   // Поставщик
   provider        String?                  // Провайдер (xayrulla, sevil, etc.)

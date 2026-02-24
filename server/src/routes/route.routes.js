@@ -33,7 +33,7 @@ router.get('/:bookingId/routes', authenticate, async (req, res) => {
 router.post('/:bookingId/routes', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { dayNumber, date, city, routeName, itinerary, personCount, transportType, provider, optionRate, price, sortOrder } = req.body;
+    const { dayNumber, date, city, routeName, itinerary, personCount, transportType, departureTime, provider, optionRate, price, sortOrder } = req.body;
 
     // Verify booking exists
     const booking = await prisma.booking.findUnique({
@@ -54,6 +54,7 @@ router.post('/:bookingId/routes', authenticate, async (req, res) => {
         itinerary: itinerary || null,
         personCount: personCount || 0,
         transportType: transportType || null,
+        departureTime: departureTime || null,
         provider: provider || null,
         optionRate: optionRate || null,
         price: price ? parseFloat(price) : 0,
@@ -101,6 +102,7 @@ router.put('/:bookingId/routes/bulk', authenticate, async (req, res) => {
             itinerary: route.itinerary || null,
             personCount: route.personCount || parseInt(route.person) || 0,
             transportType: route.transportType || null,
+            departureTime: route.departureTime || null,
             provider: route.provider || route.choiceTab || null,
             optionRate: route.optionRate || route.choiceRate || null,
             price: route.price ? parseFloat(route.price) : 0,
@@ -124,7 +126,7 @@ router.put('/:bookingId/routes/bulk', authenticate, async (req, res) => {
 router.put('/:bookingId/routes/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { dayNumber, date, city, routeName, itinerary, personCount, transportType, provider, optionRate, price, sortOrder } = req.body;
+    const { dayNumber, date, city, routeName, itinerary, personCount, transportType, departureTime, provider, optionRate, price, sortOrder } = req.body;
 
     const route = await prisma.route.update({
       where: { id: parseInt(id) },
@@ -136,6 +138,7 @@ router.put('/:bookingId/routes/:id', authenticate, async (req, res) => {
         itinerary: itinerary !== undefined ? itinerary : undefined,
         personCount: personCount !== undefined ? personCount : undefined,
         transportType: transportType !== undefined ? transportType : undefined,
+        departureTime: departureTime !== undefined ? departureTime : undefined,
         provider: provider !== undefined ? provider : undefined,
         optionRate: optionRate !== undefined ? optionRate : undefined,
         price: price !== undefined ? parseFloat(price) : undefined,

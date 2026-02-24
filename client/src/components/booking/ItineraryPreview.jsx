@@ -515,13 +515,15 @@ export default function ItineraryPreview({ bookingId, booking }) {
             formatDateDisplay(r.date),
             transliterate(translatedRouteName),
             r.personCount?.toString() || tourists.length.toString() || '-',
+            r.departureTime || '-',
+            r.transportType || '-',
             transliterate(r.itinerary || '-')
           ];
         });
 
         autoTable(doc, {
           startY: yPos,
-          head: [['№', 'Sana', "Yo'nalish", 'PAX', 'Sayohat dasturi']],
+          head: [['№', 'Sana', "Yo'nalish", 'PAX', 'Vaqt', 'Avtomobil', 'Sayohat dasturi']],
           body: routeRows,
           theme: 'grid',
           styles: { fontSize: 7, cellPadding: 1.5 },
@@ -529,9 +531,11 @@ export default function ItineraryPreview({ bookingId, booking }) {
           columnStyles: {
             0: { cellWidth: 8 },
             1: { cellWidth: 20 },
-            2: { cellWidth: 35 },
-            3: { cellWidth: 12, halign: 'center' },
-            4: { cellWidth: 115 }
+            2: { cellWidth: 32 },
+            3: { cellWidth: 10, halign: 'center' },
+            4: { cellWidth: 14, halign: 'center' },
+            5: { cellWidth: 20, halign: 'center' },
+            6: { cellWidth: 86 }
           },
           didParseCell: function(data) {
             if (data.section === 'body') {
@@ -1333,7 +1337,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
           </button>
         </div>
 
-        {/* Nosir: PDF + Telegram */}
+        {/* Nosir: PDF + Telegram — only for CO (has Fergana leg), hidden for ER */}
+        {(typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code) !== 'ER' && (
         <div className="flex items-center gap-1">
           <button
             onClick={() => exportToPDF('nosir')}
@@ -1353,6 +1358,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
               : <Send className="w-4 h-4" />}
           </button>
         </div>
+        )}
       </div>
 
       {/* Itinerary Document */}
@@ -1520,6 +1526,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
                   <th className="border border-gray-900 px-3 py-2 text-center font-bold w-32">Sana</th>
                   <th className="border border-gray-900 px-3 py-2 text-center font-bold w-56">Yo'nalish</th>
                   <th className="border border-gray-900 px-3 py-2 text-center font-bold w-16">PAX</th>
+                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-24">Vaqt</th>
+                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-32">Avtomobil turi</th>
                   <th className="border border-gray-900 px-3 py-2 text-center font-bold">Sayohat dasturi</th>
                   <th className="border border-gray-900 px-3 py-2 text-center font-bold print:hidden w-24">Actions</th>
                 </tr>
@@ -1586,6 +1594,32 @@ export default function ItineraryPreview({ bookingId, booking }) {
                       </td>
                       <td className="border border-gray-900 px-3 py-2 text-center font-semibold">
                         {route.personCount || tourists.length || '-'}
+                      </td>
+                      <td className="border border-gray-900 px-3 py-2 text-center">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.departureTime || ''}
+                            onChange={(e) => setEditingRoute({ ...editingRoute, departureTime: e.target.value })}
+                            className="w-full px-2 py-1 border rounded text-center"
+                            placeholder="08:00"
+                          />
+                        ) : (
+                          route.departureTime || '-'
+                        )}
+                      </td>
+                      <td className="border border-gray-900 px-3 py-2 text-center">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData.transportType || ''}
+                            onChange={(e) => setEditingRoute({ ...editingRoute, transportType: e.target.value })}
+                            className="w-full px-2 py-1 border rounded text-center"
+                            placeholder="Karotishka"
+                          />
+                        ) : (
+                          route.transportType || '-'
+                        )}
                       </td>
                       <td className="border border-gray-900 px-3 py-2">
                         {isEditing ? (
