@@ -662,6 +662,47 @@ router.post('/webhook', async (req, res) => {
     }
     // ── End transport callbacks ────────────────────────────────────────────
 
+    // ── Transport 2026 (Jahresplanung) confirmation callbacks ────────────
+    if (data.startsWith('tp26_c:') || data.startsWith('tp26_r:')) {
+      const parts = data.split(':');
+      // tp26_c:{year}:{tourType}:{provider}
+      const isConfirm = data.startsWith('tp26_c:');
+      const tp26Year     = parts[1];
+      const tp26TourType = parts[2];
+      const tp26Provider = parts[3];
+      const emoji        = isConfirm ? '✅' : '❌';
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isConfirm ? '✅ Tasdiqlandi!' : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      const confKey = `JP_TRANSPORT_CONFIRM_${tp26Year}_${tp26TourType}_${tp26Provider}`;
+      const setting = await prisma.systemSetting.findUnique({ where: { key: confKey } });
+      if (setting) {
+        const stored = JSON.parse(setting.value || '{}');
+        stored.status      = isConfirm ? 'CONFIRMED' : 'REJECTED';
+        stored.confirmedBy = fromName;
+        stored.respondedAt = new Date().toISOString();
+        await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
+
+        // Edit the original message
+        if (stored.chatId && stored.messageId) {
+          const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[tp26Provider] || tp26Provider;
+          const newText = `${emoji} *Transport Rejasi ${tp26Year} — ${tp26TourType}*\n👤 ${providerLabel}\n\n${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: *${fromName}*`;
+          await axios.post(`${BOT_API()}/editMessageText`, {
+            chat_id: stored.chatId,
+            message_id: stored.messageId,
+            text: newText,
+            parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
+      }
+      return;
+    }
+    // ── End Transport 2026 callbacks ──────────────────────────────────────
+
     // ── Jahresplanung (JP) confirmation callbacks ─────────────────────────
     if (data.startsWith('jp_')) {
       const parts = data.split(':');

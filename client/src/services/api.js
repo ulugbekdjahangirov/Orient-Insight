@@ -434,6 +434,8 @@ export const jahresplanungApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  getTransportConfirmations: () => api.get('/jahresplanung/transport-confirmations'),
+  deleteTransportConfirmation: (key) => api.delete(`/jahresplanung/transport-confirmations/${key}`),
 };
 
 export default api;

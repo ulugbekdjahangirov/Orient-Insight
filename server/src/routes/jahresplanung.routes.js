@@ -461,6 +461,7 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
     const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[provider] || provider;
     const tourLabel = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tourType] || tourType;
 
+    // 1. Send PDF document
     if (pdfBuffer) {
       const docForm = new FormData();
       docForm.append('chat_id', chatId);
@@ -472,11 +473,64 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
       await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
     }
 
+    // 2. Send confirmation request message with inline keyboard
+    const confText = `🚌 *Transport Rejasi ${year} — ${tourLabel}*\n👤 *${providerLabel}*\n\nYillik transport rejasini tasdiqlaysizmi?`;
+    const msgRes = await axios.post(`${TG_BASE}/sendMessage`, {
+      chat_id: chatId,
+      text: confText,
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '✅ Tasdiqlash', callback_data: `tp26_c:${year}:${tourType}:${provider}` },
+          { text: '❌ Rad etish',  callback_data: `tp26_r:${year}:${tourType}:${provider}` },
+        ]]
+      }
+    });
+    const messageId = msgRes.data?.result?.message_id || null;
+
+    // 3. Save confirmation record in SystemSetting
+    const confKey = `JP_TRANSPORT_CONFIRM_${year}_${tourType}_${provider}`;
+    await prisma.systemSetting.upsert({
+      where: { key: confKey },
+      update: { value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, confirmedBy: null, respondedAt: null }) },
+      create: { key: confKey, value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, confirmedBy: null, respondedAt: null }) }
+    });
+
     console.log(`Transport Telegram sent: ${providerLabel} → ${chatId}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Send transport telegram error:', err);
     res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
+// GET /api/jahresplanung/transport-confirmations
+// Returns all JP_TRANSPORT_CONFIRM_* SystemSetting entries
+router.get('/transport-confirmations', authenticate, async (req, res) => {
+  try {
+    const settings = await prisma.systemSetting.findMany({
+      where: { key: { startsWith: 'JP_TRANSPORT_CONFIRM_' } },
+      orderBy: { key: 'asc' }
+    });
+    const confirmations = settings.map(s => {
+      try { return { key: s.key, ...JSON.parse(s.value) }; }
+      catch { return { key: s.key }; }
+    });
+    res.json({ confirmations });
+  } catch (err) {
+    console.error('Get transport confirmations error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/jahresplanung/transport-confirmations/:key
+router.delete('/transport-confirmations/:key', authenticate, async (req, res) => {
+  try {
+    const key = `JP_TRANSPORT_CONFIRM_${req.params.key}`;
+    await prisma.systemSetting.delete({ where: { key } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

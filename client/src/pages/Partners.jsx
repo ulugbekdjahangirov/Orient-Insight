@@ -1115,12 +1115,111 @@ function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
   );
 }
 
+const TOUR_SUB_TABS = ['ER', 'CO', 'KAS', 'ZA'];
+
+const TP_STATUS = {
+  PENDING:   { color: 'bg-yellow-100 text-yellow-800', label: 'Kutilmoqda', icon: '🕐' },
+  CONFIRMED: { color: 'bg-green-100 text-green-800',   label: 'Tasdiqladi', icon: '✅' },
+  REJECTED:  { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',  icon: '❌' },
+};
+
 function Transport2026Tab() {
+  const [confirmations, setConfirmations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [subTab, setSubTab] = useState('ER');
+
+  const load = () => {
+    setLoading(true);
+    jahresplanungApi.getTransportConfirmations()
+      .then(res => setConfirmations(res.data.confirmations || []))
+      .catch(() => setConfirmations([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (key) => {
+    if (!confirm('O\'chirishni tasdiqlaysizmi?')) return;
+    await jahresplanungApi.deleteTransportConfirmation(key).catch(() => {});
+    load();
+  };
+
+  const fmtDate = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  };
+
+  const filtered = confirmations.filter(c => c.tourType === subTab);
+  const providers = ['sevil', 'xayrulla', 'nosir'];
+  const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' };
+
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-      <Bus className="w-12 h-12 mb-3 opacity-30" />
-      <p className="text-sm font-medium">Transport 2026 — tez kunda</p>
-      <p className="text-xs mt-1">Yillik transport rejalashtirishni kuzatib borish moduli ishlab chiqilmoqda</p>
+    <div>
+      {/* Sub-tabs */}
+      <div className="flex gap-2 mb-4">
+        {TOUR_SUB_TABS.map(t => (
+          <button key={t} onClick={() => setSubTab(t)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${subTab === t ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            {t}
+          </button>
+        ))}
+        <button onClick={load} className="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 border rounded-lg">
+          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16 text-gray-400">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" /><span className="text-sm">Yuklanmoqda...</span>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {providers.map(prov => {
+            const rec = filtered.find(c => c.provider === prov);
+            const st = TP_STATUS[rec?.status] || TP_STATUS.PENDING;
+            return (
+              <div key={prov} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 bg-gray-50">
+                  <Bus className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                  <span className="font-semibold text-gray-800">{providerLabel[prov]}</span>
+                  {rec ? (
+                    <span className={`ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${st.color}`}>
+                      {st.icon} {st.label}
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-xs text-gray-400">Hali yuborilmagan</span>
+                  )}
+                  {rec && (
+                    <button onClick={() => handleDelete(`${rec.year}_${rec.tourType}_${rec.provider}`)}
+                      className="ml-auto text-gray-300 hover:text-red-400 transition-colors" title="O'chirish">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                {rec && (
+                  <div className="px-5 py-3 text-sm text-gray-600 grid grid-cols-2 gap-x-6 gap-y-1.5">
+                    <div className="flex gap-2">
+                      <span className="text-gray-400 text-xs w-24 flex-shrink-0">Yuborildi:</span>
+                      <span className="text-xs">{fmtDate(rec.sentAt)}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-gray-400 text-xs w-24 flex-shrink-0">Javob berdi:</span>
+                      <span className="text-xs">{fmtDate(rec.respondedAt)}</span>
+                    </div>
+                    {rec.confirmedBy && (
+                      <div className="flex gap-2 col-span-2">
+                        <span className="text-gray-400 text-xs w-24 flex-shrink-0">Kim:</span>
+                        <span className="text-xs font-medium text-gray-700">{rec.confirmedBy}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
