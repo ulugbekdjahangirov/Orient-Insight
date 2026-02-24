@@ -831,6 +831,7 @@ const PROVIDER_ORDER = {
   ER:  ['xayrulla', 'sevil'],
   CO:  ['xayrulla', 'nosir', 'sevil'],
   KAS: ['nosir', 'sevil', 'xayrulla'],
+  ZA:  ['sevil', 'xayrulla'],
 };
 
 function getOrderedProviders(tourType) {
