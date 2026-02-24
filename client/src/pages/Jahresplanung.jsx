@@ -828,8 +828,9 @@ const TRANSPORT_PROVIDERS = [
 
 // Provider display order per tourType (default: sevil, xayrulla, nosir)
 const PROVIDER_ORDER = {
-  ER: ['xayrulla', 'sevil'],
-  CO: ['xayrulla', 'nosir', 'sevil'],
+  ER:  ['xayrulla', 'sevil'],
+  CO:  ['xayrulla', 'nosir', 'sevil'],
+  KAS: ['nosir', 'sevil', 'xayrulla'],
 };
 
 function getOrderedProviders(tourType) {
