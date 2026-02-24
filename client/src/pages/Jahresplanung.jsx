@@ -2104,7 +2104,7 @@ function HotelsTab({ tourType }) {
 }
 
 export default function Jahresplanung() {
-  const [mainTab, setMainTab] = useState('hotels');
+  const [mainTab, setMainTab] = useState(() => localStorage.getItem('jp_mainTab') || 'hotels');
   const [tourTab, setTourTab] = useState(() => localStorage.getItem('jp_tourTab') || 'ER');
 
   return (
@@ -2118,7 +2118,7 @@ export default function Jahresplanung() {
         {MAIN_TABS.map(tab => {
           const Icon = tab.icon;
           return (
-            <button key={tab.id} onClick={() => setMainTab(tab.id)}
+            <button key={tab.id} onClick={() => { setMainTab(tab.id); localStorage.setItem('jp_mainTab', tab.id); }}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mainTab===tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <Icon className="w-4 h-4"/> {tab.label}
