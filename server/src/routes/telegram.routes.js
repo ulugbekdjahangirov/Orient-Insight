@@ -687,14 +687,21 @@ router.post('/webhook', async (req, res) => {
         stored.respondedAt = new Date().toISOString();
         await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
 
-        // Edit the original message
+        // Edit the original message (keep booking lines, add confirmation status)
         if (stored.chatId && stored.messageId) {
           const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[tp26Provider] || tp26Provider;
-          const newText = `${emoji} *Transport Rejasi ${tp26Year} — ${tp26TourType}*\n👤 ${providerLabel}\n\n${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: *${fromName}*`;
+          const lines = [
+            `${emoji} *Transport Rejasi ${tp26Year} — ${tp26TourType}*`,
+            `👤 *${providerLabel}*`,
+            '',
+            stored.bookingLines ? `\`\`\`\n${stored.bookingLines}\n\`\`\`` : '',
+            '',
+            `${isConfirm ? '✅ TASDIQLADI' : '❌ RAD ETDI'}: *${fromName}*`
+          ].filter(l => l !== undefined).join('\n');
           await axios.post(`${BOT_API()}/editMessageText`, {
             chat_id: stored.chatId,
             message_id: stored.messageId,
-            text: newText,
+            text: lines,
             parse_mode: 'Markdown'
           }).catch(() => {});
         }

@@ -997,7 +997,25 @@ function TransportTab({ tourType }) {
       const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
       const blob = generateTransportPDF(provId, items);
       const filename = `${YEAR}_${tourType}_Transport_${prov?.label || provId}.pdf`;
-      await jahresplanungApi.sendTransportTelegram(provId, YEAR, tourType, blob, filename);
+
+      // Serialize booking rows (bookingNumber + PAX + segment date strings)
+      const fmtShort = (d) => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`;
+      };
+      const bookingsData = items.map(b => {
+        const bk = String(b.id);
+        const segs = routeMap[provId]?.[bk]?.segments || [];
+        const { pax } = getSegEffective(provId, bk, segs[0] || { von: null, bis: null });
+        const segStrs = segs.map(seg => {
+          const { von, bis } = getSegEffective(provId, bk, seg);
+          return von === bis ? fmtShort(von) : `${fmtShort(von)}→${fmtShort(bis)}`;
+        });
+        return { num: b.bookingNumber, pax, segs: segStrs.join('  ') };
+      });
+
+      await jahresplanungApi.sendTransportTelegram(provId, YEAR, tourType, blob, filename, bookingsData);
       toast.success(`Telegram → ${prov?.label || provId}`);
     } catch (err) {
       toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));
