@@ -871,64 +871,58 @@ function DateCell({ value, onChange }) {
 function TransportTab({ tourType }) {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
-  // manualAssignments: stored in DB (user-set), keyed by bookingId string
-  const [manualAssignments, setManualAssignments] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(`jp_transport_${YEAR}_${tourType}`) || '{}'); }
+  // routeMap: provider → bookingId → { von, bis, pax } (auto from routes)
+  const [routeMap, setRouteMap] = useState({});
+  // manualOverrides: key="{provider}_{bookingId}" → { vonOverride, bisOverride, paxOverride }
+  const [manualOverrides, setManualOverrides] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`jp_transport_ovr_${YEAR}_${tourType}`) || '{}'); }
     catch { return {}; }
   });
-  // suggestions: auto-derived from route data, keyed by bookingId string
-  const [suggestions, setSuggestions] = useState({});
-  const [openProviders, setOpenProviders] = useState({ sevil: true, xayrulla: true, nosir: true, unassigned: true });
+  const [openProviders, setOpenProviders] = useState({ sevil: true, xayrulla: true, nosir: true });
   const saveTimerRef = useRef(null);
 
   useEffect(() => {
-    try { setManualAssignments(JSON.parse(localStorage.getItem(`jp_transport_${YEAR}_${tourType}`) || '{}')); }
-    catch { setManualAssignments({}); }
+    try { setManualOverrides(JSON.parse(localStorage.getItem(`jp_transport_ovr_${YEAR}_${tourType}`) || '{}')); }
+    catch { setManualOverrides({}); }
     setLoading(true);
     setBookings([]);
     jahresplanungApi.getTransport(YEAR, tourType)
       .then(res => {
         setBookings(res.data.bookings || []);
-        const manual = res.data.manualAssignments || {};
-        const sugg   = res.data.suggestions || {};
-        setManualAssignments(manual);
-        setSuggestions(sugg);
-        try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(manual)); } catch {}
+        setRouteMap(res.data.routeMap || {});
+        const ovr = res.data.manualOverrides || {};
+        setManualOverrides(ovr);
+        try { localStorage.setItem(`jp_transport_ovr_${YEAR}_${tourType}`, JSON.stringify(ovr)); } catch {}
       })
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
   }, [tourType]);
 
-  // Effective assignment = manual if exists, else suggestion (auto)
-  const getEffective = (bookingId) => {
-    const k = String(bookingId);
-    if (manualAssignments[k]) return { ...manualAssignments[k], isAuto: false };
-    if (suggestions[k])       return { ...suggestions[k], pax: 16, vonOverride: suggestions[k].von, bisOverride: suggestions[k].bis, isAuto: true };
-    return null;
-  };
-
-  const saveManual = (next) => {
-    setManualAssignments(next);
-    try { localStorage.setItem(`jp_transport_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+  const saveOverrides = (next) => {
+    setManualOverrides(next);
+    try { localStorage.setItem(`jp_transport_ovr_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       jahresplanungApi.saveTransport(YEAR, tourType, next).catch(() => {});
     }, 1000);
   };
 
-  const updateAssignment = (bookingId, changes) => {
-    const k = String(bookingId);
-    const current = manualAssignments[k] || getEffective(bookingId) || { pax: 16 };
-    const { isAuto: _drop, ...base } = current; // strip isAuto flag
-    saveManual({ ...manualAssignments, [k]: { ...base, ...changes } });
+  const updateOverride = (provider, bookingId, changes) => {
+    const k = `${provider}_${bookingId}`;
+    saveOverrides({ ...manualOverrides, [k]: { ...(manualOverrides[k] || {}), ...changes } });
   };
 
-  const offsets = TRANSPORT_OFFSETS[tourType] || { von: 1, bis: 13 };
-
-  const getVon = (booking, asgn) =>
-    asgn?.vonOverride || addDaysLocal(booking.departureDate, offsets.von);
-  const getBis = (booking, asgn) =>
-    asgn?.bisOverride || addDaysLocal(booking.departureDate, offsets.bis);
+  // Get effective von/bis/pax for a provider+booking (override > route data)
+  const getEffective = (provider, bookingId) => {
+    const bk = String(bookingId);
+    const route = routeMap[provider]?.[bk];
+    const ovr   = manualOverrides[`${provider}_${bk}`];
+    return {
+      von: ovr?.vonOverride ?? route?.von ?? null,
+      bis: ovr?.bisOverride ?? route?.bis ?? null,
+      pax: ovr?.paxOverride ?? route?.pax ?? 16,
+    };
+  };
 
   if (loading) {
     return (
@@ -939,25 +933,17 @@ function TransportTab({ tourType }) {
     );
   }
 
-  // Group bookings by effective provider
-  const grouped = { sevil: [], xayrulla: [], nosir: [], unassigned: [] };
-  bookings.forEach(b => {
-    const asgn = getEffective(b.id);
-    const p = asgn?.provider;
-    if (p && grouped[p]) grouped[p].push(b);
-    else grouped.unassigned.push(b);
+  // Bookings without any route data at all
+  const bookingsWithNoRoutes = bookings.filter(b => {
+    const k = String(b.id);
+    return !TRANSPORT_PROVIDERS.some(p => routeMap[p.id]?.[k]);
   });
 
-  const renderRow = (booking) => {
-    const asgn = getEffective(booking.id) || {};
-    const pax = asgn.pax ?? 16;
-    const von = getVon(booking, asgn);
-    const bis = getBis(booking, asgn);
+  const renderRow = (provider, booking) => {
+    const { von, bis, pax } = getEffective(provider, booking.id);
     const isCancelled = booking.status === 'CANCELLED';
-    const isAuto = !!asgn.isAuto;
-
     return (
-      <div key={booking.id} className={`px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''}`}>
+      <div key={booking.id} className={`px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-100 last:border-0 ${isCancelled ? 'opacity-40' : ''}`}>
         <Link
           to={`/bookings/${booking.id}`}
           className="font-semibold text-sm text-primary-600 hover:underline w-16 flex-shrink-0"
@@ -966,68 +952,51 @@ function TransportTab({ tourType }) {
         </Link>
 
         {/* Von → Bis */}
-        <div className="flex items-center gap-1 text-sm text-gray-600">
+        <div className="flex items-center gap-1.5 text-sm text-gray-700">
           <DateCell
             value={von}
-            onChange={v => updateAssignment(booking.id, { vonOverride: v })}
+            onChange={v => updateOverride(provider, booking.id, { vonOverride: v })}
           />
           <span className="text-gray-300 text-xs">→</span>
           <DateCell
             value={bis}
-            onChange={v => updateAssignment(booking.id, { bisOverride: v })}
+            onChange={v => updateOverride(provider, booking.id, { bisOverride: v })}
           />
         </div>
 
         {/* PAX */}
         <div className="flex items-center gap-1">
           <span className="text-xs text-gray-400">PAX:</span>
-          <EditCell value={pax} onChange={v => updateAssignment(booking.id, { pax: v })} />
-        </div>
-
-        {/* Auto badge */}
-        {isAuto && (
-          <span className="text-xs text-gray-400 italic hidden sm:inline">avto</span>
-        )}
-
-        {/* Provider pills */}
-        <div className="flex gap-1 ml-auto">
-          {TRANSPORT_PROVIDERS.map(p => (
-            <button
-              key={p.id}
-              onClick={() => updateAssignment(booking.id, { provider: asgn?.provider === p.id ? null : p.id })}
-              className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${asgn?.provider === p.id ? p.pillActive : p.pillInactive}`}
-            >
-              {p.label}
-            </button>
-          ))}
+          <EditCell value={pax} onChange={v => updateOverride(provider, booking.id, { paxOverride: v })} />
         </div>
       </div>
     );
   };
-
-  const totalAssigned = bookings.length - grouped.unassigned.length;
-  const autoCount = bookings.filter(b => getEffective(b.id)?.isAuto).length;
-  const manualCount = totalAssigned - autoCount;
 
   return (
     <div>
       {/* Summary */}
       <div className="flex items-center gap-4 mb-4 px-1 text-sm text-gray-500">
         <span>{bookings.length} ta guruh</span>
-        <span className="text-gray-300">·</span>
-        {autoCount > 0 && <span className="text-blue-600">{autoCount} avto</span>}
-        {manualCount > 0 && <span className="text-green-600">{manualCount} qo&apos;lda</span>}
-        {grouped.unassigned.length > 0 && (
-          <>
-            <span className="text-gray-300">·</span>
-            <span className="text-amber-600 font-medium">{grouped.unassigned.length} ta tayinlanmagan</span>
-          </>
+        {TRANSPORT_PROVIDERS.map(p => {
+          const cnt = Object.keys(routeMap[p.id] || {}).length;
+          return cnt > 0 ? (
+            <span key={p.id} className={`${p.headerText}`}>
+              {p.label}: {cnt}
+            </span>
+          ) : null;
+        })}
+        {bookingsWithNoRoutes.length > 0 && (
+          <span className="text-amber-500 text-xs">
+            {bookingsWithNoRoutes.length} ta route yo&apos;q
+          </span>
         )}
       </div>
 
       {/* Provider accordions */}
       {TRANSPORT_PROVIDERS.map(prov => {
-        const items = grouped[prov.id] || [];
+        const provBookingIds = Object.keys(routeMap[prov.id] || {});
+        const items = bookings.filter(b => provBookingIds.includes(String(b.id)));
         const isOpen = !!openProviders[prov.id];
         return (
           <div key={prov.id} className={`mb-3 rounded-xl border overflow-hidden ${prov.border}`}>
@@ -1045,17 +1014,17 @@ function TransportTab({ tourType }) {
 
             {isOpen && (
               <div className="bg-white">
-                <div className="px-4 py-1.5 grid grid-cols-[4rem_1fr_auto] gap-3 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
-                  <span>Guruh</span>
+                <div className="px-4 py-1.5 flex gap-4 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
+                  <span className="w-16">Guruh</span>
                   <span>Von → Bis</span>
-                  <span className="text-right">Provayder</span>
+                  <span className="ml-4">PAX</span>
                 </div>
                 {items.length === 0 ? (
                   <div className="px-5 py-5 text-center text-xs text-gray-400">
-                    Hali bu provayderga guruh tayinlanmagan. Pastdagi &quot;Tayinlanmagan&quot; bo&apos;limidan tayinlang.
+                    Bu provayder uchun route&apos;lar topilmadi
                   </div>
                 ) : (
-                  items.map(renderRow)
+                  items.map(b => renderRow(prov.id, b))
                 )}
               </div>
             )}
@@ -1063,29 +1032,23 @@ function TransportTab({ tourType }) {
         );
       })}
 
-      {/* Unassigned */}
-      {grouped.unassigned.length > 0 && (
-        <div className="mb-3 rounded-xl border border-amber-200 overflow-hidden">
-          <button
-            onClick={() => setOpenProviders(p => ({ ...p, unassigned: !p.unassigned }))}
-            className="w-full flex items-center gap-3 px-5 py-3 bg-amber-50 hover:brightness-95 transition-all"
-          >
-            {openProviders.unassigned ? <ChevronDown className="w-4 h-4 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 flex-shrink-0"/>}
-            <span className="font-semibold text-amber-700">Tayinlanmagan</span>
-            <span className="ml-auto text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">
-              {grouped.unassigned.length} ta
+      {/* Bookings with no routes at all */}
+      {bookingsWithNoRoutes.length > 0 && (
+        <div className="mt-4 rounded-xl border border-amber-200 overflow-hidden">
+          <div className="px-5 py-3 bg-amber-50 flex items-center gap-2">
+            <span className="font-semibold text-amber-700 text-sm">Route kiritilmagan guruhlar</span>
+            <span className="text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-500">
+              {bookingsWithNoRoutes.length} ta
             </span>
-          </button>
-          {openProviders.unassigned && (
-            <div className="bg-white">
-              <div className="px-4 py-1.5 grid grid-cols-[4rem_1fr_auto] gap-3 text-xs text-gray-400 bg-gray-50 border-b border-gray-100">
-                <span>Guruh</span>
-                <span>Von → Bis</span>
-                <span className="text-right">Provayder</span>
-              </div>
-              {grouped.unassigned.map(renderRow)}
-            </div>
-          )}
+          </div>
+          <div className="bg-white px-5 py-2 text-xs text-gray-500">
+            {bookingsWithNoRoutes.map(b => (
+              <Link key={b.id} to={`/bookings/${b.id}`}
+                className="inline-block mr-3 text-primary-600 hover:underline font-medium">
+                {b.bookingNumber}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>

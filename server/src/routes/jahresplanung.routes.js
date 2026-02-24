@@ -1109,55 +1109,49 @@ router.get('/transport', authenticate, async (req, res) => {
       orderBy: { bookingNumber: 'asc' }
     });
 
-    // Fetch all routes for these bookings to derive provider assignments
     const bookingIds = bookings.map(b => b.id);
     const routes = await prisma.route.findMany({
       where: { bookingId: { in: bookingIds }, date: { not: null } },
-      select: { bookingId: true, date: true, provider: true },
+      select: { bookingId: true, date: true, provider: true, personCount: true },
       orderBy: { date: 'asc' }
     });
 
-    // Group routes: bookingId → normalized provider → { count, minDate, maxDate }
-    const routeMap = {};
+    // Build routeMap: provider → bookingId → { von, bis, pax }
+    // A booking can appear under MULTIPLE providers (Xayrulla for Tashkent segments,
+    // Nosir for Fergana, Sevil for Samarkand/Bukhara/Khiva)
+    const raw = { sevil: {}, xayrulla: {}, nosir: {} };
     for (const r of routes) {
       const norm = normalizeProvider(r.provider);
       if (!norm || !r.date) continue;
       const k = String(r.bookingId);
-      if (!routeMap[k]) routeMap[k] = {};
-      if (!routeMap[k][norm]) routeMap[k][norm] = { count: 0, min: null, max: null };
+      if (!raw[norm][k]) raw[norm][k] = { min: null, max: null, maxPax: 0 };
       const d = new Date(r.date);
-      const entry = routeMap[k][norm];
-      entry.count++;
-      if (!entry.min || d < entry.min) entry.min = d;
-      if (!entry.max || d > entry.max) entry.max = d;
+      const e = raw[norm][k];
+      if (!e.min || d < e.min) e.min = d;
+      if (!e.max || d > e.max) e.max = d;
+      if ((r.personCount || 0) > e.maxPax) e.maxPax = r.personCount || 0;
     }
 
-    // Build suggestions: per booking → dominant provider + von/bis from routes
-    const suggestions = {};
-    for (const [k, provMap] of Object.entries(routeMap)) {
-      // Pick provider with most routes as dominant
-      const sorted = Object.entries(provMap).sort((a, b) => b[1].count - a[1].count);
-      const [domProvider, domData] = sorted[0];
-      suggestions[k] = {
-        provider: domProvider,
-        von: domData.min ? domData.min.toISOString().slice(0, 10) : null,
-        bis: domData.max ? domData.max.toISOString().slice(0, 10) : null,
-        byProvider: Object.fromEntries(
-          Object.entries(provMap).map(([p, d]) => [p, {
-            count: d.count,
-            von: d.min ? d.min.toISOString().slice(0, 10) : null,
-            bis: d.max ? d.max.toISOString().slice(0, 10) : null,
-          }])
-        )
-      };
+    // Convert to plain objects
+    const routeMap = {};
+    for (const [prov, bookMap] of Object.entries(raw)) {
+      routeMap[prov] = {};
+      for (const [bId, d] of Object.entries(bookMap)) {
+        routeMap[prov][bId] = {
+          von: d.min ? d.min.toISOString().slice(0, 10) : null,
+          bis: d.max ? d.max.toISOString().slice(0, 10) : null,
+          pax: d.maxPax || 16
+        };
+      }
     }
 
+    // Manual overrides: key = "{provider}_{bookingId}"
     const setting = await prisma.systemSetting.findUnique({
       where: { key: `JP_TRANSPORT_${year}_${tourType}` }
     });
-    const manualAssignments = setting ? JSON.parse(setting.value) : {};
+    const manualOverrides = setting ? JSON.parse(setting.value) : {};
 
-    res.json({ bookings, manualAssignments, suggestions, year, tourType });
+    res.json({ bookings, routeMap, manualOverrides, year, tourType });
   } catch (err) {
     console.error('Jahresplanung transport error:', err);
     res.status(500).json({ error: err.message });
