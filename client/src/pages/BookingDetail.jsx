@@ -1974,14 +1974,15 @@ export default function BookingDetail() {
               const vehicles = getVehicles(provider);
               const bestVehicle = findVehicle(vehicles, personCount, provider);
 
-              // Special handling for Chimgan routes: ALWAYS use Sprinter
+              // Special handling for Chimgan routes: 9-16 pax → Sprinter; ≤8 pax → regular vehicle
               const isChimganRoute = r.routeName === 'Tashkent - Chimgan' || r.routeName === 'Tashkent - Chimgan - Tashkent' || r.routeName === 'Chimgan Excursion';
 
               if (isChimganRoute) {
+                const chimganVehicle2 = personCount >= 9 ? 'Sprinter' : (personCount > 0 ? (bestVehicle?.name || 'Toyota Hiace') : 'Sprinter');
                 finalProvider = 'xayrulla';
-                transportType = 'Sprinter';
+                transportType = chimganVehicle2;
                 finalRateType = 'chimgan';
-                finalPrice = localGetPrice('xayrulla', 'Sprinter', 'chimgan');
+                finalPrice = localGetPrice('xayrulla', chimganVehicle2, 'chimgan');
               } else {
                 // Find all matching vehicles from localStorage data
                 const suitable = vehicles.filter(v => {
@@ -2195,10 +2196,11 @@ export default function BookingDetail() {
             const personCount = totalPax > 0 ? totalPax.toString() : '';
             const paxNum = parseInt(personCount) || 0;
 
-            // Special handling for Chimgan routes: ALWAYS use Sprinter
+            // Special handling for Chimgan routes: 9-16 pax → Sprinter; ≤8 pax → regular vehicle
             const isChimganRoute = template.route === 'Tashkent - Chimgan' || template.route === 'Tashkent - Chimgan - Tashkent' || template.route === 'Chimgan Excursion';
             if (isChimganRoute) {
-              const chimganPrice = localGetPrice('xayrulla', 'Sprinter', 'chimgan');
+              const chimganVehicle = (paxNum > 0 && paxNum < 9) ? 'Toyota Hiace' : 'Sprinter';
+              const chimganPrice = localGetPrice('xayrulla', chimganVehicle, 'chimgan');
               const tourTypeCode = b.tourType?.code;
               const daysToAdd = tourTypeCode === 'KAS' ? 14 : 1;
               const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, daysToAdd) : null;
@@ -2222,7 +2224,7 @@ export default function BookingDetail() {
                 shahar: template.shahar,
                 route: template.route,
                 person: personCount,
-                transportType: 'Sprinter',
+                transportType: chimganVehicle,
                 choiceTab: 'xayrulla',
                 choiceRate: 'chimgan',
                 price: chimganPrice
@@ -6305,8 +6307,13 @@ export default function BookingDetail() {
       if (provider === 'xayrulla' || provider === 'sevil' || provider?.startsWith('sevil-')) {
         const yutong = suitable.find(v => v.name.toLowerCase().includes('yutong'));
         const sprinter = suitable.find(v => v.name.toLowerCase().includes('sprinter'));
+        const karotishka = suitable.find(v => v.name.toLowerCase().includes('karotishka'));
         if (yutong && sprinter) {
-          return yutong.name;
+          return yutong.name; // Yutong preferred over Sprinter
+        }
+        // For xayrulla: prefer Karotishka over Sprinter (Sprinter is only for Chimgan 9-16 pax)
+        if (provider === 'xayrulla' && karotishka && sprinter) {
+          return karotishka.name;
         }
       }
       return suitable[0].name;
@@ -6813,20 +6820,22 @@ export default function BookingDetail() {
       return;
     }
 
-    // Special handling for Tashkent - Chimgan route: ALWAYS use Sprinter
+    // Special handling for Tashkent - Chimgan route
     if (newRouteValue === 'Tashkent - Chimgan' || newRouteValue === 'Chimgan Excursion') {
       const currentRoute = erRoutes.find(r => r.id === routeId);
       const personCount = parseInt(currentRoute?.person) || paxUzb || 0;
+      // 9-16 pax → Sprinter; ≤8 pax → regular vehicle; unknown (0) → Sprinter as default
+      const chimganVehicle = (personCount > 0 && personCount < 9) ? (getBestVehicleForRoute('xayrulla', personCount) || 'Toyota Hiace') : 'Sprinter';
 
       const updatedRoutes = erRoutes.map(r => {
         if (r.id === routeId) {
-          const autoPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
+          const autoPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
           return {
             ...r,
             route: newRouteValue,
             person: personCount > 0 ? personCount.toString() : r.person,
             choiceTab: 'xayrulla',
-            transportType: 'Sprinter',
+            transportType: chimganVehicle,
             choiceRate: 'chimgan',
             price: autoPrice || ''
           };
@@ -6913,12 +6922,13 @@ export default function BookingDetail() {
                              route.route === 'Chimgan Excursion';
 
       if (isChimganRoute) {
-        const chimganPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
+        const chimganVehicle = routePax >= 9 ? 'Sprinter' : (routePax > 0 ? getBestVehicleForRoute('xayrulla', routePax) || 'Toyota Hiace' : 'Sprinter');
+        const chimganPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
         return {
           ...route,
           person: routePax.toString(),
           choiceTab: 'xayrulla',
-          transportType: 'Sprinter',
+          transportType: chimganVehicle,
           choiceRate: 'chimgan',
           price: chimganPrice || route.price
         };
@@ -6993,15 +7003,16 @@ export default function BookingDetail() {
       // Skip if no PAX to update
       if (routePax <= 0) return r;
 
-      // Special handling for Chimgan routes - always use Sprinter
+      // Special handling for Chimgan routes: 9-16 pax → Sprinter; ≤8 pax → regular vehicle
       const isChimganRoute = r.route === 'Tashkent - Chimgan' || r.route === 'Tashkent - Chimgan - Tashkent' || r.route === 'Chimgan Excursion';
       if (isChimganRoute) {
-        const chimganPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
+        const chimganVehicle = routePax >= 9 ? 'Sprinter' : (getBestVehicleForRoute('xayrulla', routePax) || 'Toyota Hiace');
+        const chimganPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
         return {
           ...r,
           person: routePax.toString(),
           choiceTab: 'xayrulla',
-          transportType: 'Sprinter',
+          transportType: chimganVehicle,
           choiceRate: 'chimgan',
           price: chimganPrice || r.price
         };
@@ -7752,13 +7763,15 @@ export default function BookingDetail() {
                                route.route === 'Chimgan Excursion';
 
         if (isChimganRoute) {
-          const chimganPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
-          console.log(`  Route ${index + 1}: ${route.route} → Chimgan (Sprinter, $${chimganPrice})`);
+          // 9-16 pax → Sprinter; ≤8 pax → regular vehicle (Toyota Hiace etc.)
+          const chimganVehicle = routePax >= 9 ? 'Sprinter' : (getBestVehicleForRoute('xayrulla', routePax) || 'Toyota Hiace');
+          const chimganPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
+          console.log(`  Route ${index + 1}: ${route.route} → Chimgan (${chimganVehicle}, PAX=${routePax}, $${chimganPrice})`);
           return [{
             ...route,
             person: routePax.toString(),
             choiceTab: 'xayrulla',
-            transportType: 'Sprinter',
+            transportType: chimganVehicle,
             choiceRate: 'chimgan',
             price: chimganPrice || route.price
           }];
@@ -8125,13 +8138,15 @@ export default function BookingDetail() {
         // Chimgan routes
         const isChimganRoute = route.route === 'Tashkent - Chimgan - Tashkent';
         if (isChimganRoute) {
-          const chimganPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
-          console.log(`  CO Route ${index + 1}: ${route.route} → Chimgan (Sprinter, $${chimganPrice})`);
+          // 9-16 pax → Sprinter; ≤8 pax → regular vehicle (Toyota Hiace etc.)
+          const chimganVehicle = routePax >= 9 ? 'Sprinter' : (getBestVehicleForRoute('xayrulla', routePax) || 'Toyota Hiace');
+          const chimganPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
+          console.log(`  CO Route ${index + 1}: ${route.route} → Chimgan (${chimganVehicle}, PAX=${routePax}, $${chimganPrice})`);
           return [{
             ...route,
             person: routePax.toString(),
             choiceTab: 'xayrulla',
-            transportType: 'Sprinter',
+            transportType: chimganVehicle,
             choiceRate: 'chimgan',
             price: chimganPrice || route.price
           }];
@@ -14958,16 +14973,17 @@ ${rowsHtml}
                           onChange={(e) => {
                             const newPersonCount = parseInt(e.target.value) || 0;
 
-                            // Special handling for Tashkent-Chimgan: ALWAYS use Sprinter + chimgan
+                            // Special handling for Tashkent-Chimgan: 9-16 pax → Sprinter; ≤8 pax → regular vehicle
                             const isChimganRoute = route.route === 'Tashkent - Chimgan' || route.route === 'Tashkent - Chimgan - Tashkent' || route.route === 'Chimgan Excursion';
                             if (isChimganRoute && newPersonCount > 0) {
-                              const autoPrice = getPriceFromOpex('xayrulla', 'Sprinter', 'chimgan');
+                              const chimganVehicle = newPersonCount >= 9 ? 'Sprinter' : (getBestVehicleForRoute('xayrulla', newPersonCount) || 'Toyota Hiace');
+                              const autoPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
                               const updatedRoutes = erRoutes.map(r =>
                                 r.id === route.id ? {
                                   ...r,
                                   person: newPersonCount.toString(),
                                   choiceTab: 'xayrulla',
-                                  transportType: 'Sprinter',
+                                  transportType: chimganVehicle,
                                   choiceRate: 'chimgan',
                                   price: autoPrice || ''
                                 } : r
