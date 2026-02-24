@@ -425,12 +425,12 @@ export const jahresplanungApi = {
   },
   getTransport: (year, tourType) => api.get('/jahresplanung/transport', { params: { year, tourType } }),
   saveTransport: (year, tourType, data) => api.put('/jahresplanung/transport', { year, tourType, data }),
-  sendTransportTelegram: (provider, year, tourType, pdfBlob, filename, bookings = []) => {
+  sendTransportTelegram: (provider, year, tourType, pdfBlob, filename, messageText = '') => {
     const form = new FormData();
     form.append('pdf', pdfBlob, filename);
     form.append('year', String(year));
     form.append('tourType', tourType);
-    form.append('bookings', JSON.stringify(bookings));
+    form.append('messageText', messageText);
     return api.post(`/jahresplanung/send-transport-telegram/${provider}`, form, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });

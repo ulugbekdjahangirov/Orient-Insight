@@ -694,7 +694,7 @@ router.post('/webhook', async (req, res) => {
             `${emoji} *Transport Rejasi ${tp26Year} — ${tp26TourType}*`,
             `👤 *${providerLabel}*`,
             '',
-            stored.bookingLines ? `\`\`\`\n${stored.bookingLines}\n\`\`\`` : '',
+            stored.messageText ? `\`\`\`\n${stored.messageText}\n\`\`\`` : '',
             '',
             `${isConfirm ? '✅ TASDIQLADI' : '❌ RAD ETDI'}: *${fromName}*`
           ].filter(l => l !== undefined).join('\n');

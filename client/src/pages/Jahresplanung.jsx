@@ -998,24 +998,48 @@ function TransportTab({ tourType }) {
       const blob = generateTransportPDF(provId, items);
       const filename = `${YEAR}_${tourType}_Transport_${prov?.label || provId}.pdf`;
 
-      // Serialize booking rows (bookingNumber + PAX + segment date strings)
+      // Build formatted monospace table for Telegram
       const fmtShort = (d) => {
-        if (!d) return '—';
+        if (!d) return '——';
         const dt = new Date(d);
         return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`;
       };
-      const bookingsData = items.map(b => {
+      const pad = (s, w) => String(s ?? '').padEnd(w);
+
+      // Column definitions based on segment template
+      const template = getColTemplate(provId);
+      let multiIdx = 0;
+      const segCols = template.map(type => {
+        if (type === 'single') return { label: 'Vokzal', w: 7 };
+        multiIdx++;
+        return { label: `${multiIdx}-zayezd`, w: 13 }; // "16.03→18.03" = 11 chars
+      });
+      const allCols = [
+        { label: 'Guruh', w: 5 },
+        { label: 'PAX', w: 3 },
+        ...segCols,
+      ];
+
+      const headerLine = allCols.map(c => pad(c.label, c.w)).join('  ');
+      const separator  = allCols.map(c => '─'.repeat(c.w)).join('──');
+
+      const dataLines = items.map(b => {
         const bk = String(b.id);
         const segs = routeMap[provId]?.[bk]?.segments || [];
         const { pax } = getSegEffective(provId, bk, segs[0] || { von: null, bis: null });
-        const segStrs = segs.map(seg => {
+        const cells = [pad(b.bookingNumber, 5), pad(pax, 3)];
+        segs.forEach((seg, i) => {
           const { von, bis } = getSegEffective(provId, bk, seg);
-          return von === bis ? fmtShort(von) : `${fmtShort(von)}→${fmtShort(bis)}`;
+          const colW = segCols[i]?.w ?? 13;
+          const val = von === bis ? fmtShort(von) : `${fmtShort(von)}→${fmtShort(bis)}`;
+          cells.push(pad(val, colW));
         });
-        return { num: b.bookingNumber, pax, segs: segStrs.join('  ') };
-      });
+        return cells.join('  ');
+      }).join('\n');
 
-      await jahresplanungApi.sendTransportTelegram(provId, YEAR, tourType, blob, filename, bookingsData);
+      const messageText = `${headerLine}\n${separator}\n${dataLines}`;
+
+      await jahresplanungApi.sendTransportTelegram(provId, YEAR, tourType, blob, filename, messageText);
       toast.success(`Telegram → ${prov?.label || provId}`);
     } catch (err) {
       toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));

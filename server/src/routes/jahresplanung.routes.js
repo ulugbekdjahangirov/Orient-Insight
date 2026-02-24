@@ -461,10 +461,8 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
     const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[provider] || provider;
     const tourLabel = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tourType] || tourType;
 
-    // Parse bookings list from frontend
-    const bookings = JSON.parse(req.body.bookings || '[]');
-    // Format: "CO-01  16 pax  |  16.03→18.03  29.03  06.04→07.04"
-    const bookingLines = bookings.map(b => `${b.num}  ${b.pax} pax  |  ${b.segs}`).join('\n');
+    // Formatted table text from frontend (already has headers + aligned columns)
+    const messageText = req.body.messageText || '';
 
     // 1. Send PDF document
     if (pdfBuffer) {
@@ -478,12 +476,12 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
       await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
     }
 
-    // 2. Send confirmation request message with booking list + inline keyboard
+    // 2. Send confirmation request message with formatted table + inline keyboard
     const confText = [
       `🚌 *Transport Rejasi ${year} — ${tourLabel}*`,
       `👤 *${providerLabel}*`,
       '',
-      bookingLines ? `\`\`\`\n${bookingLines}\n\`\`\`` : '',
+      messageText ? `\`\`\`\n${messageText}\n\`\`\`` : '',
       '',
       'Yillik transport rejasini tasdiqlaysizmi?'
     ].filter(l => l !== undefined).join('\n');
@@ -501,12 +499,12 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
     });
     const messageId = msgRes.data?.result?.message_id || null;
 
-    // 3. Save confirmation record in SystemSetting (also save bookingLines for edited message)
+    // 3. Save confirmation record (store messageText for webhook to reuse when editing)
     const confKey = `JP_TRANSPORT_CONFIRM_${year}_${tourType}_${provider}`;
     await prisma.systemSetting.upsert({
       where: { key: confKey },
-      update: { value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, bookingLines, confirmedBy: null, respondedAt: null }) },
-      create: { key: confKey, value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, bookingLines, confirmedBy: null, respondedAt: null }) }
+      update: { value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, messageText, confirmedBy: null, respondedAt: null }) },
+      create: { key: confKey, value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, messageText, confirmedBy: null, respondedAt: null }) }
     });
 
     console.log(`Transport Telegram sent: ${providerLabel} → ${chatId}`);
