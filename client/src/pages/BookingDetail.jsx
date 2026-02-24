@@ -8289,9 +8289,23 @@ export default function BookingDetail() {
           console.log(`  📅 CO: ${r.route} → Same day as Train Station Drop-off (Samarkand)`);
           // Same day as previous route (don't increment)
         }
+        // RULE 4: Khiva-Urgench + Airport Pickup → same day
+        // (group leaves Khiva in morning, arrives Tashkent same day)
+        else if (prevRouteLower.includes('khiva') && prevRouteLower.includes('urgench') &&
+                 (currentRouteLower.includes('airport') || currentRouteLower.includes('pickup'))) {
+          isSameDay = true;
+          console.log(`  📅 CO: ${r.route} → Same day as Khiva-Urgench`);
+        }
         // DEFAULT: New day
         else {
-          if (index > 0) currentDay++;
+          if (index > 0) {
+            // Khiva-Urgench: +2 days (skip the Khiva free day when group explores old city on foot)
+            if (currentRouteLower.includes('khiva') && currentRouteLower.includes('urgench')) {
+              currentDay += 2;
+            } else {
+              currentDay++;
+            }
+          }
           lastSplitGroup = r.isSplit ? r.splitGroup : null;
         }
 

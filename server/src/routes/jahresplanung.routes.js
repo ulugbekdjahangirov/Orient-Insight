@@ -1225,8 +1225,8 @@ router.get('/transport', authenticate, async (req, res) => {
     });
 
     // Cluster consecutive dates into segments.
-    // Gap > 1 day between consecutive route dates → new segment.
-    function clusterDates(sortedEntries) {
+    // Gap > maxGap days between consecutive route dates → new segment.
+    function clusterDates(sortedEntries, maxGap = 1) {
       const segments = [];
       let segMin = null, segMax = null, segPax = 0;
       for (const { date: d, personCount: pc } of sortedEntries) {
@@ -1235,7 +1235,7 @@ router.get('/transport', authenticate, async (req, res) => {
           segMin = d; segMax = d; segPax = pax;
         } else {
           const gapDays = Math.round((d - segMax) / 86400000);
-          if (gapDays > 1) {
+          if (gapDays > maxGap) {
             segments.push({ von: segMin.toISOString().slice(0, 10), bis: segMax.toISOString().slice(0, 10), pax: segPax });
             segMin = d; segMax = d; segPax = pax;
           } else {
@@ -1247,6 +1247,10 @@ router.get('/transport', authenticate, async (req, res) => {
       if (segMin) segments.push({ von: segMin.toISOString().slice(0, 10), bis: segMax.toISOString().slice(0, 10), pax: segPax });
       return segments;
     }
+
+    // CO/Nosir: up to 7-day gap allowed within one segment
+    // (group stays ~7 days in Fergana between pickup and return routes)
+    const CLUSTER_GAP_OVERRIDE = { CO: { nosir: 7 } };
 
     // Collect all route dates per provider+booking
     const raw = { sevil: {}, xayrulla: {}, nosir: {} };
@@ -1264,7 +1268,8 @@ router.get('/transport', authenticate, async (req, res) => {
       routeMap[prov] = {};
       for (const [bId, entries] of Object.entries(bookMap)) {
         entries.sort((a, b) => a.date - b.date);
-        routeMap[prov][bId] = { segments: clusterDates(entries) };
+        const maxGap = CLUSTER_GAP_OVERRIDE[tourType]?.[prov] ?? 1;
+        routeMap[prov][bId] = { segments: clusterDates(entries, maxGap) };
       }
     }
 
