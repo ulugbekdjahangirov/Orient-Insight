@@ -9,6 +9,7 @@ const TABS = [
   { id: 'transport', label: 'Transport', icon: Bus },
   { id: 'gidlar', label: 'Gidlar', icon: Users },
   { id: 'hotels2026', label: 'Hotels 2026', icon: CalendarRange },
+  { id: 'restoran2026', label: 'Restoran 2026', icon: CalendarRange },
   { id: 'transport2026', label: 'Transport 2026', icon: CalendarRange },
 ];
 
@@ -757,6 +758,144 @@ function JpStatusBadge({ status }) {
   );
 }
 
+const MEAL_STATUS_CFG = {
+  PENDING:   { color: 'bg-yellow-100 text-yellow-800', label: 'Kutilmoqda', icon: '🕐' },
+  CONFIRMED: { color: 'bg-green-100 text-green-800',   label: 'Tasdiqladi', icon: '✅' },
+  REJECTED:  { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',  icon: '❌' },
+};
+
+function Restoran2026Tab({ mealConfirmations, subTab, onDelete }) {
+  const [openRestaurants, setOpenRestaurants] = useState({});
+  const [deletingId, setDeletingId] = useState(null);
+
+  // Filter by tourType
+  const filtered = mealConfirmations.filter(c => c.booking?.tourType?.code === subTab);
+
+  // Group by restaurantName
+  const byRestaurant = {};
+  filtered.forEach(c => {
+    const name = c.restaurantName || '—';
+    if (!byRestaurant[name]) byRestaurant[name] = [];
+    byRestaurant[name].push(c);
+  });
+  const restaurants = Object.entries(byRestaurant).sort(([a], [b]) => a.localeCompare(b));
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm('Bu qatorni o\'chirishni tasdiqlaysizmi?')) return;
+    setDeletingId(id);
+    try {
+      await telegramApi.deleteMealConfirmation(id);
+      onDelete(id);
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingId(null); }
+  };
+
+  if (restaurants.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <UtensilsCrossed className="w-12 h-12 mb-3 opacity-30" />
+        <p className="text-sm">Bu tur uchun hali restoranga Telegram yuborilmagan</p>
+        <p className="text-xs mt-1">Jahresplanung → Restoran tabidan yuborilgandan so'ng ko'rinadi</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {restaurants.map(([restName, confs]) => {
+        const isOpen = !!openRestaurants[restName];
+        const confirmedCount = confs.filter(c => c.status === 'CONFIRMED').length;
+        const pendingCount = confs.filter(c => c.status === 'PENDING').length;
+        const rejectedCount = confs.filter(c => c.status === 'REJECTED').length;
+
+        // Sort by bookingNumber
+        const sorted = [...confs].sort((a, b) =>
+          (a.booking?.bookingNumber || '').localeCompare(b.booking?.bookingNumber || '')
+        );
+
+        return (
+          <div key={restName} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            {/* Header */}
+            <button
+              onClick={() => setOpenRestaurants(prev => ({ ...prev, [restName]: !prev[restName] }))}
+              className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <UtensilsCrossed className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                <div className="text-left">
+                  <div className="font-semibold text-gray-900">{restName}</div>
+                  <div className="text-xs text-gray-400">{confs[0]?.city || ''}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs">
+                  {confirmedCount > 0 && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{confirmedCount}✅</span>}
+                  {pendingCount > 0 && <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{pendingCount}🕐</span>}
+                  {rejectedCount > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{rejectedCount}❌</span>}
+                  <span className="text-gray-400">{confs.length} ta guruh</span>
+                </div>
+                {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+              </div>
+            </button>
+
+            {/* Table */}
+            {isOpen && (
+              <div className="border-t border-gray-100 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                      <th className="px-4 py-2 text-left font-medium">Gruppe</th>
+                      <th className="px-4 py-2 text-right font-medium">PAX</th>
+                      <th className="px-4 py-2 text-left font-medium">Sana</th>
+                      <th className="px-4 py-2 text-left font-medium">Holat</th>
+                      <th className="px-4 py-2 text-left font-medium">Kim</th>
+                      <th className="px-4 py-2 text-left font-medium">Vaqt</th>
+                      <th className="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map(c => {
+                      const cfg = MEAL_STATUS_CFG[c.status] || MEAL_STATUS_CFG.PENDING;
+                      return (
+                        <tr key={c.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors group">
+                          <td className="px-4 py-2">
+                            <Link to={`/bookings/${c.bookingId}`} className="text-blue-600 hover:underline font-mono text-xs font-medium">
+                              {c.booking?.bookingNumber || c.bookingId}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-2 text-right text-gray-700">{c.pax}</td>
+                          <td className="px-4 py-2 text-gray-700 text-xs">{c.mealDate || '—'}</td>
+                          <td className="px-4 py-2">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
+                              {cfg.icon} {cfg.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-xs text-gray-500">{c.confirmedBy || '—'}</td>
+                          <td className="px-4 py-2 text-xs text-gray-400">{c.respondedAt ? formatDateTime(c.respondedAt) : '—'}</td>
+                          <td className="px-4 py-2 text-right">
+                            <button
+                              onClick={e => handleDelete(e, c.id)}
+                              disabled={deletingId === c.id}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-300 hover:text-red-500 transition-all"
+                            >
+                              {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDeleteVisit }) {
   const [openHotels, setOpenHotels] = useState({});
   const [openGroups, setOpenGroups] = useState({});
@@ -1018,6 +1157,7 @@ export default function Partners() {
   const [confirmations, setConfirmations] = useState([]);
   const [jpSections, setJpSections] = useState([]);
   const [hotels2026SubTab, setHotels2026SubTab] = useState('ER');
+  const [restoran2026SubTab, setRestoran2026SubTab] = useState('ER');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(AUTO_REFRESH_SEC);
@@ -1601,6 +1741,45 @@ export default function Partners() {
                       return { ...s, groups };
                     }));
                   }}
+                />
+              </>
+            );
+          })()}
+          {activeTab === 'restoran2026' && (() => {
+            const TOUR_TYPES = ['ER', 'CO', 'KAS', 'ZA'];
+            const r2Counts = {};
+            mealConfirmations.forEach(c => {
+              const tt = c.booking?.tourType?.code;
+              if (tt) r2Counts[tt] = (r2Counts[tt] || 0) + 1;
+            });
+            return (
+              <>
+                <div className="flex gap-1 mb-4">
+                  {TOUR_TYPES.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setRestoran2026SubTab(sub)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        restoran2026SubTab === sub
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {sub}
+                      {r2Counts[sub] ? (
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          restoran2026SubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {r2Counts[sub]}
+                        </span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+                <Restoran2026Tab
+                  mealConfirmations={mealConfirmations}
+                  subTab={restoran2026SubTab}
+                  onDelete={(id) => setMealConfirmations(prev => prev.filter(c => c.id !== id))}
                 />
               </>
             );

@@ -1367,7 +1367,7 @@ router.get('/meal-confirmations', authenticate, async (req, res) => {
     const where = bookingId ? { bookingId: parseInt(bookingId) } : {};
     const confirmations = await prisma.mealConfirmation.findMany({
       where,
-      include: { booking: { select: { bookingNumber: true, departureDate: true } } },
+      include: { booking: { select: { bookingNumber: true, departureDate: true, tourType: { select: { code: true } } } } },
       orderBy: { sentAt: 'desc' }
     });
     res.json({ confirmations });
