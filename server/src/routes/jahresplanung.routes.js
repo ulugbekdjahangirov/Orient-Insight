@@ -667,6 +667,34 @@ router.put('/state', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/jahresplanung/meal-overrides?year=2026&tourType=ER
+router.get('/meal-overrides', authenticate, async (req, res) => {
+  try {
+    const { year, tourType } = req.query;
+    const key = `JP_MEAL_OVR_${year}_${tourType}`;
+    const s = await prisma.systemSetting.findUnique({ where: { key } });
+    res.json(s ? JSON.parse(s.value) : {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/jahresplanung/meal-overrides
+router.put('/meal-overrides', authenticate, async (req, res) => {
+  try {
+    const { year, tourType, data } = req.body;
+    const key = `JP_MEAL_OVR_${year}_${tourType}`;
+    await prisma.systemSetting.upsert({
+      where: { key },
+      update: { value: JSON.stringify(data) },
+      create: { key, value: JSON.stringify(data) }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/jahresplanung/all-hotels — active hotels with city info (for hotel picker)
 router.get('/all-hotels', authenticate, async (req, res) => {
   try {

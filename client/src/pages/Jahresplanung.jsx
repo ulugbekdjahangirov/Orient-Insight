@@ -834,12 +834,56 @@ function fmtDep(dateStr) {
   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
-function RestoranCard({ restaurant, open, onToggle, tourType }) {
+function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverride }) {
   const { name, city, hasTelegram, bookings } = restaurant;
+  const [editingCell, setEditingCell] = useState(null); // `${bookingId}_pax` or `${bookingId}_date`
+  const [editValue, setEditValue] = useState('');
+
+  const getKey = (bookingId) => `${name}_${bookingId}`;
+  const getEffPax = (b) => overrides[getKey(b.bookingId)]?.pax ?? 16;
+  const getEffDate = (b) => overrides[getKey(b.bookingId)]?.date ?? b.mealDate;
 
   const confirmedCount = bookings.filter(b => b.confirmation?.status === 'CONFIRMED').length;
   const pendingCount   = bookings.filter(b => b.confirmation?.status === 'PENDING').length;
-  const totalPax       = bookings.reduce((s, b) => s + (b.pax || 0), 0);
+  const totalPax       = bookings.reduce((s, b) => s + getEffPax(b), 0);
+
+  const startEdit = (e, bookingId, field, current) => {
+    e.stopPropagation();
+    setEditingCell(`${bookingId}_${field}`);
+    setEditValue(current ?? '');
+  };
+
+  const commitEdit = (bookingId, field) => {
+    const key = getKey(bookingId);
+    const prev = overrides[key] || {};
+    if (field === 'pax') {
+      const val = parseInt(editValue, 10);
+      onOverride(key, { ...prev, pax: isNaN(val) ? 16 : val });
+    } else {
+      // editValue is YYYY-MM-DD from <input type="date">, store as DD.MM.YYYY
+      onOverride(key, { ...prev, date: editValue ? fromInputDate(editValue) : null });
+    }
+    setEditingCell(null);
+  };
+
+  const handleKeyDown = (e, bookingId, field) => {
+    if (e.key === 'Enter') commitEdit(bookingId, field);
+    if (e.key === 'Escape') setEditingCell(null);
+  };
+
+  // Convert DD.MM.YYYY → YYYY-MM-DD for <input type="date">
+  const toInputDate = (dmy) => {
+    if (!dmy) return '';
+    const parts = dmy.split('.');
+    if (parts.length !== 3) return '';
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  };
+  // Convert YYYY-MM-DD → DD.MM.YYYY
+  const fromInputDate = (iso) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}.${m}.${y}`;
+  };
 
   const handlePdf = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -850,8 +894,8 @@ function RestoranCard({ restaurant, open, onToggle, tourType }) {
 
     const rows = bookings.map(b => [
       b.bookingNumber,
-      b.pax,
-      b.mealDate || '—',
+      getEffPax(b),
+      getEffDate(b) || '—',
       b.confirmation ? (MEAL_STATUS_CFG[b.confirmation.status]?.label || b.confirmation.status) : '—',
     ]);
 
@@ -914,25 +958,74 @@ function RestoranCard({ restaurant, open, onToggle, tourType }) {
               </tr>
             </thead>
             <tbody>
-              {bookings.map(b => (
-                <tr key={b.bookingId} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-2">
-                    <Link to={`/bookings/${b.bookingId}`} className="text-blue-600 hover:underline font-mono text-xs font-medium">
-                      {b.bookingNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right text-gray-700">{b.pax}</td>
-                  <td className="px-4 py-2 text-gray-700 text-xs font-medium">
-                    {b.mealDate || '—'}
-                  </td>
-                  <td className="px-4 py-2">
-                    {b.confirmation
-                      ? <MealStatusBadge status={b.confirmation.status} confirmedBy={b.confirmation.confirmedBy} />
-                      : <span className="text-xs text-gray-300">—</span>
-                    }
-                  </td>
-                </tr>
-              ))}
+              {bookings.map(b => {
+                const effPax = getEffPax(b);
+                const effDate = getEffDate(b);
+                const editingPax  = editingCell === `${b.bookingId}_pax`;
+                const editingDate = editingCell === `${b.bookingId}_date`;
+                return (
+                  <tr key={b.bookingId} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-2">
+                      <Link to={`/bookings/${b.bookingId}`} className="text-blue-600 hover:underline font-mono text-xs font-medium">
+                        {b.bookingNumber}
+                      </Link>
+                    </td>
+                    {/* PAX — editable */}
+                    <td className="px-4 py-2 text-right">
+                      {editingPax ? (
+                        <input
+                          type="number"
+                          className="w-16 text-right border border-blue-400 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          value={editValue}
+                          autoFocus
+                          onChange={e => setEditValue(e.target.value)}
+                          onBlur={() => commitEdit(b.bookingId, 'pax')}
+                          onKeyDown={e => handleKeyDown(e, b.bookingId, 'pax')}
+                        />
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 rounded px-1 py-0.5 text-gray-700 select-none"
+                          title="O'zgartirish uchun bosing"
+                          onClick={e => startEdit(e, b.bookingId, 'pax', String(effPax))}
+                        >
+                          {effPax}
+                        </span>
+                      )}
+                    </td>
+                    {/* Sana — editable */}
+                    <td className="px-4 py-2">
+                      {editingDate ? (
+                        <input
+                          type="date"
+                          className="border border-blue-400 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          value={editValue}
+                          autoFocus
+                          onChange={e => setEditValue(e.target.value)}
+                          onBlur={() => { commitEdit(b.bookingId, 'date'); }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') commitEdit(b.bookingId, 'date');
+                            if (e.key === 'Escape') setEditingCell(null);
+                          }}
+                        />
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 rounded px-1 py-0.5 text-gray-700 text-xs font-medium select-none"
+                          title="O'zgartirish uchun bosing"
+                          onClick={e => startEdit(e, b.bookingId, 'date', toInputDate(effDate))}
+                        >
+                          {effDate || '—'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {b.confirmation
+                        ? <MealStatusBadge status={b.confirmation.status} confirmedBy={b.confirmation.confirmedBy} />
+                        : <span className="text-xs text-gray-300">—</span>
+                      }
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             {bookings.length > 0 && (
               <tfoot>
@@ -954,6 +1047,38 @@ function RestoranTab({ tourType }) {
   const [loading, setLoading] = useState(true);
   const [restaurants, setRestaurants] = useState([]);
   const [openCards, setOpenCards] = useState({});
+  const [overrides, setOverrides] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`jp_meal_overrides_${YEAR}_${tourType}`) || '{}'); }
+    catch { return {}; }
+  });
+  const saveTimerRef = useRef(null);
+
+  // Load from localStorage instantly, then overwrite with DB (authoritative)
+  useEffect(() => {
+    try { setOverrides(JSON.parse(localStorage.getItem(`jp_meal_overrides_${YEAR}_${tourType}`) || '{}')); }
+    catch { setOverrides({}); }
+    jahresplanungApi.getMealOverrides(YEAR, tourType)
+      .then(res => {
+        const data = res.data || {};
+        setOverrides(data);
+        try { localStorage.setItem(`jp_meal_overrides_${YEAR}_${tourType}`, JSON.stringify(data)); } catch {}
+      })
+      .catch(() => {});
+  }, [tourType]);
+
+  const handleOverride = (key, value) => {
+    setOverrides(prev => {
+      const next = { ...prev, [key]: value };
+      // Update localStorage cache immediately
+      try { localStorage.setItem(`jp_meal_overrides_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      // Debounced save to DB
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        jahresplanungApi.saveMealOverrides(YEAR, tourType, next).catch(() => {});
+      }, 1000);
+      return next;
+    });
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -1010,6 +1135,8 @@ function RestoranTab({ tourType }) {
           tourType={tourType}
           open={!!openCards[rest.name]}
           onToggle={() => setOpenCards(prev => ({ ...prev, [rest.name]: !prev[rest.name] }))}
+          overrides={overrides}
+          onOverride={handleOverride}
         />
       ))}
     </div>
@@ -1047,7 +1174,7 @@ function HotelsTab({ tourType }) {
       .catch(() => {});
   }, []);
 
-  // Combined load: hotels + state + jpSections (localhost first for instant UX, then DB authoritative)
+  // Combined load: hotels + state + jpSections (localStorage = fast cache, DB = authoritative)
   useEffect(() => {
     loadingRef.current = true;
     const fromLS = (key) => { try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : {}; } catch { return {}; } };
@@ -1119,6 +1246,7 @@ function HotelsTab({ tourType }) {
       }
 
       setOverrides(o); setRowStatuses(merged); setCityExtraHotels(c); setBookingHotelAssign(h);
+      // Update localStorage cache with authoritative DB data
       try {
         localStorage.setItem(`jp_overrides_${YEAR}_${tourType}`, JSON.stringify(o));
         localStorage.setItem(`jp_statuses_${YEAR}_${tourType}`, JSON.stringify(merged));
@@ -1186,7 +1314,6 @@ function HotelsTab({ tourType }) {
         for (const hd of currentCityHotels) {
           for (const b of hd.bookings) {
             const status = rowStatuses[rowKey(hd.hotel.id, b)];
-            // Move if NOT confirmed (null = unset, 'waiting', 'cancelled')
             if (status !== 'confirmed') {
               next[cityAssignKey(cityName, b)] = hotel.id;
             }
@@ -1223,7 +1350,6 @@ function HotelsTab({ tourType }) {
   };
 
   const handleRemoveHotel = (cityName, hotelId) => {
-    // Clean up any assignments pointing to this hotel (they fall back to original)
     setBookingHotelAssign(prev => {
       const next = { ...prev };
       Object.keys(next).forEach(k => { if (next[k] === hotelId) delete next[k]; });
