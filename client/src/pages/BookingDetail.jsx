@@ -7498,7 +7498,9 @@ export default function BookingDetail() {
         || parseInt(formData.paxUzbekistan) || parseInt(booking?.paxUzbekistan) || 0;
       const paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length
         || parseInt(formData.paxTurkmenistan) || parseInt(booking?.paxTurkmenistan) || 0;
-      const totalPax = paxUzb + paxTkm;
+      // totalPax = booking.pax (e.g. 16), NOT paxUzb+paxTkm (which can exceed real total
+      // if paxUzbekistan was entered equal to full group size)
+      const totalPax = parseInt(booking?.pax) || parseInt(formData.pax) || (paxUzb + paxTkm);
 
       console.log(`🔧 Auto-fixing routes: PAX Total=${totalPax}, UZB=${paxUzb}, TKM=${paxTkm}`);
 
