@@ -928,9 +928,30 @@ function TransportTab({ tourType }) {
     setBookings([]);
     jahresplanungApi.getTransport(YEAR, tourType)
       .then(res => {
-        setBookings(res.data.bookings || []);
-        setRouteMap(res.data.routeMap || {});
-        const ovr = res.data.manualOverrides || {};
+        const bookingsData = res.data.bookings || [];
+        const routeMapData = res.data.routeMap || {};
+        let ovr = { ...(res.data.manualOverrides || {}) };
+
+        // Auto-fill missing 2nd segments for ER/Xayrulla (Von+11, Bis+12 from 1st multi-day segment)
+        if (tourType === 'ER') {
+          let changed = false;
+          for (const [bkId, data] of Object.entries(routeMapData['xayrulla'] || {})) {
+            const segs = data.segments || [];
+            // Count only multi-day segments (same logic as getVisibleSegs for ER/xayrulla)
+            const multiSegs = segs.filter(s => s.von !== s.bis);
+            if (multiSegs.length === 1 && multiSegs[0].von) {
+              const k = `xayrulla_${bkId}_VCOL1`;
+              if (!ovr[k]?.vonOverride) {
+                ovr[k] = { vonOverride: addDaysLocal(multiSegs[0].von, 11), bisOverride: addDaysLocal(multiSegs[0].von, 12) };
+                changed = true;
+              }
+            }
+          }
+          if (changed) jahresplanungApi.saveTransport(YEAR, tourType, ovr).catch(() => {});
+        }
+
+        setBookings(bookingsData);
+        setRouteMap(routeMapData);
         setManualOverrides(ovr);
         try { localStorage.setItem(`jp_transport_ovr_${YEAR}_${tourType}`, JSON.stringify(ovr)); } catch {}
       })
@@ -949,6 +970,8 @@ function TransportTab({ tourType }) {
 
   // Override key uses original segment von as stable ID
   const ovrKey = (provider, bookingId, segVon) => `${provider}_${bookingId}_${segVon}`;
+  // Virtual column key for bookings that have fewer segments than the template
+  const vColKey = (provider, bookingId, colIdx) => `${provider}_${bookingId}_VCOL${colIdx}`;
 
   const getSegEffective = (provider, bookingId, seg) => {
     const k = ovrKey(provider, bookingId, seg.von);
@@ -1130,13 +1153,20 @@ function TransportTab({ tourType }) {
   });
 
   // Render all segments for a booking — labels are in the header, not here
-  const renderBookingSegments = (provider, booking) => {
+  // colCount: total columns to render (pads with empty virtual cells if booking has fewer segs)
+  const renderBookingSegments = (provider, booking, colCount = 0) => {
     const bk = String(booking.id);
     const data = routeMap[provider]?.[bk];
-    if (!data?.segments?.length) return null;
+    const segments = data?.segments || [];
+    const visSegs = getVisibleSegs(provider, bk, segments);
+    if (visSegs.length === 0 && colCount === 0) return null;
     const isCancelled = booking.status === 'CANCELLED';
-    const segments = data.segments;
-    const { pax } = getSegEffective(provider, bk, segments[0]);
+    const { pax } = visSegs.length > 0
+      ? getSegEffective(provider, bk, visSegs[0])
+      : { pax: 16 };
+
+    // Build columns: actual visible segs + virtual empty cols to reach colCount
+    const totalCols = Math.max(visSegs.length, colCount);
 
     return (
       <div
@@ -1156,15 +1186,23 @@ function TransportTab({ tourType }) {
           <EditCell value={pax} onChange={v => segments.forEach(s => updateSegOverride(provider, bk, s.von, { paxOverride: v }))} />
         </div>
 
-
         {/* Sanalar */}
         <div className="flex items-center flex-1">
-          {getVisibleSegs(provider, bk, segments)
-            .map((seg, idx) => {
-            const { von, bis } = getSegEffective(provider, bk, seg);
-            const isSingleDay = von === bis;
+          {Array.from({ length: totalCols }, (_, idx) => {
+            const seg = visSegs[idx]; // undefined if virtual column
+            const isVirtual = !seg;
+            let von, bis, isSingleDay;
+            if (!isVirtual) {
+              ({ von, bis } = getSegEffective(provider, bk, seg));
+              isSingleDay = von === bis;
+            } else {
+              const ovr = manualOverrides[vColKey(provider, bk, idx)];
+              von = ovr?.vonOverride || null;
+              bis = ovr?.bisOverride || null;
+              isSingleDay = false;
+            }
             return (
-              <div key={seg.von} className="flex items-center flex-shrink-0">
+              <div key={isVirtual ? `vcol-${idx}` : seg.von} className="flex items-center flex-shrink-0">
                 {idx > 0 && (
                   <div className="bg-gray-200 flex-shrink-0"
                     style={{ width: 1, height: 28, marginLeft: SEP_MX, marginRight: SEP_MX }}
@@ -1180,11 +1218,17 @@ function TransportTab({ tourType }) {
                 ) : (
                   <div className="flex items-center flex-shrink-0">
                     <div style={{ width: COL_W }} className="flex justify-center">
-                      <DateCell value={von} onChange={v => updateSegOverride(provider, bk, seg.von, { vonOverride: v })} />
+                      <DateCell value={von} onChange={v => {
+                        if (!isVirtual) updateSegOverride(provider, bk, seg.von, { vonOverride: v });
+                        else saveOverrides({ ...manualOverrides, [vColKey(provider, bk, idx)]: { ...manualOverrides[vColKey(provider, bk, idx)], vonOverride: v } });
+                      }} />
                     </div>
                     <div style={{ width: COL_GAP }} />
                     <div style={{ width: COL_W }} className="flex justify-center">
-                      <DateCell value={bis} onChange={v => updateSegOverride(provider, bk, seg.von, { bisOverride: v })} />
+                      <DateCell value={bis} onChange={v => {
+                        if (!isVirtual) updateSegOverride(provider, bk, seg.von, { bisOverride: v });
+                        else saveOverrides({ ...manualOverrides, [vColKey(provider, bk, idx)]: { ...manualOverrides[vColKey(provider, bk, idx)], bisOverride: v } });
+                      }} />
                     </div>
                   </div>
                 )}
@@ -1228,6 +1272,14 @@ function TransportTab({ tourType }) {
         // Total segment count
         const segCount = items.reduce((s, b) =>
           s + (routeMap[prov.id]?.[String(b.id)]?.segments?.length || 0), 0);
+        // Max visible segments across all bookings — drives header + row column count
+        let provColCount = 0;
+        for (const b of items) {
+          const bk = String(b.id);
+          const allSegs = routeMap[prov.id]?.[bk]?.segments || [];
+          const vis = getVisibleSegs(prov.id, bk, allSegs);
+          if (vis.length > provColCount) provColCount = vis.length;
+        }
         return (
           <div key={prov.id} className={`mb-3 rounded-xl border overflow-hidden ${prov.border}`}>
             <button
@@ -1247,6 +1299,24 @@ function TransportTab({ tourType }) {
                   </span>
                 )}
                 <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const blob = generateTransportPDF(prov.id, items);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${YEAR}_${tourType}_Transport_${prov.label}.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  disabled={items.length === 0}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                  title={`PDF yuklab olish — ${prov.label}`}
+                >
+                  <Download className="w-3.5 h-3.5"/>
+                  PDF
+                </button>
+                <button
                   onClick={(e) => { e.stopPropagation(); handleTransportTelegram(prov.id, items); }}
                   disabled={!!sendingTransportTg[prov.id] || items.length === 0}
                   className="flex items-center gap-1 px-2.5 py-1 bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
@@ -1263,27 +1333,36 @@ function TransportTab({ tourType }) {
 
             {isOpen && (
               <div className="bg-white">
-                {/* Column header — 1-zayezd / Vokzal / 2-zayezd with Von→Bis sub-labels */}
+                {/* Column header — derived from booking with most visible segments (same logic as data rows) */}
                 {(() => {
-                  const template = getColTemplate(prov.id);
-                  const totalMulti = template.filter(t => t === 'multi').length;
-                  const showZayezdLabel = (ZAYEZD_LABEL_MAP[tourType]?.has(prov.id) ?? false) && totalMulti > 1;
+                  // Find booking with most visible segments — drives header column count
+                  let templateSegs = [];
+                  let templateBkId = null;
+                  for (const b of items) {
+                    const bk = String(b.id);
+                    const allSegs = routeMap[prov.id]?.[bk]?.segments || [];
+                    const vis = getVisibleSegs(prov.id, bk, allSegs);
+                    if (vis.length > templateSegs.length) { templateSegs = vis; templateBkId = bk; }
+                  }
+                  const showZayezdLabel = templateSegs.length > 1;
                   let multiCount = 0;
                   return (
                     <div className="px-8 py-2.5 flex items-end text-xs bg-gray-50 border-b border-gray-200">
                       <span className="w-20 flex-shrink-0 mr-8 text-gray-400 font-medium">Guruh</span>
                       <span className="w-10 flex-shrink-0 mr-8 text-gray-400 font-medium">PAX</span>
                       <div className="flex items-end flex-1">
-                        {template.map((type, idx) => {
-                          if (type !== 'single') multiCount++;
+                        {templateSegs.map((seg, idx) => {
+                          const { von, bis } = getSegEffective(prov.id, templateBkId, seg);
+                          const isSingle = von === bis;
+                          if (!isSingle) multiCount++;
                           return (
-                            <div key={idx} className="flex items-end flex-shrink-0">
+                            <div key={seg.von || idx} className="flex items-end flex-shrink-0">
                               {idx > 0 && (
                                 <div className="bg-gray-200 flex-shrink-0"
                                   style={{ width: 1, height: 32, marginLeft: SEP_MX, marginRight: SEP_MX }}
                                 />
                               )}
-                              {type === 'single' ? (
+                              {isSingle ? (
                                 <div style={{ width: COL_W }} className="text-center text-gray-400 font-medium">
                                   Vokzal
                                 </div>
@@ -1314,7 +1393,7 @@ function TransportTab({ tourType }) {
                     Bu provayder uchun route&apos;lar topilmadi
                   </div>
                 ) : (
-                  items.map(b => renderBookingSegments(prov.id, b))
+                  items.map(b => renderBookingSegments(prov.id, b, provColCount))
                 )}
               </div>
             )}
