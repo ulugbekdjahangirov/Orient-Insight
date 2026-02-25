@@ -1127,22 +1127,22 @@ function TransportTab({ tourType }) {
       head: [cols],
       body: rows,
       startY: 22,
-      styles: { fontSize: 9, cellPadding: 3 },
+      styles: { fontSize: 8, cellPadding: 1.8 },
       headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [245, 248, 255] },
     });
 
-    // Detailed route tables per booking
-    for (const b of items) {
-      const bk = String(b.id);
-      const details = routeDetails[provId]?.[bk] || [];
-      if (details.length === 0) continue;
+    // Detailed route table — only first booking (as sample)
+    const firstWithRoutes = items.find(b => (routeDetails[provId]?.[String(b.id)] || []).length > 0);
+    if (firstWithRoutes) {
+      const bk = String(firstWithRoutes.id);
+      const details = routeDetails[provId][bk];
+      const startY = doc.lastAutoTable.finalY + 8;
 
-      const startY = doc.lastAutoTable.finalY + 10;
       doc.setFontSize(9);
       doc.setTextColor(30, 30, 30);
       doc.setFont('helvetica', 'bold');
-      doc.text(b.bookingNumber, 14, startY - 2);
+      doc.text(firstWithRoutes.bookingNumber, 14, startY - 2);
       doc.setFont('helvetica', 'normal');
 
       const detailRows = details.map((r, i) => [
@@ -1159,16 +1159,16 @@ function TransportTab({ tourType }) {
         head: [['#', 'Sana', "Yo'nalish", 'PAX', 'Vaqt', 'Avtomobil', 'Sayohat dasturi']],
         body: detailRows,
         startY,
-        styles: { fontSize: 7.5, cellPadding: 2 },
+        styles: { fontSize: 7, cellPadding: 1.5 },
         headStyles: { fillColor: [234, 179, 8], textColor: 30, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [254, 252, 232] },
         columnStyles: {
-          0: { cellWidth: 8 },
-          1: { cellWidth: 22 },
-          2: { cellWidth: 38 },
-          3: { cellWidth: 10 },
-          4: { cellWidth: 14 },
-          5: { cellWidth: 28 },
+          0: { cellWidth: 7 },
+          1: { cellWidth: 20 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 9 },
+          4: { cellWidth: 12 },
+          5: { cellWidth: 25 },
           6: { cellWidth: 'auto' },
         },
       });
