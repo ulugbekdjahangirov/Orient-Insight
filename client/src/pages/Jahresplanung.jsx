@@ -1034,14 +1034,6 @@ function TransportTab({ tourType }) {
   const generateTransportPDF = (provId, items) => {
     const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
     const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
-    const template = getColTemplate(provId);
-
-    // Column headers
-    const cols = ['Guruh', 'PAX'];
-    template.forEach(type => {
-      if (type === 'single') { cols.push('Vokzal'); }
-      else { cols.push('Von'); cols.push('Bis'); }
-    });
 
     const fmtD = (d) => {
       if (!d) return '—';
@@ -1049,17 +1041,84 @@ function TransportTab({ tourType }) {
       return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
     };
 
+    // Compute provColCount the same way as the UI: max visible segs + virtual cols
+    let provColCount = 0;
+    for (const b of items) {
+      const bk = String(b.id);
+      const allSegs = routeMap[provId]?.[bk]?.segments || [];
+      const vis = getVisibleSegs(provId, bk, allSegs);
+      if (vis.length > provColCount) provColCount = vis.length;
+    }
+    // Also account for virtual columns (VCOL keys in manualOverrides)
+    for (const b of items) {
+      const bk = String(b.id);
+      const prefix = `${provId}_${bk}_VCOL`;
+      for (const k of Object.keys(manualOverrides)) {
+        if (k.startsWith(prefix)) {
+          const idx = parseInt(k.slice(prefix.length), 10);
+          if (!isNaN(idx) && idx + 1 > provColCount) provColCount = idx + 1;
+        }
+      }
+    }
+
+    // Find template booking (most visible segs) for column type determination
+    let templateSegs = [];
+    let templateBkId = null;
+    for (const b of items) {
+      const bk = String(b.id);
+      const allSegs = routeMap[provId]?.[bk]?.segments || [];
+      const vis = getVisibleSegs(provId, bk, allSegs);
+      if (vis.length > templateSegs.length) { templateSegs = vis; templateBkId = bk; }
+    }
+
+    // Build column headers
+    const cols = ['Guruh', 'PAX'];
+    let multiIdx = 0;
+    for (let idx = 0; idx < provColCount; idx++) {
+      let isSingle = false;
+      if (idx < templateSegs.length && templateBkId) {
+        const eff = getSegEffective(provId, templateBkId, templateSegs[idx]);
+        isSingle = eff.von === eff.bis;
+      }
+      if (isSingle) {
+        cols.push('Vokzal');
+      } else {
+        multiIdx++;
+        if (provColCount > 1) { cols.push(`${multiIdx}-z Von`); cols.push(`${multiIdx}-z Bis`); }
+        else { cols.push('Von'); cols.push('Bis'); }
+      }
+    }
+
+    // Build rows — pad with virtual col values when visSegs < provColCount
     const rows = items.map(b => {
       const bk = String(b.id);
       const allSegs = routeMap[provId]?.[bk]?.segments || [];
-      const segs = getVisibleSegs(provId, bk, allSegs);
-      const { pax } = getSegEffective(provId, bk, allSegs[0] || { von: null, bis: null });
+      const visSegs = getVisibleSegs(provId, bk, allSegs);
+      const totalCols = Math.max(visSegs.length, provColCount);
+      const { pax } = visSegs.length > 0
+        ? getSegEffective(provId, bk, visSegs[0])
+        : { pax: manualOverrides[vColKey(provId, bk, 0)]?.paxOverride ?? 16 };
       const row = [b.bookingNumber, String(pax)];
-      segs.forEach(seg => {
-        const { von, bis } = getSegEffective(provId, bk, seg);
-        if (von === bis) { row.push(fmtD(von)); }
+      for (let idx = 0; idx < totalCols; idx++) {
+        const isVirtual = idx >= visSegs.length;
+        let von, bis;
+        if (!isVirtual) {
+          const eff = getSegEffective(provId, bk, visSegs[idx]);
+          von = eff.von; bis = eff.bis;
+        } else {
+          const ovr = manualOverrides[vColKey(provId, bk, idx)];
+          von = ovr?.vonOverride || null;
+          bis = ovr?.bisOverride || null;
+        }
+        // Determine header type for this column
+        let isHeaderSingle = false;
+        if (idx < templateSegs.length && templateBkId) {
+          const eff = getSegEffective(provId, templateBkId, templateSegs[idx]);
+          isHeaderSingle = eff.von === eff.bis;
+        }
+        if (isHeaderSingle) { row.push(fmtD(von)); }
         else { row.push(fmtD(von)); row.push(fmtD(bis)); }
-      });
+      }
       return row;
     });
 
@@ -1095,14 +1154,44 @@ function TransportTab({ tourType }) {
       };
       const pad = (s, w) => String(s ?? '').padEnd(w);
 
-      // Column definitions based on segment template
-      const template = getColTemplate(provId);
-      let multiIdx = 0;
-      const segCols = template.map(type => {
-        if (type === 'single') return { label: 'Vokzal', w: 7 };
-        multiIdx++;
-        return { label: `${multiIdx}-zayezd`, w: 13 }; // "16.03→18.03" = 11 chars
-      });
+      // Compute provColCount same as UI (visible segs + virtual cols)
+      let provColCount = 0;
+      for (const b of items) {
+        const bk = String(b.id);
+        const allSegs = routeMap[provId]?.[bk]?.segments || [];
+        const vis = getVisibleSegs(provId, bk, allSegs);
+        if (vis.length > provColCount) provColCount = vis.length;
+      }
+      for (const b of items) {
+        const bk = String(b.id);
+        const prefix = `${provId}_${bk}_VCOL`;
+        for (const k of Object.keys(manualOverrides)) {
+          if (k.startsWith(prefix)) {
+            const idx = parseInt(k.slice(prefix.length), 10);
+            if (!isNaN(idx) && idx + 1 > provColCount) provColCount = idx + 1;
+          }
+        }
+      }
+      // Find template booking for column types
+      let tSegs = []; let tBkId = null;
+      for (const b of items) {
+        const bk = String(b.id);
+        const allSegs = routeMap[provId]?.[bk]?.segments || [];
+        const vis = getVisibleSegs(provId, bk, allSegs);
+        if (vis.length > tSegs.length) { tSegs = vis; tBkId = bk; }
+      }
+      // Build segCols using same logic as PDF
+      let multiCnt = 0;
+      const segCols = [];
+      for (let idx = 0; idx < provColCount; idx++) {
+        let isSingle = false;
+        if (idx < tSegs.length && tBkId) {
+          const eff = getSegEffective(provId, tBkId, tSegs[idx]);
+          isSingle = eff.von === eff.bis;
+        }
+        if (isSingle) { segCols.push({ label: 'Vokzal', w: 7, idx, type: 'single' }); }
+        else { multiCnt++; segCols.push({ label: provColCount > 1 ? `${multiCnt}-zayezd` : 'Zayezd', w: 13, idx, type: 'multi' }); }
+      }
       const allCols = [
         { label: 'Guruh', w: 5 },
         { label: 'PAX', w: 3 },
@@ -1115,14 +1204,24 @@ function TransportTab({ tourType }) {
       const dataLines = items.map(b => {
         const bk = String(b.id);
         const allSegs = routeMap[provId]?.[bk]?.segments || [];
-        const segs = getVisibleSegs(provId, bk, allSegs);
-        const { pax } = getSegEffective(provId, bk, allSegs[0] || { von: null, bis: null });
+        const visSegs = getVisibleSegs(provId, bk, allSegs);
+        const { pax } = visSegs.length > 0
+          ? getSegEffective(provId, bk, visSegs[0])
+          : { pax: manualOverrides[vColKey(provId, bk, 0)]?.paxOverride ?? 16 };
         const cells = [pad(b.bookingNumber, 5), pad(pax, 3)];
-        segs.forEach((seg, i) => {
-          const { von, bis } = getSegEffective(provId, bk, seg);
-          const colW = segCols[i]?.w ?? 13;
-          const val = von === bis ? fmtShort(von) : `${fmtShort(von)}→${fmtShort(bis)}`;
-          cells.push(pad(val, colW));
+        segCols.forEach(({ idx, type, w }) => {
+          const isVirtual = idx >= visSegs.length;
+          let von, bis;
+          if (!isVirtual) {
+            const eff = getSegEffective(provId, bk, visSegs[idx]);
+            von = eff.von; bis = eff.bis;
+          } else {
+            const ovr = manualOverrides[vColKey(provId, bk, idx)];
+            von = ovr?.vonOverride || null;
+            bis = ovr?.bisOverride || null;
+          }
+          const val = type === 'single' ? fmtShort(von) : `${fmtShort(von)}→${fmtShort(bis)}`;
+          cells.push(pad(val, w));
         });
         return cells.join('  ');
       }).join('\n');
