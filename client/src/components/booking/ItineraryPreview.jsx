@@ -496,9 +496,10 @@ export default function ItineraryPreview({ bookingId, booking }) {
         };
 
         // Filter routes based on provider
+        // NOTE: Fergana takes priority over Tashkent — "Fergana - Tashkent" → Nosir, NOT Xayrulla
         let filteredRoutes = routes;
         if (provider === 'xayrulla') {
-          filteredRoutes = routes.filter(r => checkIsTashkent(r));
+          filteredRoutes = routes.filter(r => checkIsTashkent(r) && !checkIsFergana(r));
         } else if (provider === 'sevil') {
           filteredRoutes = routes.filter(r => !checkIsTashkent(r) && !checkIsFergana(r));
         } else if (provider === 'nosir') {
@@ -577,8 +578,10 @@ export default function ItineraryPreview({ bookingId, booking }) {
         yPos += 4;
 
         const railwayRows = railways.map(r => {
-          // Build route string (use departure and arrival, not route field which has price)
-          const routeStr = r.route || (r.departure && r.arrival ? `${r.departure}-${r.arrival}` : r.departure || '-');
+          // Build route string: prefer departure - arrival over r.route field
+          const routeStr = (r.departure && r.arrival)
+            ? `${r.departure} - ${r.arrival}`
+            : r.route || r.departure || '-';
 
           // Find hotel for arrival city - use r.arrival directly if available
           let arrCity = r.arrival || '';
@@ -1208,10 +1211,14 @@ export default function ItineraryPreview({ bookingId, booking }) {
       ? (railwayToSamarkand || railwaysList[1] || railwaysList[0])
       : railwaysList[0];
 
-    // KAS: last railway = train arriving in Tashkent (from Samarkand)
+    // KAS: specifically find the Samarkand→Tashkent railway (Sharq train, arrives 23:06)
     const kasLastRailway = railwaysList[railwaysList.length - 1] || railwaysList[0];
+    const kasTashkentRailway = railwaysList.find(r =>
+      (r.arrival || '').toLowerCase().match(/tashkent|toshkent/)
+    );
 
     let firstSamarkandDone = false;
+    let firstBukharaDone = false;
     let trainDropOffCount = 0;
     const result = [];
 
@@ -1221,11 +1228,11 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
       if (idx === 0) {
         if (tourType === 'KAS') {
-          // KAS: Dostlik - Fergana — train arrival at Dostlik from Kazakhstan
-          time = railwaysList[0]?.arrivalTime || '08:30';
+          // KAS: Dostlik - Fergana — fixed 08:00 pickup at border crossing
+          time = '08:00';
         } else if (tourType === 'ZA') {
-          // ZA: Olot - Bukhara — land border, fixed 08:30
-          time = '08:30';
+          // ZA: Olot - Bukhara — land border, fixed 13:00
+          time = '13:00';
         } else {
           // ER/CO: intl flight arrival in Tashkent
           time = intlArrivalFlight?.arrivalTime || null;
@@ -1242,16 +1249,34 @@ export default function ItineraryPreview({ bookingId, booking }) {
           time = mainRailway?.departureTime ? subHours(mainRailway.departureTime, 1) : null;
         }
       } else if (rn.includes('train station') && rn.includes('pickup')) {
-        // KAS: Train Station Pickup in Tashkent — last railway arrivalTime
-        time = kasLastRailway?.arrivalTime || '08:30';
+        if (tourType === 'KAS') {
+          // KAS: Train Station Pickup — Sharq poyezdi Samarkand→Tashkent arrival
+          // Find Tashkent-arriving railway; fallback to 23:06 (Sharq train fixed time)
+          time = kasTashkentRailway?.arrivalTime || '23:06';
+        } else {
+          time = kasLastRailway?.arrivalTime || '08:30';
+        }
       } else if (rn.includes('qoqon')) {
-        // CO: Qoqon - Fergana → first railway arrivalTime (arrival in Qoqon)
-        time = railwayToFergana?.arrivalTime || null;
+        if (tourType === 'KAS') {
+          // KAS: Fergana - Qoqon city tour — fixed 08:30
+          time = '08:30';
+        } else {
+          // CO: Qoqon - Fergana → first railway arrivalTime (arrival in Qoqon)
+          time = railwayToFergana?.arrivalTime || null;
+        }
       } else if (tourType === 'CO' && rn.includes('fergana') && rn.includes('tashkent')) {
         // CO: Fergana - Tashkent (car) → 08:30
         time = '08:30';
+      } else if (tourType === 'ZA' && rn.includes('oybek')) {
+        // ZA: Oybek - Tashkent — border crossing, fixed 13:00
+        time = '13:00';
+      } else if (tourType === 'KAS' && (rn.includes('bukhara') || rn.includes('buxoro')) && rn.includes('city tour') && !firstBukharaDone) {
+        // KAS: First Bukhara City Tour — pickup from Kogon station (first railway arrival)
+        time = railwaysList[0]?.arrivalTime || '07:18';
+        firstBukharaDone = true;
       } else if ((rn.includes('samarkand') || rn.includes('samarqand')) && rn.includes('city tour') && !firstSamarkandDone) {
-        time = mainRailway?.arrivalTime || null;
+        // ZA has no railway to Samarkand (comes by car) → 08:30
+        time = (tourType === 'ZA') ? '08:30' : (mainRailway?.arrivalTime || null);
         firstSamarkandDone = true;
       } else if (rn.includes('khiva') && (rn.includes('urgench') || rn.includes('urganch'))) {
         time = domesticFlight?.departureTime ? subHours(domesticFlight.departureTime, 3) : null;
@@ -1483,8 +1508,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
           </button>
         </div>
 
-        {/* Nosir: PDF + Telegram — only for CO (has Fergana leg), hidden for ER */}
-        {(typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code) !== 'ER' && (
+        {/* Nosir: PDF + Telegram — only for CO and KAS (have Fergana leg), hidden for ER and ZA */}
+        {['CO', 'KAS'].includes(typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code) && (
         <div className="flex items-center gap-1">
           <button
             onClick={() => exportToPDF('nosir')}
@@ -1873,7 +1898,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
                             className="w-full px-2 py-1 border rounded"
                           />
                         ) : (
-                          railway.departure || '-'
+                          (railway.departure && railway.arrival)
+                            ? `${railway.departure} - ${railway.arrival}`
+                            : railway.departure || '-'
                         )}
                       </td>
                       <td className="border border-gray-900 px-3 py-2 text-center">

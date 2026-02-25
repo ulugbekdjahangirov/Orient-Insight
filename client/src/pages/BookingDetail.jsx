@@ -7588,6 +7588,51 @@ export default function BookingDetail() {
         // Remove Shovot route (UZB tourists don't need it)
         routesToProcess = routesToProcess.filter(r => r.route !== 'Khiva - Shovot');
         console.log(`❌ UZB_ONLY: Removed Shovot route`);
+
+        // Ensure Airport Pickup and Drop-off exist (UZB group flies home from Tashkent)
+        const hasAirportPickupUZB = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport pickup'));
+        const hasAirportDropoffUZB = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport drop'));
+        const refRouteUZB = routesToProcess.find(r => r.route === 'Khiva - Urgench') ||
+                            routesToProcess.find(r => (r.shahar || '').toLowerCase().includes('khiva'));
+
+        if (refRouteUZB && (!hasAirportPickupUZB || !hasAirportDropoffUZB)) {
+          // Insert after Urgench (or end if not found)
+          let urgenchIdxUZB = routesToProcess.findIndex(r => r.route === 'Khiva - Urgench');
+          let insertIdxUZB = urgenchIdxUZB !== -1 ? urgenchIdxUZB + 1 : routesToProcess.length;
+
+          if (!hasAirportPickupUZB) {
+            routesToProcess.splice(insertIdxUZB++, 0, {
+              ...refRouteUZB,
+              id: Math.max(...routesToProcess.map(r => r.id || 0), 0) + 1,
+              route: 'Airport Pickup',
+              shahar: 'Tashkent',
+              person: totalPax.toString(),
+              choiceTab: 'xayrulla',
+              choiceRate: 'vstrecha',
+              price: '0',
+              sayohatDasturi: ''
+            });
+            console.log(`✅ UZB_ONLY: Auto-created Airport Pickup (${totalPax} PAX)`);
+          } else {
+            const pickupIdxUZB = routesToProcess.findIndex(r => (r.route || '').toLowerCase().includes('airport pickup'));
+            if (pickupIdxUZB !== -1) insertIdxUZB = pickupIdxUZB + 1;
+          }
+
+          if (!hasAirportDropoffUZB) {
+            routesToProcess.splice(insertIdxUZB, 0, {
+              ...refRouteUZB,
+              id: Math.max(...routesToProcess.map(r => r.id || 0), 0) + 1,
+              route: 'Airport Drop-off',
+              shahar: 'Tashkent',
+              person: totalPax.toString(),
+              choiceTab: 'xayrulla',
+              choiceRate: 'vstrecha',
+              price: '0',
+              sayohatDasturi: ''
+            });
+            console.log(`✅ UZB_ONLY: Auto-created Airport Drop-off (${totalPax} PAX)`);
+          }
+        }
       } else if (splitScenario === 'TKM_ONLY') {
         // Remove Urgench route (TKM tourists don't go to Urgench)
         routesToProcess = routesToProcess.filter(r => r.route !== 'Khiva - Urgench');
@@ -7728,10 +7773,10 @@ export default function BookingDetail() {
       const seenRoutes = new Map(); // Track "routeName|date|vehicle" -> true
 
       for (const route of routesToProcess) {
-        // Skip routes without valid date
+        // NOTE: Do NOT skip routes without dates — date-filling step will assign them dates.
+        // Skipping here causes permanent data loss (routes are deleted from DB).
         if (!route.sana || route.sana === 'Invalid Date') {
-          console.log(`⏭️ ER: Skipping route without valid date: ${route.route}`);
-          continue;
+          console.warn(`⚠️ ER: Route without date will receive date from date-filling: ${route.route}`);
         }
 
         // Skip routes with empty/blank route name (will be removed from DB)
@@ -7742,7 +7787,7 @@ export default function BookingDetail() {
 
         // Remove non-standard hotel/station transfer routes (Uzbek-named duplicates)
         const routeLowerCheck = route.route.toLowerCase().replace(/\s+/g, ' ').trim();
-        const invalidPatterns = ['hotel-vokzal', 'mahalliy aeroport', 'hotel- xalqaro', 'hotel-xalqaro'];
+        const invalidPatterns = ['hotel-vokzal', 'mahalliy aeroport', 'hotel- xalqaro', 'hotel-xalqaro', 'airport transfer'];
         if (invalidPatterns.some(p => routeLowerCheck.includes(p))) {
           console.log(`⏭️ ER: Removing non-standard route: ${route.route}`);
           continue;
