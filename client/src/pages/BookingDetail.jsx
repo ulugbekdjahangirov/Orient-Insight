@@ -7459,7 +7459,7 @@ export default function BookingDetail() {
       let templateItineraryMap = {};
       try {
         const templateRes = await routesApi.getTemplate('ER');
-        const templateRoutes = templateRes.data.routes || [];
+        const templateRoutes = templateRes.data.templates || templateRes.data.routes || [];
         templateRoutes.forEach(t => {
           if (t.routeName && t.itinerary) {
             templateItineraryMap[t.routeName.toLowerCase()] = t.itinerary;
