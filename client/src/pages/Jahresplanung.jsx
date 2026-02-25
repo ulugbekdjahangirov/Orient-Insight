@@ -1081,14 +1081,14 @@ function TransportTab({ tourType }) {
         isSingle = eff.von === eff.bis;
       }
       if (isSingle) {
-        colDefs.push({ label: 'Вокзал', type: 'single', idx });
+        colDefs.push({ label: 'Vokzal', type: 'single', idx });
       } else {
         multiIdx++;
-        const label = provColCount > 1 ? `${multiIdx} Заезд` : 'Заезд';
+        const label = provColCount > 1 ? `${multiIdx}. Zayezd` : 'Zayezd';
         colDefs.push({ label, type: 'multi', idx });
       }
     }
-    const cols = ['Группа', 'PAX', ...colDefs.map(c => c.label)];
+    const cols = ['Guruh', 'PAX', ...colDefs.map(c => c.label)];
 
     // Build rows — each multi-day seg cell = "Von-Bis" combined
     const rows = items.map(b => {
@@ -1111,7 +1111,7 @@ function TransportTab({ tourType }) {
           bis = ovr?.bisOverride || null;
         }
         if (type === 'single') { row.push(fmtD(von)); }
-        else { row.push(von || bis ? `${fmtD(von)}-${fmtD(bis)}` : '—'); }
+        else { row.push(von || bis ? `${fmtD(von)}  -  ${fmtD(bis)}` : '—'); }
       }
       return row;
     });
@@ -1214,7 +1214,7 @@ function TransportTab({ tourType }) {
             von = ovr?.vonOverride || null;
             bis = ovr?.bisOverride || null;
           }
-          const val = type === 'single' ? fmtFull(von) : (von || bis ? `${fmtFull(von)}-${fmtFull(bis)}` : '—');
+          const val = type === 'single' ? fmtFull(von) : (von || bis ? `${fmtFull(von)}  -  ${fmtFull(bis)}` : '—');
           cells.push(pad(val, w));
         });
         return cells.join('  ');
