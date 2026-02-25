@@ -1071,8 +1071,8 @@ function TransportTab({ tourType }) {
       if (vis.length > templateSegs.length) { templateSegs = vis; templateBkId = bk; }
     }
 
-    // Build column headers
-    const cols = ['Guruh', 'PAX'];
+    // Build column definitions — each multi-day seg = 1 merged col "N Заезд"
+    const colDefs = []; // { label, type: 'multi'|'single', idx }
     let multiIdx = 0;
     for (let idx = 0; idx < provColCount; idx++) {
       let isSingle = false;
@@ -1081,25 +1081,25 @@ function TransportTab({ tourType }) {
         isSingle = eff.von === eff.bis;
       }
       if (isSingle) {
-        cols.push('Vokzal');
+        colDefs.push({ label: 'Вокзал', type: 'single', idx });
       } else {
         multiIdx++;
-        if (provColCount > 1) { cols.push(`${multiIdx}-z Von`); cols.push(`${multiIdx}-z Bis`); }
-        else { cols.push('Von'); cols.push('Bis'); }
+        const label = provColCount > 1 ? `${multiIdx} Заезд` : 'Заезд';
+        colDefs.push({ label, type: 'multi', idx });
       }
     }
+    const cols = ['Группа', 'PAX', ...colDefs.map(c => c.label)];
 
-    // Build rows — pad with virtual col values when visSegs < provColCount
+    // Build rows — each multi-day seg cell = "Von-Bis" combined
     const rows = items.map(b => {
       const bk = String(b.id);
       const allSegs = routeMap[provId]?.[bk]?.segments || [];
       const visSegs = getVisibleSegs(provId, bk, allSegs);
-      const totalCols = Math.max(visSegs.length, provColCount);
       const { pax } = visSegs.length > 0
         ? getSegEffective(provId, bk, visSegs[0])
         : { pax: manualOverrides[vColKey(provId, bk, 0)]?.paxOverride ?? 16 };
       const row = [b.bookingNumber, String(pax)];
-      for (let idx = 0; idx < totalCols; idx++) {
+      for (const { type, idx } of colDefs) {
         const isVirtual = idx >= visSegs.length;
         let von, bis;
         if (!isVirtual) {
@@ -1110,14 +1110,8 @@ function TransportTab({ tourType }) {
           von = ovr?.vonOverride || null;
           bis = ovr?.bisOverride || null;
         }
-        // Determine header type for this column
-        let isHeaderSingle = false;
-        if (idx < templateSegs.length && templateBkId) {
-          const eff = getSegEffective(provId, templateBkId, templateSegs[idx]);
-          isHeaderSingle = eff.von === eff.bis;
-        }
-        if (isHeaderSingle) { row.push(fmtD(von)); }
-        else { row.push(fmtD(von)); row.push(fmtD(bis)); }
+        if (type === 'single') { row.push(fmtD(von)); }
+        else { row.push(von || bis ? `${fmtD(von)}-${fmtD(bis)}` : '—'); }
       }
       return row;
     });
