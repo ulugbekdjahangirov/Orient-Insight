@@ -1118,9 +1118,12 @@ function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
 const TOUR_SUB_TABS = ['ER', 'CO', 'KAS', 'ZA'];
 
 const TP_STATUS = {
-  PENDING:   { color: 'bg-yellow-100 text-yellow-800', label: 'Kutilmoqda', icon: '🕐' },
-  CONFIRMED: { color: 'bg-green-100 text-green-800',   label: 'Tasdiqladi', icon: '✅' },
-  REJECTED:  { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',  icon: '❌' },
+  PENDING:              { color: 'bg-yellow-100 text-yellow-800', label: 'Kutilmoqda',            icon: '🕐' },
+  PENDING_APPROVAL:     { color: 'bg-amber-100 text-amber-800',   label: 'Tekshirilmoqda',        icon: '⏳' },
+  APPROVED:             { color: 'bg-blue-100 text-blue-800',     label: 'Provayderga yuborildi', icon: '🔄' },
+  CONFIRMED:            { color: 'bg-green-100 text-green-800',   label: 'Tasdiqladi',            icon: '✅' },
+  REJECTED:             { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',             icon: '❌' },
+  REJECTED_BY_APPROVER: { color: 'bg-red-100 text-red-800',       label: 'Admin rad etdi',        icon: '❌' },
 };
 
 function Transport2026Tab() {
@@ -1204,12 +1207,18 @@ function Transport2026Tab() {
                       <span className="text-xs">{fmtDate(rec.sentAt)}</span>
                     </div>
                     <div className="flex gap-2">
-                      <span className="text-gray-400 text-xs w-24 flex-shrink-0">Javob berdi:</span>
+                      <span className="text-gray-400 text-xs w-24 flex-shrink-0">Javob:</span>
                       <span className="text-xs">{fmtDate(rec.respondedAt)}</span>
                     </div>
+                    {rec.approvedBy && (
+                      <div className="flex gap-2 col-span-2">
+                        <span className="text-gray-400 text-xs w-24 flex-shrink-0">Tasdiqladi:</span>
+                        <span className="text-xs font-medium text-blue-700">{rec.approvedBy}</span>
+                      </div>
+                    )}
                     {rec.confirmedBy && (
                       <div className="flex gap-2 col-span-2">
-                        <span className="text-gray-400 text-xs w-24 flex-shrink-0">Kim:</span>
+                        <span className="text-gray-400 text-xs w-24 flex-shrink-0">Qabul qildi:</span>
                         <span className="text-xs font-medium text-gray-700">{rec.confirmedBy}</span>
                       </div>
                     )}

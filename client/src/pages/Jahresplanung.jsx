@@ -1319,7 +1319,7 @@ function TransportTab({ tourType }) {
       const messageText = `${headerLine}\n${separator}\n${dataLines}`;
 
       await jahresplanungApi.sendTransportTelegram(provId, YEAR, tourType, blob, filename, messageText);
-      toast.success(`Telegram → ${prov?.label || provId}`);
+      toast.success(`Hammasi tekshiruvga yuborildi → ${prov?.label || provId}`);
     } catch (err) {
       toast.error('Telegram xatolik: ' + (err.response?.data?.error || err.message));
     } finally {

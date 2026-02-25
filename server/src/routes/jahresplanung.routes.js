@@ -439,17 +439,26 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
 
 // POST /api/jahresplanung/send-transport-telegram/:provider
 // provider = sevil | xayrulla | nosir
+// 2-stage flow: send to hammasi (approver) first → on approve → forward to actual provider
 router.post('/send-transport-telegram/:provider', authenticate, upload.single('pdf'), async (req, res) => {
   try {
     const provider = req.params.provider.toLowerCase();
     const { year, tourType } = req.body;
     const pdfBuffer = req.file?.buffer;
 
+    // Get actual provider's chat ID (for later forwarding after approval)
     const settingKey = `TRANSPORT_${provider.toUpperCase()}_CHAT_ID`;
     const setting = await prisma.systemSetting.findUnique({ where: { key: settingKey } });
-    const chatId = setting?.value;
-    if (!chatId) {
+    const providerChatId = setting?.value;
+    if (!providerChatId) {
       return res.status(400).json({ error: `${provider} uchun Telegram chat ID sozlanmagan (${settingKey})` });
+    }
+
+    // Get hammasi (approver) chat ID
+    const hammasiSetting = await prisma.systemSetting.findUnique({ where: { key: 'TRANSPORT_HAMMASI_CHAT_ID' } });
+    const hammasiChatId = hammasiSetting?.value;
+    if (!hammasiChatId) {
+      return res.status(400).json({ error: 'Hammasi chat ID sozlanmagan (GmailSettings → Transport)' });
     }
 
     const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -461,53 +470,45 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
     const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[provider] || provider;
     const tourLabel = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tourType] || tourType;
 
-    // Formatted table text from frontend (already has headers + aligned columns)
+    // Formatted table text from frontend
     const messageText = req.body.messageText || '';
 
-    // 1. Send PDF document
+    // 1. Send PDF document to hammasi (approver) with approve/decline buttons
+    let approvalMsgId = null;
     if (pdfBuffer) {
       const docForm = new FormData();
-      docForm.append('chat_id', chatId);
+      docForm.append('chat_id', hammasiChatId);
       docForm.append('document', pdfBuffer, {
         filename: `${year}_${tourType}_Transport_${providerLabel}.pdf`,
         contentType: 'application/pdf'
       });
-      docForm.append('caption', `🚌 Transport Rejasi ${year} — ${tourLabel}\n👤 ${providerLabel}`);
-      await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
+      const approvalCaption = [
+        `⚠️ *Transport Rejasi ${year} — ${tourLabel}*`,
+        `👤 *${providerLabel}*`,
+        ``,
+        `Tasdiqlasangiz, *${providerLabel}* ga avtomatik yuboriladi.`
+      ].join('\n');
+      docForm.append('caption', approvalCaption);
+      docForm.append('parse_mode', 'Markdown');
+      docForm.append('reply_markup', JSON.stringify({
+        inline_keyboard: [[
+          { text: `✅ ${providerLabel} ga yuborish`, callback_data: `tp26_approve:${year}:${tourType}:${provider}` },
+          { text: '❌ Rad etish',                    callback_data: `tp26_decline:${year}:${tourType}:${provider}` },
+        ]]
+      }));
+      const docRes = await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
+      approvalMsgId = docRes.data?.result?.message_id || null;
     }
 
-    // 2. Send confirmation request message with formatted table + inline keyboard
-    const confText = [
-      `🚌 *Transport Rejasi ${year} — ${tourLabel}*`,
-      `👤 *${providerLabel}*`,
-      '',
-      messageText ? `\`\`\`\n${messageText}\n\`\`\`` : '',
-      '',
-      'Yillik transport rejasini tasdiqlaysizmi?'
-    ].filter(l => l !== undefined).join('\n');
-
-    const msgRes = await axios.post(`${TG_BASE}/sendMessage`, {
-      chat_id: chatId,
-      text: confText,
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '✅ Tasdiqlash', callback_data: `tp26_c:${year}:${tourType}:${provider}` },
-          { text: '❌ Rad etish',  callback_data: `tp26_r:${year}:${tourType}:${provider}` },
-        ]]
-      }
-    });
-    const messageId = msgRes.data?.result?.message_id || null;
-
-    // 3. Save confirmation record (store messageText for webhook to reuse when editing)
+    // 2. Save confirmation record as PENDING_APPROVAL (store providerChatId for webhook to use)
     const confKey = `JP_TRANSPORT_CONFIRM_${year}_${tourType}_${provider}`;
     await prisma.systemSetting.upsert({
       where: { key: confKey },
-      update: { value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, messageText, confirmedBy: null, respondedAt: null }) },
-      create: { key: confKey, value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING', sentAt: new Date().toISOString(), messageId, chatId, messageText, confirmedBy: null, respondedAt: null }) }
+      update: { value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING_APPROVAL', sentAt: new Date().toISOString(), messageId: approvalMsgId, chatId: hammasiChatId, providerChatId, messageText, approvedBy: null, confirmedBy: null, respondedAt: null }) },
+      create: { key: confKey, value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING_APPROVAL', sentAt: new Date().toISOString(), messageId: approvalMsgId, chatId: hammasiChatId, providerChatId, messageText, approvedBy: null, confirmedBy: null, respondedAt: null }) }
     });
 
-    console.log(`Transport Telegram sent: ${providerLabel} → ${chatId}`);
+    console.log(`Transport Telegram sent to hammasi for approval: ${providerLabel} → hammasi ${hammasiChatId}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Send transport telegram error:', err);

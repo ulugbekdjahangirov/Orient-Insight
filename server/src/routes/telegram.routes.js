@@ -662,6 +662,106 @@ router.post('/webhook', async (req, res) => {
     }
     // ── End transport callbacks ────────────────────────────────────────────
 
+    // ── Transport 2026: approver callbacks (tp26_approve / tp26_decline) ──
+    if (data.startsWith('tp26_approve:') || data.startsWith('tp26_decline:')) {
+      const parts = data.split(':');
+      // tp26_approve:{year}:{tourType}:{provider}
+      const isApprove    = data.startsWith('tp26_approve:');
+      const tp26Year     = parts[1];
+      const tp26TourType = parts[2];
+      const tp26Provider = parts[3];
+      const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[tp26Provider] || tp26Provider;
+      const tourLabel     = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tp26TourType] || tp26TourType;
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isApprove ? `✅ ${providerLabel} ga yuborilmoqda...` : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      const confKey = `JP_TRANSPORT_CONFIRM_${tp26Year}_${tp26TourType}_${tp26Provider}`;
+      const setting = await prisma.systemSetting.findUnique({ where: { key: confKey } });
+      if (!setting) return;
+      const stored = JSON.parse(setting.value || '{}');
+
+      if (isApprove) {
+        // Re-use Telegram file_id from the approver's document message
+        const fileId = cb.message?.document?.file_id;
+        if (!fileId) {
+          console.error('tp26_approve: no document file_id in callback message');
+          return;
+        }
+
+        const providerChatId = stored.providerChatId;
+        if (!providerChatId) {
+          console.error('tp26_approve: providerChatId not stored in SystemSetting');
+          return;
+        }
+
+        const providerCaption = [
+          `🚌 *Transport Rejasi ${tp26Year} — ${tourLabel}*`,
+          `👤 *${providerLabel}*`,
+          ``,
+          `Yillik transport rejasini tasdiqlaysizmi?`
+        ].join('\n');
+
+        // Send PDF to actual provider using Telegram file_id (no re-upload needed)
+        await axios.post(`${BOT_API()}/sendDocument`, {
+          chat_id: providerChatId,
+          document: fileId,
+          caption: providerCaption,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: '✅ Tasdiqlash', callback_data: `tp26_c:${tp26Year}:${tp26TourType}:${tp26Provider}` },
+              { text: '❌ Rad etish',  callback_data: `tp26_r:${tp26Year}:${tp26TourType}:${tp26Provider}` },
+            ]]
+          })
+        }).catch(err => console.error('tp26_approve sendDocument error:', err.response?.data || err.message));
+
+        // Update stored status to APPROVED
+        stored.status     = 'APPROVED';
+        stored.approvedBy = fromName;
+        stored.approvedAt = new Date().toISOString();
+        await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
+
+        // Edit approver's document caption: remove buttons, show result
+        if (cb.message?.message_id && fromChatId) {
+          const originalCaption = cb.message.caption || '';
+          await axios.post(`${BOT_API()}/editMessageCaption`, {
+            chat_id: fromChatId,
+            message_id: cb.message.message_id,
+            caption: originalCaption + `\n\n✅ ${fromName} tasdiqladi — ${providerLabel} ga yuborildi`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+
+      } else {
+        // Declined by approver
+        stored.status     = 'REJECTED_BY_APPROVER';
+        stored.approvedBy = fromName;
+        stored.approvedAt = new Date().toISOString();
+        await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
+
+        // Edit approver's document caption
+        if (cb.message?.message_id && fromChatId) {
+          const originalCaption = cb.message.caption || '';
+          await axios.post(`${BOT_API()}/editMessageCaption`, {
+            chat_id: fromChatId,
+            message_id: cb.message.message_id,
+            caption: originalCaption + `\n\n❌ ${fromName} tomonidan rad qilindi`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+      }
+
+      console.log(`Transport 2026 approver callback: ${data} from ${fromName}`);
+      return;
+    }
+    // ── End Transport 2026 approver callbacks ─────────────────────────────
+
     // ── Transport 2026 (Jahresplanung) confirmation callbacks ────────────
     if (data.startsWith('tp26_c:') || data.startsWith('tp26_r:')) {
       const parts = data.split(':');
@@ -687,22 +787,17 @@ router.post('/webhook', async (req, res) => {
         stored.respondedAt = new Date().toISOString();
         await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
 
-        // Edit the original message (keep booking lines, add confirmation status)
-        if (stored.chatId && stored.messageId) {
+        // Edit the provider's document message caption (remove buttons, show result)
+        if (fromChatId && cb.message?.message_id) {
           const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[tp26Provider] || tp26Provider;
-          const lines = [
-            `${emoji} *Transport Rejasi ${tp26Year} — ${tp26TourType}*`,
-            `👤 *${providerLabel}*`,
-            '',
-            stored.messageText ? `\`\`\`\n${stored.messageText}\n\`\`\`` : '',
-            '',
-            `${isConfirm ? '✅ TASDIQLADI' : '❌ RAD ETDI'}: *${fromName}*`
-          ].filter(l => l !== undefined).join('\n');
-          await axios.post(`${BOT_API()}/editMessageText`, {
-            chat_id: stored.chatId,
-            message_id: stored.messageId,
-            text: lines,
-            parse_mode: 'Markdown'
+          const originalCaption = cb.message.caption || '';
+          const resultLine = `\n\n${isConfirm ? '✅ TASDIQLADI' : '❌ RAD ETDI'}: *${fromName}*`;
+          await axios.post(`${BOT_API()}/editMessageCaption`, {
+            chat_id: fromChatId,
+            message_id: cb.message.message_id,
+            caption: originalCaption + resultLine,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [] })
           }).catch(() => {});
         }
       }
