@@ -89,8 +89,8 @@ router.put('/:bookingId/routes/bulk', authenticate, async (req, res) => {
       where: { bookingId: parseInt(bookingId) }
     });
 
-    // Create new routes
-    const createdRoutes = await Promise.all(
+    // Create new routes sequentially inside a transaction (SQLite can't handle parallel writes)
+    const createdRoutes = await prisma.$transaction(
       routes.map((route, index) =>
         prisma.route.create({
           data: {

@@ -7460,9 +7460,15 @@ export default function BookingDetail() {
       try {
         const templateRes = await routesApi.getTemplate('ER');
         const templateRoutes = templateRes.data.templates || templateRes.data.routes || [];
+        const nameCounts = {};
         templateRoutes.forEach(t => {
           if (t.routeName && t.itinerary) {
-            templateItineraryMap[t.routeName.toLowerCase()] = t.itinerary;
+            const key = t.routeName.toLowerCase();
+            nameCounts[key] = (nameCounts[key] || 0) + 1;
+            // First occurrence → "samarkand city tour"
+            // Second → "samarkand city tour_2", third → "_3", etc.
+            const mapKey = nameCounts[key] === 1 ? key : `${key}_${nameCounts[key]}`;
+            templateItineraryMap[mapKey] = t.itinerary;
           }
         });
         console.log(`📖 ER: Loaded ${Object.keys(templateItineraryMap).length} itineraries from RouteTemplate`);
@@ -7766,6 +7772,9 @@ export default function BookingDetail() {
       console.log(`🔍 ER: After consolidation - Urgench index=${urgenchIndexConsolidated}, Shovot exists=${hasShovotRouteConsolidated}`);
 
       // Fix each route (using fresh data with Sayohat dasturi preserved)
+      // Track occurrence count per route name for template itinerary lookup
+      const routeOccurrences = {};
+
       // Use flatMap to allow splitting Fergana routes into multiple rows
       const fixedRoutes = consolidatedRoutes.flatMap((route, index) => {
         // Determine PAX for this route
@@ -7848,7 +7857,11 @@ export default function BookingDetail() {
         console.log(`  ✅ ER Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
         // Use RouteTemplate itinerary if available (authoritative source), else keep existing
-        const templateItinerary = templateItineraryMap[(route.route || '').toLowerCase()];
+        // Track occurrence to differentiate e.g. 1st vs 2nd "Samarkand City Tour"
+        const rKey = (route.route || '').toLowerCase();
+        routeOccurrences[rKey] = (routeOccurrences[rKey] || 0) + 1;
+        const occKey = routeOccurrences[rKey] === 1 ? rKey : `${rKey}_${routeOccurrences[rKey]}`;
+        const templateItinerary = templateItineraryMap[occKey] ?? templateItineraryMap[rKey];
         const finalItinerary = templateItinerary !== undefined ? templateItinerary : route.sayohatDasturi;
 
         return [{
