@@ -1123,26 +1123,17 @@ function TransportTab({ tourType }) {
     doc.setTextColor(30, 30, 30);
     doc.text(`Transport Rejasi ${YEAR} — ${tourType} (${prov?.label || provId})`, 14, 16);
 
-    autoTable(doc, {
-      head: [cols],
-      body: rows,
-      startY: 22,
-      styles: { fontSize: 8, cellPadding: 1.8 },
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 248, 255] },
-    });
-
-    // Detailed route table — only first booking (as sample)
+    // 1. Detail table first (first booking only)
     const firstWithRoutes = items.find(b => (routeDetails[provId]?.[String(b.id)] || []).length > 0);
+    let detailEndY = 22;
     if (firstWithRoutes) {
       const bk = String(firstWithRoutes.id);
       const details = routeDetails[provId][bk];
-      const startY = doc.lastAutoTable.finalY + 8;
 
       doc.setFontSize(9);
       doc.setTextColor(30, 30, 30);
       doc.setFont('helvetica', 'bold');
-      doc.text(firstWithRoutes.bookingNumber, 14, startY - 2);
+      doc.text(firstWithRoutes.bookingNumber, 14, 22);
       doc.setFont('helvetica', 'normal');
 
       const detailRows = details.map((r, i) => [
@@ -1158,7 +1149,7 @@ function TransportTab({ tourType }) {
       autoTable(doc, {
         head: [['#', 'Sana', "Yo'nalish", 'PAX', 'Vaqt', 'Avtomobil', 'Sayohat dasturi']],
         body: detailRows,
-        startY,
+        startY: 26,
         styles: { fontSize: 7, cellPadding: 1.5 },
         headStyles: { fillColor: [234, 179, 8], textColor: 30, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [254, 252, 232] },
@@ -1172,7 +1163,18 @@ function TransportTab({ tourType }) {
           6: { cellWidth: 'auto' },
         },
       });
+      detailEndY = doc.lastAutoTable.finalY + 8;
     }
+
+    // 2. Summary table below
+    autoTable(doc, {
+      head: [cols],
+      body: rows,
+      startY: detailEndY,
+      styles: { fontSize: 8, cellPadding: 1.8 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 248, 255] },
+    });
 
     return doc.output('blob');
   };
