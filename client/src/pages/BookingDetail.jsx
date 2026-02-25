@@ -7459,6 +7459,21 @@ export default function BookingDetail() {
     }
 
     try {
+      // Load RouteTemplate for ER to get correct sayohatDasturi for each route
+      let templateItineraryMap = {};
+      try {
+        const templateRes = await routesApi.getTemplate('ER');
+        const templateRoutes = templateRes.data.routes || [];
+        templateRoutes.forEach(t => {
+          if (t.routeName && t.itinerary) {
+            templateItineraryMap[t.routeName.toLowerCase()] = t.itinerary;
+          }
+        });
+        console.log(`📖 ER: Loaded ${Object.keys(templateItineraryMap).length} itineraries from RouteTemplate`);
+      } catch (e) {
+        console.warn('⚠️ ER: Could not load RouteTemplate itineraries, will preserve existing');
+      }
+
       // Load existing routes from database (user's manually corrected structure)
       // We PRESERVE the structure and only update vehicle/provider/price
       const routesRes = await bookingsApi.getRoutes(id);
@@ -7716,8 +7731,8 @@ export default function BookingDetail() {
         }
 
         // Remove non-standard hotel/station transfer routes (Uzbek-named duplicates)
-        const routeLowerCheck = route.route.toLowerCase();
-        const invalidPatterns = ['hotel-vokzal', 'mahalliy aeroport', 'hotel-xalqaro'];
+        const routeLowerCheck = route.route.toLowerCase().replace(/\s+/g, ' ').trim();
+        const invalidPatterns = ['hotel-vokzal', 'mahalliy aeroport', 'hotel- xalqaro', 'hotel-xalqaro'];
         if (invalidPatterns.some(p => routeLowerCheck.includes(p))) {
           console.log(`⏭️ ER: Removing non-standard route: ${route.route}`);
           continue;
@@ -7828,11 +7843,9 @@ export default function BookingDetail() {
         console.log(`  💰 ER Route ${index + 1}: getPriceFromOpex(provider="${provider}", vehicle="${vehicle}", rate="${rate}") = $${price || '?'}`);
         console.log(`  ✅ ER Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
-        // Clear sayohatDasturi if clearly wrong (e.g. Urgench/Airport route has Shovot text)
-        const rn = (route.route || '').toLowerCase();
-        const isUzbOnlyRoute = rn.includes('urgench') || rn.includes('airport pickup') || rn.includes('airport drop');
-        const hasShovotText = (route.sayohatDasturi || '').toLowerCase().includes('shovot');
-        const cleanedItinerary = (isUzbOnlyRoute && hasShovotText) ? '' : route.sayohatDasturi;
+        // Use RouteTemplate itinerary if available (authoritative source), else keep existing
+        const templateItinerary = templateItineraryMap[(route.route || '').toLowerCase()];
+        const finalItinerary = templateItinerary !== undefined ? templateItinerary : route.sayohatDasturi;
 
         return [{
           ...route,
@@ -7841,7 +7854,7 @@ export default function BookingDetail() {
           transportType: vehicle || route.transportType,
           choiceRate: rate || route.choiceRate,
           price: price || route.price,
-          sayohatDasturi: cleanedItinerary
+          sayohatDasturi: finalItinerary
         }];
       });
 
