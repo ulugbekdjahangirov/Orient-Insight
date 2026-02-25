@@ -849,6 +849,7 @@ const PROVIDER_BIS_EXTRA = {
 // Max multi-day segments to display per tourType+provider (undefined = no limit)
 const MAX_MULTI_MAP = {
   ER: { sevil: 1 },
+  CO: { nosir: 1 },  // nosir has 2 raw segs for template bookings; show only 1st (real day2-3)
 };
 
 // Provider display order per tourType (default: sevil, xayrulla, nosir)

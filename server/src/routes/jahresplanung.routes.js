@@ -1251,9 +1251,9 @@ router.get('/transport', authenticate, async (req, res) => {
       return segments;
     }
 
-    // CO/Nosir: up to 7-day gap allowed within one segment
-    // (group stays ~7 days in Fergana between pickup and return routes)
-    const CLUSTER_GAP_OVERRIDE = { CO: { nosir: 7 } };
+    // No special gap overrides — CO/nosir routes are on day2+day3 (consecutive)
+    // Template placeholders on day10-12 form separate cluster, filtered by MAX_MULTI_MAP on client
+    const CLUSTER_GAP_OVERRIDE = {};
 
     // Collect all route dates per provider+booking
     const raw = { sevil: {}, xayrulla: {}, nosir: {} };
