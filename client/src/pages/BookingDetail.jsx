@@ -7405,10 +7405,6 @@ export default function BookingDetail() {
   // Auto-fix all routes: set correct PAX, vehicle, and price
   // Main dispatcher function - calls appropriate fix function based on tour type
   const autoFixAllRoutes = async () => {
-    if (!erRoutes || erRoutes.length === 0) {
-      toast.error('No routes to fix');
-      return;
-    }
 
     const tourTypeCode = booking?.tourType?.code;
     console.log(`🎯 Fix Vehicle clicked for tour type: ${tourTypeCode}`);
@@ -7509,13 +7505,21 @@ export default function BookingDetail() {
       console.log('📋 Reloaded routes from database with city and itinerary (Sayohat dasturi) preserved');
 
       // Calculate PAX counts (fallback to booking-level fields if Final List tourists not loaded)
-      const paxUzb = tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length
+      let paxUzb = tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length
         || parseInt(formData.paxUzbekistan) || parseInt(booking?.paxUzbekistan) || 0;
-      const paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length
+      let paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length
         || parseInt(formData.paxTurkmenistan) || parseInt(booking?.paxTurkmenistan) || 0;
       // totalPax = booking.pax (e.g. 16), NOT paxUzb+paxTkm (which can exceed real total
       // if paxUzbekistan was entered equal to full group size)
       const totalPax = parseInt(booking?.pax) || parseInt(formData.pax) || (paxUzb + paxTkm);
+
+      // Auto-correct: if paxUzb+paxTkm > totalPax, operator entered paxUzb as full group size
+      // Fix: paxUzb = totalPax - paxTkm
+      if (paxTkm > 0 && paxUzb + paxTkm > totalPax) {
+        const corrected = Math.max(0, totalPax - paxTkm);
+        console.log(`⚠️ ER: paxUzb(${paxUzb})+paxTkm(${paxTkm})>${totalPax}. Auto-correcting paxUzb → ${corrected}`);
+        paxUzb = corrected;
+      }
 
       console.log(`🔧 Auto-fixing routes: PAX Total=${totalPax}, UZB=${paxUzb}, TKM=${paxTkm}`);
 
