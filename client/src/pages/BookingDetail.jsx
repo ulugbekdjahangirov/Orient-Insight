@@ -7612,7 +7612,8 @@ export default function BookingDetail() {
               choiceTab: 'sevil-er',
               transportType: 'Yutong',
               choiceRate: 'urgenchRate',
-              price: '25' // Default price, will be recalculated
+              price: '25', // Default price, will be recalculated
+              sayohatDasturi: '' // Don't inherit itinerary from reference route
             };
             routesToProcess.splice(insertIndex++, 0, urgenchRoute);
             hasUrgenchRoute = true;
@@ -7634,7 +7635,8 @@ export default function BookingDetail() {
               choiceTab: 'xayrulla',
               transportType: null,
               choiceRate: 'vstrecha',
-              price: '0' // Will be recalculated
+              price: '0', // Will be recalculated
+              sayohatDasturi: '' // Don't inherit itinerary from reference route
             };
             routesToProcess.splice(insertIndex++, 0, airportPickupRoute);
             hasAirportPickup = true;
@@ -7655,7 +7657,8 @@ export default function BookingDetail() {
               choiceTab: 'xayrulla',
               transportType: null,
               choiceRate: 'vstrecha',
-              price: '0' // Will be recalculated
+              price: '0', // Will be recalculated
+              sayohatDasturi: '' // Don't inherit itinerary from reference route
             };
             routesToProcess.splice(insertIndex++, 0, airportDropoffRoute);
             hasAirportDropoff = true;
@@ -7709,6 +7712,14 @@ export default function BookingDetail() {
         // Skip routes with empty/blank route name (will be removed from DB)
         if (!route.route || !route.route.trim()) {
           console.log(`⏭️ ER: Removing blank route (no name) on ${route.sana}`);
+          continue;
+        }
+
+        // Remove non-standard hotel/station transfer routes (Uzbek-named duplicates)
+        const routeLowerCheck = route.route.toLowerCase();
+        const invalidPatterns = ['hotel-vokzal', 'mahalliy aeroport', 'hotel-xalqaro'];
+        if (invalidPatterns.some(p => routeLowerCheck.includes(p))) {
+          console.log(`⏭️ ER: Removing non-standard route: ${route.route}`);
           continue;
         }
 
@@ -7817,13 +7828,20 @@ export default function BookingDetail() {
         console.log(`  💰 ER Route ${index + 1}: getPriceFromOpex(provider="${provider}", vehicle="${vehicle}", rate="${rate}") = $${price || '?'}`);
         console.log(`  ✅ ER Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
+        // Clear sayohatDasturi if clearly wrong (e.g. Urgench/Airport route has Shovot text)
+        const rn = (route.route || '').toLowerCase();
+        const isUzbOnlyRoute = rn.includes('urgench') || rn.includes('airport pickup') || rn.includes('airport drop');
+        const hasShovotText = (route.sayohatDasturi || '').toLowerCase().includes('shovot');
+        const cleanedItinerary = (isUzbOnlyRoute && hasShovotText) ? '' : route.sayohatDasturi;
+
         return [{
           ...route,
           person: routePax.toString(),
           choiceTab: provider,
           transportType: vehicle || route.transportType,
           choiceRate: rate || route.choiceRate,
-          price: price || route.price
+          price: price || route.price,
+          sayohatDasturi: cleanedItinerary
         }];
       });
 
