@@ -840,7 +840,7 @@ const ZAYEZD_LABEL_MAP = {
 // CO/Sevil: +1 (Khiva → Urgench transfer)
 // ER/Sevil: +3 (Khiva → split group: half Tashkent, half Turkmenistan → last tour day)
 const PROVIDER_BIS_EXTRA = {
-  CO:  { sevil: 1 },
+  CO:  { sevil: 2 },
   ER:  { sevil: 3 },
   KAS: { sevil: 0 },
   ZA:  { sevil: 0 },
@@ -1064,6 +1064,8 @@ function TransportTab({ tourType }) {
   const generateTransportPDF = (provId, items) => {
     const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
     const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
+    // Exclude cancelled bookings from PDF
+    items = items.filter(b => b.status !== 'CANCELLED');
 
     const fmtD = (d) => {
       if (!d) return '—';
@@ -1163,7 +1165,14 @@ function TransportTab({ tourType }) {
       doc.text(firstWithRoutes.bookingNumber, 14, 22);
       doc.setFont('helvetica', 'normal');
 
-      const detailRows = details.map((r, i) => [
+      // Deduplicate same-date + same-routeName rows (e.g. Fergana-Tashkent multiple vehicles)
+      const dedupedDetails = [];
+      for (const r of details) {
+        const existing = dedupedDetails.find(x => x.date === r.date && x.routeName === r.routeName);
+        if (existing) { existing.pax = (existing.pax || 0) + (r.pax || 0); }
+        else { dedupedDetails.push({ ...r }); }
+      }
+      const detailRows = dedupedDetails.map((r, i) => [
         String(i + 1),
         fmtD(r.date),
         r.routeName,
@@ -1207,11 +1216,12 @@ function TransportTab({ tourType }) {
   };
 
   // Send transport PDF to provider's Telegram
-  const handleTransportTelegram = async (provId, items) => {
+  const handleTransportTelegram = async (provId, allItems) => {
+    const items = allItems.filter(b => b.status !== 'CANCELLED');
     setSendingTransportTg(p => ({ ...p, [provId]: true }));
     try {
       const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
-      const blob = generateTransportPDF(provId, items);
+      const blob = generateTransportPDF(provId, allItems);
       const filename = `${YEAR}_${tourType}_Transport_${prov?.label || provId}.pdf`;
 
       // Build formatted monospace table for Telegram
@@ -1248,7 +1258,7 @@ function TransportTab({ tourType }) {
         const vis = getVisibleSegs(provId, bk, allSegs);
         if (vis.length > tSegs.length) { tSegs = vis; tBkId = bk; }
       }
-      // Build segCols using same logic as PDF
+      // Build segCols — header label centered above date range column
       let multiCnt = 0;
       const segCols = [];
       for (let idx = 0; idx < provColCount; idx++) {
@@ -1257,17 +1267,29 @@ function TransportTab({ tourType }) {
           const eff = getSegEffective(provId, tBkId, tSegs[idx]);
           isSingle = eff.von === eff.bis;
         }
-        if (isSingle) { segCols.push({ label: 'Вокзал', w: 10, idx, type: 'single' }); }
-        else { multiCnt++; segCols.push({ label: provColCount > 1 ? `${multiCnt} Заезд` : 'Заезд', w: 22, idx, type: 'multi' }); }
+        if (isSingle) { segCols.push({ label: 'Vokzal', w: 12, idx, type: 'single' }); }
+        else {
+          multiCnt++;
+          const segLabel = provColCount > 1 ? `${multiCnt} Zaezd` : 'Zaezd';
+          const w = 23; // "dd.mm.yyyy-dd.mm.yyyy" = 21 chars, pad to 23
+          segCols.push({ label: segLabel, w, idx, type: 'multi' });
+        }
       }
       const allCols = [
-        { label: 'Группа', w: 6 },
+        { label: 'Guruh', w: 6 },
         { label: 'PAX', w: 3 },
         ...segCols,
       ];
 
-      const headerLine = allCols.map(c => pad(c.label, c.w)).join('  ');
-      const separator  = allCols.map(c => '─'.repeat(c.w)).join('──');
+      // Header: segment labels centered in their column width
+      const headerLine = allCols.map(c => {
+        if (c.type === 'multi') {
+          const left = Math.floor((c.w - c.label.length) / 2);
+          return ' '.repeat(left) + c.label + ' '.repeat(c.w - c.label.length - left);
+        }
+        return pad(c.label, c.w);
+      }).join('  ');
+      const separator = allCols.map(c => '─'.repeat(c.w)).join('──');
 
       const dataLines = items.map(b => {
         const bk = String(b.id);
@@ -1276,7 +1298,7 @@ function TransportTab({ tourType }) {
         const { pax } = visSegs.length > 0
           ? getSegEffective(provId, bk, visSegs[0])
           : { pax: manualOverrides[vColKey(provId, bk, 0)]?.paxOverride ?? 16 };
-        const cells = [pad(b.bookingNumber, 5), pad(pax, 3)];
+        const cells = [pad(b.bookingNumber, 6), pad(pax, 3)];
         segCols.forEach(({ idx, type, w }) => {
           const isVirtual = idx >= visSegs.length;
           let von, bis;
@@ -1288,8 +1310,8 @@ function TransportTab({ tourType }) {
             von = ovr?.vonOverride || null;
             bis = ovr?.bisOverride || null;
           }
-          const val = type === 'single' ? fmtFull(von) : (von || bis ? `${fmtFull(von)}  -  ${fmtFull(bis)}` : '—');
-          cells.push(pad(val, w));
+          if (type === 'single') { cells.push(pad(fmtFull(von), w)); }
+          else { cells.push(pad(von || bis ? `${fmtFull(von)}-${fmtFull(bis)}` : '—', w)); }
         });
         return cells.join('  ');
       }).join('\n');
