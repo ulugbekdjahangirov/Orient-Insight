@@ -849,7 +849,7 @@ const PROVIDER_BIS_EXTRA = {
 // Max multi-day segments to display per tourType+provider (undefined = no limit)
 const MAX_MULTI_MAP = {
   ER: { sevil: 1 },
-  CO: { nosir: 1 },  // nosir has 2 raw segs for template bookings; show only 1st (real day2-3)
+  CO: { nosir: 1, sevil: 1 },
 };
 
 // Provider display order per tourType (default: sevil, xayrulla, nosir)
@@ -976,23 +976,6 @@ function TransportTab({ tourType }) {
               }
             }
           }
-          // CO/sevil: 2nd segment = Khiva-Urgench (day 12, Khiva free day = day 11)
-          // Formula: 2nd Von = 1st Von + 7 (same day stored, BIS_EXTRA +1 gives next day)
-          if (tourType === 'CO') {
-            for (const [bkId, data] of Object.entries(routeMapData['sevil'] || {})) {
-              const segs = data.segments || [];
-              const multiSegs = segs.filter(s => s.von !== s.bis);
-              if (multiSegs.length === 1 && multiSegs[0].von) {
-                const vk = `sevil_${bkId}_VCOL1`;
-                if (!ovr[vk]?.vonOverride) {
-                  const khivaDate = addDaysLocal(multiSegs[0].von, 7);
-                  ovr[vk] = { vonOverride: khivaDate, bisOverride: khivaDate };
-                  changed = true;
-                }
-              }
-            }
-          }
-
           if (changed) jahresplanungApi.saveTransport(YEAR, tourType, ovr).catch(() => {});
         }
 
