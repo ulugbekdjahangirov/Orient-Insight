@@ -1220,8 +1220,11 @@ router.get('/transport', authenticate, async (req, res) => {
     const bookingIds = bookings.map(b => b.id);
     const routes = await prisma.route.findMany({
       where: { bookingId: { in: bookingIds }, date: { not: null } },
-      select: { bookingId: true, date: true, provider: true, personCount: true },
-      orderBy: { date: 'asc' }
+      select: {
+        bookingId: true, date: true, provider: true, personCount: true,
+        routeName: true, departureTime: true, transportType: true, itinerary: true, dayNumber: true
+      },
+      orderBy: [{ bookingId: 'asc' }, { date: 'asc' }, { dayNumber: 'asc' }]
     });
 
     // Cluster consecutive dates into segments.
@@ -1273,13 +1276,30 @@ router.get('/transport', authenticate, async (req, res) => {
       }
     }
 
+    // Build routeDetails: provider → bookingId → [{ date, routeName, pax, time, vehicle, itinerary }]
+    const routeDetails = { sevil: {}, xayrulla: {}, nosir: {} };
+    for (const r of routes) {
+      const norm = normalizeProvider(r.provider);
+      if (!norm) continue;
+      const k = String(r.bookingId);
+      if (!routeDetails[norm][k]) routeDetails[norm][k] = [];
+      routeDetails[norm][k].push({
+        date: r.date.toISOString().slice(0, 10),
+        routeName: r.routeName || '',
+        pax: r.personCount || 0,
+        time: r.departureTime || '',
+        vehicle: r.transportType || '',
+        itinerary: r.itinerary || ''
+      });
+    }
+
     // Manual overrides: key = "{provider}_{bookingId}_{segVon}" → { vonOverride, bisOverride, paxOverride }
     const setting = await prisma.systemSetting.findUnique({
       where: { key: `JP_TRANSPORT_${year}_${tourType}` }
     });
     const manualOverrides = setting ? JSON.parse(setting.value) : {};
 
-    res.json({ bookings, routeMap, manualOverrides, year, tourType });
+    res.json({ bookings, routeMap, routeDetails, manualOverrides, year, tourType });
   } catch (err) {
     console.error('Jahresplanung transport error:', err);
     res.status(500).json({ error: err.message });

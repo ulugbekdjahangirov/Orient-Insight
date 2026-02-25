@@ -912,6 +912,8 @@ function TransportTab({ tourType }) {
   const [bookings, setBookings] = useState([]);
   // routeMap: provider → bookingId → { von, bis, pax } (auto from routes)
   const [routeMap, setRouteMap] = useState({});
+  // routeDetails: provider → bookingId → [{ date, routeName, pax, time, vehicle, itinerary }]
+  const [routeDetails, setRouteDetails] = useState({});
   // manualOverrides: key="{provider}_{bookingId}" → { vonOverride, bisOverride, paxOverride }
   const [manualOverrides, setManualOverrides] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`jp_transport_ovr_${YEAR}_${tourType}`) || '{}'); }
@@ -952,6 +954,7 @@ function TransportTab({ tourType }) {
 
         setBookings(bookingsData);
         setRouteMap(routeMapData);
+        setRouteDetails(res.data.routeDetails || {});
         setManualOverrides(ovr);
         try { localStorage.setItem(`jp_transport_ovr_${YEAR}_${tourType}`, JSON.stringify(ovr)); } catch {}
       })
@@ -1128,6 +1131,48 @@ function TransportTab({ tourType }) {
       headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [245, 248, 255] },
     });
+
+    // Detailed route tables per booking
+    for (const b of items) {
+      const bk = String(b.id);
+      const details = routeDetails[provId]?.[bk] || [];
+      if (details.length === 0) continue;
+
+      const startY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(9);
+      doc.setTextColor(30, 30, 30);
+      doc.setFont('helvetica', 'bold');
+      doc.text(b.bookingNumber, 14, startY - 2);
+      doc.setFont('helvetica', 'normal');
+
+      const detailRows = details.map((r, i) => [
+        String(i + 1),
+        fmtD(r.date),
+        r.routeName,
+        String(r.pax),
+        r.time || '—',
+        r.vehicle || '—',
+        r.itinerary || '—',
+      ]);
+
+      autoTable(doc, {
+        head: [['#', 'Sana', "Yo'nalish", 'PAX', 'Vaqt', 'Avtomobil', 'Sayohat dasturi']],
+        body: detailRows,
+        startY,
+        styles: { fontSize: 7.5, cellPadding: 2 },
+        headStyles: { fillColor: [234, 179, 8], textColor: 30, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [254, 252, 232] },
+        columnStyles: {
+          0: { cellWidth: 8 },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 38 },
+          3: { cellWidth: 10 },
+          4: { cellWidth: 14 },
+          5: { cellWidth: 28 },
+          6: { cellWidth: 'auto' },
+        },
+      });
+    }
 
     return doc.output('blob');
   };
