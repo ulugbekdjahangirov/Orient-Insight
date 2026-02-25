@@ -976,6 +976,23 @@ function TransportTab({ tourType }) {
               }
             }
           }
+          // CO/sevil: 2nd segment = Khiva-Urgench (day 12, Khiva free day = day 11)
+          // Formula: 2nd Von = 1st Von + 7 (same day stored, BIS_EXTRA +1 gives next day)
+          if (tourType === 'CO') {
+            for (const [bkId, data] of Object.entries(routeMapData['sevil'] || {})) {
+              const segs = data.segments || [];
+              const multiSegs = segs.filter(s => s.von !== s.bis);
+              if (multiSegs.length === 1 && multiSegs[0].von) {
+                const vk = `sevil_${bkId}_VCOL1`;
+                if (!ovr[vk]?.vonOverride) {
+                  const khivaDate = addDaysLocal(multiSegs[0].von, 7);
+                  ovr[vk] = { vonOverride: khivaDate, bisOverride: khivaDate };
+                  changed = true;
+                }
+              }
+            }
+          }
+
           if (changed) jahresplanungApi.saveTransport(YEAR, tourType, ovr).catch(() => {});
         }
 
