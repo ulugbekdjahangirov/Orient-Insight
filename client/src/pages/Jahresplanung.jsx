@@ -934,18 +934,44 @@ function TransportTab({ tourType }) {
         const routeMapData = res.data.routeMap || {};
         let ovr = { ...(res.data.manualOverrides || {}) };
 
-        // Auto-fill missing 2nd segments for ER/Xayrulla (Von+11, Bis+12 from 1st multi-day segment)
-        if (tourType === 'ER') {
+        // Auto-fill missing segments for ER and CO / Xayrulla
+        if (tourType === 'ER' || tourType === 'CO') {
           let changed = false;
           for (const [bkId, data] of Object.entries(routeMapData['xayrulla'] || {})) {
             const segs = data.segments || [];
-            // Count only multi-day segments (same logic as getVisibleSegs for ER/xayrulla)
             const multiSegs = segs.filter(s => s.von !== s.bis);
             if (multiSegs.length === 1 && multiSegs[0].von) {
-              const k = `xayrulla_${bkId}_VCOL1`;
-              if (!ovr[k]?.vonOverride) {
-                ovr[k] = { vonOverride: addDaysLocal(multiSegs[0].von, 11), bisOverride: addDaysLocal(multiSegs[0].von, 12) };
-                changed = true;
+              const firstVon = multiSegs[0].von;
+              if (tourType === 'CO') {
+                // CO/xayrulla: 3 cols total [multi(1-3), single/vokzal(5), multi(12-13)]
+                const hasSingle = segs.some(s => s.von === s.bis);
+                if (!hasSingle) {
+                  // Missing vokzal (day+4) AND 2nd multi — fill VCOL1 + VCOL2
+                  const vk1 = `xayrulla_${bkId}_VCOL1`;
+                  if (!ovr[vk1]?.vonOverride) {
+                    ovr[vk1] = { vonOverride: addDaysLocal(firstVon, 4), bisOverride: addDaysLocal(firstVon, 4) };
+                    changed = true;
+                  }
+                  const vk2 = `xayrulla_${bkId}_VCOL2`;
+                  if (!ovr[vk2]?.vonOverride) {
+                    ovr[vk2] = { vonOverride: addDaysLocal(firstVon, 11), bisOverride: addDaysLocal(firstVon, 12) };
+                    changed = true;
+                  }
+                } else {
+                  // Has vokzal at idx 1, missing 2nd multi at idx 2 — fill VCOL2
+                  const vk2 = `xayrulla_${bkId}_VCOL2`;
+                  if (!ovr[vk2]?.vonOverride) {
+                    ovr[vk2] = { vonOverride: addDaysLocal(firstVon, 11), bisOverride: addDaysLocal(firstVon, 12) };
+                    changed = true;
+                  }
+                }
+              } else {
+                // ER/xayrulla: 2 cols [multi(0-2), multi(11-12)] — fill VCOL1
+                const k = `xayrulla_${bkId}_VCOL1`;
+                if (!ovr[k]?.vonOverride) {
+                  ovr[k] = { vonOverride: addDaysLocal(firstVon, 11), bisOverride: addDaysLocal(firstVon, 12) };
+                  changed = true;
+                }
               }
             }
           }
