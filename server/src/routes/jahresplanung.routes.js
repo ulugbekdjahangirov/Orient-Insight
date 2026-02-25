@@ -500,6 +500,20 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
       approvalMsgId = docRes.data?.result?.message_id || null;
     }
 
+    // 2. Send formatted table as a separate text message to hammasi
+    if (messageText) {
+      const tableText = [
+        `🚌 *Transport Rejasi ${year} — ${tourLabel}* | 👤 *${providerLabel}*`,
+        ``,
+        `\`\`\`\n${messageText}\n\`\`\``
+      ].join('\n');
+      await axios.post(`${TG_BASE}/sendMessage`, {
+        chat_id: hammasiChatId,
+        text: tableText,
+        parse_mode: 'Markdown'
+      }).catch(err => console.warn('tp26 table message warn:', err.response?.data?.description || err.message));
+    }
+
     // 2. Save confirmation record as PENDING_APPROVAL (store providerChatId for webhook to use)
     const confKey = `JP_TRANSPORT_CONFIRM_${year}_${tourType}_${provider}`;
     await prisma.systemSetting.upsert({
