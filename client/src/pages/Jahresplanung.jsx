@@ -1033,7 +1033,7 @@ function TransportTab({ tourType }) {
   // Generate PDF for a provider's bookings
   const generateTransportPDF = (provId, items) => {
     const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
-    const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+    const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
 
     const fmtD = (d) => {
       if (!d) return '—';
