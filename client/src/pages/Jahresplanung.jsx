@@ -1141,10 +1141,10 @@ function TransportTab({ tourType }) {
       const filename = `${YEAR}_${tourType}_Transport_${prov?.label || provId}.pdf`;
 
       // Build formatted monospace table for Telegram
-      const fmtShort = (d) => {
+      const fmtFull = (d) => {
         if (!d) return '——';
         const dt = new Date(d);
-        return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`;
+        return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
       };
       const pad = (s, w) => String(s ?? '').padEnd(w);
 
@@ -1183,11 +1183,11 @@ function TransportTab({ tourType }) {
           const eff = getSegEffective(provId, tBkId, tSegs[idx]);
           isSingle = eff.von === eff.bis;
         }
-        if (isSingle) { segCols.push({ label: 'Vokzal', w: 7, idx, type: 'single' }); }
-        else { multiCnt++; segCols.push({ label: provColCount > 1 ? `${multiCnt}-zayezd` : 'Zayezd', w: 13, idx, type: 'multi' }); }
+        if (isSingle) { segCols.push({ label: 'Вокзал', w: 10, idx, type: 'single' }); }
+        else { multiCnt++; segCols.push({ label: provColCount > 1 ? `${multiCnt} Заезд` : 'Заезд', w: 22, idx, type: 'multi' }); }
       }
       const allCols = [
-        { label: 'Guruh', w: 5 },
+        { label: 'Группа', w: 6 },
         { label: 'PAX', w: 3 },
         ...segCols,
       ];
@@ -1214,7 +1214,7 @@ function TransportTab({ tourType }) {
             von = ovr?.vonOverride || null;
             bis = ovr?.bisOverride || null;
           }
-          const val = type === 'single' ? fmtShort(von) : `${fmtShort(von)}→${fmtShort(bis)}`;
+          const val = type === 'single' ? fmtFull(von) : (von || bis ? `${fmtFull(von)}-${fmtFull(bis)}` : '—');
           cells.push(pad(val, w));
         });
         return cells.join('  ');
