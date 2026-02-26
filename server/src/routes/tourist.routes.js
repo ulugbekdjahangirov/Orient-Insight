@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
@@ -15,9 +15,6 @@ try {
 } catch (e) {
   console.warn('pdf-parse not available');
 }
-
-// Import PDF rooming list parser utility
-const { parseRoomingListPdf: utilParseRoomingListPdf, getAirportName } = require('../utils/pdfRoomingListParser');
 
 // Try to load pdf2json (optional dependency for PDF parsing)
 let PDFParser;

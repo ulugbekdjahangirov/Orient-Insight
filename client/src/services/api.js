@@ -66,16 +66,8 @@ export const bookingsApi = {
   getRoutes: (bookingId) => api.get(`/bookings/${bookingId}/routes`),
   getRailways: (bookingId) => api.get(`/bookings/${bookingId}/railways`),
   getFlights: (bookingId) => api.get(`/bookings/${bookingId}/flights`),
-  // Update all bookings' statuses based on PAX
-  updateAllStatuses: () => api.post('/bookings/update-all-statuses'),
-  // Recalculate room counts for all bookings
-  recalculateRooms: () => api.post('/bookings/recalculate-rooms'),
-  // Debug room preferences for a booking
-  debugRooms: (id) => api.get(`/bookings/${id}/debug-rooms`),
   // Debug count bookings by type
   debugCountByType: (year) => api.get('/bookings/debug/count-by-type', { params: year ? { year } : {} }),
-  // Load accommodations from template (with PAX split logic)
-  loadFromTemplate: (id) => api.post(`/bookings/${id}/load-template`)
 };
 
 // API for tourists (also used by Rooming List module)
