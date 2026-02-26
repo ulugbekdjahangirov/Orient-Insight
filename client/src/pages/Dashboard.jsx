@@ -231,7 +231,7 @@ export default function Dashboard() {
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <h2 className="text-xl font-black text-gray-900">
-              Бронирования по месяцам ({new Date().getFullYear()})
+              Бронирования по месяцам ({selectedYear})
             </h2>
           </div>
           <div className="h-64">
