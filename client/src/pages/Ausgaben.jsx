@@ -739,17 +739,25 @@ export default function Ausgaben() {
   };
 
   const getGrandTotalUSD = () => {
-    const dataToUse = (activeExpenseTab === 'general' || activeExpenseTab === 'hotels') ? filteredBookingsWithHotels : bookingsDetailedData;
-    return dataToUse.reduce((sum, booking) => {
-      return sum + (booking.grandTotalData?.grandTotalUSD || 0);
-    }, 0);
+    if (activeExpenseTab === 'general' || activeExpenseTab === 'hotels') {
+      return filteredBookingsWithHotels.reduce((sum, b) => sum + (b.grandTotalData?.grandTotalUSD || 0), 0);
+    }
+    if (activeExpenseTab === 'guides') {
+      return bookingsDetailedData.reduce((sum, b) => sum + (b.expenses?.guide || 0), 0);
+    }
+    return 0; // transport is UZS only
   };
 
   const getGrandTotalUZS = () => {
-    const dataToUse = (activeExpenseTab === 'general' || activeExpenseTab === 'hotels') ? filteredBookingsWithHotels : bookingsDetailedData;
-    return dataToUse.reduce((sum, booking) => {
-      return sum + (booking.grandTotalData?.grandTotalUZS || 0);
-    }, 0);
+    if (activeExpenseTab === 'general' || activeExpenseTab === 'hotels') {
+      return filteredBookingsWithHotels.reduce((sum, b) => sum + (b.grandTotalData?.grandTotalUZS || 0), 0);
+    }
+    if (activeExpenseTab === 'transport') {
+      return bookingsDetailedData.reduce((sum, b) =>
+        sum + (b.expenses?.transportSevil || 0) + (b.expenses?.transportXayrulla || 0) +
+              (b.expenses?.transportNosir || 0) + (b.expenses?.railway || 0), 0);
+    }
+    return 0; // guides is USD only
   };
 
   const formatNumber = (num) => {
@@ -866,7 +874,11 @@ export default function Ausgaben() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Number of Tours</p>
-                      <p className="text-2xl font-bold text-gray-900">{activeExpenseTab === 'general' || activeExpenseTab === 'hotels' ? filteredBookingsWithHotels.length : bookings.length}</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {activeExpenseTab === 'general' || activeExpenseTab === 'hotels'
+                          ? filteredBookingsWithHotels.length
+                          : bookingsDetailedData.length}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -877,11 +889,25 @@ export default function Ausgaben() {
                       className="w-10 h-10 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: `${activeModule?.color}20` }}
                     >
-                      <Hotel size={20} style={{ color: activeModule?.color }} />
+                      {activeExpenseTab === 'guides'    ? <Users  size={20} style={{ color: activeModule?.color }} /> :
+                       activeExpenseTab === 'transport' ? <Truck  size={20} style={{ color: activeModule?.color }} /> :
+                       <Hotel size={20} style={{ color: activeModule?.color }} />}
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Number of Hotels</p>
-                      <p className="text-2xl font-bold text-gray-900">{getPivotData().hotels.length}</p>
+                      <p className="text-sm text-gray-600">
+                        {activeExpenseTab === 'guides'    ? 'Guides with cost' :
+                         activeExpenseTab === 'transport' ? 'Bookings with transport' :
+                         'Number of Hotels'}
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {activeExpenseTab === 'guides'
+                          ? bookingsDetailedData.filter(b => (b.expenses?.guide || 0) > 0).length
+                          : activeExpenseTab === 'transport'
+                          ? bookingsDetailedData.filter(b =>
+                              (b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+
+                              (b.expenses?.transportNosir||0)+(b.expenses?.railway||0) > 0).length
+                          : getPivotData().hotels.length}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -894,14 +920,24 @@ export default function Ausgaben() {
                       <DollarSign size={20} className="text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Total Amount (USD)</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        ${formatNumber(getGrandTotalUSD())}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">Total Amount (UZS)</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        {formatNumber(getGrandTotalUZS())}
-                      </p>
+                      {activeExpenseTab === 'guides' ? (
+                        <>
+                          <p className="text-sm text-gray-600">Total Guide Cost (USD)</p>
+                          <p className="text-xl font-bold text-gray-900">${formatNumber(getGrandTotalUSD())}</p>
+                        </>
+                      ) : activeExpenseTab === 'transport' ? (
+                        <>
+                          <p className="text-sm text-gray-600">Total Transport (UZS)</p>
+                          <p className="text-xl font-bold text-gray-900">{formatNumber(getGrandTotalUZS())}</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-600">Total Amount (USD)</p>
+                          <p className="text-xl font-bold text-gray-900">${formatNumber(getGrandTotalUSD())}</p>
+                          <p className="text-sm text-gray-600 mt-1">Total Amount (UZS)</p>
+                          <p className="text-xl font-bold text-gray-900">{formatNumber(getGrandTotalUZS())}</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
