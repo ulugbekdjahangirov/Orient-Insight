@@ -46,11 +46,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/auth', authRoutes);
-// Debug middleware to log all requests to /api/bookings
-app.use('/api/bookings', (req, res, next) => {
-  console.log('🔍 Request to /api/bookings:', req.method, req.path);
-  next();
-});
 app.use('/api/bookings', touristRoutes); // Tourist routes MUST be before bookingRoutes to avoid :id catch-all
 app.use('/api/bookings', routeRoutes);  // Route routes for transport planning
 app.use('/api/routes', routeRoutes);     // Route template routes (standalone, not per booking)
@@ -116,5 +111,3 @@ _prisma.systemSetting.findUnique({ where: { key: 'GMAIL_SENDER_WHITELIST' } }).t
 // Start Gmail polling cron job
 const { startGmailPolling } = require('./jobs/gmailPoller.job');
 startGmailPolling();
-
-// restart
