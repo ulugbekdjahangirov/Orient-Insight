@@ -97,16 +97,17 @@ export default function TransportPlanTab({ tourType }) {
             {isOpen && (
               <div className="bg-white overflow-x-auto">
                 {/* Column headers */}
-                <div className="flex items-end px-6 py-2.5 bg-gray-50 border-b border-gray-200 text-xs text-gray-400 font-medium gap-0 min-w-max">
+                <div className="flex items-end px-6 py-2.5 bg-gray-50 border-b border-gray-200 text-xs text-gray-400 font-medium">
                   <span className="w-24 flex-shrink-0">Guruh</span>
                   <span className="w-14 flex-shrink-0">PAX</span>
                   <span className="w-32 flex-shrink-0">Von</span>
                   <span className="w-32 flex-shrink-0">Bis</span>
-                  <span className="w-32 flex-shrink-0">Yuborildi</span>
+                  <span className="flex-1" />
+                  <span className="w-36 flex-shrink-0">Yuborildi</span>
                   <span className="w-32 flex-shrink-0">Tekshirdi</span>
                   <span className="w-32 flex-shrink-0">Tasdiqladi</span>
                   <span className="w-36 flex-shrink-0">Tasdiqlangan sana</span>
-                  <span className="flex-1 text-right">Status</span>
+                  <span className="w-16 text-right flex-shrink-0">Status</span>
                 </div>
 
                 {items.length === 0 ? (
@@ -121,7 +122,7 @@ export default function TransportPlanTab({ tourType }) {
                   const isCancelled = b.status === 'CANCELLED';
 
                   return (
-                    <div key={bk} className={`flex items-center px-6 py-3 border-b border-gray-100 last:border-0 gap-0 min-w-max ${isCancelled ? 'bg-red-50' : ''}`}>
+                    <div key={bk} className={`flex items-center px-6 py-3 border-b border-gray-100 last:border-0 ${isCancelled ? 'bg-red-50' : ''}`}>
                       <div className="w-24 flex-shrink-0">
                         <Link to={`/bookings/${b.id}`} className={`font-semibold text-sm hover:underline ${isCancelled ? 'text-red-400 line-through' : 'text-primary-600'}`}>
                           {b.bookingNumber}
@@ -131,13 +132,16 @@ export default function TransportPlanTab({ tourType }) {
                       <span className="w-32 flex-shrink-0 text-sm text-gray-600">{fmtDate(vonRaw) || '—'}</span>
                       <span className="w-32 flex-shrink-0 text-sm text-gray-600">{fmtDate(bis) || '—'}</span>
 
+                      {/* Spacer pushes confirmation columns to the right */}
+                      <span className="flex-1" />
+
                       {/* Confirmation columns — same for all rows in this provider */}
-                      <span className="w-32 flex-shrink-0 text-xs text-gray-500">{fmtDateTime(conf?.sentAt) || <span className="text-gray-300">—</span>}</span>
+                      <span className="w-36 flex-shrink-0 text-xs text-gray-500">{fmtDateTime(conf?.sentAt) || <span className="text-gray-300">—</span>}</span>
                       <span className="w-32 flex-shrink-0 text-xs text-blue-600 truncate pr-2" title={conf?.approvedBy || ''}>{conf?.approvedBy || <span className="text-gray-300">—</span>}</span>
                       <span className="w-32 flex-shrink-0 text-xs text-green-700 truncate pr-2" title={conf?.confirmedBy || ''}>{conf?.confirmedBy || <span className="text-gray-300">—</span>}</span>
                       <span className="w-36 flex-shrink-0 text-xs text-gray-500">{fmtDateTime(conf?.respondedAt) || <span className="text-gray-300">—</span>}</span>
 
-                      <div className="flex-1 flex justify-end">
+                      <div className="w-16 flex-shrink-0 flex justify-end">
                         {isCancelled
                           ? <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-lg">✕ Bekor</span>
                           : <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">✓ OK</span>
