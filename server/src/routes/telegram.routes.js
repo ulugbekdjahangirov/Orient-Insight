@@ -1166,7 +1166,10 @@ router.delete('/confirmations/:id', authenticate, async (req, res) => {
 // GET /api/telegram/confirmations
 router.get('/confirmations', authenticate, async (req, res) => {
   try {
+    const year = req.query.year ? parseInt(req.query.year) : null;
+    const where = year ? { booking: { bookingYear: year } } : {};
     const confirmations = await prisma.telegramConfirmation.findMany({
+      where,
       include: {
         booking: { select: { bookingNumber: true, departureDate: true } },
         hotel: { select: { name: true, city: { select: { name: true } } } }
@@ -1294,7 +1297,10 @@ router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('
 // GET /api/telegram/transport-confirmations
 router.get('/transport-confirmations', authenticate, async (req, res) => {
   try {
+    const year = req.query.year ? parseInt(req.query.year) : null;
+    const where = year ? { booking: { bookingYear: year } } : {};
     const confirmations = await prisma.transportConfirmation.findMany({
+      where,
       include: {
         booking: { select: { bookingNumber: true, departureDate: true } }
       },
@@ -1356,7 +1362,10 @@ router.put('/transport-settings', authenticate, async (req, res) => {
 // GET /api/telegram/guide-assignments — bookings with guide info
 router.get('/guide-assignments', authenticate, async (req, res) => {
   try {
+    const year = req.query.year ? parseInt(req.query.year) : null;
+    const where = year ? { bookingYear: year } : {};
     const bookings = await prisma.booking.findMany({
+      where,
       select: {
         id: true,
         bookingNumber: true,
@@ -1521,7 +1530,10 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
 router.get('/meal-confirmations', authenticate, async (req, res) => {
   try {
     const { bookingId } = req.query;
-    const where = bookingId ? { bookingId: parseInt(bookingId) } : {};
+    const year = req.query.year ? parseInt(req.query.year) : null;
+    const where = {};
+    if (bookingId) where.bookingId = parseInt(bookingId);
+    if (year) where.booking = { bookingYear: year };
     const confirmations = await prisma.mealConfirmation.findMany({
       where,
       include: { booking: { select: { bookingNumber: true, departureDate: true, tourType: { select: { code: true } } } } },

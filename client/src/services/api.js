@@ -327,7 +327,7 @@ export const pricesApi = {
 
 // API for Telegram confirmations (Hamkorlar page)
 export const telegramApi = {
-  getConfirmations: () => api.get('/telegram/confirmations'),
+  getConfirmations: (year) => api.get('/telegram/confirmations', year ? { params: { year } } : {}),
   deleteConfirmation: (id) => api.delete(`/telegram/confirmations/${id}`),
   sendMarshrut: (bookingId, provider, pdfBlob, filename) => {
     const form = new FormData();
@@ -336,14 +336,14 @@ export const telegramApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  getTransportConfirmations: () => api.get('/telegram/transport-confirmations'),
+  getTransportConfirmations: (year) => api.get('/telegram/transport-confirmations', year ? { params: { year } } : {}),
   deleteTransportConfirmation: (id) => api.delete(`/telegram/transport-confirmations/${id}`),
   getTransportSettings: () => api.get('/telegram/transport-settings'),
   saveTransportSettings: (data) => api.put('/telegram/transport-settings', data),
   sendMeal: (bookingId, data) => api.post(`/telegram/send-meal/${bookingId}`, data),
-  getMealConfirmations: (bookingId) => api.get('/telegram/meal-confirmations', bookingId ? { params: { bookingId } } : {}),
+  getMealConfirmations: (bookingId, year) => api.get('/telegram/meal-confirmations', { params: { ...(bookingId ? { bookingId } : {}), ...(year ? { year } : {}) } }),
   deleteMealConfirmation: (id) => api.delete(`/telegram/meal-confirmations/${id}`),
-  getGuideAssignments: () => api.get('/telegram/guide-assignments'),
+  getGuideAssignments: (year) => api.get('/telegram/guide-assignments', year ? { params: { year } } : {}),
   getMealSettings: () => api.get('/telegram/meal-settings'),
   saveMealSettings: (chatIds) => api.put('/telegram/meal-settings', { chatIds }),
   sendGuide: (bookingId, data) => api.post(`/telegram/send-guide/${bookingId}`, data),
@@ -404,7 +404,7 @@ export const jahresplanungApi = {
   saveState: (year, tourType, data) => api.put('/jahresplanung/state', { year, tourType, ...data }),
   getMealOverrides: (year, tourType) => api.get('/jahresplanung/meal-overrides', { params: { year, tourType } }),
   saveMealOverrides: (year, tourType, data) => api.put('/jahresplanung/meal-overrides', { year, tourType, data }),
-  getJpSections: () => api.get('/jahresplanung/jp-sections'),
+  getJpSections: (year) => api.get('/jahresplanung/jp-sections', year ? { params: { year } } : {}),
   updateVisitStatus: (hotelId, bookingId, status, tourType) =>
     api.put(`/jahresplanung/jp-sections/${hotelId}/visit-status`, { bookingId, status, tourType }),
   deleteJpHotel: (hotelId, tourType) =>

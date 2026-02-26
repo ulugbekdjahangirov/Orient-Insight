@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { telegramApi, api, jahresplanungApi } from '../services/api';
 import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck, Send, Copy, X, CalendarRange } from 'lucide-react';
 import TransportPlanTab from '../components/common/TransportPlanTab';
+import { useYear } from '../context/YearContext';
 
 const TABS = [
   { id: 'hotels', label: 'Hotels', icon: Building2 },
@@ -1247,6 +1248,7 @@ const STATUS_FILTERS = [
 ];
 
 export default function Partners() {
+  const { selectedYear } = useYear();
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('partners_activeTab') || 'hotels');
   const [hotelSubTab, setHotelSubTab] = useState('ER');
   const [transportSubTab, setTransportSubTab] = useState('ER');
@@ -1304,11 +1306,11 @@ export default function Partners() {
     setError(null);
     try {
       const [hotelRes, transportRes, mealRes, guideRes, jpRes] = await Promise.all([
-        telegramApi.getConfirmations(),
-        telegramApi.getTransportConfirmations(),
-        telegramApi.getMealConfirmations(),
-        telegramApi.getGuideAssignments(),
-        jahresplanungApi.getJpSections(),
+        telegramApi.getConfirmations(selectedYear),
+        telegramApi.getTransportConfirmations(selectedYear),
+        telegramApi.getMealConfirmations(null, selectedYear),
+        telegramApi.getGuideAssignments(selectedYear),
+        jahresplanungApi.getJpSections(selectedYear),
       ]);
       setConfirmations(hotelRes.data.confirmations || []);
       setTransportConfirmations(transportRes.data.confirmations || []);
@@ -1327,7 +1329,7 @@ export default function Partners() {
     setCountdown(AUTO_REFRESH_SEC);
   };
 
-  // Auto-refresh every 30s
+  // Auto-refresh every 30s, also re-runs when selectedYear changes
   useEffect(() => {
     loadConfirmations();
 
@@ -1349,7 +1351,7 @@ export default function Partners() {
       clearInterval(countdownRef.current);
       clearInterval(refreshRef.current);
     };
-  }, []);
+  }, [selectedYear]);
 
   return (
     <div className="p-6 max-w-full">
@@ -1395,7 +1397,7 @@ export default function Partners() {
               }`}
             >
               <Icon className="w-4 h-4" />
-              {tab.label}
+              {tab.label.replace('2026', selectedYear)}
             </button>
           );
         })}

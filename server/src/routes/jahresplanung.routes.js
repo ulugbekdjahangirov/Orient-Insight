@@ -965,9 +965,10 @@ router.delete('/jp-sections/:hotelId', authenticate, async (req, res) => {
   }
 });
 
-// GET /api/jahresplanung/jp-sections — all JP_SECTIONS data for Partners Hotels2026 tab
+// GET /api/jahresplanung/jp-sections — all JP_SECTIONS data for Partners Hotels tab
 router.get('/jp-sections', authenticate, async (req, res) => {
   try {
+    const yearFilter = req.query.year ? parseInt(req.query.year) : null;
     const settings = await prisma.systemSetting.findMany({
       where: { key: { startsWith: 'JP_SECTIONS_' } }
     });
@@ -995,7 +996,7 @@ router.get('/jp-sections', authenticate, async (req, res) => {
       } catch {
         return null;
       }
-    }).filter(Boolean);
+    }).filter(Boolean).filter(s => !yearFilter || s.year === yearFilter);
 
     res.json({ sections });
   } catch (err) {
