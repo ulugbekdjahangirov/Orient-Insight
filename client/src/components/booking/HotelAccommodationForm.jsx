@@ -92,28 +92,17 @@ export default function HotelAccommodationForm({
     try {
       const response = await bookingsApi.getRoomingList(bookingId, accommodationId);
       const roomingData = response.data.roomingList || [];
-      console.log(`📥 Loaded rooming list for accommodation ${accommodationId}:`, {
-        count: roomingData.length,
-        tourists: roomingData.map(t => ({name: t.fullName || `${t.firstName} ${t.lastName}`, accommodation: t.accommodation}))
-      });
       // Check Baetgen's raw data from API
       const baetgen = roomingData.find(t => t.fullName?.includes('Baetgen'));
       if (baetgen) {
-        console.log('🔍 Baetgen RAW from API:', JSON.stringify({
-          checkInDate: baetgen.checkInDate,
-          checkOutDate: baetgen.checkOutDate
-        }));
       }
       setRoomingList(roomingData);
 
       // Auto-fill from rooming list after loading (for existing accommodations)
-      console.log('🔄 Triggering auto-fill after rooming list loaded');
       setTimeout(() => {
         if (formData.hotelId && selectedHotelRoomTypes.length > 0) {
-          console.log('🎯 Auto-filling from rooming list (after load)');
           autoFillFromRoomingList();
         } else {
-          console.log('⚠️ Waiting for hotel room types to load...');
         }
       }, 500); // Small delay to ensure selectedHotelRoomTypes is loaded
     } catch (error) {
@@ -193,19 +182,16 @@ export default function HotelAccommodationForm({
 
   // Auto-fill from rooming list when it loads - ALWAYS recalculate for existing accommodations
   useEffect(() => {
-    console.log('📋 useEffect triggered - roomingList:', roomingList.length, 'hotelId:', formData.hotelId, 'roomTypes:', selectedHotelRoomTypes.length);
 
     // Always auto-fill from rooming list if available (for both new and existing accommodations)
     // This ensures Baetgen extra nights are always included, even if not saved in database
     if (roomingList.length > 0 && formData.hotelId && selectedHotelRoomTypes.length > 0) {
-      console.log('🎯 Auto-filling from rooming list on modal open (recalculating)');
       // Small delay to ensure all data is loaded
       const timer = setTimeout(() => {
         autoFillFromRoomingList();
       }, 100);
       return () => clearTimeout(timer);
     } else {
-      console.log('⚠️ Not auto-filling - missing data');
     }
   }, [roomingList, selectedHotelRoomTypes]);
 
@@ -249,9 +235,6 @@ export default function HotelAccommodationForm({
     const dataSource = roomingList.length > 0 ? roomingList : tourists;
     const hasRoomingData = dataSource.length > 0 && formData.checkInDate && formData.checkOutDate;
 
-    console.log(`\n🏨 Calculating cost for hotel:`, selectedHotel?.name);
-    console.log(`   Data source: ${roomingList.length > 0 ? 'roomingList' : 'tourists'} (${dataSource.length} entries)`);
-    console.log(`   Hotel dates: ${formData.checkInDate} → ${formData.checkOutDate}`);
 
     // Calculate room-nights from rooming list (per room type)
     const roomNightsFromRoomingList = {};
@@ -308,7 +291,6 @@ export default function HotelAccommodationForm({
         // Calculate this guest's nights
         const guestNights = Math.max(0, Math.round((effectiveCheckOut - effectiveCheckIn) / (1000 * 60 * 60 * 24)));
 
-        console.log(`  Guest: ${tourist.lastName || tourist.fullName}, Check-in: ${effectiveCheckIn.toISOString().split('T')[0]}, Check-out: ${effectiveCheckOut.toISOString().split('T')[0]}, Nights: ${guestNights}`);
 
         // Get room type and normalize it
         let roomType = (tourist.roomPreference || '').toUpperCase();
@@ -337,9 +319,7 @@ export default function HotelAccommodationForm({
         }
 
         roomNightsFromRoomingList[roomType] = roomNights;
-        console.log(`🏨 Room type ${roomType}: ${guestNights} guest-nights → ${roomNights} room-nights`);
       });
-      console.log('📊 Room nights from rooming list:', roomNightsFromRoomingList);
     }
 
     // Check if this is a Guesthouse/Yurta - use PAX pricing
@@ -371,12 +351,10 @@ export default function HotelAccommodationForm({
         // Use actual room-nights from rooming list (includes early arrivals, late checkouts)
         effectiveRoomNights = roomNightsFromRoomingList[normalizedRoomType];
         effectiveGuestNights = guestNightsFromRoomingList[normalizedRoomType] || (effectiveRoomNights * maxGuests);
-        console.log(`  [${index}] ${room.roomTypeCode}: Using rooming list data → ${effectiveRoomNights} room-nights × ${pricePerNight}$ = ${effectiveRoomNights * pricePerNight}$`);
       } else {
         // Fallback: calculate from room count and nights (manual input)
         effectiveRoomNights = roomCount * roomNights;
         effectiveGuestNights = roomCount * maxGuests * roomNights;
-        console.log(`  [${index}] ${room.roomTypeCode} × ${roomCount}: ${roomCount} × ${roomNights} nights × ${pricePerNight}$ = ${effectiveRoomNights * pricePerNight}$`);
       }
 
       // Calculate room cost
@@ -409,7 +387,6 @@ export default function HotelAccommodationForm({
       }
     });
 
-    console.log(`  ✅ FINAL TOTAL: ${totalCost}$ (${totalRooms} rooms, ${totalGuests} guests)`);
 
     // For Guesthouse/Yurta: override totalCost using PAX price from hotel
     if (isGuesthouseOrYurta && hotelPaxRoomType && totalGuests > 0) {
@@ -692,7 +669,6 @@ export default function HotelAccommodationForm({
               totalRooms: totals.totalRooms,
               totalGuests: totals.totalGuests
             });
-            console.log('✅ Auto-saved totals:', totals.totalCost.toLocaleString());
             setLastAutoSave(Date.now());
             // Refresh parent to update card
             onSave();
@@ -715,7 +691,6 @@ export default function HotelAccommodationForm({
           totalRooms: totals.totalRooms,
           totalGuests: totals.totalGuests
         });
-        console.log('✅ Auto-saved totals on close:', { totalCost: totals.totalCost });
       } catch (error) {
         console.error('Auto-save totals error:', error);
       }
@@ -878,14 +853,6 @@ export default function HotelAccommodationForm({
     // Use rooming list if available, otherwise use tourists
     const dataSource = roomingList.length > 0 ? roomingList : tourists;
 
-    console.log('🔧 autoFillFromRoomingList called:', {
-      roomingListLength: roomingList.length,
-      touristsLength: tourists.length,
-      dataSourceLength: dataSource.length,
-      hotelId: formData.hotelId,
-      checkIn: formData.checkInDate,
-      checkOut: formData.checkOutDate
-    });
 
     if (dataSource.length === 0) {
       toast.error('No tourist data available');
@@ -917,7 +884,6 @@ export default function HotelAccommodationForm({
 
         // If checkout is within 2 days of tour end, this is the last hotel
         const daysToEnd = Math.abs((tourEndDate - accCheckOut) / (1000 * 60 * 60 * 24));
-        console.log(`  🏨 Tashkent hotel check: daysToEnd=${daysToEnd}, tourEnd=${booking.endDate}, checkOut=${formData.checkOutDate}`);
 
         if (daysToEnd <= 2) {
           // Check if there was an earlier accommodation at the same hotel
@@ -929,14 +895,12 @@ export default function HotelAccommodationForm({
             const isTM = placement.includes('turkmen') || placement.includes('туркмен');
             return !isTM;
           });
-          console.log(`  🔥 Last Tashkent hotel - filtered from ${beforeFilter} to ${filteredTourists.length} UZ tourists`);
         }
       }
 
       // For Malika Khorazm, we still count all tourists but note that UZ stay fewer nights
     }
 
-    console.log(`  ✅ Final filteredTourists count: ${filteredTourists.length}`);
 
     // Count room types from tourists
     const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
@@ -984,18 +948,15 @@ export default function HotelAccommodationForm({
           const touristNights = Math.max(0, Math.round((touristCheckOut - touristCheckIn) / (1000 * 60 * 60 * 24)));
 
           // DEBUG: Log all tourists with their dates
-          console.log(`  👤 ${tourist.lastName || tourist.fullName} (${roomType}): ${tourist.checkInDate || 'NO DATE'} → ${tourist.checkOutDate || 'NO DATE'} = ${touristNights} nights (acc: ${accNights})`);
 
           // If tourist has extra nights (early arrival or late departure)
           if (touristNights > accNights) {
             const extraNights = touristNights - accNights;
             extraNightsByRoomType[roomType] += extraNights;
-            console.log(`  ✨ Extra nights for ${tourist.lastName || tourist.fullName}: ${extraNights} (${touristNights} - ${accNights})`);
           }
         });
       });
 
-      console.log(`  📊 Extra nights by room type:`, extraNightsByRoomType);
     }
 
     // Check if this is Guesthouse/Yurta - use PAX instead
@@ -1060,7 +1021,6 @@ export default function HotelAccommodationForm({
           nights: extraNightsByRoomType.DBL / 2, // Total guest-nights / 2 guests per room = room-nights
           pricePerNight: calculateTotalPrice(hotelRoomType, hotelTotalRooms)
         });
-        console.log(`  ✨ Added DBL extra nights: 1 room × ${extraNightsByRoomType.DBL / 2} nights = ${extraNightsByRoomType.DBL / 2} room-nights`);
       }
 
       if (extraNightsByRoomType.TWN > 0) {
@@ -1071,7 +1031,6 @@ export default function HotelAccommodationForm({
           nights: extraNightsByRoomType.TWN / 2, // Total guest-nights / 2 guests per room = room-nights
           pricePerNight: calculateTotalPrice(hotelRoomType, hotelTotalRooms)
         });
-        console.log(`  ✨ Added TWN extra nights: 1 room × ${extraNightsByRoomType.TWN / 2} nights = ${extraNightsByRoomType.TWN / 2} room-nights`);
       }
 
       if (extraNightsByRoomType.SNGL > 0) {
@@ -1082,12 +1041,10 @@ export default function HotelAccommodationForm({
           nights: extraNightsByRoomType.SNGL, // Use total extra nights directly (e.g., 3 for Baetgen)
           pricePerNight: calculateTotalPrice(hotelRoomType, hotelTotalRooms)
         });
-        console.log(`  ✨ Added SNGL extra nights: 1 room × ${extraNightsByRoomType.SNGL} nights = ${extraNightsByRoomType.SNGL} room-nights`);
       }
     }
 
     if (newRooms.length > 0) {
-      console.log('  🎯 Setting rooms:', newRooms);
       setRooms(newRooms);
       const totalTourists = filteredTourists.length;
       const totalRooms = roomCounts.DBL + roomCounts.TWN + roomCounts.SNGL;
@@ -1095,7 +1052,6 @@ export default function HotelAccommodationForm({
       const message = extraNightsTotal > 0
         ? `Calculated from Rooming List: ${totalTourists} guests, ${totalRooms} rooms (+${extraNightsTotal} extra nights)`
         : `Calculated from Rooming List: ${totalTourists} guests, ${totalRooms} rooms`;
-      console.log('  ✅ ' + message);
       toast.success(message);
     } else {
       toast.error('Could not calculate rooms from Rooming List');
@@ -1181,14 +1137,6 @@ export default function HotelAccommodationForm({
         totalTouristTax: totals.totalTouristTax
       };
 
-      console.log('💾 SAVING accommodation - totals object:', JSON.stringify({
-        totalRooms: totals.totalRooms,
-        totalGuests: totals.totalGuests,
-        totalCost: totals.totalCost,
-        currency: totals.currency,
-        roomingListLength: roomingList.length,
-        touristsLength: tourists.length
-      }, null, 2));
 
       if (editingAccommodation) {
         await bookingsApi.updateAccommodation(bookingId, editingAccommodation.id, data);

@@ -84,7 +84,6 @@ export default function Ausgaben() {
         const maxAge = 5 * 60 * 1000; // 5 minutes cache
 
         if (cacheAge < maxAge && parsed.bookings && (!needsDetailedData || parsed.detailedData)) {
-          console.log(`✅ Using localStorage cache for ${cacheKey} (age: ${Math.round(cacheAge / 1000)}s)`);
           const nonCancelledBookings = parsed.bookings.filter(b => b.status !== 'CANCELLED');
           setBookings(nonCancelledBookings);
           if (parsed.detailedData) {
@@ -108,7 +107,6 @@ export default function Ausgaben() {
 
     // Check in-memory cache
     if (cache[cacheKey]?.bookings && (!needsDetailedData || cache[cacheKey]?.detailedData)) {
-      console.log(`✅ Using in-memory cache for ${cacheKey}`);
       const nonCancelledBookings = cache[cacheKey].bookings.filter(b => b.status !== 'CANCELLED');
       setBookings(nonCancelledBookings);
       if (cache[cacheKey].detailedData) {
@@ -122,14 +120,12 @@ export default function Ausgaben() {
 
     setLoading(true);
     try {
-      console.log(`🔄 Loading fresh data for ${cacheKey}`);
 
       // Load bookings for active tour type
       const response = await bookingsApi.getAll({ year: selectedYear });
       const allBookings = response.data.bookings;
 
       // DEBUG: Log all bookings with tourType info
-      console.log(`📊 Total bookings from API: ${allBookings.length}`);
 
       // Count bookings by tourType
       const tourTypeCounts = {};
@@ -143,7 +139,6 @@ export default function Ausgaben() {
         }
       });
 
-      console.log(`📊 Bookings by tourType:`, tourTypeCounts);
       if (noTourType.length > 0) {
         console.warn(`⚠️ ${noTourType.length} bookings WITHOUT tourType:`, noTourType);
       }
@@ -153,7 +148,6 @@ export default function Ausgaben() {
         booking => booking.tourType?.code === activeTourType && booking.status !== 'CANCELLED'
       );
 
-      console.log(`✅ Filtered ${filteredBookings.length} bookings for ${activeTourType}`);
 
       setBookings(filteredBookings);
 
@@ -181,7 +175,6 @@ export default function Ausgaben() {
           ...cacheData,
           timestamp: Date.now()
         }));
-        console.log(`💾 Saved to localStorage: ${localStorageKey}`);
       } catch (e) {
         console.warn('Failed to save to localStorage:', e);
       }
@@ -201,13 +194,11 @@ export default function Ausgaben() {
         const transportResponse = await transportApi.getAll();
         const { grouped } = transportResponse.data;
         metroVehiclesData = grouped.metro || [];
-        console.log('🚇 Loaded Metro vehicles from Opex:', metroVehiclesData.length);
       } catch (error) {
         console.error('Error loading metro vehicles:', error);
       }
 
       // Load data for all bookings in parallel (OPTIMIZED)
-      console.log(`📊 Loading detailed data for ${bookingsData.length} bookings`);
       const detailedData = await Promise.all(bookingsData.map(async (booking) => {
         try {
           // Load all data in parallel for this booking
@@ -259,7 +250,6 @@ export default function Ausgaben() {
 
       // Filter out null results (failed bookings)
       const validData = detailedData.filter(d => d !== null);
-      console.log(`✅ Loaded ${validData.length} bookings in parallel`);
 
       setBookingsDetailedData(validData);
       return validData;
@@ -274,15 +264,6 @@ export default function Ausgaben() {
     const pax = tourists?.length || 0;
     const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
 
-    console.log(`\n🔍 DEBUG ${booking.bookingNumber}:`);
-    console.log(`  PAX: ${pax}`);
-    console.log(`  Tour Type Code: ${tourTypeCode}`);
-    console.log(`  📦 tourServices (${tourServices?.length || 0} items):`, tourServices);
-    console.log(`  booking.guide:`, booking.guide);
-    console.log(`  booking.guideFullDays:`, booking.guideFullDays);
-    console.log(`  booking.guideHalfDays:`, booking.guideHalfDays);
-    console.log(`  booking.additionalGuides:`, booking.additionalGuides);
-    console.log(`  booking.bergreiseleiter:`, booking.bergreiseleiter);
 
     // Parse JSON fields for guide data
     let mainGuide = null;
@@ -319,7 +300,6 @@ export default function Ausgaben() {
           let totalPayment = (fullDays * dr) + (halfDays * hdr);
           if (totalPayment > 0) {
             mainGuide = { totalPayment };
-            console.log(`  ✅ mainGuideData totalPayment: $${totalPayment}`);
           }
         }
       }
@@ -331,7 +311,6 @@ export default function Ausgaben() {
       if (booking.additionalGuides && typeof booking.additionalGuides === 'string') {
         const additionalGuides = JSON.parse(booking.additionalGuides);
         secondGuide = additionalGuides[0] || null;
-        console.log(`  ✅ Parsed secondGuide:`, secondGuide);
 
         // Always recalculate totalPayment from days × rate (in case rate changed)
         if (secondGuide) {
@@ -342,7 +321,6 @@ export default function Ausgaben() {
           if (fullDays > 0 || halfDays > 0) {
             secondGuide.totalPayment = (fullDays * dayRate) + (halfDays * halfDayRate);
           }
-          console.log(`  🔧 Second guide payment: ${fullDays} days × $${dayRate} = $${secondGuide.totalPayment}`);
         }
       }
     } catch (e) {
@@ -352,10 +330,8 @@ export default function Ausgaben() {
     try {
       if (booking.bergreiseleiter && typeof booking.bergreiseleiter === 'string') {
         bergreiseleiter = JSON.parse(booking.bergreiseleiter);
-        console.log(`  ✅ Parsed bergreiseleiter:`, bergreiseleiter);
       } else if (booking.bergreiseleiter && typeof booking.bergreiseleiter === 'object') {
         bergreiseleiter = booking.bergreiseleiter;
-        console.log(`  ✅ Got bergreiseleiter object:`, bergreiseleiter);
       }
 
       // Calculate totalPayment if missing
@@ -365,7 +341,6 @@ export default function Ausgaben() {
         const fullDays = bergreiseleiter.fullDays || 0;
         const halfDays = bergreiseleiter.halfDays || 0;
         bergreiseleiter.totalPayment = (fullDays * dayRate) + (halfDays * halfDayRate);
-        console.log(`  🔧 Calculated bergreiseleiter payment: ${fullDays} days × $${dayRate} + ${halfDays} half days × $${halfDayRate} = $${bergreiseleiter.totalPayment}`);
       }
     } catch (e) {
       console.error('  ❌ Error parsing bergreiseleiter:', e);
@@ -386,7 +361,6 @@ export default function Ausgaben() {
         if (defaults.fullDays > 0 || defaults.halfDays > 0) {
           fullDays = defaults.fullDays;
           halfDays = defaults.halfDays;
-          console.log(`  🤖 AUTO: ${tourTypeCode.toUpperCase()} guide with 0 days → using defaults: ${fullDays} full days + ${halfDays} half day`);
         }
       }
 
@@ -395,12 +369,9 @@ export default function Ausgaben() {
         mainGuide = {
           totalPayment: (fullDays * dayRate) + (halfDays * halfDayRate)
         };
-        console.log(`  ✅ Main guide payment: ${fullDays} days × $${dayRate} + ${halfDays} half days × $${halfDayRate} = $${mainGuide.totalPayment}`);
       } else {
-        console.log(`  ⚠️ Main guide: days are 0, skipping`);
       }
     } else {
-      console.log(`  ❌ Main guide missing: guide=${!!booking.guide}, fullDays=${booking.guideFullDays}, halfDays=${booking.guideHalfDays}`);
     }
 
     const expenses = {
@@ -429,7 +400,6 @@ export default function Ausgaben() {
       metro: (() => {
         // Skip Metro for ZA tours
         if (booking.tourType?.code === 'ZA') {
-          console.log(`  🚇 Metro: Skipped for ZA tour`);
           return 0;
         }
 
@@ -441,7 +411,6 @@ export default function Ausgaben() {
           const pricePerPerson = parseFloat(priceStr) || 0;
           return sum + (pricePerPerson * metroPax);
         }, 0);
-        console.log(`  🚇 Metro vehicles (${metroData.length}):`, metroData, `PAX: ${metroPax}, Total: ${metroTotal}`);
         return metroTotal;
       })(),
 
@@ -455,7 +424,6 @@ export default function Ausgaben() {
       other: (() => {
         const otherServices = tourServices.filter(ts => ts.type?.toUpperCase() === 'OTHER');
         const otherTotal = otherServices.reduce((sum, ts) => sum + (parseFloat(ts.price) || 0), 0);
-        console.log(`  📦 Other services (${otherServices.length}):`, otherServices, `Total: ${otherTotal}`);
         return otherTotal;
       })()
     };
@@ -464,14 +432,12 @@ export default function Ausgaben() {
     try {
       const response = await opexApi.get(tourTypeCode.toUpperCase(), 'meal');
       const mealsData = response.data?.items || [];
-      console.log(`  📦 OPEX Meals[${tourTypeCode}]:`, mealsData.length, 'items');
       if (mealsData.length > 0) {
         expenses.meals = mealsData.reduce((sum, meal) => {
           const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
           const pricePerPerson = parseFloat(priceStr) || 0;
           return sum + (pricePerPerson * pax);
         }, 0);
-        console.log(`    ✅ Meals total: ${expenses.meals} UZS`);
       }
     } catch (e) {
       console.error('  ❌ Error loading meals:', e);
@@ -481,7 +447,6 @@ export default function Ausgaben() {
     try {
       const response = await opexApi.get(tourTypeCode.toUpperCase(), 'shows');
       const showsData = response.data?.items || [];
-      console.log(`  📦 OPEX Shows[${tourTypeCode}]:`, showsData.length, 'items');
       if (showsData.length > 0) {
         const opexShows = showsData.reduce((sum, show) => {
           const rawPrice = show.price || show.pricePerPerson || 0;
@@ -490,7 +455,6 @@ export default function Ausgaben() {
           return sum + (pricePerPerson * pax);
         }, 0);
         expenses.shou += opexShows; // ADD to existing tourServices value
-        console.log(`    ✅ Shows total (OPEX + tourServices): ${expenses.shou} UZS`);
       }
     } catch (e) {
       console.error('  ❌ Error loading shows:', e);
@@ -500,26 +464,17 @@ export default function Ausgaben() {
     try {
       const response = await opexApi.get(tourTypeCode.toUpperCase(), 'sightseeing');
       const sightseeingData = response.data?.items || [];
-      console.log(`  📦 OPEX Sightseeing[${tourTypeCode}]:`, sightseeingData.length, 'items');
       if (sightseeingData.length > 0) {
         const opexEintritt = sightseeingData.reduce((sum, item) => {
           const pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
           return sum + (pricePerPerson * pax);
         }, 0);
         expenses.eintritt += opexEintritt; // ADD to existing tourServices value
-        console.log(`    ✅ Eintritt total (OPEX + tourServices): ${expenses.eintritt} UZS`);
       }
     } catch (e) {
       console.error('  ❌ Error loading sightseeing:', e);
     }
 
-    console.log(`\n  📊 FINAL EXPENSES for ${booking.bookingNumber}:`);
-    console.log(`    Guide (USD): $${expenses.guide}`);
-    console.log(`    Eintritt (UZS): ${expenses.eintritt}`);
-    console.log(`    Metro (UZS): ${expenses.metro}`);
-    console.log(`    Shows (UZS): ${expenses.shou}`);
-    console.log(`    Meals (UZS): ${expenses.meals}`);
-    console.log(`    Other (USD): $${expenses.other}\n`);
 
     return expenses;
   };

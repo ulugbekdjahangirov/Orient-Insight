@@ -223,10 +223,6 @@ export default function Hotels() {
       setEditingRoom(room);
 
       // Show BASE price (no tax calculation needed)
-      console.log('🔍 Loading room for edit - Base price:', room.pricePerNight, room.currency);
-      console.log('🔍 VAT included:', room.vatIncluded);
-      console.log('🔍 Tourist tax enabled:', room.touristTaxEnabled);
-      console.log('🔍 Hotel totalRooms:', hotel?.totalRooms);
 
       setRoomForm({
         name: room.name,
@@ -281,14 +277,11 @@ export default function Hotels() {
   };
 
   const deleteRoom = async (hotelId, room) => {
-    console.log('Delete room clicked:', hotelId, room);
     if (!confirm(`Delete room type "${room.name}"?`)) {
-      console.log('Delete cancelled by user');
       return;
     }
 
     try {
-      console.log('Deleting room type...', hotelId, room.id);
       await hotelsApi.deleteRoomType(hotelId, room.id);
       toast.success('Room type deleted');
       loadData(true);

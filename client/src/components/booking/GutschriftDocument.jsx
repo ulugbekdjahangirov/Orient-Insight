@@ -69,7 +69,6 @@ const GutschriftDocument = ({ booking, tourists }) => {
 
   // Generate PDF
   const generatePDF = () => {
-    console.log('📄 Generating Gutschrift PDF...');
 
     try {
       const doc = new jsPDF();

@@ -64,16 +64,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         bookingsApi.getById(bookingId),
         bookingsApi.getAccommodations(bookingId)
       ]);
-      console.log('🔍 Booking Response:', bookingRes);
-      console.log('🔍 Booking Object:', bookingRes?.data?.booking);
-      console.log('🔍 Departure Date:', bookingRes?.data?.booking?.departureDate);
-      console.log('🔍 End Date:', bookingRes?.data?.booking?.endDate);
-      console.log('🔍 Tourists:', touristsRes.data.tourists);
-      console.log('🏨 Accommodations:', accommodationsRes.data);
       // Log remarks for debugging
       touristsRes.data.tourists?.forEach(t => {
         if (t.remarks && t.remarks !== '-') {
-          console.log(`📝 ${t.fullName}: ${t.remarks}`);
         }
       });
       setTourists(touristsRes.data.tourists || []);
@@ -233,8 +226,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       groups[hotelName].push(tourist);
     });
 
-    console.log('🏨 Tourists grouped by hotel:', groups);
-    console.log('🏨 Accommodations:', accommodations);
     return groups;
   }, [filteredTourists, accommodations]);
 
@@ -382,7 +373,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
   const saveRoomAndRemarks = async () => {
     try {
-      console.log('Saving tourist:', editingTourist.id, 'with data:', form);
       const updateData = {
         checkInDate: form.checkInDate || null,
         checkOutDate: form.checkOutDate || null,
@@ -391,7 +381,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         remarks: form.remarks || null
       };
       const response = await touristsApi.update(bookingId, editingTourist.id, updateData);
-      console.log('Save response:', response);
       toast.success('Updated successfully');
       setModalOpen(false);
       loadData();
@@ -473,12 +462,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       setAddTouristModalOpen(false);
 
       // Reload data and notify parent
-      console.log('🔄 Reloading local tourist data...');
       await loadData(); // Wait for local data to reload
-      console.log('✅ Local data reloaded, calling parent onUpdate...');
       if (onUpdate) {
         await onUpdate(); // Wait for parent to reload
-        console.log('✅ Parent data reloaded');
       }
     } catch (error) {
       console.error('Error adding tourist:', error);
@@ -1017,8 +1003,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   // Export PDF for a specific hotel
   const handleHotelPdfExport = async (hotelName, hotelTourists) => {
     try {
-      console.log('🚀 Starting PDF export for hotel:', hotelName);
-      console.log('📊 Tourist count:', hotelTourists.length);
 
       // Find accommodation ID for this hotel
       const accommodation = accommodations?.find(acc => acc.hotel?.name === hotelName);
@@ -1047,7 +1031,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           reader.onloadend = () => resolve(reader.result);
           reader.readAsDataURL(blob);
         });
-        console.log('✅ Logo loaded successfully');
       } catch (error) {
         console.warn('⚠️ Could not load logo:', error);
       }
@@ -1508,7 +1491,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       `;
 
       document.body.appendChild(tempDiv);
-      console.log('📝 Temporary div created and added to DOM');
 
       // Configure pdf options
       const opt = {
@@ -1519,17 +1501,13 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      console.log('⚙️ PDF options configured:', opt);
-      console.log('🔄 Starting PDF generation...');
 
       // Generate and download PDF
       await html2pdf().set(opt).from(tempDiv).save();
 
-      console.log('✅ PDF generation complete');
 
       // Remove temporary div
       document.body.removeChild(tempDiv);
-      console.log('🧹 Temporary div removed');
 
       toast.success('PDF downloaded successfully!', { id: 'pdf-gen' });
     } catch (error) {
@@ -1929,19 +1907,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
                 // Debug logging for Baetgen
                 if (t.fullName?.includes('Baetgen') || t.lastName?.includes('Baetgen')) {
-                  console.log('🔍 Baetgen RoomingListModule highlight:', {
-                    name: t.fullName,
-                    hotel: hotelName,
-                    isFirstHotel,
-                    touristCheckIn: t.checkInDate,
-                    bookingDeparture: booking?.departureDate,
-                    hasEarlyLateArrival,
-                    displayArrivalDate,
-                    displayFlightDate,
-                    hasCustomDates,
-                    hasSpecialDates,
-                    rowBgClass
-                  });
                 }
 
                 return (
@@ -2312,7 +2277,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 <select
                   value={form.roomPreference}
                   onChange={(e) => {
-                    console.log('Room preference changed:', e.target.value);
                     setForm({ ...form, roomPreference: e.target.value });
                   }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
@@ -2329,7 +2293,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 <textarea
                   value={form.remarks}
                   onChange={(e) => {
-                    console.log('Remarks changed:', e.target.value);
                     setForm({ ...form, remarks: e.target.value });
                   }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"

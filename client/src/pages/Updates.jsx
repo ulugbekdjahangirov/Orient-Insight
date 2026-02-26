@@ -46,7 +46,6 @@ export default function Updates() {
   const fileInputRef = useRef(null);
   const isMobile = useIsMobile();
 
-  console.log('🔍 Updates - isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
 
   useEffect(() => {
     loadTourTypes();
@@ -93,21 +92,6 @@ export default function Updates() {
       const debugResponse = await bookingsApi.debugCountByType(selectedYear);
       const debugData = debugResponse.data;
 
-      console.log('\n📊 BOOKING DEBUG INFO:');
-      console.log(`   Actual: ${debugData.total} tours`);
-      console.log(`   Expected: ${debugData.expected.total} tours`);
-      console.log(`   Missing: ${debugData.difference.total} tours`);
-      console.log('\n   By Status:');
-      console.log(`   Confirmed (CONFIRMED): ${debugData.statusCounts.CONFIRMED}`);
-      console.log(`   In Progress (IN_PROGRESS): ${debugData.statusCounts.IN_PROGRESS}`);
-      console.log(`   Pending (PENDING): ${debugData.statusCounts.PENDING}`);
-      console.log(`   Cancelled (CANCELLED): ${debugData.statusCounts.CANCELLED || 0}`);
-      console.log(`   Completed (COMPLETED): ${debugData.statusCounts.COMPLETED || 0}`);
-      console.log('\n   By Type (Actual / Expected / Missing):');
-      console.log(`   ER:  ${debugData.byType.ER || 0} / ${debugData.expected.ER} / ${debugData.difference.ER}`);
-      console.log(`   CO:  ${debugData.byType.CO || 0} / ${debugData.expected.CO} / ${debugData.difference.CO}`);
-      console.log(`   KAS: ${debugData.byType.KAS || 0} / ${debugData.expected.KAS} / ${debugData.difference.KAS}`);
-      console.log(`   ZA:  ${debugData.byType.ZA || 0} / ${debugData.expected.ZA} / ${debugData.difference.ZA}`);
 
       setAllBookingsCount(debugData.total);
       setBookingCountsByType(debugData.byType);
@@ -169,13 +153,10 @@ export default function Updates() {
       const fileDataList = [];
       const errors = [];
 
-      console.log(`\n📦 Processing ${files.length} file(s)...`);
 
       for (const file of files) {
         try {
-          console.log(`\n📄 Processing file: ${file.name}`);
           const fileData = await parseExcelFileOnly(file);
-          console.log(`✅ Parsed: ${fileData.tourists.length} tourists, booking: ${fileData.matchedBooking?.bookingNumber}, type: ${fileData.isTurkmenistanExtension ? 'Turkmenistan' : 'Uzbekistan'}`);
 
           if (fileData.success) {
             fileDataList.push(fileData);
@@ -210,7 +191,6 @@ export default function Updates() {
         }
       }
 
-      console.log(`\n📊 Grouped into ${Object.keys(bookingGroups).length} booking(s)`);
 
       // Import each booking group
       const results = [];
@@ -218,7 +198,6 @@ export default function Updates() {
         const uzbekCount = group.uzbekistan.length;
         const turkCount = group.turkmenistan.length;
 
-        console.log(`\n🚀 Importing to ${group.booking.bookingNumber}: ${uzbekCount} Uzbekistan + ${turkCount} Turkmenistan = ${uzbekCount + turkCount} total`);
 
         let totalCreated = 0;
         let totalSkipped = 0;
@@ -226,24 +205,20 @@ export default function Updates() {
         try {
           // Import Uzbekistan tourists separately (only replace Uzbekistan tourists)
           if (uzbekCount > 0) {
-            console.log(`  📥 Importing ${uzbekCount} Uzbekistan tourists...`);
             const uzbekResponse = await touristsApi.import(group.booking.id, group.uzbekistan, {
               replaceAccommodationType: 'Uzbekistan'
             });
             totalCreated += uzbekResponse.data.created || 0;
             totalSkipped += uzbekResponse.data.skipped || 0;
-            console.log(`  ✅ Uzbekistan: ${uzbekResponse.data.created} created, ${uzbekResponse.data.skipped || 0} skipped`);
           }
 
           // Import Turkmenistan tourists separately (only replace Turkmenistan tourists)
           if (turkCount > 0) {
-            console.log(`  📥 Importing ${turkCount} Turkmenistan tourists...`);
             const turkResponse = await touristsApi.import(group.booking.id, group.turkmenistan, {
               replaceAccommodationType: 'Turkmenistan'
             });
             totalCreated += turkResponse.data.created || 0;
             totalSkipped += turkResponse.data.skipped || 0;
-            console.log(`  ✅ Turkmenistan: ${turkResponse.data.created} created, ${turkResponse.data.skipped || 0} skipped`);
           }
 
           // Backend automatically recalculates PAX counts via updateBookingPaxCount()
@@ -259,7 +234,6 @@ export default function Updates() {
             skipped: totalSkipped
           });
 
-          console.log(`✅ Successfully imported to ${group.booking.bookingNumber}: ${totalCreated} created${totalSkipped > 0 ? `, ${totalSkipped} skipped (already exist)` : ''}`);
         } catch (importError) {
           totalErrors++;
           errors.push({
@@ -385,7 +359,6 @@ export default function Updates() {
           // Determine tour type from tour name
           // Check in specific order to avoid mismatches
 
-          console.log(`Analyzing tour name: "${tourName}"`);
 
           // 1. Check for ZA: Turkmenistan, Usbekistan, Tadschikistan, Kasachstan und Kirgistan
           if (
@@ -396,7 +369,6 @@ export default function Updates() {
             tourNameLower.includes('usbekistan')
           ) {
             tourTypeCode = 'ZA';
-            console.log('Detected: ZA (Zentralasien)');
           }
           // 2. Check for KAS: Kasachstan, Kirgistan und Usbekistan (without Turkmenistan)
           else if (
@@ -407,7 +379,6 @@ export default function Updates() {
             !tourNameLower.includes('tadschikistan')
           ) {
             tourTypeCode = 'KAS';
-            console.log('Detected: KAS (Karawanen Seidenstrasse)');
           }
           // 3. Check for CO: Usbekistan ComfortPlus
           else if (
@@ -415,7 +386,6 @@ export default function Updates() {
             (tourNameLower.includes('comfort') || tourNameLower.includes('comfortplus'))
           ) {
             tourTypeCode = 'CO';
-            console.log('Detected: CO (Comfort)');
           }
           // 4. Check for ER with Turkmenistan extension: Usbekistan mit Verlängerung Turkmenistan
           else if (
@@ -424,7 +394,6 @@ export default function Updates() {
             (tourNameLower.includes('verlängerung') || tourNameLower.includes('verlangerung'))
           ) {
             tourTypeCode = 'ER';
-            console.log('Detected: ER (Erlebnisreisen - with Turkmenistan extension)');
           }
           // 5. Check for ER Uzbekistan only: Usbekistan (without other countries)
           else if (
@@ -435,19 +404,16 @@ export default function Updates() {
             !tourNameLower.includes('comfort')
           ) {
             tourTypeCode = 'ER';
-            console.log('Detected: ER (Erlebnisreisen - Uzbekistan only)');
           }
           // 6. Fallback: Check for Erlebnis in product name
           else if (tourNameLower.includes('erlebnis')) {
             tourTypeCode = 'ER';
-            console.log('Detected: ER (Erlebnisreisen - by product name)');
           }
         }
 
         // Look for "Datum:" line
         if (firstCell.toLowerCase().includes('datum:')) {
           dateRange = String(row[0] || '').replace(/datum:/i, '').trim();
-          console.log(`Found date range: "${dateRange}"`);
 
           // Parse date range "29.03.2026 - 11.04.2026"
           const dateParts = dateRange.split('-').map(d => d.trim());
@@ -456,11 +422,9 @@ export default function Updates() {
             const endParts = dateParts[1].split('.');
             if (startParts.length === 3) {
               departureDate = new Date(startParts[2], startParts[1] - 1, startParts[0]);
-              console.log(`Parsed departure date: ${departureDate.toLocaleDateString()}`);
             }
             if (endParts.length === 3) {
               endDate = new Date(endParts[2], endParts[1] - 1, endParts[0]);
-              console.log(`Parsed end date: ${endDate.toLocaleDateString()}`);
             }
           }
         }
@@ -487,10 +451,6 @@ export default function Updates() {
       const tourNameLower = tourName.toLowerCase();
 
       // Debug: show tour name
-      console.log(`DEBUG: tourNameLower = "${tourNameLower}"`);
-      console.log(`DEBUG: includes turkmenistan? ${tourNameLower.includes('turkmenistan')}`);
-      console.log(`DEBUG: includes verlängerung? ${tourNameLower.includes('verlängerung')}`);
-      console.log(`DEBUG: includes verlangerung? ${tourNameLower.includes('verlangerung')}`);
 
       const isTurkmenistanExtension =
         tourNameLower.includes('turkmenistan') &&
@@ -506,32 +466,20 @@ export default function Updates() {
       // Example: Excel shows 08.04, but ZA-01 actually arrives on 12.04
       if (tourTypeCode === 'ZA' && departureDate) {
         actualDepartureDate = addDays(departureDate, 4);
-        console.log(`🔍 ZA Excel Import - Original: ${departureDate?.toLocaleDateString()}, Adjusted (+4): ${actualDepartureDate?.toLocaleDateString()}`);
       }
       // KAS tours: Start in Kazakhstan/Kyrgyzstan, arrive in Uzbekistan 14 days later
       // Example: Tour starts 02.06, arrive in Uzbekistan on 16.06
       else if (tourTypeCode === 'KAS' && departureDate) {
         actualDepartureDate = addDays(departureDate, 14);
-        console.log(`🔍 KAS Excel Import - Original: ${departureDate?.toLocaleDateString()}, Adjusted (+14): ${actualDepartureDate?.toLocaleDateString()}`);
       }
 
-      console.log(`\n=== Excel File Analysis ===`);
-      console.log(`Tour: ${tourName}`);
-      console.log(`Tour Type: ${tourTypeCode}`);
-      console.log(`Excel Departure: ${departureDate?.toLocaleDateString()}`);
-      console.log(`Actual Departure (for matching): ${actualDepartureDate?.toLocaleDateString()}`);
-      console.log(`End Date: ${endDate?.toLocaleDateString()}`);
-      console.log(`Turkmenistan Extension: ${isTurkmenistanExtension}`);
-      console.log(`===========================\n`);
 
       // Find existing booking to update
       // Fetch all bookings for this tour type
       const allBookingsResponse = await bookingsApi.getAll({ tourTypeId: tourType.id, year: selectedYear });
       const existingBookings = allBookingsResponse.data.bookings || [];
 
-      console.log(`Found ${existingBookings.length} existing bookings for ${tourTypeCode}`);
       existingBookings.forEach(b => {
-        console.log(`  - ${b.bookingNumber}: Departure ${new Date(b.departureDate).toLocaleDateString()}, End ${new Date(b.endDate).toLocaleDateString()}`);
       });
 
       let matchedBooking = null;
@@ -544,28 +492,24 @@ export default function Updates() {
         matchedBooking = existingBookings.find(b =>
           isSameDate(new Date(b.departureDate), departureDate)
         );
-        console.log(`ER matching by departure date: ${departureDate?.toLocaleDateString()} ${isTurkmenistanExtension ? '(Turkmenistan extension)' : '(Uzbekistan)'}`);
       } else if (tourTypeCode === 'CO') {
         // CO groups: "Usbekistan ComfortPlus"
         // Match by departure date (arrival date in Excel)
         matchedBooking = existingBookings.find(b =>
           isSameDate(new Date(b.departureDate), departureDate)
         );
-        console.log(`CO matching by departure date: ${departureDate?.toLocaleDateString()}`);
       } else if (tourTypeCode === 'KAS') {
         // KAS groups: "Kasachstan, Kirgistan und Usbekistan"
         // Match by end date (departure date from region in Excel)
         matchedBooking = existingBookings.find(b =>
           isSameDate(new Date(b.endDate), endDate)
         );
-        console.log(`KAS matching by end date: ${endDate?.toLocaleDateString()}`);
       } else if (tourTypeCode === 'ZA') {
         // ZA groups: "Turkmenistan, Usbekistan, Tadschikistan, Kasachstan und Kirgistan"
         // Excel date + 4 days = actual arrival in Uzbekistan
         matchedBooking = existingBookings.find(b =>
           isSameDate(new Date(b.departureDate), actualDepartureDate)
         );
-        console.log(`ZA matching by adjusted departure date (Excel + 4 days): ${actualDepartureDate?.toLocaleDateString()}`);
       }
 
       if (!matchedBooking) {
@@ -591,7 +535,6 @@ export default function Updates() {
         return { success: false, error: `Group not found: ${tourTypeCode} (date: ${criteriaDate})` };
       }
 
-      console.log(`✓ Matched booking: ${matchedBooking.bookingNumber}`);
 
       // Find header row (contains "ID", "Name", etc.)
       let headerRowIndex = -1;
@@ -610,7 +553,6 @@ export default function Updates() {
 
       // Determine accommodation/placement based on tour name
       const tripType = isTurkmenistanExtension ? 'Turkmenistan' : 'Uzbekistan';
-      console.log(`Trip type for all tourists: ${tripType}`);
 
       // Parse data rows
       const headers = rawData[headerRowIndex].map(h => String(h || '').trim());
@@ -741,7 +683,6 @@ export default function Updates() {
         });
       }
 
-      console.log(`Parsed ${tourists.length} tourists from Excel`);
 
       if (tourists.length === 0) {
         return { success: false, error: 'No tourists found in file' };

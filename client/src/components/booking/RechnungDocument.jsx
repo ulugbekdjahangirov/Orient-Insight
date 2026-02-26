@@ -35,10 +35,8 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
   // Load Total Prices from database (with localStorage fallback)
   useEffect(() => {
-    console.log('🔄 Rechnung useEffect triggered, booking:', booking);
 
     if (!booking) {
-      console.log('⚠️ Booking not loaded yet');
       return;
     }
 
@@ -47,44 +45,34 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         ? booking?.tourType
         : booking?.tourType?.code;
 
-      console.log('🔍 Tour type code:', tourTypeCode, 'from booking.tourType:', booking?.tourType);
 
       if (!tourTypeCode) {
-        console.log('⚠️ No tour type found');
         setTotalPrices({});
         return;
       }
 
       try {
-        console.log(`💾 Loading Total Prices from database for ${tourTypeCode}...`);
         const response = await pricesApi.getTotalPrices(tourTypeCode);
 
-        console.log('📡 Database response:', response.data);
 
         if (response.data && response.data.items && Object.keys(response.data.items).length > 0) {
-          console.log('✅ Loaded Total Prices from database:', response.data.items);
           setTotalPrices(response.data.items);
         } else {
           // Fallback to localStorage
-          console.log('📦 Database empty, loading from localStorage...');
           const storageKey = `${tourTypeCode.toLowerCase()}-total-prices`;
           const savedPrices = JSON.parse(localStorage.getItem(storageKey) || '{}');
 
           if (Object.keys(savedPrices).length > 0) {
-            console.log('✅ Loaded Total Prices from localStorage:', savedPrices);
             setTotalPrices(savedPrices);
           } else {
             // Last fallback: calculate from individual categories
-            console.log('🔄 Calculating totals from individual categories...');
             try {
               const allResp = await api.get(`/prices/${tourTypeCode}`);
               const allPrices = allResp.data || {};
               const calculated = calculateTotalsFromCategories(allPrices);
               if (Object.keys(calculated).length > 0) {
-                console.log('✅ Calculated totals from individual categories:', calculated);
                 setTotalPrices(calculated);
               } else {
-                console.log('⚠️ No prices found anywhere');
                 setTotalPrices({});
               }
             } catch (calcErr) {
@@ -99,7 +87,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         // Fallback to localStorage on error
         const storageKey = `${tourTypeCode.toLowerCase()}-total-prices`;
         const savedPrices = JSON.parse(localStorage.getItem(storageKey) || '{}');
-        console.log('📦 Fallback to localStorage:', savedPrices);
         setTotalPrices(savedPrices);
       }
     };
@@ -116,42 +103,32 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       }
 
       try {
-        console.log('🔄 Loading accommodations for booking', booking.id);
 
         // 1. Get all accommodations
         const accommodationsResponse = await api.get(`/bookings/${booking.id}/accommodations`);
-        console.log('📦 Raw API response:', accommodationsResponse);
 
         // API returns { accommodations: [...] }, not directly an array
         const accommodations = accommodationsResponse.data.accommodations || accommodationsResponse.data;
-        console.log('🏨 Accommodations data:', accommodations);
-        console.log('🔍 Is array?', Array.isArray(accommodations));
-        console.log('🔍 Type:', typeof accommodations);
 
         if (!accommodations || !Array.isArray(accommodations) || accommodations.length === 0) {
-          console.log('⚠️ No accommodations found or not an array');
           setLoading(false);
           return;
         }
 
         // 2. Sort by checkInDate to find the first/arrival hotel
-        console.log('📊 Sorting accommodations...');
         const sortedAccommodations = accommodations.slice().sort((a, b) => {
           const dateA = new Date(a.checkInDate);
           const dateB = new Date(b.checkInDate);
           return dateA - dateB;
         });
-        console.log('✅ Sorted accommodations:', sortedAccommodations);
 
         const firstAccommodation = sortedAccommodations[0];
-        console.log('🏨 First accommodation (arrival hotel):', firstAccommodation);
 
         // 3. Get rooming list for the first accommodation
         const roomingListResponse = await api.get(
           `/bookings/${booking.id}/accommodations/${firstAccommodation.id}/rooming-list`
         );
 
-        console.log('📋 Rooming list data:', roomingListResponse.data);
         setRoomingListData(roomingListResponse.data);
 
       } catch (error) {
@@ -233,17 +210,14 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
     const touristCount = tourists?.length || booking?.pax || 0;
     const tier = getPaxTier(touristCount);
 
-    console.log('🔵 Rechnung: Getting ER price for', touristCount, 'tourists, tier:', tier);
 
     // Use totalPrices state loaded from database (with localStorage fallback)
     const savedTotalPrices = totalPrices || {};
 
-    console.log('📦 Total Prices from state (database):', savedTotalPrices);
 
     // Get prices for this tier
     const tierPrices = savedTotalPrices[tier.id] || { totalPrice: 0, ezZuschlag: 0 };
 
-    console.log('💰 Prices for tier', tier.id, ':', tierPrices);
 
     return {
       einzelpreis: tierPrices.totalPrice,
@@ -257,17 +231,14 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
     const touristCount = tourists?.length || booking?.pax || 0;
     const tier = getPaxTier(touristCount);
 
-    console.log(`🔵 Rechnung: Getting ${tourTypeCode} price for`, touristCount, 'tourists, tier:', tier);
 
     // Use totalPrices state loaded from database (with localStorage fallback)
     const savedTotalPrices = totalPrices || {};
 
-    console.log(`📦 Total Prices from state (database):`, savedTotalPrices);
 
     // Get prices for this tier
     const tierPrices = savedTotalPrices[tier.id] || { totalPrice: 0, ezZuschlag: 0 };
 
-    console.log('💰 Prices for tier', tier.id, ':', tierPrices);
 
     return {
       einzelpreis: tierPrices.totalPrice,
@@ -287,17 +258,12 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
   // Calculate birthdays during tour
   const calculateBirthdayCount = () => {
-    console.log('🎂 calculateBirthdayCount called');
-    console.log('📋 Booking dates:', booking?.departureDate, 'to', booking?.endDate);
-    console.log('👥 Tourists count:', tourists?.length);
 
     if (!tourists || tourists.length === 0) {
-      console.log('⚠️ No tourists');
       return 0;
     }
 
     if (!booking?.departureDate || !booking?.endDate) {
-      console.log('⚠️ No booking dates');
       return 0;
     }
 
@@ -307,10 +273,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
     let birthdayCount = 0;
 
     tourists.forEach((tourist, index) => {
-      console.log(`👤 Tourist ${index + 1}:`, tourist);
-      console.log(`  - firstName: ${tourist.firstName}`);
-      console.log(`  - dateOfBirth: ${tourist.dateOfBirth}`);
-      console.log(`  - remarks: ${tourist.remarks}`);
 
       // Method 1: Check if dateOfBirth exists and falls within tour
       const birthDateField = tourist.dateOfBirth || tourist.birthDate || tourist.birthday;
@@ -322,12 +284,10 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         const tourYear = tourStart.getFullYear();
         const birthdayThisYear = new Date(tourYear, birthDate.getMonth(), birthDate.getDate());
 
-        console.log(`🎂 ${tourist.firstName || 'Unknown'}: dateOfBirth=${birthDateField}, birthdayThisYear=${birthdayThisYear.toDateString()}`);
 
         // Check if birthday falls within tour dates
         if (birthdayThisYear >= tourStart && birthdayThisYear <= tourEnd) {
           birthdayCount++;
-          console.log(`🎉 Birthday during tour (from dateOfBirth)! ${tourist.firstName}`);
         }
       }
       // Method 2: Check remarks field for "Birthday" or "Geburtstag" keyword
@@ -335,26 +295,20 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         const remarksLower = tourist.remarks.toLowerCase();
         if (remarksLower.includes('birthday') || remarksLower.includes('geburtstag')) {
           birthdayCount++;
-          console.log(`🎉 Birthday during tour (from remarks: ${tourist.remarks})! ${tourist.firstName}`);
         }
       }
     });
 
-    console.log(`🎂 Total birthdays during tour: ${birthdayCount}`);
     return birthdayCount;
   };
 
   // Calculate early arrivals (Zusatznacht)
   const calculateEarlyArrivals = () => {
-    console.log('🔍 calculateEarlyArrivals called');
-    console.log('📋 Rooming list data:', roomingListData);
 
     // API returns { roomingList: [...] }, not directly an array
     const roomingList = roomingListData?.roomingList || roomingListData;
-    console.log('📋 Rooming list array:', roomingList);
 
     if (!roomingList || !Array.isArray(roomingList) || roomingList.length === 0) {
-      console.log('⚠️ No rooming list data found or not an array');
       return { ezNights: 0, dzNights: 0 };
     }
 
@@ -362,12 +316,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
     const checkInDates = {};
     roomingList.forEach(entry => {
       const touristName = entry.tourist?.firstName || 'Unknown';
-      console.log(`📋 Full entry for ${touristName}:`, entry);
-      console.log(`  - checkInDate: ${entry.checkInDate}`);
-      console.log(`  - checkOutDate: ${entry.checkOutDate}`);
-      console.log(`  - tourist.roomPreference: ${entry.tourist?.roomPreference}`);
-      console.log(`  - roomType: ${entry.roomType}`);
-      console.log(`  - assignedRoomType: ${entry.assignedRoomType}`);
 
       if (entry.checkInDate) {
         const dateStr = entry.checkInDate.split('T')[0]; // Get date part only
@@ -375,7 +323,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       }
     });
 
-    console.log('📅 Check-in dates found:', checkInDates);
 
     // Find the most common check-in date (this is the group's arrival date)
     let groupCheckInDate = null;
@@ -388,11 +335,9 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
     });
 
     if (!groupCheckInDate) {
-      console.log('⚠️ No group check-in date found');
       return { ezNights: 0, dzNights: 0 };
     }
 
-    console.log(`📅 Group check-in date: ${groupCheckInDate} (${maxCount} tourists)`);
 
     const groupArrival = new Date(groupCheckInDate);
     let ezNights = 0; // Single room early nights
@@ -404,7 +349,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         const daysDiff = Math.floor((groupArrival - touristArrival) / (1000 * 60 * 60 * 24));
 
         const touristName = entry.tourist?.firstName || 'Unknown';
-        console.log(`📆 ${touristName}: touristArrival=${touristArrival}, groupArrival=${groupArrival}, daysDiff=${daysDiff}`);
 
         if (daysDiff > 0) {
           // Tourist arrived earlier than group
@@ -415,9 +359,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
           const room = roomPreference.toUpperCase();
           const isEZ = room === 'EZ' || room === 'SNGL' || room === 'SINGLE';
 
-          console.log(`👤 Entry ID: ${entry.id}, Tourist ID: ${touristId}`);
-          console.log(`👤 Found in tourists array:`, fullTourist);
-          console.log(`🛏️ Room preference: ${roomPreference}, isEZ: ${isEZ}`);
 
           if (isEZ) {
             ezNights += daysDiff;
@@ -425,12 +366,10 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             dzNights += daysDiff;
           }
 
-          console.log(`🏨 Early arrival: ${touristName}, ${daysDiff} nights, room: ${room}, isEZ: ${isEZ}`);
         }
       }
     });
 
-    console.log(`📊 Total early arrivals: EZ=${ezNights} nights, DZ=${dzNights} nights`);
     return { ezNights, dzNights };
   };
 
@@ -441,10 +380,8 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       ? booking?.tourType
       : booking?.tourType?.code;
     const isER = tourTypeCode === 'ER';
-    console.log('🟢 Rechnung: Initializing invoice items, tourType:', booking?.tourType, 'tourTypeCode:', tourTypeCode, 'isER:', isER);
 
     if (isER) {
-      console.log('✅ Rechnung: This is an ER booking, calculating prices...');
       const { einzelpreis, ezZuschlag, anzahl } = calculateERPrice();
       const ezCount = getEZCount();
       const { ezNights, dzNights } = calculateEarlyArrivals();
@@ -452,23 +389,17 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
       // Load Zusatzkosten prices from localStorage
       const zusatzkostenRaw = localStorage.getItem('er_zusatzkosten') || '[]';
-      console.log('📦 Raw er_zusatzkosten from localStorage:', zusatzkostenRaw);
 
       const zusatzkosten = JSON.parse(zusatzkostenRaw);
-      console.log('📋 Parsed zusatzkosten array:', zusatzkosten);
-      console.log('📋 Zusatzkosten items count:', zusatzkosten.length);
 
       // Log each item
       zusatzkosten.forEach((item, index) => {
-        console.log(`  Item ${index + 1}: name="${item.name}", price=${item.price}, pax=${item.pax}`);
       });
 
       // Find items - using exact match
-      console.log('🔍 Searching for specific items...');
 
       const zusatznachtEZ = zusatzkosten.find(item => {
         const match = item.name === 'Zusatznacht EZ';
-        console.log(`  Checking "${item.name}" === "Zusatznacht EZ": ${match}`);
         return match;
       });
 
@@ -479,21 +410,11 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         const nameLower = item.name.toLowerCase();
         // Match names containing "geburt" and "geschenk" (handles typos like missing 't')
         const match = nameLower.includes('gebur') && nameLower.includes('geschenk');
-        console.log(`  Checking "${item.name}" contains birthday gift: ${match}`);
         return match;
       });
 
       const extraTransferTaschkent = zusatzkosten.find(item => item.name === 'Extra Transfer in Taschkent');
 
-      console.log('📋 Rechnung: Final values - Einzelpreis:', einzelpreis, 'EZ Zuschlag:', ezZuschlag, 'Anzahl:', anzahl, 'EZ Count:', ezCount);
-      console.log('🏨 Early arrivals: EZ nights:', ezNights, 'DZ nights:', dzNights);
-      console.log('🎂 Birthdays during tour:', birthdayCount);
-      console.log('💰 Found items:', {
-        zusatznachtEZ: zusatznachtEZ ? 'FOUND' : 'NOT FOUND',
-        zusatznachtDZ: zusatznachtDZ ? 'FOUND' : 'NOT FOUND',
-        geburtstagsgeschenk: geburtstagsgeschenk ? `FOUND (price: ${geburtstagsgeschenk.price})` : 'NOT FOUND',
-        extraTransferTaschkent: extraTransferTaschkent ? 'FOUND' : 'NOT FOUND'
-      });
 
       const items = [
         {
@@ -541,10 +462,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       }
 
       // Add Geburtstagsgeschenk if there are birthdays during tour
-      console.log('🎁 Checking Geburtstagsgeschenk condition:');
-      console.log('  - birthdayCount:', birthdayCount, '(> 0?', birthdayCount > 0, ')');
-      console.log('  - geburtstagsgeschenk:', geburtstagsgeschenk);
-      console.log('  - Both conditions met?', birthdayCount > 0 && geburtstagsgeschenk);
 
       if (birthdayCount > 0 && geburtstagsgeschenk) {
         const birthdayItem = {
@@ -554,10 +471,8 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
           anzahl: birthdayCount,
           currency: 'USD'
         };
-        console.log('✅ ADDING Geburtstagsgeschenk item:', birthdayItem);
         items.push(birthdayItem);
       } else {
-        console.log('❌ NOT adding Geburtstagsgeschenk (condition not met)');
       }
 
       // Add other Zusatzkosten items
@@ -571,12 +486,9 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         });
       }
 
-      console.log('📋 Final invoice items array:', items);
-      console.log('📋 Total items count:', items.length);
       return items;
     } else {
       // For non-ER tours (ZA, CO, KAS), use tour-specific pricing
-      console.log(`✅ Rechnung: This is a ${tourTypeCode} booking, calculating prices...`);
       const { einzelpreis, ezZuschlag, anzahl } = calculateTourPrice(tourTypeCode);
       const ezCount = getEZCount();
 
@@ -584,7 +496,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       const zusatzkostenKey = `${tourTypeCode.toLowerCase()}_zusatzkosten`;
       const zusatzkostenRaw = localStorage.getItem(zusatzkostenKey) || '[]';
       const zusatzkosten = JSON.parse(zusatzkostenRaw);
-      console.log(`📦 Loaded ${tourTypeCode} zusatzkosten:`, zusatzkosten);
 
       const items = [
         {
@@ -609,7 +520,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
       // Note: For now, we only handle basic items for non-ER tours
       // Additional items can be added manually or we can extend this logic later
-      console.log(`📋 Final ${tourTypeCode} invoice items:`, items);
       return items;
     }
   };
@@ -645,7 +555,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   useEffect(() => {
     // If previousInvoiceAmount prop is provided (from parent), use it directly
     if (previousInvoiceAmount > 0) {
-      console.log('✅ Using previousInvoiceAmount from prop:', previousInvoiceAmount);
       setBezahlteRechnung(previousInvoiceAmount);
     } else if (!bezahlteRechnungNr || bezahlteRechnungNr.trim() === '') {
       setBezahlteRechnung(0);
@@ -672,25 +581,15 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         }
       }
 
-      console.log('📊 Invoice useEffect:', {
-        invoiceId,
-        firma: invoice?.firma,
-        touristsCount: tourists?.length,
-        hasStoredLock: !!lockedData,
-        storedLock: lockedData
-      });
 
       // CRITICAL: If this invoice is locked in localStorage (firma selected), use locked items
       if (hasFirma && lockedData && lockedData.items && lockedData.items.length > 0) {
         // If lock was saved with 0 prices (race condition) and totalPrices now available, clear stale lock
         const mainItem = lockedData.items.find(item => item.description === 'Usbekistan Teil');
         if (mainItem && mainItem.einzelpreis === 0 && totalPrices !== null && Object.keys(totalPrices).length > 0) {
-          console.log('🔄 Stale lock with 0 prices detected, clearing for recalculation');
           localStorage.removeItem(lockKey);
           lockedData = null; // Fall through to recalculation
         } else {
-          console.log('🔒 INVOICE LOCKED (from localStorage) - using saved items, ignoring all changes');
-          console.log('   Locked items:', lockedData.items);
           setInvoiceItems(lockedData.items);
 
           // Update refs
@@ -704,10 +603,8 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       if (hasFirma && !lockedData) {
         // Wait for totalPrices to load first (prevents locking with 0 prices due to race condition)
         if (totalPrices === null) {
-          console.log('⏳ Waiting for totalPrices to load before locking invoice...');
           return;
         }
-        console.log('🔐 LOCKING INVOICE - firma selected, saving current values to localStorage');
 
         // Try to load from database first
         if (invoice?.items) {
@@ -725,7 +622,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
               const hasValidPrice = !mainItem || mainItem.einzelpreis > 0;
 
               if (hasValidPrice) {
-                console.log('📥 Loaded items from database:', savedItems);
                 setInvoiceItems(savedItems);
 
                 // Save lock to localStorage
@@ -734,7 +630,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                 lockedItemsRef.current = savedItems;
                 return;
               }
-              console.log('🔄 DB items have 0 prices, recalculating with current totalPrices...');
             }
           } catch (error) {
             console.error('❌ Error parsing saved items:', error);
@@ -743,7 +638,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
         // Calculate and lock current values
         const items = initializeInvoiceItems();
-        console.log('💾 Calculated items to lock:', items);
         setInvoiceItems(items);
 
         // Save lock to localStorage
@@ -757,7 +651,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             items: JSON.stringify(items),
             totalAmount: items.reduce((sum, item) => sum + (item.einzelpreis * item.anzahl), 0)
           }).then(() => {
-            console.log('✅ Invoice locked and saved to database + localStorage');
           }).catch(err => {
             console.error('❌ Error saving:', err);
           });
@@ -767,7 +660,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
       // No firma - unlock and auto-calculate
       if (!hasFirma) {
-        console.log('🔓 No firma - unlocking and auto-calculating');
 
         // Clear lock from localStorage
         localStorage.removeItem(lockKey);
@@ -813,7 +705,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             totalAmount: amountToSave,
             items: JSON.stringify(invoiceItems)
           });
-          console.log(`✅ Invoice updated: totalAmount=${amountToSave}, items saved (${invoiceItems.length} items)`);
         } catch (error) {
           console.error('Error updating invoice:', error);
         }
@@ -865,7 +756,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
   // Generate Orient Insight PDF
   const generateOrientInsightPDF = (returnBlob = false) => {
-    console.log('📄 Generating Orient Insight Rechnung PDF...');
 
     try {
       const doc = new jsPDF();
@@ -880,7 +770,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         doc.addImage(logoImg, 'PNG', 90, yPos, 30, 30);
         yPos += 33;
       } catch (e) {
-        console.log('Logo could not be added:', e);
         yPos += 8;
       }
 
@@ -1117,7 +1006,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
   // Generate INFUTURESTORM PDF
   const generateInfuturestormPDF = (returnBlob = false) => {
-    console.log('📄 Generating INFUTURESTORM Rechnung PDF...');
 
     try {
       const doc = new jsPDF();
@@ -1139,7 +1027,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
           doc.addImage(logoImg, 'SVG', 85, yPos, 40, 40);
           yPos += 45;
         } catch (e2) {
-          console.log('INFUTURESTORM logo could not be added:', e2);
           yPos += 10;
         }
       }

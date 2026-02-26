@@ -66,12 +66,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
       const routesRes = await bookingsApi.getRoutes(bookingId);
       let loadedRoutes = routesRes.data.routes || [];
 
-      console.log('📥 [LOAD] Loaded routes from DATABASE:', loadedRoutes.map(r => ({
-        id: r.id,
-        date: r.date,
-        routeName: r.routeName,
-        hasItinerary: !!r.itinerary
-      })));
 
       // Merge with localStorage backup (restore any custom itinerary data)
       try {
@@ -79,7 +73,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
         const localData = JSON.parse(localStorage.getItem(storageKey) || '{}');
 
         if (Object.keys(localData).length > 0) {
-          console.log('📥 [LOAD] Found localStorage backup, merging...');
 
           loadedRoutes = loadedRoutes.map(route => {
             const localBackup = localData[route.id];
@@ -88,7 +81,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
             if (localBackup && localBackup.routeName === route.routeName) {
               // Restore itinerary from localStorage if database is empty
               if (!route.itinerary && localBackup.itinerary) {
-                console.log(`✅ [LOAD] Restored itinerary for route ${route.id} from localStorage`);
                 return {
                   ...route,
                   itinerary: localBackup.itinerary
@@ -99,9 +91,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
             return route;
           });
 
-          console.log('✅ [LOAD] localStorage merge complete');
         } else {
-          console.log('📥 [LOAD] No localStorage backup found (this is normal for new bookings)');
         }
       } catch (storageError) {
         console.warn('⚠️  [LOAD] localStorage read failed (non-critical):', storageError);
@@ -127,14 +117,11 @@ export default function ItineraryPreview({ bookingId, booking }) {
         if (dates.length > 0) {
           actualStartDate = new Date(Math.min(...dates.map(d => d.checkIn.getTime())));
           actualEndDate = new Date(Math.max(...dates.map(d => d.checkOut.getTime())));
-          console.log('✅ Using Final List dates:', actualStartDate.toISOString().split('T')[0], 'to', actualEndDate.toISOString().split('T')[0]);
         } else {
-          console.log('⚠️  No tourists with check-in/out dates, using booking dates as fallback');
           actualStartDate = booking?.departureDate ? new Date(booking.departureDate) : null;
           actualEndDate = booking?.endDate ? new Date(booking.endDate) : null;
         }
       } else {
-        console.log('⚠️  No tourists found, using booking dates');
         actualStartDate = booking?.departureDate ? new Date(booking.departureDate) : null;
         actualEndDate = booking?.endDate ? new Date(booking.endDate) : null;
       }
@@ -155,7 +142,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
               const match = templates.find(t => t.routeName === route.routeName && t.itinerary);
               return match ? { ...route, itinerary: match.itinerary } : route;
             });
-            console.log(`✅ [LOAD] Filled empty itinerary from ${ttCode} template`);
           }
         } catch (e) {
           console.warn('⚠️ [LOAD] Could not load template for itinerary fill');
@@ -171,7 +157,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
       const shouldReload = loadedRoutes.length === 0; // ONLY reload if completely empty
 
       if (actualStartDate && actualEndDate && shouldReload) {
-        console.log(`Routes are ${loadedRoutes.length === 0 ? 'empty' : 'incomplete'}, loading from template...`);
 
         // Try to load from template first (for all tour types: ER, CO, KAS, ZA)
         let templateLoaded = false;
@@ -181,7 +166,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
             const templates = templateRes.data.templates || [];
 
             if (templates.length > 0) {
-              console.log(`Loading ${templates.length} routes from ${ttCode} template...`);
 
               // Delete existing routes if corrupt
               if (loadedRoutes.length > 0) {
@@ -213,7 +197,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
                   if (matchingBackup && matchingBackup.itinerary) {
                     customItinerary = matchingBackup.itinerary;
-                    console.log(`🔄 [TEMPLATE] Preserved custom itinerary for day ${i + 1}: ${template.routeName}`);
                   }
                 } catch (err) {
                   console.warn('⚠️  [TEMPLATE] Could not check localStorage backup');
@@ -235,13 +218,11 @@ export default function ItineraryPreview({ bookingId, booking }) {
               toast.success(`Шаблондан ${templates.length} та маршрут юкланди (Final List sanalariga asosan)`);
             }
           } catch (error) {
-            console.log('No template found, will generate empty routes');
           }
         }
 
         // If no template, generate empty routes
         if (!templateLoaded) {
-          console.log('Generating empty routes from booking dates...');
           const expectedDates = generateDateRange(booking.departureDate, booking.endDate);
 
           for (const date of expectedDates) {
@@ -318,13 +299,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
         return a.id - b.id;
       });
 
-      console.log('📋 MARSHRUTNIY SORTED:', sortedRoutes.map((r, i) => `${i+1}. ${r.routeName} (city: ${r.city}, itinerary: ${r.itinerary ? 'set' : 'empty'})`));
 
-      console.log('Routes AFTER sorting:', sortedRoutes.map(r => ({
-        id: r.id,
-        date: r.date?.split('T')[0],
-        routeName: r.routeName || 'empty'
-      })));
 
       // Force state update with new array reference
       setRoutes(sortedRoutes);
@@ -337,7 +312,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
       // Load flights
       const flightsRes = await bookingsApi.getFlights(bookingId);
       const loadedFlights = flightsRes.data.flights || [];
-      console.log('Loaded flights:', loadedFlights);
       setFlights(loadedFlights);
 
       // Auto-fill departure times for routes that don't have them yet (silent, no toast)
@@ -353,7 +327,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
             const r = sortedRoutes.find(s => s.id === route.id);
             if (r) r.departureTime = time;
           });
-          console.log(`⏰ Auto-filled ${timeUpdates.length} departure times`);
         }
       }
 
@@ -919,12 +892,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   const saveRoute = async () => {
     try {
-      console.log('💾 [SAVE] Saving route:', editingRoute);
-      console.log('💾 [SAVE] Route date before save:', editingRoute.date);
 
       // 1. Save to DATABASE (primary storage)
       const response = await routesApi.update(bookingId, editingRoute.id, editingRoute);
-      console.log('✅ [SAVE] Database save response:', response.data);
 
       // 2. Save to LOCALSTORAGE (backup storage) - only itinerary field
       try {
@@ -940,7 +910,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
         };
 
         localStorage.setItem(storageKey, JSON.stringify(existingData));
-        console.log('✅ [SAVE] localStorage backup saved');
       } catch (storageError) {
         console.warn('⚠️  [SAVE] localStorage save failed (non-critical):', storageError);
         // Don't fail the main save if localStorage fails
@@ -968,7 +937,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
             // Save updated template
             await routesApi.saveTemplate(tourTypeCode, templates);
-            console.log(`✅ [SAVE] ${tourTypeCode} template updated for route: ${editingRoute.routeName}`);
           }
         } catch (templateError) {
           console.warn('Could not update template:', templateError);
@@ -980,9 +948,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
       setEditingRoute(null);
 
       // Reload and re-sort
-      console.log('Reloading routes...');
       await loadItineraryData();
-      console.log('Routes reloaded and sorted');
     } catch (error) {
       console.error('🔴 [SAVE] Error saving route:', error);
       console.error('🔴 [SAVE] Error details:', error.response?.data);
@@ -1004,7 +970,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
         if (existingData[routeId]) {
           delete existingData[routeId];
           localStorage.setItem(storageKey, JSON.stringify(existingData));
-          console.log('🗑️ [DELETE] Removed from localStorage backup');
         }
       } catch (storageError) {
         console.warn('⚠️  [DELETE] localStorage cleanup failed (non-critical)');
@@ -1031,7 +996,6 @@ export default function ItineraryPreview({ bookingId, booking }) {
         nextDate = new Date(booking.departureDate);
       }
 
-      console.log('Creating route with date:', nextDate.toISOString().split('T')[0]);
 
       const newRoute = {
         dayNumber: 0,

@@ -137,9 +137,7 @@ export default function Price() {
   const [shouItems, setShouItems] = useState(defaultShouItems);
   const [zusatzkostenItems, setZusatzkostenItems] = useState(() => {
     const saved = localStorage.getItem('er_zusatzkosten');
-    console.log('🟢 Initializing ER Zusatzkosten state from localStorage:', saved);
     const parsed = saved ? JSON.parse(saved) : [];
-    console.log('🟢 Initial ER Zusatzkosten state:', parsed);
     return parsed;
   });
   const [commissionValues, setCommissionValues] = useState({
@@ -381,7 +379,6 @@ export default function Price() {
         year
       });
 
-      console.log(`✅ Saved to localStorage (${yearKey}) AND database`);
       return true;
     } catch (error) {
       console.error('❌ Database save error:', error);
@@ -398,13 +395,11 @@ export default function Price() {
       const saved = localStorage.getItem(yearKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log(`✅ Loaded from localStorage (${yearKey})`);
         setter(parsed);
         return;
       }
 
       // 2. If localStorage empty, try database
-      console.log(`⚠️ localStorage empty, loading from database (${tourType}/${category}/${paxTier}/${year})...`);
       const response = await pricesApi.get(tourType.toUpperCase(), category, paxTier, year);
 
       // Check if items exists and is not empty (array OR object)
@@ -414,7 +409,6 @@ export default function Price() {
       );
 
       if (hasItems) {
-        console.log(`✅ Loaded from database, caching to localStorage (${yearKey})`);
         setter(response.data.items);
         // Cache to localStorage for next time
         localStorage.setItem(yearKey, JSON.stringify(response.data.items));
@@ -422,7 +416,6 @@ export default function Price() {
       }
 
       // 3. If both empty, use defaults
-      console.log(`⚠️ No data in database, using defaults (${yearKey})`);
       setter(defaultValue);
     } catch (error) {
       console.error(`❌ Database load error (${yearKey}):`, error);
@@ -2099,9 +2092,7 @@ export default function Price() {
   // Export Preis 2026 to PDF
   const exportPreis2026ToPDF = () => {
     try {
-      console.log('🔄 PDF export started...');
       const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
-      console.log('✅ jsPDF instance created');
 
       let yPosition = 8;
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -2116,7 +2107,6 @@ export default function Price() {
         doc.addImage(logoImg, 'PNG', (pageWidth - logoSize) / 2, yPosition, logoSize, logoSize);
         yPosition += logoSize + 3;
       } catch (e) {
-        console.log('Logo could not be added:', e);
         yPosition += 8;
       }
 
@@ -2265,9 +2255,7 @@ export default function Price() {
       });
 
       // Save PDF
-      console.log('💾 Saving PDF...');
       doc.save(`Preis_${year}.pdf`);
-      console.log('✅ PDF saved successfully!');
       toast.success('PDF muvaffaqiyatli yuklandi!');
     } catch (error) {
       console.error('❌ PDF export error:', error);
@@ -2277,7 +2265,6 @@ export default function Price() {
 
   // Save Total Prices to localStorage AND database for Rechnung
   const saveTotalPrices = async () => {
-    console.log('💾 Saving Total Prices from table to localStorage and database...');
 
     // CRITICAL FIX: Check if selectedTour exists
     const selectedTour = tourTypes.find(t => t.id === selectedTourType);
@@ -2303,14 +2290,11 @@ export default function Price() {
       // 1. Save to localStorage (fast, immediate)
       localStorage.setItem(storageKey, JSON.stringify(pricesToSave));
 
-      console.log(`✅ Total Prices saved to localStorage (${storageKey})!`);
       Object.keys(pricesToSave).forEach(tierId => {
         const tierData = pricesToSave[tierId];
-        console.log(`   ${tierId}: Total=${tierData.totalPrice}$, EZ=${tierData.ezZuschlag}$`);
       });
 
       // 2. Save to database (persistent, survives Ctrl+Shift+Delete)
-      console.log('💾 Saving to database...');
       for (const [paxTier, tierData] of Object.entries(pricesToSave)) {
         await pricesApi.save({
           tourType: selectedTour.id.toUpperCase(),
@@ -2320,7 +2304,6 @@ export default function Price() {
           year
         });
       }
-      console.log('✅ Total Prices saved to database!');
 
       toast.success(`${selectedTour.name} narxlar saqlandi (localStorage + database)!`);
     } catch (error) {

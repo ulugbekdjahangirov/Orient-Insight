@@ -542,7 +542,6 @@ export default function Opex() {
         items,
         year
       });
-      console.log(`✅ Saved to localStorage (${yearKey}) AND database`);
       return true;
     } catch (error) {
       console.error('❌ Database save error:', error);
@@ -556,7 +555,6 @@ export default function Opex() {
     const yearKey = `${localStorageKey}_${year}`;
     try {
       // 1. Try DATABASE first (source of truth) - always load fresh data on mount
-      console.log(`🔄 Loading from database (${tourType}/${category}/${year})...`);
       const response = await opexApi.get(tourType.toUpperCase(), category, year);
 
       // Check if DB returned a record (items !== null means record exists in DB)
@@ -565,18 +563,15 @@ export default function Opex() {
 
       if (dbHasRecord) {
         // Trust DB completely - even empty array means user deleted all items intentionally
-        console.log(`✅ Loaded from database (${yearKey}), items: ${Array.isArray(response.data.items) ? response.data.items.length : 'object'}`);
         setter(response.data.items);
         localStorage.setItem(yearKey, JSON.stringify(response.data.items));
         return;
       }
 
       // 2. No DB record yet - try localStorage as fallback
-      console.log(`⚠️ No DB record, trying localStorage (${yearKey})...`);
       const saved = localStorage.getItem(yearKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log(`✅ Loaded from localStorage (${yearKey}), saving to DB...`);
         setter(parsed);
         // Sync localStorage data back to DB so it persists
         try {
@@ -588,7 +583,6 @@ export default function Opex() {
       }
 
       // 3. No data anywhere - use defaults (don't save to DB here, let user changes trigger save)
-      console.log(`⚠️ No data in database or localStorage, using defaults (${yearKey})`);
       setter(defaultValue);
     } catch (error) {
       console.error(`❌ Database load error (${yearKey}):`, error);
@@ -596,7 +590,6 @@ export default function Opex() {
       const saved = localStorage.getItem(yearKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log(`⚠️ Database failed, using localStorage (${yearKey})`);
         setter(parsed);
       } else {
         setter(defaultValue);

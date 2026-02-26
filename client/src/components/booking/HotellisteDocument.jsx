@@ -19,8 +19,6 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
     const twn = booking?.roomsTwn || 0;
     const sgl = booking?.roomsSngl || 0;
 
-    console.log('📊 Room breakdown from booking:', { dbl, twn, sgl });
-    console.log('👤 Guide object:', guide);
 
     return { dbl, twn, sgl };
   };
@@ -54,10 +52,6 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
 
   // Generate PDF
   const generatePDF = (returnBlob = false) => {
-    console.log('📄 Starting PDF generation...');
-    console.log('Booking:', booking);
-    console.log('Accommodations:', accommodations);
-    console.log('Guide:', guide);
 
     try {
       const doc = new jsPDF();
