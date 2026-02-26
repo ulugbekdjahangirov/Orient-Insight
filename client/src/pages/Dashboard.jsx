@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { dashboardApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useIsMobile } from '../hooks/useMediaQuery';
@@ -91,6 +92,7 @@ const calculateStatus = (pax, departureDate, endDate) => {
 };
 
 export default function Dashboard() {
+  const { selectedYear } = useYear();
   const [stats, setStats] = useState(null);
   const [upcoming, setUpcoming] = useState([]);
   const [monthly, setMonthly] = useState([]);
@@ -99,14 +101,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedYear]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
       const [statsRes, upcomingRes, monthlyRes] = await Promise.all([
-        dashboardApi.getStats(),
-        dashboardApi.getUpcoming(5),
-        dashboardApi.getMonthly(new Date().getFullYear())
+        dashboardApi.getStats(selectedYear),
+        dashboardApi.getUpcoming(5, selectedYear),
+        dashboardApi.getMonthly(selectedYear)
       ]);
 
       setStats(statsRes.data);

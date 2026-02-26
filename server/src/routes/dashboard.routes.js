@@ -8,6 +8,9 @@ const prisma = new PrismaClient();
 // GET /api/dashboard/stats - Общая статистика
 router.get('/stats', authenticate, async (req, res) => {
   try {
+    const yearFilter = req.query.year ? parseInt(req.query.year) : null;
+    const bookingWhere = yearFilter ? { bookingYear: yearFilter } : {};
+
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -47,6 +50,7 @@ router.get('/stats', authenticate, async (req, res) => {
 
     // Получаем все бронирования для расчета статусов
     const allBookings = await prisma.booking.findMany({
+      where: bookingWhere,
       select: {
         id: true,
         pax: true,
@@ -103,11 +107,12 @@ router.get('/stats', authenticate, async (req, res) => {
       opexCount
     ] = await Promise.all([
       // Всего туристов
-      prisma.booking.aggregate({ _sum: { pax: true } }),
+      prisma.booking.aggregate({ where: bookingWhere, _sum: { pax: true } }),
 
       // По типам туров
       prisma.booking.groupBy({
         by: ['tourTypeId'],
+        where: bookingWhere,
         _count: { tourTypeId: true },
         _sum: { pax: true }
       }),
@@ -115,6 +120,7 @@ router.get('/stats', authenticate, async (req, res) => {
       // Бронирования в этом месяце
       prisma.booking.count({
         where: {
+          ...bookingWhere,
           departureDate: {
             gte: startOfMonth,
             lte: endOfMonth
@@ -129,7 +135,7 @@ router.get('/stats', authenticate, async (req, res) => {
       }).length,
 
       // Количество гидов
-      prisma.guide.count({ where: { isActive: true } }),
+      prisma.guide.count({ where: { isActive: true, ...(yearFilter ? { year: yearFilter } : {}) } }),
 
       // Количество типов туров
       prisma.tourType.count({ where: { isActive: true } }),
@@ -138,7 +144,7 @@ router.get('/stats', authenticate, async (req, res) => {
       prisma.hotel.count({ where: { isActive: true } }),
 
       // Количество OPEX записей (транспорт)
-      prisma.transportVehicle.count({ where: { isActive: true } })
+      prisma.transportVehicle.count({ where: { isActive: true, ...(yearFilter ? { year: yearFilter } : {}) } })
     ]);
 
     // Получаем названия типов туров
@@ -180,16 +186,16 @@ router.get('/stats', authenticate, async (req, res) => {
 // GET /api/dashboard/upcoming - Ближайшие бронирования
 router.get('/upcoming', authenticate, async (req, res) => {
   try {
-    const { limit = 10 } = req.query;
+    const { limit = 10, year } = req.query;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
+    const where = { departureDate: { gte: now }, status: { not: 'CANCELLED' } };
+    if (year) where.bookingYear = parseInt(year);
+
     // Fetch all upcoming bookings (exclude cancelled)
     const bookings = await prisma.booking.findMany({
-      where: {
-        departureDate: { gte: now },
-        status: { not: 'CANCELLED' }
-      },
+      where,
       include: {
         tourType: { select: { code: true, name: true, color: true } },
         guide: { select: { name: true } }

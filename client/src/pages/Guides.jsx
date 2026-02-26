@@ -28,7 +28,8 @@ import {
   ChevronUp,
   MoreVertical,
   Info,
-  DollarSign
+  DollarSign,
+  Copy
 } from 'lucide-react';
 
 // Helper function to calculate booking status
@@ -57,6 +58,7 @@ export default function Guides() {
   const [guides, setGuides] = useState([]);
   const [alerts, setAlerts] = useState({ alerts: [], expiredCount: 0, expiringSoonCount: 0 });
   const [loading, setLoading] = useState(true);
+  const [copyingYear, setCopyingYear] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingGuide, setEditingGuide] = useState(null);
   const [showSensitive, setShowSensitive] = useState({});
@@ -118,6 +120,21 @@ export default function Guides() {
       toast.error('Ошибка загрузки гидов');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCopyFromYear = async () => {
+    const fromYear = selectedYear - 1;
+    if (!window.confirm(`${fromYear} yildan ${selectedYear} yilga barcha gidlarni nusxalash. Davom etasizmi?`)) return;
+    setCopyingYear(true);
+    try {
+      const res = await guidesApi.copyFromYear(fromYear, selectedYear);
+      toast.success(`Nusxalandi: ${res.data.copied} ta gid (${res.data.skipped} ta mavjud edi)`);
+      loadGuides();
+    } catch (err) {
+      toast.error('Nusxalashda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setCopyingYear(false);
     }
   };
 
@@ -438,14 +455,25 @@ export default function Guides() {
           </div>
 
           {isAdmin && (
-            <button
-              onClick={() => openModal()}
-              className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-indigo-500 to-purple-500 hover:from-primary-600 hover:via-indigo-600 hover:to-purple-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline">Добавить гида</span>
-              <span className="sm:hidden">Добавить</span>
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleCopyFromYear}
+                disabled={copyingYear}
+                title={`${selectedYear - 1} yildan ${selectedYear} yilga nusxalash`}
+                className="inline-flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 bg-white border-2 border-gray-200 text-gray-600 rounded-xl md:rounded-2xl hover:border-primary-400 hover:text-primary-600 transition-all duration-200 font-semibold text-sm min-h-[44px]"
+              >
+                <Copy className="w-4 h-4" />
+                <span className="hidden sm:inline">{copyingYear ? 'Nusxalanmoqda...' : `${selectedYear - 1} → ${selectedYear}`}</span>
+              </button>
+              <button
+                onClick={() => openModal()}
+                className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-indigo-500 to-purple-500 hover:from-primary-600 hover:via-indigo-600 hover:to-purple-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Добавить гида</span>
+                <span className="sm:hidden">Добавить</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -33,6 +33,35 @@ const sensitiveFields = {
   bankName: true,
 };
 
+// POST /api/guides/copy - Copy all guides from one year to another
+router.post('/copy', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { fromYear, toYear } = req.body;
+    if (!fromYear || !toYear) return res.status(400).json({ error: 'fromYear and toYear required' });
+
+    const from = parseInt(fromYear);
+    const to = parseInt(toYear);
+    if (from === to) return res.status(400).json({ error: 'fromYear and toYear must be different' });
+
+    const sourceGuides = await prisma.guide.findMany({ where: { year: from } });
+    if (sourceGuides.length === 0) return res.status(404).json({ error: `${from} yil uchun gidlar topilmadi` });
+
+    let copied = 0;
+    for (const guide of sourceGuides) {
+      const exists = await prisma.guide.findFirst({ where: { name: guide.name, year: to } });
+      if (!exists) {
+        const { id, createdAt, updatedAt, ...rest } = guide;
+        await prisma.guide.create({ data: { ...rest, year: to } });
+        copied++;
+      }
+    }
+    res.json({ copied, skipped: sourceGuides.length - copied, fromYear: from, toYear: to });
+  } catch (err) {
+    console.error('Copy guides error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/guides - Получить список гидов
 router.get('/', authenticate, async (req, res) => {
   try {

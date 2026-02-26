@@ -176,7 +176,8 @@ export const guidesApi = {
   delete: (id) => api.delete(`/guides/${id}`),
   getAlerts: () => api.get('/guides/alerts'),
   getPayments: (id, params) => api.get(`/guides/${id}/payments`, { params }),
-  addPayment: (id, data) => api.post(`/guides/${id}/payments`, data)
+  addPayment: (id, data) => api.post(`/guides/${id}/payments`, data),
+  copyFromYear: (fromYear, toYear) => api.post('/guides/copy', { fromYear, toYear })
 };
 
 // API для типов туров
@@ -208,8 +209,8 @@ export const importApi = {
 
 // API для дашборда
 export const dashboardApi = {
-  getStats: () => api.get('/dashboard/stats'),
-  getUpcoming: (limit = 10) => api.get('/dashboard/upcoming', { params: { limit } }),
+  getStats: (year) => api.get('/dashboard/stats', year ? { params: { year } } : {}),
+  getUpcoming: (limit = 10, year) => api.get('/dashboard/upcoming', { params: year ? { limit, year } : { limit } }),
   getMonthly: (year) => api.get('/dashboard/monthly', { params: { year } }),
   getGuideWorkload: () => api.get('/dashboard/guide-workload')
 };

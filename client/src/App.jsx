@@ -56,7 +56,7 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="dashboard" element={<Dashboard key={selectedYear} />} />
         <Route path="updates" element={<Updates />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="bookings/:id" element={<BookingDetail />} />
