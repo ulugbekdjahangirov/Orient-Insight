@@ -237,7 +237,8 @@ export const transportApi = {
   create: (data) => api.post('/transport', data),
   update: (id, data) => api.put(`/transport/${id}`, data),
   delete: (id) => api.delete(`/transport/${id}`),
-  bulkUpdate: (provider, vehicles, year) => api.post('/transport/bulk', { provider, vehicles, year })
+  bulkUpdate: (provider, vehicles, year) => api.post('/transport/bulk', { provider, vehicles, year }),
+  copyFromYear: (fromYear, toYear) => api.post('/transport/copy', { fromYear, toYear })
 };
 
 // API для отелей
@@ -322,7 +323,8 @@ export const pricesApi = {
   bulkImport: (configs) => api.post('/prices/bulk', { configs }),
 
   // Delete config
-  delete: (tourType, category, paxTier, year) => api.delete(`/prices/${tourType}/${category}/${paxTier}`, { params: year ? { year } : {} })
+  delete: (tourType, category, paxTier, year) => api.delete(`/prices/${tourType}/${category}/${paxTier}`, { params: year ? { year } : {} }),
+  copyFromYear: (fromYear, toYear) => api.post('/prices/copy', { fromYear, toYear })
 };
 
 // API for Telegram confirmations (Hamkorlar page)
@@ -364,7 +366,8 @@ export const opexApi = {
   bulkImport: (configs) => api.post('/opex/bulk', { configs }),
 
   // Delete config
-  delete: (tourType, category, year) => api.delete(`/opex/${tourType}/${category}`, { params: year ? { year } : {} })
+  delete: (tourType, category, year) => api.delete(`/opex/${tourType}/${category}`, { params: year ? { year } : {} }),
+  copyFromYear: (fromYear, toYear) => api.post('/opex/copy', { fromYear, toYear })
 };
 
 // World Insight email API (Hotelliste + Rechnung combined send)

@@ -5,6 +5,35 @@ const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// POST /api/prices/copy - Copy all Price configs from one year to another
+router.post('/copy', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { fromYear, toYear } = req.body;
+    if (!fromYear || !toYear) return res.status(400).json({ error: 'fromYear and toYear required' });
+
+    const from = parseInt(fromYear);
+    const to = parseInt(toYear);
+    if (from === to) return res.status(400).json({ error: 'fromYear and toYear must be different' });
+
+    const sourceConfigs = await prisma.priceConfig.findMany({ where: { year: from } });
+    if (sourceConfigs.length === 0) return res.status(404).json({ error: `${from} yil uchun Price ma'lumoti topilmadi` });
+
+    let copied = 0;
+    for (const cfg of sourceConfigs) {
+      await prisma.priceConfig.upsert({
+        where: { tourType_category_paxTier_year: { tourType: cfg.tourType, category: cfg.category, paxTier: cfg.paxTier, year: to } },
+        update: { itemsJson: cfg.itemsJson },
+        create: { tourType: cfg.tourType, category: cfg.category, paxTier: cfg.paxTier, year: to, itemsJson: cfg.itemsJson }
+      });
+      copied++;
+    }
+    res.json({ copied, fromYear: from, toYear: to });
+  } catch (err) {
+    console.error('Copy Price error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/prices/:tourType/:category/:paxTier - Get price config
 router.get('/:tourType/:category/:paxTier', authenticate, async (req, res) => {
   try {

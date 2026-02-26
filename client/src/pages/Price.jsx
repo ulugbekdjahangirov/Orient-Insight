@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { DollarSign, Plus, Edit, Trash2, Save, X, Hotel, Truck, ChevronUp, ChevronDown, Train, Plane, Utensils, Camera, User, Sparkles, Calculator, Download, Eye } from 'lucide-react';
+import { DollarSign, Plus, Edit, Trash2, Save, X, Hotel, Truck, ChevronUp, ChevronDown, Train, Plane, Utensils, Camera, User, Sparkles, Calculator, Download, Eye, Copy } from 'lucide-react';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -123,6 +123,7 @@ export default function Price() {
     });
     setSearchParams(newParams);
   };
+  const [copyingYear, setCopyingYear] = useState(false);
   const [prices, setPrices] = useState([]);
   const [hotelPrices, setHotelPrices] = useState(defaultHotelPrices);
   const [transportRoutes, setTransportRoutes] = useState(defaultTransportRoutes);
@@ -441,6 +442,22 @@ export default function Price() {
     const success = await savePriceConfig('ER', 'transport', selectedPaxTier, transportRoutes, storageKey);
     if (success) {
       toast.success('Transport маршрутлар сохранены в базу данных!');
+    }
+  };
+
+  // Copy all Price configs from previous year to current year
+  const handleCopyFromYear = async () => {
+    const fromYear = year - 1;
+    if (!window.confirm(`${fromYear} yildan ${year} yilga barcha Price ma'lumotlarini nusxalash. Davom etasizmi?`)) return;
+    setCopyingYear(true);
+    try {
+      const res = await pricesApi.copyFromYear(fromYear, year);
+      toast.success(`Nusxalandi: ${res.data.copied} ta Price yozuvi`);
+      window.location.reload();
+    } catch (err) {
+      toast.error('Nusxalashda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setCopyingYear(false);
     }
   };
 
@@ -2324,6 +2341,15 @@ export default function Price() {
           </div>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={handleCopyFromYear}
+            disabled={copyingYear}
+            title={`${year - 1} yildan ${year} yilga nusxalash`}
+            className="flex items-center gap-2 px-4 py-3 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:border-green-400 hover:text-green-600 transition-all duration-200 font-semibold text-sm"
+          >
+            <Copy className="w-4 h-4" />
+            {copyingYear ? 'Nusxalanmoqda...' : `${year - 1} → ${year}`}
+          </button>
           <button
             onClick={handleSave}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"

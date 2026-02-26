@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, touristsApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Bell, Edit, Trash2, Users, Upload, Calendar, MapPin } from 'lucide-react';
@@ -31,6 +32,7 @@ const statusClasses = {
 };
 
 export default function Updates() {
+  const { selectedYear } = useYear();
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('updates_activeTab') || 'ER');
 
   const handleTabChange = (code) => {
@@ -55,18 +57,18 @@ export default function Updates() {
       loadBookings();
       loadAllBookingsCount();
     }
-  }, [activeTab, tourTypes]);
+  }, [activeTab, tourTypes, selectedYear]);
 
   // Auto-refresh every 30 seconds to pick up email imports (only lightweight loadBookings)
   useEffect(() => {
     if (tourTypes.length === 0) return;
     const interval = setInterval(() => {
-      loadBookings();
+      loadBookings(); // eslint-disable-next-line react-hooks/exhaustive-deps
       // loadAllBookingsCount removed from interval - it's a heavy query (loads all bookings)
       // It's still called once on mount via the above useEffect
     }, 30000);
     return () => clearInterval(interval);
-  }, [activeTab, tourTypes]);
+  }, [activeTab, tourTypes, selectedYear]);
 
   const loadTourTypes = async () => {
     try {
@@ -88,7 +90,7 @@ export default function Updates() {
   const loadAllBookingsCount = async () => {
     try {
       // Call debug endpoint
-      const debugResponse = await bookingsApi.debugCountByType();
+      const debugResponse = await bookingsApi.debugCountByType(selectedYear);
       const debugData = debugResponse.data;
 
       console.log('\n📊 BOOKING DEBUG INFO:');
@@ -128,7 +130,7 @@ export default function Updates() {
         return;
       }
 
-      const response = await bookingsApi.getAll({ tourTypeId: tourType.id });
+      const response = await bookingsApi.getAll({ tourTypeId: tourType.id, year: selectedYear });
       setBookings(response.data.bookings || []);
     } catch (error) {
       toast.error('Error loading bookings');
@@ -524,7 +526,7 @@ export default function Updates() {
 
       // Find existing booking to update
       // Fetch all bookings for this tour type
-      const allBookingsResponse = await bookingsApi.getAll({ tourTypeId: tourType.id });
+      const allBookingsResponse = await bookingsApi.getAll({ tourTypeId: tourType.id, year: selectedYear });
       const existingBookings = allBookingsResponse.data.bookings || [];
 
       console.log(`Found ${existingBookings.length} existing bookings for ${tourTypeCode}`);

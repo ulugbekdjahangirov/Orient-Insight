@@ -5,6 +5,32 @@ const { authenticate } = require('../middleware/auth.middleware');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// POST /api/transport/copy - Copy all vehicles from one year to another
+router.post('/copy', authenticate, async (req, res) => {
+  try {
+    const { fromYear, toYear } = req.body;
+    if (!fromYear || !toYear) return res.status(400).json({ error: 'fromYear and toYear required' });
+
+    const from = parseInt(fromYear);
+    const to = parseInt(toYear);
+    if (from === to) return res.status(400).json({ error: 'fromYear and toYear must be different' });
+
+    const sourceVehicles = await prisma.transportVehicle.findMany({ where: { year: from } });
+    if (sourceVehicles.length === 0) return res.status(404).json({ error: `${from} yil uchun Transport ma'lumoti topilmadi` });
+
+    // Delete existing toYear vehicles, then recreate from source
+    await prisma.transportVehicle.deleteMany({ where: { year: to } });
+
+    const created = await prisma.transportVehicle.createMany({
+      data: sourceVehicles.map(({ id, createdAt, updatedAt, year, ...rest }) => ({ ...rest, year: to }))
+    });
+    res.json({ copied: created.count, fromYear: from, toYear: to });
+  } catch (err) {
+    console.error('Copy Transport error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/transport - Get all transport vehicles
 router.get('/', authenticate, async (req, res) => {
   try {
