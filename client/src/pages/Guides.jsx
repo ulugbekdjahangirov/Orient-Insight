@@ -5,7 +5,6 @@ import { useAuth } from '../store/AuthContext';
 import { useYear } from '../context/YearContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import {
   Plus,

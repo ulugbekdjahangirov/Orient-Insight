@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { DollarSign, Plus, Edit, Trash2, Save, X, Hotel, Truck, ChevronUp, ChevronDown, Train, Plane, Utensils, Camera, User, Sparkles, Calculator, Download, Eye, Copy } from 'lucide-react';
+import { DollarSign, Plus, Trash2, Save, Hotel, Truck, ChevronUp, ChevronDown, Train, Plane, Utensils, Camera, User, Sparkles, Calculator, Download, Copy } from 'lucide-react';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';

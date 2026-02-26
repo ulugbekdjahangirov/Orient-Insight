@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { bookingsApi, touristsApi, hotelsApi, telegramApi } from '../../services/api';
 import { routesApi, railwaysApi, flightsApi } from '../../services/api';
 import toast from 'react-hot-toast';
-import { MapPin, Printer, Loader2, Edit, Save, X, Download, Plus, Trash2, FileDown, Send, Clock } from 'lucide-react';
+import { MapPin, Loader2, Edit, Save, X, Download, Plus, Trash2, FileDown, Send, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
