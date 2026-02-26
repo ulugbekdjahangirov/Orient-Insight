@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './store/AuthContext';
+import { useYear } from './context/YearContext';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -41,6 +42,7 @@ function AdminRoute({ children }) {
 }
 
 export default function App() {
+  const { selectedYear } = useYear();
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -58,11 +60,11 @@ export default function App() {
         <Route path="updates" element={<Updates />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="bookings/:id" element={<BookingDetail />} />
-        <Route path="guides" element={<Guides />} />
+        <Route path="guides" element={<Guides key={selectedYear} />} />
         <Route path="tour-types" element={<TourTypes />} />
         <Route path="hotels" element={<Hotels />} />
-        <Route path="opex" element={<Opex />} />
-        <Route path="price" element={<Price />} />
+        <Route path="opex" element={<Opex key={selectedYear} />} />
+        <Route path="price" element={<Price key={selectedYear} />} />
         <Route path="rechnung" element={<Rechnung />} />
         <Route path="ausgaben" element={<Ausgaben />} />
         <Route

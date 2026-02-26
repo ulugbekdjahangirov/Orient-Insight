@@ -9,13 +9,15 @@ const prisma = new PrismaClient();
 router.get('/:tourType/:category/:paxTier', authenticate, async (req, res) => {
   try {
     const { tourType, category, paxTier } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     const config = await prisma.priceConfig.findUnique({
       where: {
-        tourType_category_paxTier: {
+        tourType_category_paxTier_year: {
           tourType: tourType.toUpperCase(),
           category,
-          paxTier
+          paxTier,
+          year
         }
       }
     });
@@ -36,11 +38,13 @@ router.get('/:tourType/:category/:paxTier', authenticate, async (req, res) => {
 router.get('/:tourType/total', authenticate, async (req, res) => {
   try {
     const { tourType } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     const configs = await prisma.priceConfig.findMany({
       where: {
         tourType: tourType.toUpperCase(),
-        category: 'total'
+        category: 'total',
+        year
       },
       orderBy: [{ paxTier: 'asc' }]
     });
@@ -66,9 +70,10 @@ router.get('/:tourType/total', authenticate, async (req, res) => {
 router.get('/:tourType', authenticate, async (req, res) => {
   try {
     const { tourType } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     const configs = await prisma.priceConfig.findMany({
-      where: { tourType: tourType.toUpperCase() },
+      where: { tourType: tourType.toUpperCase(), year },
       orderBy: [{ category: 'asc' }, { paxTier: 'asc' }]
     });
 
@@ -88,7 +93,8 @@ router.get('/:tourType', authenticate, async (req, res) => {
 // POST /api/prices - Create or update price config
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { tourType, category, paxTier, items } = req.body;
+    const { tourType, category, paxTier, items, year: yearRaw } = req.body;
+    const year = parseInt(yearRaw) || 2026;
 
     if (!tourType || !category || !paxTier || !items) {
       return res.status(400).json({ error: 'Все поля обязательны' });
@@ -98,10 +104,11 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 
     const config = await prisma.priceConfig.upsert({
       where: {
-        tourType_category_paxTier: {
+        tourType_category_paxTier_year: {
           tourType: tourType.toUpperCase(),
           category,
-          paxTier
+          paxTier,
+          year
         }
       },
       update: {
@@ -112,6 +119,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         tourType: tourType.toUpperCase(),
         category,
         paxTier,
+        year,
         itemsJson
       }
     });
@@ -140,14 +148,16 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
 
     const results = [];
     for (const config of configs) {
-      const { tourType, category, paxTier, items } = config;
+      const { tourType, category, paxTier, items, year: yearRaw } = config;
+      const year = parseInt(yearRaw) || 2026;
 
       const saved = await prisma.priceConfig.upsert({
         where: {
-          tourType_category_paxTier: {
+          tourType_category_paxTier_year: {
             tourType: tourType.toUpperCase(),
             category,
-            paxTier
+            paxTier,
+            year
           }
         },
         update: {
@@ -158,6 +168,7 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
           tourType: tourType.toUpperCase(),
           category,
           paxTier,
+          year,
           itemsJson: JSON.stringify(items)
         }
       });
@@ -179,13 +190,15 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
 router.delete('/:tourType/:category/:paxTier', authenticate, requireAdmin, async (req, res) => {
   try {
     const { tourType, category, paxTier } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     await prisma.priceConfig.delete({
       where: {
-        tourType_category_paxTier: {
+        tourType_category_paxTier_year: {
           tourType: tourType.toUpperCase(),
           category,
-          paxTier
+          paxTier,
+          year
         }
       }
     });

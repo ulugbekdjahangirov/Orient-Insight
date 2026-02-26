@@ -4,6 +4,7 @@ import { Wallet, Plus, Edit, Trash2, Search, Bus, Eye, Coffee, Drama, Navigation
 import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import { transportApi, opexApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 
 const categories = [
   { id: 'transport', name: 'Transport', icon: Bus, color: 'blue', hasSubTabs: true },
@@ -85,6 +86,7 @@ const defaultPlaneVehicles = [
 
 export default function Opex() {
   const isMobile = useIsMobile();
+  const { selectedYear: year } = useYear();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get state from URL or use defaults
@@ -531,13 +533,15 @@ export default function Opex() {
   // Save helper - saves to BOTH localStorage AND database
   const saveOpexConfig = async (tourType, category, items, localStorageKey) => {
     try {
-      localStorage.setItem(localStorageKey, JSON.stringify(items));
+      const yearKey = `${localStorageKey}_${year}`;
+      localStorage.setItem(yearKey, JSON.stringify(items));
       await opexApi.save({
         tourType: tourType.toUpperCase(),
         category,
-        items
+        items,
+        year
       });
-      console.log(`✅ Saved to localStorage (${localStorageKey}) AND database`);
+      console.log(`✅ Saved to localStorage (${yearKey}) AND database`);
       return true;
     } catch (error) {
       console.error('❌ Database save error:', error);
@@ -548,10 +552,11 @@ export default function Opex() {
 
   // Load helper - loads from DATABASE first (source of truth)
   const loadOpexConfig = async (tourType, category, localStorageKey, defaultValue, setter) => {
+    const yearKey = `${localStorageKey}_${year}`;
     try {
       // 1. Try DATABASE first (source of truth) - always load fresh data on mount
-      console.log(`🔄 Loading from database (${tourType}/${category})...`);
-      const response = await opexApi.get(tourType.toUpperCase(), category);
+      console.log(`🔄 Loading from database (${tourType}/${category}/${year})...`);
+      const response = await opexApi.get(tourType.toUpperCase(), category, year);
 
       // Check if DB returned a record (items !== null means record exists in DB)
       // null = no record in DB; [] = record exists but user deleted all items; [...] = has items
@@ -559,38 +564,38 @@ export default function Opex() {
 
       if (dbHasRecord) {
         // Trust DB completely - even empty array means user deleted all items intentionally
-        console.log(`✅ Loaded from database (${localStorageKey}), items: ${Array.isArray(response.data.items) ? response.data.items.length : 'object'}`);
+        console.log(`✅ Loaded from database (${yearKey}), items: ${Array.isArray(response.data.items) ? response.data.items.length : 'object'}`);
         setter(response.data.items);
-        localStorage.setItem(localStorageKey, JSON.stringify(response.data.items));
+        localStorage.setItem(yearKey, JSON.stringify(response.data.items));
         return;
       }
 
       // 2. No DB record yet - try localStorage as fallback
-      console.log(`⚠️ No DB record, trying localStorage (${localStorageKey})...`);
-      const saved = localStorage.getItem(localStorageKey);
+      console.log(`⚠️ No DB record, trying localStorage (${yearKey})...`);
+      const saved = localStorage.getItem(yearKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log(`✅ Loaded from localStorage (${localStorageKey}), saving to DB...`);
+        console.log(`✅ Loaded from localStorage (${yearKey}), saving to DB...`);
         setter(parsed);
         // Sync localStorage data back to DB so it persists
         try {
-          await opexApi.save({ tourType: tourType.toUpperCase(), category, items: parsed });
+          await opexApi.save({ tourType: tourType.toUpperCase(), category, items: parsed, year });
         } catch (syncError) {
-          console.warn(`⚠️ Could not sync localStorage to DB (${localStorageKey}):`, syncError);
+          console.warn(`⚠️ Could not sync localStorage to DB (${yearKey}):`, syncError);
         }
         return;
       }
 
       // 3. No data anywhere - use defaults (don't save to DB here, let user changes trigger save)
-      console.log(`⚠️ No data in database or localStorage, using defaults (${localStorageKey})`);
+      console.log(`⚠️ No data in database or localStorage, using defaults (${yearKey})`);
       setter(defaultValue);
     } catch (error) {
-      console.error(`❌ Database load error (${localStorageKey}):`, error);
+      console.error(`❌ Database load error (${yearKey}):`, error);
       // Fallback to localStorage if database fails
-      const saved = localStorage.getItem(localStorageKey);
+      const saved = localStorage.getItem(yearKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log(`⚠️ Database failed, using localStorage (${localStorageKey})`);
+        console.log(`⚠️ Database failed, using localStorage (${yearKey})`);
         setter(parsed);
       } else {
         setter(defaultValue);
@@ -612,7 +617,7 @@ export default function Opex() {
   const loadTransportData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await transportApi.getAll();
+      const response = await transportApi.getAll(year);
       const { grouped } = response.data;
 
       // Set data from API or use defaults if empty
@@ -1252,7 +1257,7 @@ export default function Opex() {
 
         // Auto-save to database
         try {
-          await transportApi.bulkUpdate(provider, updatedVehicles);
+          await transportApi.bulkUpdate(provider, updatedVehicles, year);
           toast.success('Транспорт удален и сохранен');
           window.dispatchEvent(new Event('vehiclesUpdated'));
         } catch (error) {
@@ -1390,7 +1395,7 @@ export default function Opex() {
           return;
       }
 
-      await transportApi.bulkUpdate(apiProvider, vehicles);
+      await transportApi.bulkUpdate(apiProvider, vehicles, year);
       toast.success(`${providerName} ma'lumotlari saqlandi!`);
       window.dispatchEvent(new Event('vehiclesUpdated'));
     } catch (error) {

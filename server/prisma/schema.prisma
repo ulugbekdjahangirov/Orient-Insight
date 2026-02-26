@@ -62,7 +62,8 @@ model Guide {
   id          Int       @id @default(autoincrement())
 
   // Основная информация (видна всем)
-  name        String    @unique  // Отображаемое имя (для совместимости)
+  name        String             // Отображаемое имя (для совместимости)
+  year        Int       @default(2026) // Planning year
   firstName   String?            // Имя
   lastName    String?            // Фамилия
   dateOfBirth DateTime?          // Дата рождения
@@ -105,6 +106,9 @@ model Guide {
   bookings              Booking[] @relation("MainGuide")
   bookingsAsSecondGuide Booking[] @relation("SecondGuide")
   guidePayments GuidePayment[]
+
+  @@unique([name, year])
+  @@index([year])
 }
 
 // Выплаты гидам (для будущего модуля бухгалтерии)
@@ -124,7 +128,8 @@ model GuidePayment {
 // Основная таблица бронирований
 model Booking {
   id              Int       @id @default(autoincrement())
-  bookingNumber   String    @unique // ER-01, CO-05, KAS-12
+  bookingNumber   String    // ER-01, CO-05, KAS-12
+  bookingYear     Int       @default(0) // Year of departureDate — allows same bookingNumber across years
   tourTypeId      Int
   tourType        TourType  @relation(fields: [tourTypeId], references: [id])
 
@@ -227,6 +232,8 @@ model Booking {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  @@unique([bookingNumber, bookingYear])
+  @@index([bookingYear])
   @@index([departureDate])
   @@index([status])
   @@index([tourTypeId])
@@ -858,12 +865,14 @@ model TransportVehicle {
   arrival         String?                  // Arrival time
   flightType      String?                  // Flight type: DOMESTIC or INTERNATIONAL (for planes only)
 
+  year            Int       @default(2026) // Planning year
   sortOrder       Int       @default(0)
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([provider])
+  @@index([year])
 }
 
 // ============================================
@@ -1065,10 +1074,12 @@ model PriceConfig {
   // Price items as JSON
   itemsJson       String                   // JSON array of price items
 
+  year            Int       @default(2026) // Planning year
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  @@unique([tourType, category, paxTier])
+  @@unique([tourType, category, paxTier, year])
   @@index([tourType])
   @@index([category])
 }
@@ -1090,10 +1101,12 @@ model OpexConfig {
   // Items as JSON (array of expense items)
   itemsJson       String                   // JSON array of items
 
+  year            Int       @default(2026) // Planning year
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  @@unique([tourType, category])
+  @@unique([tourType, category, year])
   @@index([tourType])
   @@index([category])
 }

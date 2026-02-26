@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { guidesApi, bookingsApi } from '../services/api';
 import { useAuth } from '../store/AuthContext';
+import { useYear } from '../context/YearContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -49,6 +50,7 @@ function getStatusByPax(pax, departureDate, endDate) {
 
 export default function Guides() {
   const { isAdmin } = useAuth();
+  const { selectedYear } = useYear();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
@@ -110,7 +112,7 @@ export default function Guides() {
 
   const loadGuides = async () => {
     try {
-      const response = await guidesApi.getAll(true);
+      const response = await guidesApi.getAll(true, selectedYear);
       setGuides(response.data.guides);
     } catch (error) {
       toast.error('Ошибка загрузки гидов');
@@ -178,7 +180,7 @@ export default function Guides() {
         await guidesApi.update(editingGuide.id, formData);
         toast.success('Гид обновлён');
       } else {
-        await guidesApi.create(formData);
+        await guidesApi.create({ ...formData, year: selectedYear });
         toast.success('Гид добавлен');
       }
       closeModal();

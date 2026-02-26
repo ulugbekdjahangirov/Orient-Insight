@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { pricesApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 
 const tourTypes = [
   { id: 'er', name: 'ER', color: 'blue' },
@@ -97,6 +98,7 @@ const defaultShouItems = [
 
 export default function Price() {
   const isMobile = useIsMobile();
+  const { selectedYear: year } = useYear();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Format number with space as thousands separator and no decimals
@@ -363,18 +365,20 @@ export default function Price() {
   // CRITICAL FIX: Helper function to save to BOTH localStorage AND database
   const savePriceConfig = async (tourType, category, paxTier, items, localStorageKey) => {
     try {
+      const yearKey = `${localStorageKey}_${year}`;
       // 1. Save to localStorage (for immediate use & cache)
-      localStorage.setItem(localStorageKey, JSON.stringify(items));
+      localStorage.setItem(yearKey, JSON.stringify(items));
 
       // 2. Save to DATABASE (for persistence)
       await pricesApi.save({
         tourType: tourType.toUpperCase(),
         category,
         paxTier,
-        items
+        items,
+        year
       });
 
-      console.log(`✅ Saved to localStorage (${localStorageKey}) AND database`);
+      console.log(`✅ Saved to localStorage (${yearKey}) AND database`);
       return true;
     } catch (error) {
       console.error('❌ Database save error:', error);
@@ -385,19 +389,20 @@ export default function Price() {
 
   // CRITICAL FIX: Helper function to load from localStorage OR database
   const loadPriceConfig = async (tourType, category, paxTier, localStorageKey, defaultValue, setter) => {
+    const yearKey = `${localStorageKey}_${year}`;
     try {
       // 1. Try localStorage first (fastest)
-      const saved = localStorage.getItem(localStorageKey);
+      const saved = localStorage.getItem(yearKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        console.log(`✅ Loaded from localStorage (${localStorageKey})`);
+        console.log(`✅ Loaded from localStorage (${yearKey})`);
         setter(parsed);
         return;
       }
 
       // 2. If localStorage empty, try database
-      console.log(`⚠️ localStorage empty, loading from database (${tourType}/${category}/${paxTier})...`);
-      const response = await pricesApi.get(tourType.toUpperCase(), category, paxTier);
+      console.log(`⚠️ localStorage empty, loading from database (${tourType}/${category}/${paxTier}/${year})...`);
+      const response = await pricesApi.get(tourType.toUpperCase(), category, paxTier, year);
 
       // Check if items exists and is not empty (array OR object)
       const hasItems = response.data && response.data.items && (
@@ -406,18 +411,18 @@ export default function Price() {
       );
 
       if (hasItems) {
-        console.log(`✅ Loaded from database, caching to localStorage (${localStorageKey})`);
+        console.log(`✅ Loaded from database, caching to localStorage (${yearKey})`);
         setter(response.data.items);
         // Cache to localStorage for next time
-        localStorage.setItem(localStorageKey, JSON.stringify(response.data.items));
+        localStorage.setItem(yearKey, JSON.stringify(response.data.items));
         return;
       }
 
       // 3. If both empty, use defaults
-      console.log(`⚠️ No data in database, using defaults (${localStorageKey})`);
+      console.log(`⚠️ No data in database, using defaults (${yearKey})`);
       setter(defaultValue);
     } catch (error) {
-      console.error(`❌ Database load error (${localStorageKey}):`, error);
+      console.error(`❌ Database load error (${yearKey}):`, error);
       // On error, use defaults
       setter(defaultValue);
     }
@@ -2272,8 +2277,8 @@ export default function Price() {
       return;
     }
 
-    // Save to localStorage with tour-specific key
-    const storageKey = `${selectedTour.id.toLowerCase()}-total-prices`;
+    // Save to localStorage with tour-specific key (year-aware)
+    const storageKey = `${selectedTour.id.toLowerCase()}-total-prices_${year}`;
 
     try {
       // 1. Save to localStorage (fast, immediate)
@@ -2292,7 +2297,8 @@ export default function Price() {
           tourType: selectedTour.id.toUpperCase(),
           category: 'total',
           paxTier: paxTier,
-          items: tierData
+          items: tierData,
+          year
         });
       }
       console.log('✅ Total Prices saved to database!');

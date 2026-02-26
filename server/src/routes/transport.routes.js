@@ -8,9 +8,9 @@ const prisma = new PrismaClient();
 // GET /api/transport - Get all transport vehicles
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { provider } = req.query;
+    const { provider, year } = req.query;
 
-    const where = { isActive: true };
+    const where = { isActive: true, year: parseInt(year) || 2026 };
     if (provider) {
       where.provider = provider;
     }
@@ -49,11 +49,13 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/:provider', authenticate, async (req, res) => {
   try {
     const { provider } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     const vehicles = await prisma.transportVehicle.findMany({
       where: {
         provider,
-        isActive: true
+        isActive: true,
+        year
       },
       orderBy: [
         { sortOrder: 'asc' },
@@ -216,15 +218,16 @@ router.delete('/:id', authenticate, async (req, res) => {
 // POST /api/transport/bulk - Bulk create/update vehicles (for migration from localStorage)
 router.post('/bulk', authenticate, async (req, res) => {
   try {
-    const { provider, vehicles } = req.body;
+    const { provider, vehicles, year: yearRaw } = req.body;
+    const year = parseInt(yearRaw) || 2026;
 
     if (!provider || !vehicles || !Array.isArray(vehicles)) {
       return res.status(400).json({ error: 'Provider va vehicles massivi majburiy' });
     }
 
-    // Delete existing vehicles for this provider
+    // Delete existing vehicles for this provider+year
     await prisma.transportVehicle.deleteMany({
-      where: { provider }
+      where: { provider, year }
     });
 
     // Create new vehicles
@@ -233,6 +236,7 @@ router.post('/bulk', authenticate, async (req, res) => {
         prisma.transportVehicle.create({
           data: {
             provider,
+            year,
             name: v.name,
             seats: v.seats,
             person: v.person,

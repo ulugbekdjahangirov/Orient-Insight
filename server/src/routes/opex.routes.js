@@ -9,12 +9,14 @@ const prisma = new PrismaClient();
 router.get('/:tourType/:category', authenticate, async (req, res) => {
   try {
     const { tourType, category } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     const config = await prisma.opexConfig.findUnique({
       where: {
-        tourType_category: {
+        tourType_category_year: {
           tourType: tourType.toUpperCase(),
-          category
+          category,
+          year
         }
       }
     });
@@ -35,9 +37,10 @@ router.get('/:tourType/:category', authenticate, async (req, res) => {
 router.get('/:tourType', authenticate, async (req, res) => {
   try {
     const { tourType } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     const configs = await prisma.opexConfig.findMany({
-      where: { tourType: tourType.toUpperCase() },
+      where: { tourType: tourType.toUpperCase(), year },
       orderBy: [{ category: 'asc' }]
     });
 
@@ -56,7 +59,8 @@ router.get('/:tourType', authenticate, async (req, res) => {
 // POST /api/opex - Create or update OPEX config
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { tourType, category, items } = req.body;
+    const { tourType, category, items, year: yearRaw } = req.body;
+    const year = parseInt(yearRaw) || 2026;
 
     if (!tourType || !category || !items) {
       return res.status(400).json({ error: 'Все поля обязательны' });
@@ -66,9 +70,10 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 
     const config = await prisma.opexConfig.upsert({
       where: {
-        tourType_category: {
+        tourType_category_year: {
           tourType: tourType.toUpperCase(),
-          category
+          category,
+          year
         }
       },
       update: {
@@ -78,6 +83,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       create: {
         tourType: tourType.toUpperCase(),
         category,
+        year,
         itemsJson
       }
     });
@@ -106,13 +112,15 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
 
     const results = [];
     for (const config of configs) {
-      const { tourType, category, items } = config;
+      const { tourType, category, items, year: yearRaw } = config;
+      const year = parseInt(yearRaw) || 2026;
 
       const saved = await prisma.opexConfig.upsert({
         where: {
-          tourType_category: {
+          tourType_category_year: {
             tourType: tourType.toUpperCase(),
-            category
+            category,
+            year
           }
         },
         update: {
@@ -122,6 +130,7 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
         create: {
           tourType: tourType.toUpperCase(),
           category,
+          year,
           itemsJson: JSON.stringify(items)
         }
       });
@@ -143,12 +152,14 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
 router.delete('/:tourType/:category', authenticate, requireAdmin, async (req, res) => {
   try {
     const { tourType, category } = req.params;
+    const year = parseInt(req.query.year) || 2026;
 
     await prisma.opexConfig.delete({
       where: {
-        tourType_category: {
+        tourType_category_year: {
           tourType: tourType.toUpperCase(),
-          category
+          category,
+          year
         }
       }
     });

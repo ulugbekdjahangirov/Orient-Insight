@@ -73,7 +73,7 @@ export const bookingsApi = {
   // Debug room preferences for a booking
   debugRooms: (id) => api.get(`/bookings/${id}/debug-rooms`),
   // Debug count bookings by type
-  debugCountByType: () => api.get('/bookings/debug/count-by-type'),
+  debugCountByType: (year) => api.get('/bookings/debug/count-by-type', { params: year ? { year } : {} }),
   // Load accommodations from template (with PAX split logic)
   loadFromTemplate: (id) => api.post(`/bookings/${id}/load-template`)
 };
@@ -169,7 +169,7 @@ export const railwaysApi = {
 
 // API для гидов
 export const guidesApi = {
-  getAll: (includeInactive = false) => api.get('/guides', { params: { includeInactive } }),
+  getAll: (includeInactive = false, year) => api.get('/guides', { params: year ? { includeInactive, year } : { includeInactive } }),
   getById: (id) => api.get(`/guides/${id}`),
   create: (data) => api.post('/guides', data),
   update: (id, data) => api.put(`/guides/${id}`, data),
@@ -232,12 +232,12 @@ export const citiesApi = {
 
 // API for transport (Opex)
 export const transportApi = {
-  getAll: () => api.get('/transport'),
-  getByProvider: (provider) => api.get(`/transport/${provider}`),
+  getAll: (year) => api.get('/transport', { params: year ? { year } : {} }),
+  getByProvider: (provider, year) => api.get(`/transport/${provider}`, { params: year ? { year } : {} }),
   create: (data) => api.post('/transport', data),
   update: (id, data) => api.put(`/transport/${id}`, data),
   delete: (id) => api.delete(`/transport/${id}`),
-  bulkUpdate: (provider, vehicles) => api.post('/transport/bulk', { provider, vehicles })
+  bulkUpdate: (provider, vehicles, year) => api.post('/transport/bulk', { provider, vehicles, year })
 };
 
 // API для отелей
@@ -307,13 +307,13 @@ export const invoicesApi = {
 // API for price configurations
 export const pricesApi = {
   // Get price config for specific tour/category/pax
-  get: (tourType, category, paxTier) => api.get(`/prices/${tourType}/${category}/${paxTier}`),
+  get: (tourType, category, paxTier, year) => api.get(`/prices/${tourType}/${category}/${paxTier}`, { params: year ? { year } : {} }),
 
   // Get all configs for a tour type
-  getByTourType: (tourType) => api.get(`/prices/${tourType}`),
+  getByTourType: (tourType, year) => api.get(`/prices/${tourType}`, { params: year ? { year } : {} }),
 
   // Get total prices for all PAX tiers (for Rechnung)
-  getTotalPrices: (tourType) => api.get(`/prices/${tourType}/total`),
+  getTotalPrices: (tourType, year) => api.get(`/prices/${tourType}/total`, { params: year ? { year } : {} }),
 
   // Save single price config
   save: (data) => api.post('/prices', data),
@@ -322,7 +322,7 @@ export const pricesApi = {
   bulkImport: (configs) => api.post('/prices/bulk', { configs }),
 
   // Delete config
-  delete: (tourType, category, paxTier) => api.delete(`/prices/${tourType}/${category}/${paxTier}`)
+  delete: (tourType, category, paxTier, year) => api.delete(`/prices/${tourType}/${category}/${paxTier}`, { params: year ? { year } : {} })
 };
 
 // API for Telegram confirmations (Hamkorlar page)
@@ -352,10 +352,10 @@ export const telegramApi = {
 // API for OPEX configuration (Operational Expenses)
 export const opexApi = {
   // Get OPEX config for specific tour/category
-  get: (tourType, category) => api.get(`/opex/${tourType}/${category}`),
+  get: (tourType, category, year) => api.get(`/opex/${tourType}/${category}`, { params: year ? { year } : {} }),
 
   // Get all configs for a tour type
-  getByTourType: (tourType) => api.get(`/opex/${tourType}`),
+  getByTourType: (tourType, year) => api.get(`/opex/${tourType}`, { params: year ? { year } : {} }),
 
   // Save single OPEX config
   save: (data) => api.post('/opex', data),
@@ -364,7 +364,7 @@ export const opexApi = {
   bulkImport: (configs) => api.post('/opex/bulk', { configs }),
 
   // Delete config
-  delete: (tourType, category) => api.delete(`/opex/${tourType}/${category}`)
+  delete: (tourType, category, year) => api.delete(`/opex/${tourType}/${category}`, { params: year ? { year } : {} })
 };
 
 // World Insight email API (Hotelliste + Rechnung combined send)

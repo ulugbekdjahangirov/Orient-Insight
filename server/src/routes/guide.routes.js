@@ -36,10 +36,11 @@ const sensitiveFields = {
 // GET /api/guides - Получить список гидов
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { includeInactive, withAlerts } = req.query;
+    const { includeInactive, withAlerts, year } = req.query;
     const isAdmin = req.user.role === 'ADMIN';
 
     const where = includeInactive === 'true' ? {} : { isActive: true };
+    if (year) where.year = parseInt(year);
 
     const guides = await prisma.guide.findMany({
       where,
@@ -189,8 +190,10 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Имя гида обязательно' });
     }
 
-    // Проверяем уникальность имени
-    const existing = await prisma.guide.findUnique({ where: { name } });
+    const guideYear = parseInt(req.body.year) || 2026;
+
+    // Проверяем уникальность имени в этом году
+    const existing = await prisma.guide.findFirst({ where: { name, year: guideYear } });
     if (existing) {
       return res.status(400).json({ error: 'Гид с таким именем уже существует' });
     }
@@ -198,6 +201,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     const guide = await prisma.guide.create({
       data: {
         name,
+        year: guideYear,
         firstName,
         lastName,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
