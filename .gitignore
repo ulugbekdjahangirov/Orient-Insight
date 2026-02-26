@@ -38,6 +38,53 @@ prisma/*.db-journal
 screenshot.png
 take-screenshot.ps1
 
+# Temporary diagnostic/fix/migration scripts (project root)
+/check-*.js
+/check_*.js
+/fix-*.js
+/fix_*.js
+/test-*.js
+/test_*.js
+/restore_*.js
+/restore-*.js
+/migrate_*.js
+/migrate-*.js
+/verify-*.js
+/export-*.js
+/import-*.js
+/debug-*.js
+
+# Temporary diagnostic/fix/migration scripts (server root, NOT server/src)
+/server/check-*.js
+/server/check_*.js
+/server/fix-*.js
+/server/fix_*.js
+/server/test-*.js
+/server/test_*.js
+/server/verify*.js
+/server/restore_*.js
+/server/restore-*.js
+/server/migrate_*.js
+/server/migrate-*.js
+/server/update-*.js
+/server/update_*.js
+/server/export-*.js
+/server/import-*.js
+/server/find-*.js
+/server/delete*.js
+/server/recreate*.js
+/server/activate-*.js
+/server/add-*.js
+/server/count-*.js
+/server/debug-*.js
+/server/decrypt_*.js
+/server/fill_*.js
+/server/get-*.js
+/server/list*.js
+/server/save-*.js
+/server/compare*.js
+/server/final*.js
+
 # Claude Code local settings
 .claude/
 

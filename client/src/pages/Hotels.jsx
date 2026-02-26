@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { hotelsApi, citiesApi } from '../services/api';
+import { UZS_PER_USD, UZS_PER_EUR, DEFAULT_BRV_VALUE } from '../constants/rates';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import {
@@ -48,7 +49,7 @@ export default function Hotels() {
   const [roomForm, setRoomForm] = useState({
     name: '', displayName: '', roomCount: 0, pricePerNight: 0,
     currency: 'USD', description: '', maxGuests: 2,
-    vatIncluded: false, touristTaxEnabled: false, brvValue: 412000
+    vatIncluded: false, touristTaxEnabled: false, brvValue: DEFAULT_BRV_VALUE
   });
 
   // City modal
@@ -234,14 +235,14 @@ export default function Hotels() {
         maxGuests: room.maxGuests,
         vatIncluded: room.vatIncluded || false,
         touristTaxEnabled: room.touristTaxEnabled || false,
-        brvValue: room.brvValue || 412000
+        brvValue: room.brvValue || DEFAULT_BRV_VALUE
       });
     } else {
       setEditingRoom(null);
       setRoomForm({
         name: '', displayName: '', roomCount: 0, pricePerNight: 0,
         currency: 'USD', description: '', maxGuests: 2,
-        vatIncluded: false, touristTaxEnabled: false, brvValue: 412000
+        vatIncluded: false, touristTaxEnabled: false, brvValue: DEFAULT_BRV_VALUE
       });
     }
     setRoomModalOpen(true);
@@ -733,8 +734,8 @@ export default function Hotels() {
                           const totalRooms = hotel.totalRooms || 0;
                           let percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
                           let tax = room.brvValue * percentage * (room.maxGuests || 1);
-                          if (room.currency === 'USD') price += tax / 12700;
-                          else if (room.currency === 'EUR') price += tax / 13500;
+                          if (room.currency === 'USD') price += tax / UZS_PER_USD;
+                          else if (room.currency === 'EUR') price += tax / UZS_PER_EUR;
                           else price += tax;
                         }
                         return price;
@@ -1332,7 +1333,7 @@ export default function Hotels() {
                     if (roomForm.currency === 'UZS') {
                       totalPrice = priceWithVat + touristTax;
                     } else if (touristTax > 0) {
-                      const rate = roomForm.currency === 'USD' ? 12700 : 13500;
+                      const rate = roomForm.currency === 'USD' ? UZS_PER_USD : UZS_PER_EUR;
                       totalPrice = priceWithVat + (touristTax / rate);
                     }
 
@@ -1370,7 +1371,7 @@ export default function Hotels() {
                               {roomForm.currency === 'UZS' ? (
                                 `+${touristTax.toLocaleString()} UZS`
                               ) : (
-                                `+${currencySymbol}${(touristTax / (roomForm.currency === 'USD' ? 12700 : 13500)).toFixed(2)} ${roomForm.currency}`
+                                `+${currencySymbol}${(touristTax / (roomForm.currency === 'USD' ? UZS_PER_USD : UZS_PER_EUR)).toFixed(2)} ${roomForm.currency}`
                               )}
                             </span>
                           </div>

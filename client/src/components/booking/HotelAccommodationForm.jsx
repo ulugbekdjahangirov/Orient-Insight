@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { bookingsApi, hotelsApi, tourTypesApi } from '../../services/api';
+import { UZS_PER_USD, UZS_PER_EUR } from '../../constants/rates';
 import toast from 'react-hot-toast';
 import { Building2, X, Save, Loader2, Plus, Trash2, Wand2 } from 'lucide-react';
 
@@ -32,9 +33,9 @@ const calculateTotalPrice = (roomType, hotelTotalRooms) => {
 
     // Convert to room currency
     if (roomType.currency === 'USD') {
-      totalPrice += taxPerRoom / 12700;
+      totalPrice += taxPerRoom / UZS_PER_USD;
     } else if (roomType.currency === 'EUR') {
-      totalPrice += taxPerRoom / 13500;
+      totalPrice += taxPerRoom / UZS_PER_EUR;
     } else {
       totalPrice += taxPerRoom;
     }

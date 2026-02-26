@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, worldInsightApi } from '../services/api';
 import { format, addDays, parseISO } from 'date-fns';
+import { UZS_PER_USD, UZS_PER_EUR } from '../constants/rates';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -5399,9 +5400,9 @@ export default function BookingDetail() {
 
               // Convert to room currency
               if (roomType.currency === 'USD') {
-                touristTax = touristTaxUZS / 12700;
+                touristTax = touristTaxUZS / UZS_PER_USD;
               } else if (roomType.currency === 'EUR') {
-                touristTax = touristTaxUZS / 13500;
+                touristTax = touristTaxUZS / UZS_PER_EUR;
               } else {
                 touristTax = touristTaxUZS;
               }
