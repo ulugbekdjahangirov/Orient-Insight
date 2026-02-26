@@ -922,6 +922,7 @@ function TransportTab({ tourType }) {
   });
   const [openProviders, setOpenProviders] = useState({ sevil: true, xayrulla: true, nosir: true });
   const [sendingTransportTg, setSendingTransportTg] = useState({});
+  const [confirmations, setConfirmations] = useState([]);
   const saveTimerRef = useRef(null);
 
   useEffect(() => {
@@ -929,8 +930,12 @@ function TransportTab({ tourType }) {
     catch { setManualOverrides({}); }
     setLoading(true);
     setBookings([]);
-    jahresplanungApi.getTransport(YEAR, tourType)
-      .then(res => {
+    Promise.all([
+      jahresplanungApi.getTransport(YEAR, tourType),
+      jahresplanungApi.getTransportConfirmations(),
+    ])
+      .then(([res, confRes]) => {
+        setConfirmations(confRes.data.confirmations || []);
         const bookingsData = res.data.bookings || [];
         const routeMapData = res.data.routeMap || {};
         let ovr = { ...(res.data.manualOverrides || {}) };
@@ -1428,8 +1433,10 @@ function TransportTab({ tourType }) {
           <div className="ml-auto pl-4">
             {isCancelled ? (
               <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-600 text-sm font-bold rounded-lg">✕ Bekor</span>
-            ) : (
+            ) : confirmations.find(c => c.tourType === tourType && c.provider === provider)?.status === 'CONFIRMED' ? (
               <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-lg">✓ OK</span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-400 text-sm font-bold rounded-lg">—</span>
             )}
           </div>
         </div>
