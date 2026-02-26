@@ -1037,7 +1037,7 @@ function addDaysFmt(dateStr, days) {
 
 router.get('/meals', authenticate, async (req, res) => {
   try {
-    const { year = 2026, tourType = 'ER' } = req.query;
+    const { year = new Date().getFullYear(), tourType = 'ER' } = req.query;
     const yearInt = parseInt(year);
 
     // 1. Load OPEX meal items for this tourType

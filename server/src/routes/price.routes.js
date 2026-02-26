@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.get('/:tourType/:category/:paxTier', authenticate, async (req, res) => {
   try {
     const { tourType, category, paxTier } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     const config = await prisma.priceConfig.findUnique({
       where: {
@@ -38,7 +38,7 @@ router.get('/:tourType/:category/:paxTier', authenticate, async (req, res) => {
 router.get('/:tourType/total', authenticate, async (req, res) => {
   try {
     const { tourType } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     const configs = await prisma.priceConfig.findMany({
       where: {
@@ -70,7 +70,7 @@ router.get('/:tourType/total', authenticate, async (req, res) => {
 router.get('/:tourType', authenticate, async (req, res) => {
   try {
     const { tourType } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     const configs = await prisma.priceConfig.findMany({
       where: { tourType: tourType.toUpperCase(), year },
@@ -94,7 +94,7 @@ router.get('/:tourType', authenticate, async (req, res) => {
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
     const { tourType, category, paxTier, items, year: yearRaw } = req.body;
-    const year = parseInt(yearRaw) || 2026;
+    const year = parseInt(yearRaw) || new Date().getFullYear();
 
     if (!tourType || !category || !paxTier || !items) {
       return res.status(400).json({ error: 'Все поля обязательны' });
@@ -149,7 +149,7 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
     const results = [];
     for (const config of configs) {
       const { tourType, category, paxTier, items, year: yearRaw } = config;
-      const year = parseInt(yearRaw) || 2026;
+      const year = parseInt(yearRaw) || new Date().getFullYear();
 
       const saved = await prisma.priceConfig.upsert({
         where: {
@@ -190,7 +190,7 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
 router.delete('/:tourType/:category/:paxTier', authenticate, requireAdmin, async (req, res) => {
   try {
     const { tourType, category, paxTier } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     await prisma.priceConfig.delete({
       where: {

@@ -190,7 +190,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Имя гида обязательно' });
     }
 
-    const guideYear = parseInt(req.body.year) || 2026;
+    const guideYear = parseInt(req.body.year) || new Date().getFullYear();
 
     // Проверяем уникальность имени в этом году
     const existing = await prisma.guide.findFirst({ where: { name, year: guideYear } });

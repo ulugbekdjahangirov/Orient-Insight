@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 router.get('/:tourType/:category', authenticate, async (req, res) => {
   try {
     const { tourType, category } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     const config = await prisma.opexConfig.findUnique({
       where: {
@@ -37,7 +37,7 @@ router.get('/:tourType/:category', authenticate, async (req, res) => {
 router.get('/:tourType', authenticate, async (req, res) => {
   try {
     const { tourType } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     const configs = await prisma.opexConfig.findMany({
       where: { tourType: tourType.toUpperCase(), year },
@@ -60,7 +60,7 @@ router.get('/:tourType', authenticate, async (req, res) => {
 router.post('/', authenticate, requireAdmin, async (req, res) => {
   try {
     const { tourType, category, items, year: yearRaw } = req.body;
-    const year = parseInt(yearRaw) || 2026;
+    const year = parseInt(yearRaw) || new Date().getFullYear();
 
     if (!tourType || !category || !items) {
       return res.status(400).json({ error: 'Все поля обязательны' });
@@ -113,7 +113,7 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
     const results = [];
     for (const config of configs) {
       const { tourType, category, items, year: yearRaw } = config;
-      const year = parseInt(yearRaw) || 2026;
+      const year = parseInt(yearRaw) || new Date().getFullYear();
 
       const saved = await prisma.opexConfig.upsert({
         where: {
@@ -152,7 +152,7 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
 router.delete('/:tourType/:category', authenticate, requireAdmin, async (req, res) => {
   try {
     const { tourType, category } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     await prisma.opexConfig.delete({
       where: {

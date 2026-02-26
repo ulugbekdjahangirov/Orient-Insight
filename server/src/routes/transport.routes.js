@@ -10,7 +10,7 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const { provider, year } = req.query;
 
-    const where = { isActive: true, year: parseInt(year) || 2026 };
+    const where = { isActive: true, year: parseInt(year) || new Date().getFullYear() };
     if (provider) {
       where.provider = provider;
     }
@@ -49,7 +49,7 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/:provider', authenticate, async (req, res) => {
   try {
     const { provider } = req.params;
-    const year = parseInt(req.query.year) || 2026;
+    const year = parseInt(req.query.year) || new Date().getFullYear();
 
     const vehicles = await prisma.transportVehicle.findMany({
       where: {
@@ -219,7 +219,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 router.post('/bulk', authenticate, async (req, res) => {
   try {
     const { provider, vehicles, year: yearRaw } = req.body;
-    const year = parseInt(yearRaw) || 2026;
+    const year = parseInt(yearRaw) || new Date().getFullYear();
 
     if (!provider || !vehicles || !Array.isArray(vehicles)) {
       return res.status(400).json({ error: 'Provider va vehicles massivi majburiy' });
