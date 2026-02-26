@@ -2266,7 +2266,7 @@ export default function Price() {
 
       // Save PDF
       console.log('💾 Saving PDF...');
-      doc.save('Preis_2026.pdf');
+      doc.save(`Preis_${year}.pdf`);
       console.log('✅ PDF saved successfully!');
       toast.success('PDF muvaffaqiyatli yuklandi!');
     } catch (error) {

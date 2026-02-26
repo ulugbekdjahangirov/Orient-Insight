@@ -204,7 +204,7 @@ export const importApi = {
     });
   },
   execute: (filePath) => api.post('/import/execute', { filePath }),
-  downloadTemplate: () => api.get('/import/template', { responseType: 'blob' })
+  downloadTemplate: (year) => api.get('/import/template', { responseType: 'blob', params: year ? { year } : {} })
 };
 
 // API для дашборда

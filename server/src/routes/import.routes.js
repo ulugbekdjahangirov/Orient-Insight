@@ -299,11 +299,12 @@ router.post('/execute', authenticate, requireAdmin, async (req, res) => {
 
 // GET /api/import/template - Скачать шаблон Excel
 router.get('/template', authenticate, (req, res) => {
+  const year = parseInt(req.query.year) || new Date().getFullYear();
   const workbook = XLSX.utils.book_new();
 
   const templateData = [
     ['N', 'Name der Reise', 'Depature', 'Ankunft', 'Abflug', 'Pax', 'Usbekistan', 'Turkmenistan', 'Reiseleiter', 'ЖД Билеты', 'dbl', 'twn', 'sngl', 'total'],
-    [1, 'ER-01', '01.03.2026', '02.03.2026', '10.03.2026', 10, 5, 5, 'Zokir', '', 3, 2, 0, 5]
+    [1, 'ER-01', `01.03.${year}`, `02.03.${year}`, `10.03.${year}`, 10, 5, 5, 'Zokir', '', 3, 2, 0, 5]
   ];
 
   const sheet = XLSX.utils.aoa_to_sheet(templateData);

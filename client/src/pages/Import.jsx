@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { importApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
 import {
   Upload,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 export default function Import() {
+  const { selectedYear } = useYear();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,7 @@ export default function Import() {
 
   const handleDownloadTemplate = async () => {
     try {
-      const response = await importApi.downloadTemplate();
+      const response = await importApi.downloadTemplate(selectedYear);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
