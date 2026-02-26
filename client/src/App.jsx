@@ -1,26 +1,37 @@
+import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './store/AuthContext';
 import { useYear } from './context/YearContext';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Updates from './pages/Updates';
-import Bookings from './pages/Bookings';
-import BookingDetail from './pages/BookingDetail';
-import Guides from './pages/Guides';
-import TourTypes from './pages/TourTypes';
-import Hotels from './pages/Hotels';
-import Opex from './pages/Opex';
-import Price from './pages/Price';
-import Rechnung from './pages/Rechnung';
-import Ausgaben from './pages/Ausgaben';
-import Import from './pages/Import';
-import Users from './pages/Users';
-import Settings from './pages/Settings';
-import GmailSettings from './pages/GmailSettings';
-import EmailImports from './pages/EmailImports';
-import Partners from './pages/Partners';
-import Jahresplanung from './pages/Jahresplanung';
+
+// Lazy-loaded pages — each page is a separate JS chunk
+const Dashboard    = lazy(() => import('./pages/Dashboard'));
+const Updates      = lazy(() => import('./pages/Updates'));
+const Bookings     = lazy(() => import('./pages/Bookings'));
+const BookingDetail = lazy(() => import('./pages/BookingDetail'));
+const Guides       = lazy(() => import('./pages/Guides'));
+const TourTypes    = lazy(() => import('./pages/TourTypes'));
+const Hotels       = lazy(() => import('./pages/Hotels'));
+const Opex         = lazy(() => import('./pages/Opex'));
+const Price        = lazy(() => import('./pages/Price'));
+const Rechnung     = lazy(() => import('./pages/Rechnung'));
+const Ausgaben     = lazy(() => import('./pages/Ausgaben'));
+const Import       = lazy(() => import('./pages/Import'));
+const Users        = lazy(() => import('./pages/Users'));
+const Settings     = lazy(() => import('./pages/Settings'));
+const GmailSettings  = lazy(() => import('./pages/GmailSettings'));
+const EmailImports   = lazy(() => import('./pages/EmailImports'));
+const Partners       = lazy(() => import('./pages/Partners'));
+const Jahresplanung  = lazy(() => import('./pages/Jahresplanung'));
+
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+    </div>
+  );
+}
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -56,52 +67,104 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard key={selectedYear} />} />
-        <Route path="updates" element={<Updates />} />
-        <Route path="bookings" element={<Bookings />} />
-        <Route path="bookings/:id" element={<BookingDetail />} />
-        <Route path="guides" element={<Guides key={selectedYear} />} />
-        <Route path="tour-types" element={<TourTypes />} />
-        <Route path="hotels" element={<Hotels />} />
-        <Route path="opex" element={<Opex key={selectedYear} />} />
-        <Route path="price" element={<Price key={selectedYear} />} />
-        <Route path="rechnung" element={<Rechnung key={selectedYear} />} />
-        <Route path="ausgaben" element={<Ausgaben key={selectedYear} />} />
-        <Route
-          path="import"
-          element={
-            <AdminRoute>
+        <Route path="dashboard" element={
+          <Suspense fallback={<PageLoader />}>
+            <Dashboard key={selectedYear} />
+          </Suspense>
+        } />
+        <Route path="updates" element={
+          <Suspense fallback={<PageLoader />}>
+            <Updates />
+          </Suspense>
+        } />
+        <Route path="bookings" element={
+          <Suspense fallback={<PageLoader />}>
+            <Bookings />
+          </Suspense>
+        } />
+        <Route path="bookings/:id" element={
+          <Suspense fallback={<PageLoader />}>
+            <BookingDetail />
+          </Suspense>
+        } />
+        <Route path="guides" element={
+          <Suspense fallback={<PageLoader />}>
+            <Guides key={selectedYear} />
+          </Suspense>
+        } />
+        <Route path="tour-types" element={
+          <Suspense fallback={<PageLoader />}>
+            <TourTypes />
+          </Suspense>
+        } />
+        <Route path="hotels" element={
+          <Suspense fallback={<PageLoader />}>
+            <Hotels />
+          </Suspense>
+        } />
+        <Route path="opex" element={
+          <Suspense fallback={<PageLoader />}>
+            <Opex key={selectedYear} />
+          </Suspense>
+        } />
+        <Route path="price" element={
+          <Suspense fallback={<PageLoader />}>
+            <Price key={selectedYear} />
+          </Suspense>
+        } />
+        <Route path="rechnung" element={
+          <Suspense fallback={<PageLoader />}>
+            <Rechnung key={selectedYear} />
+          </Suspense>
+        } />
+        <Route path="ausgaben" element={
+          <Suspense fallback={<PageLoader />}>
+            <Ausgaben key={selectedYear} />
+          </Suspense>
+        } />
+        <Route path="import" element={
+          <AdminRoute>
+            <Suspense fallback={<PageLoader />}>
               <Import />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="users"
-          element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="users" element={
+          <AdminRoute>
+            <Suspense fallback={<PageLoader />}>
               <Users />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="gmail-settings"
-          element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="gmail-settings" element={
+          <AdminRoute>
+            <Suspense fallback={<PageLoader />}>
               <GmailSettings />
-            </AdminRoute>
-          }
-        />
-        <Route path="email-imports" element={<EmailImports key={selectedYear} />} />
-        <Route path="partners" element={<Partners />} />
-        <Route path="jahresplanung" element={<Jahresplanung />} />
-        <Route
-          path="settings"
-          element={
-            <AdminRoute>
+            </Suspense>
+          </AdminRoute>
+        } />
+        <Route path="email-imports" element={
+          <Suspense fallback={<PageLoader />}>
+            <EmailImports key={selectedYear} />
+          </Suspense>
+        } />
+        <Route path="partners" element={
+          <Suspense fallback={<PageLoader />}>
+            <Partners />
+          </Suspense>
+        } />
+        <Route path="jahresplanung" element={
+          <Suspense fallback={<PageLoader />}>
+            <Jahresplanung />
+          </Suspense>
+        } />
+        <Route path="settings" element={
+          <AdminRoute>
+            <Suspense fallback={<PageLoader />}>
               <Settings />
-            </AdminRoute>
-          }
-        />
+            </Suspense>
+          </AdminRoute>
+        } />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
