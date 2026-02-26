@@ -72,7 +72,6 @@ const getStatusByPax = (pax, departureDate, endDate) => {
 export default function Bookings() {
   const isMobile = useIsMobile();
   const { selectedYear } = useYear();
-  console.log('🔍 Bookings - isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0, limit: 200 });

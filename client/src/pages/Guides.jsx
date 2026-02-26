@@ -280,7 +280,6 @@ export default function Guides() {
   }, [activeTab]);
 
   const handleEditBooking = (bookingId) => {
-    console.log('Navigating to booking:', bookingId);
     navigate(`/bookings/${bookingId}`, { state: { editing: true } });
   };
 
@@ -297,19 +296,8 @@ export default function Guides() {
   };
 
   const handleEditPayment = (guide) => {
-    console.log('✏️ [EDIT] Starting edit mode for guide:', guide.id, guide.name);
-    console.log('✏️ [EDIT] Current rates:', {
-      dayRate: guide.dayRate,
-      halfDayRate: guide.halfDayRate
-    });
-
     setEditingPayment(guide.id);
     setPaymentFormData({
-      dayRate: guide.dayRate ?? 110,
-      halfDayRate: guide.halfDayRate ?? 55
-    });
-
-    console.log('✏️ [EDIT] Form data set to:', {
       dayRate: guide.dayRate ?? 110,
       halfDayRate: guide.halfDayRate ?? 55
     });
@@ -317,25 +305,10 @@ export default function Guides() {
 
   const handleSavePayment = async (guideId) => {
     try {
-      console.log('🔵 [SAVE] Starting save operation');
-      console.log('🔵 [SAVE] Guide ID:', guideId);
-      console.log('🔵 [SAVE] Payment form data:', paymentFormData);
-      console.log('🔵 [SAVE] Data types:', {
-        dayRate: typeof paymentFormData.dayRate,
-        halfDayRate: typeof paymentFormData.halfDayRate
-      });
-
-      const response = await guidesApi.update(guideId, paymentFormData);
-
-      console.log('🟢 [SAVE] Response received:', response);
-      console.log('🟢 [SAVE] Updated guide data:', response.data?.guide);
-
+      await guidesApi.update(guideId, paymentFormData);
       toast.success('Ставки оплаты обновлены');
       setEditingPayment(null);
-
-      console.log('🔵 [SAVE] Reloading guides...');
       await loadGuides();
-      console.log('🟢 [SAVE] Guides reloaded successfully');
     } catch (error) {
       console.error('🔴 [SAVE] Error occurred:', error);
       console.error('🔴 [SAVE] Error response:', error.response);
@@ -351,16 +324,8 @@ export default function Guides() {
   };
 
   const handleEditCityPayment = (guide) => {
-    console.log('✏️ [CITY EDIT] Starting edit mode for guide:', guide.id, guide.name);
-    console.log('✏️ [CITY EDIT] Current city rate:', guide.cityRate);
-
     setEditingCityPayment(guide.id);
     setCityPaymentFormData({
-      city: guide.city || '',
-      cityRate: guide.cityRate ?? 0
-    });
-
-    console.log('✏️ [CITY EDIT] Form data set to:', {
       city: guide.city || '',
       cityRate: guide.cityRate ?? 0
     });
@@ -368,21 +333,10 @@ export default function Guides() {
 
   const handleSaveCityPayment = async (guideId) => {
     try {
-      console.log('🔵 [CITY SAVE] Starting save operation');
-      console.log('🔵 [CITY SAVE] Guide ID:', guideId);
-      console.log('🔵 [CITY SAVE] City payment form data:', cityPaymentFormData);
-
-      const response = await guidesApi.update(guideId, cityPaymentFormData);
-
-      console.log('🟢 [CITY SAVE] Response received:', response);
-      console.log('🟢 [CITY SAVE] Updated guide data:', response.data?.guide);
-
+      await guidesApi.update(guideId, cityPaymentFormData);
       toast.success('Городская ставка обновлена');
       setEditingCityPayment(null);
-
-      console.log('🔵 [CITY SAVE] Reloading guides...');
       await loadGuides();
-      console.log('🟢 [CITY SAVE] Guides reloaded successfully');
     } catch (error) {
       console.error('🔴 [CITY SAVE] Error occurred:', error);
       console.error('🔴 [CITY SAVE] Error response:', error.response);
@@ -1040,7 +994,6 @@ export default function Guides() {
                           onChange={(e) => {
                             const rawValue = e.target.value;
                             const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
-                            console.log('🟡 [INPUT] Half Day Rate changed:', rawValue, '→', newValue);
                             setPaymentFormData({ ...paymentFormData, halfDayRate: newValue });
                           }}
                           className="w-20 md:w-28 px-2 md:px-3 py-2 md:py-2 text-sm border-2 border-yellow-300 rounded-lg focus:border-yellow-500 focus:outline-none font-bold"
@@ -1062,7 +1015,6 @@ export default function Guides() {
                           onChange={(e) => {
                             const rawValue = e.target.value;
                             const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
-                            console.log('🟢 [INPUT] Day Rate changed:', rawValue, '→', newValue);
                             setPaymentFormData({ ...paymentFormData, dayRate: newValue });
                           }}
                           className="w-20 md:w-28 px-2 md:px-3 py-2 md:py-2 text-sm border-2 border-green-300 rounded-lg focus:border-green-500 focus:outline-none font-bold"
@@ -1168,7 +1120,6 @@ export default function Guides() {
                           value={cityPaymentFormData.city}
                           onChange={(e) => {
                             const newValue = e.target.value;
-                            console.log('🟣 [CITY INPUT] City changed:', newValue);
                             setCityPaymentFormData({ ...cityPaymentFormData, city: newValue });
                           }}
                           className="w-32 md:w-40 px-2 md:px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium"
@@ -1189,7 +1140,6 @@ export default function Guides() {
                           onChange={(e) => {
                             const rawValue = e.target.value;
                             const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
-                            console.log('🟣 [CITY INPUT] City Rate changed:', rawValue, '→', newValue);
                             setCityPaymentFormData({ ...cityPaymentFormData, cityRate: newValue });
                           }}
                           className="w-20 md:w-28 px-2 md:px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-bold"
