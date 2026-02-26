@@ -4,7 +4,7 @@ import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServi
 import { useYear } from '../context/YearContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
-import { Hotel, DollarSign, BarChart3 } from 'lucide-react';
+import { Hotel, DollarSign, BarChart3, Users, Truck } from 'lucide-react';
 
 const tourTypeModules = [
   { code: 'ER', name: 'Erlebnisreisen', color: '#3B82F6' },
@@ -14,10 +14,10 @@ const tourTypeModules = [
 ];
 
 const expenseTabs = [
-  { id: 'general', name: 'General', icon: BarChart3 },
-  { id: 'hotels', name: 'Hotels', icon: Hotel },
-  // Future: { id: 'transport', name: 'Transport', icon: Truck },
-  // Future: { id: 'guides', name: 'Guides', icon: Users },
+  { id: 'general',   name: 'General',   icon: BarChart3 },
+  { id: 'hotels',    name: 'Hotels',    icon: Hotel },
+  { id: 'transport', name: 'Transport', icon: Truck },
+  { id: 'guides',    name: 'Guides',    icon: Users },
 ];
 
 export default function Ausgaben() {
@@ -71,7 +71,7 @@ export default function Ausgaben() {
   const loadBookingsAndExpenses = async () => {
     // Check cache first
     const cacheKey = `${activeTourType}_${selectedYear}`;
-    const needsDetailedData = activeExpenseTab === 'general' || activeExpenseTab === 'hotels';
+    const needsDetailedData = ['general', 'hotels', 'guides', 'transport'].includes(activeExpenseTab);
 
     // Try localStorage first (persists across page reloads)
     try {
@@ -1265,6 +1265,117 @@ export default function Ausgaben() {
                     </table>
                   );
                 })()}
+              </div>
+            )}
+            {/* Guides Tab */}
+            {activeExpenseTab === 'guides' && (
+              <div className="overflow-x-auto">
+                {bookingsDetailedData.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Users size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500">No guide data available for {activeModule?.name}</p>
+                  </div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">No.</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guide</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-50 font-bold">Guide Cost (USD)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {bookingsDetailedData.map((item, idx) => {
+                        const booking = bookings.find(b => b.id === item.bookingId);
+                        const guideName = booking?.guide?.name || '—';
+                        const guideCost = item.expenses?.guide || 0;
+                        return (
+                          <tr key={item.bookingId} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-center text-sm text-gray-600">{idx + 1}</td>
+                            <td className="px-4 py-3">
+                              <Link to={`/bookings/${item.bookingId}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                {item.bookingName}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">{guideName}</td>
+                            <td className="px-4 py-3 text-center text-sm font-medium text-gray-900 bg-blue-50">
+                              {guideCost > 0 ? `$${formatNumber(guideCost)}` : <span className="text-gray-300">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-gray-100 font-bold">
+                        <td className="px-4 py-3" colSpan={3} />
+                        <td className="px-4 py-3 text-center text-sm text-gray-900 bg-blue-100">
+                          ${formatNumber(bookingsDetailedData.reduce((s, i) => s + (i.expenses?.guide || 0), 0))}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {/* Transport Tab */}
+            {activeExpenseTab === 'transport' && (
+              <div className="overflow-x-auto">
+                {bookingsDetailedData.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Truck size={48} className="mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500">No transport data available for {activeModule?.name}</p>
+                  </div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">No.</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sevil (UZS)</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Xayrulla (UZS)</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nosir (UZS)</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Train (UZS)</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-yellow-50 font-bold">Total (UZS)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {bookingsDetailedData.map((item, idx) => {
+                        const sevil    = item.expenses?.transportSevil    || 0;
+                        const xayrulla = item.expenses?.transportXayrulla || 0;
+                        const nosir    = item.expenses?.transportNosir    || 0;
+                        const railway  = item.expenses?.railway           || 0;
+                        const total    = sevil + xayrulla + nosir + railway;
+                        return (
+                          <tr key={item.bookingId} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-center text-sm text-gray-600">{idx + 1}</td>
+                            <td className="px-4 py-3">
+                              <Link to={`/bookings/${item.bookingId}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                {item.bookingName}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-900">{sevil    > 0 ? formatNumber(sevil)    : <span className="text-gray-300">—</span>}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-900">{xayrulla > 0 ? formatNumber(xayrulla) : <span className="text-gray-300">—</span>}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-900">{nosir    > 0 ? formatNumber(nosir)    : <span className="text-gray-300">—</span>}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-900">{railway  > 0 ? formatNumber(railway)  : <span className="text-gray-300">—</span>}</td>
+                            <td className="px-4 py-3 text-center text-sm font-bold text-gray-900 bg-yellow-50">{total > 0 ? formatNumber(total) : <span className="text-gray-300">—</span>}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-gray-100 font-bold">
+                        <td className="px-4 py-3" colSpan={2} />
+                        {['transportSevil','transportXayrulla','transportNosir','railway'].map(key => (
+                          <td key={key} className="px-4 py-3 text-center text-sm text-gray-900">
+                            {formatNumber(bookingsDetailedData.reduce((s, i) => s + (i.expenses?.[key] || 0), 0))}
+                          </td>
+                        ))}
+                        <td className="px-4 py-3 text-center text-sm text-gray-900 bg-yellow-100">
+                          {formatNumber(bookingsDetailedData.reduce((s, i) =>
+                            s + (i.expenses?.transportSevil||0) + (i.expenses?.transportXayrulla||0) + (i.expenses?.transportNosir||0) + (i.expenses?.railway||0), 0))}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
           </>
