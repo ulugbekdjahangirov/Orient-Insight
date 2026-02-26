@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/AuthContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
-import { Menu, Bell, User, LogOut, Settings, Search } from 'lucide-react';
+import { Menu, User, LogOut, Settings, Search } from 'lucide-react';
 import GlobalSearch from '../common/GlobalSearch';
+import NotificationsPanel from '../common/NotificationsPanel';
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
@@ -61,10 +62,7 @@ export default function Header({ onMenuClick }) {
           <Search className="w-6 h-6 text-gray-600" />
         </button>
         {/* Notifications */}
-        <button className="p-3 md:p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
-          <Bell className={isMobile ? 'w-6 h-6 text-gray-600' : 'w-5 h-5 text-gray-600'} />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <NotificationsPanel />
 
         {/* User dropdown */}
         <div className="relative">

@@ -300,4 +300,86 @@ router.get('/guide-workload', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/dashboard/notifications
+router.get('/notifications', authenticate, async (req, res) => {
+  try {
+    const now = new Date();
+    const in7days = new Date(now);
+    in7days.setDate(in7days.getDate() + 7);
+
+    const [pendingHotels, upcomingBookings, pendingTransport] = await Promise.all([
+      // Pending hotel Telegram confirmations
+      prisma.telegramConfirmation.findMany({
+        where: { status: 'PENDING' },
+        include: {
+          booking: { select: { id: true, bookingNumber: true } },
+          hotel:   { select: { name: true } }
+        },
+        orderBy: { sentAt: 'desc' },
+        take: 20
+      }),
+
+      // Bookings departing within 7 days (not cancelled)
+      prisma.booking.findMany({
+        where: {
+          departureDate: { gte: now, lte: in7days },
+          status: { not: 'CANCELLED' }
+        },
+        select: { id: true, bookingNumber: true, departureDate: true, pax: true },
+        orderBy: { departureDate: 'asc' },
+        take: 10
+      }),
+
+      // Pending transport confirmations
+      prisma.transportConfirmation.findMany({
+        where: { status: 'PENDING' },
+        include: {
+          booking: { select: { id: true, bookingNumber: true } }
+        },
+        orderBy: { sentAt: 'desc' },
+        take: 20
+      })
+    ]);
+
+    const items = [];
+
+    // Hotel confirmations
+    for (const c of pendingHotels) {
+      items.push({
+        type: 'hotel',
+        message: `${c.booking.bookingNumber}: ${c.hotel.name} tasdiqlashni kutmoqda`,
+        url: '/partners',
+        time: c.sentAt
+      });
+    }
+
+    // Upcoming departures
+    for (const b of upcomingBookings) {
+      const diff = Math.ceil((new Date(b.departureDate) - now) / (1000 * 60 * 60 * 24));
+      const label = diff === 0 ? 'bugun' : diff === 1 ? 'ertaga' : `${diff} kundan keyin`;
+      items.push({
+        type: 'departure',
+        message: `${b.bookingNumber} — ${label} jo'naydi (${b.pax} kishi)`,
+        url: `/bookings/${b.id}`,
+        time: b.departureDate
+      });
+    }
+
+    // Transport confirmations
+    for (const c of pendingTransport) {
+      items.push({
+        type: 'transport',
+        message: `${c.booking.bookingNumber}: ${c.provider} tasdiqlashni kutmoqda`,
+        url: '/partners',
+        time: c.sentAt
+      });
+    }
+
+    res.json({ items, total: items.length });
+  } catch (err) {
+    console.error('Notifications error:', err);
+    res.status(500).json({ error: 'Failed to load notifications' });
+  }
+});
+
 module.exports = router;
