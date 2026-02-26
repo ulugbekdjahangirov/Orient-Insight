@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bus, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
-import { jahresplanungApi } from '../../services/api';
-
-const YEAR = 2026;
+import { jahresplanungApi, telegramApi } from '../../services/api';
+import { useYear } from '../../context/YearContext';
 const PROVIDERS = [
   { id: 'sevil',    label: 'Sevil',    bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700'   },
   { id: 'xayrulla', label: 'Xayrulla', bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700'  },
@@ -72,6 +71,7 @@ function buildColDefs(tourType, provider, routeMap, bookings) {
 }
 
 export default function TransportPlanTab({ tourType }) {
+  const { selectedYear: YEAR } = useYear();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [routeMap, setRouteMap] = useState({});
@@ -82,7 +82,7 @@ export default function TransportPlanTab({ tourType }) {
     setLoading(true);
     Promise.all([
       jahresplanungApi.getTransport(YEAR, tourType),
-      jahresplanungApi.getTransportConfirmations(),
+      telegramApi.getTransportConfirmations(YEAR),
     ])
       .then(([transportRes, confRes]) => {
         setBookings(transportRes.data.bookings || []);
@@ -91,7 +91,7 @@ export default function TransportPlanTab({ tourType }) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [tourType]);
+  }, [tourType, YEAR]);
 
   if (loading) return (
     <div className="flex justify-center py-20 text-gray-400">
@@ -107,7 +107,6 @@ export default function TransportPlanTab({ tourType }) {
         const ids = Object.keys(routeMap[prov.id] || {});
         const items = bookings.filter(b => ids.includes(String(b.id)));
         const isOpen = !!open[prov.id];
-        const conf = confirmations.find(c => c.tourType === tourType && c.provider === prov.id);
         const colDefs = buildColDefs(tourType, prov.id, routeMap, items);
         const hasMultiLabel = colDefs.some(c => c.type === 'multi' && c.label);
 
@@ -172,6 +171,7 @@ export default function TransportPlanTab({ tourType }) {
                   const visSegs = getVisibleSegs(tourType, prov.id, allSegs);
                   const isCancelled = b.status === 'CANCELLED';
                   const extra = BIS_EXTRA[tourType]?.[prov.id] ?? 0;
+                  const conf = confirmations.find(c => c.bookingId === b.id && c.provider === prov.id);
 
                   return (
                     <div key={bk} className={`flex items-center px-6 py-3 border-b border-gray-100 last:border-0 ${isCancelled ? 'bg-red-50' : ''}`}>
@@ -180,7 +180,7 @@ export default function TransportPlanTab({ tourType }) {
                           {b.bookingNumber}
                         </Link>
                       </div>
-                      <span className="w-14 flex-shrink-0 text-sm font-medium text-gray-700">16</span>
+                      <span className="w-14 flex-shrink-0 text-sm font-medium text-gray-700">{isCancelled ? 0 : (b.pax || '—')}</span>
 
                       {/* Segment date columns */}
                       {colDefs.map((col, i) => {
@@ -208,10 +208,18 @@ export default function TransportPlanTab({ tourType }) {
                       <span className="w-32 flex-shrink-0 text-xs text-green-700 truncate pr-2" title={conf?.confirmedBy || ''}>{conf?.confirmedBy || <span className="text-gray-300">—</span>}</span>
                       <span className="w-36 flex-shrink-0 text-xs text-gray-500">{fmtDateTime(conf?.respondedAt) || <span className="text-gray-300">—</span>}</span>
 
-                      <div className="w-16 flex-shrink-0 flex justify-end">
+                      <div className="w-20 flex-shrink-0 flex justify-end">
                         {isCancelled
-                          ? <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-lg">✕ Bekor</span>
-                          : <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">✓ OK</span>
+                          ? <span className="inline-flex items-center px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-lg">✕ Bekor</span>
+                          : !conf
+                          ? <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-400 text-xs rounded-lg">—</span>
+                          : conf.status === 'CONFIRMED'
+                          ? <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">✓ OK</span>
+                          : conf.status === 'REJECTED' || conf.status === 'REJECTED_BY_APPROVER'
+                          ? <span className="inline-flex items-center px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-lg">✕ Rad</span>
+                          : conf.status === 'APPROVED'
+                          ? <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg">⏳ Kutar</span>
+                          : <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-lg">🕐 Kutm.</span>
                         }
                       </div>
                     </div>
