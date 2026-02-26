@@ -586,6 +586,7 @@ export default function BookingDetail() {
 
   // Track previous departureDate to detect when it changes
   const prevDepartureDateRef = useRef(null);
+  const autoFixPendingRef = useRef(false);
 
   // Refs for Hotelliste + Rechnung PDF blob generation (World Insight email)
   const hotellisteRef = useRef(null);
@@ -1540,6 +1541,14 @@ export default function BookingDetail() {
       }
     }
   }, [activeTab, erRoutes.length, tourists.length]);
+
+  // Auto-fix CO routes after tourist update (triggered by handleTouristsUpdate)
+  useEffect(() => {
+    if (autoFixPendingRef.current && tourists.length > 0 && erRoutes.length > 0) {
+      autoFixPendingRef.current = false;
+      autoFixAllRoutes();
+    }
+  }, [tourists, erRoutes]);
 
   const loadData = async () => {
     try {
@@ -7221,6 +7230,14 @@ export default function BookingDetail() {
 
   // Auto-fix all routes: set correct PAX, vehicle, and price
   // Main dispatcher function - calls appropriate fix function based on tour type
+  // Called when tourists are added/updated — triggers autoFix after state refreshes
+  const handleTouristsUpdate = () => {
+    if (booking?.tourType?.code === 'CO') {
+      autoFixPendingRef.current = true;
+    }
+    loadData();
+  };
+
   const autoFixAllRoutes = async () => {
 
     const tourTypeCode = booking?.tourType?.code;
@@ -9000,7 +9017,7 @@ export default function BookingDetail() {
       {!isNew && activeTab === 'tourists' && (
         <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-blue-100 p-4 md:p-8">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
-          <TouristsList bookingId={parseInt(id)} onUpdate={loadData} />
+          <TouristsList bookingId={parseInt(id)} onUpdate={handleTouristsUpdate} />
         </div>
       )}
 
