@@ -569,7 +569,6 @@ export default function BookingDetail() {
   const [roomsTotalAmount, setRoomsTotalAmount] = useState(0);
   const [tourists, setTourists] = useState([]);
   const [routes, setRoutes] = useState([]);
-  const [guestDates, setGuestDates] = useState({}); // Track individual guest check-in/out dates for Total calculation
   const [expandedHotels, setExpandedHotels] = useState({});
   const [editingTouristId, setEditingTouristId] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -943,7 +942,6 @@ export default function BookingDetail() {
   });
 
   // Route module state
-  const [activeRouteTab, setActiveRouteTab] = useState('er');
   const [showProviderModal, setShowProviderModal] = useState(false);
   const [selectedProviderTab, setSelectedProviderTab] = useState('sevil');
   const [editingRouteForProvider, setEditingRouteForProvider] = useState(null);
@@ -7807,7 +7805,6 @@ export default function BookingDetail() {
 
 
       // DO NOT update state here - wait for database reload
-      // setErRoutes(numberedRoutes); ← REMOVED to prevent duplicates
 
       // Save to database with smart dayNumber handling for splits (preserve both city and itinerary fields!)
       let currentDay = 1;

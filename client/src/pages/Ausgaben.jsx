@@ -125,16 +125,9 @@ export default function Ausgaben() {
       const response = await bookingsApi.getAll({ year: selectedYear });
       const allBookings = response.data.bookings;
 
-      // DEBUG: Log all bookings with tourType info
-
-      // Count bookings by tourType
-      const tourTypeCounts = {};
       const noTourType = [];
       allBookings.forEach(b => {
-        const code = b.tourType?.code;
-        if (code) {
-          tourTypeCounts[code] = (tourTypeCounts[code] || 0) + 1;
-        } else {
+        if (!b.tourType?.code) {
           noTourType.push(b.bookingNumber || `ID-${b.id}`);
         }
       });

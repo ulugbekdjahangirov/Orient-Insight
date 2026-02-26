@@ -174,14 +174,6 @@ router.get('/', authenticate, async (req, res) => {
       };
     });
 
-    // DEBUG: Log bookings count by tourType
-    const tourTypeCounts = {};
-    bookingsWithCalculatedRooms.forEach(b => {
-      const code = b.tourType?.code;
-      if (code) {
-        tourTypeCounts[code] = (tourTypeCounts[code] || 0) + 1;
-      }
-    });
     res.json({
       bookings: bookingsWithCalculatedRooms,
       pagination: {
