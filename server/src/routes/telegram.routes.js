@@ -719,6 +719,20 @@ router.post('/webhook', async (req, res) => {
           })
         }).catch(err => console.error('tp26_approve sendDocument error:', err.response?.data || err.message));
 
+        // Send formatted table to provider as a separate text message
+        if (stored.messageText) {
+          const tableText = [
+            `🚌 *Transport Rejasi ${tp26Year} — ${tourLabel}* | 👤 *${providerLabel}*`,
+            ``,
+            `\`\`\`\n${stored.messageText}\n\`\`\``
+          ].join('\n');
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: providerChatId,
+            text: tableText,
+            parse_mode: 'Markdown'
+          }).catch(err => console.warn('tp26_approve table message warn:', err.response?.data?.description || err.message));
+        }
+
         // Update stored status to APPROVED
         stored.status     = 'APPROVED';
         stored.approvedBy = fromName;
