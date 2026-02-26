@@ -78,7 +78,6 @@ router.put('/:bookingId/routes/bulk', authenticate, async (req, res) => {
     const { bookingId } = req.params;
     const { routes } = req.body;
 
-    console.log('📦 Bulk save routes for booking:', bookingId, 'count:', routes?.length);
 
     if (!Array.isArray(routes)) {
       return res.status(400).json({ error: 'routes должен быть массивом' });
@@ -112,7 +111,6 @@ router.put('/:bookingId/routes/bulk', authenticate, async (req, res) => {
       )
     );
 
-    console.log('✅ Routes saved:', createdRoutes.length);
     res.json({ routes: createdRoutes });
   } catch (error) {
     console.error('Error bulk updating routes:', error);
@@ -188,7 +186,6 @@ router.get('/templates/:tourTypeCode', authenticate, async (req, res) => {
       ]
     });
 
-    console.log(`📋 Loaded ${templates.length} route templates for ${tourTypeCode}`);
     res.json({ templates });
   } catch (error) {
     console.error('Error fetching route templates:', error);
@@ -202,7 +199,6 @@ router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
     const { tourTypeCode } = req.params;
     const { routes } = req.body;
 
-    console.log(`💾 Saving ${routes?.length} route templates for ${tourTypeCode}`);
 
     if (!Array.isArray(routes)) {
       return res.status(400).json({ error: 'routes должен быть массивом' });
@@ -232,7 +228,6 @@ router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
       )
     );
 
-    console.log(`✅ Saved ${createdTemplates.length} route templates for ${tourTypeCode}`);
     res.json({ templates: createdTemplates, message: 'Шаблон маршрутов сохранён' });
   } catch (error) {
     console.error('Error saving route templates:', error);

@@ -166,7 +166,6 @@ router.get('/:bookingId/tourists', authenticate, async (req, res) => {
     const sortedTourists = sortTouristsByAccommodation(tourists);
 
     // Return sorted tourists
-    // console.log(`Returning ${sortedTourists.length} tourists for booking ${bookingId}`);
 
     res.json({ tourists: sortedTourists });
   } catch (error) {
@@ -1029,11 +1028,7 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
     const { bookingId } = req.params;
     const { tourists, createOnly, replaceAll, replaceAccommodationType } = req.body;
 
-    console.log(`\n🔵 [BACKEND] Import API called for booking ${bookingId}`);
-    console.log(`📥 Received ${tourists?.length || 0} tourists`);
-    console.log(`⚙️ Mode: ${replaceAll ? 'REPLACE ALL' : createOnly ? 'CREATE ONLY' : 'MERGE'}`);
     if (replaceAccommodationType) {
-      console.log(`🏨 Replace Accommodation Type: ${replaceAccommodationType}`);
     }
 
     if (!Array.isArray(tourists) || tourists.length === 0) {
@@ -1046,10 +1041,7 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
     // Filter only selected tourists
     const toCreate = tourists.filter(p => p.selected !== false);
 
-    console.log(`✅ After filtering selected: ${toCreate.length} tourists`);
-    console.log(`📋 List of tourists to create:`);
     toCreate.forEach((t, i) => {
-      console.log(`  ${i + 1}. ${t.fullName} - tripType: "${t.tripType}"`);
     });
 
     if (toCreate.length === 0) {
@@ -1089,9 +1081,7 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
 
         if (touristsToDelete.length > 0) {
           const touristIds = touristsToDelete.map(t => t.id);
-          console.log(`🗑️ REPLACE BY TYPE (${replaceAccommodationType}): Deleting ${touristsToDelete.length} existing tourists...`);
           touristsToDelete.forEach(t => {
-            console.log(`   - ${t.fullName} (${t.accommodation})`);
           });
 
           // Delete related data first (foreign key constraints)
@@ -1106,9 +1096,7 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
           await prisma.tourist.deleteMany({
             where: { id: { in: touristIds } }
           });
-          console.log(`✅ Deleted ${touristsToDelete.length} ${replaceAccommodationType} tourists`);
         } else {
-          console.log(`ℹ️ No ${replaceAccommodationType} tourists found to delete`);
         }
       } else {
         // replaceAll: Delete ALL tourists regardless of accommodation type
@@ -1119,7 +1107,6 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
 
         if (existingTourists.length > 0) {
           const touristIds = existingTourists.map(t => t.id);
-          console.log(`🗑️ REPLACE ALL: Deleting ${existingTourists.length} existing tourists...`);
 
           // Delete related data first (foreign key constraints)
           await prisma.accommodationRoomingList.deleteMany({
@@ -1133,7 +1120,6 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
           await prisma.tourist.deleteMany({
             where: deleteFilter
           });
-          console.log(`✅ Deleted ${existingTourists.length} existing tourists`);
         }
       }
     }
@@ -1144,7 +1130,6 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
       where: { bookingId: bookingIdInt }
     });
 
-    console.log(`📋 Found ${existingTourists.length} existing tourists in database`);
 
     // Helper function to match tourists by name
     const findExistingTourist = (excelTourist) => {
@@ -1169,7 +1154,6 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
       if (existing) {
         if (createOnly) {
           // CREATE ONLY mode (from Updates module): Skip existing tourists
-          console.log(`   ⏭️ Skipping existing tourist: ${existing.fullName}`);
         } else {
           // MERGE mode (from Tourists module): Update only personal data (passport, birth date, nationality)
           // DO NOT update room info (roomPreference, roomNumber, accommodation) - preserve from PDF import
@@ -1185,7 +1169,6 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
             checkInDate: excelTourist.checkInDate ? new Date(excelTourist.checkInDate) : existing.checkInDate,
             checkOutDate: excelTourist.checkOutDate ? new Date(excelTourist.checkOutDate) : existing.checkOutDate
           });
-          console.log(`   🔄 Updating personal data: ${existing.fullName} (CheckIn: ${excelTourist.checkInDate ? new Date(excelTourist.checkInDate).toLocaleDateString() : 'unchanged'})`);
         }
       } else {
         // Create new tourist
@@ -1208,7 +1191,6 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
           checkInDate: excelTourist.checkInDate ? new Date(excelTourist.checkInDate) : null,
           checkOutDate: excelTourist.checkOutDate ? new Date(excelTourist.checkOutDate) : null
         });
-        console.log(`   ➕ Creating new tourist: ${excelTourist.firstName} ${excelTourist.lastName} (CheckIn: ${excelTourist.checkInDate ? new Date(excelTourist.checkInDate).toLocaleDateString() : 'N/A'})`);
       }
     });
 
@@ -1240,7 +1222,6 @@ router.post('/:bookingId/tourists/import', authenticate, async (req, res) => {
     }
 
     const skippedCount = toCreate.length - touristsToUpdate.length - touristsToCreate.length;
-    console.log(`✅ Updated ${touristsToUpdate.length} tourists, created ${createdCount} new tourists${skippedCount > 0 ? `, skipped ${skippedCount} existing` : ''}`);
 
     // Update booking pax count
     await updateBookingPaxCount(bookingIdInt);
@@ -2120,7 +2101,6 @@ router.post('/:bookingId/parse-flight-pdf', authenticate, upload.single('pdf'), 
       return (a.date || '').localeCompare(b.date || '');
     });
 
-    console.log(`✈️  PDF flight parse: groups=${groups.map(g=>g.totalPax).join('+')}=${totalPax} PAX, detected=${result.length}, suggested=${suggestedFlights.length}, domesticHint=${domesticPaxHint}`);
     res.json({ flights: allFlights, totalPax, domesticPaxHint });
 
   } catch (error) {
@@ -2539,7 +2519,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
     }
 
     const tourTypeCode = bookingForType.tourType?.code?.toUpperCase() || '';
-    console.log(`📋 PDF Import - Tour Type: ${tourTypeCode}`);
 
     // Parse PDF
     const pdfData = await pdfParse(req.file.buffer);
@@ -2589,19 +2568,16 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           if (tourTypeCode === 'ER') {
             inTurkmenistanSection = true;
             currentTourType = 'Turkmenistan';
-            console.log(`📍 Detected Turkmenistan section (ER tour): ${line}`);
           } else {
             // For non-ER tours (ZA, CO, KAS), ignore Turkmenistan and keep Uzbekistan
             inTurkmenistanSection = false;
             currentTourType = 'Uzbekistan';
-            console.log(`📍 Ignoring Turkmenistan section (${tourTypeCode} tour - always Uzbekistan): ${line}`);
           }
         }
         // Check for "Tour: Usbekistan" (without Turkmenistan)
         else if (lowerLine.includes('usbekistan') || lowerLine.includes('uzbekistan')) {
           inTurkmenistanSection = false;
           currentTourType = 'Uzbekistan';
-          console.log(`📍 Detected Uzbekistan section: ${line}`);
         }
         // DON'T reset room counters - continue numbering across both sections
         // This ensures Uzbekistan gets DBL-1, DBL-2... and Turkmenistan gets DBL-3, DBL-4...
@@ -2640,7 +2616,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         if (tourDateMatch) {
           tourStartDate = tourDateMatch[1];
           tourEndDate = tourDateMatch[2];
-          console.log(`Extracted tour dates from PDF (tour title): ${tourStartDate} - ${tourEndDate}`);
         }
         continue;
       }
@@ -2650,7 +2625,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         if (dateMatch) {
           tourStartDate = dateMatch[1];
           tourEndDate = dateMatch[2];
-          console.log(`Extracted tour dates from PDF (Date field): ${tourStartDate} - ${tourEndDate}`);
         }
         continue;
       }
@@ -2665,7 +2639,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           // Parse vegetarian names: "Mr. Maier, Heinz Peter // Mrs. Maier, Andrea // Mrs. Maier, Nadja Daniela"
           // Split by "//" first, then clean up each name
           vegetariansList = value.split('//').map(name => name.trim()).filter(n => n);
-          console.log(`📋 Vegetarians found (inline): ${vegetariansList.join(' | ')}`);
         } else {
           // Next lines might contain vegetarian names with bullet points
           // Look ahead for bullet-pointed names
@@ -2694,7 +2667,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
             // Check if it's a name (starts with Mr./Mrs./Ms.)
             if (vegName.match(/^(Mr\.|Mrs\.|Ms\.)\s+/i)) {
               vegetariansList.push(vegName);
-              console.log(`📋 Vegetarian found (bullet): ${vegName}`);
               i = j; // Skip this line in main loop
             } else {
               break; // Not a name, stop looking
@@ -2720,7 +2692,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
             if (match) {
               const [, date, name] = match;
               birthdaysMap.set(name.trim(), date);
-              console.log(`🎂 Birthday found: ${name.trim()} - ${date}`);
             }
           });
         }
@@ -2733,7 +2704,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         const value = line.substring(7).trim();
         if (value && value !== '//' && value !== '-') {
           globalRemark = value;
-          console.log(`📝 Global Remark: ${globalRemark}`);
         }
         continue;
       }
@@ -2751,7 +2721,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           if (birthdayMatch) {
             const [, name, date] = birthdayMatch;
             birthdaysMap.set(name.trim(), date);
-            console.log(`🎂 Birthday found: ${name.trim()} - ${date}`);
             continue; // Don't parse this as a tourist
           }
         }
@@ -2768,7 +2737,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           // Append to global remark
           if (line && line !== '//' && line !== '-') {
             globalRemark += (globalRemark ? '\n' : '') + line;
-            console.log(`📝 Remark line: ${line}`);
             continue; // Don't parse this as a tourist
           }
         }
@@ -2807,7 +2775,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           // Found additional info separated by multiple spaces
           additionalInfo = nameAndInfoMatch[2].trim();
           fullName = `${nameMatch[1]} ${nameAndInfoMatch[1]}`.trim();
-          console.log(`   📋 Additional info in same line: "${additionalInfo}"`);
         }
 
         // Look ahead for additional information in next lines
@@ -2842,7 +2809,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         // Combine additional info from same line and next lines
         if (additionalLines.length > 0) {
           const additionalFromNextLines = additionalLines.join(' ').trim();
-          console.log(`   📋 Additional info from next lines: "${additionalFromNextLines}"`);
           if (additionalInfo) {
             additionalInfo += ' ' + additionalFromNextLines;
           } else {
@@ -2884,7 +2850,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           lastName = lastName.replace(/\*$/, '').trim();
           fullName = fullName.replace(/\*$/, '').trim();
 
-          console.log(`   ⚠️ Asterisk detected: "${fullName}" - half double room, no roommate found`);
 
           // Find the existing tourist with the same name (normalized)
           const normalizeName = (name) => name.toLowerCase().replace(/[*\s]/g, '');
@@ -2900,14 +2865,11 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
             roomCounters.SNGL++;
             existingTourist.roomNumber = `SNGL-${roomCounters.SNGL}`;
             // Don't set remarks - keep existing remarks or leave empty
-            console.log(`   ✅ Updated existing tourist "${existingTourist.fullName}" to SNGL room`);
             continue; // Skip adding duplicate
           } else {
-            console.log(`   ⚠️ Warning: No matching tourist found for "${fullName}", will create as new`);
           }
         }
 
-        console.log(`   👤 Parsed: "${fullName}" → lastName="${lastName}", firstName="${firstName}"`);
 
         // Room grouping logic:
         // - DBL: 2 people share one room
@@ -3119,8 +3081,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       }
     }
 
-    console.log(`PDF Import - Found flights: ${flights.international.length} international, ${flights.domestic.length} domestic`);
-    console.log(`📋 Found ${vegetariansList.length} vegetarians, ${birthdaysMap.size} birthdays${globalRemark ? ', 1 global remark' : ''}`);
 
     if (tourists.length === 0) {
       return res.status(400).json({ error: 'No tourists found in PDF. Make sure PDF contains rooming list with Mr./Mrs. names.' });
@@ -3145,7 +3105,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         const mentionsTourist = lowerLine.includes(lastNameFirstWord);
 
         if (mentionsTourist) {
-          console.log(`   🔍 Found mention of ${tourist.fullName} in line: "${line}"`);
 
           // Helper function to extract info from a line
           const extractInfoFromLine = (checkLine, checkLower) => {
@@ -3160,11 +3119,9 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
                 const flightDate = flightMatch[1].substring(0, 5);
                 const arrivalDate = arrivalMatch[1].substring(0, 5);
                 remarks.push(`Flight: ${flightDate}, Arrival: ${arrivalDate}`);
-                console.log(`      📋 Found flight ${flightDate}, arrival ${arrivalDate}`);
               } else if (arrivalMatch) {
                 const arrivalDate = arrivalMatch[1].substring(0, 5);
                 remarks.push(`Early arrival: ${arrivalDate}`);
-                console.log(`      📋 Found early arrival ${arrivalDate}`);
               }
 
               // Extra nights request
@@ -3179,7 +3136,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
               if (dateMatch) {
                 const depDate = dateMatch[1].substring(0, 5);
                 remarks.push(`Late departure: ${depDate}`);
-                console.log(`      📋 Found late departure ${depDate}`);
               }
             }
 
@@ -3236,7 +3192,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
     });
 
     // Now match tourists with additional information (vegetarians, birthdays, remarks)
-    console.log('🔄 Matching tourists with additional information...');
     tourists.forEach(tourist => {
       const additionalInfo = [];
 
@@ -3253,7 +3208,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       });
       if (matchedVeg) {
         additionalInfo.push('Vegetarian');
-        console.log(`   ✅ ${tourist.fullName} is vegetarian (matched: "${matchedVeg}")`);
       }
 
       // Check if this tourist has a birthday
@@ -3264,7 +3218,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         const firstNameLower = tourist.firstName.toLowerCase();
         if (nameLower.includes(lastNameLower) && nameLower.includes(firstNameLower)) {
           birthdayDate = date;
-          console.log(`   🎂 ${tourist.fullName} has birthday: ${date} (matched: "${name}")`);
           break;
         }
       }
@@ -3276,7 +3229,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       if (tourist.additionalInfoFromTable && tourist.additionalInfoFromTable.trim() !== '' && tourist.additionalInfoFromTable !== '-') {
         const tableInfo = tourist.additionalInfoFromTable.trim();
         additionalInfo.push(tableInfo);
-        console.log(`   📋 ${tourist.fullName} has table additional info: "${tableInfo}"`);
 
         // Parse dates from additionalInfoFromTable (e.g., "Flight: 09.10, Arrival: 10.10")
         const tableInfoLower = tableInfo.toLowerCase();
@@ -3287,7 +3239,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           const arrivalDate = parseDateInTourYear(arrivalTableMatch[1], tourYear);
           if (arrivalDate) {
             tourist.checkInDate = arrivalDate;
-            console.log(`   📅 ${tourist.fullName} arrival from table: ${arrivalTableMatch[1]} → ${arrivalDate}`);
           }
         }
 
@@ -3296,7 +3247,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         if (flightTableMatch && !tourist.checkInDate) {
           // If no explicit Arrival but Flight exists, tourist might arrive next day
           // For now, just log it - the arrival date should be explicit
-          console.log(`   ✈️ ${tourist.fullName} flight date from table: ${flightTableMatch[1]}`);
         }
 
         // Extract Late departure date → checkOutDate
@@ -3305,7 +3255,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           const departureDate = parseDateInTourYear(departureTableMatch[1], tourYear);
           if (departureDate) {
             tourist.checkOutDate = departureDate;
-            console.log(`   📅 ${tourist.fullName} departure from table: ${departureTableMatch[1]} → ${departureDate}`);
           }
         }
 
@@ -3315,7 +3264,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           const arrivalDate = parseDateInTourYear(earlyArrivalMatch[1], tourYear);
           if (arrivalDate) {
             tourist.checkInDate = arrivalDate;
-            console.log(`   📅 ${tourist.fullName} early arrival from table: ${earlyArrivalMatch[1]} → ${arrivalDate}`);
           }
         }
       }
@@ -3324,21 +3272,17 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       if (globalRemark) {
         const individualRemarks = parseIndividualRemarks(globalRemark, tourist);
         if (individualRemarks.length > 0) {
-          console.log(`   📝 ${tourist.fullName} remarks: ${individualRemarks.join(', ')}`);
           additionalInfo.push(...individualRemarks);
 
           // Extract individual arrival/departure dates from remarks
           individualRemarks.forEach(remark => {
-            console.log(`   🔍 Checking remark: "${remark}"`);
 
             // Check for arrival date: "Flight: 09.10, Arrival: 10.10" or "Early arrival: 10.10"
             const arrivalMatch = remark.match(/Arrival:\s*(\d{2}\.\d{2})/i) || remark.match(/Early arrival:\s*(\d{2}\.\d{2})/i);
             if (arrivalMatch) {
-              console.log(`   ✓ Arrival match found: ${arrivalMatch[1]}`);
               const arrivalDate = parseDateInTourYear(arrivalMatch[1], tourYear);
               if (arrivalDate) {
                 tourist.checkInDate = arrivalDate;
-                console.log(`   📅 ${tourist.fullName} custom arrival: ${arrivalMatch[1]} → ${arrivalDate}`);
               }
             }
 
@@ -3348,7 +3292,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
               const departureDate = parseDateInTourYear(departureMatch[1], tourYear);
               if (departureDate) {
                 tourist.checkOutDate = departureDate;
-                console.log(`   📅 ${tourist.fullName} custom departure: ${departureMatch[1]}`);
               }
             }
           });
@@ -3361,13 +3304,11 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           tourist.checkOutDate = firstAccommodation.checkOutDate;
           const checkoutDate = new Date(firstAccommodation.checkOutDate);
           const formattedDate = `${String(checkoutDate.getDate()).padStart(2, '0')}.${String(checkoutDate.getMonth() + 1).padStart(2, '0')}.${checkoutDate.getFullYear()}`;
-          console.log(`   📅 ${tourist.fullName} using first accommodation checkout date: ${formattedDate}`);
         } else if (tourEndDate) {
           // Fallback to tour end date if no accommodation found
           const tourEnd = parseDateInTourYear(tourEndDate.split('.')[0] + '.' + tourEndDate.split('.')[1], tourYear);
           if (tourEnd) {
             tourist.checkOutDate = tourEnd;
-            console.log(`   📅 ${tourist.fullName} using tour end date for checkout: ${tourEndDate}`);
           }
         }
       }
@@ -3377,7 +3318,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
     });
 
     // 🔄 FULL REPLACE MODE: Replace all tourists with PDF data (update matched, delete ALL unmatched, create new)
-    console.log(`🔍 FULL REPLACE: Processing ${tourists.length} tourists from PDF...`);
 
     let updatedCount = 0;
     let createdCount = 0;
@@ -3394,11 +3334,9 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         seenNames.add(nameKey);
         uniqueTourists.push(tourist);
       } else {
-        console.log(`⚠️ Skipping duplicate: ${tourist.fullName} (Room: ${tourist.roomNumber})`);
       }
     }
 
-    console.log(`📋 Deduplicated: ${tourists.length} tourists → ${uniqueTourists.length} unique tourists`);
 
     // Replace tourists array with unique list
     tourists.splice(0, tourists.length, ...uniqueTourists);
@@ -3421,7 +3359,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       daysToAdd = 0; // ER/CO: use booking date as is
     }
 
-    console.log(`🔍 PDF Import - Tour Type: ${tourTypeCode}, Days to add: ${daysToAdd} (booking.departureDate: ${booking.departureDate?.toISOString().split('T')[0]})`);
 
     // CRITICAL: Use tour dates from PDF (tourStartDate/tourEndDate), not booking.departureDate
     // booking.departureDate might be old/incorrect until updated below
@@ -3437,8 +3374,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         // Date.UTC creates proper UTC midnight
         pdfDepartureDate = new Date(Date.UTC(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay)));
         pdfEndDate = new Date(Date.UTC(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay)));
-        console.log(`📅 Using PDF dates: ${tourStartDate} (departure) → ${tourEndDate} (end)`);
-        console.log(`   ✓ Parsed as UTC: ${pdfDepartureDate.toISOString().split('T')[0]} → ${pdfEndDate.toISOString().split('T')[0]}`);
       } catch (e) {
         console.error('Error parsing PDF dates:', e);
       }
@@ -3451,13 +3386,11 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         const arrivalDate = new Date(baseDepartureDate);
         arrivalDate.setDate(arrivalDate.getDate() + daysToAdd);
         tourist.checkInDate = arrivalDate;
-        console.log(`   📅 ${tourist.fullName} using arrival: ${baseDepartureDate.toISOString().split('T')[0]} + ${daysToAdd} days = ${arrivalDate.toISOString().split('T')[0]}`);
       }
 
       if (!tourist.checkOutDate) {
         const baseEndDate = pdfEndDate || new Date(booking.endDate);
         tourist.checkOutDate = baseEndDate;
-        console.log(`   📅 ${tourist.fullName} using checkout: ${baseEndDate.toISOString().split('T')[0]}`);
       }
     });
 
@@ -3466,7 +3399,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       where: { bookingId: bookingIdInt }
     });
 
-    console.log(`📋 Found ${existingTourists.length} existing tourists in database`);
 
     // Track which tourists were matched from PDF
     const matchedTouristIds = new Set();
@@ -3510,16 +3442,12 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         // For ZA tours, daysToAdd = 0, so checkInDate = booking.departureDate
         if (pdfTourist.checkInDate) {
           updateData.checkInDate = new Date(pdfTourist.checkInDate);
-          console.log(`   ✅ ${existingTourist.fullName} - Updated checkInDate: ${pdfTourist.checkInDate.toISOString().split('T')[0]}`);
         } else {
-          console.log(`   ⚠️ ${existingTourist.fullName} - No checkInDate in pdfTourist! Keeping existing: ${existingTourist.checkInDate?.toISOString().split('T')[0]}`);
         }
 
         if (pdfTourist.checkOutDate) {
           updateData.checkOutDate = new Date(pdfTourist.checkOutDate);
-          console.log(`   ✅ ${existingTourist.fullName} - Updated checkOutDate: ${pdfTourist.checkOutDate.toISOString().split('T')[0]}`);
         } else {
-          console.log(`   ⚠️ ${existingTourist.fullName} - No checkOutDate in pdfTourist! Keeping existing: ${existingTourist.checkOutDate?.toISOString().split('T')[0]}`);
         }
 
         // Append PDF remarks to existing remarks (don't overwrite)
@@ -3564,12 +3492,10 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
     await prisma.$transaction(async (tx) => {
       for (const { id, data, fullName, roomNumber } of touristsToUpdate) {
         await tx.tourist.update({ where: { id }, data });
-        console.log(`   ✅ Updated: ${fullName} (Room: ${roomNumber})`);
       }
       for (const { data, fullName, roomNumber } of touristsToCreate) {
         const created = await tx.tourist.create({ data });
         matchedTouristIds.add(created.id);
-        console.log(`   ➕ Created new: ${fullName} (Room: ${roomNumber})`);
       }
     });
 
@@ -3579,8 +3505,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       const unmatchedTourists = existingTourists.filter(t => !matchedTouristIds.has(t.id));
 
       if (unmatchedTourists.length > 0) {
-        console.log(`🗑️ FULL REPLACE: Deleting ${unmatchedTourists.length} unmatched tourists...`);
-        unmatchedTourists.forEach(t => console.log(`   🗑️  Deleting: ${t.fullName}`));
 
         const unmatchedIds = unmatchedTourists.map(t => t.id);
         // Batch delete related data + tourists in one transaction
@@ -3592,17 +3516,14 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         deletedCount = unmatchedTourists.length;
       }
     } else {
-      console.log(`🔒 UPDATE-ONLY mode: skipping deletion of unmatched tourists`);
     }
 
     // Delete old flights and flight sections only (not tourists)
-    console.log('🗑️  Updating flights data...');
     await prisma.$transaction([
       prisma.flight.deleteMany({ where: { bookingId: bookingIdInt } }),
       prisma.flightSection.deleteMany({ where: { bookingId: bookingIdInt } })
     ]);
 
-    console.log(`✅ ${updateOnly ? 'UPDATE-ONLY' : 'FULL REPLACE'} complete: ${updatedCount} updated, ${createdCount} created, ${deletedCount} deleted`);
 
     // Update booking with extracted tour dates
     if (tourStartDate && tourEndDate) {
@@ -3622,7 +3543,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
           }
         });
 
-        console.log(`✓ Updated booking with tour dates: ${tourStartDate} to ${tourEndDate}`);
       } catch (dateError) {
         console.error('Error updating booking dates:', dateError);
         // Continue with import even if date update fails
@@ -3685,7 +3605,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       });
     }
 
-    console.log(`PDF Import - Saved ${flightSections.length} flight sections`);
 
     // Update booking pax count
     await updateBookingPaxCount(bookingIdInt);
@@ -3704,12 +3623,10 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         arrivalDate.setDate(arrivalDate.getDate() + 1);
         dateUpdateData.arrivalDate = arrivalDate;
 
-        console.log(`📅 PDF Import - Overriding booking dates: departureDate=${pdfDepartureDate.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]}`);
       }
 
       if (pdfEndDate) {
         dateUpdateData.endDate = pdfEndDate;
-        console.log(`📅 PDF Import - Overriding booking endDate: ${pdfEndDate.toISOString().split('T')[0]}`);
       }
 
       await prisma.booking.update({
@@ -3717,7 +3634,6 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         data: dateUpdateData
       });
 
-      console.log(`✅ PDF Import - Booking dates updated from PDF (main tour dates, NOT earliest tourist)`);
     }
 
     // Return updated data
@@ -3785,7 +3701,6 @@ async function updateBookingPaxCount(bookingId) {
     }
   });
 
-  console.log(`📊 PAX Split: Total=${count}, Uzbekistan=${paxUzbekistan}, Turkmenistan=${paxTurkmenistan}`);
 
   // Split tourists into two groups: with and without room numbers
   const touristsWithRoomNumbers = tourists.filter(t => t.roomNumber && t.roomNumber !== 'null');
@@ -3815,7 +3730,6 @@ async function updateBookingPaxCount(bookingId) {
     roomsDbl += uniqueRooms.DBL.size;
     roomsTwn += uniqueRooms.TWN.size;
     roomsSngl += uniqueRooms.SNGL.size;
-    console.log(`✅ Rooms from tourists WITH roomNumber: DBL=${uniqueRooms.DBL.size}, TWN=${uniqueRooms.TWN.size}, SNGL=${uniqueRooms.SNGL.size}`);
   }
 
   // Count tourists WITHOUT room numbers (by roomPreference)
@@ -3844,24 +3758,19 @@ async function updateBookingPaxCount(bookingId) {
 
     // Calculate actual room numbers
     // If there's an odd number of DZ (single DZ without pair), count it as 0.5 TWN
-    console.log(`📊 Room calculation (without roomNumber): dblCount=${dblCount}, twnCount=${twnCount}, snglCount=${snglCount}`);
 
     if (dblCount % 2 === 1) {
       // Odd number of DZ: one person alone, rest in pairs
       roomsDbl += Math.floor(dblCount / 2); // Full DBL rooms for pairs
       roomsTwn += Math.ceil(twnCount / 2) + 0.5; // Regular TWN rooms + 0.5 for single DZ
-      console.log(`✅ ODD DZ count: +${Math.floor(dblCount / 2)} DBL, +${Math.ceil(twnCount / 2) + 0.5} TWN`);
     } else {
       // Even number of DZ: all in pairs
       roomsDbl += dblCount / 2;
       roomsTwn += Math.ceil(twnCount / 2);
-      console.log(`✅ EVEN DZ count: +${dblCount / 2} DBL, +${Math.ceil(twnCount / 2)} TWN`);
     }
     roomsSngl += snglCount;
-    console.log(`✅ Rooms from tourists WITHOUT roomNumber: DBL=+${dblCount / 2}, TWN=+?, SNGL=+${snglCount}`);
   }
 
-  console.log(`📌 TOTAL rooms (combined): DBL=${roomsDbl}, TWN=${roomsTwn}, SNGL=${roomsSngl}`);
 
   // Calculate earliest check-in and latest check-out dates from tourists
   let earliestCheckIn = null;
@@ -3917,12 +3826,10 @@ async function updateBookingPaxCount(bookingId) {
     arrivalDate.setDate(arrivalDate.getDate() + arrivalOffset);
     updateData.arrivalDate = arrivalDate;
 
-    console.log(`📅 Updated dates from tourists: departureDate=${derivedDepartureDate.toISOString().split('T')[0]}, arrivalDate=${arrivalDate.toISOString().split('T')[0]} (${tourTypeCode} checkInOffset=${checkInOffset} arrivalOffset=${arrivalOffset})`);
   }
 
   if (latestCheckOut) {
     updateData.endDate = latestCheckOut;
-    console.log(`📅 Updated endDate from tourists: ${latestCheckOut.toISOString().split('T')[0]}`);
   }
 
   // Auto-set status based on PAX count
@@ -3952,7 +3859,6 @@ async function updateBookingPaxCount(bookingId) {
     where: { bookingId: bookingId },
     data: { totalCost: 0 }
   });
-  console.log(`🔄 Reset accommodation costs for booking ${bookingId} - will auto-recalculate on next request`);
 }
 
 /**
@@ -4065,15 +3971,12 @@ function formatFlightListAsRaw(flights) {
 // PDF PREVIEW (HTML for printing)
 // ============================================
 
-console.log('🔧 Registering PDF preview route: /:bookingId/rooming-list-preview');
 
 // Remove authenticate middleware for preview - no auth required for PDF view
 router.get('/:bookingId/rooming-list-preview', async (req, res) => {
-  console.log('📄 PDF Preview Request - BookingId:', req.params.bookingId);
   try {
     const { bookingId } = req.params;
     const bookingIdInt = parseInt(bookingId);
-    console.log('✅ Generating preview for booking:', bookingIdInt);
 
     // Fetch booking with all necessary data
     const booking = await prisma.booking.findUnique({
@@ -4236,9 +4139,6 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
 
           const isBaetgen = t.lastName?.includes('Baetgen');
           if (isBaetgen) {
-            console.log(`\n🎯 BAETGEN PDF DISPLAY (Hotel: ${accommodation.hotel?.name}):`);
-            console.log(`   Calculated dates: ${touristCheckInDate?.split('T')[0]} - ${touristCheckOutDate?.split('T')[0]}`);
-            console.log(`   Accommodation dates: ${accommodation.checkInDate?.split('T')[0]} - ${accommodation.checkOutDate?.split('T')[0]}`);
           }
 
           // Get remarks only from roomAssignments.notes
@@ -4261,7 +4161,6 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
 
           // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
           if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
-            console.log(`   🟢 PDF: UZ tourist in TM hotel: ${name}`);
 
             // Calculate departure date 1 day earlier
             const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -4270,15 +4169,12 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
             displayDeparture = formatDisplayDate(depDate.toISOString());
             customDeparture = true;
 
-            console.log(`      Original departure: ${originalDepDate.toISOString().split('T')[0]}`);
-            console.log(`      Adjusted departure: ${depDate.toISOString().split('T')[0]}`);
 
             // Calculate nights
             const arrDate = new Date(touristCheckInDate || (typeof accommodation !== 'undefined' ? accommodation.checkInDate : arrivalDate));
             const nights = Math.ceil((depDate - arrDate) / (1000 * 60 * 60 * 24));
             remarksLines.push(`${nights} Nights`);
 
-            console.log(`      Nights: ${nights}, Remarks: "${nights} Nights"`);
           }
 
           const remarks = remarksLines.filter(Boolean).join('\n');
@@ -4361,7 +4257,6 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
 
         // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
         if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
-          console.log(`   🟢 PDF: UZ tourist in TM hotel: ${name}`);
 
           // Calculate departure date 1 day earlier
           const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -4370,15 +4265,12 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
           displayDeparture = formatDisplayDate(depDate.toISOString());
           customDeparture = true;
 
-          console.log(`      Original departure: ${originalDepDate.toISOString().split('T')[0]}`);
-          console.log(`      Adjusted departure: ${depDate.toISOString().split('T')[0]}`);
 
           // Calculate nights
           const arrDate = new Date(touristCheckInDate || (typeof accommodation !== 'undefined' ? accommodation.checkInDate : arrivalDate));
           const nights = Math.ceil((depDate - arrDate) / (1000 * 60 * 60 * 24));
           remarksLines.push(`${nights} Nights`);
 
-          console.log(`      Nights: ${nights}, Remarks: "${nights} Nights"`);
         }
 
         const remarks = remarksLines.filter(Boolean).join('\n');
@@ -4719,16 +4611,13 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
 // HOTEL REQUEST PREVIEW (for specific hotel/accommodation)
 // ============================================
 
-console.log('🔧 Registering hotel request preview route: /:bookingId/hotel-request-preview/:accommodationId');
 
 // Remove authenticate middleware for preview - no auth required for PDF view
 router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res) => {
-  console.log('📄 Hotel Request Preview - BookingId:', req.params.bookingId, 'AccommodationId:', req.params.accommodationId);
   try {
     const { bookingId, accommodationId } = req.params;
     const bookingIdInt = parseInt(bookingId);
     const accommodationIdInt = parseInt(accommodationId);
-    console.log('✅ Generating hotel request for booking:', bookingIdInt, 'accommodation:', accommodationIdInt);
 
     // Fetch booking with all necessary data
     const booking = await prisma.booking.findUnique({
@@ -4839,7 +4728,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 
     // Filter tourists whose dates overlap with this accommodation's dates
     // A tourist overlaps if their checkIn/checkOut dates fall within the accommodation dates
-    console.log(`\n📋 Filtering ${allTourists.length} tourists for accommodation ${accommodationIdInt}`);
     const touristsFiltered = allTourists.filter(t => {
       const debug = t.lastName?.includes('Baetgen');
 
@@ -4859,7 +4747,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       // For first accommodation: include ALL tourists with room numbers (ignore date overlap)
       // This ensures early arrivals like Baetgen are always included in first hotel PDF
       if (isFirstAccommodation && t.roomNumber) {
-        if (debug) console.log(`   ✅ ${t.lastName}: Included (first acc + has room number: ${t.roomNumber})`);
         return true;
       }
 
@@ -4867,11 +4754,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       // Use >= to include tourists checking out on the same day as hotel check-in (travel day)
       const overlaps = touristCheckOut >= accCheckIn && touristCheckIn < accCheckOut;
       if (debug) {
-        console.log(`   🔍 ${t.lastName} overlap check:`);
-        console.log(`      checkIn: ${touristCheckIn.toISOString().split('T')[0]} < accCheckOut: ${accCheckOut.toISOString().split('T')[0]} = ${touristCheckIn < accCheckOut}`);
-        console.log(`      checkOut: ${touristCheckOut.toISOString().split('T')[0]} >= accCheckIn: ${accCheckIn.toISOString().split('T')[0]} = ${touristCheckOut >= accCheckIn}`);
-        console.log(`      roomNumber: ${t.roomNumber}, isFirst: ${isFirstAccommodation}`);
-        console.log(`      Result: ${overlaps ? '✅ INCLUDED' : '❌ EXCLUDED'}`);
       }
       return overlaps;
     });
@@ -5093,9 +4975,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 
           const isBaetgen = t.lastName?.includes('Baetgen');
           if (isBaetgen) {
-            console.log(`\n🎯 BAETGEN PDF DISPLAY (Hotel: ${accommodation.hotel?.name}):`);
-            console.log(`   Calculated dates: ${touristCheckInDate?.split('T')[0]} - ${touristCheckOutDate?.split('T')[0]}`);
-            console.log(`   Accommodation dates: ${accommodation.checkInDate?.split('T')[0]} - ${accommodation.checkOutDate?.split('T')[0]}`);
           }
 
           // Get remarks only from roomAssignments.notes
@@ -5118,7 +4997,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 
           // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
           if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
-            console.log(`   🟢 PDF: UZ tourist in TM hotel: ${name}`);
 
             // Calculate departure date 1 day earlier
             const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -5127,15 +5005,12 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
             displayDeparture = formatDisplayDate(depDate.toISOString());
             customDeparture = true;
 
-            console.log(`      Original departure: ${originalDepDate.toISOString().split('T')[0]}`);
-            console.log(`      Adjusted departure: ${depDate.toISOString().split('T')[0]}`);
 
             // Calculate nights
             const arrDate = new Date(touristCheckInDate || (typeof accommodation !== 'undefined' ? accommodation.checkInDate : arrivalDate));
             const nights = Math.ceil((depDate - arrDate) / (1000 * 60 * 60 * 24));
             remarksLines.push(`${nights} Nights`);
 
-            console.log(`      Nights: ${nights}, Remarks: "${nights} Nights"`);
           }
 
           const remarks = remarksLines.filter(Boolean).join('\n');
@@ -5218,7 +5093,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 
         // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
         if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
-          console.log(`   🟢 PDF: UZ tourist in TM hotel: ${name}`);
 
           // Calculate departure date 1 day earlier
           const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -5227,15 +5101,12 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
           displayDeparture = formatDisplayDate(depDate.toISOString());
           customDeparture = true;
 
-          console.log(`      Original departure: ${originalDepDate.toISOString().split('T')[0]}`);
-          console.log(`      Adjusted departure: ${depDate.toISOString().split('T')[0]}`);
 
           // Calculate nights
           const arrDate = new Date(touristCheckInDate || (typeof accommodation !== 'undefined' ? accommodation.checkInDate : arrivalDate));
           const nights = Math.ceil((depDate - arrDate) / (1000 * 60 * 60 * 24));
           remarksLines.push(`${nights} Nights`);
 
-          console.log(`      Nights: ${nights}, Remarks: "${nights} Nights"`);
         }
 
         const remarks = remarksLines.filter(Boolean).join('\n');
@@ -5585,10 +5456,8 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 // ============================================
 // HOTEL REQUEST PREVIEW - COMBINED (all visits to same hotel)
 // ============================================
-console.log('🔧 Registering combined hotel request preview route: /:bookingId/hotel-request-combined/:hotelId');
 
 router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
-  console.log('📄 Combined Hotel Request Preview - BookingId:', req.params.bookingId, 'HotelId:', req.params.hotelId);
   try {
     const { bookingId, hotelId } = req.params;
     const bookingIdInt = parseInt(bookingId);
@@ -5820,33 +5689,25 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
       const roomGroups = {};
       const singleTourists = [];
 
-      console.log(`\n🏨 Processing ${tourists.length} tourists for grouping`);
       tourists.forEach(tourist => {
         let roomCategory = tourist.roomPreference || '';
         if (roomCategory === 'DOUBLE' || roomCategory === 'DZ') roomCategory = 'DBL';
         if (roomCategory === 'TWIN') roomCategory = 'TWN';
         if (roomCategory === 'SINGLE' || roomCategory === 'EZ') roomCategory = 'SNGL';
 
-        console.log(`  - ${tourist.lastName}, ${tourist.firstName}: Category=${roomCategory}, RoomNumber=${tourist.roomNumber || 'NULL'}`);
 
         if (tourist.roomNumber && (roomCategory === 'DBL' || roomCategory === 'TWN')) {
           if (!roomGroups[tourist.roomNumber]) {
             roomGroups[tourist.roomNumber] = [];
           }
           roomGroups[tourist.roomNumber].push(tourist);
-          console.log(`    ✅ Added to group: ${tourist.roomNumber}`);
         } else {
           singleTourists.push(tourist);
-          console.log(`    ➡️ Added to singles`);
         }
       });
 
-      console.log(`\n📊 Grouping results:`);
-      console.log(`  Room groups: ${Object.keys(roomGroups).length}`);
       Object.keys(roomGroups).forEach(roomNum => {
-        console.log(`    ${roomNum}: ${roomGroups[roomNum].length} tourists`);
       });
-      console.log(`  Single tourists: ${singleTourists.length}`);
 
       // Sort room numbers
       const sortedRoomNumbers = Object.keys(roomGroups).sort();
@@ -6003,18 +5864,9 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
           let touristCheckInDate;
 
           // DEBUG: Log for ALL single tourists
-          console.log(`\n📋 Single Tourist: ${name}`);
-          console.log(`   lastName: "${t.lastName}"`);
-          console.log(`   firstName: "${t.firstName}"`);
-          console.log(`   fullName: "${t.fullName}"`);
-          console.log(`   roomingEntry?.checkInDate: ${roomingEntry?.checkInDate}`);
-          console.log(`   t.checkInDate: ${t.checkInDate}`);
-          console.log(`   booking.departureDate: ${booking.departureDate}`);
-          console.log(`   isFirstAccommodation: ${isFirstAccommodation}`);
 
           if (roomingEntry?.checkInDate) {
             touristCheckInDate = roomingEntry.checkInDate;
-            console.log(`   ✅ Using roomingEntry.checkInDate: ${touristCheckInDate}`);
           } else if (isFirstAccommodation) {
             // For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
             // CRITICAL: Use UTC date manipulation to avoid timezone issues
@@ -6029,12 +5881,9 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
             const arrivalDate = new Date(Date.UTC(year, month, day + 1));
             touristCheckInDate = arrivalDate.toISOString();
 
-            console.log(`   📅 tourStartDate UTC: ${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`);
-            console.log(`   ✅ Calculated arrival: ${touristCheckInDate.split('T')[0]}`);
           } else {
             // For OTHER hotels (not first), use accommodation default dates
             touristCheckInDate = accommodation.checkInDate;
-            console.log(`   ✅ Using accommodation.checkInDate: ${touristCheckInDate}`);
           }
 
           // Calculate checkout date using EXACT same logic as rooming list API
@@ -6354,7 +6203,6 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
     const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
     const pdfBuffer = Buffer.from(pdfUint8);
     await browser.close();
-    console.log(`📄 PDF generated: ${pdfBuffer.length} bytes`);
 
     // Send email via Gmail
     const gmailService = require('../services/gmail.service');
@@ -6374,7 +6222,6 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
       attachments: [{ filename, mimeType: 'application/pdf', content: pdfBuffer }]
     });
 
-    console.log(`✅ Hotel request sent to ${toEmail} for ${booking.bookingNumber} - ${hotelName}`);
     res.json({ success: true, sentTo: toEmail });
 
   } catch (error) {
@@ -6499,7 +6346,6 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
       headers: form.getHeaders()
     });
 
-    console.log(`✅ Telegram hotel request sent to chatId=${chatId} for ${booking.bookingNumber} - ${hotelName}`);
 
     // Record TelegramConfirmation as PENDING
     try {

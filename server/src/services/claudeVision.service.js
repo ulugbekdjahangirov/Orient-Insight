@@ -13,7 +13,6 @@ class ClaudeVisionService {
   async parseBookingScreenshot(imageBuffer) {
     const base64Image = imageBuffer.toString('base64');
 
-    console.log('🔍 Parsing screenshot with Claude AI Vision...');
 
     try {
       const message = await this.anthropic.messages.create({
@@ -76,7 +75,6 @@ Rules:
 
       const parsedData = JSON.parse(jsonText);
 
-      console.log(`✅ Successfully parsed ${parsedData.bookings?.length || 0} bookings`);
 
       return parsedData;
     } catch (error) {
@@ -112,7 +110,6 @@ Rules:
       }
     }
 
-    console.log('✅ Data validation passed');
     return true;
   }
 

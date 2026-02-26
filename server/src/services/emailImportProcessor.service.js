@@ -20,7 +20,6 @@ class EmailImportProcessor {
       throw new Error(`EmailImport ${emailImportId} not found`);
     }
 
-    console.log(`📦 Processing email import ${emailImportId}: ${emailImport.emailSubject}`);
 
     try {
       // Update status to PROCESSING
@@ -34,7 +33,6 @@ class EmailImportProcessor {
 
       // Handle EMAIL_BODY_TABLE (HTML PAX table from email body)
       if (emailImport.attachmentName === 'EMAIL_BODY_TABLE') {
-        console.log(`📋 Processing HTML body PAX table from email`);
         const html = fileBuffer.toString('utf-8');
         const rows = await this.parseHtmlTableForPax(html);
 
@@ -50,7 +48,6 @@ class EmailImportProcessor {
           return { created: 0, updated: 0, ids: [] };
         }
 
-        console.log(`📊 Found ${rows.length} tour row(s) in HTML table`);
         const result = await this.updateBookingsFromTableRows(rows);
 
         await prisma.emailImport.update({
@@ -65,7 +62,6 @@ class EmailImportProcessor {
           }
         });
 
-        console.log(`✅ HTML table processed: ${result.updated} booking(s) updated`);
         return { created: 0, updated: result.updated, ids: result.ids };
       }
 
@@ -75,7 +71,6 @@ class EmailImportProcessor {
 
       // PDF Final Rooming List → import tourists directly
       if (isPdf) {
-        console.log(`📄 Trying PDF rooming list import: ${emailImport.attachmentName}`);
         const pdfResult = await this.importRoomingListPdfForEmail(fileBuffer);
         if (pdfResult) {
           await prisma.emailImport.update({
@@ -100,11 +95,9 @@ class EmailImportProcessor {
             bookingsUpdated: 1,
             bookingIds: [pdfResult.bookingId]
           });
-          console.log(`✅ PDF rooming list imported for booking ${pdfResult.bookingId}`);
           return { created: 0, updated: 1, ids: [pdfResult.bookingId] };
         }
         // PDF rooming list not recognized — mark for manual review, no Claude Vision
-        console.log(`⚠️  PDF not recognized as rooming list — marking MANUAL_REVIEW`);
         await prisma.emailImport.update({
           where: { id: emailImportId },
           data: {
@@ -119,7 +112,6 @@ class EmailImportProcessor {
 
       // Images — skip Claude Vision, mark for manual review
       if (!isExcel) {
-        console.log(`🖼️  Image/unknown file — marking MANUAL_REVIEW (Claude Vision disabled)`);
         await prisma.emailImport.update({
           where: { id: emailImportId },
           data: {
@@ -134,7 +126,6 @@ class EmailImportProcessor {
 
       let parsedData;
       if (isExcel) {
-        console.log(`📊 Parsing Excel file: ${emailImport.attachmentName}`);
         parsedData = excelParser.parseAgenturdaten(fileBuffer);
       }
 
@@ -178,7 +169,6 @@ class EmailImportProcessor {
         bookingIds: results.ids
       });
 
-      console.log(`✅ Successfully processed import ${emailImportId}: ${results.created} created, ${results.updated} updated`);
 
       return results;
 
@@ -269,7 +259,6 @@ class EmailImportProcessor {
           });
           updated++;
           ids.push(existing.id);
-          console.log(`✏️  Updated booking: ${bookingData.bookingNumber}`);
         } else {
           const tourTypeCode = claudeVision.extractTourTypeCode(bookingData.bookingNumber);
           if (!tourTypeCode) {
@@ -290,7 +279,6 @@ class EmailImportProcessor {
           });
           created++;
           ids.push(newBooking.id);
-          console.log(`✨ Created booking: ${bookingData.bookingNumber}`);
         }
       } catch (error) {
         console.error(`❌ Failed to import booking ${parsedBooking.bookingCode}:`, error.message);
@@ -344,16 +332,12 @@ class EmailImportProcessor {
 
     if (isER) {
       tourTypeCode = 'ER';
-      console.log(`📍 Uzbekistan/Turkmenistan Excel detected → forcing ER tour type`);
     } else if (isCO) {
       tourTypeCode = 'CO';
-      console.log(`📍 Usbekistan ComfortPlus Excel detected → forcing CO tour type`);
     } else if (isKAS) {
       tourTypeCode = 'KAS';
-      console.log(`📍 Kasachstan, Kirgistan und Usbekistan Excel detected → forcing KAS tour type`);
     } else if (isZA) {
       tourTypeCode = 'ZA';
-      console.log(`📍 Zentralasien (5 countries) Excel detected → forcing ZA tour type`);
     } else {
       tourTypeCode = excelParser.extractTourType(parsedBooking.reisename);
       if (!tourTypeCode) {
@@ -395,7 +379,6 @@ class EmailImportProcessor {
     });
 
     if (booking) {
-      console.log(`🔍 Date match: Excel=${parsedBooking.departureDate}, DB=${booking.departureDate.toLocaleDateString('de-DE')}`);
     }
 
     if (!booking) {
@@ -403,7 +386,6 @@ class EmailImportProcessor {
       throw new Error(`Gruppa topilmadi: ${tourTypeCode} tour type, sana ${parsedBooking.departureDate}. Iltimos, avval gruppani yarating yoki sanani tekshiring.`);
     }
 
-    console.log(`🔗 Matched booking: ${booking.bookingNumber} (exact date match: ${departureDate.toLocaleDateString('de-DE')})`);
     const action = 'updated';
 
     // Determine placement from Excel filename (Reisename)
@@ -424,7 +406,6 @@ class EmailImportProcessor {
       placement = 'Not assigned';
     }
 
-    console.log(`📍 Excel placement detected: ${placement} (${tourTypeCode} tour, from: ${parsedBooking.reisename})`);
 
     // SELECTIVE REPLACE: Delete only tourists with matching placement
     if (parsedBooking.tourists && parsedBooking.tourists.length > 0) {
@@ -448,7 +429,6 @@ class EmailImportProcessor {
         }
       });
       if (deletedCount.count > 0) {
-        console.log(`🗑️  SELECTIVE REPLACE: Deleted ${deletedCount.count} tourists (${placement} + null/empty${tourTypeCode === 'KAS' || tourTypeCode === 'ZA' ? ' + Uzbekistan/Turkmenistan' : ''}) from ${booking.bookingNumber}`);
       }
 
       // Import all tourists from Excel with correct placement
@@ -488,7 +468,6 @@ class EmailImportProcessor {
         data: { pax: totalTourists, paxUzbekistan: uzbekCount, paxTurkmenistan: turkCount, paxSource: 'EXCEL' }
       });
 
-      console.log(`👥 Imported ${touristsAdded} new tourists for booking ${booking.bookingNumber} (total: ${totalTourists})`);
     }
 
     return { bookingId: booking.id, action };
@@ -509,7 +488,6 @@ class EmailImportProcessor {
       const dateMatch = text.match(/(?:Date:|Datum:)?\s*(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/i)
         || text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/);
       if (!dateMatch) {
-        console.log('⚠️  PDF: no departure date found');
         return null;
       }
       const [, d, m, y] = dateMatch;
@@ -538,26 +516,21 @@ class EmailImportProcessor {
       if (!booking) {
         const from1 = new Date(departureDate); from1.setDate(from1.getDate() - 1);
         const to1 = new Date(departureDate); to1.setDate(to1.getDate() + 1);
-        console.log(`⚠️  PDF: no tour code found — searching by date only (${y}-${m}-${d} ±1 day)`);
         const candidates = await prisma.booking.findMany({
           where: { departureDate: { gte: from1, lte: to1 } },
           orderBy: { departureDate: 'asc' }
         });
         if (candidates.length === 1) {
           booking = candidates[0];
-          console.log(`✅ PDF: matched by date → ${booking.bookingNumber}`);
         } else if (candidates.length > 1) {
-          console.log(`⚠️  PDF: ${candidates.length} bookings found — ambiguous, skipping`);
           return null;
         }
       }
 
       if (!booking) {
-        console.log(`⚠️  PDF: no booking found around ${y}-${m}-${d}`);
         return null;
       }
 
-      console.log(`🔗 PDF matched booking: ${booking.bookingNumber} (id=${booking.id})`);
 
       // Parse tourists directly from the already-parsed text (no second pdfParse call)
       // This avoids making an internal HTTP request (axios.post) which would cause
@@ -565,7 +538,6 @@ class EmailImportProcessor {
       const pdfTourists = this._parseTouristsFromText(text, tourTypeCode);
 
       if (pdfTourists.length === 0) {
-        console.log('⚠️  PDF email: no tourists parsed from text');
         return null;
       }
 
@@ -636,7 +608,6 @@ class EmailImportProcessor {
       });
 
       const summary = { updated: toUpdate.length, created: toCreate.length, deleted: toDeleteIds.length };
-      console.log(`✅ PDF email import: ${summary.updated} updated, ${summary.created} created, ${summary.deleted} deleted`);
       return { bookingId: booking.id, summary };
 
     } catch (err) {
@@ -785,7 +756,6 @@ class EmailImportProcessor {
     });
 
     if (!targetTable) {
-      console.log('⚠️  parseHtmlTableForPax: no table with Reisename+Pax found');
       return [];
     }
 
@@ -802,11 +772,9 @@ class EmailImportProcessor {
     const paxIdx  = headerCells.findIndex(h => h.includes('pax'));
 
     if (reisIdx === -1 || paxIdx === -1) {
-      console.log(`⚠️  parseHtmlTableForPax: required columns not found. Headers: ${headerCells.join(' | ')}`);
       return [];
     }
 
-    console.log(`📋 Table headers: ${headerCells.join(' | ')} (reisIdx=${reisIdx}, vonIdx=${vonIdx}, paxIdx=${paxIdx})`);
 
     // Parse data rows — skip any row that contains <th> cells (header rows)
     $(targetTable).find('tr').each((i, row) => {
@@ -827,12 +795,10 @@ class EmailImportProcessor {
       const pax = parseInt(paxText, 10);
 
       if (!reisename || isNaN(pax) || pax < 0) {
-        if (reisename) console.log(`  ⚠️  Skipped row: "${reisename}" | paxText="${paxText}"`);
         return;
       }
 
       rows.push({ reisename, departureDate: von, returnDate: bis, pax });
-      console.log(`  → ${reisename} | Von: ${von} | Pax: ${pax}`);
     });
 
     return rows;
@@ -850,21 +816,18 @@ class EmailImportProcessor {
       try {
         const mapped = this.mapReisename(row.reisename);
         if (!mapped) {
-          console.log(`⚠️  Could not map tour type from: "${row.reisename}"`);
           continue;
         }
 
         const { tourCode, paxField } = mapped;
         const tourType = await prisma.tourType.findFirst({ where: { code: tourCode } });
         if (!tourType) {
-          console.log(`⚠️  Tour type not found: ${tourCode}`);
           continue;
         }
 
         // Parse departure date (DD.MM.YYYY)
         const departureDate = this.parseDateString(row.departureDate);
         if (!departureDate) {
-          console.log(`⚠️  Could not parse departure date: "${row.departureDate}" for ${row.reisename}`);
           continue;
         }
 
@@ -879,7 +842,6 @@ class EmailImportProcessor {
         });
 
         if (!booking) {
-          console.log(`⚠️  No booking found for ${tourCode} around ${row.departureDate}`);
           continue;
         }
 
@@ -898,7 +860,6 @@ class EmailImportProcessor {
           data: { pax: totalPax }
         });
 
-        console.log(`✅ ${booking.bookingNumber}: ${paxField} = ${row.pax}, pax = ${totalPax} (EMAIL_TABLE)`);
         updated++;
         ids.push(booking.id);
 
@@ -932,7 +893,6 @@ class EmailImportProcessor {
       const gmailPassword = process.env.GMAIL_APP_PASSWORD;
 
       if (!gmailUser || !gmailPassword) {
-        console.log('⚠️  Gmail credentials not configured, skipping notification');
         return;
       }
 
@@ -978,7 +938,6 @@ class EmailImportProcessor {
         html
       });
 
-      console.log(`📧 Notification sent to ${adminEmail}`);
     } catch (error) {
       console.error('❌ Failed to send notification:', error.message);
     }

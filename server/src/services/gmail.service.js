@@ -100,7 +100,6 @@ class GmailService {
 
       // Check if token is expired
       if (tokens.expiry_date && tokens.expiry_date < Date.now()) {
-        console.log('🔄 Refreshing expired Gmail token...');
         const { credentials } = await this.oauth2Client.refreshAccessToken();
         await this.saveTokens(credentials);
         this.oauth2Client.setCredentials(credentials);
@@ -140,7 +139,6 @@ class GmailService {
     // No "has:attachment" filter — also pick up emails with only HTML body table
     const query = `-label:PROCESSED newer_than:7d (${senderQuery})`;
 
-    console.log('📧 Gmail query:', query);
 
     const response = await gmail.users.messages.list({
       userId: 'me',
@@ -261,7 +259,6 @@ class GmailService {
         }
       });
 
-      console.log(`✅ Email ${messageId} marked as processed`);
     } catch (error) {
       console.error(`❌ Failed to mark email ${messageId} as processed:`, error.message);
     }

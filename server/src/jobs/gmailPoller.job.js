@@ -10,13 +10,11 @@ const path = require('path');
  * Poll Gmail for new booking emails
  */
 async function pollGmailForBookings() {
-  console.log('🔍 Polling Gmail for new booking emails...');
 
   try {
     // Authenticate with Gmail
     const isAuthenticated = await gmailService.authenticate();
     if (!isAuthenticated) {
-      console.log('⚠️  Gmail not authenticated. Please authorize first.');
       return;
     }
 
@@ -24,11 +22,9 @@ async function pollGmailForBookings() {
     const messages = await gmailService.fetchUnreadEmails();
 
     if (messages.length === 0) {
-      console.log('📭 No new booking emails found.');
       return;
     }
 
-    console.log(`📬 Found ${messages.length} new emails`);
 
     // Gmail returns newest-first — reverse so oldest is processed first,
     // newest is processed last → newest email's data always wins (last import wins)
@@ -59,7 +55,6 @@ async function processNewEmail(messageId) {
     });
 
     if (existing) {
-      console.log(`⏭️  Email ${messageId} already processed`);
       return;
     }
 
@@ -69,7 +64,6 @@ async function processNewEmail(messageId) {
     // Check sender whitelist
     const whitelist = await getEmailWhitelist();
     if (!isEmailAllowed(emailDetails.from, whitelist)) {
-      console.log(`🚫 Email from ${emailDetails.from} not in whitelist`);
       await gmailService.markAsProcessed(messageId);
       return;
     }
@@ -106,13 +100,11 @@ async function processNewEmail(messageId) {
           // Process SYNCHRONOUSLY first so Excel attachment (if any) overrides after
           await emailImportProcessor.processEmailImport(bodyImport.id);
           bodyTableProcessed = true;
-          console.log(`📊 Body table EmailImport ${bodyImport.id} processed`);
         } else {
           bodyTableProcessed = true;
         }
       }
     } catch (bodyErr) {
-      console.log(`⚠️  Could not process email body: ${bodyErr.message}`);
     }
 
     // --- Attachments ---
@@ -134,17 +126,14 @@ async function processNewEmail(messageId) {
     const attachmentsToProcess = [...excelAttachments, ...pdfAttachments];
 
     if (attachmentsToProcess.length === 0 && !bodyTableProcessed) {
-      console.log(`⚠️  No processable content in email ${messageId}`);
       await gmailService.markAsProcessed(messageId);
       return;
     }
 
-    console.log(`📎 Found ${attachmentsToProcess.length} attachment(s) to process`);
 
     // Process each attachment
     for (const attachment of attachmentsToProcess) {
       const attachmentType = isExcelAttachment(attachment) ? 'excel' : 'image';
-      console.log(`📎 Processing ${attachmentType} attachment: ${attachment.filename}`);
 
       // Download attachment
       const attachmentBuffer = await gmailService.downloadAttachment(messageId, attachment.attachmentId);
@@ -156,7 +145,6 @@ async function processNewEmail(messageId) {
       const filepath = path.join(uploadDir, filename);
       await fs.writeFile(filepath, attachmentBuffer);
 
-      console.log(`💾 Saved attachment: ${filename}`);
 
       // Create EmailImport record for this attachment
       // Use messageId+filename as unique key to avoid duplicate processing per attachment
@@ -165,7 +153,6 @@ async function processNewEmail(messageId) {
         where: { gmailMessageId: uniqueKey }
       });
       if (existingAtt) {
-        console.log(`⏭️  Attachment ${attachment.filename} already processed`);
         continue;
       }
 
@@ -182,7 +169,6 @@ async function processNewEmail(messageId) {
         }
       });
 
-      console.log(`✅ Created EmailImport record ${emailImport.id}`);
 
       // Process import asynchronously
       setImmediate(() => {
@@ -246,7 +232,6 @@ function startGmailPolling() {
   const enabled = process.env.GMAIL_POLL_ENABLED !== 'false';
 
   if (!enabled) {
-    console.log('⏸️  Gmail polling disabled (GMAIL_POLL_ENABLED=false)');
     return;
   }
 
@@ -257,7 +242,6 @@ function startGmailPolling() {
   const cronExpression = `*/${interval} * * * *`;
 
   cron.schedule(cronExpression, pollGmailForBookings);
-  console.log(`✅ Gmail polling started (every ${interval} minutes)`);
 
   // Run immediately on startup
   setTimeout(() => {

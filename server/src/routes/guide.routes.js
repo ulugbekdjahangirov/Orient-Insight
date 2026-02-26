@@ -267,8 +267,6 @@ router.put('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const isAdmin = req.user.role === 'ADMIN';
 
-    console.log('📝 Updating guide:', id);
-    console.log('📦 Request body:', req.body);
 
     const {
       name,
@@ -313,7 +311,6 @@ router.put('/:id', authenticate, async (req, res) => {
     if (cityRate !== undefined) updateData.cityRate = parseFloat(cityRate);
     if (telegramChatId !== undefined) updateData.telegramChatId = telegramChatId || null;
 
-    console.log('💾 Update data prepared:', updateData);
 
     // Конфиденциальные поля - только для админа
     if (isAdmin) {

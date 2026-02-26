@@ -110,7 +110,6 @@ router.post('/webhook', async (req, res) => {
         date: new Date(msg.date * 1000).toISOString()
       };
       await saveKnownChats(chats);
-      console.log(`📩 Telegram: saved chat from ${chats[String(chat.id)].name} (${chat.id})`);
 
       // Handle admin commands (only responds to TELEGRAM_ADMIN_CHAT_ID)
       const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
@@ -427,7 +426,6 @@ router.post('/webhook', async (req, res) => {
         }).catch(() => {});
       }
 
-      console.log(`Meal callback: ${data} from ${fromName} confId=${confId}`);
       return;
     }
     // ── End meal callbacks ──────────────────────────────────────────────────
@@ -564,7 +562,6 @@ router.post('/webhook', async (req, res) => {
         }
       }
 
-      console.log(`Transport approver callback: ${trAction} from ${fromName} for booking #${trBookingId} provider ${trProvider}`);
       return;
     }
     // ── End approver callbacks ──────────────────────────────────────────────
@@ -657,7 +654,6 @@ router.post('/webhook', async (req, res) => {
         }).catch(() => {});
       }
 
-      console.log(`Transport callback: ${trAction} from ${fromName} for booking #${trBookingId} provider ${trProvider}`);
       return;
     }
     // ── End transport callbacks ────────────────────────────────────────────
@@ -771,7 +767,6 @@ router.post('/webhook', async (req, res) => {
         }
       }
 
-      console.log(`Transport 2026 approver callback: ${data} from ${fromName}`);
       return;
     }
     // ── End Transport 2026 approver callbacks ─────────────────────────────
@@ -1016,7 +1011,6 @@ router.post('/webhook', async (req, res) => {
 
       // Admin notification
       const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-      console.log(`JP admin notify: adminChatId=${adminChatId} hotelId=${jpHotelId} isBulk=${isBulk} newStatus=${newStatus}`);
       if (adminChatId) {
         const emoji = newStatus === 'CONFIRMED' ? '✅' : newStatus === 'WAITING' ? '⏳' : '❌';
         const actionLabel = newStatus === 'CONFIRMED' ? 'Tasdiqladi' : newStatus === 'WAITING' ? "WL ga qo'shdi" : 'Rad etdi';
@@ -1044,7 +1038,6 @@ router.post('/webhook', async (req, res) => {
             `🕐 ${timeStr}`
           ].join('\n');
         }
-        console.log(`JP admin notify text: ${adminText.substring(0, 80)}`);
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: adminChatId,
           text: adminText
@@ -1146,7 +1139,6 @@ router.post('/webhook', async (req, res) => {
       console.warn('TelegramConfirmation update warn:', confErr.message);
     }
 
-    console.log(`Telegram callback: ${action} from ${fromName} for booking ${bookingNum} hotel ${hotelName}`);
   } catch (err) {
     console.error('Telegram webhook error:', err.response?.data || err.message);
   }

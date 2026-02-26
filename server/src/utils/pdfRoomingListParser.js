@@ -62,7 +62,6 @@ async function parseRoomingListPdf(buffer, options = {}) {
           startDate: match[1],
           endDate: match[2]
         };
-        console.log(`📅 Extracted ${tourType} tour dates: ${match[1]} - ${match[2]} (from ${pattern.source.includes('Tour') ? 'tour title' : 'Date field'})`);
         break;
       }
     }
@@ -84,7 +83,6 @@ async function parseRoomingListPdf(buffer, options = {}) {
     const additionalInfoMatch = section.match(/Additional\s+Information([\s\S]*?)(?=Flights|$)/i);
     if (additionalInfoMatch) {
       const additionalInfo = additionalInfoMatch[1];
-      console.log(`📋 Processing Additional Information for individual dates...`);
 
       // Pattern: "SINGLE/TWIN Name - earlier flight on DD.MM"
       const individualPattern = /(SINGLE|TWIN)\s+([^-\n]+?)\s*(?:earlier flight on|arrival on)\s*(\d{2}\.\d{2})[^\d]*(?:arrival on\s*(\d{2}\.\d{2}))?/gi;
@@ -95,7 +93,6 @@ async function parseRoomingListPdf(buffer, options = {}) {
         const flightDate = indMatch[3]; // e.g., "09.10"
         const arrivalDate = indMatch[4]; // e.g., "10.10"
 
-        console.log(`👤 Found individual dates: ${name} - flight: ${flightDate}, arrival: ${arrivalDate || 'same day'}`);
 
         // Find this tourist in the list and update their dates
         const targetList = tourType === 'turkmenistan' ? result.turkmenistanTourists : result.uzbekistanTourists;
@@ -108,7 +105,6 @@ async function parseRoomingListPdf(buffer, options = {}) {
             tourist.checkOutDate = `${year}-${arrivalDate.split('.').reverse().join('-')}`;
           }
           tourist.remarks = `Early arrival: flight ${flightDate}, arrival ${arrivalDate || 'same day'}`;
-          console.log(`✅ Updated ${tourist.fullName}: checkIn=${tourist.checkInDate}, remark="${tourist.remarks}"`);
         }
       }
     }
@@ -149,7 +145,6 @@ async function parseRoomingListPdf(buffer, options = {}) {
       }
     }
   } catch (imageError) {
-    console.log('Note: Could not extract images from PDF:', imageError.message);
   }
 
   return result;
@@ -375,7 +370,6 @@ async function extractPdfImages(buffer) {
       }
     }
   } catch (err) {
-    console.log('Could not extract images from PDF:', err.message);
   }
 
   return images;
@@ -455,7 +449,6 @@ function extractTouristsFromSection(text, tourType) {
 
   // Extract DEFAULT check-in/out dates for the section
   const dates = extractCheckInOutDates(text);
-  console.log(`🏨 Section dates: checkIn=${dates.checkInDate}, checkOut=${dates.checkOutDate}`);
 
   // Room type patterns
   const roomPatterns = [

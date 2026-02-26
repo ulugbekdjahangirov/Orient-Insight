@@ -90,7 +90,6 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Orient Insight сервер запущен на порту ${PORT}`);
 });
 
 // Migrate old Gmail whitelist if needed
@@ -103,7 +102,7 @@ _prisma.systemSetting.findUnique({ where: { key: 'GMAIL_SENDER_WHITELIST' } }).t
       _prisma.systemSetting.update({
         where: { key: 'GMAIL_SENDER_WHITELIST' },
         data: { value: JSON.stringify(['@world-insight.de']) }
-      }).then(() => console.log('✅ Gmail whitelist migrated to @world-insight.de'));
+      });
     }
   }
 }).catch(() => {});

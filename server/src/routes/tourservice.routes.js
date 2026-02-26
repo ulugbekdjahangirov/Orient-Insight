@@ -23,7 +23,6 @@ router.get('/:bookingId/tour-services', async (req, res) => {
       ]
     });
 
-    console.log(`📋 GET /tour-services: Found ${services.length} services for booking ${bookingId}, type: ${type || 'ALL'}`);
     res.json({ services });
   } catch (error) {
     console.error('Error loading tour services:', error);
@@ -83,7 +82,6 @@ router.post('/:bookingId/tour-services', async (req, res) => {
       }
     });
 
-    console.log(`✅ Created tour service: ${type} - ${name}, PAX: ${paxValue}, Price: ${totalPrice}`);
     res.json({ service });
   } catch (error) {
     console.error('Error creating tour service:', error);
@@ -137,7 +135,6 @@ router.put('/:bookingId/tour-services/:id', async (req, res) => {
       data: updateData
     });
 
-    console.log(`✏️ Updated tour service ${id}: ${service.type} - ${service.name}`);
     res.json({ service });
   } catch (error) {
     console.error('Error updating tour service:', error);
@@ -154,7 +151,6 @@ router.delete('/:bookingId/tour-services/:id', async (req, res) => {
       where: { id: parseInt(id) }
     });
 
-    console.log(`🗑️ Deleted tour service ${id}`);
     res.json({ message: 'Xizmat o\'chirildi' });
   } catch (error) {
     console.error('Error deleting tour service:', error);

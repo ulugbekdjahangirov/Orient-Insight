@@ -288,7 +288,6 @@ router.post('/send-hotel-email/:hotelId', authenticate, upload.single('pdf'), as
       }]
     });
 
-    console.log(`Jahresplanung email sent: ${hotel.name} → ${hotel.email}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Send hotel email error:', err);
@@ -429,7 +428,6 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
 
     }
 
-    console.log(`Jahresplanung Telegram sent: ${hotel.name} → ${hotel.telegramChatId}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Send hotel telegram error:', err);
@@ -522,7 +520,6 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
       create: { key: confKey, value: JSON.stringify({ year, tourType, provider, providerLabel, status: 'PENDING_APPROVAL', sentAt: new Date().toISOString(), messageId: approvalMsgId, chatId: hammasiChatId, providerChatId, messageText, approvedBy: null, confirmedBy: null, respondedAt: null }) }
     });
 
-    console.log(`Transport Telegram sent to hammasi for approval: ${providerLabel} → hammasi ${hammasiChatId}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Send transport telegram error:', err);
@@ -724,7 +721,6 @@ async function generatePdfBuffer(hotelName, tourType, year, sections) {
       await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
       const pdfUint8 = await page.pdf({ format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }, printBackground: true });
       const pdfBuffer = Buffer.isBuffer(pdfUint8) ? pdfUint8 : Buffer.from(pdfUint8);
-      console.log(`PDF generated: ${pdfBuffer.length} bytes for ${hotelName}`);
       return pdfBuffer;
     } finally {
       await page.close(); // close page but keep browser alive for next request

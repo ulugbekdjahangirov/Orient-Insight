@@ -951,7 +951,6 @@ function calculateAccommodationTotals(rooms, nights, tourists = [], accommodatio
       const hotelPaxRoomType = accommodation.hotel.roomTypes?.find(rt => rt.name === 'PAX');
       if (hotelPaxRoomType) {
         paxPrice = hotelPaxRoomType.pricePerNight || 0;
-        console.log(`💡 PAX price from hotel room types: ${paxPrice} (${hotelPaxRoomType.currency})`);
       }
     }
 
@@ -1043,7 +1042,6 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
     const { id } = req.params;
     const { hotelId, roomTypeId, roomTypeCode, checkInDate, checkOutDate, notes, rooms, totalCost, totalRooms, totalGuests } = req.body;
 
-    console.log('📥 POST /accommodations:', { hotelId, checkInDate, checkOutDate });
 
     // Валидация обязательных полей
     if (!hotelId || !checkInDate || !checkOutDate) {
@@ -1056,7 +1054,6 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
     const checkIn = new Date(checkInDate + 'T00:00:00.000Z');
     const checkOut = new Date(checkOutDate + 'T00:00:00.000Z');
 
-    console.log(`   ✓ Parsed dates as UTC: ${checkIn.toISOString().split('T')[0]} → ${checkOut.toISOString().split('T')[0]}`);
 
     // Валидация: дата выезда > дата заезда
     if (checkOut <= checkIn) {
@@ -1078,7 +1075,6 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Отель не найден' });
     }
 
-    console.log(`   → Hotel: ${hotel.name} (${hotel.city?.name})`);
 
     // Автоматическая корректировка дат для Turkmenistan отелей
     // Для TM туристов нужны полные даты (3 ночи), UZ туристы уезжают на 1 день раньше
@@ -1089,7 +1085,6 @@ router.post('/:id/accommodations', authenticate, async (req, res) => {
     if (isTurkmenistanHotel) {
       // Добавляем +1 день к checkout date для TM туристов (полные даты)
       checkOut.setDate(checkOut.getDate() + 1);
-      console.log(`   ✅ Turkmenistan hotel: checkout adjusted from ${checkOutDate} to ${checkOut.toISOString().split('T')[0]}`);
     }
 
     // Рассчитываем количество ночей ПОСЛЕ корректировки дат
@@ -1187,7 +1182,6 @@ router.put('/:id/accommodations/:accId', authenticate, async (req, res) => {
     const { accId } = req.params;
     const { hotelId, roomTypeId, roomTypeCode, checkInDate, checkOutDate, notes, rooms, totalCost, totalRooms, totalGuests } = req.body;
 
-    console.log('📝 PUT /accommodations/:accId - Received data:', { accId, totalCost, totalRooms, totalGuests, roomsCount: rooms?.length });
 
     const existing = await prisma.accommodation.findUnique({
       where: { id: parseInt(accId) }
@@ -1749,7 +1743,6 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
         }
       });
       isMixedGroup = hasUZ && hasTM; // Check if group has both UZ and TM tourists
-      console.log(`   📊 Khiva Hotel Group Analysis: UZ=${hasUZ}, TM=${hasTM}, Mixed=${isMixedGroup}`);
     }
 
     // CRITICAL FIX: For ER MIXED groups, filter last Tashkent hotel to only UZ tourists
@@ -1776,19 +1769,16 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
         }
       });
       isMixedGroup = hasUZ && hasTM;
-      console.log(`   📊 Tashkent Hotel Group Analysis: UZ=${hasUZ}, TM=${hasTM}, Mixed=${isMixedGroup}`);
     }
 
     // For ER MIXED groups: Last Tashkent hotel = only UZ tourists (6th hotel return)
     if (isERTour && isMixedGroup && isLastTashkentHotel && !isSecondVisitSameHotel) {
-      console.log(`   🔥 ER MIXED: Last Tashkent hotel (${accommodation.hotel?.name}) - filtering to UZ tourists only`);
       const beforeCount = tourists.length;
       tourists = tourists.filter(t => {
         const placement = (t.accommodation || '').toLowerCase();
         const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
         return isUzbekistan;
       });
-      console.log(`   ✅ Filtered from ${beforeCount} to ${tourists.length} UZ tourists`);
     }
 
     // Merge tourists with accommodation-specific data
@@ -1857,13 +1847,11 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
       const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
 
       if (isTurkmenistanHotel && isUzbekistan && isMixedGroup) {
-        console.log(`   🟢 UZ tourist in TM hotel (MIXED group): ${tourist.fullName || tourist.lastName}`);
 
         // If no custom dates, use accommodation dates and adjust checkout
         if (!checkInDate && !checkOutDate) {
           checkInDate = accommodation.checkInDate;
           checkOutDate = accommodation.checkOutDate;
-          console.log(`      Using accommodation dates: ${checkInDate} - ${checkOutDate}`);
         }
 
         // Reduce checkout date by 1 day (ONLY for mixed groups)
@@ -1872,20 +1860,15 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
           const date = new Date(checkOutDate);
           date.setDate(date.getDate() - 1);
           checkOutDate = date.toISOString();
-          console.log(`      Adjusted checkout: ${originalCheckOut} → ${checkOutDate.split('T')[0]}`);
         }
 
         // Calculate nights
         if (checkInDate && checkOutDate) {
           const nights = Math.ceil((new Date(checkOutDate) - new Date(checkInDate)) / (1000 * 60 * 60 * 24));
           remarks = `${nights} Nights${remarks ? ' | ' + remarks : ''}`;
-          console.log(`      Nights: ${nights}, Remarks: "${remarks}"`);
         }
       } else if (isTurkmenistanHotel && isUzbekistan && !isMixedGroup) {
         // All-UZ group: use accommodation dates as-is
-        console.log(`   ✅ UZ tourist in TM hotel (ALL-UZ group): ${tourist.fullName || tourist.lastName}`);
-        console.log(`      Accommodation: ${accommodation.checkInDate?.toISOString().split('T')[0]} → ${accommodation.checkOutDate?.toISOString().split('T')[0]}`);
-        console.log(`      Returning: ${checkInDate ? new Date(checkInDate).toISOString().split('T')[0] : 'null'} → ${checkOutDate ? new Date(checkOutDate).toISOString().split('T')[0] : 'null'}`);
       }
 
       // Convert dates to YYYY-MM-DD strings to avoid timezone issues
@@ -1961,7 +1944,6 @@ router.get('/templates/:tourTypeCode', authenticate, async (req, res) => {
       orderBy: { sortOrder: 'asc' }
     });
 
-    console.log(`🏨 Loaded ${templates.length} accommodation templates for ${tourTypeCode}`);
     res.json({ templates });
   } catch (error) {
     console.error('Error fetching accommodation templates:', error);
@@ -1975,7 +1957,6 @@ router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
     const { tourTypeCode } = req.params;
     const { accommodations } = req.body;
 
-    console.log(`💾 Saving ${accommodations?.length} accommodation templates for ${tourTypeCode}`);
 
     if (!Array.isArray(accommodations)) {
       return res.status(400).json({ error: 'accommodations должен быть массивом' });
@@ -2005,7 +1986,6 @@ router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
       )
     );
 
-    console.log(`✅ Saved ${createdTemplates.length} accommodation templates for ${tourTypeCode}`);
     res.json({ templates: createdTemplates, message: 'Шаблон размещений сохранён' });
   } catch (error) {
     console.error('Error saving accommodation templates:', error);
@@ -2037,11 +2017,9 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Tour type not defined' });
     }
 
-    console.log(`\n🏨 Loading accommodation template for ${booking.bookingNumber} (${tourTypeCode})`);
 
     // STEP 1: Delete existing accommodations
     if (booking.accommodations.length > 0) {
-      console.log(`🗑️ Deleting ${booking.accommodations.length} existing accommodations...`);
       await prisma.accommodation.deleteMany({
         where: { bookingId: bookingId }
       });
@@ -2058,7 +2036,6 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
       return placement.includes('turkmen') || placement.includes('туркмен') || placement === 'tm';
     }).length;
 
-    console.log(`📊 PAX Split: UZB=${paxUzb}, TKM=${paxTkm}`);
 
     // STEP 3: Load template
     const templates = await prisma.accommodationTemplate.findMany({
@@ -2070,7 +2047,6 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
       return res.status(404).json({ error: `Template for ${tourTypeCode} not found` });
     }
 
-    console.log(`📋 Loaded ${templates.length} hotels from template\n`);
 
     // STEP 4: Create accommodations with PAX split logic
     const departureDate = new Date(booking.departureDate);
@@ -2083,7 +2059,6 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
       : departureDate;
 
     if (tourTypeCode === 'ZA') {
-      console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
     }
 
     const createdAccommodations = [];
@@ -2095,7 +2070,6 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
       // Skip logic: 2nd Arien Plaza (last hotel) only for UZB tourists
       const isLastArienPlaza = hotelName.includes('arien') && hotelName.includes('plaza') && i >= 5;
       if (isLastArienPlaza && paxTkm > 0 && paxUzb === 0) {
-        console.log(`⏭️  Skip: ${template.hotelName} (TKM-only, no Tashkent at end)`);
         continue;
       }
 
@@ -2115,15 +2089,12 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
         if (paxTkm === 0 && paxUzb > 0) {
           // Variant 2: UZB-only group
           nights = 2;
-          console.log(`📅 ${template.hotelName}: 2 nights (UZB-only group)`);
         } else if (paxTkm > 0) {
           // Variant 1 (Mixed) or Variant 3 (TKM-only): Hotel stays 3 nights
           nights = 3;
           const groupType = paxUzb > 0 ? 'MIXED UZ+TM' : 'TKM-only';
-          console.log(`📅 ${template.hotelName}: 3 nights (${groupType} group)`);
         }
       } else {
-        console.log(`✓  ${template.hotelName}: ${nights} nights`);
       }
 
       // Calculate checkout date from check-in + nights (CORRECT method)
@@ -2137,7 +2108,6 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
       });
 
       if (!hotel) {
-        console.log(`⚠️  Hotel ID ${template.hotelId} not found, skipping`);
         continue;
       }
 
@@ -2151,7 +2121,6 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
       ) || hotel.roomTypes.find(rt => rt.name === 'SNGL');
 
       if (snglRoom) {
-        console.log(`   📝 SNGL room selected: ${snglRoom.pricePerNight} ${snglRoom.currency}, Tax: ${snglRoom.touristTaxEnabled}`);
       }
 
       const twnRoom = hotel.roomTypes.find(rt =>
@@ -2285,17 +2254,14 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
         }
       });
 
-      console.log(`   💰 ${hotel.name}: ${totalRooms} rooms, $${totalCost}`);
       createdAccommodations.push(accommodation);
     }
 
-    console.log(`\n✅ Created ${createdAccommodations.length} accommodations for ${booking.bookingNumber}\n`);
 
     // STEP 5: Update tourist check-in/check-out dates to match first accommodation
     // This ensures rooming list calculations use correct hotel dates, not tour-wide dates
     if (createdAccommodations.length > 0 && booking.tourists.length > 0) {
       const firstAccommodation = createdAccommodations[0];
-      console.log(`📅 Updating ${booking.tourists.length} tourists' dates to match first hotel (${firstAccommodation.checkInDate.toISOString().split('T')[0]} - ${firstAccommodation.checkOutDate.toISOString().split('T')[0]})`);
 
       await prisma.tourist.updateMany({
         where: { bookingId: bookingId },
@@ -2305,7 +2271,6 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
         }
       });
 
-      console.log(`✅ Updated tourist dates for accurate rooming list calculations\n`);
     }
 
     res.json({
@@ -2846,7 +2811,6 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
 
     await gmailServiceWI.sendEmail({ to: email, subject, html, attachments });
 
-    console.log(`World Insight email sent: ${bookingNum} → ${email}`);
     res.json({ success: true });
   } catch (err) {
     console.error('Send world insight error:', err.message);
