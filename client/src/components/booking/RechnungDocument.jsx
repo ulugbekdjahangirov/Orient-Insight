@@ -682,18 +682,31 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
       // CRITICAL: If this invoice is locked in localStorage (firma selected), use locked items
       if (hasFirma && lockedData && lockedData.items && lockedData.items.length > 0) {
-        console.log('🔒 INVOICE LOCKED (from localStorage) - using saved items, ignoring all changes');
-        console.log('   Locked items:', lockedData.items);
-        setInvoiceItems(lockedData.items);
+        // If lock was saved with 0 prices (race condition) and totalPrices now available, clear stale lock
+        const mainItem = lockedData.items.find(item => item.description === 'Usbekistan Teil');
+        if (mainItem && mainItem.einzelpreis === 0 && totalPrices !== null && Object.keys(totalPrices).length > 0) {
+          console.log('🔄 Stale lock with 0 prices detected, clearing for recalculation');
+          localStorage.removeItem(lockKey);
+          lockedData = null; // Fall through to recalculation
+        } else {
+          console.log('🔒 INVOICE LOCKED (from localStorage) - using saved items, ignoring all changes');
+          console.log('   Locked items:', lockedData.items);
+          setInvoiceItems(lockedData.items);
 
-        // Update refs
-        lockedInvoiceIdRef.current = invoiceId;
-        lockedItemsRef.current = lockedData.items;
-        return; // Don't recalculate!
+          // Update refs
+          lockedInvoiceIdRef.current = invoiceId;
+          lockedItemsRef.current = lockedData.items;
+          return; // Don't recalculate!
+        }
       }
 
       // If firma is selected but not locked yet, LOCK IT NOW
       if (hasFirma && !lockedData) {
+        // Wait for totalPrices to load first (prevents locking with 0 prices due to race condition)
+        if (totalPrices === null) {
+          console.log('⏳ Waiting for totalPrices to load before locking invoice...');
+          return;
+        }
         console.log('🔐 LOCKING INVOICE - firma selected, saving current values to localStorage');
 
         // Try to load from database first
@@ -707,14 +720,21 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             }
 
             if (Array.isArray(savedItems) && savedItems.length > 0) {
-              console.log('📥 Loaded items from database:', savedItems);
-              setInvoiceItems(savedItems);
+              // Use DB items only if they have valid (non-zero) prices
+              const mainItem = savedItems.find(item => item.description === 'Usbekistan Teil');
+              const hasValidPrice = !mainItem || mainItem.einzelpreis > 0;
 
-              // Save lock to localStorage
-              localStorage.setItem(lockKey, JSON.stringify({ items: savedItems, firma: invoice.firma }));
-              lockedInvoiceIdRef.current = invoiceId;
-              lockedItemsRef.current = savedItems;
-              return;
+              if (hasValidPrice) {
+                console.log('📥 Loaded items from database:', savedItems);
+                setInvoiceItems(savedItems);
+
+                // Save lock to localStorage
+                localStorage.setItem(lockKey, JSON.stringify({ items: savedItems, firma: invoice.firma }));
+                lockedInvoiceIdRef.current = invoiceId;
+                lockedItemsRef.current = savedItems;
+                return;
+              }
+              console.log('🔄 DB items have 0 prices, recalculating with current totalPrices...');
             }
           } catch (error) {
             console.error('❌ Error parsing saved items:', error);

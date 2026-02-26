@@ -5884,7 +5884,7 @@ export default function BookingDetail() {
           bookingId: parseInt(id),
           invoiceType: invoiceType,
           firma: firma,
-          totalAmount: 0, // TODO: Calculate from document items
+          totalAmount: 0, // Auto-calculated by RechnungDocument after totalPrices load
           currency: 'USD'
         });
         updatedInvoice = response.data.invoice;
