@@ -97,7 +97,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="text-center text-primary-200 text-sm mt-6">
-          © 2026 Orient Insight. Все права защищены.
+          © {new Date().getFullYear()} Orient Insight. Все права защищены.
         </p>
       </div>
     </div>

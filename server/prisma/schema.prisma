@@ -63,7 +63,7 @@ model Guide {
 
   // Основная информация (видна всем)
   name        String             // Отображаемое имя (для совместимости)
-  year        Int       @default(2026) // Planning year
+  year        Int       @default(0) // Planning year (0 = current year)
   firstName   String?            // Имя
   lastName    String?            // Фамилия
   dateOfBirth DateTime?          // Дата рождения
@@ -865,7 +865,7 @@ model TransportVehicle {
   arrival         String?                  // Arrival time
   flightType      String?                  // Flight type: DOMESTIC or INTERNATIONAL (for planes only)
 
-  year            Int       @default(2026) // Planning year
+  year            Int       @default(0) // Planning year (0 = current year)
   sortOrder       Int       @default(0)
   isActive        Boolean   @default(true)
   createdAt       DateTime  @default(now())
@@ -1074,7 +1074,7 @@ model PriceConfig {
   // Price items as JSON
   itemsJson       String                   // JSON array of price items
 
-  year            Int       @default(2026) // Planning year
+  year            Int       @default(0) // Planning year (0 = current year)
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -1101,7 +1101,7 @@ model OpexConfig {
   // Items as JSON (array of expense items)
   itemsJson       String                   // JSON array of items
 
-  year            Int       @default(2026) // Planning year
+  year            Int       @default(0) // Planning year (0 = current year)
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
