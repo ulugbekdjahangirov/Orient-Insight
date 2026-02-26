@@ -8,14 +8,6 @@ import autoTable from 'jspdf-autotable';
 import { pricesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 
-const tourTypes = [
-  { id: 'er', name: 'ER', color: 'blue' },
-  { id: 'co', name: 'CO', color: 'emerald' },
-  { id: 'kas', name: 'KAS', color: 'orange' },
-  { id: 'za', name: 'ZA', color: 'purple' },
-  { id: 'preis2026', name: 'Preis 2026', color: 'teal' },
-];
-
 const erSubTabs = [
   { id: 'hotels', name: 'Hotels', icon: Hotel },
   { id: 'transport', name: 'Transport', icon: Truck },
@@ -99,6 +91,16 @@ const defaultShouItems = [
 export default function Price() {
   const isMobile = useIsMobile();
   const { selectedYear: year } = useYear();
+  const preisId = `preis${year}`;
+  const preisTourCode = `PREIS${year}`;
+  // Shadow module-level tourTypes to use year-dynamic Preis entry
+  const tourTypes = [
+    { id: 'er', name: 'ER', color: 'blue' },
+    { id: 'co', name: 'CO', color: 'emerald' },
+    { id: 'kas', name: 'KAS', color: 'orange' },
+    { id: 'za', name: 'ZA', color: 'purple' },
+    { id: preisId, name: `Preis ${year}`, color: 'teal' },
+  ];
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Format number with space as thousands separator and no decimals
@@ -112,7 +114,7 @@ export default function Price() {
   const selectedCOSubTab = searchParams.get('co') || 'hotels';
   const selectedKASSubTab = searchParams.get('kas') || 'hotels';
   const selectedZASubTab = searchParams.get('za') || 'hotels';
-  const selectedPreis2026SubTab = searchParams.get('preis2026') || 'hotels';
+  const selectedPreis2026SubTab = searchParams.get(preisId) || 'hotels';
   const selectedPaxTier = searchParams.get('pax') || '4';
 
   // Function to update URL params
@@ -267,7 +269,7 @@ export default function Price() {
       loadZaShouItems();
       loadZaCommissionValues();
       // ZA Zusatzkosten is loaded in state initialization
-    } else if (selectedTourType === 'preis2026') {
+    } else if (selectedTourType === preisId) {
       // Load ALL modules' data for Preis 2026 summary
       // ER
       loadHotelPrices();
@@ -325,7 +327,7 @@ export default function Price() {
       loadKasTransportRoutes();
     } else if (selectedTourType === 'za' && selectedZASubTab === 'transport') {
       loadZaTransportRoutes();
-    } else if (selectedTourType === 'preis2026' && selectedPreis2026SubTab === 'transport') {
+    } else if (selectedTourType === preisId && selectedPreis2026SubTab === 'transport') {
       loadPreis2026TransportRoutes();
     }
   }, [selectedPaxTier, selectedTourType, selectedERSubTab, selectedCOSubTab, selectedKASSubTab, selectedZASubTab, selectedPreis2026SubTab]);
@@ -676,24 +678,24 @@ export default function Price() {
     if (confirm('4 PAX dagi narxlarni 5 PAX, 6-7 PAX, 8-9 PAX larga nusxalaysizmi?')) {
       // If currently on 4 PAX tier, save current state first
       if (selectedPaxTier === '4') {
-        localStorage.setItem('preis2026-transport-4', JSON.stringify(preis2026TransportRoutes));
+        localStorage.setItem(`preis${year}-transport-4`, JSON.stringify(preis2026TransportRoutes));
       }
 
-      const source4PaxKey = 'preis2026-transport-4';
+      const source4PaxKey = `preis${year}-transport-4`;
       const source4PaxData = localStorage.getItem(source4PaxKey);
 
       if (source4PaxData) {
-        localStorage.setItem('preis2026-transport-5', source4PaxData);
-        localStorage.setItem('preis2026-transport-6-7', source4PaxData);
-        localStorage.setItem('preis2026-transport-8-9', source4PaxData);
+        localStorage.setItem(`preis${year}-transport-5`, source4PaxData);
+        localStorage.setItem(`preis${year}-transport-6-7`, source4PaxData);
+        localStorage.setItem(`preis${year}-transport-8-9`, source4PaxData);
 
         if (['5', '6-7', '8-9'].includes(selectedPaxTier)) {
           loadPreis2026TransportRoutes();
         }
 
-        toast.success('Preis 2026: 4 PAX narxlari 5, 6-7, 8-9 PAX larga nusxalandi!');
+        toast.success(`Preis ${year}: 4 PAX narxlari 5, 6-7, 8-9 PAX larga nusxalandi!`);
       } else {
-        toast.error('Preis 2026: 4 PAX narxlari topilmadi!');
+        toast.error(`Preis ${year}: 4 PAX narxlari topilmadi!`);
       }
     }
   };
@@ -702,24 +704,24 @@ export default function Price() {
     if (confirm('10-11 PAX dagi narxlarni 12-13 PAX, 14-15 PAX, 16 PAX larga nusxalaysizmi?')) {
       // If currently on 10-11 PAX tier, save current state first
       if (selectedPaxTier === '10-11') {
-        localStorage.setItem('preis2026-transport-10-11', JSON.stringify(preis2026TransportRoutes));
+        localStorage.setItem(`preis${year}-transport-10-11`, JSON.stringify(preis2026TransportRoutes));
       }
 
-      const source10_11PaxKey = 'preis2026-transport-10-11';
+      const source10_11PaxKey = `preis${year}-transport-10-11`;
       const source10_11PaxData = localStorage.getItem(source10_11PaxKey);
 
       if (source10_11PaxData) {
-        localStorage.setItem('preis2026-transport-12-13', source10_11PaxData);
-        localStorage.setItem('preis2026-transport-14-15', source10_11PaxData);
-        localStorage.setItem('preis2026-transport-16', source10_11PaxData);
+        localStorage.setItem(`preis${year}-transport-12-13`, source10_11PaxData);
+        localStorage.setItem(`preis${year}-transport-14-15`, source10_11PaxData);
+        localStorage.setItem(`preis${year}-transport-16`, source10_11PaxData);
 
         if (['12-13', '14-15', '16'].includes(selectedPaxTier)) {
           loadPreis2026TransportRoutes();
         }
 
-        toast.success('Preis 2026: 10-11 PAX narxlari 12-13, 14-15, 16 PAX larga nusxalandi!');
+        toast.success(`Preis ${year}: 10-11 PAX narxlari 12-13, 14-15, 16 PAX larga nusxalandi!`);
       } else {
-        toast.error('Preis 2026: 10-11 PAX narxlari topilmadi!');
+        toast.error(`Preis ${year}: 10-11 PAX narxlari topilmadi!`);
       }
     }
   };
@@ -1780,13 +1782,13 @@ export default function Price() {
 
   // Preis 2026 Module Functions
   const loadPreis2026HotelPrices = async () => {
-    await loadPriceConfig('PREIS2026', 'hotels', selectedPaxTier, 'preis2026-hotel-prices', defaultHotelPrices, setPreis2026HotelPrices);
+    await loadPriceConfig(preisTourCode, 'hotels', selectedPaxTier, `preis${year}-hotel-prices`, defaultHotelPrices, setPreis2026HotelPrices);
   };
   const savePreis2026HotelPrices = async () => {
-    const storageKey = 'preis2026-hotel-prices';
-    const success = await savePriceConfig('PREIS2026', 'hotels', selectedPaxTier, preis2026HotelPrices, storageKey);
+    const storageKey = `preis${year}-hotel-prices`;
+    const success = await savePriceConfig(preisTourCode, 'hotels', selectedPaxTier, preis2026HotelPrices, storageKey);
     if (success) {
-      toast.success('Preis 2026 Hotel цены сохранены в базу данных!');
+      toast.success(`Preis ${year} Hotel цены сохранены в базу данных!`);
     }
   };
   const updatePreis2026HotelPrice = (id, field, value) => {
@@ -1800,13 +1802,13 @@ export default function Price() {
   };
 
   const loadPreis2026TransportRoutes = async () => {
-    await loadPriceConfig('PREIS2026', 'transport', selectedPaxTier, `preis2026-transport-${selectedPaxTier}`, [], setPreis2026TransportRoutes);
+    await loadPriceConfig(preisTourCode, 'transport', selectedPaxTier, `preis${year}-transport-${selectedPaxTier}`, [], setPreis2026TransportRoutes);
   };
   const savePreis2026TransportRoutes = async () => {
-    const storageKey = `preis2026-transport-${selectedPaxTier}`;
-    const success = await savePriceConfig('PREIS2026', 'transport', selectedPaxTier, preis2026TransportRoutes, storageKey);
+    const storageKey = `preis${year}-transport-${selectedPaxTier}`;
+    const success = await savePriceConfig(preisTourCode, 'transport', selectedPaxTier, preis2026TransportRoutes, storageKey);
     if (success) {
-      toast.success('Preis 2026 Transport сохранены в базу данных!');
+      toast.success(`Preis ${year} Transport сохранены в базу данных!`);
     }
   };
   const updatePreis2026TransportRoute = (id, field, value) => {
@@ -1820,13 +1822,13 @@ export default function Price() {
   };
 
   const loadPreis2026RailwayRoutes = async () => {
-    await loadPriceConfig('PREIS2026', 'railway', selectedPaxTier, 'preis2026-railway-routes', defaultRailwayRoutes, setPreis2026RailwayRoutes);
+    await loadPriceConfig(preisTourCode, 'railway', selectedPaxTier, `preis${year}-railway-routes`, defaultRailwayRoutes, setPreis2026RailwayRoutes);
   };
   const savePreis2026RailwayRoutes = async () => {
-    const storageKey = 'preis2026-railway-routes';
-    const success = await savePriceConfig('PREIS2026', 'railway', selectedPaxTier, preis2026RailwayRoutes, storageKey);
+    const storageKey = `preis${year}-railway-routes`;
+    const success = await savePriceConfig(preisTourCode, 'railway', selectedPaxTier, preis2026RailwayRoutes, storageKey);
     if (success) {
-      toast.success('Preis 2026 Railway сохранены в базу данных!');
+      toast.success(`Preis ${year} Railway сохранены в базу данных!`);
     }
   };
   const updatePreis2026RailwayRoute = (id, field, value) => {
@@ -1840,13 +1842,13 @@ export default function Price() {
   };
 
   const loadPreis2026FlyRoutes = async () => {
-    await loadPriceConfig('PREIS2026', 'fly', selectedPaxTier, 'preis2026-fly-routes', defaultFlyRoutes, setPreis2026FlyRoutes);
+    await loadPriceConfig(preisTourCode, 'fly', selectedPaxTier, `preis${year}-fly-routes`, defaultFlyRoutes, setPreis2026FlyRoutes);
   };
   const savePreis2026FlyRoutes = async () => {
-    const storageKey = 'preis2026-fly-routes';
-    const success = await savePriceConfig('PREIS2026', 'fly', selectedPaxTier, preis2026FlyRoutes, storageKey);
+    const storageKey = `preis${year}-fly-routes`;
+    const success = await savePriceConfig(preisTourCode, 'fly', selectedPaxTier, preis2026FlyRoutes, storageKey);
     if (success) {
-      toast.success('Preis 2026 Fly сохранены в базу данных!');
+      toast.success(`Preis ${year} Fly сохранены в базу данных!`);
     }
   };
   const updatePreis2026FlyRoute = (id, field, value) => {
@@ -1860,13 +1862,13 @@ export default function Price() {
   };
 
   const loadPreis2026MealItems = async () => {
-    await loadPriceConfig('PREIS2026', 'meal', selectedPaxTier, 'preis2026-meal-items', defaultMealItems, setPreis2026MealItems);
+    await loadPriceConfig(preisTourCode, 'meal', selectedPaxTier, `preis${year}-meal-items`, defaultMealItems, setPreis2026MealItems);
   };
   const savePreis2026MealItems = async () => {
-    const storageKey = 'preis2026-meal-items';
-    const success = await savePriceConfig('PREIS2026', 'meal', selectedPaxTier, preis2026MealItems, storageKey);
+    const storageKey = `preis${year}-meal-items`;
+    const success = await savePriceConfig(preisTourCode, 'meal', selectedPaxTier, preis2026MealItems, storageKey);
     if (success) {
-      toast.success('Preis 2026 Meal сохранены в базу данных!');
+      toast.success(`Preis ${year} Meal сохранены в базу данных!`);
     }
   };
   const updatePreis2026MealItem = (id, field, value) => {
@@ -1880,13 +1882,13 @@ export default function Price() {
   };
 
   const loadPreis2026SightseingItems = async () => {
-    await loadPriceConfig('PREIS2026', 'sightseeing', selectedPaxTier, 'preis2026-sightseing-items', defaultSightseingItems, setPreis2026SightseingItems);
+    await loadPriceConfig(preisTourCode, 'sightseeing', selectedPaxTier, `preis${year}-sightseing-items`, defaultSightseingItems, setPreis2026SightseingItems);
   };
   const savePreis2026SightseingItems = async () => {
-    const storageKey = 'preis2026-sightseing-items';
-    const success = await savePriceConfig('PREIS2026', 'sightseeing', selectedPaxTier, preis2026SightseingItems, storageKey);
+    const storageKey = `preis${year}-sightseing-items`;
+    const success = await savePriceConfig(preisTourCode, 'sightseeing', selectedPaxTier, preis2026SightseingItems, storageKey);
     if (success) {
-      toast.success('Preis 2026 Sightseing сохранены в базу данных!');
+      toast.success(`Preis ${year} Sightseing сохранены в базу данных!`);
     }
   };
   const updatePreis2026SightseingItem = (id, field, value) => {
@@ -1900,13 +1902,13 @@ export default function Price() {
   };
 
   const loadPreis2026GuideItems = async () => {
-    await loadPriceConfig('PREIS2026', 'guide', selectedPaxTier, 'preis2026-guide-items', defaultGuideItems, setPreis2026GuideItems);
+    await loadPriceConfig(preisTourCode, 'guide', selectedPaxTier, `preis${year}-guide-items`, defaultGuideItems, setPreis2026GuideItems);
   };
   const savePreis2026GuideItems = async () => {
-    const storageKey = 'preis2026-guide-items';
-    const success = await savePriceConfig('PREIS2026', 'guide', selectedPaxTier, preis2026GuideItems, storageKey);
+    const storageKey = `preis${year}-guide-items`;
+    const success = await savePriceConfig(preisTourCode, 'guide', selectedPaxTier, preis2026GuideItems, storageKey);
     if (success) {
-      toast.success('Preis 2026 Guide сохранены в базу данных!');
+      toast.success(`Preis ${year} Guide сохранены в базу данных!`);
     }
   };
   const updatePreis2026GuideItem = (id, field, value) => {
@@ -1920,13 +1922,13 @@ export default function Price() {
   };
 
   const loadPreis2026ShouItems = async () => {
-    await loadPriceConfig('PREIS2026', 'shou', selectedPaxTier, 'preis2026-shou-items', defaultShouItems, setPreis2026ShouItems);
+    await loadPriceConfig(preisTourCode, 'shou', selectedPaxTier, `preis${year}-shou-items`, defaultShouItems, setPreis2026ShouItems);
   };
   const savePreis2026ShouItems = async () => {
-    const storageKey = 'preis2026-shou-items';
-    const success = await savePriceConfig('PREIS2026', 'shou', selectedPaxTier, preis2026ShouItems, storageKey);
+    const storageKey = `preis${year}-shou-items`;
+    const success = await savePriceConfig(preisTourCode, 'shou', selectedPaxTier, preis2026ShouItems, storageKey);
     if (success) {
-      toast.success('Preis 2026 Shou сохранены в базу данных!');
+      toast.success(`Preis ${year} Shou сохранены в базу данных!`);
     }
   };
   const updatePreis2026ShouItem = (id, field, value) => {
@@ -1940,13 +1942,13 @@ export default function Price() {
   };
 
   const loadPreis2026CommissionValues = async () => {
-    await loadPriceConfig('PREIS2026', 'commission', selectedPaxTier, 'preis2026-commission-values', {}, setPreis2026CommissionValues);
+    await loadPriceConfig(preisTourCode, 'commission', selectedPaxTier, `preis${year}-commission-values`, {}, setPreis2026CommissionValues);
   };
   const savePreis2026CommissionValues = async () => {
-    const storageKey = 'preis2026-commission-values';
-    const success = await savePriceConfig('PREIS2026', 'commission', selectedPaxTier, preis2026CommissionValues, storageKey);
+    const storageKey = `preis${year}-commission-values`;
+    const success = await savePriceConfig(preisTourCode, 'commission', selectedPaxTier, preis2026CommissionValues, storageKey);
     if (success) {
-      toast.success('Preis 2026 Commission сохранены в базу данных!');
+      toast.success(`Preis ${year} Commission сохранены в базу данных!`);
     }
   };
   const updatePreis2026CommissionValue = (tierId, value) => {
@@ -2073,7 +2075,7 @@ export default function Price() {
       } else if (selectedZASubTab === 'total') {
         saveTotalPrices();
       }
-    } else if (selectedTourType === 'preis2026') {
+    } else if (selectedTourType === preisId) {
       if (selectedPreis2026SubTab === 'hotels') {
         savePreis2026HotelPrices();
       } else if (selectedPreis2026SubTab === 'transport') {
@@ -2136,7 +2138,7 @@ export default function Price() {
       // Title
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('Preis 2026 - Preisliste', pageWidth / 2, yPosition, { align: 'center' });
+      doc.text(`Preis ${year} - Preisliste`, pageWidth / 2, yPosition, { align: 'center' });
 
       yPosition += 8;
 
@@ -6500,7 +6502,7 @@ export default function Price() {
       )}
 
       {/* Preis 2026 - Summary of All Modules */}
-      {selectedTourType === 'preis2026' && (
+      {selectedTourType === preisId && (
         <div className="space-y-6">
           {/* PDF Export Button */}
           <div className="flex justify-end">
