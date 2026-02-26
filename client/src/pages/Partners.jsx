@@ -899,6 +899,7 @@ function RestoranPlanTab({ mealConfirmations, subTab, onDelete }) {
 }
 
 function HotelsPlanTab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDeleteVisit }) {
+  const { selectedYear } = useYear();
   const [openHotels, setOpenHotels] = useState({});
   const [openGroups, setOpenGroups] = useState({});
   const [deletingKey, setDeletingKey] = useState(null);
@@ -956,7 +957,7 @@ function HotelsPlanTab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
         <CalendarRange className="w-12 h-12 mb-3 opacity-30" />
         <p className="text-sm">Bu tur uchun hali Заявка yuborilmagan</p>
-        <p className="text-xs mt-1">Заявка 2026 sahifasidan Telegram orqali hotelga yuborilgandan so'ng ko'rinadi</p>
+        <p className="text-xs mt-1">Заявка {selectedYear} sahifasidan Telegram orqali hotelga yuborilgandan so'ng ko'rinadi</p>
       </div>
     );
   }
