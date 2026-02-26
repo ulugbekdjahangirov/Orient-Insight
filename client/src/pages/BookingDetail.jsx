@@ -161,7 +161,6 @@ const getTicketStatusIcon = (status) => {
   if (lastMigration !== migrationVersion) {
     // Don't clear vehicles anymore - keep user's saved data
     localStorage.setItem('vehicleMigration', migrationVersion);
-    console.log('Migration version updated to', migrationVersion);
   }
 })();
 
@@ -204,11 +203,6 @@ const getFlightsFromOpex = (planesData = []) => {
     }
   });
 
-  console.log('✈️ Organized flights:', {
-    INTERNATIONAL: flightsByType.INTERNATIONAL.length,
-    DOMESTIC: flightsByType.DOMESTIC.length,
-    data: flightsByType
-  });
   return flightsByType;
 };
 
@@ -740,7 +734,6 @@ export default function BookingDetail() {
       const timeoutId = setTimeout(async () => {
         try {
           await bookingsApi.update(id, { rlExchangeRate });
-          console.log('✅ RL exchange rate saved:', rlExchangeRate);
         } catch (error) {
           console.error('Error saving RL exchange rate:', error);
         }
@@ -868,7 +861,6 @@ export default function BookingDetail() {
         const roomCost = roomNights * pricePerNight;
 
         // Debug log
-        console.log(`  [${acc.hotel?.name}] ${normalizedRoomType}: ${pricePerNight} → ${hotelCurrency} (first room price: ${parseFloat(acc.rooms[0].pricePerNight)})`);
 
         if (hotelCurrency === 'USD' || hotelCurrency === 'EUR') {
           grandTotalUSD += roomCost;
@@ -889,15 +881,8 @@ export default function BookingDetail() {
     });
 
     // Debug Grand Total calculation
-    console.log('\n🌍 GRAND TOTAL CALCULATION:');
-    console.log('Hotel Breakdown:', hotelBreakdown);
     hotelBreakdown.forEach(h => {
-      if (h.USD > 0) console.log(`  ${h.hotel}: USD ${h.USD.toFixed(2)}`);
-      if (h.UZS > 0) console.log(`  ${h.hotel}: UZS ${h.UZS.toLocaleString()}`);
     });
-    console.log(`  ─────────────────────────────`);
-    if (grandTotalUSD > 0) console.log(`  💵 Total USD: $${grandTotalUSD.toFixed(2)}`);
-    if (grandTotalUZS > 0) console.log(`  💸 Total UZS: ${grandTotalUZS.toLocaleString()} UZS`);
 
     if (grandTotalUSD === 0 && grandTotalUZS === 0) return null;
 
@@ -921,9 +906,6 @@ export default function BookingDetail() {
       }
     });
 
-    console.log('\n💰 HOTEL SEPARATION:');
-    console.log('💵 USD Hotels:', usdHotels.map(h => `${h.hotel} ($${h.USD.toFixed(2)})`));
-    console.log('💸 UZS Hotels:', uzsHotels.map(h => `${h.hotel} (${h.UZS.toLocaleString()} so'm)`));
 
     return {
       grandTotalUSD,
@@ -1068,11 +1050,9 @@ export default function BookingDetail() {
       if (grouped.metro?.length > 0) setMetroVehicles(grouped.metro);
       if (grouped.plane?.length > 0) {
         setPlaneVehicles(grouped.plane);
-        console.log('✈️ Loaded planes from OPEX:', grouped.plane.length, 'flights');
       }
       if (grouped.train?.length > 0) {
         setTrainVehicles(grouped.train);
-        console.log('🚂 Loaded trains from OPEX:', grouped.train.length, 'trains');
       }
     } catch (error) {
       console.error('Error loading vehicle data from API:', error);
@@ -1147,15 +1127,12 @@ export default function BookingDetail() {
 
     try {
       const tourTypeCode = booking.tourType.code.toUpperCase();
-      console.log(`🍽️ Loading meals from OPEX database for ${tourTypeCode}...`);
 
       const response = await opexApi.get(tourTypeCode, 'meal');
 
       if (response.data && response.data.items && Array.isArray(response.data.items)) {
         setMealsData(response.data.items);
-        console.log(`✅ Loaded ${response.data.items.length} meals from OPEX database`);
       } else {
-        console.log('⚠️ No meals found in OPEX database');
         setMealsData([]);
       }
     } catch (error) {
@@ -1170,15 +1147,12 @@ export default function BookingDetail() {
 
     try {
       const tourTypeCode = booking.tourType.code.toUpperCase();
-      console.log(`🎫 Loading sightseeing from OPEX database for ${tourTypeCode}...`);
 
       const response = await opexApi.get(tourTypeCode, 'sightseeing');
 
       if (response.data && response.data.items && Array.isArray(response.data.items)) {
         setSightseeingData(response.data.items);
-        console.log(`✅ Loaded ${response.data.items.length} sightseeing items from OPEX database`);
       } else {
-        console.log('⚠️ No sightseeing found in OPEX database');
         setSightseeingData([]);
       }
     } catch (error) {
@@ -1193,15 +1167,12 @@ export default function BookingDetail() {
 
     try {
       const tourTypeCode = booking.tourType.code.toUpperCase();
-      console.log(`🎭 Loading shows from OPEX database for ${tourTypeCode}...`);
 
       const response = await opexApi.get(tourTypeCode, 'shows');
 
       if (response.data && response.data.items && Array.isArray(response.data.items)) {
         setShowsData(response.data.items);
-        console.log(`✅ Loaded ${response.data.items.length} shows from OPEX database`);
       } else {
-        console.log('⚠️ No shows found in OPEX database');
         setShowsData([]);
       }
     } catch (error) {
@@ -1377,7 +1348,6 @@ export default function BookingDetail() {
 
       if (hasRoutesFromDatabase) {
         // Routes loaded from database - preserve their saved dates!
-        console.log('✅ Routes loaded from database, preserving saved dates');
         setDatesInitialized(true);
         return;
       }
@@ -1402,16 +1372,12 @@ export default function BookingDetail() {
 
   // Auto-update route person count and dates when tourists change (from Rooming List import)
   useEffect(() => {
-    console.log('🔄 AUTO-UPDATE useEffect triggered');
-    console.log('   erRoutes.length:', erRoutes.length);
-    console.log('   tourists.length:', tourists.length);
 
     if (tourists.length > 0 && erRoutes.length > 0) {
       const newPersonCount = tourists.length.toString();
       const departureDate = formData.departureDate ? new Date(formData.departureDate) : null;
 
       // Log first 5 routes PAX
-      console.log('   First 5 routes PAX:', erRoutes.slice(0, 5).map(r => `${r.route}=${r.person}`));
 
       // IMPORTANT: Check separately for PAX updates and date updates
       // DO NOT mix them - date updates should NOT trigger PAX recalculation!
@@ -1423,11 +1389,8 @@ export default function BookingDetail() {
         return r.sana !== expectedDate;
       });
 
-      console.log('   hasMissingPax:', hasMissingPax);
-      console.log('   hasWrongDates:', hasWrongDates);
 
       const needsUpdate = hasMissingPax || hasWrongDates;
-      console.log('   needsUpdate:', needsUpdate);
 
       if (needsUpdate) {
         const updatedRoutes = erRoutes.map((route, index) => {
@@ -1529,7 +1492,6 @@ export default function BookingDetail() {
   // Count tourists by accommodation (Uzbekistan vs Turkmenistan)
   useEffect(() => {
     if (tourists.length > 0) {
-      console.log('🧮 Auto-calculating PAX from', tourists.length, 'tourists');
       // Filter tourists by accommodation
       const uzbekistanTourists = tourists.filter(t => {
         const acc = (t.accommodation || '').toLowerCase();
@@ -1545,7 +1507,6 @@ export default function BookingDetail() {
       const turkmenCount = turkmenistanTourists.length;
       const totalCount = tourists.length;
 
-      console.log(`📊 PAX breakdown: Total=${totalCount}, UZB=${uzbekCount}, TKM=${turkmenCount}`);
 
       // Only update if values have changed
       if (
@@ -1553,7 +1514,6 @@ export default function BookingDetail() {
         parseInt(formData.paxTurkmenistan) !== turkmenCount ||
         parseInt(formData.pax) !== totalCount
       ) {
-        console.log('✅ Updating formData.pax from', formData.pax, 'to', totalCount);
         setFormData(prev => ({
           ...prev,
           paxUzbekistan: uzbekCount.toString(),
@@ -1561,7 +1521,6 @@ export default function BookingDetail() {
           pax: totalCount
         }));
       } else {
-        console.log('ℹ️ PAX values unchanged, skipping update');
       }
     }
   }, [tourists]);
@@ -1573,7 +1532,6 @@ export default function BookingDetail() {
       const hasZeroPax = erRoutes.some(r => !r.person || r.person === '0');
 
       if (hasZeroPax) {
-        console.log('🔄 Auto-populating route PAX from', tourists.length, 'tourists');
         const totalPax = tourists.length.toString();
 
         const updatedRoutes = erRoutes.map(route => ({
@@ -1582,14 +1540,12 @@ export default function BookingDetail() {
         }));
 
         setErRoutes(updatedRoutes);
-        console.log('✅ Route PAX auto-updated to', totalPax);
       }
     }
   }, [activeTab, erRoutes.length, tourists.length]);
 
   const loadData = async () => {
     try {
-      console.log('📊 BookingDetail loadData called for booking', id);
       const [tourTypesRes, guidesRes, hotelsRes] = await Promise.all([
         tourTypesApi.getAll(),
         guidesApi.getAll(),
@@ -1608,8 +1564,6 @@ export default function BookingDetail() {
           railwaysApi.getAll(id)
         ]);
         const b = bookingRes.data.booking;
-        console.log('📊 Booking loaded:', b.bookingNumber, 'PAX:', b.pax);
-        console.log('👥 Tourists loaded:', touristsRes.data.tourists?.length, 'tourists');
         setBooking(b);
         setBookingRooms(b.bookingRooms || []);
         setAccommodations(accommodationsRes.data.accommodations || []);
@@ -1618,7 +1572,6 @@ export default function BookingDetail() {
         // Load RL exchange rate from database
         if (b.rlExchangeRate) {
           setRlExchangeRate(b.rlExchangeRate);
-          console.log('💱 RL exchange rate loaded from DB:', b.rlExchangeRate);
         }
 
         // Load invoices for this booking
@@ -1935,8 +1888,6 @@ export default function BookingDetail() {
           }
 
           // Map routes and sort by date
-          console.log('🔍 PAGE LOAD: Loading routes from database');
-          console.log('📊 Total routes:', routesToProcess.length, 'Total PAX:', totalPax);
 
           const mappedRoutes = routesToProcess.map((r, index) => {
             const provider = r.provider || '';
@@ -1945,8 +1896,6 @@ export default function BookingDetail() {
             const personCount = r.personCount?.toString() || (totalPax > 0 ? totalPax.toString() : '');
             const paxNum = parseInt(personCount) || 0;
 
-            console.log(`\n Route ${index + 1}: ${r.routeName || 'unnamed'}`);
-            console.log(`  DB: transportType="${r.transportType || 'NULL'}", provider="${r.provider || 'NULL'}", price=${r.price || 0}`);
 
             // IMPORTANT: Check if route has saved transportType
             // If transportType exists and valid, use it directly (don't recalculate!)
@@ -1955,7 +1904,6 @@ export default function BookingDetail() {
                                     r.transportType !== 'Select' &&
                                     r.transportType !== null;
 
-            console.log(`  hasSavedVehicle = ${hasSavedVehicle}`);
 
             let transportType, finalProvider, finalRateType, finalPrice;
 
@@ -1965,12 +1913,8 @@ export default function BookingDetail() {
               finalProvider = provider || r.provider;
               finalRateType = r.optionRate || '';
               finalPrice = r.price?.toString() || '';
-              console.log(`✅ Route ${index + 1}: Using saved vehicle - ${r.routeName}`);
-              console.log(`   DB: transportType="${r.transportType}", optionRate="${r.optionRate || 'NULL'}", price=${r.price}`);
-              console.log(`   UI: vehicle="${transportType}", rate="${finalRateType}", price=$${finalPrice}`);
             } else {
               // Route has no saved vehicle - calculate it
-              console.log(`🔧 Route ${index + 1}: No saved vehicle, calculating - ${r.routeName} (DB transportType: "${r.transportType || 'NULL'}"))`);
               const vehicles = getVehicles(provider);
               const bestVehicle = findVehicle(vehicles, personCount, provider);
 
@@ -2064,14 +2008,12 @@ export default function BookingDetail() {
           setErRoutes(sortRoutesByDate(mappedRoutes));
         } else if (b.tourType?.code === 'ER') {
           // No saved routes - try loading from database template first
-          console.log('📋 No routes saved, checking database template for ER...');
 
           try {
             const templateResponse = await routesApi.getTemplate('ER');
             const templates = templateResponse.data.templates;
 
             if (templates && templates.length > 0) {
-              console.log(`✅ Found ${templates.length} templates in database, using them`);
               const bookingDepartureDate = b.departureDate ? new Date(b.departureDate) : null;
               const totalPax = touristsRes.data.tourists?.length || 0;
 
@@ -2100,12 +2042,10 @@ export default function BookingDetail() {
               setErRoutes(sortRoutesByDate(loadedRoutes));
             } else {
               // No template in database, use hardcoded default
-              console.log('⚠️ No template in database, using hardcoded default');
               throw new Error('No template found');
             }
           } catch (templateError) {
             // Fallback to hardcoded template
-            console.log('📝 Using hardcoded default ER template');
             const bookingDepartureDate = b.departureDate ? new Date(b.departureDate) : null;
             const totalPax = touristsRes.data.tourists?.length || 0;
 
@@ -2306,7 +2246,6 @@ export default function BookingDetail() {
         }
         else if (['CO', 'KAS', 'ZA'].includes(b.tourType?.code)) {
           // No saved routes - auto-load template from database (same as ER)
-          console.log(`📋 No routes saved, auto-loading ${b.tourType.code} template...`);
           try {
             const templateResponse = await routesApi.getTemplate(b.tourType.code);
             const templates = templateResponse.data.templates;
@@ -2332,10 +2271,8 @@ export default function BookingDetail() {
                 };
               });
               setErRoutes(sortRoutesByDate(loadedRoutes));
-              console.log(`✅ ${b.tourType.code} template auto-loaded: ${loadedRoutes.length} routes`);
             }
           } catch (err) {
-            console.log(`⚠️ Could not auto-load ${b.tourType?.code} template: ${err.message}`);
           }
         }
         const uzbek = parseInt(b.paxUzbekistan) || 0;
@@ -2496,8 +2433,6 @@ export default function BookingDetail() {
 
       setFlights(flightsData);
       setFlightSections(sectionsData);
-      console.log('✈️ Loaded flights:', flightsData);
-      console.log('📄 Loaded flight sections:', sectionsData);
     } catch (error) {
       console.error('Error loading flights:', error);
       // Set empty arrays on error
@@ -2510,7 +2445,6 @@ export default function BookingDetail() {
 
   // Helper function to calculate PAX based on tour type, flight type, and route
   const calculateFlightPax = (flightType, route = '') => {
-    console.log('✈️ CALCULATING FLIGHT PAX:', { tourType: booking?.tourType, flightType, route, totalTourists: tourists.length });
 
     // For ER tours: distinguish between UZ and TM tourists
     // Check tourType.code since tourType is an object {id, code, name}
@@ -2525,7 +2459,6 @@ export default function BookingDetail() {
 
       if (flightType === 'DOMESTIC') {
         // DOMESTIC flights: only UZ tourists fly (TM tourists don't fly domestic routes)
-        console.log(`✅ ER + DOMESTIC → UZ tourists only: ${uzCount} PAX`);
         return uzCount;
       } else if (flightType === 'INTERNATIONAL') {
         // Check if it's Tashkent-Istanbul (return flight) - only UZ fly
@@ -2537,11 +2470,9 @@ export default function BookingDetail() {
 
         if (isTashkentToIstanbul) {
           // Tashkent → Istanbul (return): only UZ tourists fly
-          console.log(`✅ ER + INTERNATIONAL (TAS→IST return) → UZ tourists only: ${uzCount} PAX`);
           return uzCount;
         } else {
           // Istanbul → Tashkent (arrival): all tourists fly (both UZ and TM)
-          console.log(`✅ ER + INTERNATIONAL (IST→TAS arrival) → All tourists: ${totalCount} PAX`);
           return totalCount;
         }
       }
@@ -2549,7 +2480,6 @@ export default function BookingDetail() {
 
     // For non-ER tours or fallback
     const pax = booking?.pax || tourists.length || 0;
-    console.log(`✅ Non-ER tour or fallback: ${pax} PAX`);
     return pax;
   };
 
@@ -2742,14 +2672,6 @@ export default function BookingDetail() {
 
       setRailways(railwaysData);
       setRailwaySections(sectionsData);
-      console.log('🚂 Loaded railways:', railwaysData);
-      console.log('💰 Railway prices:', railwaysData.map(r => ({
-        trainNumber: r.trainNumber,
-        pax: r.pax,
-        price: r.price,
-        hasPrice: !!r.price && r.price > 0
-      })));
-      console.log('📄 Loaded railway sections:', sectionsData);
     } catch (error) {
       console.error('Error loading railways:', error);
       // Set empty arrays on error
@@ -2824,24 +2746,15 @@ export default function BookingDetail() {
       return;
     }
 
-    console.log('🚂 Saving railway with data:', {
-      trainNumber: railwayForm.trainNumber,
-      pax: railwayForm.pax,
-      price: railwayForm.price,
-      pricePerPerson: railwayForm.pricePerPerson,
-      fullData: railwayForm
-    });
 
     try {
       if (editingRailway) {
         // Update existing railway
         const response = await railwaysApi.update(id, editingRailway.id, railwayForm);
-        console.log('✅ Railway updated, response:', response.data);
         toast.success('Poezd yangilandi');
       } else {
         // Create new railway
         const response = await railwaysApi.create(id, railwayForm);
-        console.log('✅ Railway created, response:', response.data);
         toast.success('Poezd qo\'shildi');
       }
 
@@ -2886,7 +2799,6 @@ export default function BookingDetail() {
         ...prev,
         [type.toLowerCase()]: servicesData
       }));
-      console.log(`✅ Loaded ${type} services:`, servicesData.length);
     } catch (error) {
       console.error(`Error loading ${type} services:`, error);
       toast.error('Xizmatlarni yuklashda xatolik');
@@ -3075,11 +2987,9 @@ export default function BookingDetail() {
       const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
 
       if (newIndex < 0 || newIndex >= services.length) {
-        console.log('Cannot move beyond bounds');
         return;
       }
 
-      console.log('Moving entry:', currentIndex, '->', newIndex);
 
       // Swap sortOrder values
       const currentSortOrder = services[currentIndex].sortOrder || currentIndex;
@@ -5146,24 +5056,20 @@ export default function BookingDetail() {
         // ZA tours: departureDate + 4 days for Tajikistan
         baseDate = new Date(departureDate.getTime() + (4 * 24 * 60 * 60 * 1000));
         baseDateLabel = 'Uzbekistan arrival (departureDate + 4)';
-        console.log(`📅 ZA tour: Base date = ${format(baseDate, 'yyyy-MM-dd')} (${baseDateLabel})`);
       } else if (tourTypeCode === 'KAS') {
         // KAS tours: Calculate Uzbekistan arrival from first Uzbekistan hotel in itinerary
         // We'll calculate this after finding first Uzbekistan hotel
         baseDate = departureDate; // Temporary - will be updated below
         baseDateLabel = 'departureDate (tour start)';
-        console.log(`📅 KAS tour: Temporary base date = ${format(baseDate, 'yyyy-MM-dd')} (will be recalculated)`);
       } else {
         // ER/CO tours: use arrivalDate as-is
         baseDate = arrivalDate;
         baseDateLabel = 'arrivalDate';
-        console.log(`📅 ${tourTypeCode} tour: Base date = ${format(baseDate, 'yyyy-MM-dd')} (${baseDateLabel})`);
       }
 
       const accommodationsToCreate = [];
 
       // Log itinerary for debugging
-      console.log('🔍 Itinerary loaded:', itinerary.length, 'days');
 
       // Group consecutive days by hotel
       let currentStay = null;
@@ -5189,7 +5095,6 @@ export default function BookingDetail() {
         hotelStays.push(currentStay);
       }
 
-      console.log('📊 Grouped hotel stays:', hotelStays.length);
 
       if (hotelStays.length === 0) {
         toast.error('Нет отелей в программе тура');
@@ -5207,8 +5112,6 @@ export default function BookingDetail() {
       const onlyUZ = isERTour && uzbekistanTourists.length > 0 && turkmenistanTourists.length === 0;
       const mixed = isERTour && uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0;
 
-      console.log(`📊 Tour: ${tourTypeCode}, Tourist composition: onlyTM=${onlyTM}, onlyUZ=${onlyUZ}, mixed=${mixed}`);
-      console.log(`📋 Hotels from itinerary: ${hotelStays.length}`);
 
       // Merge CONSECUTIVE same-hotel stays
       const mergedStays = [];
@@ -5219,13 +5122,11 @@ export default function BookingDetail() {
         // Merge if SAME hotel AND CONSECUTIVE days (no gap)
         if (prevStay && prevStay.hotelName === stay.hotelName && stay.startDay === prevStay.endDay + 1) {
           prevStay.endDay = stay.endDay;
-          console.log(`🔗 Merged: ${stay.hotelName} (days ${prevStay.startDay}-${prevStay.endDay})`);
         } else {
           mergedStays.push({ ...stay });
         }
       }
 
-      console.log(`📋 After merge: ${mergedStays.length} hotels`);
       const staysToProcess = mergedStays;
 
       // ========================================
@@ -5267,7 +5168,6 @@ export default function BookingDetail() {
         const isTashkent = cityName.includes('ташкент') || cityName.includes('tashkent');
 
         if (onlyTM && isLastStay && isTashkent) {
-          console.log(`ℹ️ Only TM: Skipped last Tashkent hotel (TM tourists don't return)`);
           continue;
         }
 
@@ -5279,7 +5179,6 @@ export default function BookingDetail() {
         const isKhiva = isKhivaByCity || isKhivaByName;
         const isMalikaKhorazm = hotelNameLower.includes('malika') && hotelNameLower.includes('khorazm');
 
-        console.log(`🏨 Hotel: ${hotel.name}, City: ${cityName}, isKhiva: ${isKhiva}`);
 
         // Adjust Khiva hotels to 2 nights:
         // - ER tours: Only UZ groups get Malika Khorazm 2 nights
@@ -5291,18 +5190,14 @@ export default function BookingDetail() {
           // IMPORTANT: nights = (endDay - startDay) + 1 because checkout adds +1 day
           // Example: startDay=11, endDay=12 → 2 days in itinerary → 2 nights
           const nights = (stay.endDay - stay.startDay) + 1;
-          console.log(`🌙 ${hotel.name}: ${nights} nights (startDay: ${stay.startDay}, endDay: ${stay.endDay})`);
 
           if (isCOTour && nights !== 2) {
             // CO tours: ALWAYS force Khiva to exactly 2 nights
             adjustedEndDay = stay.startDay + 1; // startDay + 1 = 2 nights
-            console.log(`✅ CO tour: FORCED ${hotel.name} to exactly 2 nights (was ${nights})`);
           } else if (onlyUZ && isKhiva && nights > 2) {
             // ER Only UZ: Reduce ANY Khiva hotel to 2 nights (not just Malika Khorazm)
             adjustedEndDay = stay.endDay - 1;
-            console.log(`✅ ER Only UZ: Reduced ${hotel.name} to 2 nights (was ${nights})`);
           } else {
-            console.log(`ℹ️ ${hotel.name}: ${nights} nights - no adjustment`);
           }
         }
 
@@ -5367,16 +5262,13 @@ export default function BookingDetail() {
               tourists: uzTourists,
               groupName: onlyUZ ? 'All' : 'Uzbekistan'
             });
-            console.log(`✅ Added 6th hotel: ${tashkentReturnHotel.name} (return to first Tashkent hotel) for ${onlyUZ ? 'ALL (onlyUZ)' : 'UZ tourists (mixed)'}`);
           } else {
             toast.error('Тошкентда отель топилмади! Программада Тошкент отели бўлиши керак.');
           }
         } else {
-          console.log(`ℹ️ Last hotel already in Tashkent, not adding 6th hotel`);
         }
       }
 
-      console.log(`📊 Total hotels to create: ${accommodationsToCreate.length}`);
 
       // Step 5: Create accommodations in database
       if (accommodationsToCreate.length === 0) {
@@ -5385,7 +5277,6 @@ export default function BookingDetail() {
         return;
       }
 
-      console.log('✅ Hotels to create:', accommodationsToCreate.map(a => `${a.hotel.name} (${a.groupName})`).join(', '));
 
       // No deduplication - new logic creates exact hotels needed
       const finalAccommodationsToCreate = accommodationsToCreate;
@@ -5425,18 +5316,13 @@ export default function BookingDetail() {
           baseDate = new Date(departureDate);
           baseDate.setDate(baseDate.getDate() + (firstHotelDay - 1));
 
-          console.log(`📅 KAS tour: First Uzbekistan hotel on Day ${firstHotelDay}`);
-          console.log(`📅 KAS tour: Calculated Uzbekistan arrival = departureDate (${format(departureDate, 'yyyy-MM-dd')}) + ${firstHotelDay - 1} days = ${format(baseDate, 'yyyy-MM-dd')}`);
-          console.log(`📍 Uzbekistan hotels found: ${uzbekistanHotels.map(h => `${h.hotel.name} (${h.hotel.city?.name}, Day ${h.startDay})`).join(', ')}`);
         } else {
           // Fallback if no Uzbekistan hotels found
           firstHotelDay = Math.min(...finalAccommodationsToCreate.map(acc => acc.startDay));
-          console.log(`⚠️ KAS tour: No Uzbekistan hotels found, using first hotel day: ${firstHotelDay}`);
         }
       } else {
         // For ER/CO/ZA tours, use first hotel day as normal
         firstHotelDay = Math.min(...finalAccommodationsToCreate.map(acc => acc.startDay));
-        console.log(`📅 ${tourTypeCode} tour: First hotel day: ${firstHotelDay}, baseDate: ${format(baseDate, 'yyyy-MM-dd')}`);
       }
 
       for (const accData of finalAccommodationsToCreate) {
@@ -5461,14 +5347,12 @@ export default function BookingDetail() {
         if (isCOKhiva || isEROnlyUZKhiva) {
           // For CO Khiva or ER Only UZ Khiva: Fixed to 2 nights (endDay without +1)
           checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay));
-          console.log(`✅ ${tourTypeCode} ${onlyUZ ? 'Only UZ' : ''} Khiva: checkout WITHOUT +1 (2 nights)`);
         } else {
           checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay) + 1);
         }
 
         const hotelCountry = hotel.city?.country || 'Unknown';
         const dateLabel = tourTypeCode === 'KAS' ? 'baseDate (UZ arrival)' : 'baseDate';
-        console.log(`  → ${hotel.name} (${hotelCountry}): Day ${startDay}-${endDay}, checkIn = ${dateLabel} + (${startDay} - ${firstHotelDay}) = ${format(checkInDate, 'yyyy-MM-dd')}, checkOut = ${format(checkOutDate, 'yyyy-MM-dd')}`);
 
         // Validation: don't create accommodation if checkout is after tour end date
         const tourEndDate = new Date(booking.endDate);
@@ -5495,12 +5379,6 @@ export default function BookingDetail() {
         } else {
           // Regular hotel - count rooms from Rooming List assignments
           // Get room type from roomAssignments or roomPreference (fallback)
-          console.log(`🔍 DEBUG: Calculating rooms for ${hotel.name} (${groupName})`);
-          console.log(`🔍 DEBUG: Group tourists:`, groupTourists.map(t => ({
-            name: t.fullName,
-            roomPreference: t.roomPreference,
-            roomAssignment: t.roomAssignments?.[0]?.bookingRoom?.roomType?.name
-          })));
 
           const doubleCount = groupTourists.filter(t => {
             // Try roomAssignments first (from Rooming List)
@@ -5522,7 +5400,6 @@ export default function BookingDetail() {
             return roomType === 'SNGL' || roomType === 'SINGLE' || roomType === 'EZ';
           }).length;
 
-          console.log(`🔍 DEBUG: Room counts - DBL=${doubleCount}, TWN=${twinCount}, SNGL=${singleCount}`);
 
           // Helper function to calculate price with tourist tax
           const calculatePriceWithTax = (roomType, guestsPerRoom) => {
@@ -5603,11 +5480,9 @@ export default function BookingDetail() {
             if (fallbackSngl > 0) {
               rooms.push({ roomTypeCode: 'SNGL', roomsCount: fallbackSngl, guestsPerRoom: 1, pricePerNight: 0 });
             }
-            console.log(`⚠️ 0 tourists for ${hotel.name}: using booking room counts as fallback (DBL:${fallbackDbl}, TWN:${fallbackTwn}, SNGL:${fallbackSngl})`);
           } else if (booking.status === 'CANCELLED') {
             // For cancelled bookings with 0 tourists: create accommodation with empty rooms
             // This allows generating Storno PDF (which shows 0 rooms anyway)
-            console.log(`ℹ️ Cancelled booking: creating ${hotel.name} with 0 rooms (for Storno PDF)`);
             // rooms stays [] - backend accepts empty array, creates accommodation without room records
           } else {
             console.warn(`No rooms calculated for ${hotel.name} (${groupName}): ${groupTourists.length} tourists`);
@@ -5638,19 +5513,16 @@ export default function BookingDetail() {
       // CRITICAL FOR KAS/ZA TOURS: Update all tourists' checkInDate to Uzbekistan arrival (parallel)
       if (tourTypeCode === 'KAS' || tourTypeCode === 'ZA') {
         const label = tourTypeCode === 'ZA' ? 'departureDate + 4' : 'Uzbekistan arrival';
-        console.log(`📅 ${tourTypeCode} tour: Updating tourists checkInDate to ${label}: ${format(baseDate, 'yyyy-MM-dd')}`);
         try {
           await Promise.all(tourists.map(tourist =>
             touristsApi.update(booking.id, tourist.id, { checkInDate: baseDate.toISOString() })
           ));
-          console.log(`✅ Updated ${tourists.length} tourists checkInDate to ${format(baseDate, 'yyyy-MM-dd')}`);
         } catch (error) {
           console.error('Error updating tourists:', error);
         }
       }
 
       // Recalculate and update totals for all created accommodations, then reload once
-      console.log('🔄 Recalculating totals for all accommodations...');
       try {
         // Load fresh data after creation
         const [accResponse, touristsResp] = await Promise.all([
@@ -5729,11 +5601,9 @@ export default function BookingDetail() {
               totalRooms: acc.rooms.reduce((sum, r) => sum + (r.roomsCount || 0), 0),
               totalGuests: accTourists.length
             });
-            console.log(`✅ Updated ${acc.hotel?.name}: ${totalCost.toLocaleString()} UZS`);
           }
         }));
 
-        console.log('✅ All totals updated');
       } catch (error) {
         console.error('Auto-update totals error:', error);
       }
@@ -6576,21 +6446,18 @@ export default function BookingDetail() {
       if ((currentRouteName.includes('train station') && currentRouteName.includes('drop')) &&
           (nextRouteName.includes('samarkand') || nextRouteName.includes('samarqand'))) {
         updatedRoutes[routeIndex + 1].sana = newDate;
-        console.log(`✅ Auto-adjusted: ${nextRoute.route} → ${newDate} (same day as Train Station)`);
         toast.success('Next route date auto-adjusted to same day', { duration: 2000 });
       }
       // RULE 2: Train Station Drop-off → Qoqon/Fergana (SAME DAY)
       else if ((currentRouteName.includes('train station') && currentRouteName.includes('drop')) &&
                (nextRouteName.includes('qoqon') || (nextRouteName.includes('fergana') && !nextRouteName.includes('tashkent')))) {
         updatedRoutes[routeIndex + 1].sana = newDate;
-        console.log(`✅ Auto-adjusted: ${nextRoute.route} → ${newDate} (same day as Train Station)`);
         toast.success('Next route date auto-adjusted to same day', { duration: 2000 });
       }
       // RULE 3: Airport Pickup → Samarkand City Tour (SAME DAY)
       else if (currentRouteName.includes('airport pickup') &&
                (nextRouteName.includes('samarkand') || nextRouteName.includes('samarqand'))) {
         updatedRoutes[routeIndex + 1].sana = newDate;
-        console.log(`✅ Auto-adjusted: ${nextRoute.route} → ${newDate} (same day as Airport Pickup)`);
         toast.success('Next route date auto-adjusted to same day', { duration: 2000 });
       }
     }
@@ -6673,7 +6540,6 @@ export default function BookingDetail() {
     if (lastRoute?.sana) {
       const lastDate = new Date(lastRoute.sana);
       nextDate = format(addDays(lastDate, 1), 'yyyy-MM-dd');
-      console.log(`📅 New route date: ${nextDate} (latest route was ${lastRoute.sana})`);
     } else if (formData.departureDate) {
       const arrivalDate = addDays(new Date(formData.departureDate), 1);
       nextDate = format(addDays(arrivalDate, newDayOffset), 'yyyy-MM-dd');
@@ -6857,10 +6723,8 @@ export default function BookingDetail() {
 
   // Auto-fix all routes when tourists data changes
   useEffect(() => {
-    console.log('🔍 Auto-fix useEffect triggered:', { routesCount: erRoutes?.length, touristsCount: tourists.length });
 
     if (!erRoutes || erRoutes.length === 0 || tourists.length === 0) {
-      console.log('❌ Skipped: No routes or tourists');
       return;
     }
 
@@ -6869,7 +6733,6 @@ export default function BookingDetail() {
     const paxTkm = tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length;
     const totalPax = paxUzb + paxTkm;
 
-    console.log('📊 PAX:', { total: totalPax, uzb: paxUzb, tkm: paxTkm });
 
     // Check if any route has "Select" vehicle or empty price
     const routesWithIssues = erRoutes.filter(r =>
@@ -6878,14 +6741,11 @@ export default function BookingDetail() {
       r.transportType === ''
     );
 
-    console.log('🚗 Routes with missing vehicles:', routesWithIssues.length, routesWithIssues.map(r => r.route));
 
     if (routesWithIssues.length === 0) {
-      console.log('✅ All routes have vehicles');
       return;
     }
 
-    console.log('🔄 Auto-fixing routes (vehicles missing)...');
 
     // Find split point
     const urgenchIndex = erRoutes.findIndex(r => r.route === 'Khiva - Urgench');
@@ -7086,11 +6946,9 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
-      console.log(`💾 Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
 
       // IMPORTANT: Reload routes from database to ensure state matches database
-      console.log('🔄 Reloading routes from database...');
       const reloadedRes = await bookingsApi.getRoutes(id);
       const reloadedRoutes = reloadedRes.data.routes || [];
 
@@ -7110,7 +6968,6 @@ export default function BookingDetail() {
       }));
 
       setErRoutes(mappedReloaded);
-      console.log('✅ Routes saved and reloaded from database');
       toast.success('Маршруты сохранены');
     } catch (error) {
       console.error('Error saving routes:', error);
@@ -7120,7 +6977,6 @@ export default function BookingDetail() {
 
   // Save current routes as template for any tour type (ER, CO, KAS, ZA)
   const handleSaveAsTemplate = async () => {
-    console.log('💾 Save as Template clicked');
 
     if (!erRoutes || erRoutes.length === 0) {
       toast.error('Нет маршрутов для сохранения');
@@ -7134,7 +6990,6 @@ export default function BookingDetail() {
         const tourType = tourTypes.find(t => t.id === parseInt(formData.tourTypeId));
         tourTypeCode = tourType?.code;
       }
-      console.log('📋 Tour type code:', tourTypeCode);
 
       if (!tourTypeCode) {
         toast.error('Тип тура не определён');
@@ -7154,9 +7009,7 @@ export default function BookingDetail() {
         sortOrder: index
       }));
 
-      console.log(`💾 Saving ${routesToSave.length} routes as template for ${tourTypeCode}`);
       const response = await routesApi.saveTemplate(tourTypeCode, routesToSave);
-      console.log('✅ Save response:', response.data);
       toast.success(`✅ Шаблон ${tourTypeCode} сохранён в базу данных`);
     } catch (error) {
       console.error('❌ Error saving route template:', error);
@@ -7167,7 +7020,6 @@ export default function BookingDetail() {
 
   // Load routes from database template
   const handleLoadFromTemplate = async () => {
-    console.log('📥 Load Template clicked');
 
     try {
       // Get tour type code (ER, CO, KAS, ZA)
@@ -7176,7 +7028,6 @@ export default function BookingDetail() {
         const tourType = tourTypes.find(t => t.id === parseInt(formData.tourTypeId));
         tourTypeCode = tourType?.code;
       }
-      console.log('📋 Tour type code:', tourTypeCode);
 
       if (!tourTypeCode) {
         toast.error('Тип тура не определён');
@@ -7186,11 +7037,9 @@ export default function BookingDetail() {
       // Allow template loading for all tour types (ER, CO, KAS, ZA)
       // Each tour type has its own template in the database
 
-      console.log(`📥 Loading template for ${tourTypeCode}...`);
       const response = await routesApi.getTemplate(tourTypeCode);
       const templates = response.data.templates;
 
-      console.log(`📋 Received ${templates?.length || 0} templates from database`);
 
       if (!templates || templates.length === 0) {
         toast.error(`Шаблон для ${tourTypeCode} не найден в базе данных`);
@@ -7232,7 +7081,6 @@ export default function BookingDetail() {
 
       // Auto-sort routes by date after loading from template
       setErRoutes(sortRoutesByDate(loadedRoutes));
-      console.log(`✅ Loaded ${loadedRoutes.length} routes from template`);
       toast.success(`✅ Загружено ${templates.length} маршрутов из шаблона ${tourTypeCode}`);
     } catch (error) {
       console.error('❌ Error loading route template:', error);
@@ -7243,7 +7091,6 @@ export default function BookingDetail() {
 
   // Save current accommodations as template for any tour type (ER, CO, KAS, ZA)
   const handleSaveAccommodationsAsTemplate = async () => {
-    console.log('💾 Save Accommodations as Template clicked');
 
     if (!accommodations || accommodations.length === 0) {
       toast.error('Нет размещений для сохранения');
@@ -7257,7 +7104,6 @@ export default function BookingDetail() {
         const tourType = tourTypes.find(t => t.id === parseInt(formData.tourTypeId));
         tourTypeCode = tourType?.code;
       }
-      console.log('📋 Tour type code:', tourTypeCode);
 
       if (!tourTypeCode) {
         toast.error('Тип тура не определён');
@@ -7294,9 +7140,7 @@ export default function BookingDetail() {
         };
       });
 
-      console.log(`💾 Saving ${accommodationsToSave.length} accommodations as template for ${tourTypeCode}`);
       const response = await accommodationsApi.saveTemplate(tourTypeCode, accommodationsToSave);
-      console.log('✅ Save response:', response.data);
       toast.success(`✅ Шаблон размещений ${tourTypeCode} сохранён в базу данных`);
     } catch (error) {
       console.error('❌ Error saving accommodation template:', error);
@@ -7307,7 +7151,6 @@ export default function BookingDetail() {
 
   // Load accommodations from database template
   const handleLoadAccommodationsFromTemplate = async () => {
-    console.log('📥 Load Accommodations Template clicked');
 
     try {
       // Get tour type code (ER, CO, KAS, ZA)
@@ -7316,18 +7159,15 @@ export default function BookingDetail() {
         const tourType = tourTypes.find(t => t.id === parseInt(formData.tourTypeId));
         tourTypeCode = tourType?.code;
       }
-      console.log('📋 Tour type code:', tourTypeCode);
 
       if (!tourTypeCode) {
         toast.error('Тип тура не определён');
         return;
       }
 
-      console.log(`📥 Loading accommodation template for ${tourTypeCode}...`);
       const response = await accommodationsApi.getTemplate(tourTypeCode);
       const templates = response.data.templates;
 
-      console.log(`📋 Received ${templates?.length || 0} accommodation templates from database`);
 
       if (!templates || templates.length === 0) {
         toast.error(`Шаблон размещений для ${tourTypeCode} не найден в базе данных`);
@@ -7357,13 +7197,10 @@ export default function BookingDetail() {
         : arrivalDate; // Use arrivalDate for ER/CO/KAS tours
 
       if (tourTypeCode === 'ZA') {
-        console.log(`📅 ZA tour: Base date adjusted from ${departureDate.toISOString().split('T')[0]} to ${baseDate.toISOString().split('T')[0]} (arrival in Uzbekistan)`);
       } else {
-        console.log(`📅 ${tourTypeCode} tour: Base date = ${baseDate.toISOString().split('T')[0]} (arrival date)`);
       }
 
       // Create accommodations from templates
-      console.log(`🏨 Creating ${templates.length} accommodations from template...`);
       setSaving(true);
 
       const createdAccommodations = [];
@@ -7381,14 +7218,12 @@ export default function BookingDetail() {
           checkOutDate: checkOutDate.toISOString().split('T')[0]
         };
 
-        console.log(`   Creating: ${template.hotelName} (${accommodationData.checkInDate} → ${accommodationData.checkOutDate})`);
 
         const response = await bookingsApi.createAccommodation(booking.id, accommodationData);
         createdAccommodations.push(response.data);
       }
 
       setSaving(false);
-      console.log(`✅ Created ${createdAccommodations.length} accommodations from template`);
       toast.success(`✅ Загружено ${createdAccommodations.length} размещений из шаблона ${tourTypeCode}`);
 
       // Reload accommodations list
@@ -7407,7 +7242,6 @@ export default function BookingDetail() {
   const autoFixAllRoutes = async () => {
 
     const tourTypeCode = booking?.tourType?.code;
-    console.log(`🎯 Fix Vehicle clicked for tour type: ${tourTypeCode}`);
 
     try {
       setSaving(true);
@@ -7440,16 +7274,7 @@ export default function BookingDetail() {
 
   // ==================== ER FIX FUNCTION ====================
   const autoFixRoutesER = async () => {
-    console.log('🔵 Running ER fix logic...');
-    console.log('📊 ER: Loaded vehicles:', {
-      'sevil-er': sevilErVehicles.length,
-      'sevil-co': sevilCoVehicles.length,
-      'sevil-kas': sevilKasVehicles.length,
-      'xayrulla': xayrullaVehicles.length,
-      'nosir': nosirVehicles.length
-    });
     if (sevilErVehicles.length > 0) {
-      console.log('  Sevil ER vehicles:', sevilErVehicles.map(v => `${v.name} (${v.person})`));
     } else {
       console.warn('⚠️ WARNING: sevilErVehicles is EMPTY! This will cause pricing issues.');
     }
@@ -7471,7 +7296,6 @@ export default function BookingDetail() {
             templateItineraryMap[mapKey] = t.itinerary;
           }
         });
-        console.log(`📖 ER: Loaded ${Object.keys(templateItineraryMap).length} itineraries from RouteTemplate`);
       } catch (e) {
         console.warn('⚠️ ER: Could not load RouteTemplate itineraries, will preserve existing');
       }
@@ -7481,7 +7305,6 @@ export default function BookingDetail() {
       const routesRes = await bookingsApi.getRoutes(id);
       const freshRoutes = routesRes.data.routes || [];
 
-      console.log(`📋 ER: Loaded ${freshRoutes.length} existing routes from database`);
 
       // Check if routes exist and have proper structure
       if (freshRoutes.length === 0) {
@@ -7508,7 +7331,6 @@ export default function BookingDetail() {
         };
       });
 
-      console.log('📋 Reloaded routes from database with city and itinerary (Sayohat dasturi) preserved');
 
       // Calculate PAX counts (fallback to booking-level fields if Final List tourists not loaded)
       let paxUzb = tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length
@@ -7523,23 +7345,18 @@ export default function BookingDetail() {
       // Fix: paxUzb = totalPax - paxTkm
       if (paxTkm > 0 && paxUzb + paxTkm > totalPax) {
         const corrected = Math.max(0, totalPax - paxTkm);
-        console.log(`⚠️ ER: paxUzb(${paxUzb})+paxTkm(${paxTkm})>${totalPax}. Auto-correcting paxUzb → ${corrected}`);
         paxUzb = corrected;
       }
 
-      console.log(`🔧 Auto-fixing routes: PAX Total=${totalPax}, UZB=${paxUzb}, TKM=${paxTkm}`);
 
       // 🎯 DETERMINE SPLIT SCENARIO
       let splitScenario = 'MIXED'; // Default: both UZB and TKM
       if (paxUzb > 0 && paxTkm === 0) {
         splitScenario = 'UZB_ONLY';
-        console.log('📍 Scenario: UZB ONLY - All go to Urgench → Tashkent (no Shovot)');
       } else if (paxUzb === 0 && paxTkm > 0) {
         splitScenario = 'TKM_ONLY';
-        console.log('📍 Scenario: TKM ONLY - All stay in Khiva → Shovot (no Urgench, no Tashkent)');
       } else if (paxUzb > 0 && paxTkm > 0) {
         splitScenario = 'MIXED';
-        console.log('📍 Scenario: MIXED - UZB to Urgench/Tashkent, TKM to Shovot');
       }
 
       // 🚀 FILTER/MODIFY ROUTES based on scenario BEFORE processing
@@ -7580,14 +7397,12 @@ export default function BookingDetail() {
 
           // Insert BEFORE first Samarkand City Tour
           routesToProcess.splice(samarkandIndex, 0, trainStationRoute);
-          console.log(`✅ ER: Auto-created Train Station Drop-off route (${totalPax} PAX)`);
         }
       }
 
       if (splitScenario === 'UZB_ONLY') {
         // Remove Shovot route (UZB tourists don't need it)
         routesToProcess = routesToProcess.filter(r => r.route !== 'Khiva - Shovot');
-        console.log(`❌ UZB_ONLY: Removed Shovot route`);
 
         // Ensure Airport Pickup and Drop-off exist (UZB group flies home from Tashkent)
         const hasAirportPickupUZB = routesToProcess.some(r => (r.route || '').toLowerCase().includes('airport pickup'));
@@ -7612,7 +7427,6 @@ export default function BookingDetail() {
               price: '0',
               sayohatDasturi: ''
             });
-            console.log(`✅ UZB_ONLY: Auto-created Airport Pickup (${totalPax} PAX)`);
           } else {
             const pickupIdxUZB = routesToProcess.findIndex(r => (r.route || '').toLowerCase().includes('airport pickup'));
             if (pickupIdxUZB !== -1) insertIdxUZB = pickupIdxUZB + 1;
@@ -7630,13 +7444,11 @@ export default function BookingDetail() {
               price: '0',
               sayohatDasturi: ''
             });
-            console.log(`✅ UZB_ONLY: Auto-created Airport Drop-off (${totalPax} PAX)`);
           }
         }
       } else if (splitScenario === 'TKM_ONLY') {
         // Remove Urgench route (TKM tourists don't go to Urgench)
         routesToProcess = routesToProcess.filter(r => r.route !== 'Khiva - Urgench');
-        console.log(`❌ TKM_ONLY: Removed Urgench route`);
 
         // Remove Tashkent flight routes (TKM tourists don't fly to Tashkent)
         routesToProcess = routesToProcess.filter(r => {
@@ -7644,7 +7456,6 @@ export default function BookingDetail() {
           const cityLower = (r.shahar || '').toLowerCase();
           const isTashkentFlight = (routeLower.includes('airport') && cityLower.includes('tashkent'));
           if (isTashkentFlight) {
-            console.log(`❌ TKM_ONLY: Removed Tashkent flight route: ${r.route}`);
           }
           return !isTashkentFlight;
         });
@@ -7687,7 +7498,6 @@ export default function BookingDetail() {
             };
             routesToProcess.splice(insertIndex++, 0, urgenchRoute);
             hasUrgenchRoute = true;
-            console.log(`✅ MIXED: Auto-created Khiva-Urgench route for UZB group (${paxUzb} PAX)`);
           } else {
             // Urgench exists, insertIndex should be after it
             const urgenchIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Urgench');
@@ -7710,7 +7520,6 @@ export default function BookingDetail() {
             };
             routesToProcess.splice(insertIndex++, 0, airportPickupRoute);
             hasAirportPickup = true;
-            console.log(`✅ MIXED: Auto-created Airport Pickup for UZB group (${paxUzb} PAX)`);
           } else {
             const pickupIndex = routesToProcess.findIndex(r => (r.route || '').toLowerCase().includes('airport pickup'));
             insertIndex = pickupIndex !== -1 ? pickupIndex + 1 : insertIndex;
@@ -7732,7 +7541,6 @@ export default function BookingDetail() {
             };
             routesToProcess.splice(insertIndex++, 0, airportDropoffRoute);
             hasAirportDropoff = true;
-            console.log(`✅ MIXED: Auto-created Airport Drop-off for UZB group (${paxUzb} PAX)`);
           } else {
             const dropoffIndex = routesToProcess.findIndex(r => (r.route || '').toLowerCase().includes('airport drop'));
             insertIndex = dropoffIndex !== -1 ? dropoffIndex + 1 : insertIndex;
@@ -7753,14 +7561,11 @@ export default function BookingDetail() {
             };
             routesToProcess.splice(insertIndex, 0, shovotRoute);
             hasShovotRoute = true;
-            console.log(`✅ MIXED: Auto-created Khiva-Shovot route for TKM group (${paxTkm} PAX) - LAST DAY`);
           }
         }
 
-        console.log(`✅ MIXED: Routes ready for split logic - UZB (${paxUzb} PAX) to Urgench/Tashkent, TKM (${paxTkm} PAX) to Shovot`);
       }
 
-      console.log(`📋 Routes after scenario filtering: ${routesToProcess.length} routes`);
 
       // Recalculate indices after filtering
       const urgenchIndex = routesToProcess.findIndex(r => r.route === 'Khiva - Urgench');
@@ -7781,7 +7586,6 @@ export default function BookingDetail() {
 
         // Skip routes with empty/blank route name (will be removed from DB)
         if (!route.route || !route.route.trim()) {
-          console.log(`⏭️ ER: Removing blank route (no name) on ${route.sana}`);
           continue;
         }
 
@@ -7789,7 +7593,6 @@ export default function BookingDetail() {
         const routeLowerCheck = route.route.toLowerCase().replace(/\s+/g, ' ').trim();
         const invalidPatterns = ['hotel-vokzal', 'mahalliy aeroport', 'hotel- xalqaro', 'hotel-xalqaro', 'airport transfer'];
         if (invalidPatterns.some(p => routeLowerCheck.includes(p))) {
-          console.log(`⏭️ ER: Removing non-standard route: ${route.route}`);
           continue;
         }
 
@@ -7800,7 +7603,6 @@ export default function BookingDetail() {
 
         // Check if this exact combination already exists
         if (seenRoutes.has(routeKey)) {
-          console.log(`⏭️ ER: Skipping EXACT DUPLICATE: ${routeName} on ${routeDate} with ${routeVehicle}`);
           continue;
         }
 
@@ -7809,12 +7611,10 @@ export default function BookingDetail() {
         consolidatedRoutes.push(route);
       }
 
-      console.log(`📋 ER: Consolidated routes: ${freshErRoutes.length} → ${consolidatedRoutes.length} (removed ${freshErRoutes.length - consolidatedRoutes.length} exact duplicates)`);
 
       // IMPORTANT: Recalculate indices AFTER consolidation
       const urgenchIndexConsolidated = consolidatedRoutes.findIndex(r => r.route === 'Khiva - Urgench');
       const hasShovotRouteConsolidated = consolidatedRoutes.some(r => r.route === 'Khiva - Shovot');
-      console.log(`🔍 ER: After consolidation - Urgench index=${urgenchIndexConsolidated}, Shovot exists=${hasShovotRouteConsolidated}`);
 
       // Fix each route (using fresh data with Sayohat dasturi preserved)
       // Track occurrence count per route name for template itinerary lookup
@@ -7828,18 +7628,14 @@ export default function BookingDetail() {
         if (urgenchIndexConsolidated !== -1 && hasShovotRouteConsolidated) {
           if (route.route === 'Khiva - Urgench') {
             routePax = paxUzb;
-            console.log(`  Route ${index + 1}: Khiva - Urgench → UZB PAX = ${paxUzb}`);
           } else if (route.route === 'Khiva - Shovot') {
             routePax = paxTkm;
-            console.log(`  Route ${index + 1}: Khiva - Shovot → TKM PAX = ${paxTkm}`);
           } else if (index > urgenchIndexConsolidated && route.shahar === 'Tashkent') {
             routePax = paxUzb;
-            console.log(`  Route ${index + 1}: ${route.route} (after split, Tashkent) → UZB PAX = ${paxUzb}`);
           }
         }
 
         if (routePax <= 0) {
-          console.log(`  Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
           return [route];
         }
 
@@ -7847,9 +7643,7 @@ export default function BookingDetail() {
         let provider = route.choiceTab || getProviderByCity(route.shahar, 'ER');
         if (provider === 'sevil') {
           provider = 'sevil-er';  // Upgrade to ER-specific Sevil
-          console.log(`  ⬆️ ER: Upgraded generic 'sevil' to 'sevil-er' for route: ${route.route}`);
         }
-        console.log(`  🔍 ER Route ${index + 1}: ${route.route} → Provider="${provider}", PAX=${routePax}`);
 
         // Special handling for Chimgan routes
         const isChimganRoute = route.route === 'Tashkent - Chimgan' ||
@@ -7860,7 +7654,6 @@ export default function BookingDetail() {
           // 9-16 pax → Sprinter; ≤8 pax → regular vehicle (Toyota Hiace etc.)
           const chimganVehicle = routePax >= 9 ? 'Sprinter' : (getBestVehicleForRoute('xayrulla', routePax) || 'Toyota Hiace');
           const chimganPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
-          console.log(`  Route ${index + 1}: ${route.route} → Chimgan (${chimganVehicle}, PAX=${routePax}, $${chimganPrice})`);
           return [{
             ...route,
             person: routePax.toString(),
@@ -7873,7 +7666,6 @@ export default function BookingDetail() {
 
         // Get best vehicle
         const vehicle = getBestVehicleForRoute(provider, routePax);
-        console.log(`  🚗 ER Route ${index + 1}: Best vehicle for ${routePax} PAX = "${vehicle}"`);
 
         // Get rate type based on route and provider
         let rate = '';
@@ -7898,8 +7690,6 @@ export default function BookingDetail() {
 
         // Get price
         const price = getPriceFromOpex(provider, vehicle, rate);
-        console.log(`  💰 ER Route ${index + 1}: getPriceFromOpex(provider="${provider}", vehicle="${vehicle}", rate="${rate}") = $${price || '?'}`);
-        console.log(`  ✅ ER Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
         // Use RouteTemplate itinerary if available (authoritative source), else keep existing
         // Track occurrence to differentiate e.g. 1st vs 2nd "Samarkand City Tour"
@@ -7933,13 +7723,11 @@ export default function BookingDetail() {
           // Set Airport Drop-off to End date (UZB group leaves)
           if (airportDropRoute) {
             airportDropRoute.sana = endFormatted;
-            console.log(`🔧 MIXED: Set Airport Drop-off date to ${endFormatted} (END DATE - UZB leaves)`);
           }
 
           // Set Shovot to End date (TKM group leaves)
           if (shovotRoute) {
             shovotRoute.sana = endFormatted;
-            console.log(`🔧 MIXED: Set Shovot date to ${endFormatted} (END DATE - TKM leaves)`);
           }
         } else {
           console.warn('⚠️ MIXED: No end date found, cannot set final routes');
@@ -7968,21 +7756,16 @@ export default function BookingDetail() {
       });
 
       // SINGLE PASS: Fill dates sequentially with same-day rules applied inline
-      console.log('===== AUTO DATE FILLING START =====');
 
       // IMPORTANT: Set first route date to ARRIVAL date
       if (sortedRoutes.length > 0) {
         // Try multiple sources for arrival date
         const arrivalDate = formData.arrivalDate || booking?.arrivalDate;
 
-        console.log('🔍 ER: Checking arrival date sources:');
-        console.log('  - formData.arrivalDate:', formData.arrivalDate);
-        console.log('  - booking.arrivalDate:', booking?.arrivalDate);
 
         if (arrivalDate) {
           const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
           sortedRoutes[0].sana = arrivalFormatted;
-          console.log(`0. ER: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
         } else {
           console.warn('⚠️ ER: No arrival date found, using existing date for first route');
         }
@@ -8005,13 +7788,11 @@ export default function BookingDetail() {
         if ((prevRouteName.includes('airport pickup') || (prevRouteName.includes('train station') && prevRouteName.includes('drop'))) &&
             (currentRouteName.includes('samarkand') || currentRouteName.includes('samarqand'))) {
           currentRoute.sana = prevRoute.sana; // Same day
-          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as train to Samarkand)`);
         }
         // RULE 2: Khiva-Urgench + Airport Pickup (SAME DAY)
         else if (prevRouteName.includes('khiva') && prevRouteName.includes('urgench') &&
                  (currentRouteName.includes('airport') || currentRouteName.includes('pickup'))) {
           currentRoute.sana = prevRoute.sana; // Same day
-          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Khiva-Urgench)`);
         }
         // RULE 3: Before Khiva-Urgench → +2 days (rest day)
         else if (currentRouteName.includes('khiva') && currentRouteName.includes('urgench')) {
@@ -8019,22 +7800,18 @@ export default function BookingDetail() {
           twoDaysLater.setDate(twoDaysLater.getDate() + 2);
           const twoDaysFormatted = format(twoDaysLater, 'yyyy-MM-dd');
           currentRoute.sana = twoDaysFormatted;
-          console.log(`${i}. ${currentRoute.route} → ${twoDaysFormatted} (rest day +2)`);
         }
         // RULE 4: Airport Drop-off + Khiva-Shovot (SAME DAY) - Final split day
         else if ((prevRouteName.includes('airport') && prevRouteName.includes('drop')) &&
                  (currentRouteName.includes('khiva') && currentRouteName.includes('shovot'))) {
           currentRoute.sana = prevRoute.sana; // Same day
-          console.log(`${i}. ${currentRoute.route} → ${prevRoute.sana} (same day as Airport Drop-off - final split)`);
         }
         // DEFAULT: Next day (+1)
         else {
           currentRoute.sana = nextDayFormatted;
-          console.log(`${i}. ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
         }
       }
 
-      console.log('===== AUTO DATE FILLING END =====');
 
       // Re-assign row numbers sequentially
       const numberedRoutes = sortedRoutes.map((route, index) => ({
@@ -8043,9 +7820,6 @@ export default function BookingDetail() {
         id: route.id || index + 1
       }));
 
-      console.log('✅ Routes sorted and re-numbered:', numberedRoutes.map((r, i) =>
-        `${i+1}. ${r.sana} ${r.route} → ${r.person} PAX, ${r.transportType || '?'}`
-      ));
 
       // DO NOT update state here - wait for database reload
       // setErRoutes(numberedRoutes); ← REMOVED to prevent duplicates
@@ -8077,21 +7851,16 @@ export default function BookingDetail() {
         };
       });
 
-      console.log(`💾 Saving ${routesToSave.length} routes to database:`);
       routesToSave.forEach((r, i) => {
-        console.log(`  ${i+1}. [Day ${r.dayNumber}] ${r.date} - ${r.routeName} → ${r.personCount} PAX, ${r.transportType || 'NULL'}, $${r.price}`);
       });
 
       await routesApi.bulkUpdate(id, routesToSave);
 
       // IMPORTANT: Reload routes from database to ensure state matches database
-      console.log('🔄 Reloading routes from database...');
       const reloadedRes = await bookingsApi.getRoutes(id);
       const reloadedRoutes = reloadedRes.data.routes || [];
 
-      console.log(`📥 Reloaded ${reloadedRoutes.length} routes from database:`);
       reloadedRoutes.forEach((r, i) => {
-        console.log(`  ${i+1}. [Day ${r.dayNumber}] ${r.date} - ${r.routeName} → ${r.personCount} PAX, ${r.transportType || 'NULL'}, $${r.price}`);
       });
 
       // Map reloaded routes to erRoutes format
@@ -8113,7 +7882,6 @@ export default function BookingDetail() {
       setErRoutes(mappedReloaded);
 
       toast.success('ER routes auto-fixed!', { id: 'auto-fix' });
-      console.log('✅ ER routes fixed, saved, and reloaded from database');
     } catch (error) {
       console.error('Error auto-fixing ER routes:', error);
       throw error; // Re-throw to be caught by main dispatcher
@@ -8122,16 +7890,7 @@ export default function BookingDetail() {
 
   // ==================== CO FIX FUNCTION ====================
   const autoFixRoutesCO = async () => {
-    console.log('🟢 Running CO fix logic...');
-    console.log('📊 CO: Loaded vehicles:', {
-      'sevil-co': sevilCoVehicles.length,
-      'sevil-kas': sevilKasVehicles.length,
-      'sevil-er': sevilErVehicles.length,
-      'xayrulla': xayrullaVehicles.length,
-      'nosir': nosirVehicles.length
-    });
     if (sevilCoVehicles.length > 0) {
-      console.log('  Sevil CO vehicles:', sevilCoVehicles.map(v => `${v.name} (${v.person})`));
     } else {
       console.warn('⚠️ WARNING: sevilCoVehicles is EMPTY! This will cause pricing issues.');
     }
@@ -8144,12 +7903,10 @@ export default function BookingDetail() {
       // If no routes in DB yet, use current in-memory state (from Load Template)
       let freshErRoutes;
       if (freshRoutes.length === 0) {
-        console.log('📋 CO: No routes in database, using current state (template)');
         freshErRoutes = [...erRoutes];
       } else {
         // Use booking.arrivalDate as the starting point for routes
         const routeStartDate = new Date(booking.arrivalDate);
-        console.log(`📅 CO: Route dates will start from Arrival date: ${routeStartDate.toISOString().split('T')[0]}`);
 
         // Recalculate route dates based on arrivalDate (accounting for dayNumber, not index)
         freshRoutes = freshRoutes.map((route, index) => {
@@ -8162,7 +7919,6 @@ export default function BookingDetail() {
           };
         });
 
-        console.log(`📅 CO: Recalculated ${freshRoutes.length} route dates starting from ${routeStartDate.toISOString().split('T')[0]}`);
 
         // Map database routes to erRoutes format (using recalculated dates!)
         freshErRoutes = freshRoutes.map((dbRoute, index) => {
@@ -8183,13 +7939,11 @@ export default function BookingDetail() {
           };
         });
 
-        console.log('📋 CO: Reloaded routes from database');
       }
 
       // Calculate PAX (CO groups have NO TKM split - all tourists go together)
       // Fallback to booking.pax if Final List tourists not yet added
       const totalPax = tourists.length || parseInt(booking.pax) || 0;
-      console.log(`🔧 CO Auto-fixing routes: PAX Total=${totalPax} (no UZB/TKM split)`);
 
       // Consolidate Fergana routes (CO groups ALWAYS have Fergana)
       const consolidatedRoutes = [];
@@ -8199,31 +7953,26 @@ export default function BookingDetail() {
         const isFergana = route.route === 'Fergana - Tashkent';
 
         if (!route.sana || route.sana === 'Invalid Date') {
-          console.log(`⏭️ Skipping route without valid date: ${route.route}`);
           continue;
         }
 
         if (isFergana) {
           if (!ferganaRouteFound) {
             ferganaRouteFound = true;
-            console.log(`✅ CO: Keeping first Fergana-Tashkent route: ${route.sana}`);
             consolidatedRoutes.push(route);
           } else {
-            console.log(`⏭️ CO: Skipping duplicate Fergana-Tashkent: ${route.sana}`);
           }
         } else {
           consolidatedRoutes.push(route);
         }
       }
 
-      console.log(`📋 CO: Consolidated ${freshErRoutes.length} → ${consolidatedRoutes.length} routes`);
 
       // Fix each route
       const fixedRoutes = consolidatedRoutes.flatMap((route, index) => {
         let routePax = totalPax; // CO: all tourists go together (no split)
 
         if (routePax <= 0) {
-          console.log(`  CO Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
           return [route];
         }
 
@@ -8231,12 +7980,10 @@ export default function BookingDetail() {
         let provider = route.choiceTab || getProviderByCity(route.shahar, 'CO');
         if (provider === 'sevil') {
           provider = 'sevil-co';  // Upgrade to CO-specific Sevil
-          console.log(`  ⬆️ CO: Upgraded generic 'sevil' to 'sevil-co' for route: ${route.route}`);
         }
 
         // DEBUG: Check provider and available vehicles
         const availableVehicles = getVehiclesByProvider(provider);
-        console.log(`  🔍 CO Route ${index + 1}: City="${route.shahar}", Provider="${provider}", Available vehicles:`, availableVehicles.length, availableVehicles.map(v => v.name));
 
         // Chimgan routes
         const isChimganRoute = route.route === 'Tashkent - Chimgan - Tashkent';
@@ -8244,7 +7991,6 @@ export default function BookingDetail() {
           // 9-16 pax → Sprinter; ≤8 pax → regular vehicle (Toyota Hiace etc.)
           const chimganVehicle = routePax >= 9 ? 'Sprinter' : (getBestVehicleForRoute('xayrulla', routePax) || 'Toyota Hiace');
           const chimganPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
-          console.log(`  CO Route ${index + 1}: ${route.route} → Chimgan (${chimganVehicle}, PAX=${routePax}, $${chimganPrice})`);
           return [{
             ...route,
             person: routePax.toString(),
@@ -8262,7 +8008,6 @@ export default function BookingDetail() {
           const rateType = 'toshkent';
           const ferganaPax = routePax + 1; // +1 for guide
 
-          console.log(`  CO Route ${index + 1}: ${route.route} → Fergana with guide: ${routePax} + 1 = ${ferganaPax}`);
 
           // CO: DYNAMIC split - calculate optimal Staria + PKW combination
           const stariaCapacity = 5;
@@ -8275,7 +8020,6 @@ export default function BookingDetail() {
           const extraStaria = remaining >= 3 ? 1 : 0;
           const pkwCount = remaining > 0 && remaining <= 2 ? 1 : 0;
 
-          console.log(`    → CO: ${ferganaPax} PAX → ${stariaCount + extraStaria}× Staria + ${pkwCount}× PKW (${remaining} remaining)`);
 
           const stariaPrice = getPriceFromOpex(provider, 'Staria', rateType);
           const pkwPrice = getPriceFromOpex(provider, 'PKW', rateType);
@@ -8329,14 +8073,11 @@ export default function BookingDetail() {
             });
           }
 
-          console.log(`    → CO: Split result: ${stariaCount + extraStaria}× Staria ($${stariaPrice} each) + ${pkwCount}× PKW ($${pkwPrice} each)`);
-          console.log(`    → CO: All split routes marked with splitGroup="${splitGroupId}"`);
           return splitRoutes;
         }
 
         // Get best vehicle for route
         const vehicle = getBestVehicleForRoute(provider, routePax);
-        console.log(`  🚗 CO Route ${index + 1}: Best vehicle for ${routePax} PAX = "${vehicle}"`);
 
         // Get rate type
         let rate = '';
@@ -8356,8 +8097,6 @@ export default function BookingDetail() {
         }
 
         const price = getPriceFromOpex(provider, vehicle, rate);
-        console.log(`  💰 CO Route ${index + 1}: getPriceFromOpex(provider="${provider}", vehicle="${vehicle}", rate="${rate}") = $${price || '?'}`);
-        console.log(`  ✅ CO Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
         return [{
           ...route,
@@ -8369,7 +8108,6 @@ export default function BookingDetail() {
         }];
       });
 
-      console.log(`✅ CO: Fixed ${fixedRoutes.length} routes (after Fergana split)`);
 
       // Re-assign row numbers
       const numberedRoutes = fixedRoutes.map((route, index) => ({
@@ -8397,14 +8135,12 @@ export default function BookingDetail() {
         else if (prevRouteLower.includes('train station') && prevRouteLower.includes('drop') &&
                  (currentRouteLower.includes('qoqon') || currentRouteLower.includes('fergana'))) {
           isSameDay = true;
-          console.log(`  📅 CO: ${r.route} → Same day as Train Station Drop-off (Qoqon/Fergana)`);
           // Same day as previous route (don't increment)
         }
         // RULE 3: Train Station Drop-off + Samarkand City Tour → same day
         else if (prevRouteLower.includes('train station') && prevRouteLower.includes('drop') &&
                  (currentRouteLower.includes('samarkand') || currentRouteLower.includes('samarqand'))) {
           isSameDay = true;
-          console.log(`  📅 CO: ${r.route} → Same day as Train Station Drop-off (Samarkand)`);
           // Same day as previous route (don't increment)
         }
         // RULE 4: Khiva-Urgench + Airport Pickup → same day
@@ -8412,7 +8148,6 @@ export default function BookingDetail() {
         else if (prevRouteLower.includes('khiva') && prevRouteLower.includes('urgench') &&
                  (currentRouteLower.includes('airport') || currentRouteLower.includes('pickup'))) {
           isSameDay = true;
-          console.log(`  📅 CO: ${r.route} → Same day as Khiva-Urgench`);
         }
         // DEFAULT: New day
         else {
@@ -8446,21 +8181,17 @@ export default function BookingDetail() {
       });
 
       // 🚀 RECALCULATE DATES based on new dayNumbers
-      console.log('📅 CO: Recalculating dates based on new dayNumbers...');
       const arrivalDate = new Date(booking.arrivalDate);
       routesToSave.forEach((route, index) => {
         const dayOffset = route.dayNumber - 1;
         const calculatedDate = new Date(arrivalDate);
         calculatedDate.setDate(calculatedDate.getDate() + dayOffset);
         route.date = format(calculatedDate, 'yyyy-MM-dd');
-        console.log(`  Route ${index + 1} (${route.routeName}): dayNumber=${route.dayNumber} → date=${route.date}`);
       });
 
-      console.log(`💾 CO: Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
 
       // Reload from database
-      console.log('🔄 CO: Reloading routes from database...');
       const reloadedRes = await bookingsApi.getRoutes(id);
       const reloadedRoutes = reloadedRes.data.routes || [];
 
@@ -8482,7 +8213,6 @@ export default function BookingDetail() {
       setErRoutes(mappedReloaded);
 
       toast.success('CO routes auto-fixed!', { id: 'auto-fix' });
-      console.log('✅ CO routes fixed, saved, and reloaded from database');
     } catch (error) {
       console.error('Error auto-fixing CO routes:', error);
       throw error; // Re-throw to be caught by main dispatcher
@@ -8491,7 +8221,6 @@ export default function BookingDetail() {
 
   // ==================== KAS FIX FUNCTION ====================
   const autoFixRoutesKAS = async () => {
-    console.log('🟡 Running KAS fix logic...');
 
     try {
       // Load fresh vehicle data directly from API (avoid stale closure issues)
@@ -8499,7 +8228,6 @@ export default function BookingDetail() {
       try {
         const vehicleRes = await transportApi.getAll();
         freshVehicleGroups = vehicleRes.data.grouped || {};
-        console.log('🚗 KAS: Loaded fresh vehicles from API:', Object.keys(freshVehicleGroups).map(k => `${k}:${freshVehicleGroups[k]?.length}`).join(', '));
       } catch (e) {
         console.warn('⚠️ KAS: Could not load fresh vehicles, using state fallback');
       }
@@ -8529,12 +8257,10 @@ export default function BookingDetail() {
         });
         const best = suitable[0];
         if (best) {
-          console.log(`    🚗 findBestVehicleKAS(${provider}, ${pax}): suitable=[${suitable.map(v=>v.name).join(',')}] → "${best.name}"`);
           return best.name;
         }
         // Fallback: largest vehicle by seats
         const largest = [...vehicles].sort((a, b) => parseInt(b.seats) - parseInt(a.seats))[0];
-        console.log(`    ⚠️ findBestVehicleKAS(${provider}, ${pax}): no suitable, fallback largest="${largest?.name}"`);
         return largest?.name || '';
       };
 
@@ -8561,19 +8287,16 @@ export default function BookingDetail() {
         };
       });
 
-      console.log(`📋 KAS: Reloaded ${freshErRoutes.length} routes from database`);
 
       // Calculate PAX (KAS groups: all tourists go together, no split)
       // Fallback to booking.pax if Final List is empty
       const totalPax = tourists.length > 0 ? tourists.length : (booking?.pax || parseInt(formData.pax) || 0);
-      console.log(`🔧 KAS Auto-fixing routes: PAX Total=${totalPax} (tourists=${tourists.length}, booking.pax=${booking?.pax})`);
 
       // Fix each route
       const fixedRoutes = freshErRoutes.map((route, index) => {
         let routePax = totalPax; // KAS: all tourists go together
 
         if (routePax <= 0) {
-          console.log(`  KAS Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
           return route;
         }
 
@@ -8581,7 +8304,6 @@ export default function BookingDetail() {
         let provider = route.choiceTab || getProviderByCity(route.shahar);
         if (provider === 'sevil') {
           provider = 'sevil-kas';  // Upgrade to KAS-specific Sevil
-          console.log(`  ⬆️ Upgraded generic 'sevil' to 'sevil-kas' for route: ${route.route}`);
         }
 
         // Get best vehicle for route (using fresh API data)
@@ -8612,7 +8334,6 @@ export default function BookingDetail() {
         }
 
         const price = getPriceFromOpex(provider, vehicle, rate);
-        console.log(`  KAS Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
         return {
           ...route,
@@ -8624,9 +8345,7 @@ export default function BookingDetail() {
         };
       });
 
-      console.log(`📊 KAS: Fixed ${fixedRoutes.length} routes`);
       fixedRoutes.forEach((r, i) => {
-        console.log(`  Fixed ${i+1}: ${r.route} → ${r.person} PAX, ${r.transportType}, ${r.choiceTab}, $${r.price}`);
       });
 
       // Sort routes by date
@@ -8637,20 +8356,15 @@ export default function BookingDetail() {
       });
 
       // KAS DATE FILLING RULES
-      console.log('===== KAS AUTO DATE FILLING START =====');
 
       // Set first route date to ARRIVAL date
       if (sortedRoutes.length > 0) {
         const arrivalDate = formData.arrivalDate || booking?.arrivalDate;
 
-        console.log('🔍 KAS: Checking arrival date sources:');
-        console.log('  - formData.arrivalDate:', formData.arrivalDate);
-        console.log('  - booking.arrivalDate:', booking?.arrivalDate);
 
         if (arrivalDate) {
           const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
           sortedRoutes[0].sana = arrivalFormatted;
-          console.log(`0. KAS: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
         } else {
           console.warn('⚠️ KAS: No arrival date found, using existing date for first route');
         }
@@ -8673,22 +8387,18 @@ export default function BookingDetail() {
         if (prevRouteName.includes('samarkand') && prevRouteName.includes('city') &&
             currentRouteName.includes('train station')) {
           currentRoute.sana = prevRoute.sana;
-          console.log(`${i}. KAS: ${currentRoute.route} → ${prevRoute.sana} (same day as Samarkand City Tour)`);
         }
         // RULE 2: Train Station + next route (SAME DAY if it's pickup/hotel)
         else if (prevRouteName.includes('train station') &&
                  (currentRouteName.includes('pickup') || currentRouteName.includes('hotel'))) {
           currentRoute.sana = prevRoute.sana;
-          console.log(`${i}. KAS: ${currentRoute.route} → ${prevRoute.sana} (same day as Train Station)`);
         }
         // DEFAULT: Next day (+1)
         else {
           currentRoute.sana = nextDayFormatted;
-          console.log(`${i}. KAS: ${currentRoute.route} → ${nextDayFormatted} (sequential +1)`);
         }
       }
 
-      console.log('===== KAS AUTO DATE FILLING END =====');
 
       // Re-assign row numbers
       const numberedRoutes = sortedRoutes.map((route, index) => ({
@@ -8711,11 +8421,9 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
-      console.log(`💾 KAS: Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
 
       // Reload from database
-      console.log('🔄 KAS: Reloading routes from database...');
       const reloadedRes = await bookingsApi.getRoutes(id);
       const reloadedRoutes = reloadedRes.data.routes || [];
 
@@ -8737,7 +8445,6 @@ export default function BookingDetail() {
       setErRoutes(mappedReloaded);
 
       toast.success('KAS routes auto-fixed!', { id: 'auto-fix' });
-      console.log('✅ KAS routes fixed, saved, and reloaded from database');
     } catch (error) {
       console.error('Error auto-fixing KAS routes:', error);
       throw error; // Re-throw to be caught by main dispatcher
@@ -8746,7 +8453,6 @@ export default function BookingDetail() {
 
   // ==================== ZA FIX FUNCTION ====================
   const autoFixRoutesZA = async () => {
-    console.log('🟣 Running ZA fix logic...');
 
     try {
       // Load fresh vehicle data directly from API (avoid stale closure issues)
@@ -8754,7 +8460,6 @@ export default function BookingDetail() {
       try {
         const vehicleRes = await transportApi.getAll();
         freshVehicleGroups = vehicleRes.data.grouped || {};
-        console.log('🚗 ZA: Loaded fresh vehicles from API:', Object.keys(freshVehicleGroups).map(k => `${k}:${freshVehicleGroups[k]?.length}`).join(', '));
       } catch (e) {
         console.warn('⚠️ ZA: Could not load fresh vehicles, using state fallback');
       }
@@ -8784,12 +8489,10 @@ export default function BookingDetail() {
         });
         const best = suitable[0];
         if (best) {
-          console.log(`    🚗 findBestVehicleZA(${provider}, ${pax}): suitable=[${suitable.map(v=>v.name).join(',')}] → "${best.name}"`);
           return best.name;
         }
         // Fallback: largest vehicle by seats
         const largest = [...vehicles].sort((a, b) => parseInt(b.seats) - parseInt(a.seats))[0];
-        console.log(`    ⚠️ findBestVehicleZA(${provider}, ${pax}): no suitable, fallback largest="${largest?.name}"`);
         return largest?.name || '';
       };
 
@@ -8801,7 +8504,6 @@ export default function BookingDetail() {
 
       if (freshRoutes.length === 0) {
         // Database has no routes yet - use current state (from Load Template)
-        console.log('📋 ZA: No routes in database, using current state');
         freshErRoutes = [...erRoutes];
       } else {
         // Map database routes
@@ -8824,19 +8526,16 @@ export default function BookingDetail() {
         });
       }
 
-      console.log(`📋 ZA: Working with ${freshErRoutes.length} routes`);
 
       // Calculate PAX (ZA groups: all tourists go together, no split)
       // Fallback to booking.pax if Final List is empty
       const totalPax = tourists.length > 0 ? tourists.length : (booking?.pax || parseInt(formData.pax) || 0);
-      console.log(`🔧 ZA Auto-fixing routes: PAX Total=${totalPax} (tourists=${tourists.length}, booking.pax=${booking?.pax})`);
 
       // Fix each route
       const fixedRoutes = freshErRoutes.map((route, index) => {
         let routePax = totalPax;
 
         if (routePax <= 0) {
-          console.log(`  ZA Route ${index + 1}: ${route.route} → Skipped (PAX = 0)`);
           return route;
         }
 
@@ -8877,7 +8576,6 @@ export default function BookingDetail() {
         const vehicle = findBestVehicleZA(provider, routePax);
         const price = getPriceFromOpex(provider, vehicle, rate);
 
-        console.log(`  ZA Route ${index + 1}: ${route.route} → PAX=${routePax}, ${provider}, ${vehicle}, ${rate}, $${price || '?'}`);
 
         return {
           ...route,
@@ -8889,7 +8587,6 @@ export default function BookingDetail() {
         };
       });
 
-      console.log(`📊 ZA: Fixed ${fixedRoutes.length} routes`);
 
       // Sort routes by date
       const sortedRoutes = fixedRoutes.sort((a, b) => {
@@ -8904,7 +8601,6 @@ export default function BookingDetail() {
         if (arrivalDate) {
           const arrivalFormatted = format(new Date(arrivalDate), 'yyyy-MM-dd');
           sortedRoutes[0].sana = arrivalFormatted;
-          console.log(`  ZA: First route (${sortedRoutes[0].route}) → ${arrivalFormatted} (ARRIVAL DATE)`);
         }
       }
 
@@ -8923,7 +8619,6 @@ export default function BookingDetail() {
         if ((prevRouteLower.includes('jartepa') || prevRouteLower.includes('jarteppa')) &&
             (currentRouteLower.includes('oybek') || currentRouteLower.includes('tashkent') || currentRouteLower.includes('toshkent'))) {
           daysToAdd = 4; // 4 days in Tajikistan (05.09 → 09.09)
-          console.log(`  🇹🇯 ZA: Tajikistan gap detected (${prevRoute.route} → ${currentRoute.route})`);
         }
 
         const prevDate = new Date(prevRoute.sana);
@@ -8932,7 +8627,6 @@ export default function BookingDetail() {
         const nextDayFormatted = format(nextDay, 'yyyy-MM-dd');
 
         currentRoute.sana = nextDayFormatted;
-        console.log(`  ZA: ${currentRoute.route} → ${nextDayFormatted} (${daysToAdd === 1 ? 'sequential +1' : `+${daysToAdd} days`})`);
       }
 
       // Re-assign row numbers
@@ -8956,11 +8650,9 @@ export default function BookingDetail() {
         price: parseFloat(r.price) || 0
       }));
 
-      console.log(`💾 ZA: Saving ${routesToSave.length} routes to database`);
       await routesApi.bulkUpdate(id, routesToSave);
 
       // Reload from database
-      console.log('🔄 ZA: Reloading routes from database...');
       const reloadedRes = await bookingsApi.getRoutes(id);
       const reloadedRoutes = reloadedRes.data.routes || [];
 
@@ -8982,7 +8674,6 @@ export default function BookingDetail() {
       setErRoutes(mappedReloaded);
 
       toast.success('ZA routes auto-fixed!', { id: 'auto-fix' });
-      console.log('✅ ZA routes fixed, saved, and reloaded from database');
     } catch (error) {
       console.error('Error auto-fixing ZA routes:', error);
       throw error; // Re-throw to be caught by main dispatcher
@@ -8992,7 +8683,6 @@ export default function BookingDetail() {
   // Export PDF ЗАЯВКА for specific accommodation
   const handleAccommodationPdfExport = async (accommodation) => {
     try {
-      console.log('🚀 Starting PDF export for accommodation:', accommodation.hotel?.name);
       toast.loading('Generating PDF...', { id: 'pdf-gen' });
 
       // Load logo
@@ -9005,7 +8695,6 @@ export default function BookingDetail() {
           reader.onloadend = () => resolve(reader.result);
           reader.readAsDataURL(blob);
         });
-        console.log('✅ Logo loaded');
       } catch (error) {
         console.warn('⚠️ Could not load logo:', error);
       }
@@ -9112,11 +8801,9 @@ export default function BookingDetail() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      console.log('🔄 Generating PDF...');
       await html2pdf().set(opt).from(tempDiv).save();
 
       document.body.removeChild(tempDiv);
-      console.log('✅ PDF downloaded');
       toast.success('PDF downloaded successfully!', { id: 'pdf-gen' });
     } catch (error) {
       console.error('❌ PDF Export error:', error);
@@ -9839,7 +9526,6 @@ export default function BookingDetail() {
                       onChange={(e) => {
                         const newType = e.target.value;
                         const newPax = calculateFlightPax(newType, flightForm.route);
-                        console.log(`🔄 Flight type changed to ${newType}, PAX updated to ${newPax}`);
                         setFlightForm({ ...flightForm, type: newType, pax: newPax });
                       }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
@@ -9873,11 +9559,9 @@ export default function BookingDetail() {
                               if (isTashkentToIstanbul) {
                                 // Tashkent → Istanbul (return): tour end date
                                 autoDate = booking.endDate ? format(new Date(booking.endDate), 'yyyy-MM-dd') : '';
-                                console.log('📅 TAS→IST return flight: using tour end date', autoDate);
                               } else {
                                 // Istanbul → Tashkent (arrival): arrival date (group arrives +1 day)
                                 autoDate = booking.departureDate ? format(addDays(new Date(booking.departureDate), 1), 'yyyy-MM-dd') : '';
-                                console.log('📅 IST→TAS arrival flight: using arrival date (+1 day)', autoDate);
                               }
                             } else if (flightForm.type === 'DOMESTIC') {
                               // Domestic: 1 day before group departure
@@ -9885,7 +9569,6 @@ export default function BookingDetail() {
                                 const endDate = new Date(booking.endDate);
                                 const oneDayBefore = addDays(endDate, -1);
                                 autoDate = format(oneDayBefore, 'yyyy-MM-dd');
-                                console.log('📅 DOMESTIC flight: using 1 day before end date', autoDate);
                               }
                             }
                           }
@@ -12152,18 +11835,15 @@ export default function BookingDetail() {
               const arrival = new Date(arrivalDate);
               const name = attractionName.toLowerCase().trim().replace(/\s+/g, ' '); // Normalize spaces
 
-              console.log('🔍 Checking attraction:', attractionName, '→ normalized:', name);
 
               // Day 1 (13.10): Tashkent - Hast Imam, Kukeldash
               if (name.includes('hast') || name.includes('imam') ||
                   name.includes('kukeldash') || name.includes('kukeldas') || name.includes('madrasah')) {
-                console.log('✅ Day 1 (13.10) - Tashkent');
                 return format(arrival, 'yyyy-MM-dd');
               }
 
               // Day 3 (15.10): Samarkand - Registan, Bibi-Khanum
               if (name.includes('registan') || name.includes('bibi') || name.includes('khanum') || name.includes('khanym')) {
-                console.log('✅ Day 3 (15.10) - Samarkand');
                 return format(addDays(arrival, 2), 'yyyy-MM-dd');
               }
 
@@ -12171,20 +11851,17 @@ export default function BookingDetail() {
               if (name.includes('amir') || name.includes('temur') ||
                   name.includes('ulugbek') || name.includes('ulug bek') ||
                   name.includes('daniel') || name.includes('shah') || name.includes('zinda')) {
-                console.log('✅ Day 4 (16.10) - Samarkand');
                 return format(addDays(arrival, 3), 'yyyy-MM-dd');
               }
 
               // Day 5 (17.10): Samarkand - Konigil Paper Workshop
               if (name.includes('konigil') || name.includes('paper') || name.includes('workshop')) {
-                console.log('✅ Day 5 (17.10) - Samarkand');
                 return format(addDays(arrival, 4), 'yyyy-MM-dd');
               }
 
               // Day 7 (19.10): Nurata - Nurota Chashma
               if (name.includes('nurata') || name.includes('nurota') ||
                   (name.includes('chashma') && !name.includes('ayub'))) {
-                console.log('✅ Day 7 (19.10) - Nurata');
                 return format(addDays(arrival, 6), 'yyyy-MM-dd');
               }
 
@@ -12194,20 +11871,17 @@ export default function BookingDetail() {
                   name.includes('ark') ||
                   name.includes('kalon') || name.includes('kalyan') ||
                   name.includes('magoki') || name.includes('attori') || name.includes('attor')) {
-                console.log('✅ Day 8 (20.10) - Bukhara');
                 return format(addDays(arrival, 7), 'yyyy-MM-dd');
               }
 
               // Day 9 (21.10): Bukhara - Mohi Khosa
               if (name.includes('mohi') || name.includes('khosa') || name.includes('xosa')) {
-                console.log('✅ Day 9 (21.10) - Bukhara');
                 return format(addDays(arrival, 8), 'yyyy-MM-dd');
               }
 
               // Day 11 (23.10): Khiva - Itchan Kala, Pahlavon Mahmud
               if (name.includes('itchan') || name.includes('ichan') || name.includes('kala') ||
                   name.includes('pahlavon') || name.includes('pahlavan') || name.includes('mahmud') || name.includes('mahmood')) {
-                console.log('✅ Day 11 (23.10) - Khiva');
                 return format(addDays(arrival, 10), 'yyyy-MM-dd');
               }
 
@@ -12322,7 +11996,6 @@ export default function BookingDetail() {
               arrivalDate = booking.departureDate;
             }
 
-            console.log('🔍 Final Eintritt Arrival Date:', arrivalDate);
 
             // Create a map of saved entries by name for quick lookup
             const savedEntriesMap = new Map(services.map(s => [s.name.toLowerCase().trim(), s]));
@@ -16437,17 +16110,13 @@ ${rowsHtml}
                               // Room numbers are optional - manually added tourists won't have them
 
                               // Debug log
-                              console.log(`\n🏨 [${acc.hotel?.name} ID:${acc.id}]`);
-                              console.log(`   Rooming list tourists: ${accTourists?.length || 0}`);
                               if (accTourists?.length > 0) {
                                 accTourists.forEach(t => {
-                                  console.log(`     - ${t.lastName || t.fullName}: ${t.roomPreference}, ${t.accommodation}`);
                                 });
                               }
 
                               // Fallback: filter tourists by hotel name and date overlap if rooming list not loaded
                               if (!accTourists || accTourists.length === 0) {
-                                console.log(`  → Using fallback filtering`);
                                 accTourists = tourists.filter(t => {
                                   if (!t.hotelName || !acc.hotel?.name) return false;
 
@@ -16494,15 +16163,12 @@ ${rowsHtml}
 
                               if (shouldRecalculate) {
                                 if (isERTour && isKhivaHotel) {
-                                  console.log(`   🔥 ER + Khiva: Force recalculate for ${acc.hotel?.name} (UZ tourists have different nights)`);
                                 } else {
-                                  console.log(`   ⚠️ Rooming list (${accTourists.length} tourists) doesn't match database (${acc.totalGuests} guests) - recalculating...`);
                                 }
                               }
 
                               // Use saved database values ONLY if they match rooming list
                               if (acc.totalCost && acc.totalCost > 0 && !shouldRecalculate) {
-                                console.log(`   ✓ Using saved totalCost from database: ${acc.totalCost}`);
                                 totalCost = parseFloat(acc.totalCost) || 0;
                                 totalRooms = acc.totalRooms || 0;
                                 totalGuests = acc.totalGuests || 0;
@@ -16569,7 +16235,6 @@ ${rowsHtml}
 
                                 totalGuests = accTourists.length;
 
-                                console.log(`   Guest-nights per room type:`, guestNightsPerRoomType);
 
                                 // First, calculate room count from guest count (not guest-nights!)
                                 const guestCountPerRoomType = {};
@@ -16591,7 +16256,6 @@ ${rowsHtml}
                                   guestCountPerRoomType[roomType] += 1; // Count guests, not nights
                                 });
 
-                                console.log(`   Guest count per room type:`, guestCountPerRoomType);
 
                                 // Calculate cost ONLY from rooming list data (ignore saved rooms data)
                                 acc.rooms.forEach(room => {
@@ -16656,19 +16320,16 @@ ${rowsHtml}
                                 });
 
                                 usedRoomingList = true;
-                                console.log(`   ✓ Used rooming list - Total: ${totalCost.toLocaleString()} (${totalGuests} guests, ${totalRooms} rooms)`);
                               }
 
                               // Fallback: calculate from rooms data ONLY if no rooming list available
                               if (!usedRoomingList) {
-                                console.log(`   → Using fallback: saved database values`);
                                 totalRooms = acc.totalRooms || 0;
                                 totalGuests = acc.totalGuests || 0;
                                 totalCost = parseFloat(acc.totalCost) || 0;
 
                                 // CRITICAL: Populate calculationBreakdown even when using saved values
                                 // This ensures "Hisob-kitob tafsilotlari" section always appears
-                                console.log(`   🔍 Fallback breakdown for ${acc.hotel?.name}: accTourists.length = ${accTourists?.length || 0}`);
                                 if (accTourists && accTourists.length > 0 && acc.checkInDate && acc.checkOutDate) {
                                   const accCheckIn = new Date(acc.checkInDate);
                                   accCheckIn.setHours(0, 0, 0, 0);
@@ -16685,18 +16346,15 @@ ${rowsHtml}
                                     if (tourist.checkInDate && tourist.checkOutDate) {
                                       checkIn = new Date(tourist.checkInDate);
                                       checkOut = new Date(tourist.checkOutDate);
-                                      console.log(`      → ${tourist.fullName || tourist.lastName}: ${tourist.checkInDate} → ${tourist.checkOutDate}`);
                                     } else {
                                       checkIn = new Date(accCheckIn);
                                       checkOut = new Date(accCheckOut);
-                                      console.log(`      → ${tourist.fullName || tourist.lastName}: using acc dates (no individual dates)`);
                                     }
 
                                     checkIn.setHours(0, 0, 0, 0);
                                     checkOut.setHours(0, 0, 0, 0);
 
                                     const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
-                                    console.log(`         Nights: ${nights}`);
 
                                     let roomType = (tourist.roomPreference || '').toUpperCase();
                                     if (isPAX) {
@@ -16760,7 +16418,6 @@ ${rowsHtml}
                                     }
                                   });
 
-                                  console.log(`   ✓ Populated breakdown from saved data: ${calculationBreakdown.length} room types`);
                                 }
 
                                 // If still 0, calculate from rooms
@@ -16798,55 +16455,26 @@ ${rowsHtml}
                               const displayCost = currency === 'UZS' ? totalCost.toLocaleString('ru-RU') : totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                               // Debug log - VERY DETAILED breakdown
-                              console.groupCollapsed(`💰 ${acc.hotel?.name} - TOTAL: ${displayCost} ${currencySymbol}`);
-                              console.log('Hotel dates:', {
-                                checkIn: acc.checkInDate,
-                                checkOut: acc.checkOutDate,
-                                nights: acc.nights
-                              });
-                              console.log('Summary:', {
-                                totalCost,
-                                currency,
-                                totalRooms,
-                                totalGuests,
-                                usedRoomingList: usedRoomingList ? 'YES ✓' : 'NO ✗',
-                                touristsFiltered: accTourists.length
-                              });
 
                               // Detailed tourist breakdown
                               if (accTourists.length > 0) {
-                                console.log(`\n📋 Individual tourists (${accTourists.length}):`);
                                 accTourists.forEach((t, idx) => {
                                   const tCheckIn = t.checkInDate ? new Date(t.checkInDate) : new Date(acc.checkInDate);
                                   const tCheckOut = t.checkOutDate ? new Date(t.checkOutDate) : new Date(acc.checkOutDate);
                                   tCheckIn.setHours(0, 0, 0, 0);
                                   tCheckOut.setHours(0, 0, 0, 0);
                                   const nights = Math.max(0, Math.round((tCheckOut - tCheckIn) / (1000 * 60 * 60 * 24)));
-                                  console.log(`  ${idx + 1}. ${t.lastName || 'Unknown'} (${t.roomPreference || '?'}):`);
-                                  console.log(`     Check-in:  ${tCheckIn.toLocaleDateString('ru-RU')}`);
-                                  console.log(`     Check-out: ${tCheckOut.toLocaleDateString('ru-RU')}`);
-                                  console.log(`     Nights: ${nights} | Placement: ${t.accommodation || 'N/A'}`);
-                                  console.log('     ---');
                                 });
                               }
 
                               // Room type calculation breakdown
                               if (calculationBreakdown.length > 0) {
-                                console.log(`\n💵 Cost calculation by room type:`);
                                 calculationBreakdown.forEach(item => {
-                                  console.log(`  ${item.roomType}:`);
-                                  console.log(`    Guest-nights: ${item.guestNights} (${item.details.length} guests)`);
-                                  console.log(`    Room-nights: ${item.roomNights.toFixed(2)}`);
-                                  console.log(`    Price/night: ${currency === 'UZS' ? item.pricePerNight.toLocaleString() : item.pricePerNight} ${currencySymbol}`);
-                                  console.log(`    Subtotal: ${currency === 'UZS' ? item.totalCost.toLocaleString() : item.totalCost.toFixed(2)} ${currencySymbol}`);
-                                  console.log('    ---');
                                 });
-                                console.log(`  🟢 TOTAL: ${displayCost} ${currencySymbol}`);
                               } else {
                                 console.warn('  ⚠️ No calculation breakdown available (using fallback)');
                               }
 
-                              console.groupEnd();
 
                               // Only show if we have any data at all
                               if (totalRooms === 0 && totalGuests === 0 && totalCost === 0) {
@@ -17219,12 +16847,9 @@ ${rowsHtml}
                             const isUzbekistan = placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz';
                             return isUzbekistan;
                           });
-                          console.log(`⚠️ Second visit to ${acc.hotel?.name} - filtered UZ tourists: ${accTourists.length}`);
                         }
 
                         // Always show the section, even if empty (for debugging)
-                        console.log('🏨 Hotel:', acc.hotel?.name, '- Tourists:', accTourists.length, '/', tourists.length);
-                        console.log('   All tourists:', tourists.map(t => ({ name: t.fullName, hotel: t.hotelName, checkIn: t.checkInDate })));
 
                         const isExpanded = expandedHotels[acc.id];
 
