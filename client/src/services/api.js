@@ -435,4 +435,8 @@ export const jahresplanungApi = {
   deleteTransportConfirmation: (key) => api.delete(`/jahresplanung/transport-confirmations/${key}`),
 };
 
+export const searchApi = {
+  search: (q) => api.get('/search', { params: { q } })
+};
+
 export default api;

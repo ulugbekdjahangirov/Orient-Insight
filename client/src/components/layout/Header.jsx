@@ -1,14 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/AuthContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
-import { Menu, Bell, User, LogOut, Settings } from 'lucide-react';
+import { Menu, Bell, User, LogOut, Settings, Search } from 'lucide-react';
+import GlobalSearch from '../common/GlobalSearch';
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -16,6 +29,8 @@ export default function Header({ onMenuClick }) {
   };
 
   return (
+    <>
+    <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     <header className="h-14 md:h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 md:px-6 sticky top-0 z-30">
       {/* Hamburger menu - Mobile only */}
       <button
@@ -26,11 +41,25 @@ export default function Header({ onMenuClick }) {
         <Menu className="w-6 h-6 text-gray-600" />
       </button>
 
-      {/* Empty space on desktop to maintain layout */}
-      <div className="hidden md:block"></div>
+      {/* Search bar - Desktop */}
+      <button
+        onClick={() => setSearchOpen(true)}
+        className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors w-56"
+      >
+        <Search className="w-4 h-4" />
+        <span className="flex-1 text-left">Qidirish...</span>
+        <kbd className="text-xs bg-white px-1.5 py-0.5 rounded border border-gray-200 text-gray-400 font-mono">Ctrl K</kbd>
+      </button>
 
       {/* Right side */}
       <div className="flex items-center gap-2 md:gap-4">
+        {/* Search button - Mobile only */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="md:hidden p-3 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <Search className="w-6 h-6 text-gray-600" />
+        </button>
         {/* Notifications */}
         <button className="p-3 md:p-2 rounded-lg hover:bg-gray-100 transition-colors relative">
           <Bell className={isMobile ? 'w-6 h-6 text-gray-600' : 'w-5 h-5 text-gray-600'} />
@@ -89,5 +118,6 @@ export default function Header({ onMenuClick }) {
         </div>
       </div>
     </header>
+    </>
   );
 }
