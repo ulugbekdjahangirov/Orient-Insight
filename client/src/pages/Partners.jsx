@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { telegramApi, api, jahresplanungApi } from '../services/api';
 import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck, Send, Copy, X, CalendarRange } from 'lucide-react';
+import TransportPlanTab from '../components/common/TransportPlanTab';
 
 const TABS = [
   { id: 'hotels', label: 'Hotels', icon: Building2 },
@@ -1610,93 +1611,20 @@ export default function Partners() {
             );
           })()}
           {activeTab === 'transport' && (() => {
-            const trCounts = {};
-            transportConfirmations.forEach(c => {
-              const type = (c.booking?.bookingNumber || '').split('-')[0] || '?';
-              trCounts[type] = (trCounts[type] || 0) + 1;
-            });
-            const tq = transportSearchQuery.trim().toLowerCase();
-            const trFiltered = transportConfirmations.filter(c => {
-              if (!(c.booking?.bookingNumber || '').startsWith(transportSubTab + '-')) return false;
-              if (transportStatusFilter !== 'ALL' && c.status !== transportStatusFilter) return false;
-              if (tq) {
-                const bookingNum = (c.booking?.bookingNumber || '').toLowerCase();
-                const provider = (c.provider || '').toLowerCase();
-                if (!bookingNum.includes(tq) && !provider.includes(tq)) return false;
-              }
-              return true;
-            });
             return (
               <>
                 {/* Sub-tabs */}
                 <div className="flex gap-1 mb-4">
                   {HOTEL_SUB_TABS.map(sub => (
-                    <button
-                      key={sub}
-                      onClick={() => setTransportSubTab(sub)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        transportSubTab === sub
-                          ? 'bg-gray-800 text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
+                    <button key={sub} onClick={() => setTransportSubTab(sub)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        transportSubTab === sub ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}>
                       {sub}
-                      {trCounts[sub] ? (
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                          transportSubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {trCounts[sub]}
-                        </span>
-                      ) : null}
                     </button>
                   ))}
                 </div>
-
-                {/* Search + Status filter */}
-                <div className="flex flex-wrap gap-3 mb-4">
-                  <div className="relative flex-1 min-w-48">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={transportSearchQuery}
-                      onChange={e => setTransportSearchQuery(e.target.value)}
-                      placeholder="Booking raqami yoki provayder nomi..."
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                    {transportSearchQuery && (
-                      <button
-                        onClick={() => setTransportSearchQuery('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex gap-1 flex-wrap">
-                    {STATUS_FILTERS.map(sf => (
-                      <button
-                        key={sf.id}
-                        onClick={() => setTransportStatusFilter(sf.id)}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                          transportStatusFilter === sf.id
-                            ? 'bg-primary-600 text-white'
-                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {sf.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {(tq || transportStatusFilter !== 'ALL') && (
-                  <p className="text-xs text-gray-400 mb-3">{trFiltered.length} ta natija topildi</p>
-                )}
-
-                <TransportTab
-                  confirmations={trFiltered}
-                  onDelete={(id) => setTransportConfirmations(prev => prev.filter(c => c.id !== id))}
-                />
+                <TransportPlanTab tourType={transportSubTab} />
               </>
             );
           })()}
