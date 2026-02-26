@@ -15,10 +15,15 @@ const PROVIDER_ORDER = {
 };
 const BIS_EXTRA = { CO: { sevil: 2 }, ER: { sevil: 3 }, KAS: { sevil: 0 }, ZA: { sevil: 0 } };
 
-function fmt(d) {
-  if (!d) return '—';
+function fmtDate(d) {
+  if (!d) return null;
   const dt = new Date(d);
   return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+}
+function fmtDateTime(d) {
+  if (!d) return null;
+  const dt = new Date(d);
+  return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
 }
 function addDays(iso, n) {
   const [y,m,d] = iso.slice(0,10).split('-').map(Number);
@@ -26,21 +31,44 @@ function addDays(iso, n) {
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 }
 
+function ConfCell({ label, value, small }) {
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-xs text-gray-400 font-medium leading-none">{label}</span>
+      <span className={`${small ? 'text-xs' : 'text-sm'} text-gray-700 truncate leading-tight`} title={value || ''}>
+        {value || <span className="text-gray-300">—</span>}
+      </span>
+    </div>
+  );
+}
+
 export default function TransportPlanTab({ tourType }) {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [routeMap, setRouteMap] = useState({});
+  const [confirmations, setConfirmations] = useState([]);
   const [open, setOpen] = useState({ sevil: true, xayrulla: true, nosir: true });
 
   useEffect(() => {
     setLoading(true);
-    jahresplanungApi.getTransport(YEAR, tourType)
-      .then(res => { setBookings(res.data.bookings || []); setRouteMap(res.data.routeMap || {}); })
+    Promise.all([
+      jahresplanungApi.getTransport(YEAR, tourType),
+      jahresplanungApi.getTransportConfirmations(),
+    ])
+      .then(([transportRes, confRes]) => {
+        setBookings(transportRes.data.bookings || []);
+        setRouteMap(transportRes.data.routeMap || {});
+        setConfirmations(confRes.data.confirmations || []);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [tourType]);
 
-  if (loading) return <div className="flex justify-center py-20 text-gray-400"><Loader2 className="w-6 h-6 animate-spin mr-2"/><span className="text-sm">Yuklanmoqda...</span></div>;
+  if (loading) return (
+    <div className="flex justify-center py-20 text-gray-400">
+      <Loader2 className="w-6 h-6 animate-spin mr-2"/><span className="text-sm">Yuklanmoqda...</span>
+    </div>
+  );
 
   const order = (PROVIDER_ORDER[tourType] || ['sevil','xayrulla']).map(id => PROVIDERS.find(p => p.id === id)).filter(Boolean);
 
@@ -50,6 +78,9 @@ export default function TransportPlanTab({ tourType }) {
         const ids = Object.keys(routeMap[prov.id] || {});
         const items = bookings.filter(b => ids.includes(String(b.id)));
         const isOpen = !!open[prov.id];
+
+        // Confirmation record for this provider+tourType
+        const conf = confirmations.find(c => c.tourType === tourType && c.provider === prov.id);
 
         return (
           <div key={prov.id} className={`rounded-xl border overflow-hidden ${prov.border}`}>
@@ -64,13 +95,22 @@ export default function TransportPlanTab({ tourType }) {
 
             {/* Table */}
             {isOpen && (
-              <div className="bg-white">
+              <div className="bg-white overflow-x-auto">
                 {/* Column headers */}
-                <div className="grid grid-cols-[120px_80px_160px_160px_1fr] px-8 py-2.5 bg-gray-50 border-b border-gray-200 text-xs text-gray-400 font-medium">
-                  <span>Guruh</span><span>PAX</span><span>Von</span><span>Bis</span><span className="text-right">Status</span>
+                <div className="flex items-end px-6 py-2.5 bg-gray-50 border-b border-gray-200 text-xs text-gray-400 font-medium gap-0 min-w-max">
+                  <span className="w-24 flex-shrink-0">Guruh</span>
+                  <span className="w-14 flex-shrink-0">PAX</span>
+                  <span className="w-32 flex-shrink-0">Von</span>
+                  <span className="w-32 flex-shrink-0">Bis</span>
+                  <span className="w-32 flex-shrink-0">Yuborildi</span>
+                  <span className="w-32 flex-shrink-0">Tekshirdi</span>
+                  <span className="w-32 flex-shrink-0">Tasdiqladi</span>
+                  <span className="w-36 flex-shrink-0">Tasdiqlangan sana</span>
+                  <span className="flex-1 text-right">Status</span>
                 </div>
+
                 {items.length === 0 ? (
-                  <div className="px-8 py-6 text-center text-xs text-gray-400">Bu provayder uchun route&apos;lar topilmadi</div>
+                  <div className="px-6 py-6 text-center text-xs text-gray-400">Bu provayder uchun route&apos;lar topilmadi</div>
                 ) : items.map(b => {
                   const bk = String(b.id);
                   const segs = routeMap[prov.id]?.[bk]?.segments || [];
@@ -79,18 +119,28 @@ export default function TransportPlanTab({ tourType }) {
                   const extra = BIS_EXTRA[tourType]?.[prov.id] ?? 0;
                   const bis = (extra && bisRaw) ? addDays(bisRaw, extra) : bisRaw;
                   const isCancelled = b.status === 'CANCELLED';
+
                   return (
-                    <div key={bk} className={`grid grid-cols-[120px_80px_160px_160px_1fr] items-center px-8 py-3 border-b border-gray-100 last:border-0 ${isCancelled ? 'bg-red-50' : ''}`}>
-                      <Link to={`/bookings/${b.id}`} className={`font-semibold text-base hover:underline ${isCancelled ? 'text-red-400 line-through' : 'text-primary-600'}`}>
-                        {b.bookingNumber}
-                      </Link>
-                      <span className="text-base font-medium text-gray-700">16</span>
-                      <span className="text-sm text-gray-600">{fmt(vonRaw)}</span>
-                      <span className="text-sm text-gray-600">{fmt(bis)}</span>
-                      <div className="flex justify-end">
+                    <div key={bk} className={`flex items-center px-6 py-3 border-b border-gray-100 last:border-0 gap-0 min-w-max ${isCancelled ? 'bg-red-50' : ''}`}>
+                      <div className="w-24 flex-shrink-0">
+                        <Link to={`/bookings/${b.id}`} className={`font-semibold text-sm hover:underline ${isCancelled ? 'text-red-400 line-through' : 'text-primary-600'}`}>
+                          {b.bookingNumber}
+                        </Link>
+                      </div>
+                      <span className="w-14 flex-shrink-0 text-sm font-medium text-gray-700">16</span>
+                      <span className="w-32 flex-shrink-0 text-sm text-gray-600">{fmtDate(vonRaw) || '—'}</span>
+                      <span className="w-32 flex-shrink-0 text-sm text-gray-600">{fmtDate(bis) || '—'}</span>
+
+                      {/* Confirmation columns — same for all rows in this provider */}
+                      <span className="w-32 flex-shrink-0 text-xs text-gray-500">{fmtDateTime(conf?.sentAt) || <span className="text-gray-300">—</span>}</span>
+                      <span className="w-32 flex-shrink-0 text-xs text-blue-600 truncate pr-2" title={conf?.approvedBy || ''}>{conf?.approvedBy || <span className="text-gray-300">—</span>}</span>
+                      <span className="w-32 flex-shrink-0 text-xs text-green-700 truncate pr-2" title={conf?.confirmedBy || ''}>{conf?.confirmedBy || <span className="text-gray-300">—</span>}</span>
+                      <span className="w-36 flex-shrink-0 text-xs text-gray-500">{fmtDateTime(conf?.respondedAt) || <span className="text-gray-300">—</span>}</span>
+
+                      <div className="flex-1 flex justify-end">
                         {isCancelled
-                          ? <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-600 text-sm font-bold rounded-lg">✕ Bekor</span>
-                          : <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-lg">✓ OK</span>
+                          ? <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-lg">✕ Bekor</span>
+                          : <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">✓ OK</span>
                         }
                       </div>
                     </div>
