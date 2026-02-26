@@ -1364,7 +1364,7 @@ export default function Opex() {
 
     // Auto-save to database
     try {
-      await transportApi.bulkUpdate(provider, updatedVehicles);
+      await transportApi.bulkUpdate(provider, updatedVehicles, year);
       toast.success(editingVehicle ? 'Транспорт обновлен и сохранен' : 'Транспорт добавлен и сохранен');
       window.dispatchEvent(new Event('vehiclesUpdated'));
     } catch (error) {
