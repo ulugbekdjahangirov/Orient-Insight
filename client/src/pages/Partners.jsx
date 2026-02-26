@@ -10,9 +10,9 @@ const TABS = [
   { id: 'restoran', label: 'Restoran', icon: UtensilsCrossed },
   { id: 'transport', label: 'Transport', icon: Bus },
   { id: 'gidlar', label: 'Gidlar', icon: Users },
-  { id: 'hotels2026', label: 'Hotels 2026', icon: CalendarRange },
-  { id: 'restoran2026', label: 'Restoran 2026', icon: CalendarRange },
-  { id: 'transport2026', label: 'Transport 2026', icon: CalendarRange },
+  { id: 'hotels-plan', label: 'Hotels Plan', icon: CalendarRange },
+  { id: 'restoran-plan', label: 'Restoran Plan', icon: CalendarRange },
+  { id: 'transport-plan', label: 'Transport Plan', icon: CalendarRange },
 ];
 
 const STATUS_CONFIG = {
@@ -766,7 +766,7 @@ const MEAL_STATUS_CFG = {
   REJECTED:  { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',  icon: '❌' },
 };
 
-function Restoran2026Tab({ mealConfirmations, subTab, onDelete }) {
+function RestoranPlanTab({ mealConfirmations, subTab, onDelete }) {
   const [openRestaurants, setOpenRestaurants] = useState({});
   const [deletingId, setDeletingId] = useState(null);
 
@@ -898,7 +898,7 @@ function Restoran2026Tab({ mealConfirmations, subTab, onDelete }) {
   );
 }
 
-function Hotels2026Tab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDeleteVisit }) {
+function HotelsPlanTab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDeleteVisit }) {
   const [openHotels, setOpenHotels] = useState({});
   const [openGroups, setOpenGroups] = useState({});
   const [deletingKey, setDeletingKey] = useState(null);
@@ -1128,7 +1128,7 @@ const TP_STATUS = {
   REJECTED_BY_APPROVER: { color: 'bg-red-100 text-red-800',       label: 'Admin rad etdi',        icon: '❌' },
 };
 
-function Transport2026Tab() {
+function TransportPlanTabLegacy() {
   const [confirmations, setConfirmations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subTab, setSubTab] = useState('ER');
@@ -1249,10 +1249,17 @@ const STATUS_FILTERS = [
 
 export default function Partners() {
   const { selectedYear } = useYear();
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('partners_activeTab') || 'hotels');
+  const [activeTab, setActiveTab] = useState(() => {
+    const stored = localStorage.getItem('partners_activeTab') || 'hotels';
+    // Migrate old 2026-suffixed IDs to new plan IDs
+    if (stored === 'hotels2026') return 'hotels-plan';
+    if (stored === 'restoran2026') return 'restoran-plan';
+    if (stored === 'transport2026') return 'transport-plan';
+    return stored;
+  });
   const [hotelSubTab, setHotelSubTab] = useState('ER');
   const [transportSubTab, setTransportSubTab] = useState('ER');
-  const [transport2026SubTab, setTransport2026SubTab] = useState('ER');
+  const [transportPlanSubTab, setTransportPlanSubTab] = useState('ER');
   const [restoranSubTab, setRestoranSubTab] = useState('ER');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -1268,8 +1275,8 @@ export default function Partners() {
   const [mealConfirmations, setMealConfirmations] = useState([]);
   const [confirmations, setConfirmations] = useState([]);
   const [jpSections, setJpSections] = useState([]);
-  const [hotels2026SubTab, setHotels2026SubTab] = useState('ER');
-  const [restoran2026SubTab, setRestoran2026SubTab] = useState('ER');
+  const [hotelsPlanSubTab, setHotelsPlanSubTab] = useState('ER');
+  const [restoranPlanSubTab, setRestoranPlanSubTab] = useState('ER');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(AUTO_REFRESH_SEC);
@@ -1397,7 +1404,7 @@ export default function Partners() {
               }`}
             >
               <Icon className="w-4 h-4" />
-              {tab.label.replace('2026', selectedYear)}
+              {tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label}
             </button>
           );
         })}
@@ -1769,7 +1776,7 @@ export default function Partners() {
               </>
             );
           })()}
-          {activeTab === 'hotels2026' && (() => {
+          {activeTab === 'hotels-plan' && (() => {
             const h2Counts = {};
             jpSections.forEach(s => {
               h2Counts[s.tourType] = (h2Counts[s.tourType] || 0) + 1;
@@ -1781,9 +1788,9 @@ export default function Partners() {
                   {HOTEL_SUB_TABS.map(sub => (
                     <button
                       key={sub}
-                      onClick={() => setHotels2026SubTab(sub)}
+                      onClick={() => setHotelsPlanSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        hotels2026SubTab === sub
+                        hotelsPlanSubTab === sub
                           ? 'bg-gray-800 text-white'
                           : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
@@ -1791,7 +1798,7 @@ export default function Partners() {
                       {sub}
                       {h2Counts[sub] ? (
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                          hotels2026SubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                          hotelsPlanSubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                         }`}>
                           {h2Counts[sub]}
                         </span>
@@ -1799,9 +1806,9 @@ export default function Partners() {
                     </button>
                   ))}
                 </div>
-                <Hotels2026Tab
+                <HotelsPlanTab
                   sections={jpSections}
-                  subTab={hotels2026SubTab}
+                  subTab={hotelsPlanSubTab}
                   onDeleteHotel={async (hotelId, tourType) => {
                     await jahresplanungApi.deleteJpHotel(hotelId, tourType);
                     setJpSections(prev => prev.filter(s => !(s.hotelId === hotelId && s.tourType === tourType)));
@@ -1830,7 +1837,7 @@ export default function Partners() {
               </>
             );
           })()}
-          {activeTab === 'restoran2026' && (() => {
+          {activeTab === 'restoran-plan' && (() => {
             const TOUR_TYPES = ['ER', 'CO', 'KAS', 'ZA'];
             const r2Counts = {};
             mealConfirmations.forEach(c => {
@@ -1843,9 +1850,9 @@ export default function Partners() {
                   {TOUR_TYPES.map(sub => (
                     <button
                       key={sub}
-                      onClick={() => setRestoran2026SubTab(sub)}
+                      onClick={() => setRestoranPlanSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        restoran2026SubTab === sub
+                        restoranPlanSubTab === sub
                           ? 'bg-gray-800 text-white'
                           : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                       }`}
@@ -1853,7 +1860,7 @@ export default function Partners() {
                       {sub}
                       {r2Counts[sub] ? (
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                          restoran2026SubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                          restoranPlanSubTab === sub ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                         }`}>
                           {r2Counts[sub]}
                         </span>
@@ -1861,27 +1868,27 @@ export default function Partners() {
                     </button>
                   ))}
                 </div>
-                <Restoran2026Tab
+                <RestoranPlanTab
                   mealConfirmations={mealConfirmations}
-                  subTab={restoran2026SubTab}
+                  subTab={restoranPlanSubTab}
                   onDelete={(id) => setMealConfirmations(prev => prev.filter(c => c.id !== id))}
                 />
               </>
             );
           })()}
-          {activeTab === 'transport2026' && (
+          {activeTab === 'transport-plan' && (
             <>
               <div className="flex gap-1 mb-4">
                 {HOTEL_SUB_TABS.map(sub => (
-                  <button key={sub} onClick={() => setTransport2026SubTab(sub)}
+                  <button key={sub} onClick={() => setTransportPlanSubTab(sub)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      transport2026SubTab === sub ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      transportPlanSubTab === sub ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}>
                     {sub}
                   </button>
                 ))}
               </div>
-              <TransportPlanTab tourType={transport2026SubTab} />
+              <TransportPlanTab tourType={transportPlanSubTab} />
             </>
           )}
         </>
