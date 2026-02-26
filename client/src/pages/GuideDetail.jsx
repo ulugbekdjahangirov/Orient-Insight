@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { guidesApi } from '../services/api';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft,

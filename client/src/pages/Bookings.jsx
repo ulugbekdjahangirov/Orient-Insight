@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import { format, addDays } from 'date-fns';
-import { enUS } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import {
