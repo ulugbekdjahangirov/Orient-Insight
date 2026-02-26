@@ -8,8 +8,7 @@ import {
   ChevronDown, ChevronRight, Loader2, MapPin, ArrowRightLeft, Plus, X
 } from 'lucide-react';
 import { jahresplanungApi } from '../services/api';
-
-const YEAR = 2026;
+import { useYear } from '../context/YearContext';
 const TOUR_TYPES = ['ER', 'CO', 'KAS', 'ZA'];
 const MAIN_TABS = [
   { id: 'hotels', label: 'Hotels', icon: Building2 },
@@ -467,7 +466,7 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
 const TOUR_COUNTRY = { ER: 'Германия', CO: 'Германия', KAS: 'Казахстан', ZA: 'Германия' };
 
 // Build structured data for server-side PDF generation
-function buildPdfPayload(hotelData, tourType, overrides) {
+function buildPdfPayload(hotelData, tourType, overrides, year) {
   const { hotel, bookings } = hotelData;
   const country = TOUR_COUNTRY[tourType] || 'Германия';
 
@@ -505,18 +504,18 @@ function buildPdfPayload(hotelData, tourType, overrides) {
        ...(hasThird ? [buildSection(third, 'Третий заезд')] : [])]
     : [buildSection(activeResolved, null)];
 
-  return { hotelName: hotel.name, cityName: hotel.city?.name || '', tourType, year: YEAR, sections };
+  return { hotelName: hotel.name, cityName: hotel.city?.name || '', tourType, year, sections };
 }
 
 // Fetch PDF blob from server
-async function fetchHotelPdfBlob(hotelData, tourType, overrides) {
-  const payload = buildPdfPayload(hotelData, tourType, overrides);
+async function fetchHotelPdfBlob(hotelData, tourType, overrides, year) {
+  const payload = buildPdfPayload(hotelData, tourType, overrides, year);
   const res = await jahresplanungApi.generatePDF(payload);
   return new Blob([res.data], { type: 'application/pdf' });
 }
 
 // Legacy stub — replaced by server-side PDF (kept to avoid breaking callers during transition)
-function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlob = false) {
+function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlob = false, year = new Date().getFullYear()) {
   const { hotel, bookings } = hotelData;
   const PW = 210, M = 15; // portrait A4, margins
 
@@ -588,7 +587,7 @@ function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlo
   // ── 4. Title ──────────────────────────────────────────────────────────────
   autoTable(doc, {
     startY: y,
-    body: [[{ content: `JAHRESPLANUNG ${YEAR} — ${tourLabel}` }]],
+    body: [[{ content: `JAHRESPLANUNG ${year} — ${tourLabel}` }]],
     theme: 'plain',
     tableWidth: PW - 2 * M,
     margin: { left: M, right: M },
@@ -733,7 +732,7 @@ function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlo
   });
 
   if (returnBlob) return doc.output('blob');
-  doc.save(`${YEAR}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`);
+  doc.save(`${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`);
 }
 
 function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverrideVal, rowStatuses, setRowStatus,
@@ -909,6 +908,7 @@ function DateCell({ value, onChange }) {
 }
 
 function TransportTab({ tourType }) {
+  const { selectedYear: YEAR } = useYear();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   // routeMap: provider → bookingId → { von, bis, pax } (auto from routes)
@@ -992,7 +992,7 @@ function TransportTab({ tourType }) {
       })
       .catch(() => setBookings([]))
       .finally(() => setLoading(false));
-  }, [tourType]);
+  }, [tourType, YEAR]);
 
   const saveOverrides = (next) => {
     setManualOverrides(next);
@@ -1651,6 +1651,7 @@ function fmtDep(dateStr) {
 }
 
 function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverride, sendingTelegram, onSendTelegram }) {
+  const { selectedYear: YEAR } = useYear();
   const { name, city, hasTelegram, bookings } = restaurant;
   const [editingCell, setEditingCell] = useState(null); // `${bookingId}_pax` or `${bookingId}_date`
   const [editValue, setEditValue] = useState('');
@@ -1881,6 +1882,7 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
 }
 
 function RestoranTab({ tourType }) {
+  const { selectedYear: YEAR } = useYear();
   const [loading, setLoading] = useState(true);
   const [restaurants, setRestaurants] = useState([]);
   const [openCards, setOpenCards] = useState({});
@@ -1902,7 +1904,7 @@ function RestoranTab({ tourType }) {
         try { localStorage.setItem(`jp_meal_overrides_${YEAR}_${tourType}`, JSON.stringify(data)); } catch {}
       })
       .catch(() => {});
-  }, [tourType]);
+  }, [tourType, YEAR]);
 
   const handleOverride = (key, value) => {
     setOverrides(prev => {
@@ -1929,7 +1931,7 @@ function RestoranTab({ tourType }) {
   useEffect(() => {
     setRestaurants([]);
     loadRestaurants();
-  }, [tourType]);
+  }, [tourType, YEAR]);
 
   const handleSendTelegram = async (restaurant, blob, bookingsData) => {
     setSendingTelegram(prev => ({ ...prev, [restaurant.name]: true }));
@@ -2003,6 +2005,7 @@ function RestoranTab({ tourType }) {
 // ── End RestoranTab ─────────────────────────────────────────────────────────
 
 function HotelsTab({ tourType }) {
+  const { selectedYear: YEAR } = useYear();
   const [loading, setLoading] = useState(true);
   const [hotels, setHotels] = useState([]);
   const [openHotels, setOpenHotels] = useState({});
@@ -2113,7 +2116,7 @@ function HotelsTab({ tourType }) {
     }).catch(err => {
       toast.error("Ma'lumot yuklanmadi: " + err.message);
     }).finally(() => { setLoading(false); loadingRef.current = false; });
-  }, [tourType]);
+  }, [tourType, YEAR]);
 
   // Debounced save to DB on any state change (skip during initial load)
   useEffect(() => {
@@ -2231,7 +2234,7 @@ function HotelsTab({ tourType }) {
   const handlePDF = async (hotelData) => {
     setSendingEmail(prev => ({ ...prev, [`pdf_${hotelData.hotel.id}`]: true }));
     try {
-      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
+      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -2248,7 +2251,7 @@ function HotelsTab({ tourType }) {
     if (!hotel.email) { toast.error(`${hotel.name} — email yo'q`); return; }
     setSendingEmail(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides);
+      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR);
       await jahresplanungApi.sendHotelEmail(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType);
       toast.success(`Email yuborildi → ${hotel.email}`);
     } catch (err) {
@@ -2262,8 +2265,8 @@ function HotelsTab({ tourType }) {
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
       // Use client-side jsPDF (avoids Puppeteer timeout issues on server)
-      const blob = generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, true);
-      const payload = buildPdfPayload(hotelData, tourType, overrides);
+      const blob = generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, true, YEAR);
+      const payload = buildPdfPayload(hotelData, tourType, overrides, YEAR);
       const filename = `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
       await jahresplanungApi.sendHotelTelegram(hotel.id, blob, filename, YEAR, tourType, payload.sections);
       toast.success(`Telegram → ${hotel.name}`);
@@ -2379,6 +2382,7 @@ function HotelsTab({ tourType }) {
 }
 
 export default function Jahresplanung() {
+  const { selectedYear: YEAR } = useYear();
   const [mainTab, setMainTab] = useState(() => localStorage.getItem('jp_mainTab') || 'hotels');
   const [tourTab, setTourTab] = useState(() => localStorage.getItem('jp_tourTab') || 'ER');
 

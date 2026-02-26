@@ -98,6 +98,7 @@ router.get('/', authenticate, async (req, res) => {
       startDate,
       endDate,
       search,
+      year,
       sortBy = 'departureDate',
       sortOrder = 'asc'
     } = req.query;
@@ -137,6 +138,11 @@ router.get('/', authenticate, async (req, res) => {
     // Поиск по номеру бронирования
     if (search) {
       where.bookingNumber = { contains: search };
+    }
+
+    // Фильтр по году
+    if (year) {
+      where.bookingYear = parseInt(year);
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -306,10 +312,11 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Обязательные поля: номер бронирования, тип тура, дата' });
     }
 
-    // Проверка уникальности номера
-    const existing = await prisma.booking.findUnique({ where: { bookingNumber } });
+    // Проверка уникальности номера в рамках года
+    const bookingYear = new Date(departureDate).getFullYear();
+    const existing = await prisma.booking.findFirst({ where: { bookingNumber, bookingYear } });
     if (existing) {
-      return res.status(400).json({ error: 'Бронирование с таким номером уже существует' });
+      return res.status(400).json({ error: `Бронирование с номером ${bookingNumber} уже существует в ${bookingYear} году` });
     }
 
     // Auto-calculate total PAX from Uzbekistan + Turkmenistan
@@ -335,6 +342,7 @@ router.post('/', authenticate, async (req, res) => {
     const booking = await prisma.booking.create({
       data: {
         bookingNumber,
+        bookingYear,
         tourTypeId: parseInt(tourTypeId),
         departureDate: departureDateObj,
         arrivalDate: arrivalDateObj,
@@ -438,6 +446,7 @@ router.put('/:id', authenticate, async (req, res) => {
 
       updateData.departureDate = departureDateObj;
       updateData.arrivalDate = arrivalDateObj;
+      updateData.bookingYear = departureDateObj.getFullYear();
     }
     if (endDate) updateData.endDate = new Date(endDate);
 
@@ -1536,7 +1545,10 @@ router.post('/recalculate-rooms', authenticate, async (req, res) => {
 // GET /api/bookings/debug/count-by-type - Debug endpoint to show booking counts by tour type
 router.get('/debug/count-by-type', authenticate, async (req, res) => {
   try {
+    const { year } = req.query;
+    const where = year ? { bookingYear: parseInt(year) } : {};
     const allBookings = await prisma.booking.findMany({
+      where,
       include: {
         tourType: true
       },

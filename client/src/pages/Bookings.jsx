@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 import { format, addDays } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import toast from 'react-hot-toast';
@@ -70,6 +71,7 @@ const getStatusByPax = (pax, departureDate, endDate) => {
 
 export default function Bookings() {
   const isMobile = useIsMobile();
+  const { selectedYear } = useYear();
   console.log('🔍 Bookings - isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
@@ -95,7 +97,7 @@ export default function Bookings() {
 
   useEffect(() => {
     loadBookings();
-  }, [searchParams]);
+  }, [searchParams, selectedYear]);
 
   const loadFiltersData = async () => {
     try {
@@ -120,6 +122,7 @@ export default function Bookings() {
 
       // Ensure limit is set to 200 to show all bookings on one page
       backendParams.limit = 200;
+      backendParams.year = selectedYear;
 
       const response = await bookingsApi.getAll(backendParams);
       let bookingsData = response.data.bookings;
