@@ -4137,15 +4137,6 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
       const year = d.getFullYear();
       const result = `${day}.${month}.${year}`;
 
-      // DEBUG: Log formatting for Oct 10 dates
-      const dateStrString = typeof dateStr === 'string' ? dateStr : dateStr?.toISOString?.() || '';
-      if (dateStrString && (dateStrString.includes('2025-10-10') || dateStrString.includes('2025-10-11'))) {
-        console.log(`\n🔍 formatDisplayDate:`);
-        console.log(`   Input type: ${typeof dateStr}`);
-        console.log(`   Input: ${dateStr}`);
-        console.log(`   Date obj: ${d.toISOString()}`);
-        console.log(`   Output: ${result}`);
-      }
 
       return result;
     };
@@ -4916,15 +4907,6 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       const year = d.getFullYear();
       const result = `${day}.${month}.${year}`;
 
-      // DEBUG: Log formatting for Oct 10 dates
-      const dateStrString = typeof dateStr === 'string' ? dateStr : dateStr?.toISOString?.() || '';
-      if (dateStrString && (dateStrString.includes('2025-10-10') || dateStrString.includes('2025-10-11'))) {
-        console.log(`\n🔍 formatDisplayDate:`);
-        console.log(`   Input type: ${typeof dateStr}`);
-        console.log(`   Input: ${dateStr}`);
-        console.log(`   Date obj: ${d.toISOString()}`);
-        console.log(`   Output: ${result}`);
-      }
 
       return result;
     };
@@ -5653,15 +5635,6 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
       const year = d.getFullYear();
       const result = `${day}.${month}.${year}`;
 
-      // DEBUG: Log formatting for Oct 10 dates
-      const dateStrString = typeof dateStr === 'string' ? dateStr : dateStr?.toISOString?.() || '';
-      if (dateStrString && (dateStrString.includes('2025-10-10') || dateStrString.includes('2025-10-11'))) {
-        console.log(`\n🔍 formatDisplayDate:`);
-        console.log(`   Input type: ${typeof dateStr}`);
-        console.log(`   Input: ${dateStr}`);
-        console.log(`   Date obj: ${d.toISOString()}`);
-        console.log(`   Output: ${result}`);
-      }
 
       return result;
     };
