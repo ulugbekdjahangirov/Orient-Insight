@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../store/AuthContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { useYear } from '../../context/YearContext';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -49,6 +50,7 @@ const adminItems = [
 export default function Sidebar({ open, onToggle }) {
   const { isAdmin } = useAuth();
   const isMobile = useIsMobile();
+  const { selectedYear, changeYear } = useYear();
 
   // On mobile, sidebar should be completely hidden when closed (drawer pattern)
   // On desktop, sidebar collapses to narrow state (w-20)
@@ -95,6 +97,39 @@ export default function Sidebar({ open, onToggle }) {
           >
             <X className="w-6 h-6" />
           </button>
+        )}
+      </div>
+
+      {/* Year selector */}
+      <div className="px-4 py-3 border-b border-gray-800">
+        {open ? (
+          <div className="flex items-center justify-between bg-gray-800 rounded-lg px-3 py-2">
+            <button
+              onClick={() => changeYear(selectedYear - 1)}
+              className="text-gray-400 hover:text-white transition-colors px-1"
+            >
+              ‹
+            </button>
+            <span className="text-white font-bold text-sm tracking-widest">{selectedYear}</span>
+            <button
+              onClick={() => changeYear(selectedYear + 1)}
+              className="text-gray-400 hover:text-white transition-colors px-1"
+            >
+              ›
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => changeYear(selectedYear - 1)}
+              className="text-gray-500 hover:text-white leading-none text-xs"
+            >▲</button>
+            <span className="text-white font-bold text-xs">{selectedYear}</span>
+            <button
+              onClick={() => changeYear(selectedYear + 1)}
+              className="text-gray-500 hover:text-white leading-none text-xs"
+            >▼</button>
+          </div>
         )}
       </div>
 
