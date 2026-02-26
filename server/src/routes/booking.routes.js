@@ -182,10 +182,6 @@ router.get('/', authenticate, async (req, res) => {
         tourTypeCounts[code] = (tourTypeCounts[code] || 0) + 1;
       }
     });
-    console.log(`📊 API Returning ${bookingsWithCalculatedRooms.length} total bookings:`, tourTypeCounts);
-    console.log(`   Filters: tourTypeId=${tourTypeId}, guideId=${guideId}, status=${status}, page=${page}, limit=${limit}`);
-    console.log(`   Total in DB matching filter: ${total}`);
-
     res.json({
       bookings: bookingsWithCalculatedRooms,
       pagination: {
@@ -384,7 +380,6 @@ router.post('/', authenticate, async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🔄 PUT /bookings/:id', id, 'rlExchangeRate:', req.body.rlExchangeRate);
     const {
       bookingNumber,
       tourTypeId,
@@ -498,10 +493,6 @@ router.put('/:id', authenticate, async (req, res) => {
     if (rechnungFirma !== undefined) updateData.rechnungFirma = rechnungFirma || null;
     if (rlExchangeRate !== undefined) updateData.rlExchangeRate = rlExchangeRate ? parseFloat(rlExchangeRate) : null;
     if (itineraryHeader !== undefined) updateData.itineraryHeader = itineraryHeader ? JSON.stringify(itineraryHeader) : null;
-
-    if (rlExchangeRate !== undefined) {
-      console.log('💾 Saving rlExchangeRate to DB:', updateData.rlExchangeRate);
-    }
 
     const booking = await prisma.booking.update({
       where: { id: parseInt(id) },
@@ -1030,16 +1021,12 @@ router.get('/:id/accommodations', authenticate, async (req, res) => {
       orderBy: { checkInDate: 'asc' }
     });
 
-    console.log(`📋 GET /accommodations: Found ${accommodations.length} accommodations for booking ${id}:`, accommodations.map(a => ({ id: a.id, hotel: a.hotel?.name, totalCost: a.totalCost })));
-
     // Format dates as YYYY-MM-DD strings to avoid timezone issues
     const formattedAccommodations = accommodations.map(acc => ({
       ...acc,
       checkInDate: acc.checkInDate ? acc.checkInDate.toISOString().split('T')[0] : null,
       checkOutDate: acc.checkOutDate ? acc.checkOutDate.toISOString().split('T')[0] : null
     }));
-
-    console.log(`   📅 First accommodation dates: ${formattedAccommodations[0]?.checkInDate} → ${formattedAccommodations[0]?.checkOutDate}`);
 
     // Simply return database values with formatted dates
     // Edit modal auto-saves calculated totals when opened
@@ -1619,17 +1606,6 @@ router.get('/debug/count-by-type', authenticate, async (req, res) => {
     });
 
     const total = allBookings.length;
-
-    console.log(`\n📊 BOOKING COUNT DEBUG:`);
-    console.log(`   Total: ${total}`);
-    console.log(`   Подтверждено (CONFIRMED): ${statusCounts.CONFIRMED}`);
-    console.log(`   В процессе (IN_PROGRESS): ${statusCounts.IN_PROGRESS}`);
-    console.log(`   Ожидает (PENDING): ${statusCounts.PENDING}`);
-    console.log(`   Отменено (CANCELLED): ${statusCounts.CANCELLED}`);
-    console.log(`   Завершено (COMPLETED): ${statusCounts.COMPLETED}`);
-    Object.keys(byType).sort().forEach(code => {
-      console.log(`   ${code}: ${byType[code]}`);
-    });
 
     res.json({
       total,

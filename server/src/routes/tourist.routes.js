@@ -230,8 +230,6 @@ router.put('/:bookingId/tourists/:id', authenticate, async (req, res) => {
     const { bookingId, id } = req.params;
     const { firstName, lastName, gender, passportNumber, dateOfBirth, passportExpiryDate, roomPreference, roommateId, isGroupLeader, notes, country, accommodation, remarks, checkInDate, checkOutDate } = req.body;
 
-    console.log(`🔄 Updating tourist ${id}: checkInDate=${checkInDate}, checkOutDate=${checkOutDate}`);
-
     const tourist = await prisma.tourist.update({
       where: { id: parseInt(id) },
       data: {
