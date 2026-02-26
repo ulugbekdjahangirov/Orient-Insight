@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { telegramApi, api, jahresplanungApi } from '../services/api';
-import { Building2, UtensilsCrossed, Bus, Users, Clock, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck, Send, Copy, X, CalendarRange } from 'lucide-react';
+import { Building2, UtensilsCrossed, Bus, Users, CheckCircle, XCircle, Loader2, RefreshCw, Trash2, ChevronDown, ChevronRight, Search, Truck, Send, Copy, X, CalendarRange } from 'lucide-react';
 import TransportPlanTab from '../components/common/TransportPlanTab';
 import { useYear } from '../context/YearContext';
 
@@ -1128,113 +1128,6 @@ const TP_STATUS = {
   REJECTED:             { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',             icon: '❌' },
   REJECTED_BY_APPROVER: { color: 'bg-red-100 text-red-800',       label: 'Admin rad etdi',        icon: '❌' },
 };
-
-function TransportPlanTabLegacy() {
-  const [confirmations, setConfirmations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [subTab, setSubTab] = useState('ER');
-
-  const load = () => {
-    setLoading(true);
-    jahresplanungApi.getTransportConfirmations()
-      .then(res => setConfirmations(res.data.confirmations || []))
-      .catch(() => setConfirmations([]))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleDelete = async (key) => {
-    if (!confirm('O\'chirishni tasdiqlaysizmi?')) return;
-    await jahresplanungApi.deleteTransportConfirmation(key).catch(() => {});
-    load();
-  };
-
-  const fmtDate = (iso) => {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  };
-
-  const filtered = confirmations.filter(c => c.tourType === subTab);
-  const providers = ['sevil', 'xayrulla', 'nosir'];
-  const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' };
-
-  return (
-    <div>
-      {/* Sub-tabs */}
-      <div className="flex gap-2 mb-4">
-        {TOUR_SUB_TABS.map(t => (
-          <button key={t} onClick={() => setSubTab(t)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${subTab === t ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-            {t}
-          </button>
-        ))}
-        <button onClick={load} className="ml-auto flex items-center gap-1 px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 border rounded-lg">
-          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-16 text-gray-400">
-          <Loader2 className="w-6 h-6 animate-spin mr-2" /><span className="text-sm">Yuklanmoqda...</span>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {providers.map(prov => {
-            const rec = filtered.find(c => c.provider === prov);
-            const st = TP_STATUS[rec?.status] || TP_STATUS.PENDING;
-            return (
-              <div key={prov} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="flex items-center gap-4 px-5 py-3.5 border-b border-gray-100 bg-gray-50">
-                  <Bus className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                  <span className="font-semibold text-gray-800">{providerLabel[prov]}</span>
-                  {rec ? (
-                    <span className={`ml-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${st.color}`}>
-                      {st.icon} {st.label}
-                    </span>
-                  ) : (
-                    <span className="ml-2 text-xs text-gray-400">Hali yuborilmagan</span>
-                  )}
-                  {rec && (
-                    <button onClick={() => handleDelete(`${rec.year}_${rec.tourType}_${rec.provider}`)}
-                      className="ml-auto text-gray-300 hover:text-red-400 transition-colors" title="O'chirish">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-                {rec && (
-                  <div className="px-5 py-3 text-sm text-gray-600 grid grid-cols-2 gap-x-6 gap-y-1.5">
-                    <div className="flex gap-2">
-                      <span className="text-gray-400 text-xs w-24 flex-shrink-0">Yuborildi:</span>
-                      <span className="text-xs">{fmtDate(rec.sentAt)}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-gray-400 text-xs w-24 flex-shrink-0">Javob:</span>
-                      <span className="text-xs">{fmtDate(rec.respondedAt)}</span>
-                    </div>
-                    {rec.approvedBy && (
-                      <div className="flex gap-2 col-span-2">
-                        <span className="text-gray-400 text-xs w-24 flex-shrink-0">Tasdiqladi:</span>
-                        <span className="text-xs font-medium text-blue-700">{rec.approvedBy}</span>
-                      </div>
-                    )}
-                    {rec.confirmedBy && (
-                      <div className="flex gap-2 col-span-2">
-                        <span className="text-gray-400 text-xs w-24 flex-shrink-0">Qabul qildi:</span>
-                        <span className="text-xs font-medium text-gray-700">{rec.confirmedBy}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const AUTO_REFRESH_SEC = 30;
 

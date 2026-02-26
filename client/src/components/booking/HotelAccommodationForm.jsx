@@ -638,23 +638,6 @@ export default function HotelAccommodationForm({
     return { totalRooms, totalGuests, totalCost, totalTouristTax, isPAX, currency, extraNightsTotal, extraNightsDetails, roomingListDetails };
   }, [rooms, nights, accommodationRoomTypes, selectedHotelRoomTypes, tourists, roomingList, formData.checkInDate, formData.checkOutDate, formData.hotelId, editingAccommodation, hotels, booking, guestDates]);
 
-  // Auto-refresh rooms from Rooming List when data is loaded (for edit mode)
-  // DISABLED: This was overwriting manually saved prices when reopening the modal
-  // User can manually click "From Rooming List" button if they want to recalculate
-  // useEffect(() => {
-  //   if (editingAccommodation && selectedHotelRoomTypes.length > 0) {
-  //     const dataSource = roomingList.length > 0 ? roomingList : tourists;
-  //     // Auto-fill if we have tourist data and hotel room types are loaded
-  //     if (dataSource.length > 0 && formData.hotelId && formData.checkInDate && formData.checkOutDate) {
-  //       // Delay to ensure all data is loaded
-  //       const timer = setTimeout(() => {
-  //         autoFillFromRoomingList();
-  //       }, 300);
-  //       return () => clearTimeout(timer);
-  //     }
-  //   }
-  // }, [editingAccommodation, selectedHotelRoomTypes.length, tourists.length, roomingList.length]);
-
   // Auto-save totals when they are calculated (after auto-fill)
   const [lastAutoSave, setLastAutoSave] = useState(0);
   useEffect(() => {

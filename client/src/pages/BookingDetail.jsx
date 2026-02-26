@@ -3444,21 +3444,6 @@ export default function BookingDetail() {
         }
       }
 
-      // Second Guide - Moved to Später PDF
-      // if (secondGuide && secondGuide.guide) {
-      //   const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
-      //   const totalPayment = secondGuide.totalPayment || 0;
-      //   if (totalPayment > 0) {
-      //     expensesByCity['Reiseleiter'].push({
-      //       name: guideName,
-      //       pricePerPerson: null,
-      //       pax: null,
-      //       usd: totalPayment,
-      //       uzs: 0
-      //     });
-      //   }
-      // }
-
       if (bergreiseleiter && bergreiseleiter.guide) {
         const guideName = typeof bergreiseleiter.guide === 'string' ? bergreiseleiter.guide : bergreiseleiter.guide?.name || 'Bergreiseleiter';
         const totalPayment = bergreiseleiter.totalPayment || 0;
@@ -13383,22 +13368,6 @@ ${rowsHtml}
                 });
               }
             }
-
-            // Second Guide - Moved to Später tab
-            // if (secondGuide && secondGuide.guide) {
-            //   const guideName = typeof secondGuide.guide === 'string' ? secondGuide.guide : secondGuide.guide?.name || 'Second Guide';
-            //   const totalPayment = secondGuide.totalPayment || 0;
-
-            //   if (totalPayment > 0) {
-            //     expensesByCity['Reiseleiter'].push({
-            //       name: guideName,
-            //       pricePerPerson: null,
-            //       pax: null,
-            //       usd: totalPayment,
-            //       uzs: 0
-            //     });
-            //   }
-            // }
 
             // Bergreiseleiter
             if (bergreiseleiter && bergreiseleiter.guide) {
