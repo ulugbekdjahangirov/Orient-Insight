@@ -190,15 +190,15 @@ export default function Bookings() {
   };
 
   const handleDuplicateAll = async () => {
-    const nextYear = selectedYear + 1;
-    if (!confirm(`${selectedYear} yildagi barcha bookinglarni ${nextYear} yilga nusxalamoqchimisiz?`)) return;
+    const prevYear = selectedYear - 1;
+    if (!confirm(`${prevYear} yildagi barcha bookinglarni ${selectedYear} yilga nusxalamoqchimisiz?`)) return;
     try {
-      const res = await bookingsApi.duplicateAll(selectedYear);
+      const res = await bookingsApi.duplicateAll(prevYear);
       const { created, skipped } = res.data;
       if (skipped > 0) {
         toast.success(`${created} ta yaratildi, ${skipped} ta allaqachon mavjud edi`);
       } else {
-        toast.success(`${created} ta booking ${nextYear} yilga nusxalandi`);
+        toast.success(`${created} ta booking ${selectedYear} yilga nusxalandi`);
       }
       loadBookings();
     } catch (error) {
@@ -251,10 +251,10 @@ export default function Bookings() {
             <button
               onClick={handleDuplicateAll}
               className="inline-flex items-center justify-center gap-2 px-4 py-3 md:py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl md:rounded-2xl shadow-lg hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base"
-              title={`${selectedYear} yildagi barcha bookinglarni ${selectedYear + 1} yilga nusxalash`}
+              title={`${selectedYear - 1} yildagi barcha bookinglarni ${selectedYear} yilga nusxalash`}
             >
               <Copy className="w-5 h-5" />
-              <span className="hidden sm:inline">Hammasi nusxa ({selectedYear + 1})</span>
+              <span className="hidden sm:inline">{selectedYear - 1} → {selectedYear}</span>
             </button>
             <Link
               to="/bookings/new"
