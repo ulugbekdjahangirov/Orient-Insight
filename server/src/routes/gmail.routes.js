@@ -98,10 +98,15 @@ router.post('/poll', authenticate, requireAdmin, async (req, res) => {
  */
 router.get('/imports', authenticate, async (req, res) => {
   try {
-    const { page = 1, limit = 20, status } = req.query;
+    const { page = 1, limit = 20, status, year } = req.query;
     const skip = (page - 1) * limit;
 
-    const where = status ? { status } : {};
+    const where = {};
+    if (status) where.status = status;
+    if (year) {
+      const y = parseInt(year);
+      where.createdAt = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
+    }
 
     const [imports, total] = await Promise.all([
       prisma.emailImport.findMany({

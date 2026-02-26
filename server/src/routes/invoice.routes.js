@@ -8,13 +8,14 @@ const prisma = new PrismaClient();
 // GET /api/invoices - Get all invoices
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { bookingId, invoiceType, firma, invoiceNumber } = req.query;
+    const { bookingId, invoiceType, firma, invoiceNumber, year } = req.query;
 
     const where = {};
     if (bookingId) where.bookingId = parseInt(bookingId);
     if (invoiceType) where.invoiceType = invoiceType;
     if (firma) where.firma = firma;
     if (invoiceNumber) where.invoiceNumber = invoiceNumber;
+    if (year) where.booking = { bookingYear: parseInt(year) };
 
     const invoices = await prisma.invoice.findMany({
       where,

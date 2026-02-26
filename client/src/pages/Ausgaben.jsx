@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import toast from 'react-hot-toast';
 import { Hotel, DollarSign, BarChart3 } from 'lucide-react';
@@ -20,6 +21,7 @@ const expenseTabs = [
 ];
 
 export default function Ausgaben() {
+  const { selectedYear } = useYear();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get state from URL or use defaults
@@ -48,12 +50,12 @@ export default function Ausgaben() {
 
   useEffect(() => {
     loadBookingsAndExpenses();
-  }, [activeTourType, activeExpenseTab]);
+  }, [activeTourType, activeExpenseTab, selectedYear]);
 
   // Load Metro vehicles from Opex Transport API
   const loadVehiclesFromApi = async () => {
     try {
-      const response = await transportApi.getAll();
+      const response = await transportApi.getAll(selectedYear);
       const { grouped } = response.data;
       if (grouped.metro?.length > 0) {
         setMetroVehicles(grouped.metro);
@@ -68,7 +70,7 @@ export default function Ausgaben() {
 
   const loadBookingsAndExpenses = async () => {
     // Check cache first
-    const cacheKey = activeTourType;
+    const cacheKey = `${activeTourType}_${selectedYear}`;
     const needsDetailedData = activeExpenseTab === 'general' || activeExpenseTab === 'hotels';
 
     // Try localStorage first (persists across page reloads)
@@ -123,7 +125,7 @@ export default function Ausgaben() {
       console.log(`🔄 Loading fresh data for ${cacheKey}`);
 
       // Load bookings for active tour type
-      const response = await bookingsApi.getAll();
+      const response = await bookingsApi.getAll({ year: selectedYear });
       const allBookings = response.data.bookings;
 
       // DEBUG: Log all bookings with tourType info

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { gmailApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 
 const STATUS_COLORS = {
   PENDING: 'bg-yellow-100 text-yellow-800',
@@ -18,6 +19,7 @@ const STATUS_LABELS = {
 };
 
 export default function EmailImports() {
+  const { selectedYear } = useYear();
   const [imports, setImports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -28,12 +30,12 @@ export default function EmailImports() {
 
   useEffect(() => {
     loadImports();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, selectedYear]);
 
   const loadImports = async () => {
     setLoading(true);
     try {
-      const params = { page, limit: 20 };
+      const params = { page, limit: 20, year: selectedYear };
       if (statusFilter) params.status = statusFilter;
 
       const response = await gmailApi.getImports(params);

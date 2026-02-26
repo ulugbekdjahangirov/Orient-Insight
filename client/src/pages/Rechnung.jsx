@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Receipt, Building, Globe, Plus, Edit, Trash2, ExternalLink } from 'lucide-react';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { invoicesApi } from '../services/api';
+import { useYear } from '../context/YearContext';
 import { toast } from 'react-hot-toast';
 
 const modules = [
@@ -47,6 +48,7 @@ const colorClasses = {
 };
 
 export default function Rechnung() {
+  const { selectedYear } = useYear();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -81,10 +83,10 @@ export default function Rechnung() {
     return formattedInteger;
   };
 
-  // Load invoices from API when activeModule changes
+  // Load invoices from API when activeModule or year changes
   useEffect(() => {
     loadInvoices();
-  }, [activeModule]);
+  }, [activeModule, selectedYear]);
 
   const loadInvoices = async () => {
     try {
@@ -103,7 +105,7 @@ export default function Rechnung() {
       }
 
       // Determine filter params based on activeModule
-      const params = {};
+      const params = { year: selectedYear };
       if (activeModule === 'orient') {
         params.firma = 'Orient Insight';
       } else if (activeModule === 'infuturestorm') {

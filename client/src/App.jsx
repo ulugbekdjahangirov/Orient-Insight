@@ -65,8 +65,8 @@ export default function App() {
         <Route path="hotels" element={<Hotels />} />
         <Route path="opex" element={<Opex key={selectedYear} />} />
         <Route path="price" element={<Price key={selectedYear} />} />
-        <Route path="rechnung" element={<Rechnung />} />
-        <Route path="ausgaben" element={<Ausgaben />} />
+        <Route path="rechnung" element={<Rechnung key={selectedYear} />} />
+        <Route path="ausgaben" element={<Ausgaben key={selectedYear} />} />
         <Route
           path="import"
           element={
@@ -91,7 +91,7 @@ export default function App() {
             </AdminRoute>
           }
         />
-        <Route path="email-imports" element={<EmailImports />} />
+        <Route path="email-imports" element={<EmailImports key={selectedYear} />} />
         <Route path="partners" element={<Partners />} />
         <Route path="jahresplanung" element={<Jahresplanung />} />
         <Route
