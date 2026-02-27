@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, tourTypesApi, guidesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import { format, addDays } from 'date-fns';
@@ -12,7 +12,6 @@ import {
   Eye,
   Edit,
   Trash2,
-  Copy,
   ChevronLeft,
   ChevronRight,
   X,
@@ -71,7 +70,6 @@ const getStatusByPax = (pax, departureDate, endDate) => {
 
 export default function Bookings() {
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const { selectedYear } = useYear();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
@@ -177,35 +175,6 @@ export default function Bookings() {
     setSearchParams(params);
   };
 
-  const handleDuplicate = async (id, bookingNumber, departureDate) => {
-    const nextYear = new Date(departureDate).getFullYear() + 1;
-    if (!confirm(`${bookingNumber} ni ${nextYear} yilga nusxalamoqchimisiz?`)) return;
-    try {
-      const res = await bookingsApi.duplicate(id);
-      toast.success(`${bookingNumber} (${nextYear}) yaratildi`);
-      navigate(`/bookings/${res.data.booking.id}`);
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Nusxa yaratishda xatolik');
-    }
-  };
-
-  const handleDuplicateAll = async () => {
-    const prevYear = selectedYear - 1;
-    if (!confirm(`${prevYear} yildagi barcha bookinglarni ${selectedYear} yilga nusxalamoqchimisiz?`)) return;
-    try {
-      const res = await bookingsApi.duplicateAll(prevYear);
-      const { created, skipped } = res.data;
-      if (skipped > 0) {
-        toast.success(`${created} ta yaratildi, ${skipped} ta allaqachon mavjud edi`);
-      } else {
-        toast.success(`${created} ta booking ${selectedYear} yilga nusxalandi`);
-      }
-      loadBookings();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Nusxalashda xatolik');
-    }
-  };
-
   const handleDelete = async (id, bookingNumber) => {
     if (!confirm(`Delete booking ${bookingNumber}?`)) return;
 
@@ -247,23 +216,13 @@ export default function Bookings() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3">
-            <button
-              onClick={handleDuplicateAll}
-              className="inline-flex items-center justify-center gap-2 px-4 py-3 md:py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl md:rounded-2xl shadow-lg hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base"
-              title={`${selectedYear - 1} yildagi barcha bookinglarni ${selectedYear} yilga nusxalash`}
-            >
-              <Copy className="w-5 h-5" />
-              <span className="hidden sm:inline">{selectedYear - 1} → {selectedYear}</span>
-            </button>
-            <Link
-              to="/bookings/new"
-              className="inline-flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:from-primary-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base"
-            >
-              <Plus className="w-5 h-5 md:w-6 md:h-6" />
-              <span>Add New Booking</span>
-            </Link>
-          </div>
+          <Link
+            to="/bookings/new"
+            className="inline-flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:from-primary-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base"
+          >
+            <Plus className="w-5 h-5 md:w-6 md:h-6" />
+            <span>Add New Booking</span>
+          </Link>
         </div>
       </div>
 
@@ -522,13 +481,6 @@ export default function Bookings() {
                       <Edit className="w-5 h-5" />
                     </Link>
                     <button
-                      onClick={() => handleDuplicate(booking.id, booking.bookingNumber, booking.departureDate)}
-                      className="p-2 text-emerald-600 hover:text-emerald-900 hover:bg-white rounded-lg transition-all"
-                      title="Keyingi yilga nusxalash"
-                    >
-                      <Copy className="w-5 h-5" />
-                    </button>
-                    <button
                       onClick={() => handleDelete(booking.id, booking.bookingNumber)}
                       className="p-2 text-red-600 hover:text-red-900 hover:bg-white rounded-lg transition-all"
                       title="Delete"
@@ -703,13 +655,6 @@ export default function Bookings() {
                         >
                           <Edit className="w-5 h-5 md:w-4 md:h-4" />
                         </Link>
-                        <button
-                          onClick={() => handleDuplicate(booking.id, booking.bookingNumber, booking.departureDate)}
-                          className="p-2.5 md:p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                          title="Keyingi yilga nusxalash"
-                        >
-                          <Copy className="w-5 h-5 md:w-4 md:h-4" />
-                        </button>
                         <button
                           onClick={() => handleDelete(booking.id, booking.bookingNumber)}
                           className="p-2.5 md:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
