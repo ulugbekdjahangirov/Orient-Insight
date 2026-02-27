@@ -1039,7 +1039,7 @@ router.get('/meals', authenticate, async (req, res) => {
 
     // 1. Load OPEX meal items for this tourType
     const opexSetting = await prisma.opexConfig.findUnique({
-      where: { tourType_category: { tourType, category: 'meal' } }
+      where: { tourType_category_year: { tourType, category: 'meal', year: yearInt } }
     });
     const mealItems = opexSetting ? JSON.parse(opexSetting.itemsJson) : [];
 

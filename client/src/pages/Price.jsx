@@ -150,6 +150,7 @@ export default function Price() {
     '14-15': 0,
     '16': 0,
   });
+  const [mobileTotalPaxIdx, setMobileTotalPaxIdx] = useState(0);
 
   // CO Module States
   const [coHotelPrices, setCoHotelPrices] = useState(defaultHotelPrices);
@@ -2315,214 +2316,219 @@ export default function Price() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 bg-gradient-to-br from-${selectedTour.color}-500 to-${selectedTour.color}-600 rounded-xl flex items-center justify-center shadow-lg`}>
-            <DollarSign className="w-6 h-6 text-white" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <div className={`w-10 h-10 md:w-12 md:h-12 shrink-0 bg-gradient-to-br from-${selectedTour.color}-500 to-${selectedTour.color}-600 rounded-xl flex items-center justify-center shadow-lg`}>
+            <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-gray-900">Price Management</h1>
-            <p className="text-gray-600">Управление ценами для туров</p>
+          <div className="min-w-0">
+            <h1 className="text-lg md:text-3xl font-black text-gray-900 leading-tight">Price Management</h1>
+            <p className="text-gray-600 text-xs md:text-sm hidden md:block">Управление ценами для туров</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-1.5 md:gap-3 shrink-0">
           <button
             onClick={handleCopyFromYear}
             disabled={copyingYear}
             title={`${year - 1} yildan ${year} yilga nusxalash`}
-            className="flex items-center gap-2 px-4 py-3 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:border-green-400 hover:text-green-600 transition-all duration-200 font-semibold text-sm"
+            className="flex items-center gap-1.5 px-2 md:px-4 py-2 md:py-3 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:border-green-400 hover:text-green-600 transition-all duration-200 font-semibold text-xs md:text-sm"
           >
-            <Copy className="w-4 h-4" />
-            {copyingYear ? 'Nusxalanmoqda...' : `${year - 1} → ${year}`}
+            <Copy className="w-4 h-4 shrink-0" />
+            <span className="hidden md:inline">{copyingYear ? 'Nusxalanmoqda...' : `${year - 1} → ${year}`}</span>
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+            className="flex items-center gap-1.5 px-3 md:px-6 py-2 md:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg font-semibold text-xs md:text-base"
           >
-            <Save className="w-5 h-5" />
-            Сохранить
+            <Save className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
+            <span className="hidden md:inline">Сохранить</span>
+            <span className="md:hidden">Saqlash</span>
           </button>
-          {selectedTourType === 'er' && selectedERSubTab === 'transport' && (
-            <button
-              onClick={addTransportRoute}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'er' && selectedERSubTab === 'railway' && (
-            <button
-              onClick={addRailwayRoute}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'er' && selectedERSubTab === 'fly' && (
-            <button
-              onClick={addFlyRoute}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'er' && selectedERSubTab === 'meal' && (
-            <button
-              onClick={addMealItem}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'er' && selectedERSubTab === 'sightseing' && (
-            <button
-              onClick={addSightseingItem}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'er' && selectedERSubTab === 'guide' && (
-            <button
-              onClick={addGuideItem}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'er' && selectedERSubTab === 'shou' && (
-            <button
-              onClick={addShouItem}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-5 h-5" />
-              Element қўшиш
-            </button>
-          )}
-          {/* CO Module Add Buttons */}
-          {selectedTourType === 'co' && selectedCOSubTab === 'transport' && (
-            <button onClick={addCoTransportRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'co' && selectedCOSubTab === 'railway' && (
-            <button onClick={addCoRailwayRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'co' && selectedCOSubTab === 'fly' && (
-            <button onClick={addCoFlyRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'co' && selectedCOSubTab === 'meal' && (
-            <button onClick={addCoMealItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'co' && selectedCOSubTab === 'sightseing' && (
-            <button onClick={addCoSightseingItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'co' && selectedCOSubTab === 'guide' && (
-            <button onClick={addCoGuideItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'co' && selectedCOSubTab === 'shou' && (
-            <button onClick={addCoShouItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {/* KAS Module Add Buttons */}
-          {selectedTourType === 'kas' && selectedKASSubTab === 'transport' && (
-            <button onClick={addKasTransportRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'kas' && selectedKASSubTab === 'railway' && (
-            <button onClick={addKasRailwayRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'kas' && selectedKASSubTab === 'fly' && (
-            <button onClick={addKasFlyRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'kas' && selectedKASSubTab === 'meal' && (
-            <button onClick={addKasMealItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'kas' && selectedKASSubTab === 'sightseing' && (
-            <button onClick={addKasSightseingItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'kas' && selectedKASSubTab === 'guide' && (
-            <button onClick={addKasGuideItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'kas' && selectedKASSubTab === 'shou' && (
-            <button onClick={addKasShouItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {/* ZA Module Add Buttons */}
-          {selectedTourType === 'za' && selectedZASubTab === 'transport' && (
-            <button onClick={addZaTransportRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'za' && selectedZASubTab === 'railway' && (
-            <button onClick={addZaRailwayRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'za' && selectedZASubTab === 'fly' && (
-            <button onClick={addZaFlyRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Marshрут қўшиш
-            </button>
-          )}
-          {selectedTourType === 'za' && selectedZASubTab === 'meal' && (
-            <button onClick={addZaMealItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'za' && selectedZASubTab === 'sightseing' && (
-            <button onClick={addZaSightseingItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'za' && selectedZASubTab === 'guide' && (
-            <button onClick={addZaGuideItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
-          )}
-          {selectedTourType === 'za' && selectedZASubTab === 'shou' && (
-            <button onClick={addZaShouItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
-              <Plus className="w-5 h-5" />Element қўшиш
-            </button>
+          {!isMobile && (
+            <>
+              {selectedTourType === 'er' && selectedERSubTab === 'transport' && (
+                <button
+                  onClick={addTransportRoute}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'er' && selectedERSubTab === 'railway' && (
+                <button
+                  onClick={addRailwayRoute}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'er' && selectedERSubTab === 'fly' && (
+                <button
+                  onClick={addFlyRoute}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'er' && selectedERSubTab === 'meal' && (
+                <button
+                  onClick={addMealItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'er' && selectedERSubTab === 'sightseing' && (
+                <button
+                  onClick={addSightseingItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'er' && selectedERSubTab === 'guide' && (
+                <button
+                  onClick={addGuideItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'er' && selectedERSubTab === 'shou' && (
+                <button
+                  onClick={addShouItem}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                  Element қўшиш
+                </button>
+              )}
+              {/* CO Module Add Buttons */}
+              {selectedTourType === 'co' && selectedCOSubTab === 'transport' && (
+                <button onClick={addCoTransportRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'co' && selectedCOSubTab === 'railway' && (
+                <button onClick={addCoRailwayRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'co' && selectedCOSubTab === 'fly' && (
+                <button onClick={addCoFlyRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'co' && selectedCOSubTab === 'meal' && (
+                <button onClick={addCoMealItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'co' && selectedCOSubTab === 'sightseing' && (
+                <button onClick={addCoSightseingItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'co' && selectedCOSubTab === 'guide' && (
+                <button onClick={addCoGuideItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'co' && selectedCOSubTab === 'shou' && (
+                <button onClick={addCoShouItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {/* KAS Module Add Buttons */}
+              {selectedTourType === 'kas' && selectedKASSubTab === 'transport' && (
+                <button onClick={addKasTransportRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'kas' && selectedKASSubTab === 'railway' && (
+                <button onClick={addKasRailwayRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'kas' && selectedKASSubTab === 'fly' && (
+                <button onClick={addKasFlyRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'kas' && selectedKASSubTab === 'meal' && (
+                <button onClick={addKasMealItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'kas' && selectedKASSubTab === 'sightseing' && (
+                <button onClick={addKasSightseingItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'kas' && selectedKASSubTab === 'guide' && (
+                <button onClick={addKasGuideItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'kas' && selectedKASSubTab === 'shou' && (
+                <button onClick={addKasShouItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-xl hover:from-orange-700 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {/* ZA Module Add Buttons */}
+              {selectedTourType === 'za' && selectedZASubTab === 'transport' && (
+                <button onClick={addZaTransportRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'za' && selectedZASubTab === 'railway' && (
+                <button onClick={addZaRailwayRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'za' && selectedZASubTab === 'fly' && (
+                <button onClick={addZaFlyRoute} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Marshрут қўшиш
+                </button>
+              )}
+              {selectedTourType === 'za' && selectedZASubTab === 'meal' && (
+                <button onClick={addZaMealItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'za' && selectedZASubTab === 'sightseing' && (
+                <button onClick={addZaSightseingItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'za' && selectedZASubTab === 'guide' && (
+                <button onClick={addZaGuideItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+              {selectedTourType === 'za' && selectedZASubTab === 'shou' && (
+                <button onClick={addZaShouItem} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-xl hover:from-purple-700 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <Plus className="w-5 h-5" />Element қўшиш
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
 
       {/* Tour Type Tabs */}
-      <div className="flex gap-3">
+      <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
         {tourTypes.map((tour) => (
           <button
             key={tour.id}
             onClick={() => updateParams({ tour: tour.id })}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 ${
+            className={`flex items-center justify-center px-2 md:px-6 py-2.5 md:py-3 rounded-xl font-bold transition-all duration-300 text-xs md:text-base ${
               selectedTourType === tour.id
                 ? `bg-gradient-to-r from-${tour.color}-600 to-${tour.color}-700 text-white shadow-lg`
                 : 'bg-white text-gray-600 hover:bg-gray-50 border-2 border-gray-200'
@@ -2535,21 +2541,21 @@ export default function Price() {
 
       {/* ER Sub-Tabs */}
       {selectedTourType === 'er' && (
-        <div className="flex gap-3">
+        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
           {erSubTabs.map((subTab) => {
             const Icon = subTab.icon;
             return (
               <button
                 key={subTab.id}
                 onClick={() => updateParams({ er: subTab.id })}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
+                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
                   selectedERSubTab === subTab.id
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {subTab.name}
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="leading-tight text-center">{subTab.name}</span>
               </button>
             );
           })}
@@ -2558,21 +2564,21 @@ export default function Price() {
 
       {/* CO Sub-Tabs */}
       {selectedTourType === 'co' && (
-        <div className="flex gap-3">
+        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
           {erSubTabs.map((subTab) => {
             const Icon = subTab.icon;
             return (
               <button
                 key={subTab.id}
                 onClick={() => updateParams({ co: subTab.id })}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
+                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
                   selectedCOSubTab === subTab.id
                     ? 'bg-green-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {subTab.name}
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="leading-tight text-center">{subTab.name}</span>
               </button>
             );
           })}
@@ -2581,21 +2587,21 @@ export default function Price() {
 
       {/* KAS Sub-Tabs */}
       {selectedTourType === 'kas' && (
-        <div className="flex gap-3">
+        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
           {erSubTabs.map((subTab) => {
             const Icon = subTab.icon;
             return (
               <button
                 key={subTab.id}
                 onClick={() => updateParams({ kas: subTab.id })}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
+                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
                   selectedKASSubTab === subTab.id
                     ? 'bg-orange-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {subTab.name}
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="leading-tight text-center">{subTab.name}</span>
               </button>
             );
           })}
@@ -2604,21 +2610,21 @@ export default function Price() {
 
       {/* ZA Sub-Tabs */}
       {selectedTourType === 'za' && (
-        <div className="flex gap-3">
+        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
           {erSubTabs.map((subTab) => {
             const Icon = subTab.icon;
             return (
               <button
                 key={subTab.id}
                 onClick={() => updateParams({ za: subTab.id })}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all duration-300 ${
+                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
                   selectedZASubTab === subTab.id
                     ? 'bg-purple-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {subTab.name}
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="leading-tight text-center">{subTab.name}</span>
               </button>
             );
           })}
@@ -2638,6 +2644,30 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {hotelPrices.map((hotel) => (
+                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <input type="text" value={hotel.city} onChange={(e) => updateHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total / person</div><div className="font-bold text-blue-700 text-sm">{(calculateHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm">{calculateHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              </div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -2732,6 +2762,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -2739,41 +2770,30 @@ export default function Price() {
       {selectedTourType === 'er' && selectedERSubTab === 'transport' && (
         <>
           {/* PAX Tier Sub-Tabs */}
-          <div className="flex gap-2 flex-wrap items-center">
-            {paxTiers.map((tier) => (
-              <button
-                key={tier.id}
-                onClick={() => updateParams({ pax: tier.id })}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
-                  selectedPaxTier === tier.id
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {tier.name}
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5 md:flex md:flex-wrap md:gap-2">
+              {paxTiers.map((tier) => (
+                <button
+                  key={tier.id}
+                  onClick={() => updateParams({ pax: tier.id })}
+                  className={`px-2 md:px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all duration-300 ${
+                    selectedPaxTier === tier.id
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tier.name}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
+              <button onClick={copyTransportFrom4PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-xs hover:from-purple-700 hover:to-indigo-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 4 PAX
               </button>
-            ))}
-            <div className="h-8 w-px bg-gray-300 mx-2"></div>
-            <button
-              onClick={copyTransportFrom4PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md"
-              title="4 PAX narxlarini 5, 6-7, 8-9 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 4 PAX
-            </button>
-            <button
-              onClick={copyTransportFrom10_11PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-sm hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-md"
-              title="10-11 PAX narxlarini 12-13, 14-15, 16 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 10-11 PAX
-            </button>
+              <button onClick={copyTransportFrom10_11PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-xs hover:from-green-700 hover:to-emerald-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 10-11 PAX
+              </button>
+            </div>
           </div>
 
           {/* Transport Routes Table */}
@@ -2783,6 +2803,34 @@ export default function Price() {
                 Transport Erlebnisreisen - Usbekistan 15 Tage
               </h3>
             </div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {transportRoutes.map((route, index) => {
+                  const routeTotal = route.days * route.price;
+                  return (
+                    <div key={route.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                      <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                      <div className="flex-1 p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                          <input type="text" value={route.name} onChange={(e) => updateTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                          <button onClick={() => deleteTransportRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                          <div><div className="text-xs text-gray-500 mb-1">Preise</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                          <div><div className="text-xs text-gray-500 mb-1">Total</div><div className={`text-center font-bold p-1.5 text-sm ${routeTotal > 0 ? 'text-green-600' : 'text-gray-400'}`}>{routeTotal}</div></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Grand Total</div><div className="font-bold text-blue-700 text-sm">{calculateTransportTotals().grandTotal}</div></div>
+                  <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Per Person</div><div className="font-bold text-green-700 text-sm">{calculateTransportTotals().pricePerPerson.toFixed(0)}</div></div>
+                </div>
+              </div>
+            ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -2899,6 +2947,7 @@ export default function Price() {
                 </tr>
               </tbody>
             </table>
+            )}
           </div>
         </>
       )}
@@ -2909,6 +2958,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Railway Routes</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {railwayRoutes.map((route, index) => (
+                <div key={route.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateRailwayRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteRailwayRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateRailwayRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateRailwayRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{railwayRoutes.reduce((sum, r) => { const days = parseFloat(r.days) || 1; const price = parseFloat(r.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -3008,6 +3078,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           {railwayRoutes.length === 0 && (
             <div className="text-center py-12">
               <Train className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -3024,6 +3095,30 @@ export default function Price() {
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Flight Routes</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {flyRoutes.map((route, index) => (
+                <div key={route.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateFlyRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteFlyRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateFlyRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateFlyRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{flyRoutes.reduce((sum, r) => { const days = parseFloat(r.days) || 1; const price = parseFloat(r.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
+              <div className="grid grid-cols-4 gap-2">
+                {paxTiers.map(tier => { const totalPrice = flyRoutes.reduce((sum, r) => { const days = parseFloat(r.days) || 1; const price = parseFloat(r.price) || 0; return sum + (days * price); }, 0); const pricePerPerson = totalPrice / tier.count; return (<div key={tier.id} className="bg-white rounded-lg p-2 border-2 border-gray-200 text-center"><div className="text-xs font-semibold text-gray-600">{tier.name}</div><div className="text-sm font-bold text-green-600">{pricePerPerson.toFixed(2)} $</div></div>); })}
+              </div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -3143,6 +3238,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           {flyRoutes.length === 0 && (
             <div className="text-center py-12">
               <Plane className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -3159,6 +3255,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Meal Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {mealItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{mealItems.reduce((sum, m) => { const days = parseFloat(m.days) || 1; const price = parseFloat(m.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -3234,6 +3351,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           {mealItems.length === 0 && (
             <div className="text-center py-12">
               <Utensils className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -3250,6 +3368,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Sightseing Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {sightseingItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{sightseingItems.reduce((sum, s) => { const days = parseFloat(s.days) || 1; const price = parseFloat(s.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -3325,6 +3464,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           {sightseingItems.length === 0 && (
             <div className="text-center py-12">
               <Camera className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -3357,141 +3497,96 @@ export default function Price() {
               Add Cost
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gradient-to-r from-pink-100 to-rose-100">
-                  <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">№</th>
-                  <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">Name</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th>
-                  <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Price</th>
-                  <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Total</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {zusatzkostenItems.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="border border-pink-300 px-4 py-12 text-center text-gray-500">
-                      <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p>No additional costs added yet</p>
-                      <p className="text-sm mt-2">Click "Add Cost" to add a new item</p>
-                    </td>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zusatzkostenItems.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">
+                  <DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">No additional costs added yet</p>
+                </div>
+              ) : zusatzkostenItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-pink-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-pink-400 to-rose-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i); setZusatzkostenItems(updated); }} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => { setZusatzkostenItems(zusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i); setZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" min="1" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i); setZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i); setZusatzkostenItems(updated); }} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-pink-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                    </div>
+                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-pink-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                  </div>
+                </div>
+              ))}
+              {zusatzkostenItems.length > 0 && (
+                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 space-y-1">
+                  <div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total USD:</span><span className="font-bold text-emerald-700">{zusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)} USD</span></div>
+                  {zusatzkostenItems.some(i => i.currency === 'UZS') && (<div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total UZS:</span><span className="font-bold text-emerald-700">{zusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()} UZS</span></div>)}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse min-w-max">
+                <thead>
+                  <tr className="bg-gradient-to-r from-pink-100 to-rose-100">
+                    <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">№</th>
+                    <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">Name</th>
+                    <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th>
+                    <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Price</th>
+                    <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Total</th>
+                    <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th>
+                    <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th>
                   </tr>
-                ) : (
-                  zusatzkostenItems.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-pink-50 transition-colors">
-                      <td className="border border-pink-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => {
-                            const updated = zusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, name: e.target.value } : i
-                            );
-                            setZusatzkostenItems(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300"
-                        />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input
-                          type="number"
-                          value={item.pax || 1}
-                          onChange={(e) => {
-                            const updated = zusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i
-                            );
-                            setZusatzkostenItems(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-center font-semibold"
-                          min="1"
-                        />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input
-                          type="number"
-                          value={item.price}
-                          onChange={(e) => {
-                            const updated = zusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i
-                            );
-                            setZusatzkostenItems(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-right font-semibold"
-                        />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-right font-bold text-lg text-gray-900">
-                        {((item.price || 0) * (item.pax || 1)).toFixed(2)}
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-center">
-                        <select
-                          value={item.currency}
-                          onChange={(e) => {
-                            const updated = zusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, currency: e.target.value } : i
-                            );
-                            setZusatzkostenItems(updated);
-                          }}
-                          className="px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 font-semibold"
-                        >
-                          <option value="USD">USD</option>
-                          <option value="UZS">UZS</option>
-                          <option value="EUR">EUR</option>
-                        </select>
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-center">
-                        <button
-                          onClick={() => {
-                            setZusatzkostenItems(zusatzkostenItems.filter(i => i.id !== item.id));
-                            toast.success('Item deleted');
-                          }}
-                          className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                </thead>
+                <tbody>
+                  {zusatzkostenItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="border border-pink-300 px-4 py-12 text-center text-gray-500">
+                        <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>No additional costs added yet</p>
+                        <p className="text-sm mt-2">Click "Add Cost" to add a new item</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-              {zusatzkostenItems.length > 0 && (
-                <tfoot>
-                  <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                    <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">
-                      Total USD:
-                    </td>
-                    <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">
-                      {zusatzkostenItems
-                        .filter(i => i.currency === 'USD')
-                        .reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0)
-                        .toFixed(2)}
-                    </td>
-                    <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">USD</td>
-                    <td className="border border-pink-300"></td>
-                  </tr>
-                  {zusatzkostenItems.some(i => i.currency === 'UZS') && (
+                  ) : (
+                    zusatzkostenItems.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-pink-50 transition-colors">
+                        <td className="border border-pink-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="text" value={item.name} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? { ...i, name: e.target.value } : i); setZusatzkostenItems(updated); }} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300" /></td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="number" value={item.pax || 1} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i); setZusatzkostenItems(updated); }} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-center font-semibold" min="1" /></td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="number" value={item.price} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i); setZusatzkostenItems(updated); }} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-right font-semibold" /></td>
+                        <td className="border border-pink-300 px-4 py-3 text-right font-bold text-lg text-gray-900">{((item.price || 0) * (item.pax || 1)).toFixed(2)}</td>
+                        <td className="border border-pink-300 px-4 py-3 text-center"><select value={item.currency} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? { ...i, currency: e.target.value } : i); setZusatzkostenItems(updated); }} className="px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></td>
+                        <td className="border border-pink-300 px-4 py-3 text-center"><button onClick={() => { setZusatzkostenItems(zusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all" title="Delete"><Trash2 className="w-5 h-5" /></button></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {zusatzkostenItems.length > 0 && (
+                  <tfoot>
                     <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                      <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">
-                        Total UZS:
-                      </td>
-                      <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">
-                        {zusatzkostenItems
-                          .filter(i => i.currency === 'UZS')
-                          .reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0)
-                          .toLocaleString()}
-                      </td>
-                      <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">UZS</td>
+                      <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total USD:</td>
+                      <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{zusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)}</td>
+                      <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">USD</td>
                       <td className="border border-pink-300"></td>
                     </tr>
-                  )}
-                </tfoot>
-              )}
-            </table>
-          </div>
+                    {zusatzkostenItems.some(i => i.currency === 'UZS') && (
+                      <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
+                        <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total UZS:</td>
+                        <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{zusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()}</td>
+                        <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">UZS</td>
+                        <td className="border border-pink-300"></td>
+                      </tr>
+                    )}
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
           <div className="p-4 bg-pink-50 border-t border-pink-200">
             <button
               onClick={saveZusatzkosten}
@@ -3509,7 +3604,60 @@ export default function Price() {
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
-          <div className="overflow-x-auto">{(() => {
+          {isMobile ? (() => {
+              const hotelTotal = calculateHotelTotals().totalPerTraveler / 2;
+              const railwayTotal = railwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const flyTotal = flyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const mealTotal = mealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0);
+              const sightseingTotal = sightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const guideTotal = guideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0);
+              const shouTotal = shouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const ezZuschlag = calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2);
+              const tier = paxTiers[mobileTotalPaxIdx] || paxTiers[0];
+              const transportPPP = calculateTransportTotals().grandTotal / tier.count;
+              const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) + mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+              const commissionPercent = commissionValues[tier.id] || 0;
+              const commissionAmount = (price * commissionPercent) / 100;
+              const totalPrice = price + commissionAmount;
+              calculatedTotalPrices.current = {};
+              paxTiers.forEach(t => {
+                const tPPP = calculateTransportTotals().grandTotal / t.count;
+                const tPrice = hotelTotal + tPPP + railwayTotal + (flyTotal / t.count) + mealTotal + sightseingTotal + (guideTotal / t.count) + shouTotal;
+                const tComm = commissionValues[t.id] || 0;
+                calculatedTotalPrices.current[t.id] = { totalPrice: Math.round(tPrice + (tPrice * tComm / 100)), ezZuschlag: Math.round(ezZuschlag) };
+              });
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {paxTiers.map((t, idx) => (
+                      <button key={t.id} onClick={() => setMobileTotalPaxIdx(idx)} className={`py-2 rounded-lg font-semibold text-xs transition-colors ${mobileTotalPaxIdx === idx ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t.name}</button>
+                    ))}
+                  </div>
+                  <div className="bg-white rounded-xl border border-purple-100 overflow-hidden divide-y divide-gray-100">
+                    {[['Hotels', formatPrice(hotelTotal)], ['Transport', formatPrice(transportPPP)], ['Railway', formatPrice(railwayTotal)], ['Fly', formatPrice(flyTotal / tier.count)], ['Meal', formatPrice(mealTotal)], ['Sightseing', formatPrice(sightseingTotal)], ['Guide', formatPrice(guideTotal / tier.count)], ['Shou', formatPrice(shouTotal)]].map(([cat, val]) => (
+                      <div key={cat} className="flex justify-between px-4 py-2.5 bg-purple-50"><span className="text-sm font-semibold text-gray-700">{cat}</span><span className="text-sm font-bold text-blue-600">{val} $</span></div>
+                    ))}
+                    <div className="flex justify-between px-4 py-3 bg-gray-100 border-t-2 border-gray-300"><span className="text-sm font-bold text-gray-900">Price</span><span className="text-sm font-bold text-gray-900">{formatPrice(price)} $</span></div>
+                    <div className="flex justify-between items-center px-4 py-2.5 bg-gray-50">
+                      <span className="text-sm font-semibold text-gray-700">Commission (%)</span>
+                      <div className="flex items-center gap-2">
+                        <input type="number" step="0.1" placeholder="0" value={commissionPercent === 0 ? '' : commissionPercent} onChange={(e) => updateCommissionValue(tier.id, e.target.value)} onBlur={saveCommissionValues} className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm" />
+                        {commissionAmount > 0 && <span className="text-xs text-gray-500">+{formatPrice(commissionAmount)} $</span>}
+                      </div>
+                    </div>
+                    <div className="flex justify-between px-4 py-4 bg-gradient-to-r from-green-400 to-emerald-400 border-t-2 border-green-600"><span className="text-base font-black text-gray-900">Total Price</span><span className="text-base font-black text-gray-900">{formatPrice(totalPrice)} $</span></div>
+                  </div>
+                  <div className="flex justify-between px-4 py-3 bg-orange-50 rounded-xl border border-orange-200"><span className="font-bold text-gray-700">EZ Zuschlag:</span><span className="font-black text-orange-600">{formatPrice(ezZuschlag)} $</span></div>
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
+                    <button onClick={saveTotalPrices} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg px-4 py-3 flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                      Narxlarni saqlash
+                    </button>
+                    <p className="text-center text-xs text-gray-600 mt-2">Documents → Rechnung da to'g'ri narxlar ko'rinadi</p>
+                  </div>
+                </div>
+              );
+            })() : <div className="overflow-x-auto">{(() => {
               const hotelTotal = calculateHotelTotals().totalPerTraveler / 2;
               const transportTotals = paxTiers.map(tier => calculateTransportTotals().grandTotal / tier.count);
               const railwayTotal = railwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -3524,7 +3672,7 @@ export default function Price() {
               calculatedTotalPrices.current = {};
 
               return (
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse min-w-max">
               <thead>
                 <tr className="bg-gradient-to-r from-purple-500 to-indigo-500">
                   <th className="border border-purple-600 px-4 py-3 text-left font-bold text-white">Category</th>
@@ -3701,7 +3849,7 @@ export default function Price() {
                 Bu tugmani bosing, keyin Documents → Rechnung da to'g'ri narxlar ko'rinadi
               </p>
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
@@ -3711,6 +3859,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Shou Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {shouItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{shouItems.reduce((sum, s) => { const days = parseFloat(s.days) || 1; const price = parseFloat(s.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -3786,6 +3955,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           {shouItems.length === 0 && (
             <div className="text-center py-12">
               <Sparkles className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -3802,6 +3972,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Guide Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {guideItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{guideItems.reduce((sum, g) => { const days = parseFloat(g.days) || 1; const price = parseFloat(g.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
@@ -3899,6 +4090,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           {guideItems.length === 0 && (
             <div className="text-center py-12">
               <User className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -3924,6 +4116,30 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coHotelPrices.map((hotel) => (
+                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <input type="text" value={hotel.city} onChange={(e) => updateCoHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteCoHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateCoHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateCoHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateCoHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total / person</div><div className="font-bold text-green-700 text-sm">{(coHotelPrices.reduce((sum, h) => sum + (h.days * h.pricePerDay || 0), 0) / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm">{coHotelPrices.reduce((sum, h) => sum + (h.ezZimmer * h.days || 0), 0).toFixed(2)} $</div></div>
+              </div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4015,52 +4231,66 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
       {/* CO - Transport Tab */}
       {selectedTourType === 'co' && selectedCOSubTab === 'transport' && (
         <>
-          <div className="flex gap-2 flex-wrap items-center">
-            {paxTiers.map((tier) => (
-              <button
-                key={tier.id}
-                onClick={() => updateParams({ pax: tier.id })}
-                className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 ${
-                  selectedPaxTier === tier.id
-                    ? 'bg-green-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {tier.name}
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5 md:flex md:flex-wrap md:gap-2">
+              {paxTiers.map((tier) => (
+                <button
+                  key={tier.id}
+                  onClick={() => updateParams({ pax: tier.id })}
+                  className={`px-2 md:px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all duration-300 ${
+                    selectedPaxTier === tier.id
+                      ? 'bg-green-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tier.name}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
+              <button onClick={copyCoTransportFrom4PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-xs hover:from-purple-700 hover:to-indigo-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 4 PAX
               </button>
-            ))}
-            <div className="h-8 w-px bg-gray-300 mx-2"></div>
-            <button
-              onClick={copyCoTransportFrom4PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md"
-              title="4 PAX narxlarini 5, 6-7, 8-9 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 4 PAX
-            </button>
-            <button
-              onClick={copyCoTransportFrom10_11PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-sm hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-md"
-              title="10-11 PAX narxlarini 12-13, 14-15, 16 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 10-11 PAX
-            </button>
+              <button onClick={copyCoTransportFrom10_11PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-xs hover:from-green-700 hover:to-emerald-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 10-11 PAX
+              </button>
+            </div>
           </div>
           <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
               <h3 className="text-xl font-bold text-white text-center">Transport Routes - {paxTiers.find(t => t.id === selectedPaxTier)?.name}</h3>
             </div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {coTransportRoutes.map((route, index) => (
+                  <div key={route.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                    <div className="flex-1 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                        <input type="text" value={route.name} onChange={(e) => updateCoTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                        <button onClick={() => deleteCoTransportRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateCoTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                        <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price} onChange={(e) => updateCoTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Grand Total</div><div className="font-bold text-green-700 text-sm">{coTransportRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
+                  <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-200"><div className="text-xs text-emerald-600 font-medium">Per Person</div><div className="font-bold text-emerald-700 text-sm">{calculateCoTransportTotals().pricePerPerson.toFixed(0)}</div></div>
+                </div>
+              </div>
+            ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4112,6 +4342,7 @@ export default function Price() {
                 </tr>
               </tbody>
             </table>
+            )}
           </div>
         </>
       )}
@@ -4122,6 +4353,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Railway Routes</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coRailwayRoutes.map((route, index) => (
+                <div key={route.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateCoRailwayRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteCoRailwayRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateCoRailwayRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price} onChange={(e) => updateCoRailwayRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4161,6 +4413,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -4170,6 +4423,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Fly Routes</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coFlyRoutes.map((route, index) => (
+                <div key={route.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateCoFlyRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteCoFlyRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateCoFlyRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price} onChange={(e) => updateCoFlyRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4209,6 +4483,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           <div className="px-6 py-4 bg-green-50">
             <h4 className="font-bold text-gray-800 mb-3">PAX Breakdown</h4>
             <div className="grid grid-cols-4 gap-3">
@@ -4233,6 +4508,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Meal Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coMealItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteCoMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4272,6 +4568,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -4281,6 +4578,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Sightseing Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coSightseingItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteCoSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4320,6 +4638,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -4329,6 +4648,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Guide Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coGuideItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteCoGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4368,6 +4708,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           <div className="px-6 py-4 bg-green-50">
             <h4 className="font-bold text-gray-800 mb-3">PAX Breakdown</h4>
             <div className="grid grid-cols-4 gap-3">
@@ -4392,6 +4733,27 @@ export default function Price() {
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Shou Items</h3>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coShouItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteCoShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-green-50 to-emerald-100 border-b-2 border-green-200">
@@ -4431,6 +4793,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -4456,148 +4819,61 @@ export default function Price() {
               Add Cost
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gradient-to-r from-pink-100 to-rose-100">
-                  <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">№</th>
-                  <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">Name</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th>
-                  <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Price</th>
-                  <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Total</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {coZusatzkostenItems.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="border border-pink-300 px-4 py-12 text-center text-gray-500">
-                      <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p>No additional costs added yet</p>
-                      <p className="text-sm mt-2">Click "Add Cost" to add a new item</p>
-                    </td>
-                  </tr>
-                ) : (
-                  coZusatzkostenItems.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-pink-50 transition-colors">
-                      <td className="border border-pink-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => {
-                            const updated = coZusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, name: e.target.value } : i
-                            );
-                            setCoZusatzkostenItems(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300"
-                        />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input
-                          type="number"
-                          value={item.pax || 1}
-                          onChange={(e) => {
-                            const updated = coZusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i
-                            );
-                            setCoZusatzkostenItems(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-center font-semibold"
-                          min="1"
-                        />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input
-                          type="number"
-                          value={item.price}
-                          onChange={(e) => {
-                            const updated = coZusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i
-                            );
-                            setCoZusatzkostenItems(updated);
-                          }}
-                          className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-right font-semibold"
-                        />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-right font-bold text-lg text-gray-900">
-                        {((item.price || 0) * (item.pax || 1)).toFixed(2)}
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-center">
-                        <select
-                          value={item.currency}
-                          onChange={(e) => {
-                            const updated = coZusatzkostenItems.map(i =>
-                              i.id === item.id ? { ...i, currency: e.target.value } : i
-                            );
-                            setCoZusatzkostenItems(updated);
-                          }}
-                          className="px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 font-semibold"
-                        >
-                          <option value="USD">USD</option>
-                          <option value="UZS">UZS</option>
-                          <option value="EUR">EUR</option>
-                        </select>
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-center">
-                        <button
-                          onClick={() => {
-                            setCoZusatzkostenItems(coZusatzkostenItems.filter(i => i.id !== item.id));
-                            toast.success('Item deleted');
-                          }}
-                          className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {coZusatzkostenItems.length === 0 ? (
+                <div className="py-8 text-center text-gray-500"><DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" /><p className="text-sm">No additional costs added yet</p></div>
+              ) : coZusatzkostenItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-pink-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-pink-400 to-rose-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i); setCoZusatzkostenItems(updated); }} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => { setCoZusatzkostenItems(coZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i); setCoZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" min="1" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i); setCoZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i); setCoZusatzkostenItems(updated); }} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-pink-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                    </div>
+                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-pink-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                  </div>
+                </div>
+              ))}
               {coZusatzkostenItems.length > 0 && (
-                <tfoot>
-                  <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                    <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">
-                      Total USD:
-                    </td>
-                    <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">
-                      {coZusatzkostenItems
-                        .filter(i => i.currency === 'USD')
-                        .reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0)
-                        .toFixed(2)}
-                    </td>
-                    <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">USD</td>
-                    <td className="border border-pink-300"></td>
-                  </tr>
-                  {coZusatzkostenItems.some(i => i.currency === 'UZS') && (
-                    <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                      <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">
-                        Total UZS:
-                      </td>
-                      <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">
-                        {coZusatzkostenItems
-                          .filter(i => i.currency === 'UZS')
-                          .reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0)
-                          .toLocaleString()}
-                      </td>
-                      <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">UZS</td>
-                      <td className="border border-pink-300"></td>
-                    </tr>
-                  )}
-                </tfoot>
+                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 space-y-1">
+                  <div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total USD:</span><span className="font-bold text-emerald-700">{coZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)} USD</span></div>
+                  {coZusatzkostenItems.some(i => i.currency === 'UZS') && (<div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total UZS:</span><span className="font-bold text-emerald-700">{coZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()} UZS</span></div>)}
+                </div>
               )}
-            </table>
-          </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse min-w-max">
+                <thead><tr className="bg-gradient-to-r from-pink-100 to-rose-100"><th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">№</th><th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">Name</th><th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th><th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Price</th><th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Total</th><th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th><th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th></tr></thead>
+                <tbody>
+                  {coZusatzkostenItems.length === 0 ? (<tr><td colSpan="7" className="border border-pink-300 px-4 py-12 text-center text-gray-500"><DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" /><p>No additional costs added yet</p></td></tr>) : (
+                    coZusatzkostenItems.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-pink-50 transition-colors">
+                        <td className="border border-pink-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="text" value={item.name} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? { ...i, name: e.target.value } : i); setCoZusatzkostenItems(updated); }} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300" /></td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="number" value={item.pax || 1} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i); setCoZusatzkostenItems(updated); }} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-center font-semibold" min="1" /></td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="number" value={item.price} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i); setCoZusatzkostenItems(updated); }} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-right font-semibold" /></td>
+                        <td className="border border-pink-300 px-4 py-3 text-right font-bold text-lg text-gray-900">{((item.price || 0) * (item.pax || 1)).toFixed(2)}</td>
+                        <td className="border border-pink-300 px-4 py-3 text-center"><select value={item.currency} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? { ...i, currency: e.target.value } : i); setCoZusatzkostenItems(updated); }} className="px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></td>
+                        <td className="border border-pink-300 px-4 py-3 text-center"><button onClick={() => { setCoZusatzkostenItems(coZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all"><Trash2 className="w-5 h-5" /></button></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {coZusatzkostenItems.length > 0 && (<tfoot><tr className="bg-gradient-to-r from-emerald-100 to-green-100"><td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total USD:</td><td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{coZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)}</td><td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">USD</td><td className="border border-pink-300"></td></tr>{coZusatzkostenItems.some(i => i.currency === 'UZS') && (<tr className="bg-gradient-to-r from-emerald-100 to-green-100"><td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total UZS:</td><td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{coZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()}</td><td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">UZS</td><td className="border border-pink-300"></td></tr>)}</tfoot>)}
+              </table>
+            </div>
+          )}
           <div className="p-4 bg-pink-50 border-t border-pink-200">
-            <button
-              onClick={saveCoZusatzkosten}
-              className="w-full bg-gradient-to-r from-pink-600 to-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-            >
-              <Save className="w-5 h-5" />
-              Save Zusatzkosten
+            <button onClick={saveCoZusatzkosten} className="w-full bg-gradient-to-r from-pink-600 to-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+              <Save className="w-5 h-5" />Save Zusatzkosten
             </button>
           </div>
         </div>
@@ -4608,7 +4884,49 @@ export default function Price() {
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
-          <div className="overflow-x-auto">{(() => {
+          {isMobile ? (() => {
+              const hotelTotal = calculateCoHotelTotals().totalPerTraveler / 2;
+              const railwayTotal = coRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const flyTotal = coFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const mealTotal = coMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0);
+              const sightseingTotal = coSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const guideTotal = coGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0);
+              const shouTotal = coShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const ezZuschlag = calculateCoHotelTotals().totalEZZimmer - (calculateCoHotelTotals().totalPerTraveler / 2);
+              const tier = paxTiers[mobileTotalPaxIdx] || paxTiers[0];
+              const transportPPP = calculateCoTransportTotals().grandTotal / tier.count;
+              const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) + mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+              const commissionPercent = coCommissionValues[tier.id] || 0;
+              const commissionAmount = (price * commissionPercent) / 100;
+              const totalPrice = price + commissionAmount;
+              calculatedTotalPrices.current = {};
+              paxTiers.forEach(t => {
+                const tPPP = calculateCoTransportTotals().grandTotal / t.count;
+                const tPrice = hotelTotal + tPPP + railwayTotal + (flyTotal / t.count) + mealTotal + sightseingTotal + (guideTotal / t.count) + shouTotal;
+                const tComm = coCommissionValues[t.id] || 0;
+                calculatedTotalPrices.current[t.id] = { totalPrice: Math.round(tPrice + (tPrice * tComm / 100)), ezZuschlag: Math.round(ezZuschlag) };
+              });
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {paxTiers.map((t, idx) => (<button key={t.id} onClick={() => setMobileTotalPaxIdx(idx)} className={`py-2 rounded-lg font-semibold text-xs transition-colors ${mobileTotalPaxIdx === idx ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t.name}</button>))}
+                  </div>
+                  <div className="bg-white rounded-xl border border-green-100 overflow-hidden divide-y divide-gray-100">
+                    {[['Hotels', formatPrice(hotelTotal)], ['Transport', formatPrice(transportPPP)], ['Railway', formatPrice(railwayTotal)], ['Fly', formatPrice(flyTotal / tier.count)], ['Meal', formatPrice(mealTotal)], ['Sightseing', formatPrice(sightseingTotal)], ['Guide', formatPrice(guideTotal / tier.count)], ['Shou', formatPrice(shouTotal)]].map(([cat, val]) => (
+                      <div key={cat} className="flex justify-between px-4 py-2.5 bg-green-50"><span className="text-sm font-semibold text-gray-700">{cat}</span><span className="text-sm font-bold text-green-600">{val} $</span></div>
+                    ))}
+                    <div className="flex justify-between px-4 py-3 bg-gray-100 border-t-2 border-gray-300"><span className="text-sm font-bold text-gray-900">Price</span><span className="text-sm font-bold text-gray-900">{formatPrice(price)} $</span></div>
+                    <div className="flex justify-between items-center px-4 py-2.5 bg-gray-50">
+                      <span className="text-sm font-semibold text-gray-700">Commission (%)</span>
+                      <div className="flex items-center gap-2"><input type="number" step="0.1" placeholder="0" value={commissionPercent === 0 ? '' : commissionPercent} onChange={(e) => updateCoCommissionValue(tier.id, e.target.value)} onBlur={saveCommissionValues} className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold text-sm" />{commissionAmount > 0 && <span className="text-xs text-gray-500">+{formatPrice(commissionAmount)} $</span>}</div>
+                    </div>
+                    <div className="flex justify-between px-4 py-4 bg-gradient-to-r from-green-400 to-emerald-400 border-t-2 border-green-600"><span className="text-base font-black text-gray-900">Total Price</span><span className="text-base font-black text-gray-900">{formatPrice(totalPrice)} $</span></div>
+                  </div>
+                  <div className="flex justify-between px-4 py-3 bg-orange-50 rounded-xl border border-orange-200"><span className="font-bold text-gray-700">EZ Zuschlag:</span><span className="font-black text-orange-600">{formatPrice(ezZuschlag)} $</span></div>
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-200"><button onClick={saveTotalPrices} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg px-4 py-3 flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Narxlarni saqlash</button></div>
+                </div>
+              );
+            })() : <div className="overflow-x-auto">{(() => {
               // Clear previous calculations
               calculatedTotalPrices.current = {};
 
@@ -4622,7 +4940,7 @@ export default function Price() {
               const shouTotal = coShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
 
               return (
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse min-w-max">
               <thead>
                 <tr className="bg-gradient-to-r from-green-500 to-emerald-500">
                   <th className="border border-green-600 px-4 py-3 text-left font-bold text-white">Category</th>
@@ -4784,7 +5102,7 @@ export default function Price() {
                 <span className="text-2xl font-black text-orange-600">{formatPrice(calculateCoHotelTotals().totalEZZimmer - (calculateCoHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
@@ -4801,6 +5119,30 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasHotelPrices.map((hotel) => (
+                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <input type="text" value={hotel.city} onChange={(e) => updateKasHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteKasHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateKasHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateKasHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateKasHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total / person</div><div className="font-bold text-orange-700 text-sm">{(calculateKasHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm">{calculateKasHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              </div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -4893,18 +5235,20 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
       {/* KAS - Transport Tab */}
       {selectedTourType === 'kas' && selectedKASSubTab === 'transport' && (
         <>
-          <div className="flex gap-2 flex-wrap items-center">
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5 md:flex md:flex-wrap md:gap-2">
             {paxTiers.map((tier) => (
               <button
                 key={tier.id}
                 onClick={() => updateParams({ pax: tier.id })}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                className={`px-2 md:px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all duration-300 ${
                   selectedPaxTier === tier.id
                     ? 'bg-orange-600 text-white shadow-md'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -4913,28 +5257,15 @@ export default function Price() {
                 {tier.name}
               </button>
             ))}
-            <div className="h-8 w-px bg-gray-300 mx-2"></div>
-            <button
-              onClick={copyKasTransportFrom4PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md"
-              title="4 PAX narxlarini 5, 6-7, 8-9 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 4 PAX
-            </button>
-            <div className="h-8 w-px bg-gray-300 mx-2"></div>
-            <button
-              onClick={copyKasTransportFrom10_11PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-sm hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-md"
-              title="10-11 PAX narxlarini 12-13, 14-15, 16 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 10-11 PAX
-            </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
+              <button onClick={copyKasTransportFrom4PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-xs hover:from-purple-700 hover:to-indigo-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 4 PAX
+              </button>
+              <button onClick={copyKasTransportFrom10_11PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-xs hover:from-green-700 hover:to-emerald-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 10-11 PAX
+              </button>
+            </div>
           </div>
           <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-3 flex justify-between items-center">
@@ -4947,6 +5278,34 @@ export default function Price() {
                 Add
               </button>
             </div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {kasTransportRoutes.map((route, index) => {
+                  const routeTotal = route.days * route.price;
+                  return (
+                    <div key={route.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                      <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                      <div className="flex-1 p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                          <input type="text" value={route.name} onChange={(e) => updateKasTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                          <button onClick={() => deleteKasTransportRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateKasTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
+                          <div><div className="text-xs text-gray-500 mb-1">Preise</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateKasTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
+                          <div><div className="text-xs text-gray-500 mb-1">Total</div><div className={`text-center font-bold p-1.5 text-sm ${routeTotal > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{routeTotal}</div></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Grand Total</div><div className="font-bold text-orange-700 text-sm">{calculateKasTransportTotals().grandTotal.toFixed(2)} $</div></div>
+                  <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Per Person</div><div className="font-bold text-green-700 text-sm">{calculateKasTransportTotals().pricePerPerson.toFixed(0)}</div></div>
+                </div>
+              </div>
+            ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -5007,6 +5366,7 @@ export default function Price() {
                 </tr>
               </tbody>
             </table>
+            )}
           </div>
         </>
       )}
@@ -5024,6 +5384,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasRailwayRoutes.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasRailwayRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteKasRailwayRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasRailwayRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasRailwayRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -5063,6 +5444,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -5079,6 +5461,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasFlyRoutes.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasFlyRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteKasFlyRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasFlyRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasFlyRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasFlyRoutes.reduce((sum, f) => sum + ((parseFloat(f.days) || 1) * (parseFloat(f.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -5118,6 +5521,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           <div className="px-6 py-4 bg-orange-50">
             <h4 className="font-bold text-gray-800 mb-3">PAX Breakdown</h4>
             <div className="grid grid-cols-4 gap-3">
@@ -5149,6 +5553,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasMealItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteKasMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -5188,6 +5613,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -5204,6 +5630,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasSightseingItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteKasSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -5243,6 +5690,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -5259,6 +5707,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasGuideItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteKasGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -5298,6 +5767,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           <div className="px-6 py-4 bg-orange-50">
             <h4 className="font-bold text-gray-800 mb-3">PAX Breakdown</h4>
             <div className="grid grid-cols-4 gap-3">
@@ -5329,6 +5799,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasShouItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteKasShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-orange-50 to-orange-100 border-b-2 border-orange-200">
@@ -5368,6 +5859,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -5387,81 +5879,61 @@ export default function Price() {
               Add Cost
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gradient-to-r from-pink-100 to-rose-100">
-                  <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">№</th>
-                  <th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">Name</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th>
-                  <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Price</th>
-                  <th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Total</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th>
-                  <th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {kasZusatzkostenItems.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="border border-pink-300 px-4 py-12 text-center text-gray-500">
-                      <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p>No additional costs added yet</p>
-                    </td>
-                  </tr>
-                ) : (
-                  kasZusatzkostenItems.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-pink-50 transition-colors">
-                      <td className="border border-pink-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input type="text" value={item.name} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300" />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input type="number" value={item.pax || 1} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i))} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-center font-semibold" min="1" />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3">
-                        <input type="number" value={item.price} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i))} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-right font-semibold" />
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-right font-bold text-lg text-gray-900">{((item.price || 0) * (item.pax || 1)).toFixed(2)}</td>
-                      <td className="border border-pink-300 px-4 py-3 text-center">
-                        <select value={item.currency} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, currency: e.target.value } : i))} className="px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 font-semibold">
-                          <option value="USD">USD</option>
-                          <option value="UZS">UZS</option>
-                          <option value="EUR">EUR</option>
-                        </select>
-                      </td>
-                      <td className="border border-pink-300 px-4 py-3 text-center">
-                        <button onClick={() => { setKasZusatzkostenItems(kasZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {kasZusatzkostenItems.length === 0 ? (
+                <div className="py-8 text-center text-gray-500"><DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" /><p className="text-sm">No additional costs added yet</p></div>
+              ) : kasZusatzkostenItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-pink-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-pink-400 to-rose-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i))} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => { setKasZusatzkostenItems(kasZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" min="1" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i))} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-pink-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                    </div>
+                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-pink-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                  </div>
+                </div>
+              ))}
               {kasZusatzkostenItems.length > 0 && (
-                <tfoot>
-                  <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                    <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total USD:</td>
-                    <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{kasZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)}</td>
-                    <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">USD</td>
-                    <td className="border border-pink-300"></td>
-                  </tr>
-                  {kasZusatzkostenItems.some(i => i.currency === 'UZS') && (
-                    <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                      <td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total UZS:</td>
-                      <td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{kasZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()}</td>
-                      <td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">UZS</td>
-                      <td className="border border-pink-300"></td>
-                    </tr>
-                  )}
-                </tfoot>
+                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 space-y-1">
+                  <div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total USD:</span><span className="font-bold text-emerald-700">{kasZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)} USD</span></div>
+                  {kasZusatzkostenItems.some(i => i.currency === 'UZS') && (<div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total UZS:</span><span className="font-bold text-emerald-700">{kasZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()} UZS</span></div>)}
+                </div>
               )}
-            </table>
-          </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse min-w-max">
+                <thead><tr className="bg-gradient-to-r from-pink-100 to-rose-100"><th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">№</th><th className="border border-pink-300 px-4 py-3 text-left font-bold text-gray-800">Name</th><th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th><th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Price</th><th className="border border-pink-300 px-4 py-3 text-right font-bold text-gray-800">Total</th><th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th><th className="border border-pink-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th></tr></thead>
+                <tbody>
+                  {kasZusatzkostenItems.length === 0 ? (<tr><td colSpan="7" className="border border-pink-300 px-4 py-12 text-center text-gray-500"><DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" /><p>No additional costs added yet</p></td></tr>) : (
+                    kasZusatzkostenItems.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-pink-50 transition-colors">
+                        <td className="border border-pink-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="text" value={item.name} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300" /></td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="number" value={item.pax || 1} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i))} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-center font-semibold" min="1" /></td>
+                        <td className="border border-pink-300 px-4 py-3"><input type="number" value={item.price} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i))} className="w-full px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 text-right font-semibold" /></td>
+                        <td className="border border-pink-300 px-4 py-3 text-right font-bold text-lg text-gray-900">{((item.price || 0) * (item.pax || 1)).toFixed(2)}</td>
+                        <td className="border border-pink-300 px-4 py-3 text-center"><select value={item.currency} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? { ...i, currency: e.target.value } : i))} className="px-2 py-1 border border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-300 font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></td>
+                        <td className="border border-pink-300 px-4 py-3 text-center"><button onClick={() => { setKasZusatzkostenItems(kasZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all"><Trash2 className="w-5 h-5" /></button></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {kasZusatzkostenItems.length > 0 && (<tfoot><tr className="bg-gradient-to-r from-emerald-100 to-green-100"><td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total USD:</td><td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{kasZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)}</td><td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">USD</td><td className="border border-pink-300"></td></tr>{kasZusatzkostenItems.some(i => i.currency === 'UZS') && (<tr className="bg-gradient-to-r from-emerald-100 to-green-100"><td colSpan="4" className="border border-pink-300 px-4 py-4 font-bold text-gray-900 text-lg">Total UZS:</td><td className="border border-pink-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{kasZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()}</td><td className="border border-pink-300 px-4 py-4 text-center font-bold text-lg">UZS</td><td className="border border-pink-300"></td></tr>)}</tfoot>)}
+              </table>
+            </div>
+          )}
           <div className="p-4 bg-pink-50 border-t border-pink-200">
             <button onClick={saveKasZusatzkosten} className="w-full bg-gradient-to-r from-pink-600 to-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:from-pink-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
-              <Save className="w-5 h-5" />
-              Save Zusatzkosten
+              <Save className="w-5 h-5" />Save Zusatzkosten
             </button>
           </div>
         </div>
@@ -5472,7 +5944,49 @@ export default function Price() {
           <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
-          <div className="overflow-x-auto">{(() => {
+          {isMobile ? (() => {
+              const hotelTotal = calculateKasHotelTotals().totalPerTraveler / 2;
+              const railwayTotal = kasRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const flyTotal = kasFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const mealTotal = kasMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0);
+              const sightseingTotal = kasSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const guideTotal = kasGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0);
+              const shouTotal = kasShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const ezZuschlag = calculateKasHotelTotals().totalEZZimmer - (calculateKasHotelTotals().totalPerTraveler / 2);
+              const tier = paxTiers[mobileTotalPaxIdx] || paxTiers[0];
+              const transportPPP = calculateKasTransportTotals().grandTotal / tier.count;
+              const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) + mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+              const commissionPercent = kasCommissionValues[tier.id] || 0;
+              const commissionAmount = (price * commissionPercent) / 100;
+              const totalPrice = price + commissionAmount;
+              calculatedTotalPrices.current = {};
+              paxTiers.forEach(t => {
+                const tPPP = calculateKasTransportTotals().grandTotal / t.count;
+                const tPrice = hotelTotal + tPPP + railwayTotal + (flyTotal / t.count) + mealTotal + sightseingTotal + (guideTotal / t.count) + shouTotal;
+                const tComm = kasCommissionValues[t.id] || 0;
+                calculatedTotalPrices.current[t.id] = { totalPrice: Math.round(tPrice + (tPrice * tComm / 100)), ezZuschlag: Math.round(ezZuschlag) };
+              });
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {paxTiers.map((t, idx) => (<button key={t.id} onClick={() => setMobileTotalPaxIdx(idx)} className={`py-2 rounded-lg font-semibold text-xs transition-colors ${mobileTotalPaxIdx === idx ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t.name}</button>))}
+                  </div>
+                  <div className="bg-white rounded-xl border border-orange-100 overflow-hidden divide-y divide-gray-100">
+                    {[['Hotels', formatPrice(hotelTotal)], ['Transport', formatPrice(transportPPP)], ['Railway', formatPrice(railwayTotal)], ['Fly', formatPrice(flyTotal / tier.count)], ['Meal', formatPrice(mealTotal)], ['Sightseing', formatPrice(sightseingTotal)], ['Guide', formatPrice(guideTotal / tier.count)], ['Shou', formatPrice(shouTotal)]].map(([cat, val]) => (
+                      <div key={cat} className="flex justify-between px-4 py-2.5 bg-orange-50"><span className="text-sm font-semibold text-gray-700">{cat}</span><span className="text-sm font-bold text-orange-600">{val} $</span></div>
+                    ))}
+                    <div className="flex justify-between px-4 py-3 bg-gray-100 border-t-2 border-gray-300"><span className="text-sm font-bold text-gray-900">Price</span><span className="text-sm font-bold text-gray-900">{formatPrice(price)} $</span></div>
+                    <div className="flex justify-between items-center px-4 py-2.5 bg-gray-50">
+                      <span className="text-sm font-semibold text-gray-700">Commission (%)</span>
+                      <div className="flex items-center gap-2"><input type="number" step="0.1" placeholder="0" value={commissionPercent === 0 ? '' : commissionPercent} onChange={(e) => updateKasCommissionValue(tier.id, e.target.value)} onBlur={saveCommissionValues} className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 font-semibold text-sm" />{commissionAmount > 0 && <span className="text-xs text-gray-500">+{formatPrice(commissionAmount)} $</span>}</div>
+                    </div>
+                    <div className="flex justify-between px-4 py-4 bg-gradient-to-r from-green-400 to-emerald-400 border-t-2 border-green-600"><span className="text-base font-black text-gray-900">Total Price</span><span className="text-base font-black text-gray-900">{formatPrice(totalPrice)} $</span></div>
+                  </div>
+                  <div className="flex justify-between px-4 py-3 bg-orange-50 rounded-xl border border-orange-200"><span className="font-bold text-gray-700">EZ Zuschlag:</span><span className="font-black text-orange-600">{formatPrice(ezZuschlag)} $</span></div>
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-200"><button onClick={saveTotalPrices} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg px-4 py-3 flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Narxlarni saqlash</button></div>
+                </div>
+              );
+            })() : <div className="overflow-x-auto">{(() => {
               // Clear previous calculations
               calculatedTotalPrices.current = {};
 
@@ -5486,7 +6000,7 @@ export default function Price() {
               const shouTotal = kasShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
 
               return (
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse min-w-max">
               <thead>
                 <tr className="bg-gradient-to-r from-orange-500 to-orange-600">
                   <th className="border border-orange-600 px-4 py-3 text-left font-bold text-white">Category</th>
@@ -5632,7 +6146,7 @@ export default function Price() {
                 <span className="text-2xl font-black text-orange-600">{formatPrice(calculateKasHotelTotals().totalEZZimmer - (calculateKasHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
@@ -5649,6 +6163,30 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaHotelPrices.map((hotel) => (
+                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <input type="text" value={hotel.city} onChange={(e) => updateZaHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteZaHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateZaHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateZaHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" placeholder="0" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateZaHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" placeholder="0" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total / person</div><div className="font-bold text-purple-700 text-sm">{(calculateZaHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-violet-50 rounded-xl p-3 text-center border border-violet-200"><div className="text-xs text-violet-600 font-medium">EZ Zimmer</div><div className="font-bold text-violet-700 text-sm">{calculateZaHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              </div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -5741,48 +6279,37 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
       {/* ZA - Transport Tab */}
       {selectedTourType === 'za' && selectedZASubTab === 'transport' && (
         <>
-          <div className="flex gap-2 flex-wrap items-center">
-            {paxTiers.map((tier) => (
-              <button
-                key={tier.id}
-                onClick={() => updateParams({ pax: tier.id })}
-                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
-                  selectedPaxTier === tier.id
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {tier.name}
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5 md:flex md:flex-wrap md:gap-2">
+              {paxTiers.map((tier) => (
+                <button
+                  key={tier.id}
+                  onClick={() => updateParams({ pax: tier.id })}
+                  className={`px-2 md:px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all duration-300 ${
+                    selectedPaxTier === tier.id
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tier.name}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
+              <button onClick={copyZaTransportFrom4PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-xs hover:from-purple-700 hover:to-indigo-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 4 PAX
               </button>
-            ))}
-            <div className="h-8 w-px bg-gray-300 mx-2"></div>
-            <button
-              onClick={copyZaTransportFrom4PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold text-sm hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md"
-              title="4 PAX narxlarini 5, 6-7, 8-9 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 4 PAX
-            </button>
-            <div className="h-8 w-px bg-gray-300 mx-2"></div>
-            <button
-              onClick={copyZaTransportFrom10_11PaxToOthers}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-sm hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-md"
-              title="10-11 PAX narxlarini 12-13, 14-15, 16 PAX larga nusxalash"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              Copy 10-11 PAX
-            </button>
+              <button onClick={copyZaTransportFrom10_11PaxToOthers} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-semibold text-xs hover:from-green-700 hover:to-emerald-700 transition-all">
+                <Copy className="w-3.5 h-3.5" /> Copy 10-11 PAX
+              </button>
+            </div>
           </div>
           <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-3 flex justify-between items-center">
@@ -5795,6 +6322,30 @@ export default function Price() {
                 Add
               </button>
             </div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {zaTransportRoutes.map((route, index) => {
+                  const routeTotal = route.days * route.price;
+                  return (
+                    <div key={route.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                      <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                      <div className="flex-1 p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                          <input type="text" value={route.name} onChange={(e) => updateZaTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                          <button onClick={() => deleteZaTransportRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateZaTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                          <div><div className="text-xs text-gray-500 mb-1">Preise ($)</div><input type="number" value={route.price} onChange={(e) => updateZaTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                          <div><div className="text-xs text-gray-500 mb-1">Total</div><div className="w-full text-center border-2 border-gray-100 rounded-lg p-1.5 text-sm bg-gray-50 font-semibold text-purple-700">{routeTotal.toFixed(0)}</div></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -5855,6 +6406,7 @@ export default function Price() {
                 </tr>
               </tbody>
             </table>
+            )}
           </div>
         </>
       )}
@@ -5872,6 +6424,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaRailwayRoutes.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaRailwayRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteZaRailwayRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaRailwayRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaRailwayRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -5911,6 +6484,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -5927,6 +6501,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaFlyRoutes.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaFlyRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteZaFlyRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaFlyRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaFlyRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -5966,6 +6561,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           <div className="px-6 py-4 bg-purple-50">
             <h4 className="font-bold text-gray-800 mb-3">PAX Breakdown</h4>
             <div className="grid grid-cols-4 gap-3">
@@ -5997,6 +6593,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaMealItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteZaMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -6036,6 +6653,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -6052,6 +6670,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaSightseingItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteZaSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -6091,6 +6730,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -6107,6 +6747,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaGuideItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteZaGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -6146,6 +6807,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
           <div className="px-6 py-4 bg-purple-50">
             <h4 className="font-bold text-gray-800 mb-3">PAX Breakdown</h4>
             <div className="grid grid-cols-4 gap-3">
@@ -6177,6 +6839,27 @@ export default function Price() {
               Add
             </button>
           </div>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaShouItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => deleteZaShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
+            </div>
+          ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
@@ -6216,6 +6899,7 @@ export default function Price() {
               </tr>
             </tbody>
           </table>
+          )}
         </div>
       )}
 
@@ -6235,81 +6919,61 @@ export default function Price() {
               Add Cost
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gradient-to-r from-purple-100 to-violet-100">
-                  <th className="border border-purple-300 px-4 py-3 text-left font-bold text-gray-800">№</th>
-                  <th className="border border-purple-300 px-4 py-3 text-left font-bold text-gray-800">Name</th>
-                  <th className="border border-purple-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th>
-                  <th className="border border-purple-300 px-4 py-3 text-right font-bold text-gray-800">Price</th>
-                  <th className="border border-purple-300 px-4 py-3 text-right font-bold text-gray-800">Total</th>
-                  <th className="border border-purple-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th>
-                  <th className="border border-purple-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {zaZusatzkostenItems.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="border border-purple-300 px-4 py-12 text-center text-gray-500">
-                      <DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p>No additional costs added yet</p>
-                    </td>
-                  </tr>
-                ) : (
-                  zaZusatzkostenItems.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-purple-50 transition-colors">
-                      <td className="border border-purple-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
-                      <td className="border border-purple-300 px-4 py-3">
-                        <input type="text" value={item.name} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))} className="w-full px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                      </td>
-                      <td className="border border-purple-300 px-4 py-3">
-                        <input type="number" value={item.pax || 1} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i))} className="w-full px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300 text-center font-semibold" min="1" />
-                      </td>
-                      <td className="border border-purple-300 px-4 py-3">
-                        <input type="number" value={item.price} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i))} className="w-full px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300 text-right font-semibold" />
-                      </td>
-                      <td className="border border-purple-300 px-4 py-3 text-right font-bold text-lg text-gray-900">{((item.price || 0) * (item.pax || 1)).toFixed(2)}</td>
-                      <td className="border border-purple-300 px-4 py-3 text-center">
-                        <select value={item.currency} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, currency: e.target.value } : i))} className="px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300 font-semibold">
-                          <option value="USD">USD</option>
-                          <option value="UZS">UZS</option>
-                          <option value="EUR">EUR</option>
-                        </select>
-                      </td>
-                      <td className="border border-purple-300 px-4 py-3 text-center">
-                        <button onClick={() => { setZaZusatzkostenItems(zaZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all">
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
+          {isMobile ? (
+            <div className="p-3 space-y-2">
+              {zaZusatzkostenItems.length === 0 ? (
+                <div className="py-8 text-center text-gray-500"><DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" /><p className="text-sm">No additional costs added yet</p></div>
+              ) : zaZusatzkostenItems.map((item, index) => (
+                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-violet-600" />
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i))} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
+                      <button onClick={() => { setZaZusatzkostenItems(zaZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" min="1" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i))} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-purple-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                    </div>
+                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-purple-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                  </div>
+                </div>
+              ))}
               {zaZusatzkostenItems.length > 0 && (
-                <tfoot>
-                  <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                    <td colSpan="4" className="border border-purple-300 px-4 py-4 font-bold text-gray-900 text-lg">Total USD:</td>
-                    <td className="border border-purple-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{zaZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)}</td>
-                    <td className="border border-purple-300 px-4 py-4 text-center font-bold text-lg">USD</td>
-                    <td className="border border-purple-300"></td>
-                  </tr>
-                  {zaZusatzkostenItems.some(i => i.currency === 'UZS') && (
-                    <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
-                      <td colSpan="4" className="border border-purple-300 px-4 py-4 font-bold text-gray-900 text-lg">Total UZS:</td>
-                      <td className="border border-purple-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{zaZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()}</td>
-                      <td className="border border-purple-300 px-4 py-4 text-center font-bold text-lg">UZS</td>
-                      <td className="border border-purple-300"></td>
-                    </tr>
-                  )}
-                </tfoot>
+                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 space-y-1">
+                  <div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total USD:</span><span className="font-bold text-emerald-700">{zaZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)} USD</span></div>
+                  {zaZusatzkostenItems.some(i => i.currency === 'UZS') && (<div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total UZS:</span><span className="font-bold text-emerald-700">{zaZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()} UZS</span></div>)}
+                </div>
               )}
-            </table>
-          </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-max w-full border-collapse">
+                <thead><tr className="bg-gradient-to-r from-purple-100 to-violet-100"><th className="border border-purple-300 px-4 py-3 text-left font-bold text-gray-800">№</th><th className="border border-purple-300 px-4 py-3 text-left font-bold text-gray-800">Name</th><th className="border border-purple-300 px-4 py-3 text-center font-bold text-gray-800">PAX</th><th className="border border-purple-300 px-4 py-3 text-right font-bold text-gray-800">Price</th><th className="border border-purple-300 px-4 py-3 text-right font-bold text-gray-800">Total</th><th className="border border-purple-300 px-4 py-3 text-center font-bold text-gray-800">Currency</th><th className="border border-purple-300 px-4 py-3 text-center font-bold text-gray-800">Actions</th></tr></thead>
+                <tbody>
+                  {zaZusatzkostenItems.length === 0 ? (<tr><td colSpan="7" className="border border-purple-300 px-4 py-12 text-center text-gray-500"><DollarSign className="w-12 h-12 mx-auto mb-3 text-gray-300" /><p>No additional costs added yet</p></td></tr>) : (
+                    zaZusatzkostenItems.map((item, index) => (
+                      <tr key={item.id} className="hover:bg-purple-50 transition-colors">
+                        <td className="border border-purple-300 px-4 py-3 text-center font-semibold">{index + 1}</td>
+                        <td className="border border-purple-300 px-4 py-3"><input type="text" value={item.name} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, name: e.target.value } : i))} className="w-full px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300" /></td>
+                        <td className="border border-purple-300 px-4 py-3"><input type="number" value={item.pax || 1} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, pax: parseInt(e.target.value) || 1 } : i))} className="w-full px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300 text-center font-semibold" min="1" /></td>
+                        <td className="border border-purple-300 px-4 py-3"><input type="number" value={item.price} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, price: parseFloat(e.target.value) || 0 } : i))} className="w-full px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300 text-right font-semibold" /></td>
+                        <td className="border border-purple-300 px-4 py-3 text-right font-bold text-lg text-gray-900">{((item.price || 0) * (item.pax || 1)).toFixed(2)}</td>
+                        <td className="border border-purple-300 px-4 py-3 text-center"><select value={item.currency} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? { ...i, currency: e.target.value } : i))} className="px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring-2 focus:ring-purple-300 font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></td>
+                        <td className="border border-purple-300 px-4 py-3 text-center"><button onClick={() => { setZaZusatzkostenItems(zaZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="text-red-600 hover:text-white hover:bg-red-600 p-2 rounded-lg transition-all"><Trash2 className="w-5 h-5" /></button></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {zaZusatzkostenItems.length > 0 && (<tfoot><tr className="bg-gradient-to-r from-emerald-100 to-green-100"><td colSpan="4" className="border border-purple-300 px-4 py-4 font-bold text-gray-900 text-lg">Total USD:</td><td className="border border-purple-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{zaZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)}</td><td className="border border-purple-300 px-4 py-4 text-center font-bold text-lg">USD</td><td className="border border-purple-300"></td></tr>{zaZusatzkostenItems.some(i => i.currency === 'UZS') && (<tr className="bg-gradient-to-r from-emerald-100 to-green-100"><td colSpan="4" className="border border-purple-300 px-4 py-4 font-bold text-gray-900 text-lg">Total UZS:</td><td className="border border-purple-300 px-4 py-4 text-right font-bold text-emerald-700 text-xl">{zaZusatzkostenItems.filter(i => i.currency === 'UZS').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toLocaleString()}</td><td className="border border-purple-300 px-4 py-4 text-center font-bold text-lg">UZS</td><td className="border border-purple-300"></td></tr>)}</tfoot>)}
+              </table>
+            </div>
+          )}
           <div className="p-4 bg-purple-50 border-t border-purple-200">
             <button onClick={saveZaZusatzkosten} className="w-full bg-gradient-to-r from-purple-600 to-violet-600 text-white px-6 py-3 rounded-xl font-bold hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
-              <Save className="w-5 h-5" />
-              Save Zusatzkosten
+              <Save className="w-5 h-5" />Save Zusatzkosten
             </button>
           </div>
         </div>
@@ -6320,7 +6984,49 @@ export default function Price() {
           <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-3">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
-          <div className="overflow-x-auto">{(() => {
+          {isMobile ? (() => {
+              const hotelTotal = calculateZaHotelTotals().totalPerTraveler / 2;
+              const railwayTotal = zaRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const flyTotal = zaFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
+              const mealTotal = zaMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0);
+              const sightseingTotal = zaSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const guideTotal = zaGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0);
+              const shouTotal = zaShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
+              const ezZuschlag = calculateZaHotelTotals().totalEZZimmer - (calculateZaHotelTotals().totalPerTraveler / 2);
+              const tier = paxTiers[mobileTotalPaxIdx] || paxTiers[0];
+              const transportPPP = calculateZaTransportTotals().grandTotal / tier.count;
+              const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) + mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+              const commissionPercent = zaCommissionValues[tier.id] || 0;
+              const commissionAmount = (price * commissionPercent) / 100;
+              const totalPrice = price + commissionAmount;
+              calculatedTotalPrices.current = {};
+              paxTiers.forEach(t => {
+                const tPPP = calculateZaTransportTotals().grandTotal / t.count;
+                const tPrice = hotelTotal + tPPP + railwayTotal + (flyTotal / t.count) + mealTotal + sightseingTotal + (guideTotal / t.count) + shouTotal;
+                const tComm = zaCommissionValues[t.id] || 0;
+                calculatedTotalPrices.current[t.id] = { totalPrice: Math.round(tPrice + (tPrice * tComm / 100)), ezZuschlag: Math.round(ezZuschlag) };
+              });
+              return (
+                <div className="p-3 space-y-3">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {paxTiers.map((t, idx) => (<button key={t.id} onClick={() => setMobileTotalPaxIdx(idx)} className={`py-2 rounded-lg font-semibold text-xs transition-colors ${mobileTotalPaxIdx === idx ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{t.name}</button>))}
+                  </div>
+                  <div className="bg-white rounded-xl border border-purple-100 overflow-hidden divide-y divide-gray-100">
+                    {[['Hotels', formatPrice(hotelTotal)], ['Transport', formatPrice(transportPPP)], ['Railway', formatPrice(railwayTotal)], ['Fly', formatPrice(flyTotal / tier.count)], ['Meal', formatPrice(mealTotal)], ['Sightseing', formatPrice(sightseingTotal)], ['Guide', formatPrice(guideTotal / tier.count)], ['Shou', formatPrice(shouTotal)]].map(([cat, val]) => (
+                      <div key={cat} className="flex justify-between px-4 py-2.5 bg-purple-50"><span className="text-sm font-semibold text-gray-700">{cat}</span><span className="text-sm font-bold text-purple-600">{val} $</span></div>
+                    ))}
+                    <div className="flex justify-between px-4 py-3 bg-gray-100 border-t-2 border-gray-300"><span className="text-sm font-bold text-gray-900">Price</span><span className="text-sm font-bold text-gray-900">{formatPrice(price)} $</span></div>
+                    <div className="flex justify-between items-center px-4 py-2.5 bg-gray-50">
+                      <span className="text-sm font-semibold text-gray-700">Commission (%)</span>
+                      <div className="flex items-center gap-2"><input type="number" step="0.1" placeholder="0" value={commissionPercent === 0 ? '' : commissionPercent} onChange={(e) => updateZaCommissionValue(tier.id, e.target.value)} onBlur={saveCommissionValues} className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold text-sm" />{commissionAmount > 0 && <span className="text-xs text-gray-500">+{formatPrice(commissionAmount)} $</span>}</div>
+                    </div>
+                    <div className="flex justify-between px-4 py-4 bg-gradient-to-r from-green-400 to-emerald-400 border-t-2 border-green-600"><span className="text-base font-black text-gray-900">Total Price</span><span className="text-base font-black text-gray-900">{formatPrice(totalPrice)} $</span></div>
+                  </div>
+                  <div className="flex justify-between px-4 py-3 bg-orange-50 rounded-xl border border-orange-200"><span className="font-bold text-gray-700">EZ Zuschlag:</span><span className="font-black text-orange-600">{formatPrice(ezZuschlag)} $</span></div>
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-200"><button onClick={saveTotalPrices} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-lg px-4 py-3 flex items-center justify-center gap-2"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>Narxlarni saqlash</button></div>
+                </div>
+              );
+            })() : <div className="overflow-x-auto">{(() => {
               // Clear previous calculations
               calculatedTotalPrices.current = {};
 
@@ -6334,7 +7040,7 @@ export default function Price() {
               const shouTotal = zaShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
 
               return (
-            <table className="w-full border-collapse">
+            <table className="w-full border-collapse min-w-max">
               <thead>
                 <tr className="bg-gradient-to-r from-purple-500 to-purple-600">
                   <th className="border border-purple-600 px-4 py-3 text-left font-bold text-white">Category</th>
@@ -6480,7 +7186,7 @@ export default function Price() {
                 <span className="text-2xl font-black text-orange-600">{formatPrice(calculateZaHotelTotals().totalEZZimmer - (calculateZaHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
-          </div>
+          </div>}
         </div>
       )}
 
@@ -6503,8 +7209,7 @@ export default function Price() {
             <div className="bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 px-8 py-5">
               <h3 className="text-3xl font-bold text-white text-center drop-shadow-lg">Preis für die Comfort Plus</h3>
             </div>
-            <div className="overflow-x-auto">
-              {(() => {
+            {(() => {
                 const hotelTotal = calculateCoHotelTotals().totalPerTraveler / 2;
                 const railwayTotal = coRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
                 const flyTotal = coFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -6514,43 +7219,69 @@ export default function Price() {
                 const shouTotal = coShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
                 const ezZuschlag = calculateCoHotelTotals().totalEZZimmer - (calculateCoHotelTotals().totalPerTraveler / 2);
 
-                return (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-emerald-300 via-green-300 to-teal-300">
-                        {paxTiers.map(tier => (
-                          <th key={tier.id} className="border border-emerald-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
-                            {tier.name}
-                          </th>
-                        ))}
-                        <th className="border border-emerald-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
-                        {paxTiers.map(tier => {
-                          const transportPPP = calculateCoTransportTotals().grandTotal / tier.count;
-                          const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
-                                        mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
-                          const commissionPercent = coCommissionValues[tier.id] || 0;
-                          const commissionAmount = (price * commissionPercent) / 100;
-                          const totalPrice = price + commissionAmount;
+                if (isMobile) {
+                  return (
+                    <div className="divide-y divide-gray-100">
+                      {paxTiers.map(tier => {
+                        const transportPPP = calculateCoTransportTotals().grandTotal / tier.count;
+                        const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                      mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                        const commissionPercent = coCommissionValues[tier.id] || 0;
+                        const commissionAmount = (price * commissionPercent) / 100;
+                        const totalPrice = price + commissionAmount;
+                        return (
+                          <div key={tier.id} className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-yellow-50 to-amber-50">
+                            <span className="text-base font-bold text-gray-700">{tier.name}</span>
+                            <span className="text-2xl font-extrabold text-emerald-700">{Math.round(totalPrice)} $</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-5 py-4 bg-orange-50">
+                        <span className="text-base font-bold text-gray-700">EZ Zuschlag</span>
+                        <span className="text-2xl font-extrabold text-orange-600">$ {Math.round(ezZuschlag)}</span>
+                      </div>
+                    </div>
+                  );
+                }
 
-                          return (
-                            <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-emerald-700 shadow-sm">
-                              {Math.round(totalPrice)}
-                            </td>
-                          );
-                        })}
-                        <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-600 shadow-sm">
-                          $ {Math.round(ezZuschlag)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-emerald-300 via-green-300 to-teal-300">
+                          {paxTiers.map(tier => (
+                            <th key={tier.id} className="border border-emerald-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
+                              {tier.name}
+                            </th>
+                          ))}
+                          <th className="border border-emerald-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
+                          {paxTiers.map(tier => {
+                            const transportPPP = calculateCoTransportTotals().grandTotal / tier.count;
+                            const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                          mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                            const commissionPercent = coCommissionValues[tier.id] || 0;
+                            const commissionAmount = (price * commissionPercent) / 100;
+                            const totalPrice = price + commissionAmount;
+
+                            return (
+                              <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-emerald-700 shadow-sm">
+                                {Math.round(totalPrice)}
+                              </td>
+                            );
+                          })}
+                          <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-600 shadow-sm">
+                            $ {Math.round(ezZuschlag)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 );
               })()}
-            </div>
           </div>
 
           {/* ER (Erlebnissreisen) Summary */}
@@ -6558,8 +7289,7 @@ export default function Price() {
             <div className="bg-gradient-to-r from-sky-400 via-blue-400 to-indigo-400 px-8 py-5">
               <h3 className="text-3xl font-bold text-white text-center drop-shadow-lg">Preis für die Erlebnissreisen</h3>
             </div>
-            <div className="overflow-x-auto">
-              {(() => {
+            {(() => {
                 const hotelTotal = calculateHotelTotals().totalPerTraveler / 2;
                 const railwayTotal = railwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
                 const flyTotal = flyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -6569,43 +7299,69 @@ export default function Price() {
                 const shouTotal = shouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
                 const ezZuschlag = calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2);
 
-                return (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-sky-300 via-blue-300 to-indigo-300">
-                        {paxTiers.map(tier => (
-                          <th key={tier.id} className="border border-sky-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
-                            {tier.name}
-                          </th>
-                        ))}
-                        <th className="border border-sky-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
-                        {paxTiers.map(tier => {
-                          const transportPPP = calculateTransportTotals().grandTotal / tier.count;
-                          const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
-                                        mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
-                          const commissionPercent = commissionValues[tier.id] || 0;
-                          const commissionAmount = (price * commissionPercent) / 100;
-                          const totalPrice = price + commissionAmount;
+                if (isMobile) {
+                  return (
+                    <div className="divide-y divide-gray-100">
+                      {paxTiers.map(tier => {
+                        const transportPPP = calculateTransportTotals().grandTotal / tier.count;
+                        const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                      mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                        const commissionPercent = commissionValues[tier.id] || 0;
+                        const commissionAmount = (price * commissionPercent) / 100;
+                        const totalPrice = price + commissionAmount;
+                        return (
+                          <div key={tier.id} className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-yellow-50 to-amber-50">
+                            <span className="text-base font-bold text-gray-700">{tier.name}</span>
+                            <span className="text-2xl font-extrabold text-blue-700">{Math.round(totalPrice)} $</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-5 py-4 bg-orange-50">
+                        <span className="text-base font-bold text-gray-700">EZ Zuschlag</span>
+                        <span className="text-2xl font-extrabold text-orange-600">$ {Math.round(ezZuschlag)}</span>
+                      </div>
+                    </div>
+                  );
+                }
 
-                          return (
-                            <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-blue-700 shadow-sm">
-                              {Math.round(totalPrice)}
-                            </td>
-                          );
-                        })}
-                        <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-600 shadow-sm">
-                          {Math.round(ezZuschlag)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-sky-300 via-blue-300 to-indigo-300">
+                          {paxTiers.map(tier => (
+                            <th key={tier.id} className="border border-sky-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
+                              {tier.name}
+                            </th>
+                          ))}
+                          <th className="border border-sky-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
+                          {paxTiers.map(tier => {
+                            const transportPPP = calculateTransportTotals().grandTotal / tier.count;
+                            const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                          mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                            const commissionPercent = commissionValues[tier.id] || 0;
+                            const commissionAmount = (price * commissionPercent) / 100;
+                            const totalPrice = price + commissionAmount;
+
+                            return (
+                              <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-blue-700 shadow-sm">
+                                {Math.round(totalPrice)}
+                              </td>
+                            );
+                          })}
+                          <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-600 shadow-sm">
+                            {Math.round(ezZuschlag)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 );
               })()}
-            </div>
           </div>
 
           {/* ZA (Zentralasienreisen) Summary */}
@@ -6613,8 +7369,7 @@ export default function Price() {
             <div className="bg-gradient-to-r from-purple-400 via-violet-400 to-fuchsia-400 px-8 py-5">
               <h3 className="text-3xl font-bold text-white text-center drop-shadow-lg">Preis für die Zentralasienreisen</h3>
             </div>
-            <div className="overflow-x-auto">
-              {(() => {
+            {(() => {
                 const hotelTotal = calculateZaHotelTotals().totalPerTraveler / 2;
                 const railwayTotal = zaRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
                 const flyTotal = zaFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -6624,43 +7379,69 @@ export default function Price() {
                 const shouTotal = zaShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
                 const ezZuschlag = calculateZaHotelTotals().totalEZZimmer - (calculateZaHotelTotals().totalPerTraveler / 2);
 
-                return (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-purple-300 via-violet-300 to-fuchsia-300">
-                        {paxTiers.map(tier => (
-                          <th key={tier.id} className="border border-purple-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
-                            {tier.name}
-                          </th>
-                        ))}
-                        <th className="border border-purple-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
-                        {paxTiers.map(tier => {
-                          const transportPPP = calculateZaTransportTotals().grandTotal / tier.count;
-                          const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
-                                        mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
-                          const commissionPercent = zaCommissionValues[tier.id] || 0;
-                          const commissionAmount = (price * commissionPercent) / 100;
-                          const totalPrice = price + commissionAmount;
+                if (isMobile) {
+                  return (
+                    <div className="divide-y divide-gray-100">
+                      {paxTiers.map(tier => {
+                        const transportPPP = calculateZaTransportTotals().grandTotal / tier.count;
+                        const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                      mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                        const commissionPercent = zaCommissionValues[tier.id] || 0;
+                        const commissionAmount = (price * commissionPercent) / 100;
+                        const totalPrice = price + commissionAmount;
+                        return (
+                          <div key={tier.id} className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-yellow-50 to-amber-50">
+                            <span className="text-base font-bold text-gray-700">{tier.name}</span>
+                            <span className="text-2xl font-extrabold text-purple-700">{Math.round(totalPrice)} $</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-5 py-4 bg-orange-50">
+                        <span className="text-base font-bold text-gray-700">EZ Zuschlag</span>
+                        <span className="text-2xl font-extrabold text-orange-600">$ {Math.round(ezZuschlag)}</span>
+                      </div>
+                    </div>
+                  );
+                }
 
-                          return (
-                            <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-purple-700 shadow-sm">
-                              {Math.round(totalPrice)}
-                            </td>
-                          );
-                        })}
-                        <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-purple-700 shadow-sm">
-                          $ {Math.round(ezZuschlag)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-purple-300 via-violet-300 to-fuchsia-300">
+                          {paxTiers.map(tier => (
+                            <th key={tier.id} className="border border-purple-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
+                              {tier.name}
+                            </th>
+                          ))}
+                          <th className="border border-purple-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
+                          {paxTiers.map(tier => {
+                            const transportPPP = calculateZaTransportTotals().grandTotal / tier.count;
+                            const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                          mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                            const commissionPercent = zaCommissionValues[tier.id] || 0;
+                            const commissionAmount = (price * commissionPercent) / 100;
+                            const totalPrice = price + commissionAmount;
+
+                            return (
+                              <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-purple-700 shadow-sm">
+                                {Math.round(totalPrice)}
+                              </td>
+                            );
+                          })}
+                          <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-purple-700 shadow-sm">
+                            $ {Math.round(ezZuschlag)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 );
               })()}
-            </div>
           </div>
 
           {/* KAS (Kasakistan Kirgistan und Usbekistan) Summary */}
@@ -6668,8 +7449,7 @@ export default function Price() {
             <div className="bg-gradient-to-r from-orange-400 via-amber-400 to-yellow-400 px-8 py-5">
               <h3 className="text-3xl font-bold text-white text-center drop-shadow-lg">Preis für Kasakistan Kirgistan und Usbekistan Erlebnissreisen</h3>
             </div>
-            <div className="overflow-x-auto">
-              {(() => {
+            {(() => {
                 const hotelTotal = calculateKasHotelTotals().totalPerTraveler / 2;
                 const railwayTotal = kasRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
                 const flyTotal = kasFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0);
@@ -6679,43 +7459,69 @@ export default function Price() {
                 const shouTotal = kasShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
                 const ezZuschlag = calculateKasHotelTotals().totalEZZimmer - (calculateKasHotelTotals().totalPerTraveler / 2);
 
-                return (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-orange-300 via-amber-300 to-yellow-300">
-                        {paxTiers.map(tier => (
-                          <th key={tier.id} className="border border-orange-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
-                            {tier.name}
-                          </th>
-                        ))}
-                        <th className="border border-orange-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
-                        {paxTiers.map(tier => {
-                          const transportPPP = calculateKasTransportTotals().grandTotal / tier.count;
-                          const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
-                                        mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
-                          const commissionPercent = kasCommissionValues[tier.id] || 0;
-                          const commissionAmount = (price * commissionPercent) / 100;
-                          const totalPrice = price + commissionAmount;
+                if (isMobile) {
+                  return (
+                    <div className="divide-y divide-gray-100">
+                      {paxTiers.map(tier => {
+                        const transportPPP = calculateKasTransportTotals().grandTotal / tier.count;
+                        const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                      mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                        const commissionPercent = kasCommissionValues[tier.id] || 0;
+                        const commissionAmount = (price * commissionPercent) / 100;
+                        const totalPrice = price + commissionAmount;
+                        return (
+                          <div key={tier.id} className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-yellow-50 to-amber-50">
+                            <span className="text-base font-bold text-gray-700">{tier.name}</span>
+                            <span className="text-2xl font-extrabold text-orange-700">{Math.round(totalPrice)} $</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-5 py-4 bg-orange-50">
+                        <span className="text-base font-bold text-gray-700">EZ Zuschlag</span>
+                        <span className="text-2xl font-extrabold text-orange-600">$ {Math.round(ezZuschlag)}</span>
+                      </div>
+                    </div>
+                  );
+                }
 
-                          return (
-                            <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-700 shadow-sm">
-                              {Math.round(totalPrice)}
-                            </td>
-                          );
-                        })}
-                        <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-700 shadow-sm">
-                          {Math.round(ezZuschlag)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-orange-300 via-amber-300 to-yellow-300">
+                          {paxTiers.map(tier => (
+                            <th key={tier.id} className="border border-orange-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">
+                              {tier.name}
+                            </th>
+                          ))}
+                          <th className="border border-orange-400 px-6 py-4 text-center font-bold text-gray-800 text-base shadow-sm">EZ Zuschlag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 hover:from-yellow-200 hover:via-amber-200 hover:to-orange-200 transition-colors duration-200">
+                          {paxTiers.map(tier => {
+                            const transportPPP = calculateKasTransportTotals().grandTotal / tier.count;
+                            const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
+                                          mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
+                            const commissionPercent = kasCommissionValues[tier.id] || 0;
+                            const commissionAmount = (price * commissionPercent) / 100;
+                            const totalPrice = price + commissionAmount;
+
+                            return (
+                              <td key={tier.id} className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-700 shadow-sm">
+                                {Math.round(totalPrice)}
+                              </td>
+                            );
+                          })}
+                          <td className="border border-gray-300 px-6 py-5 text-center font-extrabold text-3xl text-orange-700 shadow-sm">
+                            {Math.round(ezZuschlag)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 );
               })()}
-            </div>
           </div>
         </div>
       )}

@@ -3,6 +3,12 @@ const prisma = new PrismaClient();
 const gmailService = require('./gmail.service');
 const claudeVision = require('./claudeVision.service');
 const excelParser = require('./excelParser.service');
+const fsSync = require('fs');
+const _debugLog = (...args) => {
+  const line = `[${new Date().toISOString()}] ` + args.join(' ') + '\n';
+  process.stdout.write(line);
+  try { fsSync.appendFileSync('/tmp/pdf-debug.log', line); } catch(e) {}
+};
 const fs = require('fs').promises;
 const path = require('path');
 const nodemailer = require('nodemailer');
@@ -69,9 +75,24 @@ class EmailImportProcessor {
       const isExcel = this.isExcelFile(emailImport.attachmentName, emailImport.attachmentType);
       const isPdf = !isExcel && emailImport.attachmentName?.toLowerCase().endsWith('.pdf');
 
+      // PDF: only process if filename contains "rooming list" — skip Laenderinfo, Erlebnisreise, etc.
+      const isRoomingListPdf = isPdf && emailImport.attachmentName?.toLowerCase().includes('rooming list');
+      if (isPdf && !isRoomingListPdf) {
+        await prisma.emailImport.update({
+          where: { id: emailImportId },
+          data: {
+            status: 'MANUAL_REVIEW',
+            errorMessage: `PDF skipped (not a Rooming List): ${emailImport.attachmentName}`,
+            retryCount: emailImport.retryCount,
+            processedAt: new Date()
+          }
+        });
+        return { created: 0, updated: 0, ids: [] };
+      }
+
       // PDF Final Rooming List → import tourists directly
-      if (isPdf) {
-        const pdfResult = await this.importRoomingListPdfForEmail(fileBuffer);
+      if (isRoomingListPdf) {
+        const pdfResult = await this.importRoomingListPdfForEmail(fileBuffer, emailImport);
         if (pdfResult) {
           await prisma.emailImport.update({
             where: { id: emailImportId },
@@ -478,16 +499,18 @@ class EmailImportProcessor {
    * Finds matching booking by tour type code + departure date (±3 days).
    * Calls the existing import-pdf endpoint in UPDATE-ONLY mode (no deletions).
    */
-  async importRoomingListPdfForEmail(fileBuffer) {
+  async importRoomingListPdfForEmail(fileBuffer, emailImport = null) {
     try {
       const pdfParse = require('pdf-parse');
       const pdfData = await pdfParse(fileBuffer);
       const text = pdfData.text;
 
-      // Extract departure date from "Date: DD.MM.YYYY" or "DD.MM.YYYY – DD.MM.YYYY" range
-      const dateMatch = text.match(/(?:Date:|Datum:)?\s*(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/i)
-        || text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/);
+      // Extract departure date — supports "Date: DD.MM.YYYY", "DD.MM.YYYY – ...", or plain "DD.MM.YYYY"
+      const dateMatch = text.match(/(?:Date:|Datum:)\s*(\d{2})\.(\d{2})\.(\d{4})/i)
+        || text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/)
+        || text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
       if (!dateMatch) {
+        _debugLog('📄 PDF date not found, text preview:', text.slice(0, 200).replace(/\n/g, '|'));
         return null;
       }
       const [, d, m, y] = dateMatch;
@@ -499,9 +522,59 @@ class EmailImportProcessor {
 
       let booking = null;
 
-      // Try 1: extract 2-3 letter tour code ("Tour: ER Uzbekistan" or "Tour: CO ...")
-      const tourMatch = text.match(/Tour:\s*([A-Z]{2,3})\s/i);
-      const tourTypeCode = tourMatch?.[1]?.toUpperCase();
+      // Detect tour type — 1) from PDF filename, 2) from PDF text content
+      _debugLog('📄 PDF text preview:', text.slice(0, 800).replace(/\n/g, '|'));
+      const fname = (emailImport?.attachmentName || '').toLowerCase();
+      let tourTypeCode;
+
+      // Use same filename rules as Excel import
+      const fnIsZA  = (fname.includes('turkmenistan') || fname.includes('turkmen')) &&
+                      (fname.includes('usbekistan') || fname.includes('uzbekistan')) &&
+                      (fname.includes('tadschikistan') || fname.includes('tajikistan')) &&
+                      (fname.includes('kasachstan') || fname.includes('kazakhstan')) &&
+                      (fname.includes('kirgistan') || fname.includes('kyrgyzstan'));
+      const fnIsKAS = (fname.includes('kasachstan') || fname.includes('kazakhstan')) &&
+                      (fname.includes('kirgistan') || fname.includes('kyrgyzstan')) &&
+                      (fname.includes('usbekistan') || fname.includes('uzbekistan')) &&
+                      !fname.includes('turkmenistan') && !fname.includes('tadschikistan');
+      const fnIsCO  = (fname.includes('comfortplus') || fname.includes('comfort')) &&
+                      (fname.includes('usbekistan') || fname.includes('uzbekistan'));
+      const fnIsER  = (fname.includes('usbekistan') || fname.includes('uzbekistan')) &&
+                      !fname.includes('comfortplus') && !fname.includes('comfort') &&
+                      !fname.includes('kasachstan') && !fname.includes('kirgistan') &&
+                      !fname.includes('tadschikistan');
+
+      if (fnIsZA)       tourTypeCode = 'ZA';
+      else if (fnIsKAS) tourTypeCode = 'KAS';
+      else if (fnIsCO)  tourTypeCode = 'CO';
+      else if (fnIsER)  tourTypeCode = 'ER';
+
+      // Fallback: detect from PDF text content
+      if (!tourTypeCode) {
+        const tourCodeMatch = text.match(/Tour:\s*([A-Z]{2,3})[\s\-_]/i);
+        tourTypeCode = tourCodeMatch?.[1]?.toUpperCase();
+      }
+      if (!tourTypeCode) {
+        const lower = text.toLowerCase();
+        const hasUzbek = lower.includes('usbekistan') || lower.includes('uzbekistan');
+        const hasTurkmen = lower.includes('turkmenistan') || lower.includes('turkmen');
+        const hasKasach = lower.includes('kasachstan') || lower.includes('kazakhstan');
+        const hasKirgiz = lower.includes('kirgistan') || lower.includes('kyrgyzstan');
+        const hasTadschik = lower.includes('tadschikistan') || lower.includes('tajikistan');
+        const hasComfort = lower.includes('comfort plus') || lower.includes('comfortplus') || lower.includes('comfort');
+
+        if (hasComfort && hasUzbek) tourTypeCode = 'CO';
+        else if (hasKasach && hasKirgiz) tourTypeCode = 'KAS';
+        else if (hasUzbek && hasTurkmen && hasTadschik && hasKasach && hasKirgiz) tourTypeCode = 'ZA';
+        else if (lower.includes('erlebnisreisen') || lower.includes('erlebnis')) tourTypeCode = 'ER';
+        // "Tour: Usbekistan" or "Tour: Usbekistan mit Verlängerung Turkmenistan" → ER
+        else if (hasUzbek && !hasComfort && !hasKasach && !hasKirgiz && !hasTadschik) tourTypeCode = 'ER';
+        // "Tour: Turkmenistan" alone with Uzbekistan (ER extension tour) → ER
+        else if (hasTurkmen && hasUzbek && !hasTadschik && !hasKasach && !hasKirgiz) tourTypeCode = 'ER';
+      }
+      _debugLog('📄 Detected tourTypeCode:', tourTypeCode, '| filename:', fname);
+
+      // Try 1: tour type code + date
       if (tourTypeCode) {
         const tourType = await prisma.tourType.findFirst({ where: { code: tourTypeCode } });
         if (tourType) {
@@ -512,7 +585,7 @@ class EmailImportProcessor {
         }
       }
 
-      // Try 2: date-only search (PDF format "Tour: Uzbekistan Date: 13.03.2026")
+      // Try 2: date-only search — only if single candidate
       if (!booking) {
         const from1 = new Date(departureDate); from1.setDate(from1.getDate() - 1);
         const to1 = new Date(departureDate); to1.setDate(to1.getDate() + 1);
@@ -523,6 +596,7 @@ class EmailImportProcessor {
         if (candidates.length === 1) {
           booking = candidates[0];
         } else if (candidates.length > 1) {
+          _debugLog(`📄 PDF: ${candidates.length} bookings on ${d}.${m}.${y}, tour type not detected. Candidates: ${candidates.map(b => b.bookingNumber).join(', ')}`);
           return null;
         }
       }
@@ -608,6 +682,44 @@ class EmailImportProcessor {
       });
 
       const summary = { updated: toUpdate.length, created: toCreate.length, deleted: toDeleteIds.length };
+
+      // Auto-import flights: add international (IST↔TAS) if not present, domestic if not present
+      try {
+        const flightData = this._parseFlightsFromText(text);
+        if (flightData.length > 0) {
+          const existingIntl = await prisma.flight.count({ where: { bookingId: booking.id, type: 'INTERNATIONAL' } });
+          const existingDom  = await prisma.flight.count({ where: { bookingId: booking.id, type: 'DOMESTIC' } });
+
+          const toSave = flightData.filter(f => {
+            if (f.type === 'INTERNATIONAL') return existingIntl === 0;
+            if (f.type === 'DOMESTIC')      return existingDom === 0;
+            return false;
+          });
+
+          if (toSave.length > 0) {
+            await prisma.flight.createMany({
+              data: toSave.map((f, i) => ({
+                bookingId: booking.id,
+                type: f.type || 'INTERNATIONAL',
+                flightNumber: f.flightNumber || null,
+                departure: f.departure,
+                arrival: f.arrival,
+                date: f.date ? new Date(f.date) : null,
+                departureTime: f.departureTime || null,
+                arrivalTime: f.arrivalTime || null,
+                pax: f.pax || 0,
+                price: 0,
+                sortOrder: i
+              }))
+            });
+            _debugLog(`✈️ ${toSave.length} flights auto-saved for booking ${booking.id}`);
+          }
+        }
+      } catch (flightErr) {
+        _debugLog(`⚠️ Flight auto-import error: ${flightErr.message}`);
+        // Non-fatal: tourist import still succeeded
+      }
+
       return { bookingId: booking.id, summary };
 
     } catch (err) {
@@ -691,6 +803,218 @@ class EmailImportProcessor {
     }
 
     return tourists;
+  }
+
+  /**
+   * Parse flights from Final Rooming List PDF text (GDS format).
+   * Returns array of flight objects ready for prisma.flight.createMany().
+   *
+   * GDS line format (Sabre/Amadeus):
+   *   "6  LO 191 G 29MAR 7 WAWTAS HK4          2300 0800+1 *1A/E*"
+   *   "5  LO 380 G 29MAR 7 FRAWAW HK4       1  2000 2145   *1A/E*"
+   */
+  _parseFlightsFromText(text) {
+    const intlIdx = text.indexOf('International Flights');
+    if (intlIdx !== -1) {
+      _debugLog(`✈️ PDF flight section (full): ${text.slice(intlIdx, intlIdx + 3000).replace(/\n/g, '|')}`);
+    }
+
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+    const uzbekAirports = new Set(['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG', 'URG']);
+
+    const dmyToIso = (s) => {
+      const m = s && s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+    };
+
+    // Month abbrev → zero-padded number
+    const MON = { JAN:'01',FEB:'02',MAR:'03',APR:'04',MAY:'05',JUN:'06',JUL:'07',AUG:'08',SEP:'09',OCT:'10',NOV:'11',DEC:'12' };
+
+    // PASS 1: parse groups to get totalPax and dates
+    const groups = [];
+    let curGroup = null;
+    const tourDateRe = /(\d{2}\.\d{2}\.\d{4})\s*[–—\-]+\s*(\d{2}\.\d{2}\.\d{4})/;
+    const totalRe = /TOTAL[^0-9]+(\d+)\s*PAX/i;
+
+    for (const line of lines) {
+      if (/^Final Rooming List$/i.test(line)) { curGroup = null; continue; }
+      if (/^Tour:/i.test(line)) {
+        const dm = line.match(tourDateRe);
+        curGroup = { name: line, startDate: dm ? dm[1] : null, endDate: dm ? dm[2] : null, totalPax: 0 };
+        groups.push(curGroup);
+        continue;
+      }
+      if (curGroup) {
+        const tm = line.match(totalRe);
+        if (tm) { curGroup.totalPax = parseInt(tm[1], 10); continue; }
+      }
+    }
+
+    const totalPax = groups.reduce((s, g) => s + (g.totalPax || 0), 0);
+    if (totalPax === 0) return [];
+
+    // Year from first tour group's start date (for DDMMM → YYYY-MM-DD conversion)
+    const tourYear = (groups.length > 0 && groups[0].startDate)
+      ? groups[0].startDate.slice(-4)
+      : String(new Date().getFullYear());
+
+    // Convert GDS date "29MAR" or "29MAR26" to ISO "YYYY-MM-DD"
+    const gdsDateToIso = (s) => {
+      const m = s && s.match(/^(\d{2})([A-Z]{3})(\d{2})?$/i);
+      if (!m) return null;
+      const mm = MON[m[2].toUpperCase()];
+      if (!mm) return null;
+      const yyyy = m[3] ? `20${m[3]}` : tourYear;
+      return `${yyyy}-${mm}-${m[1]}`;
+    };
+
+    // PASS 2: parse PNR blocks using PASSENGER COUNT (NM: N), not HK/TK status codes.
+    // This way we're independent of whatever status code the GDS uses.
+    //
+    // Block triggers:
+    //   "RP/..."          → standard GDS block (NM: N found in header)
+    //   "XXXXXX Name..."  → 6-char PNR + passenger name on same line (ISO-format block, 1 pax)
+    //
+    // Flight line formats:
+    //   GDS:  "6  LO 191 G 29MAR 7 WAWTAS HK4   2300 0800"  (DDMMM date, HHMM times)
+    //   ISO:  "LO 191 G 2026-03-29 WAWTAS TK 23:00 08:00"   (YYYY-MM-DD, HH:MM times)
+
+    // GDS: don't care about status code — use \S+ to skip it
+    const gdsFlightRe = /^\d+\s+([A-Z]{2})\s+(\d+)\s+[A-Z]\s+(\d{2}[A-Z]{3}(?:\d{2})?)\s+\d\s+([A-Z]{3})([A-Z]{3})\s+\S+\s+(?:\d\s+)*(\d{4})\s+(\d{4})/i;
+    // ISO: any status (HK, TK, HL...) — use \S+ to skip it
+    const isoFlightRe = /^([A-Z]{2})\s+(\d+)\s+[A-Z]\s+(\d{4}-\d{2}-\d{2})\s+([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})/i;
+
+    const flightPaxMap  = new Map();
+    const flightInfoMap = new Map();
+
+    let inPnrBlock  = false;
+    let blockPax    = 0;   // passengers in the current PNR block (from NM: N)
+    let blockFlights = []; // Uzbekistan-relevant flights found in current block
+
+    const flushBlock = () => {
+      if (blockFlights.length > 0) {
+        // If we couldn't determine PAX count, use 1 as fallback (don't lose flight info)
+        const pax = blockPax > 0 ? blockPax : 1;
+        for (const { key, info } of blockFlights) {
+          flightPaxMap.set(key, (flightPaxMap.get(key) || 0) + pax);
+          if (!flightInfoMap.has(key)) flightInfoMap.set(key, info);
+        }
+      }
+      blockPax = 0;
+      blockFlights = [];
+    };
+
+    for (const line of lines) {
+      const isRpLine      = /^RP\//i.test(line);
+      const isPnrCode6    = /^[A-Z0-9]{6}$/.test(line);        // "XGY97T" alone on line
+      const isPnrNameLine = /^[A-Z0-9]{6}\s+\S/i.test(line);  // "XGY97T MRS GIULIA..." combined
+
+      if (isRpLine || isPnrCode6 || isPnrNameLine) {
+        flushBlock();
+        inPnrBlock = true;
+        if (isPnrNameLine) blockPax = 1; // name+PNR on same line → 1 passenger
+        continue;
+      }
+      if (!inPnrBlock) continue;
+
+      // Passenger count from GDS header "NM: 4" — most reliable, use if found
+      const nmM = line.match(/\bNM:\s*(\d+)/i);
+      if (nmM) { blockPax = parseInt(nmM[1], 10); continue; }
+
+      // Count passenger name lines (only when NM: not yet found, i.e. blockPax still 0)
+      if (blockPax === 0) {
+        // Format 1 — GDS numbered:   "1.DRIEFHOLT/DOROTHEE MRS"  or "1.SCHMITT/HANS MR"
+        // Format 2 — GDS unnumbered: "SCHMITT/HANS MR"
+        // Format 3 — ISO title-first: "MRS GIULIA MARIA CZERWENKA"
+        const isGdsName   = /^\d+\.[A-Z]+\/[A-Z]/i.test(line);
+        const isSlashName = /^[A-Z]{2,}\/[A-Z]/i.test(line);
+        const isTitleName = /^(MR|MRS|DR|MISS|PROF)\s+[A-Z]/i.test(line);
+        if (isGdsName || isSlashName || isTitleName) {
+          // Count how many names are on this line (GDS often puts multiple: "1.AAA MRS  2.BBB MR")
+          const gdsCount = (line.match(/\d+\.[A-Z]+\/[A-Z]/gi) || []).length;
+          blockPax += gdsCount > 0 ? gdsCount : 1;
+          continue;
+        }
+      }
+
+      // Try GDS flight line
+      const gm = line.match(gdsFlightRe);
+      if (gm) {
+        const [, airline, num, dateStr, dep, arr, depTime4, arrTime4] = gm;
+        const depIsUzbek = uzbekAirports.has(dep);
+        const arrIsUzbek = uzbekAirports.has(arr);
+        const isIntl = (arrIsUzbek && !depIsUzbek) || (depIsUzbek && !arrIsUzbek);
+        const isDom  = depIsUzbek && arrIsUzbek;
+        if (isIntl || isDom) {
+          const flightNumber = `${airline} ${num}`;
+          const date = gdsDateToIso(dateStr);
+          const key  = `${flightNumber}|${dep}|${arr}|${date}`;
+          if (!blockFlights.some(f => f.key === key)) {
+            blockFlights.push({ key, info: {
+              flightNumber, departure: dep, arrival: arr, date,
+              departureTime: `${depTime4.slice(0,2)}:${depTime4.slice(2,4)}`,
+              arrivalTime:   `${arrTime4.slice(0,2)}:${arrTime4.slice(2,4)}`,
+              type: isDom ? 'DOMESTIC' : 'INTERNATIONAL'
+            }});
+          }
+        }
+        continue;
+      }
+
+      // Try ISO flight line
+      const im = line.match(isoFlightRe);
+      if (im) {
+        const [, airline, num, date, dep, arr, depTime, arrTime] = im;
+        const depIsUzbek = uzbekAirports.has(dep);
+        const arrIsUzbek = uzbekAirports.has(arr);
+        const isIntl = (arrIsUzbek && !depIsUzbek) || (depIsUzbek && !arrIsUzbek);
+        const isDom  = depIsUzbek && arrIsUzbek;
+        if (isIntl || isDom) {
+          const flightNumber = `${airline} ${num}`;
+          const key = `${flightNumber}|${dep}|${arr}|${date}`;
+          if (!blockFlights.some(f => f.key === key)) {
+            blockFlights.push({ key, info: {
+              flightNumber, departure: dep, arrival: arr, date,
+              departureTime: depTime, arrivalTime: arrTime,
+              type: isDom ? 'DOMESTIC' : 'INTERNATIONAL'
+            }});
+          }
+        }
+      }
+    }
+    flushBlock(); // flush the last block
+
+    const detected = [];
+    for (const [key, pax] of flightPaxMap.entries()) {
+      detected.push({ ...flightInfoMap.get(key), pax });
+    }
+    _debugLog(`✈️ Detected flights: ${JSON.stringify(detected.map(f => `${f.flightNumber} ${f.departure}→${f.arrival} PAX:${f.pax}`))}, totalPax=${totalPax}`);
+
+    // PASS 3: if no international arrival/departure detected, add blank suggested flights
+    const suggested = [];
+    const hasIntlArrival  = detected.some(r => r.type === 'INTERNATIONAL' && uzbekAirports.has(r.arrival));
+    const hasIntlDeparture = detected.some(r => r.type === 'INTERNATIONAL' && uzbekAirports.has(r.departure));
+
+    if (!hasIntlArrival) {
+      const startIso = groups.length > 0 ? dmyToIso(groups[0].startDate) : null;
+      let arrDate = '';
+      if (startIso) {
+        const d = new Date(startIso); d.setDate(d.getDate() + 1);
+        arrDate = d.toISOString().slice(0, 10);
+      }
+      suggested.push({ flightNumber: '', departure: 'IST', arrival: 'TAS', date: arrDate, departureTime: '', arrivalTime: '', pax: totalPax, type: 'INTERNATIONAL' });
+    }
+
+    if (!hasIntlDeparture) {
+      const sortedByEnd = [...groups].filter(g => g.endDate).sort((a, b) => (dmyToIso(a.endDate) || '').localeCompare(dmyToIso(b.endDate) || ''));
+      if (sortedByEnd.length > 0) {
+        const uzGroup = sortedByEnd[0];
+        suggested.push({ flightNumber: '', departure: 'TAS', arrival: 'IST', date: dmyToIso(uzGroup.endDate) || '', departureTime: '', arrivalTime: '', pax: uzGroup.totalPax, type: 'INTERNATIONAL' });
+      }
+    }
+
+    return [...detected, ...suggested];
   }
 
   /**

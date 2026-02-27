@@ -29,6 +29,21 @@ export default function ItineraryPreview({ bookingId, booking }) {
   });
   const printRef = useRef(null);
   const [sendingTelegram, setSendingTelegram] = useState({});
+  const docWrapperRef = useRef(null);
+  const [docScale, setDocScale] = useState(1);
+
+  useEffect(() => {
+    const DOC_WIDTH = 660;
+    const update = () => {
+      if (docWrapperRef.current) {
+        const w = docWrapperRef.current.offsetWidth;
+        setDocScale(w < DOC_WIDTH ? w / DOC_WIDTH : 1);
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   useEffect(() => {
     loadItineraryData();
@@ -1398,22 +1413,22 @@ export default function ItineraryPreview({ bookingId, booking }) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-3 print:hidden flex-wrap">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 md:gap-3 print:hidden">
         {/* Vaqt auto-fill button */}
         <button
           onClick={autoFillTimes}
           title="Flight va railway vaqtlari asosida Vaqt ustunini avtomatik to'ldirish"
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-300 shadow-lg w-full md:w-auto"
         >
           <Clock className="w-4 h-4" />
           Vaqt to'ldirish
         </button>
 
         {/* PDF (Hammasi) + Telegram (barchaga) */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 w-full md:w-auto">
           <button
             onClick={() => exportToPDF('all')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-l-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-xl"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-l-xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg flex-1 md:flex-none"
           >
             <FileDown className="w-4 h-4" />
             PDF (Hammasi)
@@ -1421,20 +1436,18 @@ export default function ItineraryPreview({ bookingId, booking }) {
           <button
             onClick={sendToAllTelegram}
             disabled={sendingTelegram['all']}
-            title="Barcha provayderga Telegram yuborish (Xayrulla + Sevil + Nosir)"
-            className="flex items-center px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+            title="Barcha provayderga Telegram yuborish"
+            className="flex items-center justify-center px-3 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
           >
-            {sendingTelegram['all']
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send className="w-4 h-4" />}
+            {sendingTelegram['all'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
 
         {/* Xayrulla: PDF + Telegram */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 w-full md:w-auto">
           <button
             onClick={() => exportToPDF('xayrulla')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-l-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-l-xl hover:from-yellow-600 hover:to-yellow-700 transition-all duration-300 shadow-lg flex-1 md:flex-none"
           >
             <FileDown className="w-4 h-4" />
             PDF (Xayrulla)
@@ -1443,19 +1456,17 @@ export default function ItineraryPreview({ bookingId, booking }) {
             onClick={() => sendToTelegram('xayrulla')}
             disabled={sendingTelegram['xayrulla']}
             title="Xayrulla ga Telegram yuborish"
-            className="flex items-center px-3 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+            className="flex items-center justify-center px-3 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
           >
-            {sendingTelegram['xayrulla']
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send className="w-4 h-4" />}
+            {sendingTelegram['xayrulla'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
 
         {/* Sevil: PDF + Telegram */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 w-full md:w-auto">
           <button
             onClick={() => exportToPDF('sevil')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-l-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-l-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg flex-1 md:flex-none"
           >
             <FileDown className="w-4 h-4" />
             PDF (Sevil)
@@ -1464,40 +1475,47 @@ export default function ItineraryPreview({ bookingId, booking }) {
             onClick={() => sendToTelegram('sevil')}
             disabled={sendingTelegram['sevil']}
             title="Sevil ga Telegram yuborish"
-            className="flex items-center px-3 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+            className="flex items-center justify-center px-3 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
           >
-            {sendingTelegram['sevil']
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send className="w-4 h-4" />}
+            {sendingTelegram['sevil'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* Nosir: PDF + Telegram — only for CO and KAS (have Fergana leg), hidden for ER and ZA */}
+        {/* Nosir: PDF + Telegram — only for CO and KAS */}
         {['CO', 'KAS'].includes(typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code) && (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => exportToPDF('nosir')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-l-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-          >
-            <FileDown className="w-4 h-4" />
-            PDF (Nosir)
-          </button>
-          <button
-            onClick={() => sendToTelegram('nosir')}
-            disabled={sendingTelegram['nosir']}
-            title="Nosir ga Telegram yuborish"
-            className="flex items-center px-3 py-2.5 bg-blue-400 hover:bg-blue-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
-          >
-            {sendingTelegram['nosir']
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send className="w-4 h-4" />}
-          </button>
-        </div>
+          <div className="flex items-center gap-1 w-full md:w-auto">
+            <button
+              onClick={() => exportToPDF('nosir')}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-l-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg flex-1 md:flex-none"
+            >
+              <FileDown className="w-4 h-4" />
+              PDF (Nosir)
+            </button>
+            <button
+              onClick={() => sendToTelegram('nosir')}
+              disabled={sendingTelegram['nosir']}
+              title="Nosir ga Telegram yuborish"
+              className="flex items-center justify-center px-3 py-2.5 bg-blue-400 hover:bg-blue-500 text-white rounded-r-xl transition-colors shadow-lg disabled:opacity-60"
+            >
+              {sendingTelegram['nosir'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </div>
         )}
       </div>
 
       {/* Itinerary Document */}
-      <div id="itinerary-content" ref={printRef} className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden print:border-0">
+      <div ref={docWrapperRef} className="overflow-hidden">
+      <div
+        id="itinerary-content"
+        ref={printRef}
+        className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden print:border-0"
+        style={docScale < 1 ? {
+          transform: `scale(${docScale})`,
+          transformOrigin: 'top left',
+          width: `${(1 / docScale) * 100}%`,
+          marginBottom: `calc((${docScale} - 1) * 100%)`,
+        } : {}}
+      >
         {/* Header Section */}
         <div className="border-b-2 border-gray-900 relative">
           {/* Edit button for header */}
@@ -1815,7 +1833,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
         </div>
 
         {/* Two Column Layout: Transports and Hotels */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* LEFT COLUMN: Transport Information */}
           <div className="space-y-6">
             {/* Train Tickets Section */}
@@ -2243,6 +2261,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
           </div>
         )}
       </div>
+      </div>{/* end scale wrapper */}
 
       <style>{`
         @media print {
