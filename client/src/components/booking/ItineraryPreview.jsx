@@ -24,8 +24,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
     sevilContact: 'Sevil aka (+998 90 445 10 92) Marshrutda',
     xayrullaContact: 'Xayrulla (+998 93 133 00 03) Toshkentda',
     country: 'Germaniya',
-    guideName: 'Zokir Saidov',
-    guidePhone: '+998 97 929 03 85'
+    guideName: '',
+    guidePhone: ''
   });
   const printRef = useRef(null);
   const [sendingTelegram, setSendingTelegram] = useState({});
@@ -47,18 +47,46 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
   useEffect(() => {
     loadItineraryData();
+
+    // Extract guide info from booking's assigned guide
+    // Priority: mainGuideData (new system) → booking.guide relation (old guideId system) → null
+    const getBookingGuide = () => {
+      // 1. Try mainGuideData (new Gidlar system)
+      const mg = booking?.mainGuideData;
+      if (mg) {
+        const name = typeof mg.guide === 'string' ? mg.guide : (mg.guide?.name || '');
+        const phone = typeof mg.guide === 'object' && mg.guide !== null ? (mg.guide?.phone || '') : '';
+        if (name) return { name, phone };
+      }
+      // 2. Fallback: booking.guide relation (old guideId system)
+      if (booking?.guide?.name) {
+        return { name: booking.guide.name, phone: booking.guide.phone || '' };
+      }
+      return null;
+    };
+    const bookingGuide = getBookingGuide();
+
     // Load header data: database first, then localStorage fallback
+    let baseHeader = {};
     if (booking?.itineraryHeader) {
-      // Database has saved header → use it
-      setHeaderData(prev => ({ ...prev, ...booking.itineraryHeader }));
+      baseHeader = booking.itineraryHeader;
     } else {
-      // Fallback: check localStorage
       const savedHeader = localStorage.getItem(`itinerary-header-${bookingId}`);
       if (savedHeader) {
-        setHeaderData(JSON.parse(savedHeader));
+        try { baseHeader = JSON.parse(savedHeader); } catch {}
       }
     }
-  }, [bookingId, booking?.departureDate, booking?.tourTypeId]);
+
+    // Guide info: always prefer booking's assigned guide (mainGuideData) as single source of truth.
+    // Only fall back to saved header guide if no guide is assigned to the booking.
+    const guideOverride = {};
+    if (bookingGuide) {
+      guideOverride.guideName = bookingGuide.name;
+      guideOverride.guidePhone = bookingGuide.phone || baseHeader.guidePhone || '';
+    }
+
+    setHeaderData(prev => ({ ...prev, ...baseHeader, ...guideOverride }));
+  }, [bookingId, booking?.departureDate, booking?.tourTypeId, booking?.mainGuideData]);
 
   // Generate array of dates between start and end date
   const generateDateRange = (startDate, endDate) => {
@@ -1351,14 +1379,32 @@ export default function ItineraryPreview({ bookingId, booking }) {
   const cancelEditHeader = () => {
     setEditingHeader(false);
     // Reload from database first, then localStorage fallback
+    let baseHeader = {};
     if (booking?.itineraryHeader) {
-      setHeaderData(prev => ({ ...prev, ...booking.itineraryHeader }));
+      baseHeader = booking.itineraryHeader;
     } else {
       const savedHeader = localStorage.getItem(`itinerary-header-${bookingId}`);
       if (savedHeader) {
-        setHeaderData(JSON.parse(savedHeader));
+        try { baseHeader = JSON.parse(savedHeader); } catch {}
       }
     }
+    // Re-apply guide (same priority logic as initial load)
+    const guideOverride = {};
+    const mg = booking?.mainGuideData;
+    let guideName = '', guidePhone = '';
+    if (mg) {
+      guideName = typeof mg.guide === 'string' ? mg.guide : (mg.guide?.name || '');
+      guidePhone = typeof mg.guide === 'object' && mg.guide !== null ? (mg.guide?.phone || '') : '';
+    }
+    if (!guideName && booking?.guide?.name) {
+      guideName = booking.guide.name;
+      guidePhone = booking.guide.phone || '';
+    }
+    if (guideName) {
+      guideOverride.guideName = guideName;
+      guideOverride.guidePhone = guidePhone || baseHeader.guidePhone || '';
+    }
+    setHeaderData(prev => ({ ...prev, ...baseHeader, ...guideOverride }));
   };
 
   const saveHeader = async () => {
@@ -1631,13 +1677,20 @@ export default function ItineraryPreview({ bookingId, booking }) {
                 <td className="border border-gray-900 px-3 py-2" colSpan="2"></td>
                 <td className="border border-gray-900 px-3 py-2 font-semibold text-center">
                   {editingHeader ? (
-                    <input
-                      type="text"
-                      value={headerData.guideName}
-                      onChange={(e) => setHeaderData({ ...headerData, guideName: e.target.value })}
-                      className="w-full px-3 py-2 border-2 border-blue-500 rounded text-center bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Gid ismi"
-                    />
+                    <div>
+                      <input
+                        type="text"
+                        value={headerData.guideName}
+                        disabled={!!(booking?.mainGuideData || booking?.guide)}
+                        onChange={(e) => setHeaderData({ ...headerData, guideName: e.target.value })}
+                        className={`w-full px-3 py-2 border-2 rounded text-center focus:outline-none focus:ring-2 ${(booking?.mainGuideData || booking?.guide) ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' : 'border-blue-500 bg-blue-50 focus:ring-blue-500'}`}
+                        placeholder="Gid ismi"
+                        title={(booking?.mainGuideData || booking?.guide) ? 'Gid booking\'s Gidlar bo\'limidan o\'zgartiriladi' : ''}
+                      />
+                      {(booking?.mainGuideData || booking?.guide) && (
+                        <p className="text-xs text-gray-400 mt-0.5">Booking gididan avtomatik</p>
+                      )}
+                    </div>
                   ) : (
                     `gid: ${headerData.guideName}`
                   )}
@@ -1647,9 +1700,11 @@ export default function ItineraryPreview({ bookingId, booking }) {
                     <input
                       type="text"
                       value={headerData.guidePhone}
+                      disabled={!!(booking?.mainGuideData || booking?.guide)}
                       onChange={(e) => setHeaderData({ ...headerData, guidePhone: e.target.value })}
-                      className="w-full px-3 py-2 border-2 border-blue-500 rounded text-center bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-full px-3 py-2 border-2 rounded text-center focus:outline-none focus:ring-2 ${(booking?.mainGuideData || booking?.guide) ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed' : 'border-blue-500 bg-blue-50 focus:ring-blue-500'}`}
                       placeholder="+998 XX XXX XX XX"
+                      title={(booking?.mainGuideData || booking?.guide) ? 'Gid booking\'s Gidlar bo\'limidan o\'zgartiriladi' : ''}
                     />
                   ) : (
                     headerData.guidePhone
