@@ -587,17 +587,25 @@ export default function Ausgaben() {
     }
   };
 
+  // Merge certain hotel names into a single display column
+  // e.g. "Jahongir Premium" → "Jahongir" (same hotel, different room category)
+  const HOTEL_MERGE_MAP = { 'jahongir premium': 'Jahongir' };
+  const normalizeHotel = (name) => {
+    if (!name) return name;
+    return HOTEL_MERGE_MAP[name.toLowerCase()] || name;
+  };
+
   // Pivot data: Hotels as columns, bookings as rows
   const getPivotData = () => {
     // Use filtered bookings (only with Hotels data)
     const dataToUse = filteredBookingsWithHotels;
 
-    // Get unique hotels across all bookings
+    // Get unique hotels across all bookings (using normalized names)
     const uniqueHotels = new Set();
     dataToUse.forEach(booking => {
       if (booking.grandTotalData?.hotelBreakdown) {
         booking.grandTotalData.hotelBreakdown.forEach(h => {
-          if (h.hotel) uniqueHotels.add(h.hotel);
+          if (h.hotel) uniqueHotels.add(normalizeHotel(h.hotel));
         });
       }
     });
@@ -606,19 +614,16 @@ export default function Ausgaben() {
 
     // Create booking rows with hotel costs
     const bookingRows = dataToUse.map(booking => {
-      const hotelCosts = {}; // { hotelName: { usd, uzs } }
+      const hotelCosts = {}; // { normalizedHotelName: { usd, uzs } }
 
       if (booking.grandTotalData?.hotelBreakdown) {
-        // Sum costs for hotels with same name (e.g., two Arien Plaza visits)
+        // Sum costs, merging aliases (e.g. Jahongir + Jahongir Premium → Jahongir)
         booking.grandTotalData.hotelBreakdown.forEach(h => {
           if (!h.hotel) return;
-
-          if (!hotelCosts[h.hotel]) {
-            hotelCosts[h.hotel] = { usd: 0, uzs: 0 };
-          }
-
-          hotelCosts[h.hotel].usd += (h.USD || 0);
-          hotelCosts[h.hotel].uzs += (h.UZS || 0);
+          const key = normalizeHotel(h.hotel);
+          if (!hotelCosts[key]) hotelCosts[key] = { usd: 0, uzs: 0 };
+          hotelCosts[key].usd += (h.USD || 0);
+          hotelCosts[key].uzs += (h.UZS || 0);
         });
       }
 
@@ -643,8 +648,8 @@ export default function Ausgaben() {
     return dataToUse.reduce((sum, booking) => {
       if (!booking.grandTotalData?.hotelBreakdown) return sum;
 
-      // FIX: Use .filter() to get ALL occurrences of the same hotel (e.g., Arien Plaza twice)
-      const hotelMatches = booking.grandTotalData.hotelBreakdown.filter(h => h.hotel === hotelName);
+      // Match by normalized name so aliases (e.g. Jahongir Premium) are included
+      const hotelMatches = booking.grandTotalData.hotelBreakdown.filter(h => normalizeHotel(h.hotel) === hotelName);
 
       // Sum all occurrences of this hotel
       const hotelTotal = hotelMatches.reduce((hotelSum, h) => {
