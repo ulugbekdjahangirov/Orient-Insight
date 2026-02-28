@@ -886,41 +886,41 @@ export default function Ausgaben() {
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200 w-10"
-                                style={{ background: '#f1f5f9' }}>#</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200 sticky left-0 z-10"
-                                style={{ background: '#f1f5f9', minWidth: '130px' }}>Booking</th>
-                              <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#e2e8f0' }}>🏨 Hotels</th>
-                              <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#e2e8f0' }}>🚌 Transport</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>🚂 Train</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>✈️ Flights</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>👤 Guide</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>🍽 Meals</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>🎫 Eintritt</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>🚇 Metro</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>🎭 Shou</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>Other</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#e2e8f0' }}>Σ UZS</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider"
-                                style={{ background: '#e2e8f0' }}>Σ USD</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200 w-10"
+                                style={{ background: '#dbeafe' }}>#</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200 sticky left-0 z-10"
+                                style={{ background: '#dbeafe', minWidth: '130px' }}>Booking</th>
+                              <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#bfdbfe' }}>🏨 Hotels</th>
+                              <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#bfdbfe' }}>🚌 Transport</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>🚂 Train</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>✈️ Flights</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>👤 Guide</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>🍽 Meals</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>🎫 Eintritt</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>🚇 Metro</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>🎭 Shou</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>Other</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700"
+                                style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider"
+                                style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
                             </tr>
                             <tr>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>USD</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>UZS</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>Sevil</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>Xayrulla</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>Nosir</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>USD</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>UZS</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Sevil</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Xayrulla</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Nosir</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1059,20 +1059,20 @@ export default function Ausgaben() {
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr>
-                              <th className="px-4 py-3.5 text-center font-bold text-slate-600 w-10 border-r border-slate-200"
-                                style={{ background: '#f1f5f9' }}>#</th>
-                              <th className="px-4 py-3.5 text-left font-bold text-slate-700 sticky left-0 z-10 border-r border-slate-200"
-                                style={{ background: '#f1f5f9', minWidth: '130px' }}>Booking</th>
+                              <th className="px-4 py-3.5 text-center font-bold text-slate-700 w-10 border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>#</th>
+                              <th className="px-4 py-3.5 text-left font-bold text-slate-700 sticky left-0 z-10 border-r border-blue-200"
+                                style={{ background: '#dbeafe', minWidth: '130px' }}>Booking</th>
                               {pivotData.hotels.map((hotelName, idx) => (
-                                <th key={idx} className="px-4 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
-                                  style={{ minWidth: '120px', background: '#e2e8f0' }}>
+                                <th key={idx} className="px-4 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                  style={{ minWidth: '120px', background: '#dbeafe' }}>
                                   {hotelName}
                                 </th>
                               ))}
-                              <th className="px-4 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200"
-                                style={{ background: '#e2e8f0' }}>Σ UZS</th>
-                              <th className="px-4 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider"
-                                style={{ background: '#e2e8f0' }}>Σ USD</th>
+                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700"
+                                style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
+                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
+                                style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1152,12 +1152,12 @@ export default function Ausgaben() {
                       <table className="min-w-full text-xs">
                         <thead>
                           <tr>
-                            <th className="px-4 py-3.5 text-center font-bold text-white w-12 border-r border-slate-600"
-                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>#</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
-                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>Booking</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
-                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>👤 Guide</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-slate-700 w-12 border-r border-blue-200"
+                              style={{ background: '#dbeafe' }}>#</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
+                              style={{ background: '#dbeafe' }}>Booking</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
+                              style={{ background: '#dbeafe' }}>👤 Guide</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white"
                               style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Guide Cost (USD)</th>
                           </tr>
@@ -1206,10 +1206,10 @@ export default function Ausgaben() {
                       <table className="min-w-full text-xs">
                         <thead>
                           <tr>
-                            <th className="px-4 py-3.5 text-center font-bold text-white w-12 border-r border-slate-600"
-                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>#</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
-                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>Booking</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-slate-700 w-12 border-r border-blue-200"
+                              style={{ background: '#dbeafe' }}>#</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
+                              style={{ background: '#dbeafe' }}>Booking</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
                               style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Sevil</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
