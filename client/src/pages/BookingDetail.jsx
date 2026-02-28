@@ -966,6 +966,7 @@ export default function BookingDetail() {
   const [sendTelegramModal, setSendTelegramModal] = useState(null); // { hotelId, hotelName, telegramChatId }
   const [sendingTelegram, setSendingTelegram] = useState(false);
   const [sendingEintritt, setSendingEintritt] = useState(false);
+  const [sendingCostPDFs, setSendingCostPDFs] = useState(false);
   const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
   const [telegramSubjectType, setTelegramSubjectType] = useState('zayavka'); // 'zayavka' | 'izmenenie'
 
@@ -2959,6 +2960,34 @@ export default function BookingDetail() {
     }
   };
 
+  // Send all Cost PDFs to Siroj via Telegram
+  const sendCostPDFsToTelegram = async () => {
+    setSendingCostPDFs(true);
+    try {
+      const results = [
+        exportAusgabenToPDF(true),
+        exportRLToPDF(true),
+        exportSpaterToPDF(true),
+        exportUberweisungToPDF(true),
+        exportKartaToPDF(true),
+      ].filter(Boolean);
+
+      if (results.length === 0) {
+        alert('Yuborish uchun PDF topilmadi');
+        return;
+      }
+
+      const form = new FormData();
+      results.forEach((r, i) => form.append(`pdf_${i}`, r.blob, r.filename));
+      await telegramApi.sendCostPDFs(booking.id, form);
+      alert(`✅ Cost PDFlari (${results.length} ta) Sirojga yuborildi!`);
+    } catch (err) {
+      alert('Xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingCostPDFs(false);
+    }
+  };
+
   // Load tour services by type
   const loadTourServices = async (type) => {
     if (!id || isNew) return;
@@ -3471,7 +3500,7 @@ export default function BookingDetail() {
   // ===================== END GUIDE FUNCTIONS =====================
 
   // Export RL (Reiseleiter) to PDF
-  const exportRLToPDF = () => {
+  const exportRLToPDF = (returnBlob = false) => {
     try {
       const doc = new jsPDF('p', 'mm', 'a4'); // Portrait format
       const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
@@ -3765,18 +3794,19 @@ export default function BookingDetail() {
       });
 
       // Save PDF
-      const fileName = `RL_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      const fileName = `RL_${booking?.bookingNumber || 'BOOKING'}.pdf`;
+      if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       doc.save(fileName);
-
       toast.success('PDF muvaffaqiyatli yaratildi');
     } catch (error) {
       console.error('PDF export error:', error);
+      if (returnBlob) return null;
       toast.error('PDF yaratishda xatolik');
     }
   };
 
   // Export Ausgaben to PDF
-  const exportAusgabenToPDF = () => {
+  const exportAusgabenToPDF = (returnBlob = false) => {
     try {
       const doc = new jsPDF('p', 'mm', 'a4');
       const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
@@ -4225,18 +4255,19 @@ export default function BookingDetail() {
       autoTable(doc, tableOptions(fs, cp));
 
       // Save PDF
-      const fileName = `Ausgaben_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      const fileName = `Ausgaben_${booking?.bookingNumber || 'BOOKING'}.pdf`;
+      if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       doc.save(fileName);
-
       toast.success('PDF muvaffaqiyatli yaratildi');
     } catch (error) {
       console.error('PDF export error:', error);
+      if (returnBlob) return null;
       toast.error('PDF yaratishda xatolik');
     }
   };
 
   // Export Später to PDF
-  const exportSpaterToPDF = () => {
+  const exportSpaterToPDF = (returnBlob = false) => {
     try {
       const doc = new jsPDF('landscape', 'mm', 'a4');
 
@@ -4424,18 +4455,19 @@ export default function BookingDetail() {
       });
 
       // Save PDF
-      const fileName = `Spater_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      const fileName = `Spater_${booking?.bookingNumber || 'BOOKING'}.pdf`;
+      if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       doc.save(fileName);
-
       toast.success('PDF muvaffaqiyatli yaratildi');
     } catch (error) {
       console.error('PDF export error:', error);
+      if (returnBlob) return null;
       toast.error('PDF yaratishda xatolik');
     }
   };
 
   // Export Überweisung to PDF
-  const exportUberweisungToPDF = () => {
+  const exportUberweisungToPDF = (returnBlob = false) => {
     try {
       const doc = new jsPDF('landscape', 'mm', 'a4');
       const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
@@ -4580,18 +4612,19 @@ export default function BookingDetail() {
       });
 
       // Save PDF
-      const fileName = `Uberweisung_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      const fileName = `Uberweisung_${booking?.bookingNumber || 'BOOKING'}.pdf`;
+      if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       doc.save(fileName);
-
       toast.success('PDF muvaffaqiyatli yaratildi');
     } catch (error) {
       console.error('PDF export error:', error);
+      if (returnBlob) return null;
       toast.error('PDF yaratishda xatolik');
     }
   };
 
   // Export Karta to PDF
-  const exportKartaToPDF = () => {
+  const exportKartaToPDF = (returnBlob = false) => {
     try {
       const doc = new jsPDF('landscape', 'mm', 'a4');
 
@@ -4729,12 +4762,13 @@ export default function BookingDetail() {
       });
 
       // Save PDF
-      const fileName = `Karta_${booking?.tourType?.code || 'TOUR'}-${booking?.bookingCode || 'BOOKING'}.pdf`;
+      const fileName = `Karta_${booking?.bookingNumber || 'BOOKING'}.pdf`;
+      if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       doc.save(fileName);
-
       toast.success('PDF muvaffaqiyatli yaratildi');
     } catch (error) {
       console.error('PDF export error:', error);
+      if (returnBlob) return null;
       toast.error('PDF yaratishda xatolik');
     }
   };
@@ -12893,6 +12927,20 @@ ${rowsHtml}
                 Total
               </button>
             </nav>
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={sendCostPDFsToTelegram}
+                disabled={sendingCostPDFs}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold rounded-xl hover:from-sky-600 hover:to-blue-700 transition-all shadow-lg disabled:opacity-50 text-sm"
+                title="Barcha Cost PDFlarini Sirojga Telegram orqali yuborish"
+              >
+                {sendingCostPDFs
+                  ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                  : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                }
+                {sendingCostPDFs ? 'Yuborilmoqda...' : 'Sirojga yuborish (barcha PDFlar)'}
+              </button>
+            </div>
           </div>
 
           {/* Ausgaben Tab */}

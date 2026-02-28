@@ -1607,4 +1607,61 @@ router.post('/send-eintritt/:bookingId', authenticate, upload.single('pdf'), asy
   }
 });
 
+// POST /api/telegram/send-cost-pdfs/:bookingId — receive up to 5 Cost PDFs and send as media group to Siroj
+router.post('/send-cost-pdfs/:bookingId', authenticate, upload.fields([
+  { name: 'pdf_0', maxCount: 1 },
+  { name: 'pdf_1', maxCount: 1 },
+  { name: 'pdf_2', maxCount: 1 },
+  { name: 'pdf_3', maxCount: 1 },
+  { name: 'pdf_4', maxCount: 1 },
+]), async (req, res) => {
+  try {
+    const bookingId = parseInt(req.params.bookingId);
+
+    const chatId = await getProviderChatId('hammasi');
+    if (!chatId) return res.status(400).json({ error: 'Siroj uchun chat ID sozlanmagan (GmailSettings → Transport → Siroj)' });
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { bookingNumber: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking topilmadi' });
+
+    // Collect uploaded files in order
+    const files = [];
+    for (let i = 0; i < 5; i++) {
+      const f = req.files[`pdf_${i}`];
+      if (f && f[0]) files.push(f[0]);
+    }
+    if (files.length === 0) return res.status(400).json({ error: 'PDF topilmadi' });
+
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+
+    // 1. Send caption text first
+    await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+      chat_id: chatId,
+      text: `💰 *Cost PDFs*\n📋 Booking: *${booking.bookingNumber}*\n📄 ${files.length} ta fayl`,
+      parse_mode: 'Markdown'
+    });
+
+    // 2. Send all PDFs as media group (no caption)
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    const media = files.map((f, i) => ({ type: 'document', media: `attach://doc_${i}` }));
+    form.append('media', JSON.stringify(media));
+    files.forEach((f, i) => {
+      form.append(`doc_${i}`, Buffer.from(f.buffer), {
+        filename: f.originalname,
+        contentType: 'application/pdf'
+      });
+    });
+    await axios.post(`https://api.telegram.org/bot${token}/sendMediaGroup`, form, { headers: form.getHeaders() });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('send-cost-pdfs error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
