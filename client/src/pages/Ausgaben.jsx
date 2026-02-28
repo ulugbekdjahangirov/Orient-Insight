@@ -1032,10 +1032,12 @@ export default function Ausgaben() {
                               <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.other||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-sky-200 border-r border-green-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-sky-900 border-r border-sky-300"
+                                style={{ background: '#bae6fd' }}>
                                 {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-sky-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-sky-900"
+                                style={{ background: '#bae6fd' }}>
                                 ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}
                               </td>
                             </tr>
