@@ -1280,20 +1280,20 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-amber-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="bg-gradient-to-br from-gray-50 to-amber-50 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
         {/* Action buttons */}
-        <div className="flex gap-3 justify-end print:hidden flex-wrap">
+        <div className="flex flex-col md:flex-row gap-2 md:gap-3 md:justify-end print:hidden">
           <button
             onClick={addItem}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg font-semibold"
           >
             <Plus className="w-5 h-5" />
             Add Item
           </button>
           <button
-            onClick={generateOrientInsightPDF}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+            onClick={() => generateOrientInsightPDF()}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg font-semibold"
           >
             <Download className="w-5 h-5" />
             PDF (Orient Insight)
@@ -1301,7 +1301,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
           {onWorldInsightSend && (
             <button
               onClick={onWorldInsightSend}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl hover:from-emerald-700 hover:to-teal-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl hover:from-emerald-700 hover:to-teal-800 transition-all shadow-lg font-semibold"
               title="Hotelliste + Rechnung als eine E-Mail an World Insight senden"
             >
               <Mail className="w-5 h-5" />
@@ -1309,15 +1309,15 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             </button>
           )}
           <button
-            onClick={generateInfuturestormPDF}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+            onClick={() => generateInfuturestormPDF()}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg font-semibold"
           >
             <Download className="w-5 h-5" />
             PDF (INFUTURESTORM)
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl hover:from-gray-800 hover:to-gray-900 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl hover:from-gray-800 hover:to-gray-900 transition-all shadow-lg font-semibold"
           >
             <Printer className="w-5 h-5" />
             Печать
@@ -1325,13 +1325,13 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         </div>
 
         {/* Document preview */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden print:shadow-none print:rounded-none border border-gray-100">
-          <div className="p-16 print:p-12" style={{ minHeight: '297mm', fontFamily: 'Georgia, serif' }}>
+        <div className="bg-white md:rounded-2xl shadow-md md:shadow-2xl overflow-hidden print:shadow-none print:rounded-none border-y md:border border-gray-100">
+          <div className="p-4 md:p-16 print:p-12" style={{ fontFamily: 'Georgia, serif' }}>
             {/* Decorative header line */}
-            <div className="w-full h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 rounded-full mb-8"></div>
+            <div className="w-full h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 rounded-full mb-4 md:mb-8"></div>
 
             {/* Title */}
-            <h1 className="text-5xl font-bold text-center mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl md:text-5xl font-bold text-center mb-4 md:mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">
               {invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung')}
             </h1>
 
@@ -1354,22 +1354,102 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             )}
 
             {/* Rechnung Nr and Datum with styled boxes */}
-            <div className="flex justify-between mb-12 text-base gap-4">
-              <div className="flex-1 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border-2 border-amber-200 shadow-md">
-                <div className="text-sm text-gray-600 mb-1">Rechnung Nr:</div>
-                <div className="font-bold text-xl text-gray-900">
+            <div className="flex justify-between mb-6 md:mb-12 text-base gap-3 md:gap-4">
+              <div className="flex-1 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-3 md:p-4 border-2 border-amber-200 shadow-md">
+                <div className="text-xs md:text-sm text-gray-600 mb-1">Rechnung Nr:</div>
+                <div className="font-bold text-base md:text-xl text-gray-900">
                   {invoice?.firma && sequentialNumber > 0 ? sequentialNumber : ''}
                 </div>
               </div>
-              <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200 shadow-md text-right">
-                <div className="text-sm text-gray-600 mb-1">Datum:</div>
-                <div className="font-bold text-xl text-gray-900">{format(new Date(), 'dd.MM.yyyy')}</div>
+              <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 md:p-4 border-2 border-blue-200 shadow-md text-right">
+                <div className="text-xs md:text-sm text-gray-600 mb-1">Datum:</div>
+                <div className="font-bold text-base md:text-xl text-gray-900">{format(new Date(), 'dd.MM.yyyy')}</div>
               </div>
             </div>
 
-            {/* Invoice table with total row */}
+            {/* Invoice items — mobile: cards, desktop: table */}
             <div className="shadow-lg rounded-lg overflow-hidden">
-              <table className="w-full border-collapse">
+              {/* MOBILE: card view */}
+              <div className="md:hidden space-y-3 mb-3">
+                {(Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => (
+                  <div key={item.id} className="border-2 border-amber-200 rounded-xl overflow-hidden bg-white">
+                    {/* card header */}
+                    <div className="flex items-center justify-between px-3 py-2 bg-amber-100 border-b border-amber-200">
+                      <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">{index + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900">{formatNumber(item.einzelpreis * item.anzahl)}</span>
+                        <span className="text-xs text-gray-600">{item.currency}</span>
+                        <button onClick={() => deleteItem(item.id)} className="p-1 text-red-500 hover:bg-red-50 rounded print:hidden">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {/* description */}
+                    <div className="px-3 py-2">
+                      <input
+                        id={`desc-${item.id}`}
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                        className="w-full text-sm text-gray-900 bg-transparent border-b border-gray-200 focus:border-amber-400 focus:outline-none py-1"
+                        placeholder="Beschreibung..."
+                      />
+                    </div>
+                    {/* price × qty */}
+                    <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+                      <div>
+                        <label className="text-xs text-gray-500">Einzelpreis</label>
+                        <input
+                          type="number"
+                          value={item.einzelpreis}
+                          onChange={(e) => updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
+                          className="w-full text-sm font-semibold text-gray-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 focus:outline-none focus:border-amber-400 mt-0.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500">Anzahl</label>
+                        <input
+                          type="number"
+                          value={item.anzahl}
+                          onChange={(e) => updateItem(item.id, 'anzahl', parseInt(e.target.value) || 0)}
+                          className="w-full text-sm font-semibold text-gray-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 focus:outline-none focus:border-amber-400 mt-0.5"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {/* Mobile summary rows */}
+                {showThreeRows ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-4 py-3 bg-blue-100 rounded-xl border-2 border-blue-200">
+                      <span className="font-bold text-gray-900">TOTAL</span>
+                      <div className="flex items-center gap-2"><span className="font-bold text-lg text-gray-900">{formatNumber(calculateTotal())}</span><span className="text-xs text-gray-600">USD</span></div>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border-2 border-gray-200">
+                      <span className="text-sm text-gray-700">
+                        Bereits bezahlt Nr.{' '}
+                        <input type="text" value={bezahlteRechnungNr} onChange={(e) => setBezahlteRechnungNr(e.target.value)} className="w-12 border-b border-gray-300 focus:border-emerald-500 outline-none font-semibold bg-transparent text-center" placeholder="1" />
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <input type="number" value={bezahlteRechnung} onChange={(e) => setBezahlteRechnung(parseFloat(e.target.value) || 0)} className="w-24 text-right font-semibold bg-yellow-50 border border-yellow-200 rounded px-2 py-1 focus:outline-none" />
+                        <span className="text-xs text-gray-600">USD</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3 bg-emerald-100 rounded-xl border-2 border-emerald-200">
+                      <span className="font-bold text-gray-900">Gesamtbetrag:</span>
+                      <div className="flex items-center gap-2"><span className="font-bold text-lg text-gray-900">{formatNumber(calculateGesamtbetrag())}</span><span className="text-xs text-gray-600">USD</span></div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between px-4 py-3 bg-emerald-100 rounded-xl border-2 border-emerald-200">
+                    <span className="font-bold text-gray-900">Gesamtbetrag:</span>
+                    <div className="flex items-center gap-2"><span className="font-bold text-lg text-gray-900">{formatNumber(calculateTotal())}</span><span className="text-xs text-gray-600">USD</span></div>
+                  </div>
+                )}
+              </div>
+
+              {/* DESKTOP: table */}
+              <table className="hidden md:table w-full border-collapse">
                 <thead>
                   <tr className="bg-amber-100">
                     <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">№</th>
@@ -1382,7 +1462,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Item rows */}
                   {(Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => (
                     <tr key={item.id} className="bg-white hover:bg-gray-50 transition-colors duration-150">
                       <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-medium">{index + 1}</td>
@@ -1402,7 +1481,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                           value={item.einzelpreis}
                           onChange={(e) => updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
                           className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
-                          title="Click to edit price"
                         />
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-semibold">
@@ -1412,7 +1490,6 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                           value={item.anzahl}
                           onChange={(e) => updateItem(item.id, 'anzahl', parseInt(e.target.value) || 0)}
                           className="w-full bg-transparent border-none focus:outline-none text-center focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
-                          title="Click to edit quantity"
                         />
                       </td>
                       <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-base">

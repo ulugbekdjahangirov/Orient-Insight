@@ -242,7 +242,7 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
         {/* Action buttons */}
         <div className="flex flex-col md:flex-row gap-2 md:gap-3 md:justify-end print:hidden">
           <button
-            onClick={generatePDF}
+            onClick={() => generatePDF()}
             className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg font-semibold"
           >
             <Download className="w-5 h-5" />
