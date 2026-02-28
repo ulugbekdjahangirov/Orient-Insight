@@ -375,109 +375,122 @@ export default function Guides() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div style={{ minHeight: '100vh', background: '#0f1729', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="animate-spin" style={{ width: '56px', height: '56px', borderRadius: '50%', border: '4px solid rgba(99,102,241,0.2)', borderTopColor: '#6366f1', margin: '0 auto 16px' }} />
+          <p style={{ color: 'rgba(165,180,252,0.6)', fontSize: '14px', fontWeight: '600' }}>Yuklanmoqda...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 px-1.5 py-3 md:p-6 space-y-3 md:space-y-6">
-      {/* Header */}
-      <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-primary-100">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-indigo-500/5 to-purple-500/10"></div>
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-primary-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-purple-400/20 to-primary-400/20 rounded-full blur-3xl"></div>
+    <div style={{ minHeight: '100vh', background: '#0f1729' }}>
 
-        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0 p-4 md:p-8">
-          <div className="flex items-center gap-3 md:gap-6">
-            <div className="relative">
-              <div className="w-14 h-14 md:w-20 md:h-20 bg-gradient-to-br from-primary-500 via-indigo-500 to-purple-600 rounded-2xl md:rounded-3xl shadow-2xl shadow-primary-500/40 flex items-center justify-center transform hover:scale-110 transition-all duration-300">
-                <User className="w-7 h-7 md:w-10 md:h-10 text-white" />
-              </div>
-              <div className="absolute -bottom-1 md:-bottom-2 -right-1 md:-right-2 w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
-                <span className="text-[10px] md:text-xs font-bold text-white">{guides.length}</span>
-              </div>
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-primary-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1 md:mb-2">
-                Tour Guides
-              </h1>
-              <p className="text-slate-600 text-xs md:text-base font-semibold">Professional Guide Management</p>
-            </div>
+      {/* ━━━━━━━━━━━━━━━━━━ DARK HERO HEADER ━━━━━━━━━━━━━━━━━━ */}
+      <div style={{ background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 50%, #0f1729 100%)', position: 'relative', overflow: 'hidden', padding: '32px 24px 28px' }}>
+        {/* Glow blobs */}
+        <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-60px', left: '-60px', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.45) 0%, transparent 70%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '30%', left: '40%', width: '220px', height: '220px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%)', filter: 'blur(35px)', pointerEvents: 'none' }} />
+
+        <div className="relative max-w-7xl mx-auto">
+          {/* Breadcrumb */}
+          <div style={{ color: 'rgba(165,180,252,0.5)', fontSize: '11px', fontWeight: '700', letterSpacing: '2.5px', marginBottom: '20px', textTransform: 'uppercase' }}>
+            ORIENT INSIGHT &nbsp;›&nbsp; TOUR GUIDES
           </div>
 
-          {isAdmin && (
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button
-                onClick={handleCopyFromYear}
-                disabled={copyingYear}
-                title={`${selectedYear - 1} yildan ${selectedYear} yilga nusxalash`}
-                className="inline-flex items-center gap-2 px-3 md:px-4 py-2.5 md:py-3 bg-white border-2 border-gray-200 text-gray-600 rounded-xl md:rounded-2xl hover:border-primary-400 hover:text-primary-600 transition-all duration-200 font-semibold text-sm min-h-[44px]"
-              >
-                <Copy className="w-4 h-4" />
-                <span className="hidden sm:inline">{copyingYear ? 'Nusxalanmoqda...' : `${selectedYear - 1} → ${selectedYear}`}</span>
-              </button>
-              <button
-                onClick={() => openModal()}
-                className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-indigo-500 to-purple-500 hover:from-primary-600 hover:via-indigo-600 hover:to-purple-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Добавить гида</span>
-                <span className="sm:hidden">Добавить</span>
-              </button>
+          {/* Title row */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="relative">
+                <div style={{ width: '72px', height: '72px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 50px rgba(99,102,241,0.65), 0 20px 40px rgba(0,0,0,0.3)', flexShrink: 0 }}>
+                  <User style={{ width: '38px', height: '38px', color: 'white' }} />
+                </div>
+                <div style={{ position: 'absolute', bottom: '-6px', right: '-6px', width: '28px', height: '28px', background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #0f1729', boxShadow: '0 0 18px rgba(16,185,129,0.7)' }}>
+                  <span style={{ color: 'white', fontSize: '10px', fontWeight: '900' }}>{guides.length}</span>
+                </div>
+              </div>
+              <div>
+                <h1 style={{ fontSize: 'clamp(28px, 5vw, 46px)', fontWeight: '900', color: 'white', margin: 0, lineHeight: 1.05, textShadow: '0 0 40px rgba(99,102,241,0.6)' }}>
+                  Tour Guides
+                </h1>
+                <p style={{ color: 'rgba(165,180,252,0.6)', fontSize: '14px', fontWeight: '600', margin: '6px 0 0', letterSpacing: '0.5px' }}>Professional Guide Management</p>
+              </div>
             </div>
-          )}
+
+            {isAdmin && (
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleCopyFromYear}
+                  disabled={copyingYear}
+                  title={`${selectedYear - 1} yildan ${selectedYear} yilga nusxalash`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', backdropFilter: 'blur(10px)', minHeight: '44px', whiteSpace: 'nowrap' }}
+                >
+                  <Copy style={{ width: '16px', height: '16px' }} />
+                  <span className="hidden sm:inline">{copyingYear ? 'Nusxalanmoqda...' : `${selectedYear - 1} → ${selectedYear}`}</span>
+                </button>
+                <button
+                  onClick={() => openModal()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '800', boxShadow: '0 0 30px rgba(99,102,241,0.55), 0 8px 20px rgba(0,0,0,0.3)', minHeight: '44px', whiteSpace: 'nowrap' }}
+                >
+                  <Plus style={{ width: '18px', height: '18px' }} />
+                  <span className="hidden sm:inline">Добавить гида</span>
+                  <span className="sm:hidden">Добавить</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Stat badges */}
+          <div className="flex flex-wrap gap-3 mt-6">
+            {[
+              { label: 'Jami gidlar',       value: guides.length,                                         color: '#6366f1', rgb: '99,102,241' },
+              { label: 'Faol gidlar',        value: guides.filter(g => g.isActive).length,                 color: '#10b981', rgb: '16,185,129' },
+              { label: 'Ogohlantirishlar',   value: alerts.expiredCount + alerts.expiringSoonCount,        color: '#f59e0b', rgb: '245,158,11'  },
+            ].map(({ label, value, color, rgb }) => (
+              <div key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: `rgba(${rgb}, 0.12)`, border: `1px solid rgba(${rgb}, 0.3)`, borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 10px ${color}`, flexShrink: 0 }} />
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: '600' }}>{label}:</span>
+                <span style={{ color: 'white', fontWeight: '900', fontSize: '15px' }}>{value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
+      {/* ━━━━━━━━━━━━━━━━━━ CONTENT AREA ━━━━━━━━━━━━━━━━━━ */}
+      <div style={{ background: '#f1f5f9', padding: '20px 24px 32px', minHeight: 'calc(100vh - 220px)' }}>
+
       {/* Tabs */}
-      <div className="bg-white rounded-xl md:rounded-2xl shadow-lg border-2 border-gray-200 p-1.5 md:p-2">
-        <div className="grid grid-cols-2 gap-1.5 md:flex md:gap-2">
-          <button
-            onClick={() => handleTabChange('information')}
-            className={`px-2 md:px-6 py-2.5 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-1.5 md:gap-2 ${
-              activeTab === 'information'
-                ? 'bg-gradient-to-r from-primary-600 via-primary-500 to-indigo-600 text-white shadow-xl shadow-primary-500/40 border-2 border-primary-300'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <Info className="w-4 h-4" />
-            <span>Information</span>
-          </button>
-          <button
-            onClick={() => handleTabChange('tours')}
-            className={`px-2 md:px-6 py-2.5 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-1.5 md:gap-2 ${
-              activeTab === 'tours'
-                ? 'bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600 text-white shadow-xl shadow-blue-500/40 border-2 border-blue-300'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Tours</span>
-          </button>
-          <button
-            onClick={() => handleTabChange('payment')}
-            className={`px-2 md:px-6 py-2.5 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-1.5 md:gap-2 ${
-              activeTab === 'payment'
-                ? 'bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 text-white shadow-xl shadow-green-500/40 border-2 border-green-300'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>Payment</span>
-          </button>
-          <button
-            onClick={() => handleTabChange('city-payment')}
-            className={`px-2 md:px-6 py-2.5 md:py-3.5 font-bold text-sm md:text-base rounded-xl transition-all duration-300 whitespace-nowrap flex items-center justify-center gap-1.5 md:gap-2 ${
-              activeTab === 'city-payment'
-                ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-violet-600 text-white shadow-xl shadow-purple-500/40 border-2 border-purple-300'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <MapPin className="w-4 h-4" />
-            <span>City Payment</span>
-          </button>
+      <div style={{ background: 'white', borderRadius: '16px', padding: '8px', marginBottom: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', border: '1px solid rgba(99,102,241,0.1)' }}>
+        <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
+          {[
+            { key: 'information',  label: 'Information',  icon: Info,       grad: 'linear-gradient(135deg,#6366f1,#4f46e5)', shadow: 'rgba(99,102,241,0.45)'  },
+            { key: 'tours',        label: 'Tours',        icon: Calendar,   grad: 'linear-gradient(135deg,#3b82f6,#06b6d4)', shadow: 'rgba(59,130,246,0.45)'  },
+            { key: 'payment',      label: 'Payment',      icon: DollarSign, grad: 'linear-gradient(135deg,#10b981,#059669)', shadow: 'rgba(16,185,129,0.45)'  },
+            { key: 'city-payment', label: 'City Payment', icon: MapPin,     grad: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', shadow: 'rgba(139,92,246,0.45)' },
+          ].map(({ key, label, icon: Icon, grad, shadow }) => (
+            <button
+              key={key}
+              onClick={() => handleTabChange(key)}
+              style={activeTab === key ? {
+                background: grad, color: 'white', borderRadius: '10px', padding: '10px 20px',
+                fontWeight: '800', fontSize: '14px', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                boxShadow: `0 0 25px ${shadow}, 0 4px 15px rgba(0,0,0,0.12)`,
+                transform: 'translateY(-1px)', whiteSpace: 'nowrap', transition: 'all 0.3s',
+              } : {
+                background: 'transparent', color: '#6b7280', borderRadius: '10px', padding: '10px 20px',
+                fontWeight: '700', fontSize: '14px', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                whiteSpace: 'nowrap', transition: 'all 0.3s',
+              }}
+            >
+              <Icon style={{ width: '16px', height: '16px' }} />
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -1846,6 +1859,7 @@ export default function Guides() {
           </div>
         </div>
       )}
+      </div>{/* end content area */}
     </div>
   );
 }
