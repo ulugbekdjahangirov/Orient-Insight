@@ -369,7 +369,9 @@ export const worldInsightApi = {
   sendDocuments: (bookingId, formData) =>
     api.post(`/bookings/${bookingId}/send-world-insight`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    }),
+  getContacts: () => api.get('/bookings/wi-contacts'),
+  saveContacts: (contacts) => api.put('/bookings/wi-contacts', { contacts }),
 };
 
 // API for Jahresplanung (Annual Planning)

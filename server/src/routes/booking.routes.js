@@ -2515,6 +2515,39 @@ router.get('/:id/storno-combined/:hotelId', async (req, res) => {
   }
 });
 
+// GET /api/bookings/wi-contacts  — load saved WI email contacts from DB
+// PUT /api/bookings/wi-contacts  — save WI email contacts to DB
+const WI_CONTACTS_KEY = 'WI_EMAIL_CONTACTS';
+const DEFAULT_WI_CONTACTS = [
+  { name: 'Celinda', email: 'team.produkt.celinda@world-insight.de' },
+  { name: 'World Insight', email: 'info@world-insight.de' },
+];
+
+router.get('/wi-contacts', authenticate, async (req, res) => {
+  try {
+    const s = await prisma.systemSetting.findUnique({ where: { key: WI_CONTACTS_KEY } });
+    const contacts = s ? JSON.parse(s.value) : DEFAULT_WI_CONTACTS;
+    res.json(contacts);
+  } catch (e) {
+    res.json(DEFAULT_WI_CONTACTS);
+  }
+});
+
+router.put('/wi-contacts', authenticate, async (req, res) => {
+  try {
+    const { contacts } = req.body;
+    if (!Array.isArray(contacts)) return res.status(400).json({ error: 'contacts must be array' });
+    await prisma.systemSetting.upsert({
+      where: { key: WI_CONTACTS_KEY },
+      update: { value: JSON.stringify(contacts) },
+      create: { key: WI_CONTACTS_KEY, value: JSON.stringify(contacts) }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/bookings/:bookingId/send-world-insight
 // Send Hotelliste + Rechnung PDFs as one email to World Insight (German language)
 const multerWI = require('multer');

@@ -602,9 +602,52 @@ export default function BookingDetail() {
   const [worldInsightDocType, setWorldInsightDocType] = useState('rechnung'); // 'rechnung' | 'neue-rechnung' | 'gutschrift'
   const [sendingWorldInsight, setSendingWorldInsight] = useState(false);
 
+  const WI_CONTACTS_KEY = 'wi_email_contacts';
+  const DEFAULT_WI_CONTACTS = [
+    { name: 'Celinda', email: 'team.produkt.celinda@world-insight.de' },
+    { name: 'World Insight', email: 'info@world-insight.de' },
+  ];
+  const [wiContacts, setWiContacts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('wi_email_contacts');
+      return saved ? JSON.parse(saved) : DEFAULT_WI_CONTACTS;
+    } catch { return DEFAULT_WI_CONTACTS; }
+  });
+  const [wiAddMode, setWiAddMode] = useState(false);
+  const [wiNewName, setWiNewName] = useState('');
+  const [wiNewEmail, setWiNewEmail] = useState('');
+
+  // Load WI contacts from DB on mount (overrides localStorage if DB has data)
+  useEffect(() => {
+    worldInsightApi.getContacts().then(res => {
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setWiContacts(res.data);
+        localStorage.setItem(WI_CONTACTS_KEY, JSON.stringify(res.data));
+      }
+    }).catch(() => {});
+  }, []);
+
+  const saveWiContacts = (updated) => {
+    setWiContacts(updated);
+    localStorage.setItem(WI_CONTACTS_KEY, JSON.stringify(updated));
+    worldInsightApi.saveContacts(updated).catch(() => {});
+  };
+
+  const addWiContact = () => {
+    if (!wiNewEmail.trim()) return;
+    const updated = [...wiContacts, { name: wiNewName.trim() || wiNewEmail.trim(), email: wiNewEmail.trim() }];
+    saveWiContacts(updated);
+    setWiNewName(''); setWiNewEmail(''); setWiAddMode(false);
+  };
+
+  const removeWiContact = (email) => {
+    saveWiContacts(wiContacts.filter(c => c.email !== email));
+  };
+
   const openWorldInsightModal = (docType) => {
     setWorldInsightDocType(docType);
     setWorldInsightEmail('');
+    setWiAddMode(false);
     setWorldInsightModal(true);
   };
 
@@ -8824,9 +8867,9 @@ export default function BookingDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-3 md:p-6 space-y-4 md:space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 md:p-6 space-y-3 md:space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-blue-100 p-4 md:p-8">
+      <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-blue-100 p-4 md:p-8">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-purple-500/10"></div>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-purple-400/20 to-blue-400/20 rounded-full blur-3xl"></div>
@@ -8897,7 +8940,7 @@ export default function BookingDetail() {
 
       {/* Tabs Navigation - only show for existing bookings */}
       {!isNew && (
-        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl md:rounded-3xl shadow-2xl border-2 border-gray-100 p-2 md:p-4">
+        <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 p-2 md:p-4">
           {/* DESKTOP: Horizontal tabs */}
           {!isMobile && (
             <nav className="flex space-x-2 md:space-x-3 overflow-x-auto pb-1">
@@ -9015,44 +9058,44 @@ export default function BookingDetail() {
 
       {/* Tab Content */}
       {!isNew && activeTab === 'tourists' && (
-        <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-blue-100 p-4 md:p-8">
+        <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-blue-100 p-4 md:p-8">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
           <TouristsList bookingId={parseInt(id)} onUpdate={handleTouristsUpdate} />
         </div>
       )}
 
       {!isNew && activeTab === 'rooming-list' && (
-        <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-indigo-100 p-4 md:p-8">
+        <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-indigo-100 p-4 md:p-8">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
           <RoomingListModule bookingId={parseInt(id)} onUpdate={loadData} />
         </div>
       )}
 
       {!isNew && activeTab === 'rooming' && (
-        <div className="space-y-6">
+        <div className="space-y-3 md:space-y-6">
           {/* Sub-tabs for Fly & Railway */}
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-purple-100 p-4">
-            <nav className="flex space-x-3">
+          <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-purple-100 p-3 md:p-4">
+            <nav className="flex space-x-2 md:space-x-3">
               <button
                 onClick={() => setFlyRailwayTab('fly')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-2 px-4 py-2.5 md:px-8 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-md hover:shadow-xl flex-1 md:flex-none justify-center ${
                   flyRailwayTab === 'fly'
-                    ? 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 hover:from-sky-600 hover:via-blue-600 hover:to-indigo-600 text-white shadow-sky-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500 text-white shadow-sky-500/30'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <Plane className="w-5 h-5" />
+                <Plane className="w-4 h-4 md:w-5 md:h-5" />
                 Fly
               </button>
               <button
                 onClick={() => setFlyRailwayTab('railway')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-2 px-4 py-2.5 md:px-8 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-md hover:shadow-xl flex-1 md:flex-none justify-center ${
                   flyRailwayTab === 'railway'
-                    ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-600 hover:via-green-600 hover:to-teal-600 text-white shadow-emerald-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 text-white shadow-emerald-500/30'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <Train className="w-5 h-5" />
+                <Train className="w-4 h-4 md:w-5 md:h-5" />
                 Railway
               </button>
             </nav>
@@ -9060,34 +9103,35 @@ export default function BookingDetail() {
 
           {/* Fly Tab Content */}
           {flyRailwayTab === 'fly' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-sky-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-sky-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500"></div>
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-sky-400/10 to-blue-400/10 rounded-full blur-3xl"></div>
 
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center shadow-lg shadow-sky-500/30">
-                    <Plane className="w-6 h-6 text-white" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+                <h2 className="text-lg md:text-2xl font-black bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent flex items-center gap-2 md:gap-3">
+                  <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-sky-500 to-blue-500 flex items-center justify-center shadow-lg shadow-sky-500/30 flex-shrink-0">
+                    <Plane className="w-4 h-4 md:w-6 md:h-6 text-white" />
                   </div>
                   Flight Information
                 </h2>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3">
+                <div className="flex gap-2 md:gap-3 flex-wrap">
                   <button
                     onClick={handlePdfFlightImport}
                     disabled={pdfFlightLoading}
-                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl hover:from-orange-600 hover:to-amber-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                    className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-5 md:py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold rounded-xl text-xs md:text-sm hover:from-orange-600 hover:to-amber-600 transition-all shadow-lg disabled:opacity-50"
                   >
-                    <FileText className="w-5 h-5" />
-                    {pdfFlightLoading ? 'O\'qilmoqda...' : 'PDF dan PAX olish'}
+                    <FileText className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="hidden md:inline">{pdfFlightLoading ? 'O\'qilmoqda...' : 'PDF dan PAX olish'}</span>
+                    <span className="md:hidden">PDF PAX</span>
                   </button>
                   <button
                     onClick={openFlightModal}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg hover:shadow-xl"
+                    className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl text-xs md:text-sm hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg"
                   >
-                    <Plus className="w-5 h-5" />
-                    Add Flight
+                    <Plus className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="hidden md:inline">Add Flight</span>
+                    <span className="md:hidden">Add</span>
                   </button>
                 </div>
               </div>
@@ -9276,26 +9320,26 @@ export default function BookingDetail() {
 
           {/* Railway Tab Content */}
           {flyRailwayTab === 'railway' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-emerald-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-emerald-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500"></div>
-              <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-emerald-400/10 to-green-400/10 rounded-full blur-3xl"></div>
 
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 bg-clip-text text-transparent flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <Train className="w-6 h-6 text-white" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+                <h2 className="text-lg md:text-2xl font-black bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 bg-clip-text text-transparent flex items-center gap-2 md:gap-3">
+                  <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 flex-shrink-0">
+                    <Train className="w-4 h-4 md:w-6 md:h-6 text-white" />
                   </div>
                   Railway Information
                 </h2>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button
                     onClick={openRailwayModal}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg hover:shadow-xl"
+                    className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl text-xs md:text-sm hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg"
                   >
-                    <Plus className="w-5 h-5" />
-                    Add Railway
+                    <Plus className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="hidden md:inline">Add Railway</span>
+                    <span className="md:hidden">Add</span>
                   </button>
                 </div>
               </div>
@@ -10200,99 +10244,101 @@ export default function BookingDetail() {
       )}
 
       {!isNew && activeTab === 'documents' && (
-        <div className="space-y-6">
+        <div className="space-y-3 md:space-y-6">
           {/* Sub-tabs for Documents */}
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-amber-100 p-4">
-            <nav className="flex space-x-3">
+          <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-amber-100 p-3 md:p-4">
+            <nav className="flex space-x-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
               <button
                 onClick={() => setDocumentsTab('tourist-list')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
                   documentsTab === 'tourist-list'
-                    ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white shadow-blue-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <Users className="w-5 h-5" />
-                Tourist List
+                <Users className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span>Tourist List</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('marshrutiy')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
                   documentsTab === 'marshrutiy'
-                    ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-green-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <MapPin className="w-5 h-5" />
-                Marshrut varaqasi
+                <MapPin className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span className="hidden sm:inline">Marshrut varaqasi</span>
+                <span className="sm:hidden">Marshrut</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('hotelliste')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
                   documentsTab === 'hotelliste'
-                    ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 hover:from-pink-600 hover:via-rose-600 hover:to-red-600 text-white shadow-pink-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <Building2 className="w-5 h-5" />
-                Hotelliste
+                <Building2 className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span>Hotelliste</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('rechnung')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
                   documentsTab === 'rechnung'
-                    ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 hover:from-amber-600 hover:via-orange-600 hover:to-yellow-600 text-white shadow-amber-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <DollarSign className="w-5 h-5" />
-                Rechnung
+                <DollarSign className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span>Rechnung</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('neue-rechnung')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
                   documentsTab === 'neue-rechnung'
-                    ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 hover:from-cyan-600 hover:via-blue-600 hover:to-indigo-600 text-white shadow-cyan-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <FileText className="w-5 h-5" />
-                Neue Rechnung
+                <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span className="hidden sm:inline">Neue Rechnung</span>
+                <span className="sm:hidden">Neue</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('gutschrift')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
                   documentsTab === 'gutschrift'
-                    ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500 hover:from-emerald-600 hover:via-green-600 hover:to-lime-600 text-white shadow-emerald-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <FileText className="w-5 h-5" />
-                Gutschrift
+                <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span>Gutschrift</span>
               </button>
             </nav>
           </div>
 
           {/* Tourist List Tab Content */}
           {documentsTab === 'tourist-list' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-blue-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-full blur-3xl"></div>
 
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                    <Users className="w-6 h-6 text-white" />
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                <h2 className="text-lg md:text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2 md:gap-3">
+                  <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <Users className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
                   Tourist List
                 </h2>
 
                 <button
                   onClick={exportTouristListPDF}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
+                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg text-xs md:text-sm"
                 >
-                  <FileDown className="w-5 h-5" />
-                  Export PDF
+                  <FileDown className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="hidden md:inline">Export PDF</span>
+                  <span className="md:hidden">PDF</span>
                 </button>
               </div>
 
@@ -10336,73 +10382,77 @@ export default function BookingDetail() {
                 }).length;
 
                 return (
-                  <div className="flex items-stretch gap-4 flex-wrap mb-8">
+                  <div className="grid grid-cols-3 md:flex md:items-stretch gap-2 md:gap-4 flex-wrap mb-4 md:mb-8">
                     {/* Total Guests Card */}
-                    <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
                         <Users className="w-8 h-8 text-primary-600" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-1">Total</div>
-                        <div className="text-4xl font-black text-gray-900 mb-0.5">{tourists.length}</div>
-                        <div className="text-sm text-gray-600 font-medium">guests</div>
+                        <div className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-0.5">Total</div>
+                        <div className="text-2xl md:text-4xl font-black text-gray-900">{tourists.length}</div>
+                        <div className="text-xs md:text-sm text-gray-600 font-medium">guests</div>
                       </div>
                     </div>
 
                     {/* DBL Rooms Card */}
-                    <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
                         <Bed className="w-8 h-8 text-blue-600" />
                       </div>
                       <div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5">
                           DBL
                         </div>
-                        <div className="text-4xl font-black text-gray-900 mb-0.5">{roomCounts.DBL}</div>
-                        <div className="text-sm text-gray-600 font-medium">rooms</div>
+                        <div className="text-2xl md:text-4xl font-black text-gray-900">{roomCounts.DBL}</div>
+                        <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
                       </div>
                     </div>
 
                     {/* TWN Rooms Card */}
-                    <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
                         <Bed className="w-8 h-8 text-emerald-600" />
                       </div>
                       <div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5">
                           TWN
                         </div>
-                        <div className="text-4xl font-black text-gray-900 mb-0.5">{roomCounts.TWN}</div>
-                        <div className="text-sm text-gray-600 font-medium">rooms</div>
+                        <div className="text-2xl md:text-4xl font-black text-gray-900">{roomCounts.TWN}</div>
+                        <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
                       </div>
                     </div>
 
                     {/* SNGL Rooms Card */}
-                    <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
                         <User className="w-8 h-8 text-violet-600" />
                       </div>
                       <div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5">
                           SNGL
                         </div>
-                        <div className="text-4xl font-black text-gray-900 mb-0.5">{roomCounts.SNGL}</div>
-                        <div className="text-sm text-gray-600 font-medium">rooms</div>
+                        <div className="text-2xl md:text-4xl font-black text-gray-900">{roomCounts.SNGL}</div>
+                        <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
                       </div>
                     </div>
 
                     {/* Uzbekistan/Turkmenistan Split Card */}
-                    <div className="flex items-center gap-4 px-6 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl shadow-md">
-                      <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
-                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Uzbekistan</span>
-                          <span className="text-2xl font-black text-gray-900">{uzbekistanCount}</span>
+                    <div className="flex items-center gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-2 md:col-span-1">
+                      <div className="flex flex-col gap-2 md:gap-3 w-full">
+                        <div className="flex items-center justify-between md:justify-start md:gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
+                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">UZB</span>
+                          </div>
+                          <span className="text-xl md:text-2xl font-black text-gray-900">{uzbekistanCount}</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
-                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Turkmenistan</span>
-                          <span className="text-2xl font-black text-gray-900">{turkmenistanCount}</span>
+                        <div className="flex items-center justify-between md:justify-start md:gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
+                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">TKM</span>
+                          </div>
+                          <span className="text-xl md:text-2xl font-black text-gray-900">{turkmenistanCount}</span>
                         </div>
                       </div>
                     </div>
@@ -10412,250 +10462,270 @@ export default function BookingDetail() {
 
               {/* Tourist List Table */}
               {tourists.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">No</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Name</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Tour Start</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Tour End</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Remarks</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Rm</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold">Placement</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        // Group tourists by room number for DBL and TWN
-                        const roomGroups = {};
-                        const singleTourists = [];
+                (() => {
+                  // ── shared data computation ──────────────────────────
+                  const roomGroups = {};
+                  const singleTourists = [];
 
-                        tourists.forEach(tourist => {
-                          // Get room type from roomAssignments or fallback to roomPreference
-                          const assignedRoomType = tourist.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
-                          const roomType = assignedRoomType || tourist.roomPreference;
+                  tourists.forEach(tourist => {
+                    const assignedRoomType = tourist.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+                    const roomType = assignedRoomType || tourist.roomPreference;
+                    if (tourist.roomNumber && (roomType === 'DZ' || roomType === 'DBL' || roomType === 'DOUBLE' || roomType === 'TWN' || roomType === 'TWIN')) {
+                      if (!roomGroups[tourist.roomNumber]) roomGroups[tourist.roomNumber] = [];
+                      roomGroups[tourist.roomNumber].push(tourist);
+                    } else {
+                      singleTourists.push(tourist);
+                    }
+                  });
 
-                          if (tourist.roomNumber && (roomType === 'DZ' || roomType === 'DBL' || roomType === 'DOUBLE' || roomType === 'TWN' || roomType === 'TWIN')) {
-                            if (!roomGroups[tourist.roomNumber]) {
-                              roomGroups[tourist.roomNumber] = [];
-                            }
-                            roomGroups[tourist.roomNumber].push(tourist);
-                          } else {
-                            singleTourists.push(tourist);
-                          }
-                        });
+                  const sortedRoomNumbers = Object.keys(roomGroups).sort((a, b) => {
+                    const groupA = roomGroups[a];
+                    const groupB = roomGroups[b];
+                    const accA = (groupA[0]?.accommodation || 'Uzbekistan').toLowerCase();
+                    const accB = (groupB[0]?.accommodation || 'Uzbekistan').toLowerCase();
+                    if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
+                    if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
+                    const aMatch = a.match(/(DBL|TWN)-(\d+)/);
+                    const bMatch = b.match(/(DBL|TWN)-(\d+)/);
+                    if (aMatch && bMatch) {
+                      if (aMatch[1] !== bMatch[1]) return aMatch[1] === 'DBL' ? -1 : 1;
+                      return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+                    }
+                    return 0;
+                  });
 
-                        // Sort room groups by accommodation (Uzbekistan first) then room number
-                        const sortedRoomNumbers = Object.keys(roomGroups).sort((a, b) => {
-                          const groupA = roomGroups[a];
-                          const groupB = roomGroups[b];
+                  singleTourists.sort((a, b) => {
+                    const accA = (a.accommodation || 'Uzbekistan').toLowerCase();
+                    const accB = (b.accommodation || 'Uzbekistan').toLowerCase();
+                    if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
+                    if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
+                    return 0;
+                  });
 
-                          // Get accommodation of first tourist in each group
-                          const accA = (groupA[0]?.accommodation || 'Uzbekistan').toLowerCase();
-                          const accB = (groupB[0]?.accommodation || 'Uzbekistan').toLowerCase();
+                  const allEntries = [];
+                  sortedRoomNumbers.forEach(roomNumber => {
+                    const group = roomGroups[roomNumber];
+                    allEntries.push({ type: 'group', accommodation: (group[0]?.accommodation || 'Uzbekistan').toLowerCase(), roomNumber, tourists: group });
+                  });
+                  singleTourists.forEach(tourist => {
+                    allEntries.push({ type: 'single', accommodation: (tourist.accommodation || 'Uzbekistan').toLowerCase(), tourist });
+                  });
+                  allEntries.sort((a, b) => {
+                    if (a.accommodation.includes('uzbek') && !b.accommodation.includes('uzbek')) return -1;
+                    if (!a.accommodation.includes('uzbek') && b.accommodation.includes('uzbek')) return 1;
+                    return 0;
+                  });
 
-                          // Sort by accommodation first (Uzbekistan before Turkmenistan)
-                          if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
-                          if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
+                  // helper: normalize room type
+                  const normalizeRoom = (t) => {
+                    const assignedRoomType = t.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
+                    let rt = assignedRoomType || t.roomPreference || 'SNGL';
+                    if (rt === 'DZ' || rt === 'DOUBLE') rt = 'DBL';
+                    else if (rt === 'TWIN') rt = 'TWN';
+                    else if (rt === 'EZ' || rt === 'SINGLE') rt = 'SNGL';
+                    return rt;
+                  };
 
-                          // Then sort by room type and number
-                          const aMatch = a.match(/(DBL|TWN)-(\d+)/);
-                          const bMatch = b.match(/(DBL|TWN)-(\d+)/);
-                          if (aMatch && bMatch) {
-                            if (aMatch[1] !== bMatch[1]) {
-                              return aMatch[1] === 'DBL' ? -1 : 1; // DBL first
-                            }
-                            return parseInt(aMatch[2]) - parseInt(bMatch[2]);
-                          }
-                          return 0;
-                        });
+                  // helper: filter remarks
+                  const filterRemarks = (t) => {
+                    if (!t.remarks) return '-';
+                    let filtered = t.remarks
+                      .replace(/\*\s*PAX\s+booked\s+half\s+double\s+room.*?single\s+room/gi, '')
+                      .replace(/\d+ Nights?\s*\|?\s*/gi, '')
+                      .replace(/TWIN\s*\/\/\s*/gi, '')
+                      .replace(/DBL\s*\/\/\s*/gi, '')
+                      .replace(/SNGL\s*\/\/\s*/gi, '')
+                      .replace(/^\s*\|?\s*/g, '')
+                      .replace(/\s*\|?\s*$/g, '')
+                      .trim();
+                    return (filtered && filtered !== '|' && filtered !== '//') ? filtered : '-';
+                  };
 
-                        // Sort single tourists by accommodation
-                        singleTourists.sort((a, b) => {
-                          const accA = (a.accommodation || 'Uzbekistan').toLowerCase();
-                          const accB = (b.accommodation || 'Uzbekistan').toLowerCase();
-                          if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
-                          if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
-                          return 0;
-                        });
+                  // helper: format date
+                  const fmtDate = (d, fallback) => d ? format(new Date(d), 'dd.MM.yy') : (fallback ? format(new Date(fallback), 'dd.MM.yy') : '-');
 
-                        // Create combined array of room groups and single tourists
-                        const allEntries = [];
+                  // room color helpers
+                  const roomBorder = (rt) => rt === 'DBL' ? 'border-blue-400' : rt === 'TWN' ? 'border-emerald-400' : 'border-violet-400';
+                  const roomBg    = (rt) => rt === 'DBL' ? 'bg-blue-50/40' : rt === 'TWN' ? 'bg-emerald-50/40' : 'bg-violet-50/40';
+                  const roomBadge = (rt) => rt === 'DBL' ? 'bg-blue-500' : rt === 'TWN' ? 'bg-emerald-500' : 'bg-violet-500';
+                  const roomDivider = (rt) => rt === 'DBL' ? 'border-blue-200' : rt === 'TWN' ? 'border-emerald-200' : 'border-violet-200';
+                  const roomTableBadge = (rt) => rt === 'DBL' ? 'bg-blue-100 text-blue-700' : rt === 'TWN' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700';
 
-                        // Add room groups
-                        sortedRoomNumbers.forEach(roomNumber => {
-                          const group = roomGroups[roomNumber];
-                          allEntries.push({
-                            type: 'group',
-                            accommodation: (group[0]?.accommodation || 'Uzbekistan').toLowerCase(),
-                            roomNumber,
-                            tourists: group
-                          });
-                        });
+                  let counter = 0;
 
-                        // Add single tourists
-                        singleTourists.forEach(tourist => {
-                          allEntries.push({
-                            type: 'single',
-                            accommodation: (tourist.accommodation || 'Uzbekistan').toLowerCase(),
-                            tourist
-                          });
-                        });
-
-                        // Sort all entries by accommodation (Uzbekistan first)
-                        allEntries.sort((a, b) => {
-                          const accA = a.accommodation;
-                          const accB = b.accommodation;
-                          if (accA.includes('uzbek') && !accB.includes('uzbek')) return -1;
-                          if (!accA.includes('uzbek') && accB.includes('uzbek')) return 1;
-                          return 0;
-                        });
-
-                        let counter = 0;
-                        const rows = [];
-
-                        // Render entries in sorted order
-                        allEntries.forEach(entry => {
+                  return (
+                    <>
+                      {/* ── MOBILE: card list ─────────────────────────── */}
+                      <div className="md:hidden space-y-3">
+                        {allEntries.map((entry, ei) => {
                           if (entry.type === 'group') {
-                            // Render paired tourists (DBL and TWN)
                             const group = entry.tourists;
-                            group.forEach((tourist, groupIndex) => {
-                              counter++;
-                              const isFirstInGroup = groupIndex === 0;
-
-                              // Get room type from roomAssignments or fallback to roomPreference
-                              const assignedRoomType = tourist.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
-                              let roomType = assignedRoomType || tourist.roomPreference || '';
-
-                              // Normalize room type
-                              if (roomType === 'DZ' || roomType === 'DOUBLE') roomType = 'DBL';
-                              else if (roomType === 'TWIN') roomType = 'TWN';
-                              else if (roomType === 'EZ' || roomType === 'SINGLE') roomType = 'SNGL';
-
-                              // Filter remarks
-                              let remarks = '-';
-                              if (tourist.remarks) {
-                                let filtered = tourist.remarks
-                                  .replace(/\*\s*PAX\s+booked\s+half\s+double\s+room.*?single\s+room/gi, '')
-                                  .replace(/\d+ Nights?\s*\|?\s*/gi, '')
-                                  .replace(/TWIN\s*\/\/\s*/gi, '')
-                                  .replace(/DBL\s*\/\/\s*/gi, '')
-                                  .replace(/SNGL\s*\/\/\s*/gi, '')
-                                  .replace(/^\s*\|?\s*/g, '')
-                                  .replace(/\s*\|?\s*$/g, '')
-                                  .trim();
-                                if (filtered && filtered !== '|' && filtered !== '//') {
-                                  remarks = filtered;
-                                }
-                              }
-
-                              rows.push(
-                                <tr key={tourist.id} className="border-b border-blue-100 hover:bg-blue-50 transition-colors">
-                                  <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-blue-100">{counter}</td>
-                                  <td className="px-4 py-3 text-left font-medium text-gray-800 border-r border-blue-100">
-                                    {tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} {tourist.lastName}, {tourist.firstName}
-                                  </td>
-                                  <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
-                                    {tourist.checkInDate ? format(new Date(tourist.checkInDate), 'dd.MM.yyyy') : booking?.departureDate ? format(new Date(booking.departureDate), 'dd.MM.yyyy') : '-'}
-                                  </td>
-                                  <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
-                                    {tourist.checkOutDate ? format(new Date(tourist.checkOutDate), 'dd.MM.yyyy') : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-'}
-                                  </td>
-                                  <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm">
-                                    {remarks}
-                                  </td>
-                                  {isFirstInGroup ? (
-                                    <td
-                                      rowSpan={group.length}
-                                      className="px-4 py-3 text-center font-bold border-r border-blue-100 align-middle"
-                                    >
-                                      <span className={`px-3 py-2 rounded text-lg ${
-                                        roomType === 'DBL' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                                      }`}>
-                                        {roomType}
-                                      </span>
-                                    </td>
-                                  ) : null}
-                                  <td className="px-4 py-3 text-left text-gray-700">
-                                    {tourist.accommodation || 'Uzbekistan'}
-                                  </td>
-                                </tr>
-                              );
-                            });
-                          } else if (entry.type === 'single') {
-                            // Render single tourist (SNGL)
-                            const tourist = entry.tourist;
+                            const rt = normalizeRoom(group[0]);
+                            const startIdx = counter + 1;
+                            counter += group.length;
+                            return (
+                              <div key={`g-${entry.roomNumber}`} className={`border-2 ${roomBorder(rt)} ${roomBg(rt)} rounded-2xl overflow-hidden`}>
+                                {/* card header */}
+                                <div className={`flex items-center gap-2 px-4 py-2 border-b ${roomDivider(rt)}`}>
+                                  <span className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${roomBadge(rt)}`}>{rt}</span>
+                                  <span className="text-xs font-semibold text-gray-500">{entry.roomNumber} · 2 guests</span>
+                                </div>
+                                {/* tourists */}
+                                {group.map((t, gi) => {
+                                  const num = startIdx + gi;
+                                  const remarks = filterRemarks(t);
+                                  const isUZB = !(t.accommodation || '').toLowerCase().includes('turkmen');
+                                  return (
+                                    <div key={t.id} className={`px-4 py-3 ${gi > 0 ? `border-t border-dashed ${roomDivider(rt)}` : ''}`}>
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="w-5 h-5 rounded bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{num}</span>
+                                          <span className="font-semibold text-gray-900 text-sm truncate">
+                                            {t.gender === 'M' ? 'Mr.' : t.gender === 'F' ? 'Mrs.' : ''} {t.lastName}, {t.firstName}
+                                          </span>
+                                        </div>
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${isUZB ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                                          {isUZB ? 'UZB' : 'TKM'}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap text-xs text-gray-500">
+                                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">{fmtDate(t.checkInDate, booking?.departureDate)}</span>
+                                        <span>→</span>
+                                        <span className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded">{fmtDate(t.checkOutDate, booking?.endDate)}</span>
+                                        {remarks !== '-' && <span className="text-gray-400 truncate max-w-[140px]">· {remarks}</span>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          } else {
+                            const t = entry.tourist;
                             counter++;
-
-                            // Get room type from roomAssignments or fallback to roomPreference
-                            const assignedRoomType = tourist.roomAssignments?.[0]?.bookingRoom?.roomType?.name;
-                            let roomType = assignedRoomType || tourist.roomPreference || 'SNGL';
-
-                            // Normalize room type
-                            if (roomType === 'DZ' || roomType === 'DOUBLE') roomType = 'DBL';
-                            else if (roomType === 'TWIN') roomType = 'TWN';
-                            else if (roomType === 'EZ' || roomType === 'SINGLE') roomType = 'SNGL';
-
-                            // Filter remarks
-                            let remarks = '-';
-                            if (tourist.remarks) {
-                              let filtered = tourist.remarks
-                                .replace(/\*PAX booked half double room, no roommate found -> single room/gi, '')
-                                .replace(/\d+ Nights?\s*\|?\s*/gi, '')
-                                .replace(/^\s*\|?\s*/g, '')
-                                .replace(/\s*\|?\s*$/g, '')
-                                .trim();
-                              if (filtered && filtered !== '|' && filtered !== '//') {
-                                remarks = filtered;
-                              }
-                            }
-
-                            rows.push(
-                              <tr key={tourist.id} className="border-b border-blue-100 hover:bg-blue-50 transition-colors">
-                                <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-blue-100">{counter}</td>
-                                <td className="px-4 py-3 text-left font-medium text-gray-800 border-r border-blue-100">
-                                  {tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} {tourist.lastName}, {tourist.firstName}
-                                </td>
-                                <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
-                                  {tourist.checkInDate ? format(new Date(tourist.checkInDate), 'dd.MM.yyyy') : booking?.departureDate ? format(new Date(booking.departureDate), 'dd.MM.yyyy') : '-'}
-                                </td>
-                                <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
-                                  {tourist.checkOutDate ? format(new Date(tourist.checkOutDate), 'dd.MM.yyyy') : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-'}
-                                </td>
-                                <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm">
-                                  {remarks}
-                                </td>
-                                <td className="px-4 py-3 text-center font-bold border-r border-blue-100">
-                                  <span className={`px-3 py-2 rounded text-lg ${
-                                    roomType === 'DBL' ? 'bg-blue-100 text-blue-700' :
-                                    roomType === 'TWN' ? 'bg-green-100 text-green-700' :
-                                    'bg-purple-100 text-purple-700'
-                                  }`}>
-                                    {roomType}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-left text-gray-700">
-                                  {tourist.accommodation || 'Uzbekistan'}
-                                </td>
-                              </tr>
+                            const num = counter;
+                            const rt = normalizeRoom(t);
+                            const remarks = filterRemarks(t);
+                            const isUZB = !(t.accommodation || '').toLowerCase().includes('turkmen');
+                            return (
+                              <div key={`s-${t.id}`} className={`border-2 ${roomBorder(rt)} ${roomBg(rt)} rounded-2xl overflow-hidden`}>
+                                <div className={`flex items-center gap-2 px-4 py-2 border-b ${roomDivider(rt)}`}>
+                                  <span className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${roomBadge(rt)}`}>{rt}</span>
+                                  <span className="text-xs font-semibold text-gray-500">single room</span>
+                                </div>
+                                <div className="px-4 py-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="w-5 h-5 rounded bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{num}</span>
+                                      <span className="font-semibold text-gray-900 text-sm truncate">
+                                        {t.gender === 'M' ? 'Mr.' : t.gender === 'F' ? 'Mrs.' : ''} {t.lastName}, {t.firstName}
+                                      </span>
+                                    </div>
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${isUZB ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                                      {isUZB ? 'UZB' : 'TKM'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap text-xs text-gray-500">
+                                    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">{fmtDate(t.checkInDate, booking?.departureDate)}</span>
+                                    <span>→</span>
+                                    <span className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded">{fmtDate(t.checkOutDate, booking?.endDate)}</span>
+                                    {remarks !== '-' && <span className="text-gray-400 truncate max-w-[140px]">· {remarks}</span>}
+                                  </div>
+                                </div>
+                              </div>
                             );
                           }
-                        });
+                        })}
+                        <div className="p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 flex items-center justify-between">
+                          <span className="text-sm font-bold text-gray-700">Total:</span>
+                          <span className="text-lg font-black text-blue-600">{tourists.length}</span>
+                        </div>
+                      </div>
 
-                        return rows;
-                      })()}
-                    </tbody>
-                  </table>
-
-                  {/* Summary Footer */}
-                  <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-gray-700">Total Tourists:</span>
-                      <span className="text-lg font-black text-blue-600">{tourists.length}</span>
-                    </div>
-                  </div>
-                </div>
+                      {/* ── DESKTOP: table ────────────────────────────── */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                              <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">No</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Name</th>
+                              <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Tour Start</th>
+                              <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Tour End</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Remarks</th>
+                              <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Rm</th>
+                              <th className="px-4 py-3 text-left text-sm font-bold">Placement</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(() => {
+                              let c = 0;
+                              const rows = [];
+                              allEntries.forEach(entry => {
+                                if (entry.type === 'group') {
+                                  entry.tourists.forEach((tourist, groupIndex) => {
+                                    c++;
+                                    const isFirstInGroup = groupIndex === 0;
+                                    const rt = normalizeRoom(tourist);
+                                    const remarks = filterRemarks(tourist);
+                                    rows.push(
+                                      <tr key={tourist.id} className="border-b border-blue-100 hover:bg-blue-50 transition-colors">
+                                        <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-blue-100">{c}</td>
+                                        <td className="px-4 py-3 text-left font-medium text-gray-800 border-r border-blue-100">
+                                          {tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} {tourist.lastName}, {tourist.firstName}
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
+                                          {tourist.checkInDate ? format(new Date(tourist.checkInDate), 'dd.MM.yyyy') : booking?.departureDate ? format(new Date(booking.departureDate), 'dd.MM.yyyy') : '-'}
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
+                                          {tourist.checkOutDate ? format(new Date(tourist.checkOutDate), 'dd.MM.yyyy') : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-'}
+                                        </td>
+                                        <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm">{remarks}</td>
+                                        {isFirstInGroup ? (
+                                          <td rowSpan={entry.tourists.length} className="px-4 py-3 text-center font-bold border-r border-blue-100 align-middle">
+                                            <span className={`px-3 py-2 rounded text-lg ${roomTableBadge(rt)}`}>{rt}</span>
+                                          </td>
+                                        ) : null}
+                                        <td className="px-4 py-3 text-left text-gray-700">{tourist.accommodation || 'Uzbekistan'}</td>
+                                      </tr>
+                                    );
+                                  });
+                                } else {
+                                  const tourist = entry.tourist;
+                                  c++;
+                                  const rt = normalizeRoom(tourist);
+                                  const remarks = filterRemarks(tourist);
+                                  rows.push(
+                                    <tr key={tourist.id} className="border-b border-blue-100 hover:bg-blue-50 transition-colors">
+                                      <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-blue-100">{c}</td>
+                                      <td className="px-4 py-3 text-left font-medium text-gray-800 border-r border-blue-100">
+                                        {tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} {tourist.lastName}, {tourist.firstName}
+                                      </td>
+                                      <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
+                                        {tourist.checkInDate ? format(new Date(tourist.checkInDate), 'dd.MM.yyyy') : booking?.departureDate ? format(new Date(booking.departureDate), 'dd.MM.yyyy') : '-'}
+                                      </td>
+                                      <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
+                                        {tourist.checkOutDate ? format(new Date(tourist.checkOutDate), 'dd.MM.yyyy') : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-'}
+                                      </td>
+                                      <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm">{remarks}</td>
+                                      <td className="px-4 py-3 text-center font-bold border-r border-blue-100">
+                                        <span className={`px-3 py-2 rounded text-lg ${roomTableBadge(rt)}`}>{rt}</span>
+                                      </td>
+                                      <td className="px-4 py-3 text-left text-gray-700">{tourist.accommodation || 'Uzbekistan'}</td>
+                                    </tr>
+                                  );
+                                }
+                              });
+                              return rows;
+                            })()}
+                          </tbody>
+                        </table>
+                        <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 flex items-center justify-between">
+                          <span className="text-sm font-bold text-gray-700">Total Tourists:</span>
+                          <span className="text-lg font-black text-blue-600">{tourists.length}</span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()
               ) : (
                 <div className="text-center py-12 bg-gradient-to-b from-blue-50 to-white rounded-2xl border-2 border-dashed border-blue-200">
                   <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -10672,7 +10742,7 @@ export default function BookingDetail() {
 
           {/* Marshrut varaqasi (Itinerary) Tab Content */}
           {documentsTab === 'marshrutiy' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-green-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
               <ItineraryPreview bookingId={parseInt(id)} booking={booking} />
             </div>
@@ -10794,11 +10864,11 @@ export default function BookingDetail() {
       {!isNew && activeTab === 'tour-services' && (
         <div className="space-y-6">
           {/* Sub-tabs for Tour Services */}
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-purple-100 p-4">
-            <nav className="flex space-x-3 overflow-x-auto">
+          <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-purple-100 p-3 md:p-4">
+            <nav className="flex space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0">
               <button
                 onClick={() => setTourServicesTab('hotels')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'hotels'
                     ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 hover:from-purple-600 hover:via-violet-600 hover:to-indigo-600 text-white shadow-purple-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10809,7 +10879,7 @@ export default function BookingDetail() {
               </button>
               <button
                 onClick={() => setTourServicesTab('transport')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'transport'
                     ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 hover:from-blue-600 hover:via-cyan-600 hover:to-sky-600 text-white shadow-blue-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10820,7 +10890,7 @@ export default function BookingDetail() {
               </button>
               <button
                 onClick={() => setTourServicesTab('railway')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'railway'
                     ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600 text-white shadow-orange-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10831,7 +10901,7 @@ export default function BookingDetail() {
               </button>
               <button
                 onClick={() => setTourServicesTab('flights')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'flights'
                     ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-green-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10842,7 +10912,7 @@ export default function BookingDetail() {
               </button>
               <button
                 onClick={() => setTourServicesTab('guide')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'guide'
                     ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 text-white shadow-rose-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10853,7 +10923,7 @@ export default function BookingDetail() {
               </button>
               <button
                 onClick={() => setTourServicesTab('meals')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'meals'
                     ? 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 text-white shadow-red-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10864,7 +10934,7 @@ export default function BookingDetail() {
               </button>
               <button
                 onClick={() => setTourServicesTab('eintritt')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'eintritt'
                     ? 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 hover:from-cyan-600 hover:via-sky-600 hover:to-blue-600 text-white shadow-cyan-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10877,7 +10947,7 @@ export default function BookingDetail() {
               {booking?.tourType?.code !== 'ZA' && (
                 <button
                   onClick={() => setTourServicesTab('metro')}
-                  className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                     tourServicesTab === 'metro'
                       ? 'bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500 hover:from-lime-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-lime-500/30 scale-110 -translate-y-0.5'
                       : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10889,7 +10959,7 @@ export default function BookingDetail() {
               )}
               <button
                 onClick={() => setTourServicesTab('shou')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'shou'
                     ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 hover:from-pink-600 hover:via-rose-600 hover:to-red-600 text-white shadow-pink-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10900,7 +10970,7 @@ export default function BookingDetail() {
               </button>
               <button
                 onClick={() => setTourServicesTab('other')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   tourServicesTab === 'other'
                     ? 'bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500 hover:from-slate-600 hover:via-gray-600 hover:to-zinc-600 text-white shadow-slate-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -10914,115 +10984,131 @@ export default function BookingDetail() {
 
           {/* Hotels Tab */}
           {tourServicesTab === 'hotels' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-purple-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500"></div>
 
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                <Building2 className="w-7 h-7 text-purple-600" />
+              <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                <Building2 className="w-5 h-5 md:w-7 md:h-7 text-purple-600" />
                 Hotels Summary
               </h3>
 
               {grandTotalData ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">No.</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-purple-400">City</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-purple-400">Hotel</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">Dates</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">Nights</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold border-r border-purple-400">USD</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold">UZS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accommodations.map((acc, index) => {
-                        // Calculate nights
-                        let nights = acc.nights || 0;
-                        if (!nights && acc.checkInDate && acc.checkOutDate) {
-                          const checkIn = new Date(acc.checkInDate);
-                          const checkOut = new Date(acc.checkOutDate);
-                          nights = Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-                        }
-
-                        // Find hotel in grandTotalData by accommodation ID (not hotel name!)
-                        const hotelData = grandTotalData.hotelBreakdown?.find(h => h.accommodationId === acc.id);
-
-                        const totalUSD = hotelData?.USD || 0;
-                        const totalUZS = hotelData?.UZS || 0;
-
-                        return (
-                          <tr key={acc.id} className="border-b border-gray-200 hover:bg-purple-50 transition-colors">
-                            <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
-                              {index + 1}
-                            </td>
-                            <td className="px-4 py-3 text-gray-800 border-r border-gray-200">
-                              {acc.hotel?.city?.name || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
-                              {acc.hotel?.name || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
-                              {acc.checkInDate && acc.checkOutDate ? (
-                                <span>
-                                  {format(new Date(acc.checkInDate), 'dd.MM')}
-                                  <span className="text-gray-500 mx-1">-</span>
-                                  {format(new Date(acc.checkOutDate), 'dd.MM')}
-                                </span>
-                              ) : '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
-                              {nights > 0 ? nights : '-'}
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold border-r border-gray-200">
-                              {totalUSD > 0 ? (
-                                <span className="text-green-700">{Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold">
-                              {totalUZS > 0 ? (
-                                <span className="text-blue-700">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-gradient-to-r from-purple-100 to-indigo-100 border-t-2 border-purple-300">
-                        <td colSpan="4" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-purple-200">
-                          Total:
-                        </td>
-                        <td className="px-4 py-4 text-center font-black text-xl text-gray-900 border-r border-purple-200">
-                          {accommodations.reduce((sum, acc) => {
-                            let nights = acc.nights || 0;
-                            if (!nights && acc.checkInDate && acc.checkOutDate) {
-                              const checkIn = new Date(acc.checkInDate);
-                              const checkOut = new Date(acc.checkOutDate);
-                              nights = Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-                            }
-                            return sum + nights;
-                          }, 0)}
-                        </td>
-                        <td className="px-4 py-4 text-right font-black text-xl text-green-700 border-r border-purple-200">
-                          {grandTotalData.grandTotalUSD > 0
-                            ? `$${Math.round(grandTotalData.grandTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`
-                            : '-'}
-                        </td>
-                        <td className="px-4 py-4 text-right font-black text-xl text-blue-700">
-                          {grandTotalData.grandTotalUZS > 0
-                            ? Math.round(grandTotalData.grandTotalUZS).toLocaleString('en-US').replace(/,/g, ' ')
-                            : '-'}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                <>
+                  {/* MOBILE: card view */}
+                  <div className="md:hidden space-y-3">
+                    {accommodations.map((acc, index) => {
+                      let nights = acc.nights || 0;
+                      if (!nights && acc.checkInDate && acc.checkOutDate) {
+                        nights = Math.round((new Date(acc.checkOutDate) - new Date(acc.checkInDate)) / 86400000);
+                      }
+                      const hotelData = grandTotalData.hotelBreakdown?.find(h => h.accommodationId === acc.id);
+                      const totalUSD = hotelData?.USD || 0;
+                      const totalUZS = hotelData?.UZS || 0;
+                      return (
+                        <div key={acc.id} className="border-2 border-purple-100 rounded-xl overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
+                            <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                            <span className="text-xs font-semibold text-purple-700">{acc.hotel?.city?.name || '-'}</span>
+                          </div>
+                          <div className="px-3 py-2.5 space-y-1.5">
+                            <div className="font-semibold text-gray-900 text-sm">{acc.hotel?.name || '-'}</div>
+                            <div className="flex items-center gap-3 text-xs text-gray-600">
+                              <span>📅 {acc.checkInDate && acc.checkOutDate ? `${format(new Date(acc.checkInDate), 'dd.MM')} – ${format(new Date(acc.checkOutDate), 'dd.MM')}` : '-'}</span>
+                              <span className="font-semibold text-gray-800">{nights > 0 ? `${nights}n` : '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-4 pt-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-gray-500">USD</span>
+                                <span className="text-sm font-bold text-green-700">{totalUSD > 0 ? Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ') : '–'}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-gray-500">UZS</span>
+                                <span className="text-sm font-bold text-blue-700">{totalUZS > 0 ? Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ') : '–'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="border-2 border-purple-300 rounded-xl bg-gradient-to-r from-purple-100 to-indigo-100 px-3 py-3 flex items-center justify-between">
+                      <span className="text-sm font-bold text-gray-900">Total</span>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500">Nights</div>
+                          <div className="font-black text-gray-900 text-sm">{accommodations.reduce((s, a) => { let n = a.nights || 0; if (!n && a.checkInDate && a.checkOutDate) n = Math.round((new Date(a.checkOutDate) - new Date(a.checkInDate)) / 86400000); return s + n; }, 0)}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500">USD</div>
+                          <div className="font-black text-green-700 text-sm">{grandTotalData.grandTotalUSD > 0 ? `$${Math.round(grandTotalData.grandTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '–'}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500">UZS</div>
+                          <div className="font-black text-blue-700 text-sm">{grandTotalData.grandTotalUZS > 0 ? Math.round(grandTotalData.grandTotalUZS).toLocaleString('en-US').replace(/,/g, ' ') : '–'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* DESKTOP: table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">No.</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-purple-400">City</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-purple-400">Hotel</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">Dates</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-purple-400">Nights</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold border-r border-purple-400">USD</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold">UZS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accommodations.map((acc, index) => {
+                          let nights = acc.nights || 0;
+                          if (!nights && acc.checkInDate && acc.checkOutDate) {
+                            const checkIn = new Date(acc.checkInDate);
+                            const checkOut = new Date(acc.checkOutDate);
+                            nights = Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+                          }
+                          const hotelData = grandTotalData.hotelBreakdown?.find(h => h.accommodationId === acc.id);
+                          const totalUSD = hotelData?.USD || 0;
+                          const totalUZS = hotelData?.UZS || 0;
+                          return (
+                            <tr key={acc.id} className="border-b border-gray-200 hover:bg-purple-50 transition-colors">
+                              <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">{index + 1}</td>
+                              <td className="px-4 py-3 text-gray-800 border-r border-gray-200">{acc.hotel?.city?.name || '-'}</td>
+                              <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">{acc.hotel?.name || '-'}</td>
+                              <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                                {acc.checkInDate && acc.checkOutDate ? `${format(new Date(acc.checkInDate), 'dd.MM')} - ${format(new Date(acc.checkOutDate), 'dd.MM')}` : '-'}
+                              </td>
+                              <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{nights > 0 ? nights : '-'}</td>
+                              <td className="px-4 py-3 text-right font-bold border-r border-gray-200">
+                                {totalUSD > 0 ? <span className="text-green-700">{Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</span> : <span className="text-gray-400">-</span>}
+                              </td>
+                              <td className="px-4 py-3 text-right font-bold">
+                                {totalUZS > 0 ? <span className="text-blue-700">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</span> : <span className="text-gray-400">-</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-purple-100 to-indigo-100 border-t-2 border-purple-300">
+                          <td colSpan="4" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-purple-200">Total:</td>
+                          <td className="px-4 py-4 text-center font-black text-xl text-gray-900 border-r border-purple-200">
+                            {accommodations.reduce((sum, acc) => { let n = acc.nights || 0; if (!n && acc.checkInDate && acc.checkOutDate) n = Math.round((new Date(acc.checkOutDate) - new Date(acc.checkInDate)) / 86400000); return sum + n; }, 0)}
+                          </td>
+                          <td className="px-4 py-4 text-right font-black text-xl text-green-700 border-r border-purple-200">
+                            {grandTotalData.grandTotalUSD > 0 ? `$${Math.round(grandTotalData.grandTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
+                          </td>
+                          <td className="px-4 py-4 text-right font-black text-xl text-blue-700">
+                            {grandTotalData.grandTotalUZS > 0 ? Math.round(grandTotalData.grandTotalUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12 text-gray-500">
                   <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -11034,127 +11120,105 @@ export default function BookingDetail() {
 
           {/* Transport Tab */}
           {tourServicesTab === 'transport' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-blue-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500"></div>
 
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                <Car className="w-7 h-7 text-blue-600" />
+              <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                <Car className="w-5 h-5 md:w-7 md:h-7 text-blue-600" />
                 Transport Summary
               </h3>
 
               {routes && routes.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white">
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">No.</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Route</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">PAX</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Vehicle</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Provider</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold">Price (USD)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {routes.map((route, index) => (
-                        <tr key={route.id} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
-                          <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
-                            {index + 1}
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
-                            {route.date ? format(new Date(route.date), 'dd.MM.yyyy') : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
-                            {route.routeName || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
-                            {route.personCount > 0 ? route.personCount : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200">
-                            {route.transportType || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200 capitalize">
-                            {route.provider || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold">
-                            {booking?.status === 'CANCELLED' ? (
-                              <span className="text-gray-900">0</span>
-                            ) : route.price > 0 ? (
-                              <span className="text-blue-700">{Math.round(route.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
+                <>
+                  {/* MOBILE: card view */}
+                  <div className="md:hidden space-y-3">
+                    {routes.map((route, index) => (
+                      <div key={route.id} className="border-2 border-blue-100 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                            <span className="text-xs font-semibold text-blue-700">{route.date ? format(new Date(route.date), 'dd.MM.yyyy') : '-'}</span>
+                          </div>
+                          <span className="text-sm font-black text-blue-700">
+                            {booking?.status === 'CANCELLED' ? '0' : route.price > 0 ? `$${Math.round(route.price).toLocaleString('en-US').replace(/,/g, ' ')}` : '–'}
+                          </span>
+                        </div>
+                        <div className="px-3 py-2.5 space-y-1.5">
+                          <div className="font-semibold text-gray-900 text-sm">{route.routeName || '-'}</div>
+                          <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
+                            <span>🚌 {route.transportType || '-'}</span>
+                            <span className="capitalize font-medium text-gray-700">{route.provider || '-'}</span>
+                            {route.personCount > 0 && <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">{route.personCount} pax</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {/* Mobile totals */}
+                    {(() => {
+                      const sevilT = booking?.status === 'CANCELLED' ? 0 : routes.filter(r => r.provider?.toLowerCase().includes('sevil')).reduce((s, r) => s + (r.price || 0), 0);
+                      const xayrT = booking?.status === 'CANCELLED' ? 0 : routes.filter(r => r.provider?.toLowerCase() === 'xayrulla').reduce((s, r) => s + (r.price || 0), 0);
+                      const nosirT = booking?.status === 'CANCELLED' ? 0 : routes.filter(r => r.provider?.toLowerCase() === 'nosir').reduce((s, r) => s + (r.price || 0), 0);
+                      const grandT = booking?.status === 'CANCELLED' ? 0 : routes.reduce((s, r) => s + (r.price || 0), 0);
+                      return (
+                        <div className="space-y-2 pt-1">
+                          {sevilT > 0 && <div className="flex justify-between items-center px-3 py-2 bg-purple-50 rounded-xl border border-purple-200"><span className="text-xs font-semibold text-purple-700">Sevil Total</span><span className="text-sm font-bold text-purple-700">${Math.round(sevilT).toLocaleString('en-US').replace(/,/g, ' ')}</span></div>}
+                          {xayrT > 0 && <div className="flex justify-between items-center px-3 py-2 bg-green-50 rounded-xl border border-green-200"><span className="text-xs font-semibold text-green-700">Xayrulla Total</span><span className="text-sm font-bold text-green-700">${Math.round(xayrT).toLocaleString('en-US').replace(/,/g, ' ')}</span></div>}
+                          {nosirT > 0 && <div className="flex justify-between items-center px-3 py-2 bg-sky-50 rounded-xl border border-sky-200"><span className="text-xs font-semibold text-sky-700">Nosir Total</span><span className="text-sm font-bold text-sky-700">${Math.round(nosirT).toLocaleString('en-US').replace(/,/g, ' ')}</span></div>}
+                          <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-xl border-2 border-blue-300"><span className="text-sm font-bold text-gray-900">Grand Total</span><span className="text-base font-black text-blue-700">${grandT > 0 ? Math.round(grandT).toLocaleString('en-US').replace(/,/g, ' ') : '0'}</span></div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {/* DESKTOP: table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white">
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">No.</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">Date</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Route</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-blue-400">PAX</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Vehicle</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-blue-400">Provider</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold">Price (USD)</th>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      {/* Sevil Total */}
-                      <tr className="bg-gradient-to-r from-purple-50 to-pink-50 border-t border-gray-300">
-                        <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">
-                          Sevil Total:
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-lg text-purple-700">
-                          {(() => {
-                            if (booking?.status === 'CANCELLED') return '0';
-                            const sevilTotal = routes
-                              .filter(r => r.provider?.toLowerCase().includes('sevil'))
-                              .reduce((sum, r) => sum + (r.price || 0), 0);
-                            return sevilTotal > 0
-                              ? Math.round(sevilTotal).toLocaleString('en-US').replace(/,/g, ' ')
-                              : '-';
-                          })()}
-                        </td>
-                      </tr>
-                      {/* Xayrulla Total */}
-                      <tr className="bg-gradient-to-r from-green-50 to-emerald-50">
-                        <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">
-                          Xayrulla Total:
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-lg text-green-700">
-                          {(() => {
-                            if (booking?.status === 'CANCELLED') return '0';
-                            const xayrullaTotal = routes
-                              .filter(r => r.provider?.toLowerCase() === 'xayrulla')
-                              .reduce((sum, r) => sum + (r.price || 0), 0);
-                            return xayrullaTotal > 0
-                              ? Math.round(xayrullaTotal).toLocaleString('en-US').replace(/,/g, ' ')
-                              : '-';
-                          })()}
-                        </td>
-                      </tr>
-                      {/* Nosir Total */}
-                      <tr className="bg-gradient-to-r from-blue-50 to-sky-50">
-                        <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">
-                          Nosir Total:
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-lg text-blue-700">
-                          {(() => {
-                            if (booking?.status === 'CANCELLED') return '0';
-                            const nosirTotal = routes
-                              .filter(r => r.provider?.toLowerCase() === 'nosir')
-                              .reduce((sum, r) => sum + (r.price || 0), 0);
-                            return nosirTotal > 0
-                              ? Math.round(nosirTotal).toLocaleString('en-US').replace(/,/g, ' ')
-                              : '-';
-                          })()}
-                        </td>
-                      </tr>
-                      {/* Grand Total */}
-                      <tr className="bg-gradient-to-r from-blue-100 to-cyan-100 border-t-2 border-blue-300">
-                        <td colSpan="6" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-blue-200">
-                          Grand Total:
-                        </td>
-                        <td className="px-4 py-4 text-right font-black text-xl text-blue-700">
-                          {booking?.status === 'CANCELLED' ? '0' : routes.reduce((sum, r) => sum + (r.price || 0), 0) > 0
-                            ? Math.round(routes.reduce((sum, r) => sum + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
-                            : '-'}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {routes.map((route, index) => (
+                          <tr key={route.id} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
+                            <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">{index + 1}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">{route.date ? format(new Date(route.date), 'dd.MM.yyyy') : '-'}</td>
+                            <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">{route.routeName || '-'}</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{route.personCount > 0 ? route.personCount : '-'}</td>
+                            <td className="px-4 py-3 text-gray-700 border-r border-gray-200">{route.transportType || '-'}</td>
+                            <td className="px-4 py-3 text-gray-700 border-r border-gray-200 capitalize">{route.provider || '-'}</td>
+                            <td className="px-4 py-3 text-right font-bold">
+                              {booking?.status === 'CANCELLED' ? <span className="text-gray-900">0</span> : route.price > 0 ? <span className="text-blue-700">{Math.round(route.price).toLocaleString('en-US').replace(/,/g, ' ')}</span> : <span className="text-gray-400">-</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-purple-50 to-pink-50 border-t border-gray-300">
+                          <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">Sevil Total:</td>
+                          <td className="px-4 py-3 text-right font-bold text-lg text-purple-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = routes.filter(r => r.provider?.toLowerCase().includes('sevil')).reduce((s, r) => s + (r.price || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
+                        </tr>
+                        <tr className="bg-gradient-to-r from-green-50 to-emerald-50">
+                          <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">Xayrulla Total:</td>
+                          <td className="px-4 py-3 text-right font-bold text-lg text-green-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = routes.filter(r => r.provider?.toLowerCase() === 'xayrulla').reduce((s, r) => s + (r.price || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
+                        </tr>
+                        <tr className="bg-gradient-to-r from-blue-50 to-sky-50">
+                          <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">Nosir Total:</td>
+                          <td className="px-4 py-3 text-right font-bold text-lg text-blue-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = routes.filter(r => r.provider?.toLowerCase() === 'nosir').reduce((s, r) => s + (r.price || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
+                        </tr>
+                        <tr className="bg-gradient-to-r from-blue-100 to-cyan-100 border-t-2 border-blue-300">
+                          <td colSpan="6" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-blue-200">Grand Total:</td>
+                          <td className="px-4 py-4 text-right font-black text-xl text-blue-700">{booking?.status === 'CANCELLED' ? '0' : routes.reduce((s, r) => s + (r.price || 0), 0) > 0 ? Math.round(routes.reduce((s, r) => s + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12 text-gray-500">
                   <Car className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -11166,100 +11230,96 @@ export default function BookingDetail() {
 
           {/* Railway Tab */}
           {tourServicesTab === 'railway' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-orange-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-orange-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
 
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                <Train className="w-7 h-7 text-orange-600" />
+              <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                <Train className="w-5 h-5 md:w-7 md:h-7 text-orange-600" />
                 Railway Summary
               </h3>
 
               {railways && railways.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-orange-600 to-amber-600 text-white">
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">No.</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Train No.</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-orange-400">Train Name</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-orange-400">Route</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Date</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Departure</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Arrival</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">PAX</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold border-r border-orange-400">Price (UZS)</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {railways.map((railway, index) => (
-                        <tr key={railway.id} className="border-b border-gray-200 hover:bg-orange-50 transition-colors">
-                          <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
-                            {index + 1}
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
-                            {railway.trainNumber || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
-                            {railway.trainName || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{railway.departure}</span>
-                              <span className="text-gray-400">→</span>
-                              <span className="font-medium">{railway.arrival}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
-                            {railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
-                            {railway.departureTime || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
-                            {railway.arrivalTime || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
-                            {railway.pax > 0 ? railway.pax : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold border-r border-gray-200">
-                            {booking?.status === 'CANCELLED' ? (
-                              <span className="text-gray-900">0</span>
-                            ) : railway.price > 0 ? (
-                              <span className="text-orange-700">{Math.round(railway.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-center">
-                              <button
-                                onClick={() => deleteRailway(railway.id)}
-                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                title="O'chirish"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
+                <>
+                  {/* MOBILE: card view */}
+                  <div className="md:hidden space-y-3">
+                    {railways.map((railway, index) => (
+                      <div key={railway.id} className="border-2 border-orange-100 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                            <span className="text-xs font-semibold text-orange-700">🚆 {railway.trainNumber || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => deleteRailway(railway.id)} className="p-1 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                        <div className="px-3 py-2.5 space-y-1.5">
+                          <div className="font-semibold text-gray-900 text-sm">{railway.trainName || '-'}</div>
+                          <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <span>{railway.departure}</span><span className="text-gray-400">→</span><span>{railway.arrival}</span>
+                          </div>
+                          <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
+                            <span>📅 {railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</span>
+                            <span>⬆️ {railway.departureTime || '-'}</span>
+                            <span>⬇️ {railway.arrivalTime || '-'}</span>
+                            {railway.pax > 0 && <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">{railway.pax} pax</span>}
+                          </div>
+                          <div className="text-sm font-bold text-orange-700 pt-0.5">
+                            {booking?.status === 'CANCELLED' ? '0' : railway.price > 0 ? `${Math.round(railway.price).toLocaleString('en-US').replace(/,/g, ' ')} UZS` : '–'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-orange-100 to-amber-100 rounded-xl border-2 border-orange-300">
+                      <span className="text-sm font-bold text-gray-900">Total</span>
+                      <span className="text-base font-black text-orange-700">{booking?.status === 'CANCELLED' ? '0' : railways.reduce((s, r) => s + (r.price || 0), 0) > 0 ? `${Math.round(railways.reduce((s, r) => s + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')} UZS` : '–'}</span>
+                    </div>
+                  </div>
+                  {/* DESKTOP: table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-orange-600 to-amber-600 text-white">
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">No.</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Train No.</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-orange-400">Train Name</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-orange-400">Route</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Date</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Departure</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">Arrival</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-orange-400">PAX</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold border-r border-orange-400">Price (UZS)</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-gradient-to-r from-orange-100 to-amber-100 border-t-2 border-orange-300">
-                        <td colSpan="8" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-orange-200">
-                          Total:
-                        </td>
-                        <td className="px-4 py-4 text-right font-black text-xl text-orange-700 border-r border-orange-200">
-                          {booking?.status === 'CANCELLED' ? '0' : railways.reduce((sum, r) => sum + (r.price || 0), 0) > 0
-                            ? Math.round(railways.reduce((sum, r) => sum + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
-                            : '-'}
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {railways.map((railway, index) => (
+                          <tr key={railway.id} className="border-b border-gray-200 hover:bg-orange-50 transition-colors">
+                            <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">{index + 1}</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{railway.trainNumber || '-'}</td>
+                            <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">{railway.trainName || '-'}</td>
+                            <td className="px-4 py-3 text-gray-700 border-r border-gray-200"><div className="flex items-center gap-2"><span className="font-medium">{railway.departure}</span><span className="text-gray-400">→</span><span className="font-medium">{railway.arrival}</span></div></td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">{railway.departureTime || '-'}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">{railway.arrivalTime || '-'}</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{railway.pax > 0 ? railway.pax : '-'}</td>
+                            <td className="px-4 py-3 text-right font-bold border-r border-gray-200">
+                              {booking?.status === 'CANCELLED' ? <span className="text-gray-900">0</span> : railway.price > 0 ? <span className="text-orange-700">{Math.round(railway.price).toLocaleString('en-US').replace(/,/g, ' ')}</span> : <span className="text-gray-400">-</span>}
+                            </td>
+                            <td className="px-4 py-3"><div className="flex items-center justify-center"><button onClick={() => deleteRailway(railway.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="O'chirish"><Trash2 className="w-4 h-4" /></button></div></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-orange-100 to-amber-100 border-t-2 border-orange-300">
+                          <td colSpan="8" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-orange-200">Total:</td>
+                          <td className="px-4 py-4 text-right font-black text-xl text-orange-700 border-r border-orange-200">{booking?.status === 'CANCELLED' ? '0' : railways.reduce((s, r) => s + (r.price || 0), 0) > 0 ? Math.round(railways.reduce((s, r) => s + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12 text-gray-500">
                   <Train className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -11271,95 +11331,97 @@ export default function BookingDetail() {
 
           {/* Flights Tab */}
           {tourServicesTab === 'flights' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-green-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
 
-              <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                <Plane className="w-7 h-7 text-green-600" />
+              <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                <Plane className="w-5 h-5 md:w-7 md:h-7 text-green-600" />
                 Flight Summary
               </h3>
 
               {flights && flights.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">No.</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Type</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Flight No.</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-green-400">Airline</th>
-                        <th className="px-4 py-3 text-left text-sm font-bold border-r border-green-400">Route</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Date</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Departure</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Arrival</th>
-                        <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">PAX</th>
-                        <th className="px-4 py-3 text-right text-sm font-bold">Price (UZS)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {flights.map((flight, index) => (
-                        <tr key={flight.id} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
-                          <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">
-                            {index + 1}
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm border-r border-gray-200">
-                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              flight.type === 'INTERNATIONAL'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-green-100 text-green-700'
-                            }`}>
-                              {flight.type === 'INTERNATIONAL' ? 'International' : 'Domestic'}
+                <>
+                  {/* MOBILE: card view */}
+                  <div className="md:hidden space-y-3">
+                    {flights.map((flight, index) => (
+                      <div key={flight.id} className="border-2 border-green-100 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-green-50 to-teal-50 border-b border-green-100">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${flight.type === 'INTERNATIONAL' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                              {flight.type === 'INTERNATIONAL' ? 'Intl' : 'Dom'}
                             </span>
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
-                            {flight.flightNumber || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">
-                            {flight.airline || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 border-r border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{flight.departure}</span>
-                              <span className="text-gray-400">→</span>
-                              <span className="font-medium">{flight.arrival}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">
-                            {flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
-                            {flight.departureTime || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">
-                            {flight.arrivalTime || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
-                            {flight.pax > 0 ? flight.pax : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold">
-                            {flight.price > 0 ? (
-                              <span className="text-green-700">{Math.round(flight.price).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
+                            <span className="text-xs font-bold text-gray-700">{flight.flightNumber || '-'}</span>
+                          </div>
+                          <span className="text-sm font-black text-green-700">
+                            {flight.price > 0 ? `${Math.round(flight.price).toLocaleString('en-US').replace(/,/g, ' ')} UZS` : '–'}
+                          </span>
+                        </div>
+                        <div className="px-3 py-2.5 space-y-1.5">
+                          <div className="font-semibold text-gray-900 text-sm">{flight.airline || '-'}</div>
+                          <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <span>{flight.departure}</span><span className="text-gray-400">→</span><span>{flight.arrival}</span>
+                          </div>
+                          <div className="flex items-center gap-3 flex-wrap text-xs text-gray-600">
+                            <span>📅 {flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span>
+                            <span>⬆️ {flight.departureTime || '-'}</span>
+                            <span>⬇️ {flight.arrivalTime || '-'}</span>
+                            {flight.pax > 0 && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">{flight.pax} pax</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-green-100 to-teal-100 rounded-xl border-2 border-green-300">
+                      <span className="text-sm font-bold text-gray-900">Total</span>
+                      <span className="text-base font-black text-green-700">{flights.reduce((s, f) => s + (f.price || 0), 0) > 0 ? `${Math.round(flights.reduce((s, f) => s + (f.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')} UZS` : '–'}</span>
+                    </div>
+                  </div>
+                  {/* DESKTOP: table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-green-600 to-teal-600 text-white">
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">No.</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Type</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Flight No.</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-green-400">Airline</th>
+                          <th className="px-4 py-3 text-left text-sm font-bold border-r border-green-400">Route</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Date</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Departure</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">Arrival</th>
+                          <th className="px-4 py-3 text-center text-sm font-bold border-r border-green-400">PAX</th>
+                          <th className="px-4 py-3 text-right text-sm font-bold">Price (UZS)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flights.map((flight, index) => (
+                          <tr key={flight.id} className="border-b border-gray-200 hover:bg-green-50 transition-colors">
+                            <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-gray-200">{index + 1}</td>
+                            <td className="px-4 py-3 text-center text-sm border-r border-gray-200"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${flight.type === 'INTERNATIONAL' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>{flight.type === 'INTERNATIONAL' ? 'International' : 'Domestic'}</span></td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{flight.flightNumber || '-'}</td>
+                            <td className="px-4 py-3 text-gray-800 font-medium border-r border-gray-200">{flight.airline || '-'}</td>
+                            <td className="px-4 py-3 text-gray-700 border-r border-gray-200"><div className="flex items-center gap-2"><span className="font-medium">{flight.departure}</span><span className="text-gray-400">→</span><span className="font-medium">{flight.arrival}</span></div></td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200 whitespace-nowrap">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">{flight.departureTime || '-'}</td>
+                            <td className="px-4 py-3 text-center text-sm text-gray-700 border-r border-gray-200">{flight.arrivalTime || '-'}</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">{flight.pax > 0 ? flight.pax : '-'}</td>
+                            <td className="px-4 py-3 text-right font-bold">
+                              {flight.price > 0 ? <span className="text-green-700">{Math.round(flight.price).toLocaleString('en-US').replace(/,/g, ' ')}</span> : <span className="text-gray-400">-</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-gradient-to-r from-green-100 to-teal-100 border-t-2 border-green-300">
+                          <td colSpan="9" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-green-200">Total:</td>
+                          <td className="px-4 py-4 text-right font-black text-xl text-green-700">
+                            {flights.reduce((sum, f) => sum + (f.price || 0), 0) > 0 ? Math.round(flights.reduce((sum, f) => sum + (f.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-gradient-to-r from-green-100 to-teal-100 border-t-2 border-green-300">
-                        <td colSpan="9" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-green-200">
-                          Total:
-                        </td>
-                        <td className="px-4 py-4 text-right font-black text-xl text-green-700">
-                          {flights.reduce((sum, f) => sum + (f.price || 0), 0) > 0
-                            ? Math.round(flights.reduce((sum, f) => sum + (f.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')
-                            : '-'}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12 text-gray-500">
                   <Plane className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -11371,268 +11433,114 @@ export default function BookingDetail() {
 
           {/* Guide Tab */}
           {tourServicesTab === 'guide' && (
-            <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-rose-100 p-8">
+            <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-rose-100 p-4 md:p-8">
               <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500"></div>
 
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                  <Users className="w-7 h-7 text-rose-600" />
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-3">
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center gap-2 md:gap-3">
+                  <Users className="w-5 h-5 md:w-7 md:h-7 text-rose-600" />
                   Guide Services
                 </h3>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={() => openGuideModal('main')}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                     title="Add Main Guide (12 days + 1 half day)"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                     Main Guide
                   </button>
                   <button
                     onClick={() => openGuideModal('second')}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                     title="Add Second Guide"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                     Second Guide
                   </button>
                   <button
                     onClick={() => openGuideModal('bergreiseleiter')}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
                     title="Add Bergreiseleiter"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-4 h-4" />
                     Bergreiseleiter
                   </button>
                 </div>
               </div>
 
               {(mainGuide || secondGuide || bergreiseleiter) ? (
-                <div className="space-y-6">
-                  {/* Main Guide Table */}
-                  {mainGuide && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gradient-to-r from-blue-50 to-blue-100 border-b-2 border-blue-200">
-                            <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-r border-blue-200">Guide name</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Type</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Full days</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Half days</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Day rate</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Half day rate</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-blue-200">Total payment</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-gray-900 border-r border-blue-200">
-                              {typeof mainGuide.guide === 'string'
-                                ? mainGuide.guide
-                                : mainGuide.guide?.name || mainGuide.name || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center border-r border-blue-200">
-                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-                                Main
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
-                              {mainGuide.fullDays}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
-                              {mainGuide.halfDays || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
-                              ${mainGuide.dayRate}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-200">
-                              ${mainGuide.halfDayRate}
-                            </td>
-                            <td className="px-4 py-3 text-center font-bold text-blue-700 border-r border-blue-200">
-                              ${Math.round(mainGuide.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => sendGuideToTelegram(mainGuide, 'main')}
-                                  disabled={sendingGuide === 'main'}
-                                  className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-lg transition-colors disabled:opacity-50"
-                                  title="Telegram ga yuborish"
-                                >
-                                  {sendingGuide === 'main' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                </button>
-                                <button
-                                  onClick={() => openGuideModal('main')}
-                                  className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
-                                  title="Edit"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => removeGuide('main')}
-                                  className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                <div className="space-y-4 md:space-y-6">
+                  {/* Helper: render guide card/table */}
+                  {[
+                    mainGuide && { g: mainGuide, type: 'main', label: 'Main', color: 'blue', badgeCls: 'bg-blue-100 text-blue-700', borderCls: 'border-blue-100', bgCls: 'from-blue-50 to-blue-100', totalColor: 'text-blue-700' },
+                    secondGuide && { g: secondGuide, type: 'second', label: 'Second', color: 'green', badgeCls: 'bg-green-100 text-green-700', borderCls: 'border-green-100', bgCls: 'from-green-50 to-green-100', totalColor: 'text-green-700' },
+                    bergreiseleiter && { g: bergreiseleiter, type: 'bergreiseleiter', label: 'Bergreiseleiter', color: 'purple', badgeCls: 'bg-purple-100 text-purple-700', borderCls: 'border-purple-100', bgCls: 'from-purple-50 to-purple-100', totalColor: 'text-purple-700' },
+                  ].filter(Boolean).map(({ g, type, label, badgeCls, borderCls, bgCls, totalColor }) => {
+                    const guideName = typeof g.guide === 'string' ? g.guide : g.guide?.name || g.name || '-';
+                    return (
+                      <div key={type}>
+                        {/* MOBILE: card */}
+                        <div className={`md:hidden border-2 ${borderCls} rounded-xl overflow-hidden`}>
+                          <div className={`flex items-center justify-between px-3 py-2 bg-gradient-to-r ${bgCls} border-b ${borderCls}`}>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${badgeCls}`}>{label}</span>
+                              <span className="text-sm font-semibold text-gray-900">{guideName}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button onClick={() => sendGuideToTelegram(g, type)} disabled={sendingGuide === type} className="p-1.5 bg-sky-100 text-sky-600 rounded-lg disabled:opacity-50">{sendingGuide === type ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}</button>
+                              <button onClick={() => openGuideModal(type)} className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => removeGuide(type)} className="p-1.5 bg-red-100 text-red-600 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </div>
+                          <div className="px-3 py-2.5 grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            <div><span className="text-xs text-gray-500">Full days</span><div className="font-semibold text-gray-900 text-sm">{g.fullDays}</div></div>
+                            <div><span className="text-xs text-gray-500">Half days</span><div className="font-semibold text-gray-900 text-sm">{g.halfDays || '-'}</div></div>
+                            <div><span className="text-xs text-gray-500">Day rate</span><div className="font-semibold text-gray-900 text-sm">${g.dayRate}</div></div>
+                            <div><span className="text-xs text-gray-500">Half day rate</span><div className="font-semibold text-gray-900 text-sm">${g.halfDayRate}</div></div>
+                            <div className="col-span-2 pt-1 border-t border-gray-100">
+                              <span className="text-xs text-gray-500">Total payment</span>
+                              <div className={`text-base font-black ${totalColor}`}>${Math.round(g.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}</div>
+                            </div>
+                          </div>
+                        </div>
+                        {/* DESKTOP: table */}
+                        <div className="hidden md:block overflow-x-auto">
+                          <table className="w-full border-collapse">
+                            <thead>
+                              <tr className={`bg-gradient-to-r ${bgCls} border-b-2 border-${type === 'main' ? 'blue' : type === 'second' ? 'green' : 'purple'}-200`}>
+                                <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-r border-gray-200">Guide name</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-gray-200">Type</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-gray-200">Full days</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-gray-200">Half days</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-gray-200">Day rate</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-gray-200">Half day rate</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-gray-200">Total payment</th>
+                                <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="border-b border-gray-200">
+                                <td className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">{guideName}</td>
+                                <td className="px-4 py-3 text-center border-r border-gray-200"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${badgeCls}`}>{label}</span></td>
+                                <td className="px-4 py-3 text-center text-gray-700 border-r border-gray-200">{g.fullDays}</td>
+                                <td className="px-4 py-3 text-center text-gray-700 border-r border-gray-200">{g.halfDays || '-'}</td>
+                                <td className="px-4 py-3 text-center text-gray-700 border-r border-gray-200">${g.dayRate}</td>
+                                <td className="px-4 py-3 text-center text-gray-700 border-r border-gray-200">${g.halfDayRate}</td>
+                                <td className={`px-4 py-3 text-center font-bold ${totalColor} border-r border-gray-200`}>${Math.round(g.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                                <td className="px-4 py-3"><div className="flex items-center justify-center gap-2">
+                                  <button onClick={() => sendGuideToTelegram(g, type)} disabled={sendingGuide === type} className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-lg disabled:opacity-50">{sendingGuide === type ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</button>
+                                  <button onClick={() => openGuideModal(type)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg"><Edit className="w-4 h-4" /></button>
+                                  <button onClick={() => removeGuide(type)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                                </div></td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
 
-                  {/* Second Guide Table */}
-                  {secondGuide && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gradient-to-r from-green-50 to-green-100 border-b-2 border-green-200">
-                            <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-r border-green-200">Guide name</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Type</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Full days</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Half days</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Day rate</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Half day rate</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-green-200">Total payment</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b border-green-200 hover:bg-green-50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-gray-900 border-r border-green-200">
-                              {typeof secondGuide.guide === 'string'
-                                ? secondGuide.guide
-                                : secondGuide.guide?.name || secondGuide.name || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center border-r border-green-200">
-                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-                                Second
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
-                              {secondGuide.fullDays}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
-                              {secondGuide.halfDays || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
-                              ${secondGuide.dayRate}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-green-200">
-                              ${secondGuide.halfDayRate}
-                            </td>
-                            <td className="px-4 py-3 text-center font-bold text-green-700 border-r border-green-200">
-                              ${Math.round(secondGuide.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => sendGuideToTelegram(secondGuide, 'second')}
-                                  disabled={sendingGuide === 'second'}
-                                  className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-lg transition-colors disabled:opacity-50"
-                                  title="Telegram ga yuborish"
-                                >
-                                  {sendingGuide === 'second' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                </button>
-                                <button
-                                  onClick={() => openGuideModal('second')}
-                                  className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
-                                  title="Edit"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => removeGuide('second')}
-                                  className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {/* Bergreiseleiter Table */}
-                  {bergreiseleiter && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gradient-to-r from-purple-50 to-purple-100 border-b-2 border-purple-200">
-                            <th className="px-4 py-3 text-left text-sm font-bold text-gray-900 border-r border-purple-200">Guide name</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Type</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Full days</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Half days</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Day rate</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Half day rate</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900 border-r border-purple-200">Total payment</th>
-                            <th className="px-4 py-3 text-center text-sm font-bold text-gray-900">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b border-purple-200 hover:bg-purple-50 transition-colors">
-                            <td className="px-4 py-3 font-medium text-gray-900 border-r border-purple-200">
-                              {typeof bergreiseleiter.guide === 'string'
-                                ? bergreiseleiter.guide
-                                : bergreiseleiter.guide?.name || bergreiseleiter.name || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center border-r border-purple-200">
-                              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
-                                Bergreiseleiter
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
-                              {bergreiseleiter.fullDays}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
-                              {bergreiseleiter.halfDays || '-'}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
-                              ${bergreiseleiter.dayRate}
-                            </td>
-                            <td className="px-4 py-3 text-center text-gray-700 border-r border-purple-200">
-                              ${bergreiseleiter.halfDayRate}
-                            </td>
-                            <td className="px-4 py-3 text-center font-bold text-purple-700 border-r border-purple-200">
-                              ${Math.round(bergreiseleiter.totalPayment).toLocaleString('en-US').replace(/,/g, ' ')}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => sendGuideToTelegram(bergreiseleiter, 'bergreiseleiter')}
-                                  disabled={sendingGuide === 'bergreiseleiter'}
-                                  className="p-1.5 bg-sky-100 hover:bg-sky-200 text-sky-600 rounded-lg transition-colors disabled:opacity-50"
-                                  title="Telegram ga yuborish"
-                                >
-                                  {sendingGuide === 'bergreiseleiter' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                </button>
-                                <button
-                                  onClick={() => openGuideModal('bergreiseleiter')}
-                                  className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
-                                  title="Edit"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => removeGuide('bergreiseleiter')}
-                                  className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
 
                   {/* Total Payment Summary */}
                   <div className="mt-6 p-4 bg-gradient-to-r from-rose-100 to-pink-100 rounded-lg">
@@ -11703,113 +11611,103 @@ export default function BookingDetail() {
             };
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-red-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500"></div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Meal Services</h3>
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">Meal Services</h3>
 
                 {mealsData.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-blue-500 to-blue-600 border-b-2 border-blue-700">
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">#</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">CITY</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">DATE</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">RESTAURANT</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-blue-400">PRICE (UZS)</th>
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">PAX</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-blue-400">TOTAL (UZS)</th>
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white">TELEGRAM</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {mealsData.map((meal, index) => {
-                          // OPEX stores price as string with spaces (e.g., "150 000")
-                          const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
-                          const pricePerPerson = parseFloat(priceStr) || 0;
-                          const total = pricePerPerson * pax;
-                          const mealDate = getMealDate(meal);
-                          const restaurantName = meal.name || meal.restaurant || '';
-                          const hasChatId = !!mealChatIds[restaurantName];
-                          const conf = mealConfirmations
-                            .filter(c => c.restaurantName === restaurantName)
-                            .sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt))[0];
-
-                          return (
-                            <tr key={index} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
-                              <td className="px-4 py-3 text-center border-r border-gray-200">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold mx-auto">
-                                  {index + 1}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 border-r border-gray-200">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                                  <span className="font-medium text-gray-900">{meal.city || '-'}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-gray-700 border-r border-gray-200 whitespace-nowrap">
-                                {fmtMealDate(mealDate)}
-                              </td>
-                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
-                                {meal.name || meal.restaurant || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-right border-r border-gray-200">
-                                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-md font-medium">
-                                  {pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-center font-bold text-blue-600 text-lg border-r border-gray-200">
-                                {pax}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {hasChatId ? (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <button
-                                      onClick={() => sendMealToTelegram(meal, mealDate, pax, pricePerPerson)}
-                                      disabled={sendingMeal === restaurantName}
-                                      title="Telegram ga yuborish"
-                                      className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
-                                    >
-                                      {sendingMeal === restaurantName
-                                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                                        : <Send className="w-3 h-3" />}
-                                      <span>Yuborish</span>
-                                    </button>
-                                    {conf && (
-                                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                                        conf.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                                        conf.status === 'REJECTED'  ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
-                                      }`}>
-                                        {conf.status === 'CONFIRMED' ? '✅' : conf.status === 'REJECTED' ? '❌' : '🕐'}
-                                        {conf.status === 'CONFIRMED' ? 'Tasdiqladi' : conf.status === 'REJECTED' ? 'Rad qildi' : 'Kutilmoqda'}
-                                      </span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-gray-400">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-gradient-to-r from-orange-100 to-orange-200 border-t-2 border-orange-300">
-                          <td colSpan="7" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
-                            Grand Total:
-                          </td>
-                          <td className="px-4 py-4 text-right font-bold text-orange-700 text-xl">
-                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {mealsData.map((meal, index) => {
+                        const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+                        const pricePerPerson = parseFloat(priceStr) || 0;
+                        const total = pricePerPerson * pax;
+                        const mealDate = getMealDate(meal);
+                        const restaurantName = meal.name || meal.restaurant || '';
+                        const hasChatId = !!mealChatIds[restaurantName];
+                        const conf = mealConfirmations.filter(c => c.restaurantName === restaurantName).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt))[0];
+                        return (
+                          <div key={index} className="border-2 border-red-100 rounded-xl overflow-hidden">
+                            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                                <span className="text-xs font-semibold text-red-700">{meal.city || '-'}</span>
+                                <span className="text-xs text-gray-500">{fmtMealDate(mealDate)}</span>
+                              </div>
+                              {hasChatId && (
+                                <button onClick={() => sendMealToTelegram(meal, mealDate, pax, pricePerPerson)} disabled={sendingMeal === restaurantName} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs disabled:opacity-50">
+                                  {sendingMeal === restaurantName ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                  <span>Yuborish</span>
+                                </button>
+                              )}
+                            </div>
+                            <div className="px-3 py-2.5 space-y-1.5">
+                              <div className="font-semibold text-gray-900 text-sm">{restaurantName || '-'}</div>
+                              <div className="flex items-center gap-4 text-xs text-gray-600">
+                                <span>Narx: <span className="font-semibold text-green-700">{pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></span>
+                                <span>PAX: <span className="font-semibold text-blue-600">{pax}</span></span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-gray-900">{Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                                {conf && <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${conf.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' : conf.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{conf.status === 'CONFIRMED' ? '✅ Tasdiqladi' : conf.status === 'REJECTED' ? '❌ Rad qildi' : '🕐 Kutilmoqda'}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-orange-100 to-orange-200 rounded-xl border-2 border-orange-300">
+                        <span className="text-sm font-bold text-gray-900">Grand Total</span>
+                        <span className="text-base font-black text-orange-700">{Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-blue-500 to-blue-600 border-b-2 border-blue-700">
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">#</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">CITY</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">DATE</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-blue-400">RESTAURANT</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-blue-400">PRICE (UZS)</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-blue-400">PAX</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-blue-400">TOTAL (UZS)</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white">TELEGRAM</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {mealsData.map((meal, index) => {
+                            const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+                            const pricePerPerson = parseFloat(priceStr) || 0;
+                            const total = pricePerPerson * pax;
+                            const mealDate = getMealDate(meal);
+                            const restaurantName = meal.name || meal.restaurant || '';
+                            const hasChatId = !!mealChatIds[restaurantName];
+                            const conf = mealConfirmations.filter(c => c.restaurantName === restaurantName).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt))[0];
+                            return (
+                              <tr key={index} className="border-b border-gray-200 hover:bg-blue-50 transition-colors">
+                                <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold mx-auto">{index + 1}</div></td>
+                                <td className="px-4 py-3 border-r border-gray-200"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400"></div><span className="font-medium text-gray-900">{meal.city || '-'}</span></div></td>
+                                <td className="px-4 py-3 text-gray-700 border-r border-gray-200 whitespace-nowrap">{fmtMealDate(mealDate)}</td>
+                                <td className="px-4 py-3 text-gray-900 border-r border-gray-200">{restaurantName || '-'}</td>
+                                <td className="px-4 py-3 text-right border-r border-gray-200"><span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-md font-medium">{pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}</span></td>
+                                <td className="px-4 py-3 text-center font-bold text-blue-600 text-lg border-r border-gray-200">{pax}</td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                                <td className="px-4 py-3 text-center">{hasChatId ? (<div className="flex flex-col items-center gap-1"><button onClick={() => sendMealToTelegram(meal, mealDate, pax, pricePerPerson)} disabled={sendingMeal === restaurantName} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50">{sendingMeal === restaurantName ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}<span>Yuborish</span></button>{conf && <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${conf.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' : conf.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{conf.status === 'CONFIRMED' ? '✅' : conf.status === 'REJECTED' ? '❌' : '🕐'} {conf.status === 'CONFIRMED' ? 'Tasdiqladi' : conf.status === 'REJECTED' ? 'Rad qildi' : 'Kutilmoqda'}</span>}</div>) : <span className="text-xs text-gray-400">—</span>}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-gradient-to-r from-orange-100 to-orange-200 border-t-2 border-orange-300">
+                            <td colSpan="7" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">Grand Total:</td>
+                            <td className="px-4 py-4 text-right font-bold text-orange-700 text-xl">{Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <p>No meals data found for {tourTypeCode.toUpperCase()} tours</p>
@@ -12202,113 +12100,147 @@ ${rowsHtml}
             // ─────────────────────────────────────────────────────────────────
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-cyan-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500"></div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <span className="text-3xl">🎫</span>
-                    Eintritt (Entrance Fees) - {booking?.tourType?.code || 'ER'} Tour
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 md:mb-6 gap-3">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center gap-2 md:gap-3">
+                    <span className="text-2xl md:text-3xl">🎫</span>
+                    Eintritt - {booking?.tourType?.code || 'ER'} Tour
                   </h3>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 md:gap-3">
                     {visibleEntries.length > 0 && (
                       <button
                         onClick={downloadEintrittVouchers}
-                        className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-rose-700 transition-all shadow-lg flex items-center gap-2"
+                        className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-rose-700 transition-all shadow-lg flex items-center gap-2 text-sm md:text-base"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                         PDF Vouchers
                       </button>
                     )}
                     <button
                       onClick={() => openTourServiceModal('EINTRITT')}
-                      className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg"
+                      className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-xl hover:from-cyan-600 hover:to-blue-600 transition-all shadow-lg text-sm md:text-base"
                     >
                       + Add Custom
                     </button>
                   </div>
                 </div>
                 {visibleEntries.length > 0 ? (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
-                        <th className="px-4 py-3 text-center">#</th>
-                        <th className="px-4 py-3 text-left">City</th>
-                        <th className="px-4 py-3 text-center">Date</th>
-                        <th className="px-4 py-3 text-left">Attraction</th>
-                        <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
-                        <th className="px-4 py-3 text-center">PAX</th>
-                        <th className="px-4 py-3 text-right">Total (UZS)</th>
-                        <th className="px-4 py-3 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
                       {visibleEntries.map((item, idx) => (
-                        <tr key={item.id} className="border-b hover:bg-cyan-50">
-                          <td className="px-4 py-3 text-center text-gray-600">{idx + 1}</td>
-                          <td className="px-4 py-3 text-gray-700">{item.city || '-'}</td>
-                          <td className="px-4 py-3 text-center">
-                            {editingEintrittDate === item.id ? (
-                              <input
-                                type="date"
-                                defaultValue={item.date ? format(new Date(item.date), 'yyyy-MM-dd') : ''}
-                                onChange={(e) => updateEintrittDate(item, e.target.value)}
-                                onBlur={() => setEditingEintrittDate(null)}
-                                autoFocus
-                                className="px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                              />
-                            ) : (
-                              <button
-                                onClick={() => setEditingEintrittDate(item.id)}
-                                className="text-gray-600 hover:text-cyan-600 hover:bg-cyan-100 px-3 py-1 rounded transition-colors flex items-center gap-2 mx-auto"
-                                title="Click to select date"
-                              >
-                                <Calendar className="w-4 h-4" />
-                                {item.date ? new Date(item.date).toLocaleDateString('en-GB') : 'Select date'}
-                              </button>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 font-medium">{item.name}</td>
-                          <td className="px-4 py-3 text-right">{booking?.status === 'CANCELLED' ? '0' : item.pricePerPerson > 0 ? Math.round(item.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center font-semibold">{item.pax || '-'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-cyan-700">{booking?.status === 'CANCELLED' ? '0' : item.price > 0 ? Math.round(item.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => moveEintrittEntry(item, 'up')}
-                                disabled={idx === 0}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`}
-                                title="Move up"
-                              >
-                                <ChevronUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => moveEintrittEntry(item, 'down')}
-                                disabled={idx === visibleEntries.length - 1}
-                                className={`p-1.5 rounded-lg transition-colors ${idx === visibleEntries.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`}
-                                title="Move down"
-                              >
-                                <ChevronDown className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => deleteEintrittEntry(item)}
-                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                        <div key={item.id} className="border-2 border-cyan-100 rounded-xl overflow-hidden">
+                          <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-cyan-50 to-sky-50 border-b border-cyan-100">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-cyan-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{idx + 1}</span>
+                              <span className="text-xs font-semibold text-cyan-700">{item.city || '-'}</span>
                             </div>
-                          </td>
-                        </tr>
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => moveEintrittEntry(item, 'up')} disabled={idx === 0} className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`} title="Move up"><ChevronUp className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => moveEintrittEntry(item, 'down')} disabled={idx === visibleEntries.length - 1} className={`p-1.5 rounded-lg transition-colors ${idx === visibleEntries.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`} title="Move down"><ChevronDown className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => deleteEintrittEntry(item)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </div>
+                          <div className="px-3 py-2.5 space-y-1.5">
+                            <div className="font-semibold text-gray-900 text-sm">🎫 {item.name}</div>
+                            <div className="flex items-center gap-2">
+                              {editingEintrittDate === item.id ? (
+                                <input
+                                  type="date"
+                                  defaultValue={item.date ? format(new Date(item.date), 'yyyy-MM-dd') : ''}
+                                  onChange={(e) => updateEintrittDate(item, e.target.value)}
+                                  onBlur={() => setEditingEintrittDate(null)}
+                                  autoFocus
+                                  className="px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-xs"
+                                />
+                              ) : (
+                                <button
+                                  onClick={() => setEditingEintrittDate(item.id)}
+                                  className="text-xs text-gray-600 hover:text-cyan-600 hover:bg-cyan-50 px-2 py-1 rounded transition-colors flex items-center gap-1"
+                                >
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  {item.date ? new Date(item.date).toLocaleDateString('en-GB') : 'Select date'}
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-gray-600">
+                              <span>Narx × PAX: <span className="font-semibold text-cyan-700">{booking?.status === 'CANCELLED' ? '0' : item.pricePerPerson > 0 ? Math.round(item.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</span> × <span className="font-semibold text-sky-600">{item.pax || '-'}</span></span>
+                              <span className="text-sm font-black text-cyan-700">{booking?.status === 'CANCELLED' ? '0' : item.price > 0 ? Math.round(item.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'} UZS</span>
+                            </div>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-cyan-100 font-bold">
-                        <td colSpan="6" className="px-4 py-3 text-right">Total:</td>
-                        <td className="px-4 py-3 text-right text-cyan-700 text-lg">{booking?.status === 'CANCELLED' ? '0' : Math.round(visibleEntries.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                      <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-cyan-100 to-sky-100 rounded-xl border-2 border-cyan-300">
+                        <span className="text-sm font-bold text-gray-900">Total</span>
+                        <span className="text-base font-black text-cyan-700">{booking?.status === 'CANCELLED' ? '0' : Math.round(visibleEntries.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white">
+                            <th className="px-4 py-3 text-center">#</th>
+                            <th className="px-4 py-3 text-left">City</th>
+                            <th className="px-4 py-3 text-center">Date</th>
+                            <th className="px-4 py-3 text-left">Attraction</th>
+                            <th className="px-4 py-3 text-right">Price/Person (UZS)</th>
+                            <th className="px-4 py-3 text-center">PAX</th>
+                            <th className="px-4 py-3 text-right">Total (UZS)</th>
+                            <th className="px-4 py-3 text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleEntries.map((item, idx) => (
+                            <tr key={item.id} className="border-b hover:bg-cyan-50">
+                              <td className="px-4 py-3 text-center text-gray-600">{idx + 1}</td>
+                              <td className="px-4 py-3 text-gray-700">{item.city || '-'}</td>
+                              <td className="px-4 py-3 text-center">
+                                {editingEintrittDate === item.id ? (
+                                  <input
+                                    type="date"
+                                    defaultValue={item.date ? format(new Date(item.date), 'yyyy-MM-dd') : ''}
+                                    onChange={(e) => updateEintrittDate(item, e.target.value)}
+                                    onBlur={() => setEditingEintrittDate(null)}
+                                    autoFocus
+                                    className="px-2 py-1 border border-cyan-300 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                  />
+                                ) : (
+                                  <button
+                                    onClick={() => setEditingEintrittDate(item.id)}
+                                    className="text-gray-600 hover:text-cyan-600 hover:bg-cyan-100 px-3 py-1 rounded transition-colors flex items-center gap-2 mx-auto"
+                                    title="Click to select date"
+                                  >
+                                    <Calendar className="w-4 h-4" />
+                                    {item.date ? new Date(item.date).toLocaleDateString('en-GB') : 'Select date'}
+                                  </button>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 font-medium">{item.name}</td>
+                              <td className="px-4 py-3 text-right">{booking?.status === 'CANCELLED' ? '0' : item.pricePerPerson > 0 ? Math.round(item.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                              <td className="px-4 py-3 text-center font-semibold">{item.pax || '-'}</td>
+                              <td className="px-4 py-3 text-right font-bold text-cyan-700">{booking?.status === 'CANCELLED' ? '0' : item.price > 0 ? Math.round(item.price).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button onClick={() => moveEintrittEntry(item, 'up')} disabled={idx === 0} className={`p-1.5 rounded-lg transition-colors ${idx === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`} title="Move up"><ChevronUp className="w-4 h-4" /></button>
+                                  <button onClick={() => moveEintrittEntry(item, 'down')} disabled={idx === visibleEntries.length - 1} className={`p-1.5 rounded-lg transition-colors ${idx === visibleEntries.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-cyan-100 hover:bg-cyan-200 text-cyan-600'}`} title="Move down"><ChevronDown className="w-4 h-4" /></button>
+                                  <button onClick={() => deleteEintrittEntry(item)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-cyan-100 font-bold">
+                            <td colSpan="6" className="px-4 py-3 text-right">Total:</td>
+                            <td className="px-4 py-3 text-right text-cyan-700 text-lg">{booking?.status === 'CANCELLED' ? '0' : Math.round(visibleEntries.reduce((sum, s) => sum + (s.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <p className="text-gray-500 text-center py-8">No sightseeing data found for {booking?.tourType?.code || 'ER'} tour type. Please add data in Opex → Sightseeing.</p>
                 )}
@@ -12332,70 +12264,76 @@ ${rowsHtml}
             }, 0);
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-lime-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-lime-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500"></div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                  <span className="text-3xl">🚇</span>
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                  <span className="text-2xl md:text-3xl">🚇</span>
                   Metro
                 </h3>
 
                 {metroData.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-lime-600 to-emerald-600 border-b-2 border-lime-700">
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-lime-400">#</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-lime-400">SERVICE</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-lime-400">PRICE (UZS)</th>
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-lime-400">PAX</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {metroData.map((metro, index) => {
-                          // Get price from API (metro uses economPrice field)
-                          const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
-                          const priceStr = rawPrice.toString().replace(/\s/g, '');
-                          const pricePerPerson = parseFloat(priceStr) || 0;
-                          const total = pricePerPerson * pax;
-
-                          return (
-                            <tr key={index} className="border-b border-gray-200 hover:bg-lime-50 transition-colors">
-                              <td className="px-4 py-3 text-center border-r border-gray-200">
-                                <div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">
-                                  {index + 1}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
-                                {metro.name || metro.service || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-right border-r border-gray-200">
-                                <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-md font-medium">
-                                  {pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-center font-bold text-lime-600 text-lg border-r border-gray-200">
-                                {pax}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">
-                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-gradient-to-r from-lime-100 to-emerald-200 border-t-2 border-lime-300">
-                          <td colSpan="4" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
-                            Grand Total:
-                          </td>
-                          <td className="px-4 py-4 text-right font-bold text-lime-700 text-xl">
-                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {metroData.map((metro, index) => {
+                        const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
+                        const pricePerPerson = parseFloat(rawPrice.toString().replace(/\s/g, '')) || 0;
+                        const total = pricePerPerson * pax;
+                        return (
+                          <div key={index} className="border-2 border-lime-100 rounded-xl overflow-hidden">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-lime-50 to-emerald-50 border-b border-lime-100">
+                              <span className="w-6 h-6 rounded-full bg-lime-500 text-white text-xs font-bold flex items-center justify-center">{index + 1}</span>
+                              <span className="text-sm font-semibold text-gray-900">🚇 {metro.name || metro.service || '-'}</span>
+                            </div>
+                            <div className="px-3 py-2.5 flex items-center justify-between">
+                              <div className="text-xs text-gray-500">Narx × PAX: <span className="font-semibold text-green-700">{pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}</span> × <span className="font-semibold text-lime-600">{pax}</span></div>
+                              <div className="text-sm font-black text-gray-900">{Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')} UZS</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-lime-100 to-emerald-200 rounded-xl border-2 border-lime-300">
+                        <span className="text-sm font-bold text-gray-900">Grand Total</span>
+                        <span className="text-base font-black text-lime-700">{Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-lime-600 to-emerald-600 border-b-2 border-lime-700">
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-lime-400">#</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-lime-400">SERVICE</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-lime-400">PRICE (UZS)</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-lime-400">PAX</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metroData.map((metro, index) => {
+                            const rawPrice = metro.economPrice || metro.price || metro.pricePerPerson || 0;
+                            const pricePerPerson = parseFloat(rawPrice.toString().replace(/\s/g, '')) || 0;
+                            const total = pricePerPerson * pax;
+                            return (
+                              <tr key={index} className="border-b border-gray-200 hover:bg-lime-50 transition-colors">
+                                <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">{index + 1}</div></td>
+                                <td className="px-4 py-3 text-gray-900 border-r border-gray-200">{metro.name || metro.service || '-'}</td>
+                                <td className="px-4 py-3 text-right border-r border-gray-200"><span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-md font-medium">{pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}</span></td>
+                                <td className="px-4 py-3 text-center font-bold text-lime-600 text-lg border-r border-gray-200">{pax}</td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">{Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-gradient-to-r from-lime-100 to-emerald-200 border-t-2 border-lime-300">
+                            <td colSpan="4" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">Grand Total:</td>
+                            <td className="px-4 py-4 text-right font-bold text-lime-700 text-xl">{Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <span className="text-6xl mb-4 block">🚇</span>
@@ -12423,77 +12361,106 @@ ${rowsHtml}
             }, 0);
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-pink-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-pink-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500"></div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                  <span className="text-3xl">🎭</span>
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                  <span className="text-2xl md:text-3xl">🎭</span>
                   Shou (Shows)
                 </h3>
 
                 {showsData.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-pink-600 to-red-600 border-b-2 border-pink-700">
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">#</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">CITY</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">SERVICE</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-pink-400">PRICE (UZS)</th>
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">PAX</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {showsData.map((show, index) => {
-                          // Get price from Opex (can be string or number)
-                          const rawPrice = show.price || show.pricePerPerson || 0;
-                          const priceStr = rawPrice.toString().replace(/\s/g, '');
-                          const pricePerPerson = parseFloat(priceStr) || 0;
-                          const total = pricePerPerson * pax;
-
-                          return (
-                            <tr key={index} className="border-b border-gray-200 hover:bg-pink-50 transition-colors">
-                              <td className="px-4 py-3 text-center border-r border-gray-200">
-                                <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-semibold mx-auto">
-                                  {index + 1}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 border-r border-gray-200">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-pink-400"></div>
-                                  <span className="font-medium text-gray-900">{show.city || '-'}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
-                                {show.name || show.service || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-right border-r border-gray-200">
-                                <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-md font-medium">
-                                  {pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-center font-bold text-pink-600 text-lg border-r border-gray-200">
-                                {pax}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">
-                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-gradient-to-r from-pink-100 to-rose-200 border-t-2 border-pink-300">
-                          <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
-                            Grand Total:
-                          </td>
-                          <td className="px-4 py-4 text-right font-bold text-pink-700 text-xl">
-                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {showsData.map((show, index) => {
+                        const rawPrice = show.price || show.pricePerPerson || 0;
+                        const priceStr = rawPrice.toString().replace(/\s/g, '');
+                        const pricePerPerson = parseFloat(priceStr) || 0;
+                        const total = pricePerPerson * pax;
+                        return (
+                          <div key={index} className="border-2 border-pink-100 rounded-xl overflow-hidden">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-pink-100">
+                              <span className="w-6 h-6 rounded-full bg-pink-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                              <span className="text-xs font-semibold text-pink-700">{show.city || '-'}</span>
+                            </div>
+                            <div className="px-3 py-2.5 space-y-1.5">
+                              <div className="font-semibold text-gray-900 text-sm">🎭 {show.name || show.service || '-'}</div>
+                              <div className="flex items-center justify-between text-xs text-gray-600">
+                                <span>Narx × PAX: <span className="font-semibold text-rose-700">{pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}</span> × <span className="font-semibold text-pink-600">{pax}</span></span>
+                                <span className="text-sm font-black text-gray-900">{Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-pink-100 to-rose-200 rounded-xl border-2 border-pink-300">
+                        <span className="text-sm font-bold text-gray-900">Grand Total</span>
+                        <span className="text-base font-black text-pink-700">{Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-pink-600 to-red-600 border-b-2 border-pink-700">
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">#</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">CITY</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-pink-400">SERVICE</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-pink-400">PRICE (UZS)</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-pink-400">PAX</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white">TOTAL (UZS)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {showsData.map((show, index) => {
+                            const rawPrice = show.price || show.pricePerPerson || 0;
+                            const priceStr = rawPrice.toString().replace(/\s/g, '');
+                            const pricePerPerson = parseFloat(priceStr) || 0;
+                            const total = pricePerPerson * pax;
+                            return (
+                              <tr key={index} className="border-b border-gray-200 hover:bg-pink-50 transition-colors">
+                                <td className="px-4 py-3 text-center border-r border-gray-200">
+                                  <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-semibold mx-auto">
+                                    {index + 1}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 border-r border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-pink-400"></div>
+                                    <span className="font-medium text-gray-900">{show.city || '-'}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
+                                  {show.name || show.service || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-right border-r border-gray-200">
+                                  <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-md font-medium">
+                                    {pricePerPerson.toLocaleString('en-US').replace(/,/g, ' ')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center font-bold text-pink-600 text-lg border-r border-gray-200">
+                                  {pax}
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg">
+                                  {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-gradient-to-r from-pink-100 to-rose-200 border-t-2 border-pink-300">
+                            <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                              Grand Total:
+                            </td>
+                            <td className="px-4 py-4 text-right font-bold text-pink-700 text-xl">
+                              {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <span className="text-6xl mb-4 block">🎭</span>
@@ -12518,119 +12485,130 @@ ${rowsHtml}
             }, 0);
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-slate-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500"></div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                    <span className="text-3xl">📋</span>
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900 flex items-center gap-2 md:gap-3">
+                    <span className="text-2xl md:text-3xl">📋</span>
                     Other Expenses
                   </h3>
                   <button
                     onClick={() => openTourServiceModal('OTHER')}
-                    className="px-6 py-3 bg-gradient-to-r from-slate-500 to-zinc-500 text-white font-bold rounded-xl hover:from-slate-600 hover:to-zinc-600 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                    className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-slate-500 to-zinc-500 text-white font-bold rounded-xl hover:from-slate-600 hover:to-zinc-600 transition-all shadow-lg hover:shadow-xl text-sm md:text-base"
                   >
                     + Add Other
                   </button>
                 </div>
 
                 {services.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-slate-600 to-zinc-600 border-b-2 border-slate-700">
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-slate-400">#</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-slate-400">CITY</th>
-                          <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-slate-400">SERVICE</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-slate-400">PRICE (UZS)</th>
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-slate-400">PAX</th>
-                          <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-slate-400">TOTAL (UZS)</th>
-                          <th className="px-4 py-3 text-center text-sm font-bold text-white">ACTIONS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {services.map((item, index) => {
-                          const pricePerPerson = item.pricePerPerson || 0;
-                          const itemPax = item.pax || 0;
-                          const total = pricePerPerson * itemPax;
-
-                          return (
-                            <tr key={item.id} className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                              <td className="px-4 py-3 text-center border-r border-gray-200">
-                                <div className="w-8 h-8 rounded-full bg-slate-500 text-white flex items-center justify-center font-semibold mx-auto">
-                                  {index + 1}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 border-r border-gray-200">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                                  <span className="font-medium text-gray-900">{item.city || '-'}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
-                                {item.name || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-right border-r border-gray-200">
-                                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-md font-medium">
-                                  {Math.round(pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-center font-bold text-slate-600 text-lg border-r border-gray-200">
-                                {itemPax}
-                              </td>
-                              <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                                {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => moveTourService(item, 'up', 'OTHER')}
-                                    disabled={index === 0}
-                                    className={`p-1.5 rounded-lg transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                                    title="Move up"
-                                  >
-                                    <ChevronUp className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => moveTourService(item, 'down', 'OTHER')}
-                                    disabled={index === services.length - 1}
-                                    className={`p-1.5 rounded-lg transition-colors ${index === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
-                                    title="Move down"
-                                  >
-                                    <ChevronDown className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => editTourService(item)}
-                                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg"
-                                    title="Edit"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => deleteTourService(item.id, 'OTHER')}
-                                    className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg"
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-gradient-to-r from-slate-100 to-gray-200 border-t-2 border-slate-300">
-                          <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
-                            Grand Total:
-                          </td>
-                          <td className="px-4 py-4 text-right font-bold text-slate-700 text-xl">
-                            {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
-                          </td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {services.map((item, index) => {
+                        const pricePerPerson = item.pricePerPerson || 0;
+                        const itemPax = item.pax || 0;
+                        const total = pricePerPerson * itemPax;
+                        return (
+                          <div key={item.id} className="border-2 border-slate-200 rounded-xl overflow-hidden">
+                            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-slate-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                                <span className="text-xs font-semibold text-slate-700">{item.city || '-'}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => moveTourService(item, 'up', 'OTHER')} disabled={index === 0} className={`p-1.5 rounded-lg transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move up"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => moveTourService(item, 'down', 'OTHER')} disabled={index === services.length - 1} className={`p-1.5 rounded-lg transition-colors ${index === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move down"><ChevronDown className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => editTourService(item)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => deleteTourService(item.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </div>
+                            <div className="px-3 py-2.5 space-y-1.5">
+                              <div className="font-semibold text-gray-900 text-sm">📋 {item.name || '-'}</div>
+                              <div className="flex items-center justify-between text-xs text-gray-600">
+                                <span>Narx × PAX: <span className="font-semibold text-slate-700">{Math.round(pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')}</span> × <span className="font-semibold text-slate-600">{itemPax}</span></span>
+                                <span className="text-sm font-black text-gray-900">{Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-slate-100 to-gray-200 rounded-xl border-2 border-slate-300">
+                        <span className="text-sm font-bold text-gray-900">Grand Total</span>
+                        <span className="text-base font-black text-slate-700">{Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-slate-600 to-zinc-600 border-b-2 border-slate-700">
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-slate-400">#</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-slate-400">CITY</th>
+                            <th className="px-4 py-3 text-left text-sm font-bold text-white border-r border-slate-400">SERVICE</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-slate-400">PRICE (UZS)</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white border-r border-slate-400">PAX</th>
+                            <th className="px-4 py-3 text-right text-sm font-bold text-white border-r border-slate-400">TOTAL (UZS)</th>
+                            <th className="px-4 py-3 text-center text-sm font-bold text-white">ACTIONS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {services.map((item, index) => {
+                            const pricePerPerson = item.pricePerPerson || 0;
+                            const itemPax = item.pax || 0;
+                            const total = pricePerPerson * itemPax;
+                            return (
+                              <tr key={item.id} className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                                <td className="px-4 py-3 text-center border-r border-gray-200">
+                                  <div className="w-8 h-8 rounded-full bg-slate-500 text-white flex items-center justify-center font-semibold mx-auto">
+                                    {index + 1}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 border-r border-gray-200">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                                    <span className="font-medium text-gray-900">{item.city || '-'}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
+                                  {item.name || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-right border-r border-gray-200">
+                                  <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-md font-medium">
+                                    {Math.round(pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center font-bold text-slate-600 text-lg border-r border-gray-200">
+                                  {itemPax}
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
+                                  {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button onClick={() => moveTourService(item, 'up', 'OTHER')} disabled={index === 0} className={`p-1.5 rounded-lg transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move up"><ChevronUp className="w-4 h-4" /></button>
+                                    <button onClick={() => moveTourService(item, 'down', 'OTHER')} disabled={index === services.length - 1} className={`p-1.5 rounded-lg transition-colors ${index === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move down"><ChevronDown className="w-4 h-4" /></button>
+                                    <button onClick={() => editTourService(item)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg" title="Edit"><Edit className="w-4 h-4" /></button>
+                                    <button onClick={() => deleteTourService(item.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-gradient-to-r from-slate-100 to-gray-200 border-t-2 border-slate-300">
+                            <td colSpan="5" className="px-4 py-4 text-right font-bold text-gray-900 text-lg">
+                              Grand Total:
+                            </td>
+                            <td className="px-4 py-4 text-right font-bold text-slate-700 text-xl">
+                              {Math.round(grandTotal).toLocaleString('en-US').replace(/,/g, ' ')} UZS
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <span className="text-6xl mb-4 block">📋</span>
@@ -12647,11 +12625,11 @@ ${rowsHtml}
       {!isNew && activeTab === 'costs' && (
         <div className="space-y-6">
           {/* Sub-tabs for Costs (Payment Methods) */}
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-green-100 p-4">
-            <nav className="flex space-x-3 overflow-x-auto">
+          <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-green-100 p-3 md:p-4">
+            <nav className="flex space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0">
               <button
                 onClick={() => setCostsTab('ausgaben')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   costsTab === 'ausgaben'
                     ? 'bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 hover:from-red-600 hover:via-rose-600 hover:to-pink-600 text-white shadow-red-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -12662,7 +12640,7 @@ ${rowsHtml}
               </button>
               <button
                 onClick={() => setCostsTab('rl')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   costsTab === 'rl'
                     ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-green-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -12673,7 +12651,7 @@ ${rowsHtml}
               </button>
               <button
                 onClick={() => setCostsTab('spater')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   costsTab === 'spater'
                     ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 hover:from-blue-600 hover:via-cyan-600 hover:to-sky-600 text-white shadow-blue-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -12684,7 +12662,7 @@ ${rowsHtml}
               </button>
               <button
                 onClick={() => setCostsTab('uberweisung')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   costsTab === 'uberweisung'
                     ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 hover:from-purple-600 hover:via-violet-600 hover:to-indigo-600 text-white shadow-purple-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -12695,7 +12673,7 @@ ${rowsHtml}
               </button>
               <button
                 onClick={() => setCostsTab('karta')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   costsTab === 'karta'
                     ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600 text-white shadow-orange-500/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -12706,7 +12684,7 @@ ${rowsHtml}
               </button>
               <button
                 onClick={() => setCostsTab('total')}
-                className={`flex items-center gap-2.5 px-8 py-3.5 text-sm font-bold rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
                   costsTab === 'total'
                     ? 'bg-gradient-to-r from-slate-700 via-gray-700 to-zinc-700 hover:from-slate-800 hover:via-gray-800 hover:to-zinc-800 text-white shadow-slate-700/30 scale-110 -translate-y-0.5'
                     : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
@@ -13130,21 +13108,49 @@ ${rowsHtml}
             ].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-red-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-red-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500"></div>
 
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''}</h3>
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''}</h3>
                   <button
                     onClick={exportAusgabenToPDF}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl"
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl self-start md:self-auto text-sm md:text-base"
                   >
-                    <Download className="w-5 h-5" />
+                    <Download className="w-4 h-4 md:w-5 md:h-5" />
                     PDF saqlab olish
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* MOBILE: card view */}
+                <div className="md:hidden space-y-3">
+                  {sections.map(section => (
+                    <div key={section} className="border-2 border-red-100 rounded-xl overflow-hidden">
+                      <div className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500">
+                        <span className="text-xs font-bold text-white">{section}</span>
+                      </div>
+                      {expensesByCity[section].map((expense, expIdx) => (
+                        <div key={expIdx} className="px-3 py-2 border-b border-gray-100 flex items-start justify-between gap-2">
+                          <span className="text-sm text-gray-900 flex-1">{expense.name}</span>
+                          <div className="text-right flex-shrink-0">
+                            {expense.usd > 0 && <div className="text-xs font-bold text-green-700">${Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                            {expense.uzs > 0 && <div className="text-xs font-bold text-blue-700">{Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-slate-700 to-gray-700 rounded-xl">
+                    <span className="text-sm font-bold text-white">TOTAL</span>
+                    <div className="text-right">
+                      {totalUSD > 0 && <div className="text-sm font-black text-green-300">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                      {totalUZS > 0 && <div className="text-sm font-black text-blue-300">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* DESKTOP: table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full border-collapse border border-gray-300">
                     <thead>
                       <tr className="bg-gradient-to-r from-green-600 to-emerald-600">
@@ -13157,58 +13163,30 @@ ${rowsHtml}
                       </tr>
                     </thead>
                     <tbody>
-                      {sections.map((section, sectionIdx) => {
+                      {sections.map((section) => {
                         const sectionExpenses = expensesByCity[section];
-
                         return (
                           <React.Fragment key={section}>
-                            {/* Section Header Row */}
                             <tr className="bg-gradient-to-r from-green-500 to-emerald-500">
-                              <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
-                                {section}
-                              </td>
+                              <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">{section}</td>
                             </tr>
-
-                            {/* Section Items */}
                             {sectionExpenses.map((expense, expIdx) => (
                               <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
                                 <td className="border border-gray-300 px-4 py-2"></td>
                                 <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
-                                <td className="border border-gray-300 px-4 py-2 text-right">
-                                  {expense.pricePerPerson ?
-                                    Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
-                                    : ''}
-                                </td>
-                                <td className="border border-gray-300 px-4 py-2 text-center">
-                                  {expense.pax || ''}
-                                </td>
-                                <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                  {expense.usd > 0 ?
-                                    Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
-                                    : ''}
-                                </td>
-                                <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                  {expense.uzs > 0 ?
-                                    Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
-                                    : ''}
-                                </td>
+                                <td className="border border-gray-300 px-4 py-2 text-right">{expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                <td className="border border-gray-300 px-4 py-2 text-center">{expense.pax || ''}</td>
+                                <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
                               </tr>
                             ))}
                           </React.Fragment>
                         );
                       })}
-
-                      {/* Total Row */}
                       <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
-                        <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                          TOTAL
-                        </td>
-                        <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                          ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
-                        </td>
-                        <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                          {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
-                        </td>
+                        <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">TOTAL</td>
+                        <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                        <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -13448,33 +13426,25 @@ ${rowsHtml}
             const hasData = sections.length > 0;
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-green-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
 
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Reiseleiter)</h3>
-                  <div className="flex items-center gap-4">
-                    {/* Exchange Rate Input */}
-                    <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-lg border-2 border-blue-200">
-                      <label className="text-sm font-semibold text-blue-900 whitespace-nowrap">Kurs (USD → UZS):</label>
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Reiseleiter)</h3>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border-2 border-blue-200">
+                      <label className="text-xs md:text-sm font-semibold text-blue-900 whitespace-nowrap">Kurs:</label>
                       <input
                         type="text"
                         value={rlExchangeRate ? rlExchangeRate.toLocaleString('en-US').replace(/,/g, ' ') : ''}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\s/g, '');
-                          const numValue = parseFloat(value) || null;
-                          setRlExchangeRate(numValue);
-                        }}
-                        className="w-28 px-3 py-1.5 text-right font-bold text-blue-900 bg-white border-2 border-blue-300 rounded focus:outline-none focus:border-blue-500"
+                        onChange={(e) => { const value = e.target.value.replace(/\s/g, ''); setRlExchangeRate(parseFloat(value) || null); }}
+                        className="w-24 md:w-28 px-2 py-1 text-right font-bold text-blue-900 bg-white border-2 border-blue-300 rounded focus:outline-none focus:border-blue-500 text-sm"
                         placeholder="12 800"
                       />
                     </div>
                     {hasData && (
-                      <button
-                        onClick={exportRLToPDF}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
-                      >
-                        <Download className="w-5 h-5" />
+                      <button onClick={exportRLToPDF} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg text-sm md:text-base">
+                        <Download className="w-4 h-4 md:w-5 md:h-5" />
                         PDF saqlab olish
                       </button>
                     )}
@@ -13482,93 +13452,97 @@ ${rowsHtml}
                 </div>
 
                 {hasData ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-green-600 to-emerald-600">
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Stadte</th>
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
-                          <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sections.map((section, sectionIdx) => {
-                          const sectionExpenses = expensesByCity[section];
-
-                          return (
-                            <React.Fragment key={section}>
-                              {/* Section Header Row */}
-                              <tr className="bg-gradient-to-r from-green-500 to-emerald-500">
-                                <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
-                                  {section}
-                                </td>
-                              </tr>
-
-                              {/* Section Items */}
-                              {sectionExpenses.map((expense, expIdx) => (
-                                <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
-                                  <td className="border border-gray-300 px-4 py-2"></td>
-                                  <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right">
-                                    {expense.pricePerPerson ?
-                                      Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-center">
-                                    {expense.pax || ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.usd > 0 ?
-                                      Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.uzs > 0 ?
-                                      Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {sections.map(section => (
+                        <div key={section} className="border-2 border-green-100 rounded-xl overflow-hidden">
+                          <div className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500">
+                            <span className="text-xs font-bold text-white">{section}</span>
+                          </div>
+                          {expensesByCity[section].map((expense, expIdx) => (
+                            <div key={expIdx} className="px-3 py-2 border-b border-gray-100 flex items-start justify-between gap-2">
+                              <span className="text-sm text-gray-900 flex-1">{expense.name}</span>
+                              <div className="text-right flex-shrink-0">
+                                {expense.usd > 0 && <div className="text-xs font-bold text-green-700">${Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                                {expense.uzs > 0 && <div className="text-xs font-bold text-blue-700">{Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between px-3 py-2 bg-gray-100 rounded-xl border border-gray-200">
+                          <span className="text-xs font-semibold text-gray-600">USD + So'm (konvertatsiya)</span>
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-green-700">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>
+                            <div className="text-xs font-bold text-blue-700">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 bg-gray-100 rounded-xl border border-gray-200">
+                          <span className="text-xs font-semibold text-gray-600">Kurs: 1$ = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} so'm</span>
+                          <span className="text-xs font-bold text-green-700">${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2.5 bg-gray-200 rounded-xl border-2 border-gray-300">
+                          <span className="text-sm font-black text-gray-900">Total: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                          <span className="text-sm font-black text-green-700">= ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse border border-gray-300">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-green-600 to-emerald-600">
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Stadte</th>
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                            <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sections.map((section) => {
+                            const sectionExpenses = expensesByCity[section];
+                            return (
+                              <React.Fragment key={section}>
+                                <tr className="bg-gradient-to-r from-green-500 to-emerald-500">
+                                  <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">{section}</td>
                                 </tr>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })}
-
-                        {/* Row 1 - Separate USD and UZS (gray, larger) */}
-                        <tr className="bg-gray-200">
-                          <td colSpan="4" className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">
-                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">
-                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                        </tr>
-                        {/* Row 2 - Converted UZS to USD (gray, larger) */}
-                        <tr className="bg-gray-200">
-                          <td colSpan="5" className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">
-                            Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS
-                          </td>
-                          <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">
-                            ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                        </tr>
-                        {/* Row 3 - Total Sum (gray, larger) */}
-                        <tr className="bg-gray-200">
-                          <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
-                            <span className="text-2xl font-extrabold mr-4">Total:</span>
-                            <span className="text-base">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                          </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
-                            = ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                                {sectionExpenses.map((expense, expIdx) => (
+                                  <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-4 py-2"></td>
+                                    <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right">{expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-center">{expense.pax || ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          })}
+                          <tr className="bg-gray-200">
+                            <td colSpan="4" className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base"></td>
+                            <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                            <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                          </tr>
+                          <tr className="bg-gray-200">
+                            <td colSpan="5" className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS</td>
+                            <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                          </tr>
+                          <tr className="bg-gray-200">
+                            <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
+                              <span className="text-2xl font-extrabold mr-4">Total:</span>
+                              <span className="text-base">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                            </td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">= ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12">
                     <div className="text-gray-400 mb-4">
@@ -13716,92 +13690,90 @@ ${rowsHtml}
             const hasData = sections.length > 0;
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-blue-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500"></div>
 
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Später)</h3>
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Später)</h3>
                   {hasData && (
-                    <button
-                      onClick={exportSpaterToPDF}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg hover:shadow-xl"
-                    >
-                      <Download className="w-5 h-5" />
+                    <button onClick={exportSpaterToPDF} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
+                      <Download className="w-4 h-4 md:w-5 md:h-5" />
                       PDF saqlab olish
                     </button>
                   )}
                 </div>
 
                 {hasData ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-blue-600 to-cyan-600">
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
-                          <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sections.map((section, sectionIdx) => {
-                          const sectionExpenses = expensesByCity[section];
-
-                          return (
-                            <React.Fragment key={section}>
-                              {/* Section Header Row */}
-                              <tr className="bg-gradient-to-r from-blue-500 to-cyan-500">
-                                <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
-                                  {section}
-                                </td>
-                              </tr>
-
-                              {/* Section Items */}
-                              {sectionExpenses.map((expense, expIdx) => (
-                                <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
-                                  <td className="border border-gray-300 px-4 py-2"></td>
-                                  <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right">
-                                    {expense.pricePerPerson ?
-                                      Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-center">
-                                    {expense.pax || ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.usd > 0 ?
-                                      Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.uzs > 0 ?
-                                      Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {sections.map(section => (
+                        <div key={section} className="border-2 border-blue-100 rounded-xl overflow-hidden">
+                          <div className="px-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-500">
+                            <span className="text-xs font-bold text-white">{section}</span>
+                          </div>
+                          {expensesByCity[section].map((expense, expIdx) => (
+                            <div key={expIdx} className="px-3 py-2 border-b border-gray-100 flex items-start justify-between gap-2">
+                              <span className="text-sm text-gray-900 flex-1">{expense.name}</span>
+                              <div className="text-right flex-shrink-0">
+                                {expense.usd > 0 && <div className="text-xs font-bold text-green-700">${Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                                {expense.uzs > 0 && <div className="text-xs font-bold text-blue-700">{Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-slate-700 to-gray-700 rounded-xl">
+                        <span className="text-sm font-bold text-white">TOTAL</span>
+                        <div className="text-right">
+                          {totalUSD > 0 && <div className="text-sm font-black text-green-300">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                          {totalUZS > 0 && <div className="text-sm font-black text-blue-300">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                        </div>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse border border-gray-300">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-blue-600 to-cyan-600">
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                            <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sections.map((section) => {
+                            const sectionExpenses = expensesByCity[section];
+                            return (
+                              <React.Fragment key={section}>
+                                <tr className="bg-gradient-to-r from-blue-500 to-cyan-500">
+                                  <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">{section}</td>
                                 </tr>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })}
-
-                        {/* Total Row */}
-                        <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
-                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            TOTAL
-                          </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                                {sectionExpenses.map((expense, expIdx) => (
+                                  <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-4 py-2"></td>
+                                    <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right">{expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-center">{expense.pax || ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          })}
+                          <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
+                            <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">TOTAL</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12">
                     <div className="text-gray-400 mb-4">
@@ -13890,92 +13862,90 @@ ${rowsHtml}
             const hasData = sections.length > 0;
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-purple-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500"></div>
 
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Überweisung)</h3>
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Überweisung)</h3>
                   {hasData && (
-                    <button
-                      onClick={exportUberweisungToPDF}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg hover:shadow-xl"
-                    >
-                      <Download className="w-5 h-5" />
+                    <button onClick={exportUberweisungToPDF} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
+                      <Download className="w-4 h-4 md:w-5 md:h-5" />
                       PDF saqlab olish
                     </button>
                   )}
                 </div>
 
                 {hasData ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-purple-600 to-violet-600">
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
-                          <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sections.map((section, sectionIdx) => {
-                          const sectionExpenses = expensesByCity[section];
-
-                          return (
-                            <React.Fragment key={section}>
-                              {/* Section Header Row */}
-                              <tr className="bg-gradient-to-r from-purple-500 to-violet-500">
-                                <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
-                                  {section}
-                                </td>
-                              </tr>
-
-                              {/* Section Items */}
-                              {sectionExpenses.map((expense, expIdx) => (
-                                <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
-                                  <td className="border border-gray-300 px-4 py-2"></td>
-                                  <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right">
-                                    {expense.pricePerPerson ?
-                                      Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-center">
-                                    {expense.pax || ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.usd > 0 ?
-                                      Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.uzs > 0 ?
-                                      Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {sections.map(section => (
+                        <div key={section} className="border-2 border-purple-100 rounded-xl overflow-hidden">
+                          <div className="px-3 py-2 bg-gradient-to-r from-purple-500 to-violet-500">
+                            <span className="text-xs font-bold text-white">{section}</span>
+                          </div>
+                          {expensesByCity[section].map((expense, expIdx) => (
+                            <div key={expIdx} className="px-3 py-2 border-b border-gray-100 flex items-start justify-between gap-2">
+                              <span className="text-sm text-gray-900 flex-1">{expense.name}</span>
+                              <div className="text-right flex-shrink-0">
+                                {expense.usd > 0 && <div className="text-xs font-bold text-green-700">${Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                                {expense.uzs > 0 && <div className="text-xs font-bold text-blue-700">{Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-slate-700 to-gray-700 rounded-xl">
+                        <span className="text-sm font-bold text-white">TOTAL</span>
+                        <div className="text-right">
+                          {totalUSD > 0 && <div className="text-sm font-black text-green-300">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                          {totalUZS > 0 && <div className="text-sm font-black text-blue-300">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                        </div>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse border border-gray-300">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-purple-600 to-violet-600">
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                            <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sections.map((section) => {
+                            const sectionExpenses = expensesByCity[section];
+                            return (
+                              <React.Fragment key={section}>
+                                <tr className="bg-gradient-to-r from-purple-500 to-violet-500">
+                                  <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">{section}</td>
                                 </tr>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })}
-
-                        {/* Total Row */}
-                        <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
-                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            TOTAL
-                          </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                                {sectionExpenses.map((expense, expIdx) => (
+                                  <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-4 py-2"></td>
+                                    <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right">{expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-center">{expense.pax || ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          })}
+                          <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
+                            <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">TOTAL</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12">
                     <div className="text-gray-400 mb-4">
@@ -14064,92 +14034,90 @@ ${rowsHtml}
             const hasData = sections.length > 0;
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-orange-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-orange-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"></div>
 
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Card Payments)</h3>
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+                  <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Card Payments)</h3>
                   {hasData && (
-                    <button
-                      onClick={exportKartaToPDF}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg hover:shadow-xl"
-                    >
-                      <Download className="w-5 h-5" />
+                    <button onClick={exportKartaToPDF} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
+                      <Download className="w-4 h-4 md:w-5 md:h-5" />
                       PDF saqlab olish
                     </button>
                   )}
                 </div>
 
                 {hasData ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-orange-600 to-amber-600">
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
-                          <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
-                          <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
-                          <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sections.map((section, sectionIdx) => {
-                          const sectionExpenses = expensesByCity[section];
-
-                          return (
-                            <React.Fragment key={section}>
-                              {/* Section Header Row */}
-                              <tr className="bg-gradient-to-r from-orange-500 to-amber-500">
-                                <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">
-                                  {section}
-                                </td>
-                              </tr>
-
-                              {/* Section Items */}
-                              {sectionExpenses.map((expense, expIdx) => (
-                                <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
-                                  <td className="border border-gray-300 px-4 py-2"></td>
-                                  <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right">
-                                    {expense.pricePerPerson ?
-                                      Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-center">
-                                    {expense.pax || ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.usd > 0 ?
-                                      Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
-                                  <td className="border border-gray-300 px-4 py-2 text-right font-semibold">
-                                    {expense.uzs > 0 ?
-                                      Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')
-                                      : ''}
-                                  </td>
+                  <>
+                    {/* MOBILE: card view */}
+                    <div className="md:hidden space-y-3">
+                      {sections.map(section => (
+                        <div key={section} className="border-2 border-orange-100 rounded-xl overflow-hidden">
+                          <div className="px-3 py-2 bg-gradient-to-r from-orange-500 to-amber-500">
+                            <span className="text-xs font-bold text-white">{section}</span>
+                          </div>
+                          {expensesByCity[section].map((expense, expIdx) => (
+                            <div key={expIdx} className="px-3 py-2 border-b border-gray-100 flex items-start justify-between gap-2">
+                              <span className="text-sm text-gray-900 flex-1">{expense.name}</span>
+                              <div className="text-right flex-shrink-0">
+                                {expense.usd > 0 && <div className="text-xs font-bold text-green-700">${Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                                {expense.uzs > 0 && <div className="text-xs font-bold text-blue-700">{Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                      <div className="flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-slate-700 to-gray-700 rounded-xl">
+                        <span className="text-sm font-bold text-white">TOTAL</span>
+                        <div className="text-right">
+                          {totalUSD > 0 && <div className="text-sm font-black text-green-300">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                          {totalUZS > 0 && <div className="text-sm font-black text-blue-300">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                        </div>
+                      </div>
+                    </div>
+                    {/* DESKTOP: table */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse border border-gray-300">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-orange-600 to-amber-600">
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Städte</th>
+                            <th className="border border-gray-300 px-4 py-3 text-left text-white font-bold">Item</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Preis</th>
+                            <th className="border border-gray-300 px-4 py-3 text-center text-white font-bold">PAX</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Dollar</th>
+                            <th className="border border-gray-300 px-4 py-3 text-right text-white font-bold">Som</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sections.map((section) => {
+                            const sectionExpenses = expensesByCity[section];
+                            return (
+                              <React.Fragment key={section}>
+                                <tr className="bg-gradient-to-r from-orange-500 to-amber-500">
+                                  <td colSpan="6" className="border border-gray-300 px-4 py-2 text-white font-bold">{section}</td>
                                 </tr>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })}
-
-                        {/* Total Row */}
-                        <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
-                          <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            TOTAL
-                          </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                          <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">
-                            {Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                                {sectionExpenses.map((expense, expIdx) => (
+                                  <tr key={`${section}-${expIdx}`} className="hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-4 py-2"></td>
+                                    <td className="border border-gray-300 px-4 py-2">{expense.name}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right">{expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-center">{expense.pax || ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                    <td className="border border-gray-300 px-4 py-2 text-right font-semibold">{expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          })}
+                          <tr className="bg-gradient-to-r from-slate-700 to-gray-700">
+                            <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">TOTAL</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-white font-bold text-lg">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12">
                     <div className="text-gray-400 mb-4">
@@ -14262,14 +14230,48 @@ ${rowsHtml}
             const totalUSD = hotelsUSD + transportUSD + guideUSD;
 
             return (
-              <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-slate-100 p-8">
+              <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-slate-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-slate-700 via-gray-700 to-zinc-700"></div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                  <span className="text-3xl">💰</span>
+                <h3 className="text-lg md:text-2xl font-bold text-gray-900 mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+                  <span className="text-2xl md:text-3xl">💰</span>
                   Total
                 </h3>
 
-                <div className="overflow-x-auto">
+                {/* MOBILE: card view */}
+                <div className="md:hidden space-y-2">
+                  {[
+                    { n: 1, label: 'Hotels', uzs: hotelsUZS, usd: hotelsUSD, cls: 'bg-purple-500' },
+                    { n: 2, label: 'Transport & Routes', uzs: 0, usd: transportUSD, cls: 'bg-blue-500' },
+                    { n: 3, label: 'Railway', uzs: railwayUZS, usd: 0, cls: 'bg-yellow-500' },
+                    { n: 4, label: 'Flights', uzs: flightsUZS, usd: 0, cls: 'bg-green-500' },
+                    { n: 5, label: 'Guide', uzs: 0, usd: guideUSD, cls: 'bg-indigo-500' },
+                    { n: 6, label: 'Meals', uzs: mealsUZS, usd: 0, cls: 'bg-orange-500' },
+                    { n: 7, label: 'Metro', uzs: metroUZS, usd: 0, cls: 'bg-lime-500', hide: booking?.tourType?.code === 'ZA' },
+                    { n: 8, label: 'Shows', uzs: showsUZS, usd: 0, cls: 'bg-pink-500' },
+                    { n: 9, label: 'Eintritt', uzs: eintrittUZS, usd: 0, cls: 'bg-cyan-500' },
+                    { n: 10, label: 'Other Expenses', uzs: otherUZS, usd: 0, cls: 'bg-slate-500' },
+                  ].filter(r => !r.hide).map(row => (
+                    <div key={row.n} className="flex items-center gap-3 px-3 py-2.5 bg-gray-50 rounded-xl border border-gray-200">
+                      <span className={`w-7 h-7 rounded-full ${row.cls} text-white text-xs font-bold flex items-center justify-center flex-shrink-0`}>{row.n}</span>
+                      <span className="text-sm font-medium text-gray-900 flex-1">{row.label}</span>
+                      <div className="text-right">
+                        {row.uzs > 0 && <div className="text-xs font-bold text-slate-700">{Math.round(row.uzs).toLocaleString('en-US').replace(/,/g, ' ')} UZS</div>}
+                        {row.usd > 0 && <div className="text-xs font-bold text-green-700">${Math.round(row.usd).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                        {!row.uzs && !row.usd && <span className="text-xs text-gray-400">-</span>}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-3 py-3 bg-gradient-to-r from-slate-100 to-zinc-200 rounded-xl border-2 border-slate-300">
+                    <span className="text-sm font-black text-gray-900">Grand Total</span>
+                    <div className="text-right">
+                      {totalUZS > 0 && <div className="text-sm font-black text-slate-700">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} UZS</div>}
+                      {totalUSD > 0 && <div className="text-sm font-black text-green-700">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* DESKTOP: table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-gradient-to-r from-slate-700 to-zinc-700 border-b-2 border-slate-800">
@@ -14281,185 +14283,78 @@ ${rowsHtml}
                     </thead>
                     <tbody>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            1
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Hotels
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {hotelsUZS > 0 ? Math.round(hotelsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          {hotelsUSD > 0 ? `$${Math.round(hotelsUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold mx-auto">1</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Hotels</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{hotelsUZS > 0 ? Math.round(hotelsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">{hotelsUSD > 0 ? `$${Math.round(hotelsUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}</td>
                       </tr>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            2
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Transport & Routes
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          -
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          {transportUSD > 0 ? `$${Math.round(transportUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold mx-auto">2</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Transport & Routes</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">-</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">{transportUSD > 0 ? `$${Math.round(transportUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}</td>
                       </tr>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            3
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Railway
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {railwayUZS > 0 ? Math.round(railwayUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          -
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-yellow-500 text-white flex items-center justify-center font-semibold mx-auto">3</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Railway</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{railwayUZS > 0 ? Math.round(railwayUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">-</td>
                       </tr>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            4
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Flights
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {flightsUZS > 0 ? Math.round(flightsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          -
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold mx-auto">4</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Flights</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{flightsUZS > 0 ? Math.round(flightsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">-</td>
                       </tr>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            5
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Guide
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          -
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          {guideUSD > 0 ? `$${Math.round(guideUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center font-semibold mx-auto">5</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Guide</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">-</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">{guideUSD > 0 ? `$${Math.round(guideUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}</td>
                       </tr>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            6
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Meals
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {mealsUZS > 0 ? Math.round(mealsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          -
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-semibold mx-auto">6</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Meals</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{mealsUZS > 0 ? Math.round(mealsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">-</td>
                       </tr>
-                      {/* Hide Metro row for ZA tours */}
                       {booking?.tourType?.code !== 'ZA' && (
                         <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3 text-center border-r border-gray-200">
-                            <div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">
-                              7
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                            Metro
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                            {metroUZS > 0 ? Math.round(metroUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                            -
-                          </td>
+                          <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-lime-500 text-white flex items-center justify-center font-semibold mx-auto">7</div></td>
+                          <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Metro</td>
+                          <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{metroUZS > 0 ? Math.round(metroUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">-</td>
                         </tr>
                       )}
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            8
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Shows
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {showsUZS > 0 ? Math.round(showsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          -
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-semibold mx-auto">8</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Shows</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{showsUZS > 0 ? Math.round(showsUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">-</td>
                       </tr>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            9
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Eintritt
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {eintrittUZS > 0 ? Math.round(eintrittUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          -
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-semibold mx-auto">9</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Eintritt</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{eintrittUZS > 0 ? Math.round(eintrittUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">-</td>
                       </tr>
                       <tr className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 text-center border-r border-gray-200">
-                          <div className="w-8 h-8 rounded-full bg-slate-500 text-white flex items-center justify-center font-semibold mx-auto">
-                            10
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">
-                          Other Expenses
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">
-                          {otherUZS > 0 ? Math.round(otherUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">
-                          -
-                        </td>
+                        <td className="px-4 py-3 text-center border-r border-gray-200"><div className="w-8 h-8 rounded-full bg-slate-500 text-white flex items-center justify-center font-semibold mx-auto">10</div></td>
+                        <td className="px-4 py-3 text-gray-900 font-medium border-r border-gray-200">Other Expenses</td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900 text-lg border-r border-gray-200">{otherUZS > 0 ? Math.round(otherUZS).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700 text-lg">-</td>
                       </tr>
                     </tbody>
                     <tfoot>
                       <tr className="bg-gradient-to-r from-slate-100 to-zinc-200 border-t-2 border-slate-300">
-                        <td colSpan="2" className="px-4 py-4 text-right font-bold text-gray-900 text-xl">
-                          Grand Total:
-                        </td>
-                        <td className="px-4 py-4 text-right font-bold text-slate-700 text-2xl border-r border-slate-300">
-                          {totalUZS > 0 ? `${Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} UZS` : '-'}
-                        </td>
-                        <td className="px-4 py-4 text-right font-bold text-green-700 text-2xl">
-                          {totalUSD > 0 ? `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}
-                        </td>
+                        <td colSpan="2" className="px-4 py-4 text-right font-bold text-gray-900 text-xl">Grand Total:</td>
+                        <td className="px-4 py-4 text-right font-bold text-slate-700 text-2xl border-r border-slate-300">{totalUZS > 0 ? `${Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} UZS` : '-'}</td>
+                        <td className="px-4 py-4 text-right font-bold text-green-700 text-2xl">{totalUSD > 0 ? `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '-'}</td>
                       </tr>
-                  </tfoot>
-                </table>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
-            </div>
           );
         })()}
         </div>
@@ -14467,115 +14362,97 @@ ${rowsHtml}
 
       {/* Route Tab */}
       {!isNew && activeTab === 'route' && (
-        <div className="space-y-6">
+        <div className="space-y-3 md:space-y-6">
           {/* Compact Header */}
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-6">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-cyan-100 p-3 md:p-6">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500"></div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                {/* Group Badge */}
-                <div className="flex items-center gap-2">
-                  <span
-                    className="px-3 py-1.5 rounded-lg text-sm font-bold text-white"
-                    style={{ backgroundColor: booking?.tourType?.color || '#3B82F6' }}
-                  >
-                    {booking?.bookingNumber || '-'}
-                  </span>
-                </div>
 
-                {/* Dates */}
-                <div className="flex items-center gap-1 text-sm">
-                  <span className="text-gray-500">Departure:</span>
-                  <span className="font-semibold text-gray-800">
-                    {formData.departureDate ? format(new Date(formData.departureDate), 'dd.MM.yyyy') : '-'}
-                  </span>
-                </div>
+            {/* Row 1: Badge + PAX + Fix button */}
+            <div className="flex flex-wrap items-center gap-2 mb-2 md:mb-0">
+              <span
+                className="px-3 py-1.5 rounded-lg text-sm font-bold text-white flex-shrink-0"
+                style={{ backgroundColor: booking?.tourType?.color || '#3B82F6' }}
+              >
+                {booking?.bookingNumber || '-'}
+              </span>
 
-                <div className="flex items-center gap-1 text-sm">
-                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Arrival</span>
-                  <span className="font-semibold text-green-700">
-                    {formData.departureDate ? (() => {
-                      const tourTypeCode = booking?.tourType?.code;
-                      const daysToAdd = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 1);
-                      return format(addDays(new Date(formData.departureDate), daysToAdd), 'dd.MM.yyyy');
-                    })() : '-'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1 text-sm">
-                  <span className="text-gray-500">End:</span>
-                  <span className="font-semibold text-gray-800">
-                    {formData.endDate ? format(new Date(formData.endDate), 'dd.MM.yyyy') : '-'}
-                  </span>
-                </div>
-
-                <div className="h-6 w-px bg-gray-200"></div>
-
-                {/* PAX Info */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded-lg">
-                    <span className="text-xs text-blue-600">PAX</span>
-                    <span className="text-sm font-bold text-blue-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.length || formData.pax || 0)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span className="text-xs text-emerald-600">UZB</span>
-                    <span className="text-sm font-bold text-emerald-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                    <span className="text-xs text-purple-600">TKM</span>
-                    <span className="text-sm font-bold text-purple-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0)}</span>
-                  </div>
-                </div>
-
-                <div className="h-6 w-px bg-gray-200"></div>
-
-                {/* Manual Fix Button - for when auto-fix doesn't trigger */}
-                <button
-                  onClick={autoFixAllRoutes}
-                  disabled={saving || erRoutes.length === 0}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Fix all vehicles and prices"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Fix Vehicles
-                </button>
+              {/* Dates - hidden on mobile */}
+              <div className="hidden md:flex items-center gap-1 text-sm">
+                <span className="text-gray-500">Departure:</span>
+                <span className="font-semibold text-gray-800">
+                  {formData.departureDate ? format(new Date(formData.departureDate), 'dd.MM.yyyy') : '-'}
+                </span>
+              </div>
+              <div className="hidden md:flex items-center gap-1 text-sm">
+                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Arrival</span>
+                <span className="font-semibold text-green-700">
+                  {formData.departureDate ? (() => {
+                    const tourTypeCode = booking?.tourType?.code;
+                    const daysToAdd = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 1);
+                    return format(addDays(new Date(formData.departureDate), daysToAdd), 'dd.MM.yyyy');
+                  })() : '-'}
+                </span>
+              </div>
+              <div className="hidden md:flex items-center gap-1 text-sm">
+                <span className="text-gray-500">End:</span>
+                <span className="font-semibold text-gray-800">
+                  {formData.endDate ? format(new Date(formData.endDate), 'dd.MM.yyyy') : '-'}
+                </span>
               </div>
 
+              <div className="hidden md:block h-6 w-px bg-gray-200"></div>
+
+              {/* PAX Info */}
+              <div className="flex items-center gap-1.5 md:gap-3 flex-wrap">
+                <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg">
+                  <span className="text-xs text-blue-600">PAX</span>
+                  <span className="text-xs md:text-sm font-bold text-blue-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.length || formData.pax || 0)}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                  <span className="text-xs text-emerald-600">UZB</span>
+                  <span className="text-xs md:text-sm font-bold text-emerald-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0)}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                  <span className="text-xs text-purple-600">TKM</span>
+                  <span className="text-xs md:text-sm font-bold text-purple-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0)}</span>
+                </div>
+              </div>
+
+              <div className="hidden md:block h-6 w-px bg-gray-200"></div>
+
+              {/* Fix Vehicles button */}
+              <button
+                onClick={autoFixAllRoutes}
+                disabled={saving || erRoutes.length === 0}
+                className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg transition-all disabled:opacity-50"
+                title="Fix all vehicles and prices"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span className="hidden md:inline">Fix Vehicles</span>
+                <span className="md:hidden">Fix</span>
+              </button>
+
               {/* Action Buttons */}
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleSaveAllRoutes}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white text-sm rounded-xl transition-all duration-200 font-bold shadow-lg hover:shadow-xl hover:scale-105"
-                >
-                  <Save className="w-4 h-4" />
-                  Save
+              <div className="flex items-center gap-1.5 md:gap-3 ml-auto">
+                <button onClick={handleSaveAllRoutes} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all">
+                  <Save className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Save</span>
                 </button>
-                <button
-                  onClick={handleAddRoute}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-sm rounded-xl transition-all duration-200 font-bold shadow-lg hover:shadow-xl hover:scale-105"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Route
+                <button onClick={handleAddRoute} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all">
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Add Route</span>
+                  <span className="md:hidden">Add</span>
                 </button>
-                <div className="border-l-2 border-gray-300 h-8"></div>
-                <button
-                  onClick={handleSaveAsTemplate}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-xs rounded-xl transition-all duration-200 font-bold shadow-lg hover:shadow-xl hover:scale-105"
-                  title="Save current routes as default template for this tour type"
-                >
-                  <Database className="w-4 h-4" />
+                <button onClick={handleSaveAsTemplate} className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all" title="Save template">
+                  <Database className="w-3.5 h-3.5" />
                   Save as Template
                 </button>
-                <button
-                  onClick={handleLoadFromTemplate}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 transition-colors font-medium"
-                  title="Load routes from database template"
-                >
-                  <Download className="w-4 h-4" />
+                <button onClick={handleLoadFromTemplate} className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-xs rounded-lg font-medium transition-colors" title="Load template">
+                  <Download className="w-3.5 h-3.5" />
                   Load Template
                 </button>
               </div>
@@ -14583,7 +14460,7 @@ ${rowsHtml}
           </div>
 
           {/* Route Table Card */}
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-blue-100">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500"></div>
 
             {/* DESKTOP: Table view */}
@@ -15063,30 +14940,30 @@ ${rowsHtml}
 
             {/* Cost Summary */}
             {erRoutes.length > 0 && erRoutes.some(r => parseFloat(r.price) > 0) && (
-              <div className="mt-4 p-5 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="flex items-center justify-between gap-8">
+              <div className="mt-4 p-4 md:p-5 bg-slate-50 md:rounded-xl border-t-2 md:border border-slate-200">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-8">
                   {/* Provider Totals */}
-                  <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-2 md:gap-5 flex-wrap">
                     {erRoutes.some(r => r.choiceTab?.includes('sevil') && parseFloat(r.price) > 0) && (
-                      <div className="flex items-center gap-3 px-5 py-3 bg-blue-100 rounded-xl border border-blue-200">
+                      <div className="flex items-center gap-2 md:gap-3 px-4 md:px-5 py-2 md:py-3 bg-blue-100 rounded-xl border border-blue-200 flex-1 md:flex-none">
                         <span className="text-sm font-semibold text-blue-700">Sevil</span>
-                        <span className="text-xl font-bold text-blue-800">
+                        <span className="text-lg md:text-xl font-bold text-blue-800">
                           ${erRoutes.filter(r => r.choiceTab?.includes('sevil')).reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
                         </span>
                       </div>
                     )}
                     {erRoutes.some(r => r.choiceTab === 'xayrulla' && parseFloat(r.price) > 0) && (
-                      <div className="flex items-center gap-3 px-5 py-3 bg-cyan-100 rounded-xl border border-cyan-200">
+                      <div className="flex items-center gap-2 md:gap-3 px-4 md:px-5 py-2 md:py-3 bg-cyan-100 rounded-xl border border-cyan-200 flex-1 md:flex-none">
                         <span className="text-sm font-semibold text-cyan-700">Xayrulla</span>
-                        <span className="text-xl font-bold text-cyan-800">
+                        <span className="text-lg md:text-xl font-bold text-cyan-800">
                           ${erRoutes.filter(r => r.choiceTab === 'xayrulla').reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
                         </span>
                       </div>
                     )}
                     {erRoutes.some(r => r.choiceTab === 'nosir' && parseFloat(r.price) > 0) && (
-                      <div className="flex items-center gap-3 px-5 py-3 bg-teal-100 rounded-xl border border-teal-200">
+                      <div className="flex items-center gap-2 md:gap-3 px-4 md:px-5 py-2 md:py-3 bg-teal-100 rounded-xl border border-teal-200 flex-1 md:flex-none">
                         <span className="text-sm font-semibold text-teal-700">Nosir</span>
-                        <span className="text-xl font-bold text-teal-800">
+                        <span className="text-lg md:text-xl font-bold text-teal-800">
                           ${erRoutes.filter(r => r.choiceTab === 'nosir').reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
                         </span>
                       </div>
@@ -15094,7 +14971,7 @@ ${rowsHtml}
                   </div>
 
                   {/* Total */}
-                  <div className="flex items-center gap-4 px-6 py-3 bg-emerald-600 rounded-xl shadow-lg">
+                  <div className="flex items-center justify-between md:justify-start gap-4 px-5 md:px-6 py-3 bg-emerald-600 rounded-xl shadow-lg">
                     <span className="text-base font-semibold text-emerald-100">TOTAL</span>
                     <span className="text-2xl font-bold text-white">
                       ${erRoutes.reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0).toFixed(0)}
@@ -15435,13 +15312,13 @@ ${rowsHtml}
         <div className="lg:col-span-2 space-y-6">
           {/* Basic info */}
           {(isNew || activeTab === 'info') && (
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-blue-100 p-8">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-sm md:shadow-xl border-b-2 md:border-2 border-blue-100 p-4 md:p-8">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl"></div>
 
-            <h2 className="text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-6 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <MapPin className="w-6 h-6 text-white" />
+            <h2 className="text-lg md:text-2xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
+                <MapPin className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               Basic Information
             </h2>
@@ -15568,13 +15445,13 @@ ${rowsHtml}
 
           {/* Dates */}
           {(isNew || activeTab === 'info') && (
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-indigo-100 p-8">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-sm md:shadow-xl border-b-2 md:border-2 border-indigo-100 p-4 md:p-8">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-purple-400/10 to-indigo-400/10 rounded-full blur-3xl"></div>
 
-            <h2 className="text-2xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-6 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <Calendar className="w-6 h-6 text-white" />
+            <h2 className="text-lg md:text-2xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 flex-shrink-0">
+                <Calendar className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               Dates
             </h2>
@@ -15663,13 +15540,13 @@ ${rowsHtml}
 
           {/* Transport */}
           {(isNew || activeTab === 'info') && (
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-green-100 p-8">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-sm md:shadow-xl border-b-2 md:border-2 border-green-100 p-4 md:p-8">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-green-400/10 to-emerald-400/10 rounded-full blur-3xl"></div>
 
-            <h2 className="text-2xl font-black bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent mb-6 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/30">
-                <Train className="w-6 h-6 text-white" />
+            <h2 className="text-lg md:text-2xl font-black bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/30 flex-shrink-0">
+                <Train className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               Transportation
             </h2>
@@ -15730,7 +15607,7 @@ ${rowsHtml}
 
           {/* Hotel Room Allocations */}
           {!isNew && activeTab === 'rooms' && (
-            <div className={`bg-gradient-to-br from-gray-50 via-white to-gray-50 py-4 md:py-8 px-4 md:px-8 w-full ${!isMobile ? '-mx-4' : ''}`} style={!isMobile ? { width: 'calc(100vw - 16rem)', marginLeft: '-1rem' } : {}}>
+            <div className={`bg-gradient-to-br from-gray-50 via-white to-gray-50 py-4 md:py-8 md:px-8 w-full ${!isMobile ? '-mx-4' : ''}`} style={!isMobile ? { width: 'calc(100vw - 16rem)', marginLeft: '-1rem' } : {}}>
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 md:mb-8">
                 <h2 className="text-lg md:text-2xl font-black text-gray-900 flex items-center gap-3 md:gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-500 to-primary-600 flex items-center justify-center shadow-lg">
@@ -15738,92 +15615,58 @@ ${rowsHtml}
                   </div>
                   Hotel Accommodation
                 </h2>
-                <div className={`flex items-center gap-2 md:gap-3 ${isMobile ? 'flex-wrap w-full' : ''}`}>
+                <div className={`flex items-center gap-2 flex-wrap ${isMobile ? 'w-full' : ''}`}>
                   {/* PDF Auto-save Folder Configuration */}
                   {isFileSystemAccessSupported() && (
                     <button
                       onClick={handleConfigurePdfFolder}
-                      className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold shadow-md ${
+                      className={`inline-flex items-center gap-2 px-3 py-2 text-xs rounded-xl hover:shadow-lg transition-all duration-200 font-bold shadow-md ${
                         pdfFolderConfigured
                           ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
                           : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
-                      }`}
+                      } ${isMobile ? 'flex-1' : ''}`}
                       title={pdfFolderConfigured ? `PDF auto-save: ${pdfFolderName}` : 'PDF papkasini tanlash (bir marta)'}
                     >
                       {pdfFolderConfigured ? (
                         <>
-                          <CheckCircle2 className="w-4 h-4" />
-                          <FolderOpen className="w-4 h-4" />
-                          <span className="text-xs">{pdfFolderName}</span>
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate max-w-[80px]">{pdfFolderName}</span>
                         </>
                       ) : (
                         <>
                           <Folder className="w-4 h-4" />
-                          <span className="text-xs">PDF Papka</span>
+                          <span>PDF Papka</span>
                         </>
                       )}
                     </button>
                   )}
 
-                  {/* ER Hotels button - only for ER tours */}
-                  {booking?.tourType?.code === 'ER' && (
+                  {/* Auto Hotels button */}
+                  {['ER','CO','KAS','ZA'].includes(booking?.tourType?.code) && (
                     <button
                       onClick={autoFillAccommodationsFromItinerary}
                       disabled={saving}
-                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
-                      title="Создать отели для ER тура (Eurasia Route)"
+                      className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md text-white ${
+                        booking?.tourType?.code === 'ER' ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                        booking?.tourType?.code === 'CO' ? 'bg-gradient-to-r from-purple-500 to-violet-600' :
+                        booking?.tourType?.code === 'KAS' ? 'bg-gradient-to-r from-amber-500 to-orange-600' :
+                        'bg-gradient-to-r from-teal-500 to-cyan-600'
+                      } ${isMobile ? 'flex-1 justify-center' : ''}`}
                     >
-                      <Wand2 className="w-5 h-5" />
-                      ER Hotels
+                      <Wand2 className="w-4 h-4 flex-shrink-0" />
+                      {booking?.tourType?.code} Hotels
                     </button>
                   )}
 
-                  {/* CO Hotels button - only for CO tours */}
-                  {booking?.tourType?.code === 'CO' && (
-                    <button
-                      onClick={autoFillAccommodationsFromItinerary}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
-                      title="Создать отели для CO тура (Combination)"
-                    >
-                      <Wand2 className="w-5 h-5" />
-                      CO Hotels
-                    </button>
-                  )}
-
-                  {/* KAS Hotels button - only for KAS tours */}
-                  {booking?.tourType?.code === 'KAS' && (
-                    <button
-                      onClick={autoFillAccommodationsFromItinerary}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
-                      title="Создать отели для KAS тура (Kasakistan, Kirgistan und Usbekistan)"
-                    >
-                      <Wand2 className="w-5 h-5" />
-                      KAS Hotels
-                    </button>
-                  )}
-
-                  {/* ZA Hotels button - only for ZA tours */}
-                  {booking?.tourType?.code === 'ZA' && (
-                    <button
-                      onClick={autoFillAccommodationsFromItinerary}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 px-5 py-3 text-sm bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md"
-                      title="Создать отели для ZA тура (Zentralasian)"
-                    >
-                      <Wand2 className="w-5 h-5" />
-                      ZA Hotels
-                    </button>
-                  )}
                   <button
                     onClick={() => { setEditingAccommodation(null); setAccommodationFormOpen(true); }}
-                    className={`inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-3 text-xs md:text-sm bg-gradient-to-r from-blue-600 to-primary-600 text-white rounded-lg md:rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold shadow-md ${isMobile ? 'w-full justify-center' : ''}`}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm bg-gradient-to-r from-blue-600 to-primary-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-200 font-bold shadow-md ${isMobile ? 'w-full justify-center' : ''}`}
                   >
-                    <Plus className="w-4 h-4 md:w-5 md:h-5" />
-                    {isMobile ? 'Add Hotel' : 'Добавить отель'}
+                    <Plus className="w-4 h-4" />
+                    Add Hotel
                   </button>
-                  {booking?.tourType?.code && (
+
+                  {booking?.tourType?.code && !isMobile && (
                     <>
                       <div className="border-l border-gray-300 h-8"></div>
                       <button
@@ -15994,16 +15837,20 @@ ${rowsHtml}
 
                     {/* Uzbekistan/Turkmenistan Split Card */}
                     {uzbekCount > 0 && turkmCount > 0 && (
-                      <div className="flex items-center gap-4 px-6 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl shadow-md">
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
-                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Uzbekistan</span>
+                      <div className="col-span-2 md:col-span-1 flex items-center gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl md:rounded-2xl shadow-md">
+                        <div className="flex flex-col gap-2 w-full">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm flex-shrink-0" />
+                              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">UZB</span>
+                            </div>
                             <span className="text-2xl font-black text-gray-900">{uzbekCount}</span>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
-                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Turkmenistan</span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm flex-shrink-0" />
+                              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">TKM</span>
+                            </div>
                             <span className="text-2xl font-black text-gray-900">{turkmCount}</span>
                           </div>
                         </div>
@@ -16022,11 +15869,11 @@ ${rowsHtml}
                 const firstAccId = sortedAccs[0]?.id;
 
                 return (
-                  <div className="space-y-6 w-full">
+                  <div className="space-y-3 md:space-y-6 w-full">
                     {accommodations.map((acc, accIndex) => {
                       const isFirstAccommodation = acc.id === firstAccId;
                       return (
-                    <div key={acc.id} className="w-full bg-white rounded-2xl md:rounded-3xl border border-gray-300 shadow-lg hover:shadow-2xl hover:border-primary-300 transition-all duration-300 p-4 md:p-6 relative overflow-hidden">
+                    <div key={acc.id} className="w-full bg-white md:rounded-3xl border-b-2 md:border md:border-gray-300 shadow-sm md:shadow-lg hover:shadow-2xl hover:border-primary-300 transition-all duration-300 p-4 md:p-6 relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 via-blue-500 to-purple-500"></div>
                       <div className="flex flex-col md:flex-row items-start justify-between gap-4">
                         <div className="flex items-start gap-3 md:gap-4 flex-1 w-full">
@@ -16047,17 +15894,17 @@ ${rowsHtml}
 
                             {/* Dates and Nights - Large badges */}
                             <div className="flex items-center gap-2 md:gap-4 flex-wrap mb-3 md:mb-4">
-                              <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-3 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl md:rounded-2xl shadow-md">
-                                <div className="p-1 md:p-2 rounded-lg bg-blue-500">
+                              <div className="inline-flex items-center gap-1.5 md:gap-3 px-2.5 md:px-5 py-1.5 md:py-3 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl md:rounded-2xl shadow-md">
+                                <div className="p-1 md:p-2 rounded-lg bg-blue-500 flex-shrink-0">
                                   <Calendar className="w-3 h-3 md:w-5 md:h-5 text-white" />
                                 </div>
                                 <span className="text-xs md:text-lg font-bold text-blue-900">
                                   {format(parseISO(acc.checkInDate), 'dd.MM.yy')} — {format(parseISO(acc.checkOutDate), 'dd.MM.yy')}
                                 </span>
                               </div>
-                              <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-3 bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl md:rounded-2xl shadow-md">
-                                <span className="text-xl md:text-3xl font-black text-purple-700">{acc.nights}</span>
-                                <span className="text-sm md:text-lg font-bold text-purple-600">
+                              <div className="inline-flex items-center gap-1.5 md:gap-3 px-2.5 md:px-5 py-1.5 md:py-3 bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl md:rounded-2xl shadow-md">
+                                <span className="text-lg md:text-3xl font-black text-purple-700">{acc.nights}</span>
+                                <span className="text-xs md:text-lg font-bold text-purple-600">
                                   {acc.nights === 1 ? 'night' : 'nights'}
                                 </span>
                               </div>
@@ -17565,13 +17412,13 @@ ${rowsHtml}
 
           {/* Notes */}
           {(isNew || activeTab === 'info') && (
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-amber-100 p-8">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-sm md:shadow-xl border-b-2 md:border-2 border-amber-100 p-4 md:p-8">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500"></div>
             <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-gradient-to-br from-amber-400/10 to-orange-400/10 rounded-full blur-3xl"></div>
 
-            <h2 className="text-2xl font-black bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 bg-clip-text text-transparent mb-6 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-                <FileText className="w-6 h-6 text-white" />
+            <h2 className="text-lg md:text-2xl font-black bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 bg-clip-text text-transparent mb-4 md:mb-6 flex items-center gap-2 md:gap-3">
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30 flex-shrink-0">
+                <FileText className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               Notes
             </h2>
@@ -17592,13 +17439,13 @@ ${rowsHtml}
         {(isNew || activeTab === 'info') && (
         <div className="space-y-6">
           {/* Tourists */}
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-6">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-sm md:shadow-xl border-b-2 md:border-2 border-purple-100 p-4 md:p-6">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500"></div>
             <div className="absolute -top-16 -right-16 w-32 h-32 bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full blur-3xl"></div>
 
-            <h2 className="text-xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent mb-5 flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                <Users className="w-5 h-5 text-white" />
+            <h2 className="text-base md:text-xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent mb-4 md:mb-5 flex items-center gap-2 md:gap-2.5">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 flex-shrink-0">
+                <Users className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
               Tourists
             </h2>
@@ -17700,13 +17547,13 @@ ${rowsHtml}
           </div>
 
           {/* Rooms - calculated from Rooming List */}
-          <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-cyan-100 p-6">
+          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-sm md:shadow-xl border-b-2 md:border-2 border-cyan-100 p-4 md:p-6">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500"></div>
             <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-gradient-to-br from-cyan-400/10 to-blue-400/10 rounded-full blur-3xl"></div>
 
-            <h2 className="text-xl font-black bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent mb-5 flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                <Home className="w-5 h-5 text-white" />
+            <h2 className="text-base md:text-xl font-black bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4 md:mb-5 flex items-center gap-2 md:gap-2.5">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/30 flex-shrink-0">
+                <Home className="w-4 h-4 md:w-5 md:h-5 text-white" />
               </div>
               Rooms
             </h2>
@@ -18470,6 +18317,45 @@ ${rowsHtml}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">E-Mail Adresse</label>
+                <div className="flex flex-wrap gap-1.5 mb-2 items-center">
+                  {wiContacts.map(opt => (
+                    <span
+                      key={opt.email}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${worldInsightEmail === opt.email ? 'bg-green-600 text-white border-green-600' : 'bg-gray-50 text-gray-600 border-gray-300 hover:border-green-400 hover:text-green-700'}`}
+                    >
+                      <button type="button" onClick={() => { setWorldInsightEmail(opt.email); setWorldInsightName(opt.name); }}>
+                        {opt.name}
+                      </button>
+                      <button type="button" onClick={() => removeWiContact(opt.email)} className={`ml-0.5 hover:text-red-500 ${worldInsightEmail === opt.email ? 'text-white/70' : 'text-gray-400'}`}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {wiAddMode ? (
+                    <div className="flex items-center gap-1.5 w-full mt-1">
+                      <input
+                        value={wiNewName}
+                        onChange={e => setWiNewName(e.target.value)}
+                        placeholder="Ism"
+                        className="px-2 py-1 border border-gray-300 rounded-lg text-xs w-24 focus:ring-1 focus:ring-green-500"
+                      />
+                      <input
+                        value={wiNewEmail}
+                        onChange={e => setWiNewEmail(e.target.value)}
+                        placeholder="email@domain.de"
+                        className="px-2 py-1 border border-gray-300 rounded-lg text-xs flex-1 focus:ring-1 focus:ring-green-500"
+                        onKeyDown={e => e.key === 'Enter' && addWiContact()}
+                        autoFocus
+                      />
+                      <button type="button" onClick={addWiContact} className="px-2.5 py-1 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700">+</button>
+                      <button type="button" onClick={() => { setWiAddMode(false); setWiNewName(''); setWiNewEmail(''); }} className="px-2 py-1 border border-gray-300 text-gray-500 rounded-lg text-xs hover:bg-gray-50">✕</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setWiAddMode(true)} className="px-2.5 py-1 rounded-full text-xs border border-dashed border-gray-400 text-gray-500 hover:border-green-500 hover:text-green-600 transition-all">
+                      + Qo'shish
+                    </button>
+                  )}
+                </div>
                 <input
                   type="email"
                   value={worldInsightEmail}
