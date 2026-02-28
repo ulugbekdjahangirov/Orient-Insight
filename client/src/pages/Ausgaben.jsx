@@ -1161,14 +1161,14 @@ export default function Ausgaben() {
                               style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Main Guide</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white border-r border-indigo-700"
                               style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Price</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-violet-700"
-                              style={{ background: 'linear-gradient(180deg,#4c1d95,#6d28d9)' }}>Second Guide</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-violet-700"
-                              style={{ background: 'linear-gradient(180deg,#4c1d95,#6d28d9)' }}>Price</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
-                              style={{ background: 'linear-gradient(180deg,#1e293b,#334155)' }}>Bergreiseleiter</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-slate-600"
-                              style={{ background: 'linear-gradient(180deg,#1e293b,#334155)' }}>Price</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-indigo-700"
+                              style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Second Guide</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-indigo-700"
+                              style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Price</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-indigo-700"
+                              style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Bergreiseleiter</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-indigo-700"
+                              style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Price</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white"
                               style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total (USD)</th>
                           </tr>
