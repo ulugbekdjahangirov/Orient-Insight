@@ -1222,7 +1222,7 @@ export default function Ausgaben() {
                             <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
                               style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Nosir</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white"
-                              style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total (UZS)</th>
+                              style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total (USD)</th>
                           </tr>
                         </thead>
                         <tbody>
