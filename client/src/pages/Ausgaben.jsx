@@ -879,37 +879,56 @@ export default function Ausgaben() {
               <>
                 {/* ── GENERAL TAB ── */}
                 {activeExpenseTab === 'general' && (
-                  <div className="overflow-x-auto">
+                  <div className="w-full">
                     {bookingsDetailedData.length === 0 ? (
                       <EmptyState icon={BarChart3} label={`${activeModule?.name} uchun ma'lumot yo'q`} />
                     ) : (
                       <>
-                        <table className="min-w-full text-xs">
+                        <table className="w-full table-fixed text-xs">
+                          <colgroup>
+                            <col style={{ width: '3%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '6%' }} />
+                            <col style={{ width: '7%' }} />
+                            <col style={{ width: '5%' }} />
+                            <col style={{ width: '6%' }} />
+                            <col style={{ width: '4%' }} />
+                            <col style={{ width: '7%' }} />
+                            <col style={{ width: '6%' }} />
+                            <col style={{ width: '5%' }} />
+                            <col style={{ width: '6%' }} />
+                            <col style={{ width: '7%' }} />
+                            <col style={{ width: '5%' }} />
+                            <col style={{ width: '5%' }} />
+                            <col style={{ width: '5%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '7%' }} />
+                          </colgroup>
                           <thead>
                             <tr>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200 w-10"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>#</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200 sticky left-0 z-10"
-                                style={{ background: '#dbeafe', minWidth: '130px' }}>Booking</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                style={{ background: '#dbeafe' }}>Booking</th>
                               <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#bfdbfe' }}>🏨 Hotels</th>
                               <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#bfdbfe' }}>🚌 Transport</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>🚂 Train</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>✈️ Flights</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>👤 Guide</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>🍽 Meals</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>🎫 Eintritt</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>🚇 Metro</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>🎭 Shou</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>Other</th>
                               <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700"
                                 style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
@@ -937,50 +956,50 @@ export default function Ausgaben() {
                                     className="transition-colors duration-150 hover:bg-blue-50"
                                     onMouseEnter={e2 => e2.currentTarget.style.background='#eff6ff'}
                                     onMouseLeave={e2 => e2.currentTarget.style.background=rowBg}>
-                                    <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
-                                    <td className="px-3 py-2.5 sticky left-0 z-10 border-r border-slate-100" style={{ background: rowBg }}>
+                                    <td className="px-2 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
+                                    <td className="px-2 py-2.5 border-r border-slate-100 truncate">
                                       <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{booking.bookingName}</Link>
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.hotelsUSD>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.hotelsUSD)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.hotelsUZS>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.hotelsUZS)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.transportSevil>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.transportSevil)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.transportXayrulla>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.transportXayrulla)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.transportNosir>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.transportNosir)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.railway>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.railway)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.flights>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.flights)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.guide>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guide)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.meals>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.meals)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.eintritt>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.eintritt)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.metro>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.metro)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.shou>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.shou)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {e.other>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.other)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                    <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                       {totalUZS>0 ? <span className="font-black text-gray-900">{formatNumber(totalUZS)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center">
@@ -991,49 +1010,49 @@ export default function Ausgaben() {
                               })}
                             {/* TOTAL row */}
                             <tr style={{ background: 'linear-gradient(90deg,#14532d,#166534)', borderTop: '3px solid #15803d' }}>
-                              <td className="px-3 py-3.5 border-r border-green-700"></td>
-                              <td className="px-3 py-3.5 text-xs font-black text-white uppercase tracking-widest sticky left-0 z-10 border-r border-green-700"
+                              <td className="px-2 py-3.5 border-r border-green-700"></td>
+                              <td className="px-2 py-3.5 text-xs font-black text-white uppercase tracking-widest border-r border-green-700"
                                 style={{ background: '#14532d' }}>TOTAL</td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUSD||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUZS||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportSevil||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportXayrulla||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportNosir||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.railway||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.flights||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.guide||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.meals||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.eintritt||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.metro||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.shou||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.other||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-sky-900 border-r border-sky-300"
+                              <td className="px-2 py-3.5 text-center text-xs font-black text-sky-900 border-r border-sky-300"
                                 style={{ background: '#bae6fd' }}>
                                 {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
                               </td>
@@ -1198,15 +1217,15 @@ export default function Ausgaben() {
                                   <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
                                 </td>
                                 <td className="px-3 py-2.5 text-slate-700 font-medium border-r border-slate-100 truncate">{e.guideMainName||'—'}</td>
-                                <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                   {e.guideMainCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideMainCost)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                                 <td className="px-3 py-2.5 text-slate-700 font-medium border-r border-slate-100 truncate">{e.guideSecondName||'—'}</td>
-                                <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                   {e.guideSecondCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideSecondCost)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                                 <td className="px-3 py-2.5 text-slate-700 font-medium border-r border-slate-100 truncate">{e.guideBergrName||'—'}</td>
-                                <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                <td className="px-2 py-2.5 text-center border-r border-slate-100">
                                   {e.guideBergrCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideBergrCost)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                                 <td className="px-3 py-2.5 text-center">
