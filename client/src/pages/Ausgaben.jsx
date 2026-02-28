@@ -723,646 +723,668 @@ export default function Ausgaben() {
     });
   }, [bookingsDetailedData]);
 
+  const tabGradients = {
+    general:   { from: '#6366f1', to: '#8b5cf6', light: '#eef2ff' },
+    hotels:    { from: '#7c3aed', to: '#a855f7', light: '#f5f3ff' },
+    transport: { from: '#1d4ed8', to: '#3b82f6', light: '#eff6ff' },
+    guides:    { from: '#047857', to: '#10b981', light: '#ecfdf5' },
+  };
+  const activeTabGrad = tabGradients[activeExpenseTab] || tabGradients.general;
+
+  const EmptyState = ({ icon: Icon, label }) => (
+    <div className="py-20 text-center">
+      <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-5"
+        style={{ background: `linear-gradient(135deg, ${activeModule?.color}20, ${activeModule?.color}10)` }}>
+        <Icon size={36} style={{ color: activeModule?.color }} />
+      </div>
+      <p className="text-gray-400 font-medium">{label}</p>
+    </div>
+  );
+
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Ausgaben</h1>
-        <p className="text-gray-600 mt-2">Расходы и траты</p>
-      </div>
+    <div className="min-h-screen" style={{ background: '#0f1729' }}>
 
-      {/* Tour Type Tabs */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            {tourTypeModules.map((module) => (
-              <button
-                key={module.code}
-                onClick={() => {
-                  updateParams({ tour: module.code });
-                  // Keep current tab when switching tour types
-                }}
-                className={`
-                  flex-1 py-4 px-6 text-center font-medium text-sm transition-all
-                  ${activeTourType === module.code
-                    ? 'border-b-2 text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }
-                `}
-                style={{
-                  borderBottomColor: activeTourType === module.code ? module.color : 'transparent',
-                  borderBottomWidth: activeTourType === module.code ? '2px' : '0'
-                }}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <span
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: module.color }}
-                  />
-                  {module.code}
-                </span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
+      {/* ═══ HERO HEADER ═══ */}
+      <div className="relative overflow-hidden" style={{
+        background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 55%, #0f1729 100%)'
+      }}>
+        {/* Glow blobs */}
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none"
+          style={{ background: activeModule?.color, opacity: 0.12, filter: 'blur(80px)', transform: 'translate(30%,-30%)' }} />
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: activeModule?.color, opacity: 0.07, filter: 'blur(60px)', transform: 'translate(-30%,30%)' }} />
 
-      {/* Expense Type Sub-Tabs */}
-      <div className="bg-white rounded-lg shadow mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="flex -mb-px">
-            {expenseTabs.map((tab) => {
-              const Icon = tab.icon;
+        <div className="relative px-6 pt-7 pb-6">
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 mb-5">
+            <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
+              style={{ background: `${activeModule?.color}25`, color: activeModule?.color }}>
+              {activeModule?.code}
+            </span>
+            <span className="text-slate-600 text-xs">›</span>
+            <span className="text-slate-500 text-xs font-medium">{activeModule?.name}</span>
+          </div>
+
+          {/* Title + Quick Totals */}
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-5xl font-black text-white tracking-tight leading-none">Ausgaben</h1>
+              <p className="text-slate-500 text-sm mt-2">Barcha xarajatlar va to'lovlar tahlili</p>
+            </div>
+            {!loading && (
+              <div className="flex gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-slate-600 mb-0.5 uppercase tracking-wider">Jami USD</p>
+                  <p className="text-2xl font-black" style={{ color: activeModule?.color }}>${formatNumber(getGrandTotalUSD())}</p>
+                </div>
+                <div className="w-px bg-slate-800" />
+                <div className="text-right">
+                  <p className="text-xs text-slate-600 mb-0.5 uppercase tracking-wider">Jami UZS</p>
+                  <p className="text-2xl font-black text-amber-400">{formatNumber(getGrandTotalUZS())}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tour Type Cards */}
+          <div className="grid grid-cols-4 gap-3">
+            {tourTypeModules.map((module) => {
+              const isActive = activeTourType === module.code;
               return (
                 <button
-                  key={tab.id}
-                  onClick={() => updateParams({ tab: tab.id })}
-                  className={`
-                    flex-1 py-3 px-6 text-center font-medium text-sm transition-all
-                    flex items-center justify-center gap-2
-                    ${activeExpenseTab === tab.id
-                      ? 'border-b-2 text-gray-900'
-                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
+                  key={module.code}
+                  onClick={() => updateParams({ tour: module.code })}
+                  className="relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 group"
                   style={{
-                    borderBottomColor: activeExpenseTab === tab.id ? activeModule?.color : 'transparent',
-                    borderBottomWidth: activeExpenseTab === tab.id ? '2px' : '0'
+                    background: isActive
+                      ? `linear-gradient(135deg, ${module.color}, ${module.color}99)`
+                      : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${isActive ? module.color + 'aa' : 'rgba(255,255,255,0.08)'}`,
+                    boxShadow: isActive ? `0 0 35px ${module.color}45, 0 8px 25px rgba(0,0,0,0.4)` : 'none',
+                    transform: isActive ? 'translateY(-3px)' : 'none',
                   }}
                 >
-                  <Icon size={18} />
-                  {tab.name}
+                  {/* Shine overlay on hover */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
+                    style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 70%)' }} />
+                  {/* Decorative circle */}
+                  <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
+                    style={{ background: 'white', opacity: isActive ? 0.12 : 0.03 }} />
+                  <p className="text-2xl font-black leading-none"
+                    style={{ color: isActive ? 'white' : module.color }}>{module.code}</p>
+                  <p className="text-xs mt-1.5 font-medium leading-tight"
+                    style={{ color: isActive ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }}>
+                    {module.name}
+                  </p>
+                  {isActive && <div className="absolute bottom-3 right-3 w-1.5 h-1.5 rounded-full bg-white opacity-70" />}
                 </button>
               );
             })}
-          </nav>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="bg-white rounded-lg shadow">
-        {loading ? (
-          <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
-          </div>
-        ) : (
-          <>
-            {/* Summary Card */}
-            <div className="p-6 border-b border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${activeModule?.color}20` }}
-                    >
-                      <Hotel size={20} style={{ color: activeModule?.color }} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Number of Tours</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {activeExpenseTab === 'general' || activeExpenseTab === 'hotels'
-                          ? filteredBookingsWithHotels.length
-                          : bookingsDetailedData.length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+      {/* ═══ STATS + CONTENT ═══ */}
+      <div style={{ background: '#f1f5f9' }} className="min-h-screen">
+        <div className="px-6 py-6">
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${activeModule?.color}20` }}
-                    >
-                      {activeExpenseTab === 'guides'    ? <Users  size={20} style={{ color: activeModule?.color }} /> :
-                       activeExpenseTab === 'transport' ? <Truck  size={20} style={{ color: activeModule?.color }} /> :
-                       <Hotel size={20} style={{ color: activeModule?.color }} />}
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">
-                        {activeExpenseTab === 'guides'    ? 'Guides with cost' :
-                         activeExpenseTab === 'transport' ? 'Bookings with transport' :
-                         'Number of Hotels'}
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {activeExpenseTab === 'guides'
-                          ? bookingsDetailedData.filter(b => (b.expenses?.guide || 0) > 0).length
-                          : activeExpenseTab === 'transport'
-                          ? bookingsDetailedData.filter(b =>
-                              (b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+
-                              (b.expenses?.transportNosir||0)+(b.expenses?.railway||0) > 0).length
-                          : getPivotData().hotels.length}
-                      </p>
-                    </div>
-                  </div>
+          {/* Stats Cards */}
+          {!loading && (
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {/* Card 1 — Tours count */}
+              <div className="relative overflow-hidden rounded-2xl p-5 text-white"
+                style={{ background: `linear-gradient(135deg, ${activeModule?.color}ee, ${activeModule?.color}88)` }}>
+                <div className="absolute top-[-25px] right-[-25px] w-32 h-32 rounded-full pointer-events-none"
+                  style={{ background: 'white', opacity: 0.1 }} />
+                <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 rounded-full pointer-events-none"
+                  style={{ background: 'white', opacity: 0.06 }} />
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ opacity: 0.75 }}>Tourlar</p>
+                <p className="text-5xl font-black mt-1 leading-none">
+                  {activeExpenseTab === 'general' || activeExpenseTab === 'hotels'
+                    ? filteredBookingsWithHotels.length
+                    : bookingsDetailedData.length}
+                </p>
+                <p className="text-xs mt-2 font-medium" style={{ opacity: 0.6 }}>
+                  {activeExpenseTab === 'hotels' ? `${getPivotData().hotels.length} ta mehmonxona` :
+                   activeExpenseTab === 'guides' ? `${bookingsDetailedData.filter(b=>(b.expenses?.guide||0)>0).length} ta gid xarajati` :
+                   activeExpenseTab === 'transport' ? `${bookingsDetailedData.filter(b=>(b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+(b.expenses?.transportNosir||0)>0).length} transport bor` :
+                   `${getPivotData().hotels.length} ta mehmonxona`}
+                </p>
+                <div className="absolute bottom-4 right-4" style={{ opacity: 0.18 }}>
+                  <Hotel size={52} color="white" />
                 </div>
+              </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center bg-green-100"
-                    >
-                      <DollarSign size={20} className="text-green-600" />
-                    </div>
-                    <div>
-                      {activeExpenseTab === 'guides' ? (
-                        <>
-                          <p className="text-sm text-gray-600">Total Guide Cost (USD)</p>
-                          <p className="text-xl font-bold text-gray-900">${formatNumber(getGrandTotalUSD())}</p>
-                        </>
-                      ) : activeExpenseTab === 'transport' ? (
-                        <>
-                          <p className="text-sm text-gray-600">Total Transport (UZS)</p>
-                          <p className="text-xl font-bold text-gray-900">{formatNumber(getGrandTotalUZS())}</p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-sm text-gray-600">Total Amount (USD)</p>
-                          <p className="text-xl font-bold text-gray-900">${formatNumber(getGrandTotalUSD())}</p>
-                          <p className="text-sm text-gray-600 mt-1">Total Amount (UZS)</p>
-                          <p className="text-xl font-bold text-gray-900">{formatNumber(getGrandTotalUZS())}</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
+              {/* Card 2 — USD */}
+              <div className="relative overflow-hidden rounded-2xl p-5 bg-white shadow-sm border border-white/60">
+                <div className="absolute top-[-20px] right-[-20px] w-28 h-28 rounded-full pointer-events-none"
+                  style={{ background: activeModule?.color, opacity: 0.06 }} />
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                  {activeExpenseTab === 'transport' ? 'Jami Transport' : 'Jami USD'}
+                </p>
+                <p className="text-4xl font-black mt-1 leading-none" style={{ color: activeModule?.color }}>
+                  {activeExpenseTab === 'transport'
+                    ? formatNumber(getGrandTotalUZS())
+                    : `$${formatNumber(getGrandTotalUSD())}`}
+                </p>
+                <div className="mt-3 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: '72%', background: `linear-gradient(90deg, ${activeModule?.color}, ${activeModule?.color}66)` }} />
+                </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  {activeExpenseTab === 'guides' ? 'Gid xarajatlari summasi' : 'Umumiy summalar'}
+                </p>
+                <div className="absolute bottom-4 right-4" style={{ opacity: 0.07 }}>
+                  <DollarSign size={52} style={{ color: activeModule?.color }} />
+                </div>
+              </div>
+
+              {/* Card 3 — UZS */}
+              <div className="relative overflow-hidden rounded-2xl p-5 text-white"
+                style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)' }}>
+                <div className="absolute top-[-20px] right-[-20px] w-28 h-28 rounded-full pointer-events-none bg-white" style={{ opacity: 0.1 }} />
+                <p className="text-xs font-bold uppercase tracking-widest text-amber-100" style={{ opacity: 0.8 }}>
+                  {activeExpenseTab === 'transport' ? 'Provayderlar' :
+                   activeExpenseTab === 'guides' ? 'Gidlar' : 'Jami UZS'}
+                </p>
+                <p className="text-4xl font-black mt-1 leading-none text-white">
+                  {activeExpenseTab === 'transport'
+                    ? bookingsDetailedData.filter(b=>(b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+(b.expenses?.transportNosir||0)>0).length
+                    : activeExpenseTab === 'guides'
+                    ? bookingsDetailedData.filter(b=>(b.expenses?.guide||0)>0).length
+                    : formatNumber(getGrandTotalUZS())}
+                </p>
+                <p className="text-xs text-amber-100 mt-2" style={{ opacity: 0.65 }}>
+                  {activeExpenseTab === 'transport' ? 'faol transport provayder' :
+                   activeExpenseTab === 'guides' ? 'ta gid xarajati bor' : 'UZS summasi'}
+                </p>
+                <div className="absolute bottom-4 right-4" style={{ opacity: 0.18 }}>
+                  <BarChart3 size={52} color="white" />
                 </div>
               </div>
             </div>
+          )}
 
-            {/* General Tab - Comprehensive Expenses */}
-            {activeExpenseTab === 'general' && (
-              <div className="overflow-x-auto">
-                {bookingsDetailedData.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <BarChart3 size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">No expense data available for {activeModule?.name}</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Warning if some bookings are filtered out */}
-                    {bookingsDetailedData.length > filteredBookingsWithHotels.length && (
-                      <div className="px-6 py-3 bg-amber-50 border-l-4 border-amber-400">
-                        <p className="text-sm text-amber-800">
-                          ⚠️ <strong>Note:</strong> Showing {filteredBookingsWithHotels.length} of {bookingsDetailedData.length} bookings.
-                          {' '}{bookingsDetailedData.length - filteredBookingsWithHotels.length} booking(s) hidden (no Hotels data).
-                        </p>
-                      </div>
-                    )}
-                    <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300 bg-gray-100">
-                          No.
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-100 z-10 border-r border-gray-300" style={{ left: '50px' }}>
-                          Name
-                        </th>
-                        <th colSpan="2" className="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-purple-100 border-r border-gray-300">
-                          Hotels
-                        </th>
-                        <th colSpan="3" className="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-100 border-r border-gray-300">
-                          Transport
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-100 border-r border-gray-300">
-                          Railway
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-yellow-100 border-r border-gray-300">
-                          Flights
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-orange-100 border-r border-gray-300">
-                          Guide
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-pink-100 border-r border-gray-300">
-                          Meals
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-indigo-100 border-r border-gray-300">
-                          Eintritt
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-cyan-100 border-r border-gray-300">
-                          Metro
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-teal-100 border-r border-gray-300">
-                          Shou
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-gray-100 border-r border-gray-300">
-                          Other
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-amber-100 border-r border-gray-300">
-                          Total UZS
-                        </th>
-                        <th rowSpan="2" className="px-3 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-green-100 border-r border-gray-300">
-                          Total USD
-                        </th>
-                      </tr>
-                      <tr>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider bg-purple-50 border-r border-gray-200">
-                          USD
-                        </th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-purple-700 uppercase tracking-wider bg-purple-50 border-r border-gray-300">
-                          UZS
-                        </th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-50 border-r border-gray-200">
-                          Sevil
-                        </th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-50 border-r border-gray-200">
-                          Xayrulla
-                        </th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-50 border-r border-gray-300">
-                          Nosir
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {bookingsDetailedData
-                        .filter(booking => {
-                          const exp = booking.expenses || {};
-                          // Only show bookings with Hotels data (USD or UZS)
-                          return (exp.hotelsUSD > 0 || exp.hotelsUZS > 0);
-                        })
-                        .map((booking, idx) => {
-                        const exp = booking.expenses || {};
-                        // Calculate totals: UZS and USD separately
-                        const totalUZS = (exp.hotelsUZS || 0) + (exp.railway || 0) + (exp.flights || 0) +
-                                        (exp.meals || 0) + (exp.eintritt || 0) + (exp.metro || 0) +
-                                        (exp.shou || 0) + (exp.other || 0);
-                        const totalUSD = (exp.hotelsUSD || 0) + (exp.transportSevil || 0) +
-                                        (exp.transportXayrulla || 0) + (exp.transportNosir || 0) + (exp.guide || 0);
+          {/* Main Content Card */}
+          <div className="rounded-2xl overflow-hidden shadow-lg border border-white/40" style={{ background: 'white' }}>
 
-                        return (
-                          <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-3 py-3 text-center text-sm text-gray-600 border-r border-gray-200">
-                              {idx + 1}
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap sticky left-0 bg-white z-10 border-r border-gray-200" style={{ left: '50px' }}>
-                              <Link
-                                to={`/bookings/${booking.bookingId}`}
-                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                              >
-                                {booking.bookingName}
-                              </Link>
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-200">
-                              {exp.hotelsUSD > 0 ? `$${formatNumber(exp.hotelsUSD)}` : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.hotelsUZS > 0 ? formatNumber(exp.hotelsUZS) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-200">
-                              {exp.transportSevil > 0 ? `$${formatNumber(exp.transportSevil)}` : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-200">
-                              {exp.transportXayrulla > 0 ? `$${formatNumber(exp.transportXayrulla)}` : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.transportNosir > 0 ? `$${formatNumber(exp.transportNosir)}` : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.railway > 0 ? formatNumber(exp.railway) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.flights > 0 ? formatNumber(exp.flights) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.guide > 0 ? `$${formatNumber(exp.guide)}` : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.meals > 0 ? formatNumber(exp.meals) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.eintritt > 0 ? formatNumber(exp.eintritt) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.metro > 0 ? formatNumber(exp.metro) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.shou > 0 ? formatNumber(exp.shou) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-medium text-gray-900 border-r border-gray-300">
-                              {exp.other > 0 ? formatNumber(exp.other) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-bold text-gray-900 bg-amber-50 border-r border-gray-300">
-                              {totalUZS > 0 ? formatNumber(totalUZS) : '-'}
-                            </td>
-                            <td className="px-3 py-3 text-center text-sm font-bold text-gray-900 bg-green-50 border-r border-gray-300">
-                              {totalUSD > 0 ? `$${formatNumber(totalUSD)}` : '-'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {/* Total Row */}
-                      <tr className="bg-gray-100 font-bold border-t-2 border-gray-400">
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-200"></td>
-                        <td className="px-3 py-3 text-sm sticky left-0 bg-gray-100 z-10 border-r border-gray-200" style={{ left: '50px' }}>
-                          TOTAL
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-200">
-                          ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.hotelsUSD || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.hotelsUZS || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-200">
-                          ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.transportSevil || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-200">
-                          ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.transportXayrulla || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.transportNosir || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.railway || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.flights || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.guide || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.meals || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.eintritt || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.metro || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.shou || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => sum + (b.expenses?.other || 0), 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm bg-amber-100 border-r border-gray-300">
-                          {formatNumber(filteredBookingsWithHotels.reduce((sum, b) => {
-                            const exp = b.expenses || {};
-                            return sum + (exp.hotelsUZS || 0) + (exp.railway || 0) + (exp.flights || 0) +
-                                   (exp.meals || 0) + (exp.eintritt || 0) + (exp.metro || 0) +
-                                   (exp.shou || 0) + (exp.other || 0);
-                          }, 0))}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm bg-green-100 border-r border-gray-300">
-                          ${formatNumber(filteredBookingsWithHotels.reduce((sum, b) => {
-                            const exp = b.expenses || {};
-                            return sum + (exp.hotelsUSD || 0) + (exp.transportSevil || 0) +
-                                   (exp.transportXayrulla || 0) + (exp.transportNosir || 0) + (exp.guide || 0);
-                          }, 0))}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  </>
-                )}
+            {/* Sub-tabs */}
+            <div className="flex" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              {expenseTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeExpenseTab === tab.id;
+                const tg = tabGradients[tab.id];
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => updateParams({ tab: tab.id })}
+                    className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold transition-all relative"
+                    style={isActive ? {
+                      background: `linear-gradient(180deg, ${tg.light} 0%, white 100%)`,
+                      color: tg.from,
+                      borderBottom: `3px solid ${tg.from}`,
+                      marginBottom: '-1px',
+                    } : {
+                      color: '#94a3b8',
+                      borderBottom: '3px solid transparent',
+                    }}
+                  >
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                      style={isActive ? { background: `linear-gradient(135deg, ${tg.from}, ${tg.to})` } : { background: '#f1f5f9' }}>
+                      <Icon size={14} color={isActive ? 'white' : '#94a3b8'} />
+                    </span>
+                    {tab.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {loading ? (
+              <div className="py-24 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-5"
+                  style={{ background: `linear-gradient(135deg, ${activeModule?.color}20, ${activeModule?.color}10)` }}>
+                  <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: `${activeModule?.color}40`, borderTopColor: activeModule?.color }} />
+                </div>
+                <p className="text-slate-400 font-medium">Ma'lumotlar yuklanmoqda...</p>
               </div>
-            )}
-
-            {/* Hotels Pivot Table */}
-            {activeExpenseTab === 'hotels' && (
-              <div className="overflow-x-auto">
-                {bookingsDetailedData.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <Hotel size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">No hotel data available for {activeModule?.name}</p>
+            ) : (
+              <>
+                {/* ── GENERAL TAB ── */}
+                {activeExpenseTab === 'general' && (
+                  <div className="overflow-x-auto">
+                    {bookingsDetailedData.length === 0 ? (
+                      <EmptyState icon={BarChart3} label={`${activeModule?.name} uchun ma'lumot yo'q`} />
+                    ) : (
+                      <>
+                        {bookingsDetailedData.length > filteredBookingsWithHotels.length && (
+                          <div className="px-5 py-2.5 flex items-center gap-2"
+                            style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
+                            <span className="text-amber-500">⚠️</span>
+                            <p className="text-xs text-amber-700">
+                              <strong>{filteredBookingsWithHotels.length}</strong> / {bookingsDetailedData.length} booking ko'rsatilmoqda
+                              ({bookingsDetailedData.length - filteredBookingsWithHotels.length} ta mehmonxona ma'lumoti yo'q)
+                            </p>
+                          </div>
+                        )}
+                        <table className="min-w-full text-xs">
+                          <thead>
+                            <tr>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-slate-600 w-10"
+                                style={{ background: 'linear-gradient(180deg, #1e293b, #0f172a)' }}>#</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-left font-bold text-white uppercase tracking-wider border-r border-slate-600 sticky left-0 z-10"
+                                style={{ background: 'linear-gradient(180deg, #1e293b, #0f172a)', minWidth: '130px' }}>Booking</th>
+                              {/* Hotels */}
+                              <th colSpan="2" className="px-2 py-2 text-center font-bold text-purple-100 uppercase tracking-wider border-r border-purple-700"
+                                style={{ background: 'linear-gradient(180deg, #6d28d9, #7c3aed)' }}>🏨 Hotels</th>
+                              {/* Transport */}
+                              <th colSpan="3" className="px-2 py-2 text-center font-bold text-blue-100 uppercase tracking-wider border-r border-blue-700"
+                                style={{ background: 'linear-gradient(180deg, #1d4ed8, #2563eb)' }}>🚌 Transport</th>
+                              {/* Railway */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-green-100 uppercase tracking-wider border-r border-green-700"
+                                style={{ background: 'linear-gradient(180deg, #15803d, #16a34a)' }}>🚂 Train</th>
+                              {/* Flights */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-sky-100 uppercase tracking-wider border-r border-sky-700"
+                                style={{ background: 'linear-gradient(180deg, #0369a1, #0284c7)' }}>✈️ Flights</th>
+                              {/* Guide */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-orange-100 uppercase tracking-wider border-r border-orange-700"
+                                style={{ background: 'linear-gradient(180deg, #c2410c, #ea580c)' }}>👤 Guide</th>
+                              {/* Meals */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-pink-100 uppercase tracking-wider border-r border-pink-700"
+                                style={{ background: 'linear-gradient(180deg, #be185d, #db2777)' }}>🍽 Meals</th>
+                              {/* Eintritt */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-indigo-100 uppercase tracking-wider border-r border-indigo-700"
+                                style={{ background: 'linear-gradient(180deg, #4338ca, #4f46e5)' }}>🎫 Eintritt</th>
+                              {/* Metro */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-cyan-100 uppercase tracking-wider border-r border-cyan-700"
+                                style={{ background: 'linear-gradient(180deg, #0e7490, #0891b2)' }}>🚇 Metro</th>
+                              {/* Shou */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-teal-100 uppercase tracking-wider border-r border-teal-700"
+                                style={{ background: 'linear-gradient(180deg, #0f766e, #0d9488)' }}>🎭 Shou</th>
+                              {/* Other */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-300 uppercase tracking-wider border-r border-slate-600"
+                                style={{ background: 'linear-gradient(180deg, #334155, #475569)' }}>Other</th>
+                              {/* Totals */}
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-600"
+                                style={{ background: 'linear-gradient(180deg, #b45309, #d97706)' }}>Σ UZS</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider"
+                                style={{ background: 'linear-gradient(180deg, #065f46, #059669)' }}>Σ USD</th>
+                            </tr>
+                            <tr>
+                              <th className="px-3 py-2 text-center font-semibold text-purple-200 border-r border-purple-600" style={{ background: '#5b21b6' }}>USD</th>
+                              <th className="px-3 py-2 text-center font-semibold text-purple-200 border-r border-purple-800" style={{ background: '#5b21b6' }}>UZS</th>
+                              <th className="px-3 py-2 text-center font-semibold text-blue-200 border-r border-blue-600" style={{ background: '#1e40af' }}>Sevil</th>
+                              <th className="px-3 py-2 text-center font-semibold text-blue-200 border-r border-blue-600" style={{ background: '#1e40af' }}>Xayrulla</th>
+                              <th className="px-3 py-2 text-center font-semibold text-blue-200 border-r border-blue-800" style={{ background: '#1e40af' }}>Nosir</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bookingsDetailedData
+                              .filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; })
+                              .map((booking, idx) => {
+                                const e = booking.expenses || {};
+                                const totalUZS = (e.hotelsUZS||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
+                                const totalUSD = (e.hotelsUSD||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.guide||0);
+                                const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                                return (
+                                  <tr key={idx} style={{ background: rowBg }}
+                                    className="transition-colors duration-150 hover:bg-blue-50"
+                                    onMouseEnter={e2 => e2.currentTarget.style.background='#eff6ff'}
+                                    onMouseLeave={e2 => e2.currentTarget.style.background=rowBg}>
+                                    <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
+                                    <td className="px-3 py-2.5 sticky left-0 z-10 border-r border-slate-100" style={{ background: rowBg }}>
+                                      <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{booking.bookingName}</Link>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-purple-100">
+                                      {e.hotelsUSD>0 ? <span className="font-bold text-purple-700">${formatNumber(e.hotelsUSD)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.hotelsUZS>0 ? <span className="font-bold text-purple-700">{formatNumber(e.hotelsUZS)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.transportSevil>0 ? <span className="font-semibold text-blue-600">${formatNumber(e.transportSevil)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.transportXayrulla>0 ? <span className="font-semibold text-blue-600">${formatNumber(e.transportXayrulla)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.transportNosir>0 ? <span className="font-semibold text-blue-600">${formatNumber(e.transportNosir)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.railway>0 ? <span className="font-semibold text-green-700">{formatNumber(e.railway)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.flights>0 ? <span className="font-semibold text-sky-600">{formatNumber(e.flights)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.guide>0 ? <span className="font-semibold text-orange-600">${formatNumber(e.guide)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.meals>0 ? <span className="font-semibold text-pink-600">{formatNumber(e.meals)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.eintritt>0 ? <span className="font-semibold text-indigo-600">{formatNumber(e.eintritt)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.metro>0 ? <span className="font-semibold text-cyan-600">{formatNumber(e.metro)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.shou>0 ? <span className="font-semibold text-teal-600">{formatNumber(e.shou)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.other>0 ? <span className="font-semibold text-slate-600">{formatNumber(e.other)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center border-r border-amber-100" style={{ background: '#fffbeb' }}>
+                                      {totalUZS>0 ? <span className="font-black text-amber-700">{formatNumber(totalUZS)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center" style={{ background: '#f0fdf4' }}>
+                                      {totalUSD>0 ? <span className="font-black text-emerald-700">${formatNumber(totalUSD)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            {/* TOTAL row */}
+                            <tr style={{ background: 'linear-gradient(90deg, #0f172a, #1e293b)' }}>
+                              <td className="px-3 py-3.5 border-r border-slate-700"></td>
+                              <td className="px-3 py-3.5 text-xs font-black text-white uppercase tracking-widest sticky left-0 z-10 border-r border-slate-700"
+                                style={{ background: 'linear-gradient(90deg, #0f172a, #1e293b)' }}>TOTAL</td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-purple-300 border-r border-slate-700">
+                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUSD||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-purple-300 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUZS||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportSevil||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportXayrulla||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportNosir||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-400 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.railway||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-sky-400 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.flights||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-orange-400 border-r border-slate-700">
+                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.guide||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-pink-400 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.meals||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-indigo-400 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.eintritt||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-cyan-400 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.metro||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-teal-400 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.shou||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-slate-300 border-r border-slate-700">
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.other||0),0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-amber-300 border-r border-amber-900"
+                                style={{ background: 'linear-gradient(90deg, #451a03, #78350f)' }}>
+                                {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
+                              </td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-emerald-300"
+                                style={{ background: 'linear-gradient(90deg, #052e16, #14532d)' }}>
+                                ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.guide||0);},0))}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </>
+                    )}
                   </div>
-                ) : (() => {
-                  const pivotData = getPivotData();
-                  return (
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                            No.
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10" style={{ left: '60px' }}>
-                            Name
-                          </th>
-                          {pivotData.hotels.map((hotelName, idx) => (
-                            <th
-                              key={idx}
-                              className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                              style={{
-                                minWidth: '120px',
-                                backgroundColor: idx % 2 === 0 ? '#f9fafb' : '#f3f4f6'
-                              }}
-                            >
-                              {hotelName}
-                            </th>
-                          ))}
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-yellow-50 font-bold">
-                            Total (UZS)
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-50 font-bold">
-                            Total (USD)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {pivotData.bookingRows.map((bookingRow, bookingIdx) => (
-                          <tr key={bookingIdx} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-center text-sm text-gray-600 bg-white">
-                              {bookingIdx + 1}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap sticky left-0 bg-white z-10" style={{ left: '60px' }}>
-                              <Link
-                                to={`/bookings/${bookingRow.bookingId}`}
-                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                              >
-                                {bookingRow.bookingName}
-                              </Link>
-                            </td>
-                            {pivotData.hotels.map((hotelName, hotelIdx) => {
-                              const hotelCost = bookingRow.hotelCosts[hotelName];
-                              const usdCost = hotelCost?.usd || 0;
-                              const uzsCost = hotelCost?.uzs || 0;
-                              const displayCost = uzsCost > 0 ? uzsCost : usdCost;
-                              const isUZS = uzsCost > 0;
+                )}
 
+                {/* ── HOTELS TAB ── */}
+                {activeExpenseTab === 'hotels' && (
+                  <div className="overflow-x-auto">
+                    {bookingsDetailedData.length === 0 ? (
+                      <EmptyState icon={Hotel} label={`${activeModule?.name} uchun mehmonxona ma'lumoti yo'q`} />
+                    ) : (() => {
+                      const pivotData = getPivotData();
+                      const hotelPalette = ['#7c3aed','#db2777','#0891b2','#16a34a','#d97706','#dc2626','#2563eb','#0f766e'];
+                      return (
+                        <table className="min-w-full text-xs">
+                          <thead>
+                            <tr>
+                              <th className="px-4 py-3.5 text-center font-bold text-white w-10 border-r border-slate-600"
+                                style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>#</th>
+                              <th className="px-4 py-3.5 text-left font-bold text-white sticky left-0 z-10 border-r border-slate-600"
+                                style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)', minWidth: '130px' }}>Booking</th>
+                              {pivotData.hotels.map((hotelName, idx) => {
+                                const color = hotelPalette[idx % hotelPalette.length];
+                                return (
+                                  <th key={idx} className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
+                                    style={{ minWidth: '120px', background: `linear-gradient(180deg, ${color}cc, ${color}88)` }}>
+                                    {hotelName}
+                                  </th>
+                                );
+                              })}
+                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
+                                style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
+                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
+                                style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pivotData.bookingRows.map((bookingRow, bookingIdx) => {
+                              const rowBg = bookingIdx % 2 === 0 ? '#ffffff' : '#f8fafc';
                               return (
-                                <td
-                                  key={hotelIdx}
-                                  className="px-4 py-3 text-center text-sm"
-                                  style={{
-                                    backgroundColor: hotelIdx % 2 === 0 ? '#ffffff' : '#f9fafb'
-                                  }}
-                                >
-                                  {displayCost > 0 ? (
-                                    <span className="font-medium text-gray-900">
-                                      {isUZS
-                                        ? formatNumber(displayCost)
-                                        : `$${formatNumber(displayCost)}`
-                                      }
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-300">-</span>
-                                  )}
-                                </td>
+                                <tr key={bookingIdx} style={{ background: rowBg }}
+                                  onMouseEnter={e => e.currentTarget.style.background='#eff6ff'}
+                                  onMouseLeave={e => e.currentTarget.style.background=rowBg}>
+                                  <td className="px-4 py-2.5 text-center text-slate-400 border-r border-slate-100">{bookingIdx+1}</td>
+                                  <td className="px-4 py-2.5 sticky left-0 z-10 border-r border-slate-100" style={{ background: rowBg }}>
+                                    <Link to={`/bookings/${bookingRow.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">
+                                      {bookingRow.bookingName}
+                                    </Link>
+                                  </td>
+                                  {pivotData.hotels.map((hotelName, hotelIdx) => {
+                                    const hc = bookingRow.hotelCosts[hotelName];
+                                    const uzs = hc?.uzs||0; const usd = hc?.usd||0;
+                                    const val = uzs>0 ? uzs : usd;
+                                    const isUZS = uzs>0;
+                                    const color = hotelPalette[hotelIdx % hotelPalette.length];
+                                    return (
+                                      <td key={hotelIdx} className="px-4 py-2.5 text-center">
+                                        {val>0 ? (
+                                          <span className="font-bold inline-block px-2 py-0.5 rounded-md text-white text-xs"
+                                            style={{ background: `${color}cc` }}>
+                                            {isUZS ? formatNumber(val) : `$${formatNumber(val)}`}
+                                          </span>
+                                        ) : <span className="text-slate-200">—</span>}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="px-4 py-2.5 text-center" style={{ background: '#fffbeb' }}>
+                                    <span className="font-black text-amber-700">{formatNumber(bookingRow.totalUZS)}</span>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center" style={{ background: '#f0fdf4' }}>
+                                    <span className="font-black text-emerald-700">${formatNumber(bookingRow.totalUSD)}</span>
+                                  </td>
+                                </tr>
                               );
                             })}
-                            <td className="px-4 py-3 text-center text-sm font-bold text-gray-900 bg-yellow-50">
-                              {formatNumber(bookingRow.totalUZS)}
-                            </td>
-                            <td className="px-4 py-3 text-center text-sm font-bold text-gray-900 bg-blue-50">
-                              ${formatNumber(bookingRow.totalUSD)}
-                            </td>
-                          </tr>
-                        ))}
-                        {/* Total Row */}
-                        <tr className="bg-gray-100 font-bold">
-                          <td className="px-4 py-3 text-center text-sm text-gray-900 bg-gray-100">
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 sticky left-0 bg-gray-100 z-10" style={{ left: '60px' }}>
-                            TOTAL
-                          </td>
-                          {pivotData.hotels.map((hotelName, hotelIdx) => {
-                            const usdTotal = getHotelGrandTotal(hotelName, 'usd');
-                            const uzsTotal = getHotelGrandTotal(hotelName, 'uzs');
-                            const displayTotal = uzsTotal > 0 ? uzsTotal : usdTotal;
-                            const isUZS = uzsTotal > 0;
-
-                            return (
-                              <td
-                                key={hotelIdx}
-                                className="px-4 py-3 text-center text-sm text-gray-900"
-                                style={{
-                                  backgroundColor: hotelIdx % 2 === 0 ? '#f3f4f6' : '#e5e7eb'
-                                }}
-                              >
-                                {isUZS
-                                  ? formatNumber(displayTotal)
-                                  : `$${formatNumber(displayTotal)}`
-                                }
+                            <tr style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>
+                              <td className="px-4 py-3.5 border-r border-slate-700"></td>
+                              <td className="px-4 py-3.5 text-xs font-black text-white uppercase tracking-widest sticky left-0 z-10 border-r border-slate-700"
+                                style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>TOTAL</td>
+                              {pivotData.hotels.map((hotelName, hotelIdx) => {
+                                const usd = getHotelGrandTotal(hotelName,'usd');
+                                const uzs = getHotelGrandTotal(hotelName,'uzs');
+                                const val = uzs>0 ? uzs : usd;
+                                const isUZS = uzs>0;
+                                const color = hotelPalette[hotelIdx % hotelPalette.length];
+                                return (
+                                  <td key={hotelIdx} className="px-4 py-3.5 text-center">
+                                    <span className="font-black text-xs" style={{ color: `${color}dd` }}>
+                                      {isUZS ? formatNumber(val) : `$${formatNumber(val)}`}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+                              <td className="px-4 py-3.5 text-center text-xs font-black text-amber-300"
+                                style={{ background: 'linear-gradient(90deg,#451a03,#78350f)' }}>
+                                {formatNumber(getGrandTotalUZS())}
                               </td>
+                              <td className="px-4 py-3.5 text-center text-xs font-black text-emerald-300"
+                                style={{ background: 'linear-gradient(90deg,#052e16,#14532d)' }}>
+                                ${formatNumber(getGrandTotalUSD())}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* ── GUIDES TAB ── */}
+                {activeExpenseTab === 'guides' && (
+                  <div className="overflow-x-auto">
+                    {bookingsDetailedData.length === 0 ? (
+                      <EmptyState icon={Users} label={`${activeModule?.name} uchun gid ma'lumoti yo'q`} />
+                    ) : (
+                      <table className="min-w-full text-xs">
+                        <thead>
+                          <tr>
+                            <th className="px-4 py-3.5 text-center font-bold text-white w-12 border-r border-slate-600"
+                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>#</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
+                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>Booking</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
+                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>👤 Guide</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white"
+                              style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Guide Cost (USD)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bookingsDetailedData.map((item, idx) => {
+                            const booking = bookings.find(b => b.id === item.bookingId);
+                            const guideName = booking?.guide?.name || '—';
+                            const guideCost = item.expenses?.guide || 0;
+                            const rowBg = idx%2===0 ? '#ffffff' : '#f8fafc';
+                            return (
+                              <tr key={item.bookingId} style={{ background: rowBg }}
+                                onMouseEnter={e => e.currentTarget.style.background='#ecfdf5'}
+                                onMouseLeave={e => e.currentTarget.style.background=rowBg}>
+                                <td className="px-4 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
+                                <td className="px-4 py-2.5 border-r border-slate-100">
+                                  <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
+                                </td>
+                                <td className="px-4 py-2.5 text-slate-600 font-medium border-r border-slate-100">{guideName}</td>
+                                <td className="px-4 py-2.5 text-center" style={{ background: guideCost>0 ? '#f0fdf4' : 'transparent' }}>
+                                  {guideCost>0
+                                    ? <span className="font-black text-emerald-700 text-sm">${formatNumber(guideCost)}</span>
+                                    : <span className="text-slate-200">—</span>}
+                                </td>
+                              </tr>
                             );
                           })}
-                          <td className="px-4 py-3 text-center text-sm text-gray-900 bg-yellow-100 font-bold">
-                            {formatNumber(getGrandTotalUZS())}
-                          </td>
-                          <td className="px-4 py-3 text-center text-sm text-gray-900 bg-blue-100 font-bold">
-                            ${formatNumber(getGrandTotalUSD())}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  );
-                })()}
-              </div>
-            )}
-            {/* Guides Tab */}
-            {activeExpenseTab === 'guides' && (
-              <div className="overflow-x-auto">
-                {bookingsDetailedData.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <Users size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">No guide data available for {activeModule?.name}</p>
-                  </div>
-                ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">No.</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guide</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-blue-50 font-bold">Guide Cost (USD)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {bookingsDetailedData.map((item, idx) => {
-                        const booking = bookings.find(b => b.id === item.bookingId);
-                        const guideName = booking?.guide?.name || '—';
-                        const guideCost = item.expenses?.guide || 0;
-                        return (
-                          <tr key={item.bookingId} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-center text-sm text-gray-600">{idx + 1}</td>
-                            <td className="px-4 py-3">
-                              <Link to={`/bookings/${item.bookingId}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                                {item.bookingName}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700">{guideName}</td>
-                            <td className="px-4 py-3 text-center text-sm font-medium text-gray-900 bg-blue-50">
-                              {guideCost > 0 ? `$${formatNumber(guideCost)}` : <span className="text-gray-300">—</span>}
+                          <tr style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>
+                            <td className="px-4 py-3.5 border-r border-slate-700" colSpan={3}></td>
+                            <td className="px-4 py-3.5 text-center text-sm font-black text-emerald-300"
+                              style={{ background: 'linear-gradient(90deg,#052e16,#14532d)' }}>
+                              ${formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.guide||0),0))}
                             </td>
                           </tr>
-                        );
-                      })}
-                      <tr className="bg-gray-100 font-bold">
-                        <td className="px-4 py-3" colSpan={3} />
-                        <td className="px-4 py-3 text-center text-sm text-gray-900 bg-blue-100">
-                          ${formatNumber(bookingsDetailedData.reduce((s, i) => s + (i.expenses?.guide || 0), 0))}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
 
-            {/* Transport Tab */}
-            {activeExpenseTab === 'transport' && (
-              <div className="overflow-x-auto">
-                {bookingsDetailedData.length === 0 ? (
-                  <div className="p-12 text-center">
-                    <Truck size={48} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500">No transport data available for {activeModule?.name}</p>
-                  </div>
-                ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">No.</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sevil (UZS)</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Xayrulla (UZS)</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nosir (UZS)</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Train (UZS)</th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider bg-yellow-50 font-bold">Total (UZS)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {bookingsDetailedData.map((item, idx) => {
-                        const sevil    = item.expenses?.transportSevil    || 0;
-                        const xayrulla = item.expenses?.transportXayrulla || 0;
-                        const nosir    = item.expenses?.transportNosir    || 0;
-                        const railway  = item.expenses?.railway           || 0;
-                        const total    = sevil + xayrulla + nosir + railway;
-                        return (
-                          <tr key={item.bookingId} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-center text-sm text-gray-600">{idx + 1}</td>
-                            <td className="px-4 py-3">
-                              <Link to={`/bookings/${item.bookingId}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                                {item.bookingName}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-center text-sm text-gray-900">{sevil    > 0 ? formatNumber(sevil)    : <span className="text-gray-300">—</span>}</td>
-                            <td className="px-4 py-3 text-center text-sm text-gray-900">{xayrulla > 0 ? formatNumber(xayrulla) : <span className="text-gray-300">—</span>}</td>
-                            <td className="px-4 py-3 text-center text-sm text-gray-900">{nosir    > 0 ? formatNumber(nosir)    : <span className="text-gray-300">—</span>}</td>
-                            <td className="px-4 py-3 text-center text-sm text-gray-900">{railway  > 0 ? formatNumber(railway)  : <span className="text-gray-300">—</span>}</td>
-                            <td className="px-4 py-3 text-center text-sm font-bold text-gray-900 bg-yellow-50">{total > 0 ? formatNumber(total) : <span className="text-gray-300">—</span>}</td>
+                {/* ── TRANSPORT TAB ── */}
+                {activeExpenseTab === 'transport' && (
+                  <div className="overflow-x-auto">
+                    {bookingsDetailedData.length === 0 ? (
+                      <EmptyState icon={Truck} label={`${activeModule?.name} uchun transport ma'lumoti yo'q`} />
+                    ) : (
+                      <table className="min-w-full text-xs">
+                        <thead>
+                          <tr>
+                            <th className="px-4 py-3.5 text-center font-bold text-white w-12 border-r border-slate-600"
+                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>#</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
+                              style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>Booking</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
+                              style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Sevil</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
+                              style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Xayrulla</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
+                              style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Nosir</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-green-700"
+                              style={{ background: 'linear-gradient(180deg,#14532d,#15803d)' }}>🚂 Train</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white"
+                              style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
                           </tr>
-                        );
-                      })}
-                      <tr className="bg-gray-100 font-bold">
-                        <td className="px-4 py-3" colSpan={2} />
-                        {['transportSevil','transportXayrulla','transportNosir','railway'].map(key => (
-                          <td key={key} className="px-4 py-3 text-center text-sm text-gray-900">
-                            {formatNumber(bookingsDetailedData.reduce((s, i) => s + (i.expenses?.[key] || 0), 0))}
-                          </td>
-                        ))}
-                        <td className="px-4 py-3 text-center text-sm text-gray-900 bg-yellow-100">
-                          {formatNumber(bookingsDetailedData.reduce((s, i) =>
-                            s + (i.expenses?.transportSevil||0) + (i.expenses?.transportXayrulla||0) + (i.expenses?.transportNosir||0) + (i.expenses?.railway||0), 0))}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {bookingsDetailedData.map((item, idx) => {
+                            const sevil=item.expenses?.transportSevil||0;
+                            const xayrulla=item.expenses?.transportXayrulla||0;
+                            const nosir=item.expenses?.transportNosir||0;
+                            const railway=item.expenses?.railway||0;
+                            const total=sevil+xayrulla+nosir+railway;
+                            const rowBg = idx%2===0 ? '#ffffff' : '#f8fafc';
+                            return (
+                              <tr key={item.bookingId} style={{ background: rowBg }}
+                                onMouseEnter={e => e.currentTarget.style.background='#eff6ff'}
+                                onMouseLeave={e => e.currentTarget.style.background=rowBg}>
+                                <td className="px-4 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
+                                <td className="px-4 py-2.5 border-r border-slate-100">
+                                  <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
+                                </td>
+                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  {sevil>0 ? <span className="font-semibold text-blue-700">{formatNumber(sevil)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  {xayrulla>0 ? <span className="font-semibold text-blue-700">{formatNumber(xayrulla)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  {nosir>0 ? <span className="font-semibold text-blue-700">{formatNumber(nosir)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  {railway>0 ? <span className="font-semibold text-green-700">{formatNumber(railway)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-center" style={{ background: total>0 ? '#fffbeb' : 'transparent' }}>
+                                  {total>0 ? <span className="font-black text-amber-700">{formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>
+                            <td className="px-4 py-3.5 border-r border-slate-700"></td>
+                            <td className="px-4 py-3.5 text-xs font-black text-white uppercase tracking-widest border-r border-slate-700">TOTAL</td>
+                            {['transportSevil','transportXayrulla','transportNosir'].map(key => (
+                              <td key={key} className="px-4 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                                {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
+                              </td>
+                            ))}
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-400 border-r border-slate-700">
+                              {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.railway||0),0))}
+                            </td>
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-amber-300"
+                              style={{ background: 'linear-gradient(90deg,#451a03,#78350f)' }}>
+                              {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0)+(i.expenses?.railway||0),0))}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
-          </>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   );

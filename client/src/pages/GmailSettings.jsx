@@ -192,7 +192,7 @@ export default function GmailSettings() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Настройки Gmail</h1>
+      <h1 className="text-2xl font-bold mb-6">Sozlamalar</h1>
 
       {/* Message */}
       {message && (
