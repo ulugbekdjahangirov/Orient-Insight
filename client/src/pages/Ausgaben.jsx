@@ -1153,13 +1153,14 @@ export default function Ausgaben() {
                       <table className="w-full table-fixed text-xs">
                         <colgroup>
                           <col style={{ width: '4%' }} />
-                          <col style={{ width: '12%' }} />
-                          <col style={{ width: '18%' }} />
-                          <col style={{ width: '10%' }} />
-                          <col style={{ width: '18%' }} />
-                          <col style={{ width: '10%' }} />
-                          <col style={{ width: '18%' }} />
-                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '11%' }} />
+                          <col style={{ width: '15%' }} />
+                          <col style={{ width: '9%' }} />
+                          <col style={{ width: '15%' }} />
+                          <col style={{ width: '9%' }} />
+                          <col style={{ width: '15%' }} />
+                          <col style={{ width: '9%' }} />
+                          <col style={{ width: '13%' }} />
                         </colgroup>
                         <thead>
                           <tr>
