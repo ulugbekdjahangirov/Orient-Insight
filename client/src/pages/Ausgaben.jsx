@@ -1224,7 +1224,9 @@ export default function Ausgaben() {
                           </tr>
                         </thead>
                         <tbody>
-                          {bookingsDetailedData.map((item, idx) => {
+                          {bookingsDetailedData
+                            .filter(item => (item.expenses?.transportSevil||0)+(item.expenses?.transportXayrulla||0) > 0)
+                            .map((item, idx) => {
                             const sevil=item.expenses?.transportSevil||0;
                             const xayrulla=item.expenses?.transportXayrulla||0;
                             const total=sevil+xayrulla;
