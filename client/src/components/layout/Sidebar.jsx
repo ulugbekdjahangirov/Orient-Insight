@@ -73,7 +73,7 @@ export default function Sidebar({ open, onToggle }) {
         />
       )}
 
-      <aside className={sidebarClasses}>
+      <aside className={`${sidebarClasses} flex flex-col`}>
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
@@ -134,7 +134,7 @@ export default function Sidebar({ open, onToggle }) {
       </div>
 
       {/* Navigation */}
-      <nav className="p-4 space-y-2">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-2">
         {open && (
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-4 px-3">
             MENU
