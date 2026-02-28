@@ -878,16 +878,6 @@ export default function Ausgaben() {
                       <EmptyState icon={BarChart3} label={`${activeModule?.name} uchun ma'lumot yo'q`} />
                     ) : (
                       <>
-                        {bookingsDetailedData.length > filteredBookingsWithHotels.length && (
-                          <div className="px-5 py-2.5 flex items-center gap-2"
-                            style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
-                            <span className="text-amber-500">⚠️</span>
-                            <p className="text-xs text-amber-700">
-                              <strong>{filteredBookingsWithHotels.length}</strong> / {bookingsDetailedData.length} booking ko'rsatilmoqda
-                              ({bookingsDetailedData.length - filteredBookingsWithHotels.length} ta mehmonxona ma'lumoti yo'q)
-                            </p>
-                          </div>
-                        )}
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr>
