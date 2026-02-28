@@ -1219,8 +1219,6 @@ export default function Ausgaben() {
                               style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Sevil</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
                               style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Xayrulla</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
-                              style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Nosir</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white"
                               style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total (USD)</th>
                           </tr>
@@ -1229,9 +1227,7 @@ export default function Ausgaben() {
                           {bookingsDetailedData.map((item, idx) => {
                             const sevil=item.expenses?.transportSevil||0;
                             const xayrulla=item.expenses?.transportXayrulla||0;
-                            const nosir=item.expenses?.transportNosir||0;
-                            const railway=item.expenses?.railway||0;
-                            const total=sevil+xayrulla+nosir+railway;
+                            const total=sevil+xayrulla;
                             const rowBg = idx%2===0 ? '#ffffff' : '#f8fafc';
                             return (
                               <tr key={item.bookingId} style={{ background: rowBg }}
@@ -1247,11 +1243,8 @@ export default function Ausgaben() {
                                 <td className="px-4 py-2.5 text-center border-r border-slate-100">
                                   {xayrulla>0 ? <span className="font-semibold text-gray-800">{formatNumber(xayrulla)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
-                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
-                                  {nosir>0 ? <span className="font-semibold text-gray-800">{formatNumber(nosir)}</span> : <span className="text-slate-200">—</span>}
-                                </td>
                                 <td className="px-4 py-2.5 text-center">
-                                  {total>0 ? <span className="font-black text-gray-900">{formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
+                                  {total>0 ? <span className="font-black text-gray-900">${formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                               </tr>
                             );
@@ -1259,13 +1252,13 @@ export default function Ausgaben() {
                           <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
                             <td className="px-4 py-3.5 border-r border-green-200"></td>
                             <td className="px-4 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest border-r border-green-200">TOTAL</td>
-                            {['transportSevil','transportXayrulla','transportNosir'].map(key => (
+                            {['transportSevil','transportXayrulla'].map(key => (
                               <td key={key} className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
                               </td>
                             ))}
                             <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
-                              {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0)+(i.expenses?.railway||0),0))}
+                              ${formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0))}
                             </td>
                           </tr>
                         </tbody>
