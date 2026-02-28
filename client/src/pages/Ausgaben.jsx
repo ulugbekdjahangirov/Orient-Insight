@@ -1146,30 +1146,40 @@ export default function Ausgaben() {
 
                 {/* ── GUIDES TAB ── */}
                 {activeExpenseTab === 'guides' && (
-                  <div className="overflow-x-auto">
+                  <div className="w-full">
                     {bookingsDetailedData.length === 0 ? (
                       <EmptyState icon={Users} label={`${activeModule?.name} uchun gid ma'lumoti yo'q`} />
                     ) : (
-                      <table className="min-w-full text-xs">
+                      <table className="w-full table-fixed text-xs">
+                        <colgroup>
+                          <col style={{ width: '4%' }} />
+                          <col style={{ width: '12%' }} />
+                          <col style={{ width: '18%' }} />
+                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '18%' }} />
+                          <col style={{ width: '10%' }} />
+                          <col style={{ width: '18%' }} />
+                          <col style={{ width: '10%' }} />
+                        </colgroup>
                         <thead>
                           <tr>
-                            <th className="px-4 py-3.5 text-center font-bold text-slate-700 w-12 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-center font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>#</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Booking</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Main Guide</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-slate-700 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-center font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Price</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Second Guide</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-slate-700 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-center font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Price</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Bergreiseleiter</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-slate-700 border-r border-blue-200"
+                            <th className="px-3 py-3.5 text-center font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Price</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-white"
+                            <th className="px-3 py-3.5 text-center font-bold text-white"
                               style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total (USD)</th>
                           </tr>
                         </thead>
@@ -1182,23 +1192,23 @@ export default function Ausgaben() {
                               <tr key={item.bookingId} style={{ background: rowBg }}
                                 onMouseEnter={ev => ev.currentTarget.style.background='#ecfdf5'}
                                 onMouseLeave={ev => ev.currentTarget.style.background=rowBg}>
-                                <td className="px-4 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
-                                <td className="px-4 py-2.5 border-r border-slate-100">
+                                <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
+                                <td className="px-3 py-2.5 border-r border-slate-100 truncate">
                                   <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
                                 </td>
-                                <td className="px-4 py-2.5 text-slate-700 font-medium border-r border-slate-100">{e.guideMainName||'—'}</td>
-                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                <td className="px-3 py-2.5 text-slate-700 font-medium border-r border-slate-100 truncate">{e.guideMainName||'—'}</td>
+                                <td className="px-3 py-2.5 text-center border-r border-slate-100">
                                   {e.guideMainCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideMainCost)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
-                                <td className="px-4 py-2.5 text-slate-700 font-medium border-r border-slate-100">{e.guideSecondName||'—'}</td>
-                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                <td className="px-3 py-2.5 text-slate-700 font-medium border-r border-slate-100 truncate">{e.guideSecondName||'—'}</td>
+                                <td className="px-3 py-2.5 text-center border-r border-slate-100">
                                   {e.guideSecondCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideSecondCost)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
-                                <td className="px-4 py-2.5 text-slate-700 font-medium border-r border-slate-100">{e.guideBergrName||'—'}</td>
-                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                <td className="px-3 py-2.5 text-slate-700 font-medium border-r border-slate-100 truncate">{e.guideBergrName||'—'}</td>
+                                <td className="px-3 py-2.5 text-center border-r border-slate-100">
                                   {e.guideBergrCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideBergrCost)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
-                                <td className="px-4 py-2.5 text-center">
+                                <td className="px-3 py-2.5 text-center">
                                   {total>0 ? <span className="font-black text-gray-900">${formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                               </tr>
