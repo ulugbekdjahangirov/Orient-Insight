@@ -734,17 +734,21 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         : booking?.tourType?.code;
 
       let tourName;
+      let uzbekistanTeil = ' (Usbekistan Teil)';
       if (tourTypeCode === 'KAS') {
         tourName = 'Kasakistan, Kirgistan und Usbekistan';
       } else if (tourTypeCode === 'ZA') {
         tourName = 'Zentralasien';
       } else if (tourTypeCode === 'CO') {
-        tourName = 'Usbekistan ComfortPlus';
+        return `für die Usbekistan ComfortPlus (${pax} Personen) ${startDate}- ${endDate}`;
       } else {
-        tourName = 'Usbekistan mit Turkmenistan';
+        // ER: only show "mit Turkmenistan" and "(Usbekistan Teil)" if TM tourists exist
+        const hasTM = (booking?.paxTurkmenistan || 0) > 0;
+        tourName = hasTM ? 'Usbekistan mit Turkmenistan' : 'Usbekistan';
+        if (!hasTM) uzbekistanTeil = '';
       }
 
-      return `für die Erlebnisreisen ${tourName} (${pax} Personen) ${startDate}- ${endDate} (Usbekistan Teil)`;
+      return `für die Erlebnisreisen ${tourName} (${pax} Personen) ${startDate}- ${endDate}${uzbekistanTeil}`;
     }
     return 'für die Erlebnisreisen Usbekistan';
   };

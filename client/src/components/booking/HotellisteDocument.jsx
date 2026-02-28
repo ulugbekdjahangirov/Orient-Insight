@@ -49,12 +49,31 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
     }
   };
 
-  // Get tour dates
+  // Get tour description (Reise field)
   const getTourDates = () => {
     if (booking?.departureDate && booking?.endDate) {
       const start = format(new Date(booking.departureDate), 'dd.MM');
       const end = format(new Date(booking.endDate), 'dd.MM.yyyy');
-      return `die Gruppe ${start}-${end} (Usbekistan Teil)`;
+      const pax = tourists?.length || booking?.pax || 0;
+
+      const tourTypeCode = typeof booking?.tourType === 'string'
+        ? booking?.tourType
+        : booking?.tourType?.code;
+
+      if (tourTypeCode === 'KAS') {
+        return `für die Erlebnisreisen Kasakistan, Kirgistan und Usbekistan (${pax} Personen) ${start}- ${end}`;
+      } else if (tourTypeCode === 'ZA') {
+        return `für die Erlebnisreisen Zentralasien (${pax} Personen) ${start}- ${end}`;
+      } else if (tourTypeCode === 'CO') {
+        return `für die Usbekistan ComfortPlus (${pax} Personen) ${start}- ${end}`;
+      } else {
+        // ER: check if TM tourists exist
+        const hasTM = (booking?.paxTurkmenistan || 0) > 0;
+        if (hasTM) {
+          return `für die Erlebnisreisen Usbekistan mit Turkmenistan (${pax} Personen) ${start}- ${end} (Usbekistan Teil)`;
+        }
+        return `für die Erlebnisreisen Usbekistan (${pax} Personen) ${start}- ${end}`;
+      }
     }
     return '-';
   };
@@ -93,7 +112,7 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
       doc.text(format(new Date(), 'dd-MMM-yy'), 70, yPos);
       yPos += 7;
 
-      doc.text('Reisedatum:', 15, yPos);
+      doc.text('Reise:', 15, yPos);
       doc.text(getTourDates(), 70, yPos);
       yPos += 7;
 
@@ -289,7 +308,7 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
                   <div className="text-gray-900">{format(new Date(), 'dd-MMM-yy')}</div>
                 </div>
                 <div className="flex">
-                  <div className="w-24 md:w-40 font-bold text-gray-700">Reisedatum:</div>
+                  <div className="w-24 md:w-40 font-bold text-gray-700">Reise:</div>
                   <div className="text-gray-900 text-xs md:text-base">{getTourDates()}</div>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-0">
