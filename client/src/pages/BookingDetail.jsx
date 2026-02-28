@@ -2874,7 +2874,7 @@ export default function BookingDetail() {
               for (let i = 0; i < d.length; i += 4) {
                 const dr=d[i]-bgR, dg=d[i+1]-bgG, db=d[i+2]-bgB;
                 const dist=Math.sqrt(dr*dr+dg*dg+db*db);
-                d[i+3] = dist < 12 ? 0 : Math.floor(Math.min(1,(dist-12)/55)*255);
+                d[i+3] = dist < 12 ? 0 : Math.floor(Math.min(1,(dist-12)/55)*130);
               }
               ctx.putImageData(imageData, 0, 0);
               resolve(canvas.toDataURL('image/png'));
