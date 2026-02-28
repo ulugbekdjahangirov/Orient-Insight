@@ -714,6 +714,16 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
     }
   }, [invoiceItems, invoice?.id, bezahlteRechnung, showThreeRows]);
 
+  // Get invoice date: locked to creation date when firma is selected, today otherwise
+  const getInvoiceDate = () => {
+    if (invoice?.firma && invoice?.createdAt) {
+      try {
+        return format(new Date(invoice.createdAt), 'dd.MM.yyyy');
+      } catch { /* fall through */ }
+    }
+    return format(new Date(), 'dd.MM.yyyy');
+  };
+
   // Get tour description
   const getTourDescription = () => {
     // For Gutschrift, show special message with invoice number
@@ -829,7 +839,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
       }
       doc.text(`Datum:`, 155, yPos);
-      doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
+      doc.text(`${getInvoiceDate()}`, 195, yPos, { align: 'right' });
       yPos += 10;
 
       // Invoice table (more compact)
@@ -1087,7 +1097,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
       }
       doc.text(`Datum:`, 155, yPos);
-      doc.text(`${format(new Date(), 'dd.MM.yyyy')}`, 195, yPos, { align: 'right' });
+      doc.text(`${getInvoiceDate()}`, 195, yPos, { align: 'right' });
       yPos += 15;
 
       // Invoice table
@@ -1367,7 +1377,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
               </div>
               <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 md:p-4 border-2 border-blue-200 shadow-md text-right">
                 <div className="text-xs md:text-sm text-gray-600 mb-1">Datum:</div>
-                <div className="font-bold text-base md:text-xl text-gray-900">{format(new Date(), 'dd.MM.yyyy')}</div>
+                <div className="font-bold text-base md:text-xl text-gray-900">{getInvoiceDate()}</div>
               </div>
             </div>
 
