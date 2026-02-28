@@ -38,34 +38,13 @@ export default function Ausgaben() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]); // Store all booking data with calculations
-  const [metroVehicles, setMetroVehicles] = useState([]); // Metro data from Opex Transport API
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
 
   useEffect(() => {
-    loadVehiclesFromApi();
-  }, []);
-
-  useEffect(() => {
     loadBookingsAndExpenses();
-  }, [activeTourType, activeExpenseTab, selectedYear]);
-
-  // Load Metro vehicles from Opex Transport API
-  const loadVehiclesFromApi = async () => {
-    try {
-      const response = await transportApi.getAll(selectedYear);
-      const { grouped } = response.data;
-      if (grouped.metro?.length > 0) {
-        setMetroVehicles(grouped.metro);
-      } else {
-        console.warn('⚠️ No Metro vehicles found in OPEX Transport');
-      }
-    } catch (error) {
-      console.error('Error loading metro vehicles from API:', error);
-      toast.error('Failed to load Metro data from OPEX');
-    }
-  };
+  }, [activeTourType, selectedYear]);
 
   const loadBookingsAndExpenses = async () => {
     // Check cache first
@@ -183,7 +162,7 @@ export default function Ausgaben() {
       // Load Metro vehicles from Opex Transport API (once for all bookings)
       let metroVehiclesData = [];
       try {
-        const transportResponse = await transportApi.getAll();
+        const transportResponse = await transportApi.getAll(selectedYear);
         const { grouped } = transportResponse.data;
         metroVehiclesData = grouped.metro || [];
       } catch (error) {
@@ -861,11 +840,11 @@ export default function Ausgaben() {
                 <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
                   style={{ background: activeModule?.color, opacity: 0.06 }} />
                 <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                  {activeExpenseTab === 'transport' ? 'Jami Transport' : 'Jami USD'}
+                  {activeExpenseTab === 'transport' ? 'Jami Transport (UZS)' : 'Jami USD'}
                 </p>
                 <p className="text-2xl font-black mt-0.5 leading-none" style={{ color: activeModule?.color }}>
                   {activeExpenseTab === 'transport'
-                    ? formatNumber(getGrandTotalUZS())
+                    ? `${formatNumber(getGrandTotalUZS())} UZS`
                     : `$${formatNumber(getGrandTotalUSD())}`}
                 </p>
                 <div className="mt-2 h-1 rounded-full bg-slate-100 overflow-hidden">
@@ -1014,8 +993,8 @@ export default function Ausgaben() {
                               .filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; })
                               .map((booking, idx) => {
                                 const e = booking.expenses || {};
-                                const totalUZS = (e.hotelsUZS||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
-                                const totalUSD = (e.hotelsUSD||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.guide||0);
+                                const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
+                                const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
                                 const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
                                 return (
                                   <tr key={idx} style={{ background: rowBg }}
@@ -1033,13 +1012,13 @@ export default function Ausgaben() {
                                       {e.hotelsUZS>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.hotelsUZS)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.transportSevil>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.transportSevil)}</span> : <span className="text-slate-300">—</span>}
+                                      {e.transportSevil>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.transportSevil)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.transportXayrulla>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.transportXayrulla)}</span> : <span className="text-slate-300">—</span>}
+                                      {e.transportXayrulla>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.transportXayrulla)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.transportNosir>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.transportNosir)}</span> : <span className="text-slate-300">—</span>}
+                                      {e.transportNosir>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.transportNosir)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
                                       {e.railway>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.railway)}</span> : <span className="text-slate-300">—</span>}
@@ -1086,13 +1065,13 @@ export default function Ausgaben() {
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUZS||0),0))}
                               </td>
                               <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportSevil||0),0))}
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportSevil||0),0))}
                               </td>
                               <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportXayrulla||0),0))}
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportXayrulla||0),0))}
                               </td>
                               <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                                ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportNosir||0),0))}
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportNosir||0),0))}
                               </td>
                               <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.railway||0),0))}
@@ -1119,11 +1098,11 @@ export default function Ausgaben() {
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.other||0),0))}
                               </td>
                               <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                                {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
+                                {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
                               </td>
                               <td className="px-3 py-3.5 text-center text-xs font-black text-green-900"
                                 style={{ background: '#dcfce7' }}>
-                                ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.guide||0);},0))}
+                                ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}
                               </td>
                             </tr>
                           </tbody>
@@ -1194,39 +1173,36 @@ export default function Ausgaben() {
                                       </td>
                                     );
                                   })}
-                                  <td className="px-4 py-2.5 text-center" style={{ background: '#fffbeb' }}>
-                                    <span className="font-black text-amber-700">{formatNumber(bookingRow.totalUZS)}</span>
+                                  <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                    <span className="font-black text-gray-800">{formatNumber(bookingRow.totalUZS)}</span>
                                   </td>
-                                  <td className="px-4 py-2.5 text-center" style={{ background: '#f0fdf4' }}>
-                                    <span className="font-black text-emerald-700">${formatNumber(bookingRow.totalUSD)}</span>
+                                  <td className="px-4 py-2.5 text-center">
+                                    <span className="font-black text-gray-800">${formatNumber(bookingRow.totalUSD)}</span>
                                   </td>
                                 </tr>
                               );
                             })}
-                            <tr style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>
-                              <td className="px-4 py-3.5 border-r border-slate-700"></td>
-                              <td className="px-4 py-3.5 text-xs font-black text-white uppercase tracking-widest sticky left-0 z-10 border-r border-slate-700"
-                                style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>TOTAL</td>
+                            <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
+                              <td className="px-4 py-3.5 border-r border-green-200"></td>
+                              <td className="px-4 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest sticky left-0 z-10 border-r border-green-200"
+                                style={{ background: '#dcfce7' }}>TOTAL</td>
                               {pivotData.hotels.map((hotelName, hotelIdx) => {
                                 const usd = getHotelGrandTotal(hotelName,'usd');
                                 const uzs = getHotelGrandTotal(hotelName,'uzs');
                                 const val = uzs>0 ? uzs : usd;
                                 const isUZS = uzs>0;
-                                const color = hotelPalette[hotelIdx % hotelPalette.length];
                                 return (
-                                  <td key={hotelIdx} className="px-4 py-3.5 text-center">
-                                    <span className="font-black text-xs" style={{ color: `${color}dd` }}>
+                                  <td key={hotelIdx} className="px-4 py-3.5 text-center border-r border-green-200">
+                                    <span className="font-black text-xs text-green-900">
                                       {isUZS ? formatNumber(val) : `$${formatNumber(val)}`}
                                     </span>
                                   </td>
                                 );
                               })}
-                              <td className="px-4 py-3.5 text-center text-xs font-black text-amber-300"
-                                style={{ background: 'linear-gradient(90deg,#451a03,#78350f)' }}>
+                              <td className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(getGrandTotalUZS())}
                               </td>
-                              <td className="px-4 py-3.5 text-center text-xs font-black text-emerald-300"
-                                style={{ background: 'linear-gradient(90deg,#052e16,#14532d)' }}>
+                              <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
                                 ${formatNumber(getGrandTotalUSD())}
                               </td>
                             </tr>
@@ -1271,18 +1247,17 @@ export default function Ausgaben() {
                                   <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
                                 </td>
                                 <td className="px-4 py-2.5 text-slate-600 font-medium border-r border-slate-100">{guideName}</td>
-                                <td className="px-4 py-2.5 text-center" style={{ background: guideCost>0 ? '#f0fdf4' : 'transparent' }}>
+                                <td className="px-4 py-2.5 text-center">
                                   {guideCost>0
-                                    ? <span className="font-black text-emerald-700 text-sm">${formatNumber(guideCost)}</span>
+                                    ? <span className="font-semibold text-gray-800">${formatNumber(guideCost)}</span>
                                     : <span className="text-slate-200">—</span>}
                                 </td>
                               </tr>
                             );
                           })}
-                          <tr style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>
-                            <td className="px-4 py-3.5 border-r border-slate-700" colSpan={3}></td>
-                            <td className="px-4 py-3.5 text-center text-sm font-black text-emerald-300"
-                              style={{ background: 'linear-gradient(90deg,#052e16,#14532d)' }}>
+                          <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
+                            <td className="px-4 py-3.5 border-r border-green-200" colSpan={3}></td>
+                            <td className="px-4 py-3.5 text-center text-sm font-black text-green-900">
                               ${formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.guide||0),0))}
                             </td>
                           </tr>
@@ -1334,36 +1309,35 @@ export default function Ausgaben() {
                                   <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
                                 </td>
                                 <td className="px-4 py-2.5 text-center border-r border-slate-100">
-                                  {sevil>0 ? <span className="font-semibold text-blue-700">{formatNumber(sevil)}</span> : <span className="text-slate-200">—</span>}
+                                  {sevil>0 ? <span className="font-semibold text-gray-800">{formatNumber(sevil)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                                 <td className="px-4 py-2.5 text-center border-r border-slate-100">
-                                  {xayrulla>0 ? <span className="font-semibold text-blue-700">{formatNumber(xayrulla)}</span> : <span className="text-slate-200">—</span>}
+                                  {xayrulla>0 ? <span className="font-semibold text-gray-800">{formatNumber(xayrulla)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                                 <td className="px-4 py-2.5 text-center border-r border-slate-100">
-                                  {nosir>0 ? <span className="font-semibold text-blue-700">{formatNumber(nosir)}</span> : <span className="text-slate-200">—</span>}
+                                  {nosir>0 ? <span className="font-semibold text-gray-800">{formatNumber(nosir)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                                 <td className="px-4 py-2.5 text-center border-r border-slate-100">
-                                  {railway>0 ? <span className="font-semibold text-green-700">{formatNumber(railway)}</span> : <span className="text-slate-200">—</span>}
+                                  {railway>0 ? <span className="font-semibold text-gray-800">{formatNumber(railway)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
-                                <td className="px-4 py-2.5 text-center" style={{ background: total>0 ? '#fffbeb' : 'transparent' }}>
-                                  {total>0 ? <span className="font-black text-amber-700">{formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
+                                <td className="px-4 py-2.5 text-center">
+                                  {total>0 ? <span className="font-black text-gray-900">{formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                               </tr>
                             );
                           })}
-                          <tr style={{ background: 'linear-gradient(90deg,#0f172a,#1e293b)' }}>
-                            <td className="px-4 py-3.5 border-r border-slate-700"></td>
-                            <td className="px-4 py-3.5 text-xs font-black text-white uppercase tracking-widest border-r border-slate-700">TOTAL</td>
+                          <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
+                            <td className="px-4 py-3.5 border-r border-green-200"></td>
+                            <td className="px-4 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest border-r border-green-200">TOTAL</td>
                             {['transportSevil','transportXayrulla','transportNosir'].map(key => (
-                              <td key={key} className="px-4 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                              <td key={key} className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
                               </td>
                             ))}
-                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-400 border-r border-slate-700">
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                               {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.railway||0),0))}
                             </td>
-                            <td className="px-4 py-3.5 text-center text-xs font-black text-amber-300"
-                              style={{ background: 'linear-gradient(90deg,#451a03,#78350f)' }}>
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
                               {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0)+(i.expenses?.railway||0),0))}
                             </td>
                           </tr>
