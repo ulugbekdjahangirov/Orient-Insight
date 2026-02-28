@@ -6173,7 +6173,7 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
 router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req, res) => {
   try {
     const { bookingId, hotelId } = req.params;
-    const { email: overrideEmail } = req.body;
+    const { email: overrideEmail, subjectType } = req.body;
 
     // Get hotel email
     const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
@@ -6204,13 +6204,16 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
     // Send email via Gmail
     const gmailService = require('../services/gmail.service');
     const hotelName = hotel?.name || 'Hotel';
-    const subject = `Заявка - ${booking.bookingNumber} - ${hotelName}`;
+    const isIzmenenie = subjectType === 'izmenenie';
+    const subject = isIzmenenie
+      ? `ИЗМЕНЕНИЕ К ЗАЯВКЕ ${booking.bookingNumber} - ${hotelName}`
+      : `ЗАЯВКА ${booking.bookingNumber} - ${hotelName}`;
     const htmlBody = `
       <p>Уважаемый отель ${hotelName},</p>
-      <p>Пожалуйста, ознакомьтесь с прикреплённым запросом на бронирование для группы <strong>${booking.bookingNumber}</strong>.</p>
+      <p>Пожалуйста, ознакомьтесь с прикреплённым ${isIzmenenie ? 'изменением к заявке' : 'запросом на бронирование'} для группы <strong>${booking.bookingNumber}</strong>.</p>
       <p>С уважением,<br>Orient Insight</p>
     `;
-    const filename = `Заявка_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+    const filename = `${isIzmenenie ? 'Изменение' : 'Заявка'}_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
 
     await gmailService.sendEmail({
       to: toEmail,
@@ -6231,7 +6234,7 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
 router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, async (req, res) => {
   try {
     const { bookingId, hotelId } = req.params;
-    const { chatId: overrideChatId } = req.body;
+    const { chatId: overrideChatId, subjectType } = req.body;
 
     const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
     const chatId = overrideChatId || hotel?.telegramChatId;
@@ -6268,7 +6271,8 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     const axios = require('axios');
     const FormData = require('form-data');
     const hotelName = hotel?.name || 'Hotel';
-    const filename = `Заявка_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+    const isTgIzmenenie = subjectType === 'izmenenie';
+    const filename = `${isTgIzmenenie ? 'Изменение' : 'Заявка'}_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
 
     const fmt = (d) => {
       if (!d) return '—';
@@ -6314,7 +6318,7 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
 
     const caption = [
       `🏨 *${hotelName}*`,
-      `📋 Заявка: *${booking.bookingNumber}*`,
+      `📋 ${isTgIzmenenie ? 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' : 'Заявка'}: *${booking.bookingNumber}*`,
       `👥 PAX: *${booking.pax || 0}* kishi`,
       ``,
       ...visitLines,

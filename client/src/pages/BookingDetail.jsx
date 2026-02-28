@@ -962,9 +962,11 @@ export default function BookingDetail() {
   const [sendEmailModal, setSendEmailModal] = useState(null); // { hotelId, hotelName, hotelEmail }
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailInput, setEmailInput] = useState('');
+  const [emailSubjectType, setEmailSubjectType] = useState('zayavka'); // 'zayavka' | 'izmenenie'
   const [sendTelegramModal, setSendTelegramModal] = useState(null); // { hotelId, hotelName, telegramChatId }
   const [sendingTelegram, setSendingTelegram] = useState(false);
   const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
+  const [telegramSubjectType, setTelegramSubjectType] = useState('zayavka'); // 'zayavka' | 'izmenenie'
 
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [accommodationFormOpen, setAccommodationFormOpen] = useState(false);
@@ -18416,6 +18418,20 @@ ${rowsHtml}
             </div>
             <div className="p-6 space-y-4">
               <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Xat turi</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'zayavka', label: 'ЗАЯВКА' },
+                    { value: 'izmenenie', label: 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' },
+                  ].map(opt => (
+                    <label key={opt.value} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${emailSubjectType === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                      <input type="radio" name="emailSubjectType" value={opt.value} checked={emailSubjectType === opt.value} onChange={() => setEmailSubjectType(opt.value)} className="accent-blue-600" />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Hotel email manzili</label>
                 <input
                   type="email"
@@ -18444,7 +18460,7 @@ ${rowsHtml}
                   onClick={async () => {
                     setSendingEmail(true);
                     try {
-                      await bookingsApi.sendHotelRequest(id, sendEmailModal.hotelId, emailInput);
+                      await bookingsApi.sendHotelRequest(id, sendEmailModal.hotelId, emailInput, emailSubjectType);
                       toast.success(`Zayavka ${emailInput} ga yuborildi!`);
                       setSendEmailModal(null);
                     } catch (err) {
@@ -18490,6 +18506,20 @@ ${rowsHtml}
             </div>
             <div className="p-6 space-y-4">
               <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Xat turi</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'zayavka', label: 'ЗАЯВКА' },
+                    { value: 'izmenenie', label: 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' },
+                  ].map(opt => (
+                    <label key={opt.value} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${telegramSubjectType === opt.value ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                      <input type="radio" name="telegramSubjectType" value={opt.value} checked={telegramSubjectType === opt.value} onChange={() => setTelegramSubjectType(opt.value)} className="accent-sky-600" />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Hotel Telegram Chat ID</label>
                 <input
                   type="text"
@@ -18518,7 +18548,7 @@ ${rowsHtml}
                   onClick={async () => {
                     setSendingTelegram(true);
                     try {
-                      await bookingsApi.sendHotelRequestTelegram(id, sendTelegramModal.hotelId, telegramChatIdInput);
+                      await bookingsApi.sendHotelRequestTelegram(id, sendTelegramModal.hotelId, telegramChatIdInput, telegramSubjectType);
                       toast.success(`Zayavka Telegram orqali yuborildi!`);
                       setSendTelegramModal(null);
                     } catch (err) {
