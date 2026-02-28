@@ -37,14 +37,24 @@ export default function Ausgaben() {
   };
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [bookingsDetailedData, setBookingsDetailedData] = useState([]); // Store all booking data with calculations
+  const [bookingsDetailedData, setBookingsDetailedData] = useState([]);
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     loadBookingsAndExpenses();
   }, [activeTourType, selectedYear]);
+
+  const handleRefresh = () => {
+    // Clear localStorage cache for current tour+year
+    const cacheKey = `ausgaben_cache_v5_${activeTourType}_${selectedYear}`;
+    localStorage.removeItem(cacheKey);
+    // Clear in-memory cache
+    setCache({});
+    loadBookingsAndExpenses();
+  };
 
   const loadBookingsAndExpenses = async () => {
     // Check cache first
@@ -59,7 +69,7 @@ export default function Ausgaben() {
       if (cachedData) {
         const parsed = JSON.parse(cachedData);
         const cacheAge = Date.now() - (parsed.timestamp || 0);
-        const maxAge = 5 * 60 * 1000; // 5 minutes cache
+        const maxAge = 1 * 60 * 1000; // 1 minute cache
 
         if (cacheAge < maxAge && parsed.bookings && (!needsDetailedData || parsed.detailedData)) {
           const nonCancelledBookings = parsed.bookings.filter(b => b.status !== 'CANCELLED');
@@ -146,6 +156,7 @@ export default function Ausgaben() {
           ...cacheData,
           timestamp: Date.now()
         }));
+        setLastUpdated(new Date());
       } catch (e) {
         console.warn('Failed to save to localStorage:', e);
       }
@@ -783,6 +794,21 @@ export default function Ausgaben() {
                   <p className="text-2xl font-black text-amber-400">
                     {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
                   </p>
+                </div>
+                <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                <div className="flex flex-col items-end justify-center gap-1.5">
+                  <button onClick={handleRefresh} disabled={loading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
+                    {loading ? '⏳ Yuklanmoqda...' : '🔄 Yangilash'}
+                  </button>
+                  {lastUpdated && !loading && (
+                    <p className="text-xs opacity-50 text-green-100">
+                      {lastUpdated.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
