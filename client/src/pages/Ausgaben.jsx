@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
-import { Hotel, DollarSign, BarChart3, Users, Truck } from 'lucide-react';
+import { Hotel, BarChart3, Users, Truck } from 'lucide-react';
 
 const tourTypeModules = [
   { code: 'ER', name: 'Erlebnisreisen', color: '#3B82F6' },
@@ -823,80 +823,6 @@ export default function Ausgaben() {
       {/* ═══ STATS + CONTENT ═══ */}
       <div style={{ background: '#f1f5f9' }} className="min-h-screen">
         <div className="px-6 py-6">
-
-          {/* Stats Cards */}
-          {!loading && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {/* Card 1 — Tours count */}
-              <div className="relative overflow-hidden rounded-xl px-4 py-3 text-white"
-                style={{ background: `linear-gradient(135deg, ${activeModule?.color}ee, ${activeModule?.color}88)` }}>
-                <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
-                  style={{ background: 'white', opacity: 0.1 }} />
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ opacity: 0.75 }}>Tourlar</p>
-                <p className="text-3xl font-black mt-0.5 leading-none">
-                  {activeExpenseTab === 'general' || activeExpenseTab === 'hotels'
-                    ? filteredBookingsWithHotels.length
-                    : bookingsDetailedData.length}
-                </p>
-                <p className="text-xs mt-1 font-medium" style={{ opacity: 0.6 }}>
-                  {activeExpenseTab === 'hotels' ? `${getPivotData().hotels.length} ta mehmonxona` :
-                   activeExpenseTab === 'guides' ? `${bookingsDetailedData.filter(b=>(b.expenses?.guide||0)>0).length} ta gid xarajati` :
-                   activeExpenseTab === 'transport' ? `${bookingsDetailedData.filter(b=>(b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+(b.expenses?.transportNosir||0)>0).length} transport bor` :
-                   `${getPivotData().hotels.length} ta mehmonxona`}
-                </p>
-                <div className="absolute bottom-2 right-3" style={{ opacity: 0.15 }}>
-                  <Hotel size={36} color="white" />
-                </div>
-              </div>
-
-              {/* Card 2 — USD */}
-              <div className="relative overflow-hidden rounded-xl px-4 py-3 bg-white shadow-sm border border-white/60">
-                <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
-                  style={{ background: activeModule?.color, opacity: 0.06 }} />
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                  {activeExpenseTab === 'transport' ? 'Jami Transport (UZS)' : 'Jami USD'}
-                </p>
-                <p className="text-2xl font-black mt-0.5 leading-none" style={{ color: activeModule?.color }}>
-                  {activeExpenseTab === 'transport'
-                    ? `${formatNumber(getGrandTotalUZS())} UZS`
-                    : `$${formatNumber(getGrandTotalUSD())}`}
-                </p>
-                <div className="mt-2 h-1 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: '72%', background: `linear-gradient(90deg, ${activeModule?.color}, ${activeModule?.color}66)` }} />
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {activeExpenseTab === 'guides' ? 'Gid xarajatlari summasi' : 'Umumiy summalar'}
-                </p>
-                <div className="absolute bottom-2 right-3" style={{ opacity: 0.07 }}>
-                  <DollarSign size={36} style={{ color: activeModule?.color }} />
-                </div>
-              </div>
-
-              {/* Card 3 — UZS */}
-              <div className="relative overflow-hidden rounded-xl px-4 py-3 text-white"
-                style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)' }}>
-                <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none bg-white" style={{ opacity: 0.1 }} />
-                <p className="text-xs font-bold uppercase tracking-widest text-amber-100" style={{ opacity: 0.8 }}>
-                  {activeExpenseTab === 'transport' ? 'Provayderlar' :
-                   activeExpenseTab === 'guides' ? 'Gidlar' : 'Jami UZS'}
-                </p>
-                <p className="text-2xl font-black mt-0.5 leading-none text-white">
-                  {activeExpenseTab === 'transport'
-                    ? bookingsDetailedData.filter(b=>(b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+(b.expenses?.transportNosir||0)>0).length
-                    : activeExpenseTab === 'guides'
-                    ? bookingsDetailedData.filter(b=>(b.expenses?.guide||0)>0).length
-                    : formatNumber(getGrandTotalUZS())}
-                </p>
-                <p className="text-xs text-amber-100 mt-1" style={{ opacity: 0.65 }}>
-                  {activeExpenseTab === 'transport' ? 'faol transport provayder' :
-                   activeExpenseTab === 'guides' ? 'ta gid xarajati bor' : 'UZS summasi'}
-                </p>
-                <div className="absolute bottom-2 right-3" style={{ opacity: 0.18 }}>
-                  <BarChart3 size={36} color="white" />
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Main Content Card */}
           <div className="rounded-2xl overflow-hidden shadow-lg border border-white/40" style={{ background: 'white' }}>
