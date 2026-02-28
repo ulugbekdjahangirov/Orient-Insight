@@ -742,44 +742,47 @@ export default function Ausgaben() {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: '#0f1729' }}>
+    <div className="min-h-screen" style={{ background: '#052e16' }}>
 
       {/* ═══ HERO HEADER ═══ */}
       <div className="relative overflow-hidden" style={{
-        background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 55%, #0f1729 100%)'
+        background: 'linear-gradient(160deg, #14532d 0%, #166534 35%, #15803d 65%, #166534 100%)',
       }}>
         {/* Glow blobs */}
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none"
-          style={{ background: activeModule?.color, opacity: 0.12, filter: 'blur(80px)', transform: 'translate(30%,-30%)' }} />
-        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full pointer-events-none"
-          style={{ background: activeModule?.color, opacity: 0.07, filter: 'blur(60px)', transform: 'translate(-30%,30%)' }} />
+        <div className="absolute top-0 right-0 rounded-full pointer-events-none"
+          style={{ width: '600px', height: '600px', background: activeModule?.color, opacity: 0.22, filter: 'blur(90px)', transform: 'translate(40%,-40%)' }} />
+        <div className="absolute bottom-0 left-0 rounded-full pointer-events-none"
+          style={{ width: '400px', height: '400px', background: '#10b981', opacity: 0.25, filter: 'blur(70px)', transform: 'translate(-30%,40%)' }} />
+        {/* Shimmer */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }} />
 
         <div className="relative px-6 pt-7 pb-6">
           {/* Eyebrow */}
           <div className="flex items-center gap-2 mb-5">
             <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
-              style={{ background: `${activeModule?.color}25`, color: activeModule?.color }}>
+              style={{ background: `${activeModule?.color}35`, color: 'white', border: `1px solid ${activeModule?.color}60` }}>
               {activeModule?.code}
             </span>
-            <span className="text-slate-600 text-xs">›</span>
-            <span className="text-slate-500 text-xs font-medium">{activeModule?.name}</span>
+            <span className="text-green-300 text-xs opacity-70">›</span>
+            <span className="text-green-200 text-xs font-medium opacity-80">{activeModule?.name}</span>
           </div>
 
           {/* Title + Quick Totals */}
           <div className="flex items-end justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-5xl font-black text-white tracking-tight leading-none">Ausgaben</h1>
-              <p className="text-slate-500 text-sm mt-2">Barcha xarajatlar va to'lovlar tahlili</p>
+              <h1 className="text-5xl font-black text-white tracking-tight leading-none" style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Ausgaben</h1>
+              <p className="text-green-200 text-sm mt-2 opacity-75">Barcha xarajatlar va to'lovlar tahlili</p>
             </div>
             {!loading && (
               <div className="flex gap-4">
                 <div className="text-right">
-                  <p className="text-xs text-slate-600 mb-0.5 uppercase tracking-wider">Jami USD</p>
-                  <p className="text-2xl font-black" style={{ color: activeModule?.color }}>${formatNumber(getGrandTotalUSD())}</p>
+                  <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami USD</p>
+                  <p className="text-2xl font-black text-white">${formatNumber(getGrandTotalUSD())}</p>
                 </div>
-                <div className="w-px bg-slate-800" />
+                <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
                 <div className="text-right">
-                  <p className="text-xs text-slate-600 mb-0.5 uppercase tracking-wider">Jami UZS</p>
+                  <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami UZS</p>
                   <p className="text-2xl font-black text-amber-400">{formatNumber(getGrandTotalUZS())}</p>
                 </div>
               </div>
@@ -798,8 +801,8 @@ export default function Ausgaben() {
                   style={{
                     background: isActive
                       ? `linear-gradient(135deg, ${module.color}, ${module.color}99)`
-                      : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${isActive ? module.color + 'aa' : 'rgba(255,255,255,0.08)'}`,
+                      : 'rgba(255,255,255,0.1)',
+                    border: `1px solid ${isActive ? module.color + 'aa' : 'rgba(255,255,255,0.2)'}`,
                     boxShadow: isActive ? `0 0 35px ${module.color}45, 0 8px 25px rgba(0,0,0,0.4)` : 'none',
                     transform: isActive ? 'translateY(-3px)' : 'none',
                   }}
@@ -830,75 +833,73 @@ export default function Ausgaben() {
 
           {/* Stats Cards */}
           {!loading && (
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-4">
               {/* Card 1 — Tours count */}
-              <div className="relative overflow-hidden rounded-2xl p-5 text-white"
+              <div className="relative overflow-hidden rounded-xl px-4 py-3 text-white"
                 style={{ background: `linear-gradient(135deg, ${activeModule?.color}ee, ${activeModule?.color}88)` }}>
-                <div className="absolute top-[-25px] right-[-25px] w-32 h-32 rounded-full pointer-events-none"
+                <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
                   style={{ background: 'white', opacity: 0.1 }} />
-                <div className="absolute bottom-[-20px] left-[-20px] w-24 h-24 rounded-full pointer-events-none"
-                  style={{ background: 'white', opacity: 0.06 }} />
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ opacity: 0.75 }}>Tourlar</p>
-                <p className="text-5xl font-black mt-1 leading-none">
+                <p className="text-3xl font-black mt-0.5 leading-none">
                   {activeExpenseTab === 'general' || activeExpenseTab === 'hotels'
                     ? filteredBookingsWithHotels.length
                     : bookingsDetailedData.length}
                 </p>
-                <p className="text-xs mt-2 font-medium" style={{ opacity: 0.6 }}>
+                <p className="text-xs mt-1 font-medium" style={{ opacity: 0.6 }}>
                   {activeExpenseTab === 'hotels' ? `${getPivotData().hotels.length} ta mehmonxona` :
                    activeExpenseTab === 'guides' ? `${bookingsDetailedData.filter(b=>(b.expenses?.guide||0)>0).length} ta gid xarajati` :
                    activeExpenseTab === 'transport' ? `${bookingsDetailedData.filter(b=>(b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+(b.expenses?.transportNosir||0)>0).length} transport bor` :
                    `${getPivotData().hotels.length} ta mehmonxona`}
                 </p>
-                <div className="absolute bottom-4 right-4" style={{ opacity: 0.18 }}>
-                  <Hotel size={52} color="white" />
+                <div className="absolute bottom-2 right-3" style={{ opacity: 0.15 }}>
+                  <Hotel size={36} color="white" />
                 </div>
               </div>
 
               {/* Card 2 — USD */}
-              <div className="relative overflow-hidden rounded-2xl p-5 bg-white shadow-sm border border-white/60">
-                <div className="absolute top-[-20px] right-[-20px] w-28 h-28 rounded-full pointer-events-none"
+              <div className="relative overflow-hidden rounded-xl px-4 py-3 bg-white shadow-sm border border-white/60">
+                <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
                   style={{ background: activeModule?.color, opacity: 0.06 }} />
                 <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
                   {activeExpenseTab === 'transport' ? 'Jami Transport' : 'Jami USD'}
                 </p>
-                <p className="text-4xl font-black mt-1 leading-none" style={{ color: activeModule?.color }}>
+                <p className="text-2xl font-black mt-0.5 leading-none" style={{ color: activeModule?.color }}>
                   {activeExpenseTab === 'transport'
                     ? formatNumber(getGrandTotalUZS())
                     : `$${formatNumber(getGrandTotalUSD())}`}
                 </p>
-                <div className="mt-3 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className="mt-2 h-1 rounded-full bg-slate-100 overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: '72%', background: `linear-gradient(90deg, ${activeModule?.color}, ${activeModule?.color}66)` }} />
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-slate-400 mt-1">
                   {activeExpenseTab === 'guides' ? 'Gid xarajatlari summasi' : 'Umumiy summalar'}
                 </p>
-                <div className="absolute bottom-4 right-4" style={{ opacity: 0.07 }}>
-                  <DollarSign size={52} style={{ color: activeModule?.color }} />
+                <div className="absolute bottom-2 right-3" style={{ opacity: 0.07 }}>
+                  <DollarSign size={36} style={{ color: activeModule?.color }} />
                 </div>
               </div>
 
               {/* Card 3 — UZS */}
-              <div className="relative overflow-hidden rounded-2xl p-5 text-white"
+              <div className="relative overflow-hidden rounded-xl px-4 py-3 text-white"
                 style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)' }}>
-                <div className="absolute top-[-20px] right-[-20px] w-28 h-28 rounded-full pointer-events-none bg-white" style={{ opacity: 0.1 }} />
+                <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none bg-white" style={{ opacity: 0.1 }} />
                 <p className="text-xs font-bold uppercase tracking-widest text-amber-100" style={{ opacity: 0.8 }}>
                   {activeExpenseTab === 'transport' ? 'Provayderlar' :
                    activeExpenseTab === 'guides' ? 'Gidlar' : 'Jami UZS'}
                 </p>
-                <p className="text-4xl font-black mt-1 leading-none text-white">
+                <p className="text-2xl font-black mt-0.5 leading-none text-white">
                   {activeExpenseTab === 'transport'
                     ? bookingsDetailedData.filter(b=>(b.expenses?.transportSevil||0)+(b.expenses?.transportXayrulla||0)+(b.expenses?.transportNosir||0)>0).length
                     : activeExpenseTab === 'guides'
                     ? bookingsDetailedData.filter(b=>(b.expenses?.guide||0)>0).length
                     : formatNumber(getGrandTotalUZS())}
                 </p>
-                <p className="text-xs text-amber-100 mt-2" style={{ opacity: 0.65 }}>
+                <p className="text-xs text-amber-100 mt-1" style={{ opacity: 0.65 }}>
                   {activeExpenseTab === 'transport' ? 'faol transport provayder' :
                    activeExpenseTab === 'guides' ? 'ta gid xarajati bor' : 'UZS summasi'}
                 </p>
-                <div className="absolute bottom-4 right-4" style={{ opacity: 0.18 }}>
-                  <BarChart3 size={52} color="white" />
+                <div className="absolute bottom-2 right-3" style={{ opacity: 0.18 }}>
+                  <BarChart3 size={36} color="white" />
                 </div>
               </div>
             </div>
@@ -908,7 +909,7 @@ export default function Ausgaben() {
           <div className="rounded-2xl overflow-hidden shadow-lg border border-white/40" style={{ background: 'white' }}>
 
             {/* Sub-tabs */}
-            <div className="flex" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+            <div className="flex" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0' }}>
               {expenseTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeExpenseTab === tab.id;
@@ -919,18 +920,20 @@ export default function Ausgaben() {
                     onClick={() => updateParams({ tab: tab.id })}
                     className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold transition-all relative"
                     style={isActive ? {
-                      background: `linear-gradient(180deg, ${tg.light} 0%, white 100%)`,
-                      color: tg.from,
-                      borderBottom: `3px solid ${tg.from}`,
-                      marginBottom: '-1px',
+                      background: 'linear-gradient(180deg, #dcfce7 0%, white 100%)',
+                      color: '#15803d',
+                      borderBottom: `3px solid #16a34a`,
+                      marginBottom: '-2px',
                     } : {
-                      color: '#94a3b8',
+                      color: '#4b5563',
                       borderBottom: '3px solid transparent',
                     }}
                   >
                     <span className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                      style={isActive ? { background: `linear-gradient(135deg, ${tg.from}, ${tg.to})` } : { background: '#f1f5f9' }}>
-                      <Icon size={14} color={isActive ? 'white' : '#94a3b8'} />
+                      style={isActive
+                        ? { background: 'linear-gradient(135deg, #16a34a, #15803d)' }
+                        : { background: '#d1fae5' }}>
+                      <Icon size={14} color={isActive ? 'white' : '#059669'} />
                     </span>
                     {tab.name}
                   </button>
@@ -969,52 +972,41 @@ export default function Ausgaben() {
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-slate-600 w-10"
-                                style={{ background: 'linear-gradient(180deg, #1e293b, #0f172a)' }}>#</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-left font-bold text-white uppercase tracking-wider border-r border-slate-600 sticky left-0 z-10"
-                                style={{ background: 'linear-gradient(180deg, #1e293b, #0f172a)', minWidth: '130px' }}>Booking</th>
-                              {/* Hotels */}
-                              <th colSpan="2" className="px-2 py-2 text-center font-bold text-purple-100 uppercase tracking-wider border-r border-purple-700"
-                                style={{ background: 'linear-gradient(180deg, #6d28d9, #7c3aed)' }}>🏨 Hotels</th>
-                              {/* Transport */}
-                              <th colSpan="3" className="px-2 py-2 text-center font-bold text-blue-100 uppercase tracking-wider border-r border-blue-700"
-                                style={{ background: 'linear-gradient(180deg, #1d4ed8, #2563eb)' }}>🚌 Transport</th>
-                              {/* Railway */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-green-100 uppercase tracking-wider border-r border-green-700"
-                                style={{ background: 'linear-gradient(180deg, #15803d, #16a34a)' }}>🚂 Train</th>
-                              {/* Flights */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-sky-100 uppercase tracking-wider border-r border-sky-700"
-                                style={{ background: 'linear-gradient(180deg, #0369a1, #0284c7)' }}>✈️ Flights</th>
-                              {/* Guide */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-orange-100 uppercase tracking-wider border-r border-orange-700"
-                                style={{ background: 'linear-gradient(180deg, #c2410c, #ea580c)' }}>👤 Guide</th>
-                              {/* Meals */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-pink-100 uppercase tracking-wider border-r border-pink-700"
-                                style={{ background: 'linear-gradient(180deg, #be185d, #db2777)' }}>🍽 Meals</th>
-                              {/* Eintritt */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-indigo-100 uppercase tracking-wider border-r border-indigo-700"
-                                style={{ background: 'linear-gradient(180deg, #4338ca, #4f46e5)' }}>🎫 Eintritt</th>
-                              {/* Metro */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-cyan-100 uppercase tracking-wider border-r border-cyan-700"
-                                style={{ background: 'linear-gradient(180deg, #0e7490, #0891b2)' }}>🚇 Metro</th>
-                              {/* Shou */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-teal-100 uppercase tracking-wider border-r border-teal-700"
-                                style={{ background: 'linear-gradient(180deg, #0f766e, #0d9488)' }}>🎭 Shou</th>
-                              {/* Other */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-300 uppercase tracking-wider border-r border-slate-600"
-                                style={{ background: 'linear-gradient(180deg, #334155, #475569)' }}>Other</th>
-                              {/* Totals */}
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-600"
-                                style={{ background: 'linear-gradient(180deg, #b45309, #d97706)' }}>Σ UZS</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider"
-                                style={{ background: 'linear-gradient(180deg, #065f46, #059669)' }}>Σ USD</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200 w-10"
+                                style={{ background: '#f1f5f9' }}>#</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200 sticky left-0 z-10"
+                                style={{ background: '#f1f5f9', minWidth: '130px' }}>Booking</th>
+                              <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#e2e8f0' }}>🏨 Hotels</th>
+                              <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#e2e8f0' }}>🚌 Transport</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>🚂 Train</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>✈️ Flights</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>👤 Guide</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>🍽 Meals</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>🎫 Eintritt</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>🚇 Metro</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>🎭 Shou</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>Other</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#e2e8f0' }}>Σ UZS</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider"
+                                style={{ background: '#e2e8f0' }}>Σ USD</th>
                             </tr>
                             <tr>
-                              <th className="px-3 py-2 text-center font-semibold text-purple-200 border-r border-purple-600" style={{ background: '#5b21b6' }}>USD</th>
-                              <th className="px-3 py-2 text-center font-semibold text-purple-200 border-r border-purple-800" style={{ background: '#5b21b6' }}>UZS</th>
-                              <th className="px-3 py-2 text-center font-semibold text-blue-200 border-r border-blue-600" style={{ background: '#1e40af' }}>Sevil</th>
-                              <th className="px-3 py-2 text-center font-semibold text-blue-200 border-r border-blue-600" style={{ background: '#1e40af' }}>Xayrulla</th>
-                              <th className="px-3 py-2 text-center font-semibold text-blue-200 border-r border-blue-800" style={{ background: '#1e40af' }}>Nosir</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>USD</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>UZS</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>Sevil</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>Xayrulla</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-500 border-r border-slate-200" style={{ background: '#e8edf5' }}>Nosir</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1034,104 +1026,103 @@ export default function Ausgaben() {
                                     <td className="px-3 py-2.5 sticky left-0 z-10 border-r border-slate-100" style={{ background: rowBg }}>
                                       <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{booking.bookingName}</Link>
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-purple-100">
-                                      {e.hotelsUSD>0 ? <span className="font-bold text-purple-700">${formatNumber(e.hotelsUSD)}</span> : <span className="text-slate-200">—</span>}
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {e.hotelsUSD>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.hotelsUSD)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.hotelsUZS>0 ? <span className="font-bold text-purple-700">{formatNumber(e.hotelsUZS)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.hotelsUZS>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.hotelsUZS)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.transportSevil>0 ? <span className="font-semibold text-blue-600">${formatNumber(e.transportSevil)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.transportSevil>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.transportSevil)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.transportXayrulla>0 ? <span className="font-semibold text-blue-600">${formatNumber(e.transportXayrulla)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.transportXayrulla>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.transportXayrulla)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.transportNosir>0 ? <span className="font-semibold text-blue-600">${formatNumber(e.transportNosir)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.transportNosir>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.transportNosir)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.railway>0 ? <span className="font-semibold text-green-700">{formatNumber(e.railway)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.railway>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.railway)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.flights>0 ? <span className="font-semibold text-sky-600">{formatNumber(e.flights)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.flights>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.flights)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.guide>0 ? <span className="font-semibold text-orange-600">${formatNumber(e.guide)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.guide>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guide)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.meals>0 ? <span className="font-semibold text-pink-600">{formatNumber(e.meals)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.meals>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.meals)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.eintritt>0 ? <span className="font-semibold text-indigo-600">{formatNumber(e.eintritt)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.eintritt>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.eintritt)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.metro>0 ? <span className="font-semibold text-cyan-600">{formatNumber(e.metro)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.metro>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.metro)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.shou>0 ? <span className="font-semibold text-teal-600">{formatNumber(e.shou)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.shou>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.shou)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-center border-r border-slate-100">
-                                      {e.other>0 ? <span className="font-semibold text-slate-600">{formatNumber(e.other)}</span> : <span className="text-slate-200">—</span>}
+                                      {e.other>0 ? <span className="font-semibold text-gray-800">{formatNumber(e.other)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center border-r border-amber-100" style={{ background: '#fffbeb' }}>
-                                      {totalUZS>0 ? <span className="font-black text-amber-700">{formatNumber(totalUZS)}</span> : <span className="text-slate-200">—</span>}
+                                    <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                      {totalUZS>0 ? <span className="font-black text-gray-900">{formatNumber(totalUZS)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
-                                    <td className="px-3 py-2.5 text-center" style={{ background: '#f0fdf4' }}>
-                                      {totalUSD>0 ? <span className="font-black text-emerald-700">${formatNumber(totalUSD)}</span> : <span className="text-slate-200">—</span>}
+                                    <td className="px-3 py-2.5 text-center">
+                                      {totalUSD>0 ? <span className="font-black text-gray-900">${formatNumber(totalUSD)}</span> : <span className="text-slate-300">—</span>}
                                     </td>
                                   </tr>
                                 );
                               })}
                             {/* TOTAL row */}
-                            <tr style={{ background: 'linear-gradient(90deg, #0f172a, #1e293b)' }}>
-                              <td className="px-3 py-3.5 border-r border-slate-700"></td>
-                              <td className="px-3 py-3.5 text-xs font-black text-white uppercase tracking-widest sticky left-0 z-10 border-r border-slate-700"
-                                style={{ background: 'linear-gradient(90deg, #0f172a, #1e293b)' }}>TOTAL</td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-purple-300 border-r border-slate-700">
+                            <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
+                              <td className="px-3 py-3.5 border-r border-green-200"></td>
+                              <td className="px-3 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest sticky left-0 z-10 border-r border-green-200"
+                                style={{ background: '#dcfce7' }}>TOTAL</td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUSD||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-purple-300 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUZS||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportSevil||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportXayrulla||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-blue-300 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportNosir||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-400 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.railway||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-sky-400 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.flights||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-orange-400 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.guide||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-pink-400 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.meals||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-indigo-400 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.eintritt||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-cyan-400 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.metro||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-teal-400 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.shou||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-slate-300 border-r border-slate-700">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.other||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-amber-300 border-r border-amber-900"
-                                style={{ background: 'linear-gradient(90deg, #451a03, #78350f)' }}>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
                                 {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-emerald-300"
-                                style={{ background: 'linear-gradient(90deg, #052e16, #14532d)' }}>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900"
+                                style={{ background: '#dcfce7' }}>
                                 ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.guide||0);},0))}
                               </td>
                             </tr>

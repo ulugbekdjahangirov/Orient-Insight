@@ -2698,34 +2698,40 @@ export default function Jahresplanung() {
   const activeTourColor = TOUR_COLORS[tourTab] || '#3B82F6';
 
   return (
-    <div className="min-h-screen" style={{ background: '#0f1729' }}>
+    <div className="min-h-screen" style={{ background: '#1e1b4b' }}>
 
       {/* ── HERO HEADER ── */}
       <div className="relative overflow-hidden" style={{
-        background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 55%, #0f1729 100%)'
+        background: 'linear-gradient(160deg, #312e81 0%, #4338ca 35%, #6d28d9 65%, #4338ca 100%)',
+        paddingBottom: '4px',
       }}>
-        {/* Glow blob */}
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none"
-          style={{ background: activeTourColor, opacity: 0.12, filter: 'blur(80px)', transform: 'translate(30%,-30%)' }} />
-        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full pointer-events-none"
-          style={{ background: activeTabMeta.color, opacity: 0.08, filter: 'blur(60px)', transform: 'translate(-30%,30%)' }} />
+        {/* Large tour-color glow — top right */}
+        <div className="absolute top-0 right-0 rounded-full pointer-events-none"
+          style={{ width: '600px', height: '600px', background: activeTourColor, opacity: 0.25, filter: 'blur(90px)', transform: 'translate(40%,-40%)' }} />
+        {/* Tab-color glow — bottom left */}
+        <div className="absolute bottom-0 left-0 rounded-full pointer-events-none"
+          style={{ width: '400px', height: '400px', background: activeTabMeta.color, opacity: 0.2, filter: 'blur(70px)', transform: 'translate(-30%,40%)' }} />
+        {/* Center shimmer */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 70%)' }} />
 
-        <div className="relative px-4 md:px-6 pt-7 pb-6">
+        <div className="relative px-4 md:px-6 pt-7 pb-7">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
-              style={{ background: `${activeTourColor}25`, color: activeTourColor }}>
+              style={{ background: `${activeTourColor}35`, color: 'white', border: `1px solid ${activeTourColor}60` }}>
               {YEAR}
             </span>
-            <span className="text-slate-600 text-xs">›</span>
-            <span className="text-slate-500 text-xs font-medium">Yillik Reja</span>
+            <span className="text-indigo-300 text-xs opacity-70">›</span>
+            <span className="text-indigo-200 text-xs font-medium opacity-80">Yillik Reja</span>
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none">
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none"
+            style={{ textShadow: '0 0 40px rgba(255,255,255,0.3)' }}>
             Jahresplanung
           </h1>
-          <p className="text-slate-500 text-sm mt-2">Yillik reja — hotellar, restoranlar, transport</p>
+          <p className="text-indigo-200 text-sm mt-2 opacity-75">Yillik reja — hotellar, restoranlar, transport</p>
 
           {/* Main Tabs */}
           <div className="flex gap-3 mt-6">
@@ -2738,13 +2744,14 @@ export default function Jahresplanung() {
                   onClick={() => { setMainTab(tab.id); localStorage.setItem('jp_mainTab', tab.id); }}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
                   style={isActive ? {
-                    background: `linear-gradient(135deg, ${tab.color}, ${tab.color}bb)`,
+                    background: `linear-gradient(135deg, ${tab.color}, ${tab.color}cc)`,
                     color: 'white',
-                    boxShadow: `0 0 20px ${tab.color}50`,
+                    boxShadow: `0 0 28px ${tab.color}70, 0 4px 12px rgba(0,0,0,0.2)`,
+                    transform: 'translateY(-1px)',
                   } : {
-                    background: 'rgba(255,255,255,0.06)',
-                    color: 'rgba(255,255,255,0.45)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.8)',
+                    border: '1px solid rgba(255,255,255,0.2)',
                   }}
                 >
                   <Icon className="w-4 h-4" />
@@ -2765,19 +2772,19 @@ export default function Jahresplanung() {
                   onClick={() => { setTourTab(t); localStorage.setItem('jp_tourTab', t); }}
                   className="relative overflow-hidden px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200"
                   style={isActive ? {
-                    background: `linear-gradient(135deg, ${color}, ${color}99)`,
+                    background: `linear-gradient(135deg, ${color}, ${color}bb)`,
                     color: 'white',
-                    boxShadow: `0 0 25px ${color}45`,
+                    boxShadow: `0 0 28px ${color}60, 0 4px 12px rgba(0,0,0,0.2)`,
                     transform: 'translateY(-2px)',
                   } : {
-                    background: 'rgba(255,255,255,0.04)',
-                    color: color,
-                    border: `1px solid ${color}40`,
+                    background: 'rgba(255,255,255,0.1)',
+                    color: 'white',
+                    border: `1px solid rgba(255,255,255,0.25)`,
                   }}
                 >
                   {t}
                   {isActive && (
-                    <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-white opacity-60" />
+                    <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-white opacity-70" />
                   )}
                 </button>
               );
