@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Hotel, BarChart3, Users, Truck } from 'lucide-react';
 
 const tourTypeModules = [
+  { code: 'ALL', name: 'Barcha gruppalar', color: '#E5E7EB' },
   { code: 'ER', name: 'Erlebnisreisen', color: '#3B82F6' },
   { code: 'CO', name: 'Comfort', color: '#10B981' },
   { code: 'KAS', name: 'Karawanen Seidenstrasse', color: '#F59E0B' },
@@ -125,9 +126,11 @@ export default function Ausgaben() {
       }
 
       // Filter by tour type, exclude cancelled bookings
-      const filteredBookings = allBookings.filter(
-        booking => booking.tourType?.code === activeTourType && booking.status !== 'CANCELLED'
-      );
+      const filteredBookings = allBookings.filter(booking => {
+        if (booking.status === 'CANCELLED') return false;
+        if (activeTourType === 'ALL') return ['ER','CO','KAS','ZA'].includes(booking.tourType?.code);
+        return booking.tourType?.code === activeTourType;
+      });
 
 
       setBookings(filteredBookings);
@@ -815,31 +818,35 @@ export default function Ausgaben() {
           </div>
 
           {/* Tour Type Cards */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-5 gap-3">
             {tourTypeModules.map((module) => {
               const isActive = activeTourType === module.code;
+              const isTotal = module.code === 'ALL';
+              const activeBg = isTotal
+                ? 'linear-gradient(135deg, #4b5563, #1f2937)'
+                : `linear-gradient(135deg, ${module.color}, ${module.color}99)`;
+              const activeColor = isTotal ? '#f9fafb' : 'white';
+              const inactiveColor = isTotal ? 'rgba(255,255,255,0.55)' : module.color;
               return (
                 <button
                   key={module.code}
                   onClick={() => updateParams({ tour: module.code })}
                   className="relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 group"
                   style={{
-                    background: isActive
-                      ? `linear-gradient(135deg, ${module.color}, ${module.color}99)`
-                      : 'rgba(255,255,255,0.1)',
-                    border: `1px solid ${isActive ? module.color + 'aa' : 'rgba(255,255,255,0.2)'}`,
-                    boxShadow: isActive ? `0 0 35px ${module.color}45, 0 8px 25px rgba(0,0,0,0.4)` : 'none',
+                    background: isActive ? activeBg : 'rgba(255,255,255,0.1)',
+                    border: `1px solid ${isActive ? (isTotal ? '#6b7280aa' : module.color + 'aa') : 'rgba(255,255,255,0.2)'}`,
+                    boxShadow: isActive ? `0 0 35px ${isTotal ? '#6b728045' : module.color + '45'}, 0 8px 25px rgba(0,0,0,0.4)` : 'none',
                     transform: isActive ? 'translateY(-3px)' : 'none',
                   }}
                 >
-                  {/* Shine overlay on hover */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
                     style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 70%)' }} />
-                  {/* Decorative circle */}
                   <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
                     style={{ background: 'white', opacity: isActive ? 0.12 : 0.03 }} />
                   <p className="text-2xl font-black leading-none"
-                    style={{ color: isActive ? 'white' : module.color }}>{module.code}</p>
+                    style={{ color: isActive ? activeColor : inactiveColor }}>
+                    {isTotal ? 'TOTAL' : module.code}
+                  </p>
                   <p className="text-xs mt-1.5 font-medium leading-tight"
                     style={{ color: isActive ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }}>
                     {module.name}
