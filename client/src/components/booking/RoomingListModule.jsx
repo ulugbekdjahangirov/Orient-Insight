@@ -7,8 +7,10 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export default function RoomingListModule({ bookingId, onUpdate }) {
+  const isMobile = useIsMobile();
   const [tourists, setTourists] = useState([]);
   const [booking, setBooking] = useState(null); // Booking details for ЗАЯВКА header
   const [accommodations, setAccommodations] = useState([]); // Hotel accommodations
@@ -1529,192 +1531,200 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between bg-gradient-to-r from-primary-50 to-white p-4 rounded-xl border border-primary-100">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-primary-100 rounded-xl">
-            <Users className="w-6 h-6 text-primary-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Rooming List</h3>
-
-            {/* Enhanced Summary Statistics Panel */}
-            <div className="flex items-stretch gap-4 flex-wrap">
-              {/* Total Guests Card */}
-              <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm">
-                  <Users className="w-6 h-6 text-primary-600" />
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
-                  <div className="text-2xl font-bold text-gray-900">{filteredTourists.length}</div>
-                  <div className="text-xs text-gray-600">{filteredTourists.length === 1 ? 'guest' : 'guests'}</div>
-                </div>
+      {isMobile ? (
+        /* ===== MOBILE HEADER ===== */
+        <div className="flex flex-col gap-3">
+          {/* Title row + action buttons */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-primary-100 rounded-xl">
+                <Users className="w-5 h-5 text-primary-600" />
               </div>
-
-              {/* Room Type Breakdown Cards */}
-              {(() => {
-                const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
-                const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
-                const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
-
-                // IMPORTANT: Use filteredTourists (only those with room numbers)
-                filteredTourists.forEach(t => {
-                  const roomType = (t.roomPreference || '').toUpperCase();
-                  const roomNum = t.roomNumber;
-
-                  if (roomType === 'DBL' || roomType === 'DOUBLE') {
-                    if (roomNum && !seenRooms.DBL.has(roomNum)) {
-                      roomCounts.DBL++;
-                      seenRooms.DBL.add(roomNum);
-                    } else if (!roomNum) {
-                      touristsWithoutRoom.DBL++;
-                    }
-                  } else if (roomType === 'TWN' || roomType === 'TWIN') {
-                    if (roomNum && !seenRooms.TWN.has(roomNum)) {
-                      roomCounts.TWN++;
-                      seenRooms.TWN.add(roomNum);
-                    } else if (!roomNum) {
-                      touristsWithoutRoom.TWN++;
-                    }
-                  } else if (roomType === 'SNGL' || roomType === 'SINGLE') {
-                    if (roomNum && !seenRooms.SNGL.has(roomNum)) {
-                      roomCounts.SNGL++;
-                      seenRooms.SNGL.add(roomNum);
-                    } else if (!roomNum) {
-                      touristsWithoutRoom.SNGL++;
-                    }
-                  }
-                });
-
-                // Add tourists without room numbers (DBL/TWN: 2 people = 1 room, SNGL: 1 person = 1 room)
-                roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
-                roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
-                roomCounts.SNGL += touristsWithoutRoom.SNGL;
-
-                const roomTypes = [
-                  { key: 'DBL', label: 'Double', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-500', icon: '👫' },
-                  { key: 'TWN', label: 'Twin', count: roomCounts.TWN, gradient: 'from-emerald-50 to-emerald-100', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-500', icon: '🛏️' },
-                  { key: 'SNGL', label: 'Single', count: roomCounts.SNGL, gradient: 'from-violet-50 to-violet-100', border: 'border-violet-200', text: 'text-violet-700', badge: 'bg-violet-500', icon: '👤' }
-                ];
-
-                return roomTypes.map(room => {
-                  if (room.count === 0) return null;
-
-                  return (
-                    <div key={room.key} className={`flex items-center gap-3 px-4 py-3 bg-gradient-to-br ${room.gradient} border-2 ${room.border} rounded-xl shadow-sm hover:shadow-md transition-all`}>
-                      <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm`}>
-                        <span className="text-2xl">{room.icon}</span>
+              <h3 className="text-lg font-bold text-gray-900">Rooming List</h3>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button onClick={openAddTouristModal}
+                className="w-9 h-9 flex items-center justify-center bg-emerald-500 text-white rounded-xl shadow-md hover:bg-emerald-600 transition-all" title="Add">
+                <Plus className="w-4 h-4" />
+              </button>
+              {tourists.length > 0 && (
+                <div className="relative">
+                  <button onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                    className="w-9 h-9 flex items-center justify-center bg-white border border-gray-200 text-gray-600 rounded-xl shadow-sm hover:bg-gray-50 transition-all" title="Export">
+                    <Download className="w-4 h-4" />
+                  </button>
+                  {exportMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-xl z-20 py-1 overflow-hidden">
+                        <button onClick={() => handleExport('excel')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50">
+                          <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center"><FileText className="w-3.5 h-3.5 text-green-600" /></div>
+                          <span className="font-medium">Excel (.xlsx)</span>
+                        </button>
+                        <button onClick={() => handleExport('pdf')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50">
+                          <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center"><FileText className="w-3.5 h-3.5 text-red-600" /></div>
+                          <span className="font-medium">PDF</span>
+                        </button>
                       </div>
+                    </>
+                  )}
+                </div>
+              )}
+              <label className="w-9 h-9 flex items-center justify-center bg-primary-600 text-white rounded-xl shadow-md hover:bg-primary-700 cursor-pointer transition-all" title="Import PDF">
+                <Upload className="w-4 h-4" />
+                <input type="file" accept=".pdf" onChange={handlePdfImport} className="hidden" disabled={importing} />
+              </label>
+            </div>
+          </div>
+
+          {/* Stats grid — computed in one IIFE */}
+          {(() => {
+            const rc = { DBL: 0, TWN: 0, SNGL: 0 };
+            const seen = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+            const noRoom = { DBL: 0, TWN: 0, SNGL: 0 };
+            filteredTourists.forEach(t => {
+              const rt = (t.roomPreference || '').toUpperCase();
+              const rn = t.roomNumber;
+              if (rt === 'DBL' || rt === 'DOUBLE') { rn && !seen.DBL.has(rn) ? (rc.DBL++, seen.DBL.add(rn)) : (!rn && noRoom.DBL++); }
+              else if (rt === 'TWN' || rt === 'TWIN') { rn && !seen.TWN.has(rn) ? (rc.TWN++, seen.TWN.add(rn)) : (!rn && noRoom.TWN++); }
+              else if (rt === 'SNGL' || rt === 'SINGLE') { rn && !seen.SNGL.has(rn) ? (rc.SNGL++, seen.SNGL.add(rn)) : (!rn && noRoom.SNGL++); }
+            });
+            rc.DBL += Math.ceil(noRoom.DBL / 2);
+            rc.TWN += Math.ceil(noRoom.TWN / 2);
+            rc.SNGL += noRoom.SNGL;
+            const uzbekCount = uzbekistanTourists.length;
+            const turkmCount = turkmenistanTourists.length;
+
+            const statCards = [
+              { key: 'total', label: 'Guests', count: filteredTourists.length, bg: 'bg-primary-50', border: 'border-primary-200', text: 'text-primary-700', num: 'text-gray-900' },
+              rc.DBL > 0 && { key: 'DBL', label: 'DBL', count: rc.DBL, bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', num: 'text-gray-900' },
+              rc.TWN > 0 && { key: 'TWN', label: 'TWN', count: rc.TWN, bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', num: 'text-gray-900' },
+              rc.SNGL > 0 && { key: 'SNGL', label: 'SNGL', count: rc.SNGL, bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', num: 'text-gray-900' },
+            ].filter(Boolean);
+
+            return (
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-4 gap-2">
+                  {statCards.map(s => (
+                    <div key={s.key} className={`flex flex-col items-center justify-center py-3 px-1 ${s.bg} border-2 ${s.border} rounded-2xl`}>
+                      <span className={`text-xs font-bold ${s.text} uppercase tracking-wide mb-1`}>{s.label}</span>
+                      <span className={`text-2xl font-black ${s.num}`}>{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+                {uzbekCount > 0 && turkmCount > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-green-50 border-2 border-green-200 rounded-2xl">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                        <span className="text-xs font-bold text-green-700 uppercase">UZB</span>
+                      </div>
+                      <span className="text-2xl font-black text-gray-900">{uzbekCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50 border-2 border-purple-200 rounded-2xl">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                        <span className="text-xs font-bold text-purple-700 uppercase">TKM</span>
+                      </div>
+                      <span className="text-2xl font-black text-gray-900">{turkmCount}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        /* ===== DESKTOP HEADER ===== */
+        <div className="flex flex-row items-center justify-between bg-gradient-to-r from-primary-50 to-white p-4 rounded-xl border border-primary-100 gap-3">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary-100 rounded-xl">
+              <Users className="w-6 h-6 text-primary-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Rooming List</h3>
+              <div className="flex items-stretch gap-4 flex-wrap">
+                {/* Total */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm">
+                    <Users className="w-6 h-6 text-primary-600" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
+                    <div className="text-2xl font-bold text-gray-900">{filteredTourists.length}</div>
+                    <div className="text-xs text-gray-600">{filteredTourists.length === 1 ? 'guest' : 'guests'}</div>
+                  </div>
+                </div>
+                {/* Room Type Breakdown Cards */}
+                {(() => {
+                  const roomCounts = { DBL: 0, TWN: 0, SNGL: 0 };
+                  const seenRooms = { DBL: new Set(), TWN: new Set(), SNGL: new Set() };
+                  const touristsWithoutRoom = { DBL: 0, TWN: 0, SNGL: 0 };
+                  filteredTourists.forEach(t => {
+                    const roomType = (t.roomPreference || '').toUpperCase();
+                    const roomNum = t.roomNumber;
+                    if (roomType === 'DBL' || roomType === 'DOUBLE') { if (roomNum && !seenRooms.DBL.has(roomNum)) { roomCounts.DBL++; seenRooms.DBL.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.DBL++; } }
+                    else if (roomType === 'TWN' || roomType === 'TWIN') { if (roomNum && !seenRooms.TWN.has(roomNum)) { roomCounts.TWN++; seenRooms.TWN.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.TWN++; } }
+                    else if (roomType === 'SNGL' || roomType === 'SINGLE') { if (roomNum && !seenRooms.SNGL.has(roomNum)) { roomCounts.SNGL++; seenRooms.SNGL.add(roomNum); } else if (!roomNum) { touristsWithoutRoom.SNGL++; } }
+                  });
+                  roomCounts.DBL += Math.ceil(touristsWithoutRoom.DBL / 2);
+                  roomCounts.TWN += Math.ceil(touristsWithoutRoom.TWN / 2);
+                  roomCounts.SNGL += touristsWithoutRoom.SNGL;
+                  return [
+                    { key: 'DBL', count: roomCounts.DBL, gradient: 'from-blue-50 to-blue-100', border: 'border-blue-200', badge: 'bg-blue-500', icon: '👫' },
+                    { key: 'TWN', count: roomCounts.TWN, gradient: 'from-emerald-50 to-emerald-100', border: 'border-emerald-200', badge: 'bg-emerald-500', icon: '🛏️' },
+                    { key: 'SNGL', count: roomCounts.SNGL, gradient: 'from-violet-50 to-violet-100', border: 'border-violet-200', badge: 'bg-violet-500', icon: '👤' },
+                  ].filter(r => r.count > 0).map(room => (
+                    <div key={room.key} className={`flex items-center gap-3 px-4 py-3 bg-gradient-to-br ${room.gradient} border-2 ${room.border} rounded-xl shadow-sm`}>
+                      <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white shadow-sm"><span className="text-2xl">{room.icon}</span></div>
                       <div>
-                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full ${room.badge} text-white text-xs font-bold uppercase tracking-wider mb-1`}>
-                          {room.key}
-                        </div>
+                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full ${room.badge} text-white text-xs font-bold uppercase mb-1`}>{room.key}</div>
                         <div className="text-2xl font-bold text-gray-900">{room.count}</div>
                         <div className="text-xs text-gray-600">{room.count === 1 ? 'room' : 'rooms'}</div>
                       </div>
                     </div>
-                  );
-                });
-              })()}
-
-              {/* Uzbekistan/Turkmenistan Split Card */}
-              {(() => {
-                const uzbekCount = uzbekistanTourists.length;
-                const turkmCount = turkmenistanTourists.length;
-
-                if (uzbekCount > 0 && turkmCount > 0) {
-                  return (
-                    <div className="flex items-center gap-4 px-4 py-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-sm">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
-                          <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Uzbekistan</span>
-                          <span className="text-lg font-bold text-gray-900">{uzbekCount}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
-                          <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Turkmenistan</span>
-                          <span className="text-lg font-bold text-gray-900">{turkmCount}</span>
-                        </div>
-                      </div>
+                  ));
+                })()}
+                {/* UZB/TKM */}
+                {uzbekistanTourists.length > 0 && turkmenistanTourists.length > 0 && (
+                  <div className="flex items-center gap-4 px-4 py-3 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-sm">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-xs font-medium text-gray-600 uppercase">UZB</span><span className="text-lg font-bold text-gray-900">{uzbekistanTourists.length}</span></div>
+                      <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-purple-500" /><span className="text-xs font-medium text-gray-600 uppercase">TKM</span><span className="text-lg font-bold text-gray-900">{turkmenistanTourists.length}</span></div>
                     </div>
-                  );
-                }
-                return null;
-              })()}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={openAddTouristModal}
-            className="inline-flex items-center gap-2.5 px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 text-base font-semibold shadow-lg transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Add
-          </button>
-          {tourists.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                className="inline-flex items-center gap-2.5 px-6 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-base font-semibold text-gray-700 shadow-sm transition-all"
-              >
-                <Download className="w-5 h-5 text-gray-500" />
-                Export
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {exportMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
+          <div className="flex items-center gap-4">
+            <button onClick={openAddTouristModal} className="inline-flex items-center gap-2.5 px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 text-base font-semibold shadow-lg transition-all"><Plus className="w-5 h-5" />Add</button>
+            {tourists.length > 0 && (
+              <div className="relative">
+                <button onClick={() => setExportMenuOpen(!exportMenuOpen)} className="inline-flex items-center gap-2.5 px-6 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-base font-semibold text-gray-700 shadow-sm transition-all">
+                  <Download className="w-5 h-5 text-gray-500" />Export<ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {exportMenuOpen && (
+                  <><div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
                   <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl z-20 py-1 overflow-hidden">
-                    <button
-                      onClick={() => handleExport('excel')}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-medium">Excel</div>
-                        <div className="text-xs text-gray-400">.xlsx format</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleExport('pdf')}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                        <FileText className="w-4 h-4 text-red-600" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-medium">PDF</div>
-                        <div className="text-xs text-gray-400">Print ready</div>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          <label className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 cursor-pointer text-base font-semibold shadow-lg shadow-primary-200 transition-all">
-            <Upload className="w-5 h-5" />
-            {importing ? 'Importing...' : 'Import PDF'}
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handlePdfImport}
-              className="hidden"
-              disabled={importing}
-            />
-          </label>
+                    <button onClick={() => handleExport('excel')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50"><div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center"><FileText className="w-4 h-4 text-green-600" /></div><div className="text-left"><div className="font-medium">Excel</div><div className="text-xs text-gray-400">.xlsx format</div></div></button>
+                    <button onClick={() => handleExport('pdf')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50"><div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center"><FileText className="w-4 h-4 text-red-600" /></div><div className="text-left"><div className="font-medium">PDF</div><div className="text-xs text-gray-400">Print ready</div></div></button>
+                  </div></>
+                )}
+              </div>
+            )}
+            <label className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl cursor-pointer text-base font-semibold shadow-lg shadow-primary-200 transition-all">
+              <Upload className="w-5 h-5" />{importing ? 'Importing...' : 'Import PDF'}
+              <input type="file" accept=".pdf" onChange={handlePdfImport} className="hidden" disabled={importing} />
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative w-full md:max-w-sm">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           type="text"
@@ -1739,9 +1749,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           {(() => {
             let globalTouristIndex = 0; // Global counter for all tourists across all hotels
             return Object.entries(touristsByHotel).map(([hotelName, hotelTourists]) => (
-            <div key={hotelName} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              {/* Table Header */}
-              <div className="px-6 py-3 bg-gray-100 border-b border-gray-200">
+            <div key={hotelName} className="bg-white md:rounded-2xl border-b-2 md:border md:border-gray-200 shadow-sm overflow-hidden">
+              {/* Table Header - hidden on mobile */}
+              <div className="px-6 py-3 bg-gray-100 border-b border-gray-200 hidden md:block">
                 <div className="grid grid-cols-12 gap-4 items-center">
                   <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">No</div>
                   <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Name</div>
@@ -1756,7 +1766,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               </div>
 
               {/* Tourist Cards for this hotel */}
-              <div className="px-6 py-4 space-y-2">
+              <div className="px-3 md:px-6 py-3 md:py-4 space-y-2">
                 {(() => {
                   const renderedIds = new Set();
                   const cards = [];
@@ -1907,6 +1917,45 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
                 // Debug logging for Baetgen
                 if (t.fullName?.includes('Baetgen') || t.lastName?.includes('Baetgen')) {
+                }
+
+                if (isMobile) {
+                  // --- MOBILE compact card ---
+                  const isTKM = tPlacement.toLowerCase().includes('turkmen') || tPlacement.toLowerCase().includes('туркмен');
+                  const isUZB = tPlacement.toLowerCase().includes('uzbek') || tPlacement.toLowerCase().includes('узбек');
+                  return (
+                    <div key={t.id} className={`flex flex-col gap-2 p-0 ${rowBgClass ? 'bg-yellow-50' : ''}`}>
+                      {/* Row 1: number + name + badges */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">{idx + 1}</span>
+                        <span className="font-semibold text-gray-900 text-sm flex-1 min-w-0 truncate">{t.fullName || `${t.lastName}, ${t.firstName}`}</span>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold ${roomBadgeColor}`}>{t.roomPreference || '-'}</span>
+                          {(isTKM || isUZB) && (
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-bold text-white ${isTKM ? 'bg-purple-500' : 'bg-green-500'}`}>{isTKM ? 'TKM' : 'UZB'}</span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Row 2: dates */}
+                      <div className="flex items-center gap-1 flex-wrap text-xs">
+                        <span className={`px-1.5 py-0.5 rounded ${flightDate ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-50 text-blue-700'}`}>{displayTourStart}</span>
+                        <span className="text-gray-400">→</span>
+                        <span className={`px-1.5 py-0.5 rounded ${displayArrivalDate || customCheckIn ? 'bg-yellow-100 text-yellow-800' : 'bg-green-50 text-green-700'}`}>{displayCheckIn}</span>
+                        <span className="text-gray-400">→</span>
+                        <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-600">{displayCheckOut}</span>
+                        {t.roomNumber && <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">#{t.roomNumber}</span>}
+                      </div>
+                      {/* Row 3: actions */}
+                      <div className="flex gap-2 pt-1 border-t border-gray-100">
+                        <button onClick={() => openModal(t)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg text-xs font-medium transition-colors">
+                          <Edit className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        <button onClick={async () => { if (window.confirm('Delete this tourist?')) { try { await touristsApi.delete(bookingId, t.id); toast.success('Deleted'); loadData(); onUpdate?.(); } catch { toast.error('Error deleting'); } } }} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
                 }
 
                 return (
@@ -2147,25 +2196,75 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               globalTouristIndex++; // Increment for the first tourist
               const roommateIndex = roommate ? globalTouristIndex++ : null; // Increment for roommate if exists
 
-              cards.push(
+              // Determine room color for mobile pair card
+              const roomTypeCode = (tourist.roomPreference || '').toUpperCase();
+              const mobileRoomBorder = roomTypeCode === 'DBL' || roomTypeCode === 'DOUBLE' ? 'border-blue-400' :
+                                       roomTypeCode === 'TWN' || roomTypeCode === 'TWIN'   ? 'border-emerald-400' : 'border-violet-400';
+              const mobileRoomBg    = roomTypeCode === 'DBL' || roomTypeCode === 'DOUBLE' ? 'bg-blue-50/40' :
+                                       roomTypeCode === 'TWN' || roomTypeCode === 'TWIN'   ? 'bg-emerald-50/40' : 'bg-violet-50/40';
+              const mobileRoomBadge = roomTypeCode === 'DBL' || roomTypeCode === 'DOUBLE' ? 'bg-blue-500' :
+                                       roomTypeCode === 'TWN' || roomTypeCode === 'TWIN'   ? 'bg-emerald-500' : 'bg-violet-500';
+              const mobileRoomDivider = roomTypeCode === 'DBL' || roomTypeCode === 'DOUBLE' ? 'border-blue-200' :
+                                        roomTypeCode === 'TWN' || roomTypeCode === 'TWIN'   ? 'border-emerald-200' : 'border-violet-200';
 
-                <div
-                  key={`card-${tourist.id}`}
-                  className={`bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md hover:shadow-xl hover:scale-[1.01] transition-all duration-300 p-6 ${roomPairClasses}`}
-                >
-                  {roommate ? (
-                    // Room pair - 2 tourists in one card
-                    <div className="space-y-4">
+              cards.push(
+                isMobile && roommate ? (
+                  // MOBILE: Full-width bordered group card for room pairs
+                  <div
+                    key={`card-${tourist.id}`}
+                    className={`-mx-3 border-2 ${mobileRoomBorder} ${mobileRoomBg} rounded-2xl overflow-hidden`}
+                  >
+                    {/* Room label header */}
+                    <div className={`flex items-center gap-2 px-4 py-2.5 border-b ${mobileRoomDivider}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black text-white shadow-sm ${mobileRoomBadge}`}>
+                        {tourist.roomNumber || tourist.roomPreference}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-400">2 guests · same room</span>
+                    </div>
+
+                    {/* Tourists */}
+                    <div className="px-4 py-3 space-y-0">
                       {renderTouristRow(tourist, currentIndex)}
-                      <div className="border-t-2 border-dashed border-gray-300 pt-4">
+                      <div className={`border-t border-dashed ${mobileRoomDivider} mt-2 pt-2`}>
                         {renderTouristRow(roommate, roommateIndex)}
                       </div>
                     </div>
-                  ) : (
-                    // Single tourist
-                    renderTouristRow(tourist, currentIndex)
-                  )}
-                </div>
+                  </div>
+                ) : isMobile && isSNGL ? (
+                  // MOBILE: SNGL — individual bordered card
+                  <div
+                    key={`card-${tourist.id}`}
+                    className={`-mx-3 border-2 ${mobileRoomBorder} ${mobileRoomBg} rounded-2xl overflow-hidden`}
+                  >
+                    {/* Room label header */}
+                    <div className={`flex items-center gap-2 px-4 py-2.5 border-b ${mobileRoomDivider}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black text-white shadow-sm ${mobileRoomBadge}`}>
+                        {tourist.roomNumber || tourist.roomPreference}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-400">single room</span>
+                    </div>
+                    <div className="px-4 py-3">
+                      {renderTouristRow(tourist, currentIndex)}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={`card-${tourist.id}`}
+                    className={`bg-gradient-to-br from-white to-gray-50 md:rounded-2xl border-b-2 md:border-2 shadow-sm md:shadow-md hover:shadow-xl hover:md:scale-[1.01] transition-all duration-300 p-3 md:p-6 ${roomPairClasses}`}
+                  >
+                    {roommate ? (
+                      // Desktop room pair
+                      <div className="space-y-4">
+                        {renderTouristRow(tourist, currentIndex)}
+                        <div className="border-t-2 border-dashed border-gray-300 pt-4">
+                          {renderTouristRow(roommate, roommateIndex)}
+                        </div>
+                      </div>
+                    ) : (
+                      renderTouristRow(tourist, currentIndex)
+                    )}
+                  </div>
+                )
               );
             });
 

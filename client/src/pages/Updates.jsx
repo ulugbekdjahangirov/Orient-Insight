@@ -742,24 +742,24 @@ export default function Updates() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 md:p-6 space-y-3 md:space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-purple-100 p-8">
+      <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-purple-100 p-4 md:p-8">
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-pink-500/10"></div>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
 
-        <div className="relative flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-600 rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
-              <Bell className="w-10 h-10 text-white" />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 md:gap-6 min-w-0">
+            <div className="w-12 h-12 md:w-20 md:h-20 flex-shrink-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-600 rounded-2xl md:rounded-3xl shadow-lg flex items-center justify-center transform hover:scale-110 transition-all duration-300">
+              <Bell className="w-6 h-6 md:w-10 md:h-10 text-white" />
             </div>
-            <div>
-              <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1 md:mb-2">
                 Updates & Tours
               </h1>
               <p className="text-gray-600 font-semibold flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 md:px-3 md:py-1 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full text-sm">
                   <span className="text-gray-700">Total:</span>
                   <span className="text-indigo-700 font-bold">{allBookingsCount}</span>
                   <span className="text-gray-700">tours</span>
@@ -772,43 +772,44 @@ export default function Updates() {
           <button
             onClick={handleImportClick}
             disabled={importing}
-            className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-2xl shadow-2xl hover:shadow-indigo-500/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-base"
+            className="flex-shrink-0 flex items-center gap-2 md:gap-3 px-3 py-2.5 md:px-8 md:py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl md:rounded-2xl shadow-lg md:shadow-2xl hover:shadow-indigo-500/40 hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-sm md:text-base"
           >
-            <Upload className="w-6 h-6" />
-            {importing ? 'Importing...' : 'Import Excel'}
+            <Upload className="w-4 h-4 md:w-6 md:h-6" />
+            <span className="hidden sm:inline">{importing ? 'Importing...' : 'Import Excel'}</span>
+            <span className="sm:hidden">{importing ? '...' : 'Import'}</span>
           </button>
         </div>
 
         {/* Statistics Cards */}
-        <div className="relative flex items-center gap-4 mt-6">
+        <div className="relative flex flex-wrap items-center gap-2 md:gap-4 mt-4 md:mt-6">
           {confirmedCount > 0 && (
-            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 border-2 border-green-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
-              <span className="text-white font-bold text-base">Confirmed: {confirmedCount}</span>
+            <div className="flex items-center gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-green-500 to-emerald-600 border-2 border-green-400 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-xs md:text-base">Confirmed: {confirmedCount}</span>
             </div>
           )}
           {inProgressCount > 0 && (
-            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 border-2 border-purple-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
-              <span className="text-white font-bold text-base">In Progress: {inProgressCount}</span>
+            <div className="flex items-center gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-purple-500 to-indigo-600 border-2 border-purple-400 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-xs md:text-base">In Progress: {inProgressCount}</span>
             </div>
           )}
           {pendingCount > 0 && (
-            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-600 border-2 border-yellow-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
-              <span className="text-white font-bold text-base">Pending: {pendingCount}</span>
+            <div className="flex items-center gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-yellow-500 to-orange-600 border-2 border-yellow-400 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-xs md:text-base">Pending: {pendingCount}</span>
             </div>
           )}
           {cancelledCount > 0 && (
-            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 border-2 border-red-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
-              <span className="text-white font-bold text-base">Cancelled: {cancelledCount}</span>
+            <div className="flex items-center gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-red-500 to-rose-600 border-2 border-red-400 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-xs md:text-base">Cancelled: {cancelledCount}</span>
             </div>
           )}
           {completedCount > 0 && (
-            <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-slate-500 to-slate-600 border-2 border-slate-400 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              <div className="w-3 h-3 rounded-full bg-white animate-pulse shadow-md"></div>
-              <span className="text-white font-bold text-base">Completed: {completedCount}</span>
+            <div className="flex items-center gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-slate-500 to-slate-600 border-2 border-slate-400 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-xs md:text-base">Completed: {completedCount}</span>
             </div>
           )}
         </div>
@@ -824,8 +825,8 @@ export default function Updates() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
-        <div className="flex bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 gap-3 p-4">
+      <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 overflow-hidden">
+        <div className="flex bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 gap-2 md:gap-3 p-3 md:p-4">
           {tourTypeModules.map((module) => {
             const isActive = activeTab === module.code;
             const count = bookingCountsByType[module.code] || 0;
@@ -834,9 +835,9 @@ export default function Updates() {
               <button
                 key={module.code}
                 onClick={() => handleTabChange(module.code)}
-                className={`flex-1 px-6 py-4 text-base font-bold transition-all duration-300 rounded-2xl relative shadow-lg hover:shadow-xl ${
+                className={`flex-1 px-2 py-2.5 md:px-6 md:py-4 text-sm md:text-base font-bold transition-all duration-300 rounded-xl md:rounded-2xl relative shadow-md hover:shadow-xl ${
                   isActive
-                    ? 'text-white scale-110 -translate-y-1'
+                    ? 'text-white scale-105 md:scale-110 -translate-y-0.5 md:-translate-y-1'
                     : 'text-gray-700 hover:bg-white hover:shadow-md bg-white/70 hover:scale-105'
                 }`}
                 style={
@@ -862,10 +863,10 @@ export default function Updates() {
         </div>
 
         {/* Content */}
-        <div className="p-8">
-          <div className="mb-6 bg-gradient-to-r from-white to-transparent rounded-2xl p-6 border-l-4 shadow-lg" style={{ borderColor: activeModule?.color }}>
-            <h2 className="text-2xl font-black text-gray-900">{activeModule?.name}</h2>
-            <p className="text-base text-gray-600 font-semibold mt-2">
+        <div className="p-4 md:p-8">
+          <div className="mb-4 md:mb-6 bg-gradient-to-r from-white to-transparent rounded-2xl p-4 md:p-6 border-l-4 shadow-lg" style={{ borderColor: activeModule?.color }}>
+            <h2 className="text-lg md:text-2xl font-black text-gray-900">{activeModule?.name}</h2>
+            <p className="text-sm md:text-base text-gray-600 font-semibold mt-1 md:mt-2">
               Total: <span className="px-3 py-1 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg font-bold text-indigo-700">{bookings.length}</span> bookings
             </p>
           </div>

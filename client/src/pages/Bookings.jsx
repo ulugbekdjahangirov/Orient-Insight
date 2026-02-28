@@ -190,9 +190,9 @@ export default function Bookings() {
   const hasActiveFilters = Object.values(filters).some(v => v);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 md:p-6 space-y-3 md:space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden bg-white rounded-3xl shadow-2xl border-2 border-primary-100 p-8">
+      <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-primary-100 p-4 md:p-8">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/5 to-pink-500/10"></div>
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-primary-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gradient-to-br from-pink-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
@@ -227,7 +227,7 @@ export default function Bookings() {
       </div>
 
       {/* Search and filters */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-6">
+      <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative group">
@@ -371,7 +371,7 @@ export default function Bookings() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
+      <div className="bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 overflow-hidden">
         {/* Pagination Top */}
         {pagination.pages > 1 && !loading && bookings.length > 0 && (
           <div className="px-8 py-5 border-b-3 border-gray-200 bg-gradient-to-r from-primary-50 via-purple-50 to-pink-50 flex items-center justify-between">
@@ -414,7 +414,7 @@ export default function Bookings() {
             <p className="text-gray-500">Try adjusting your filters or create a new booking</p>
           </div>
         ) : isMobile ? (
-          <div className="space-y-3">
+          <div className="space-y-3 px-3 py-2">
             {bookings.map((booking, index) => {
               const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
               return (

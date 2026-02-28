@@ -366,6 +366,78 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
           {visitLabel}
         </div>
       )}
+      {/* MOBILE: card view */}
+      <div className="md:hidden divide-y divide-gray-100">
+        {bookings.map(b => {
+          const cancelled = b.status === 'CANCELLED';
+          const pax = getVal(b, 'pax');
+          const dbl = getVal(b, 'dbl');
+          const twn = getVal(b, 'twn');
+          const sngl = getVal(b, 'sngl');
+          const k = rowKey(hotelId, b);
+          const cardBg = rowStatuses[k] === 'confirmed' ? 'bg-green-50'
+                       : rowStatuses[k] === 'waiting'   ? 'bg-amber-50'
+                       : rowStatuses[k] === 'cancelled' ? 'bg-red-100'
+                       : cancelled ? 'bg-red-50' : 'bg-white';
+          return (
+            <div key={k} className={`p-3 ${cardBg}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Link
+                    to={`/bookings/${b.bookingId}`}
+                    className={`font-bold text-sm ${cancelled ? 'text-red-400 line-through' : 'text-primary-600 hover:underline'}`}
+                  >
+                    {b.bookingNumber}
+                  </Link>
+                  {cancelled && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">СТОРНО</span>}
+                  {!cancelled && cityHotels && cityHotels.length > 1 && (
+                    <HotelSwitcher cityKey={cityAssignKey(cityName, b)} currentHotelId={hotelId} cityHotels={cityHotels} onMove={onMoveBooking} />
+                  )}
+                </div>
+                <StatusCell k={k} rowStatuses={rowStatuses} setRowStatus={setRowStatus} />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                <span className="font-medium">{formatDate(b.checkInDate)}</span>
+                <span className="text-gray-400">→</span>
+                <span className="font-medium">{formatDate(b.checkOutDate)}</span>
+                <span className="ml-auto bg-gray-100 px-2 py-0.5 rounded-full text-gray-700 font-semibold whitespace-nowrap">{b.nights || '—'} ночей</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: 'PAX', field: 'pax', val: pax },
+                  { label: 'DBL', field: 'dbl', val: dbl },
+                  { label: 'TWN', field: 'twn', val: twn },
+                  { label: 'SNGL', field: 'sngl', val: sngl },
+                ].map(({ label, field, val }) => (
+                  <div key={field} className="text-center bg-white/60 rounded-lg py-1 border border-gray-100">
+                    <div className="text-gray-400 text-xs mb-0.5">{label}</div>
+                    {cancelled ? (
+                      <span className="text-xs font-bold text-red-400">{val}</span>
+                    ) : (
+                      <EditCell value={val} onChange={v => setVal(b, field, v)} />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="text-right text-xs mt-1.5 text-gray-500">
+                Итого: <span className="font-bold text-gray-800">{cancelled ? 0 : (dbl + twn + sngl) || '—'}</span>
+              </div>
+            </div>
+          );
+        })}
+        <div className="bg-blue-50 border-t-2 border-blue-100 px-3 py-2">
+          <div className="text-xs text-gray-500 mb-1">Итого ({active.length} группы, аннуляции не считаются)</div>
+          <div className="grid grid-cols-5 gap-1 text-xs text-center">
+            <div><div className="text-gray-400">PAX</div><div className="font-bold text-blue-700">{totalPax || '—'}</div></div>
+            <div><div className="text-gray-400">DBL</div><div className="font-bold text-blue-700">{totalDbl || '—'}</div></div>
+            <div><div className="text-gray-400">TWN</div><div className="font-bold text-blue-700">{totalTwn || '—'}</div></div>
+            <div><div className="text-gray-400">SNGL</div><div className="font-bold text-blue-700">{totalSngl || '—'}</div></div>
+            <div><div className="text-gray-400">Итого</div><div className="font-bold text-blue-700">{totalRooms || '—'}</div></div>
+          </div>
+        </div>
+      </div>
+      {/* DESKTOP: table */}
+      <div className="hidden md:block">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
@@ -459,6 +531,7 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
           </tr>
         </tfoot>
       </table>
+      </div>
     </div>
   );
 }
@@ -754,37 +827,41 @@ function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverri
 
   return (
     <div className={`bg-white border rounded-lg overflow-hidden ${isExtra ? 'border-blue-200' : 'border-gray-200'}`}>
-      <div className="px-4 py-3 flex items-center gap-3">
-        <button onClick={onToggle} className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
+      <div className="px-3 md:px-4 py-2.5 md:py-3 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
+        {/* Row 1: expand toggle + hotel name + stats */}
+        <button onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
           {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
           <Building2 className={`w-4 h-4 flex-shrink-0 ${isExtra ? 'text-blue-500' : 'text-blue-400'}`} />
-          <div className="flex-1 min-w-0 flex items-center gap-1.5">
-            <span className="font-medium text-gray-800 text-sm">{hotel.name}</span>
-            {isExtra && <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">qo'shimcha</span>}
-            {hotel.email && <span className="text-xs text-gray-400">{hotel.email}</span>}
-            {availableHotelsForSwap && availableHotelsForSwap.length > 0 && (
-              <HotelSwapButton
-                currentHotelId={hotel.id}
-                availableHotels={availableHotelsForSwap}
-                onReplace={onReplaceHotel}
-              />
-            )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-semibold text-gray-800 text-sm truncate">{hotel.name}</span>
+              {isExtra && <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full shrink-0">qo'shimcha</span>}
+              {availableHotelsForSwap && availableHotelsForSwap.length > 0 && (
+                <HotelSwapButton
+                  currentHotelId={hotel.id}
+                  availableHotels={availableHotelsForSwap}
+                  onReplace={onReplaceHotel}
+                />
+              )}
+            </div>
+            {hotel.email && <div className="text-xs text-gray-400 truncate hidden md:block">{hotel.email}</div>}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 mr-2 text-xs text-gray-500">
-            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{bookings.length} группа</span>
-            <span>{totalPax} PAX</span>
-            <span>{totalRooms} ном.</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0 text-xs text-gray-500">
+            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{bookings.length}</span>
+            <span className="hidden sm:inline">{totalPax} PAX</span>
+            <span className="hidden md:inline">· {totalRooms} ном.</span>
           </div>
         </button>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button onClick={() => onPDF(hotelData)} className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors" title="PDF">
-            <Download className="w-3.5 h-3.5" /> PDF
+        {/* Row 2 (mobile) / inline (desktop): action buttons */}
+        <div className="flex items-center gap-1 ml-6 md:ml-0 md:flex-shrink-0">
+          <button onClick={() => onPDF(hotelData)} className="flex items-center gap-1 px-2 md:px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors" title="PDF">
+            <Download className="w-3.5 h-3.5" /><span className="hidden sm:inline"> PDF</span>
           </button>
-          <button onClick={() => onEmail(hotelData)} disabled={!!sendingEmail} className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.email||"Email yo'q"}>
-            {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Mail className="w-3.5 h-3.5"/>} Email
+          <button onClick={() => onEmail(hotelData)} disabled={!!sendingEmail} className="flex items-center gap-1 px-2 md:px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.email||"Email yo'q"}>
+            {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Mail className="w-3.5 h-3.5"/>}<span className="hidden sm:inline"> Email</span>
           </button>
-          <button onClick={() => onTelegram(hotelData)} disabled={!!sendingTelegram} className="flex items-center gap-1 px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.telegramChatId?'TG':"Telegram yo'q"}>
-            {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>} TG
+          <button onClick={() => onTelegram(hotelData)} disabled={!!sendingTelegram} className="flex items-center gap-1 px-2 md:px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.telegramChatId?'TG':"Telegram yo'q"}>
+            {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}<span className="hidden sm:inline"> TG</span>
           </button>
           {isExtra && (
             <button onClick={onRemoveHotel} title="Hotelni olib tashlash"
@@ -1480,7 +1557,7 @@ function TransportTab({ tourType }) {
           <div key={prov.id} className={`mb-3 rounded-xl border overflow-hidden ${prov.border}`}>
             <button
               onClick={() => setOpenProviders(p => ({ ...p, [prov.id]: !p[prov.id] }))}
-              className={`w-full flex items-center gap-3 px-5 py-3 ${prov.bg} hover:brightness-95 transition-all`}
+              className={`w-full flex items-center gap-2 md:gap-3 px-3 md:px-5 py-3 ${prov.bg} hover:brightness-95 transition-all`}
             >
               {isOpen ? <ChevronDown className="w-4 h-4 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 flex-shrink-0"/>}
               <Bus className={`w-4 h-4 flex-shrink-0 ${prov.headerText}`}/>
@@ -1490,7 +1567,7 @@ function TransportTab({ tourType }) {
                   {items.length} ta guruh
                 </span>
                 {segCount > items.length && (
-                  <span className="text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-400">
+                  <span className="hidden sm:inline text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-400">
                     {segCount} ta zayezd
                   </span>
                 )}
@@ -1528,70 +1605,143 @@ function TransportTab({ tourType }) {
             </button>
 
             {isOpen && (
-              <div className="bg-white">
-                {/* Column header — derived from booking with most visible segments (same logic as data rows) */}
-                {(() => {
-                  // Find booking with most visible segments — drives header column count
-                  let templateSegs = [];
-                  let templateBkId = null;
-                  for (const b of items) {
+              <>
+                {/* MOBILE: card view */}
+                <div className="md:hidden bg-white divide-y divide-gray-100">
+                  {items.length === 0 ? (
+                    <div className="px-4 py-4 text-center text-xs text-gray-400">
+                      Bu provayder uchun route&apos;lar topilmadi
+                    </div>
+                  ) : items.map(b => {
                     const bk = String(b.id);
                     const allSegs = routeMap[prov.id]?.[bk]?.segments || [];
-                    const vis = getVisibleSegs(prov.id, bk, allSegs);
-                    if (vis.length > templateSegs.length) { templateSegs = vis; templateBkId = bk; }
-                  }
-                  const showZayezdLabel = templateSegs.length > 1;
-                  let multiCount = 0;
-                  return (
-                    <div className="px-8 py-2.5 flex items-end text-xs bg-gray-50 border-b border-gray-200">
-                      <span className="w-20 flex-shrink-0 mr-8 text-gray-400 font-medium">Guruh</span>
-                      <span className="w-10 flex-shrink-0 mr-8 text-gray-400 font-medium">PAX</span>
-                      <div className="flex items-end flex-1">
-                        {templateSegs.map((seg, idx) => {
-                          const { von, bis } = getSegEffective(prov.id, templateBkId, seg);
-                          const isSingle = von === bis;
-                          if (!isSingle) multiCount++;
-                          return (
-                            <div key={seg.von || idx} className="flex items-end flex-shrink-0">
-                              {idx > 0 && (
-                                <div className="bg-gray-200 flex-shrink-0"
-                                  style={{ width: 1, height: 32, marginLeft: SEP_MX, marginRight: SEP_MX }}
-                                />
-                              )}
-                              {isSingle ? (
-                                <div style={{ width: COL_W }} className="text-center text-gray-400 font-medium">
-                                  Vokzal
-                                </div>
+                    const visSegs = getVisibleSegs(prov.id, bk, allSegs);
+                    const isCancelled = b.status === 'CANCELLED';
+                    const pax = visSegs.length > 0 ? getSegEffective(prov.id, bk, visSegs[0]).pax : 16;
+                    const hasMultiSeg = visSegs.length > 1;
+                    const isConfirmed = confirmations.find(c => c.tourType === tourType && c.provider === prov.id)?.status === 'CONFIRMED';
+                    return (
+                      <div key={bk} className={`flex border-b border-gray-100 last:border-0 ${isCancelled ? 'bg-red-50' : ''}`}>
+                        {/* Colored left accent */}
+                        <div className={`w-1 flex-shrink-0 ${isCancelled ? 'bg-red-300' : prov.border.replace('border', 'bg').replace('-200', '-400')}`} />
+                        <div className="flex-1 px-3 py-3">
+                          {/* Top row: booking number + PAX + status */}
+                          <div className="flex items-center justify-between mb-1.5">
+                            <Link to={`/bookings/${b.id}`}
+                              className={`font-bold text-base hover:underline ${isCancelled ? 'text-red-400 line-through' : prov.headerText}`}>
+                              {b.bookingNumber}
+                            </Link>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 text-sm text-gray-600">
+                                <span className="text-xs text-gray-400">PAX</span>
+                                <EditCell value={pax} onChange={v => allSegs.forEach(s => updateSegOverride(prov.id, bk, s.von, { paxOverride: v }))} />
+                              </div>
+                              {isCancelled ? (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full">✕ Bekor</span>
+                              ) : isConfirmed ? (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">✓ OK</span>
                               ) : (
-                                <div className="flex flex-col flex-shrink-0">
-                                  {showZayezdLabel && (
-                                    <span style={{ width: COL_W * 2 + COL_GAP }} className="text-center text-gray-500 font-semibold mb-1">
-                                      {multiCount}-zayezd
-                                    </span>
-                                  )}
-                                  <div className="flex items-center">
-                                    <span style={{ width: COL_W }} className="text-center text-gray-400 font-medium">Von</span>
-                                    <div style={{ width: COL_GAP }} />
-                                    <span style={{ width: COL_W }} className="text-center text-gray-400 font-medium">Bis</span>
-                                  </div>
-                                </div>
+                                <span className="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-400 text-xs font-bold rounded-full">—</span>
                               )}
                             </div>
-                          );
-                        })}
-                        <span className="ml-auto pl-6 text-gray-400 font-medium">Status</span>
+                          </div>
+                          {/* Segments */}
+                          {visSegs.length > 0 && (
+                            <div className="space-y-1">
+                              {visSegs.map((seg, idx) => {
+                                const { von, bis } = getSegEffective(prov.id, bk, seg);
+                                const isSingle = von === bis;
+                                return (
+                                  <div key={seg.von || idx} className="flex items-center gap-2">
+                                    {hasMultiSeg && (
+                                      <span className="text-xs text-gray-400 w-16 flex-shrink-0">{idx + 1}-zayezd:</span>
+                                    )}
+                                    <div className={`flex items-center gap-1.5 text-sm font-medium ${isCancelled ? 'text-gray-400' : 'text-gray-700'}`}>
+                                      {isSingle ? (
+                                        <DateCell value={von} onChange={v => updateSegOverride(prov.id, bk, seg.von, { vonOverride: v, bisOverride: v })} />
+                                      ) : (
+                                        <>
+                                          <DateCell value={von} onChange={v => updateSegOverride(prov.id, bk, seg.von, { vonOverride: v })} />
+                                          <span className="text-gray-300">→</span>
+                                          <DateCell value={bis} onChange={v => updateSegOverride(prov.id, bk, seg.von, { bisOverride: v })} />
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+                {/* DESKTOP: scrollable table */}
+                <div className="hidden md:block bg-white overflow-x-auto"><div className="min-w-max">
+                  {/* Column header — derived from booking with most visible segments (same logic as data rows) */}
+                  {(() => {
+                    let templateSegs = [];
+                    let templateBkId = null;
+                    for (const b of items) {
+                      const bk = String(b.id);
+                      const allSegs = routeMap[prov.id]?.[bk]?.segments || [];
+                      const vis = getVisibleSegs(prov.id, bk, allSegs);
+                      if (vis.length > templateSegs.length) { templateSegs = vis; templateBkId = bk; }
+                    }
+                    const showZayezdLabel = templateSegs.length > 1;
+                    let multiCount = 0;
+                    return (
+                      <div className="px-8 py-2.5 flex items-end text-xs bg-gray-50 border-b border-gray-200">
+                        <span className="w-20 flex-shrink-0 mr-8 text-gray-400 font-medium">Guruh</span>
+                        <span className="w-10 flex-shrink-0 mr-8 text-gray-400 font-medium">PAX</span>
+                        <div className="flex items-end flex-1">
+                          {templateSegs.map((seg, idx) => {
+                            const { von, bis } = getSegEffective(prov.id, templateBkId, seg);
+                            const isSingle = von === bis;
+                            if (!isSingle) multiCount++;
+                            return (
+                              <div key={seg.von || idx} className="flex items-end flex-shrink-0">
+                                {idx > 0 && (
+                                  <div className="bg-gray-200 flex-shrink-0"
+                                    style={{ width: 1, height: 32, marginLeft: SEP_MX, marginRight: SEP_MX }}
+                                  />
+                                )}
+                                {isSingle ? (
+                                  <div style={{ width: COL_W }} className="text-center text-gray-400 font-medium">
+                                    Vokzal
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col flex-shrink-0">
+                                    {showZayezdLabel && (
+                                      <span style={{ width: COL_W * 2 + COL_GAP }} className="text-center text-gray-500 font-semibold mb-1">
+                                        {multiCount}-zayezd
+                                      </span>
+                                    )}
+                                    <div className="flex items-center">
+                                      <span style={{ width: COL_W }} className="text-center text-gray-400 font-medium">Von</span>
+                                      <div style={{ width: COL_GAP }} />
+                                      <span style={{ width: COL_W }} className="text-center text-gray-400 font-medium">Bis</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          <span className="ml-auto pl-6 text-gray-400 font-medium">Status</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {items.length === 0 ? (
+                    <div className="px-5 py-5 text-center text-xs text-gray-400">
+                      Bu provayder uchun route&apos;lar topilmadi
                     </div>
-                  );
-                })()}
-                {items.length === 0 ? (
-                  <div className="px-5 py-5 text-center text-xs text-gray-400">
-                    Bu provayder uchun route&apos;lar topilmadi
-                  </div>
-                ) : (
-                  items.map(b => renderBookingSegments(prov.id, b, provColCount))
-                )}
-              </div>
+                  ) : (
+                    items.map(b => renderBookingSegments(prov.id, b, provColCount))
+                  )}
+                </div></div>
+              </>
             )}
           </div>
         );
@@ -1785,7 +1935,80 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
 
       {/* Table */}
       {open && (
-        <div className="border-t border-gray-100 overflow-x-auto">
+        <div className="border-t border-gray-100">
+          {/* MOBILE: card view */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {bookings.map(b => {
+              const effPax  = getEffPax(b);
+              const effDate = getEffDate(b);
+              const editingPax  = editingCell === `${b.bookingId}_pax`;
+              const editingDate = editingCell === `${b.bookingId}_date`;
+              return (
+                <div key={b.bookingId} className="px-3 py-2.5 flex items-center gap-3 hover:bg-gray-50">
+                  <Link to={`/bookings/${b.bookingId}`} className="font-mono text-xs font-bold text-blue-600 hover:underline shrink-0">
+                    {b.bookingNumber}
+                  </Link>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {editingPax ? (
+                      <input
+                        type="number"
+                        className="w-14 text-right border border-blue-400 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        value={editValue}
+                        autoFocus
+                        onChange={e => setEditValue(e.target.value)}
+                        onBlur={() => commitEdit(b.bookingId, 'pax')}
+                        onKeyDown={e => handleKeyDown(e, b.bookingId, 'pax')}
+                      />
+                    ) : (
+                      <span
+                        className="cursor-pointer px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-bold text-xs select-none"
+                        onClick={e => startEdit(e, b.bookingId, 'pax', String(effPax))}
+                      >
+                        {effPax} PAX
+                      </span>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    {editingDate ? (
+                      <input
+                        type="date"
+                        className="border border-blue-400 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        value={editValue}
+                        autoFocus
+                        onChange={e => setEditValue(e.target.value)}
+                        onBlur={() => commitEdit(b.bookingId, 'date')}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') commitEdit(b.bookingId, 'date');
+                          if (e.key === 'Escape') setEditingCell(null);
+                        }}
+                      />
+                    ) : (
+                      <span
+                        className="cursor-pointer text-xs text-gray-600 hover:text-blue-700 select-none"
+                        onClick={e => startEdit(e, b.bookingId, 'date', toInputDate(effDate))}
+                      >
+                        {effDate || '—'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="ml-auto shrink-0">
+                    {b.confirmation
+                      ? <MealStatusBadge status={b.confirmation.status} confirmedBy={b.confirmation.confirmedBy} />
+                      : <span className="text-xs text-gray-300">—</span>
+                    }
+                  </div>
+                </div>
+              );
+            })}
+            {bookings.length > 0 && (
+              <div className="px-3 py-2 bg-blue-50 border-t-2 border-blue-200 flex items-center justify-between">
+                <span className="font-bold text-blue-900 text-sm">GESAMT</span>
+                <span className="font-bold text-blue-900 text-sm">{totalPax} PAX</span>
+              </div>
+            )}
+          </div>
+          {/* DESKTOP: table */}
+          <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
@@ -1875,6 +2098,7 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
               </tfoot>
             )}
           </table>
+          </div>
         </div>
       )}
     </div>
@@ -2322,17 +2546,17 @@ function HotelsTab({ tourType }) {
           <div key={city} className="rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <button
               onClick={() => setOpenCities(prev => ({ ...prev, [city]: !prev[city] }))}
-              className="w-full bg-gray-800 text-white px-5 py-3.5 flex items-center gap-3 hover:bg-gray-700 transition-colors text-left"
+              className="w-full bg-gray-800 text-white px-3 md:px-5 py-3 md:py-3.5 flex items-center gap-2 md:gap-3 hover:bg-gray-700 transition-colors text-left"
             >
               {isCityOpen ? <ChevronDown className="w-4 h-4 text-gray-300 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0"/>}
-              <MapPin className="w-5 h-5 text-blue-400 flex-shrink-0"/>
-              <span className="font-semibold text-base flex-1">{city}</span>
-              <div className="flex items-center gap-3 text-sm text-gray-300">
-                <span>{displayHotels.length} отель</span>
-                <span>·</span>
-                <span>{totalGroups} группы</span>
-                <span>·</span>
-                <span>{totalPax} PAX</span>
+              <MapPin className="w-4 h-4 md:w-5 md:h-5 text-blue-400 flex-shrink-0"/>
+              <span className="font-semibold text-sm md:text-base flex-1 truncate">{city}</span>
+              <div className="flex items-center gap-1 md:gap-3 text-xs md:text-sm text-gray-300 shrink-0">
+                <span className="bg-gray-700 px-1.5 py-0.5 rounded text-xs">{displayHotels.length}</span>
+                <span className="hidden md:inline">отель ·</span>
+                <span className="font-medium">{totalGroups}</span>
+                <span className="hidden md:inline">группы ·</span>
+                <span className="hidden sm:inline text-gray-400">{totalPax} PAX</span>
               </div>
             </button>
 
@@ -2387,7 +2611,7 @@ export default function Jahresplanung() {
   const [tourTab, setTourTab] = useState(() => localStorage.getItem('jp_tourTab') || 'ER');
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="px-2 py-4 md:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Jahresplanung {YEAR}</h1>
         <p className="text-sm text-gray-500 mt-1">Yillik reja — hotellar, restoranlar, transport</p>

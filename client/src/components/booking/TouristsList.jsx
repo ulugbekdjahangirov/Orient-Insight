@@ -263,24 +263,25 @@ export default function TouristsList({ bookingId, onUpdate }) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="w-5 h-5 text-primary-600" />
-          <h3 className="text-lg font-semibold text-gray-900">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Users className="w-5 h-5 text-primary-600 flex-shrink-0" />
+          <h3 className="text-base md:text-lg font-semibold text-gray-900 whitespace-nowrap">
             Tourists ({tourists.length})
           </h3>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {/* Export dropdown */}
           {tourists.length > 0 && (
             <div className="relative">
               <button
                 onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                className="inline-flex items-center gap-1.5 px-2 py-1.5 md:px-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                title="Export"
               >
                 <Download className="w-4 h-4" />
-                Export
-                <ChevronDown className="w-3 h-3" />
+                <span className="hidden md:inline">Export</span>
+                <ChevronDown className="w-3 h-3 hidden md:inline" />
               </button>
               {exportMenuOpen && (
                 <>
@@ -306,10 +307,10 @@ export default function TouristsList({ bookingId, onUpdate }) {
             </div>
           )}
 
-          {/* Import button - supports multiple Excel files only */}
-          <label className="inline-flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer text-sm">
+          {/* Import button */}
+          <label className="inline-flex items-center gap-1.5 px-2 py-1.5 md:px-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer text-sm" title="Import Excel">
             <Upload className="w-4 h-4" />
-            {importing ? 'Loading...' : 'Import Excel'}
+            <span className="hidden md:inline">{importing ? 'Loading...' : 'Import Excel'}</span>
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
@@ -323,17 +324,18 @@ export default function TouristsList({ bookingId, onUpdate }) {
           {/* Add button */}
           <button
             onClick={() => openModal()}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
+            className="inline-flex items-center gap-1.5 px-2 py-1.5 md:px-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
+            title="Add tourist"
           >
             <Plus className="w-4 h-4" />
-            Add
+            <span className="hidden md:inline">Add</span>
           </button>
         </div>
       </div>
 
       {/* Search */}
       {tourists.length > 5 && (
-        <div className="relative max-w-xs">
+        <div className="relative w-full md:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -347,7 +349,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
 
       {/* Card-style List */}
       {filteredTourists.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-2 md:space-y-4">
           {/* Header */}
           <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-2xl border-2 border-gray-300 p-5 shadow-lg hidden md:block">
             <div className="grid grid-cols-12 gap-3 items-center text-xs font-bold text-gray-600 uppercase">
@@ -368,7 +370,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
               /* MOBILE: Vertical stacked layout */
               <div
                 key={p.id}
-                className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border-2 shadow-md p-4 space-y-3"
+                className="bg-gradient-to-br from-white to-gray-50 md:rounded-2xl border-b-2 md:border-2 shadow-sm md:shadow-md p-4 space-y-3"
               >
                 {/* Header: Number + Name + Leader Icon */}
                 <div className="flex items-center gap-3">

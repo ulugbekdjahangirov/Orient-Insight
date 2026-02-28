@@ -537,7 +537,7 @@ export default function Hotels() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="px-3 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
+      <div className="px-2 md:px-6 py-3 md:py-6 space-y-3 md:space-y-6">
         {/* Header */}
         <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-primary-100">
           <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-purple-500/5 to-pink-500/10"></div>
@@ -595,8 +595,8 @@ export default function Hotels() {
           </div>
 
           {/* City Tabs */}
-          <div className="p-3 md:p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50">
-            <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center">
+          <div className="px-3 py-3 md:p-6 bg-gradient-to-br from-slate-50 via-white to-slate-50">
+            <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:gap-4">
               {(() => {
                 const cityOrder = ['Tashkent', 'Samarkand', 'Fergana', 'Asraf', 'Bukhara', 'Khiva'];
                 const sortedCities = [...cities].sort((a, b) => {
@@ -619,37 +619,31 @@ export default function Hotels() {
                     <div key={city.id} className="relative group/tab">
                       <button
                         onClick={() => handleCityChange(city.id.toString())}
-                        className={`relative px-3 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl text-sm md:text-base font-bold transition-all duration-300 transform min-h-[44px] ${
+                        className={`w-full py-2 md:py-4 px-2 md:px-6 rounded-xl md:rounded-2xl text-xs md:text-base font-bold transition-all duration-300 ${
                           isActive
-                            ? `bg-gradient-to-r ${colors.bg} text-white shadow-2xl shadow-primary-500/30 scale-110 hover:scale-115`
-                            : 'bg-white text-slate-700 hover:bg-gradient-to-br hover:from-slate-50 hover:to-white border-2 border-slate-200 hover:border-primary-300 hover:shadow-xl hover:scale-105'
+                            ? `bg-gradient-to-r ${colors.bg} text-white shadow-lg`
+                            : 'bg-white text-slate-700 border-2 border-slate-200 hover:border-primary-300 hover:shadow-md'
                         }`}
                       >
-                        <span className="flex items-center gap-2 md:gap-3">
-                          <MapPin className={`w-4 h-4 md:w-6 md:h-6 ${isActive ? 'text-white' : colors.text}`} />
-                          <span className="hidden sm:inline">{city.nameEn || city.name}</span>
-                          <span className="sm:hidden">{(city.nameEn || city.name).substring(0, 3)}</span>
+                        <span className="flex flex-col items-center gap-0.5 md:flex-row md:gap-3">
+                          <MapPin className={`w-3.5 h-3.5 md:w-6 md:h-6 ${isActive ? 'text-white' : colors.text}`} />
+                          <span className="truncate">{city.nameEn || city.name}</span>
                           {hotelCount > 0 && (
-                            <span className={`px-2 md:px-3 py-0.5 md:py-1 rounded-lg md:rounded-xl text-xs md:text-sm font-black ${
-                              isActive ? 'bg-white/30 text-white backdrop-blur-sm' : `${colors.light} ${colors.text}`
+                            <span className={`px-1.5 py-0.5 rounded-md text-xs font-black ${
+                              isActive ? 'bg-white/30 text-white' : `${colors.light} ${colors.text}`
                             }`}>
                               {hotelCount}
                             </span>
                           )}
                         </span>
                       </button>
-                      {/* Delete city button */}
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          deleteCity(city);
-                        }}
-                        className="absolute -top-2 md:-top-3 -right-2 md:-right-3 w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tab:opacity-100 shadow-2xl hover:scale-125 z-10 cursor-pointer transition-all duration-300"
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); deleteCity(city); }}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tab:opacity-100 shadow-lg z-10 cursor-pointer transition-all"
                         title="Delete city"
                       >
-                        <X className="w-4 h-4 md:w-5 md:h-5 pointer-events-none" />
+                        <X className="w-2.5 h-2.5 pointer-events-none" />
                       </button>
                     </div>
                   );
@@ -663,17 +657,17 @@ export default function Hotels() {
                   setCityForm({ name: '', nameEn: '', sortOrder: cities.length });
                   setCityModalOpen(true);
                 }}
-                className="px-3 md:px-4 py-2.5 md:py-3 rounded-lg md:rounded-xl text-sm md:text-base font-medium text-slate-400 hover:text-slate-600 border-2 border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className="py-2 px-2 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-600 border-2 border-dashed border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all flex items-center justify-center md:px-4 md:py-3"
                 title="Add city"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
 
         {/* Hotels List */}
-        <div className="space-y-6 md:space-y-8">
+        <div className="space-y-3 md:space-y-8">
           {filteredGroups.map(group => {
             const cityColors = getCityColor(group.city.nameEn || group.city.name);
 
@@ -681,42 +675,42 @@ export default function Hotels() {
               <div key={group.city.id} className="space-y-3 md:space-y-5">
                 {/* City Header */}
                 <div
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer group py-3 px-3 md:px-4 bg-white rounded-xl md:rounded-2xl shadow-lg border-2 border-slate-100 hover:shadow-2xl hover:border-primary-200 transition-all duration-300 gap-3 sm:gap-0"
+                  className="flex flex-row items-center justify-between cursor-pointer group py-2.5 px-2.5 md:px-4 bg-white rounded-xl md:rounded-2xl shadow-lg border-2 border-slate-100 hover:shadow-2xl hover:border-primary-200 transition-all duration-300"
                   onClick={() => toggleCity(group.city.id)}
                 >
-                  <div className="flex items-center gap-3 md:gap-5 w-full sm:w-auto">
-                    <div className={`w-1.5 md:w-2 h-12 md:h-14 rounded-full bg-gradient-to-b ${cityColors.bg} shadow-lg flex-shrink-0`}></div>
-                    <h2 className="text-lg md:text-2xl font-black text-slate-800">{group.city.nameEn || group.city.name}</h2>
-                    <span className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black ${cityColors.light} ${cityColors.text} shadow-md`}>
-                      {group.hotels.length} {group.hotels.length === 1 ? 'hotel' : 'hotels'}
+                  <div className="flex items-center gap-2.5 md:gap-5 flex-1 min-w-0">
+                    <div className={`w-1.5 h-9 md:h-14 rounded-full bg-gradient-to-b ${cityColors.bg} shadow-lg flex-shrink-0`}></div>
+                    <h2 className="text-base md:text-2xl font-black text-slate-800 truncate">{group.city.nameEn || group.city.name}</h2>
+                    <span className={`px-2 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-black ${cityColors.light} ${cityColors.text} shadow-md shrink-0`}>
+                      {group.hotels.length}
                     </span>
                     {expandedCities[group.city.id] ? (
-                      <ChevronDown className="w-6 h-6 md:w-7 md:h-7 text-slate-400 group-hover:text-primary-600 transition-colors ml-auto sm:ml-0" />
+                      <ChevronDown className="w-4 h-4 md:w-7 md:h-7 text-slate-400 group-hover:text-primary-600 transition-colors shrink-0" />
                     ) : (
-                      <ChevronRight className="w-6 h-6 md:w-7 md:h-7 text-slate-400 group-hover:text-primary-600 transition-colors ml-auto sm:ml-0" />
+                      <ChevronRight className="w-4 h-4 md:w-7 md:h-7 text-slate-400 group-hover:text-primary-600 transition-colors shrink-0" />
                     )}
                   </div>
-                  <div className={`flex items-center gap-2 md:gap-3 w-full sm:w-auto ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-all`}>
+                  <div className={`flex items-center gap-1.5 md:gap-3 shrink-0 ml-2 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-all`}>
                     <button
                       onClick={(e) => { e.stopPropagation(); openHotelModal(null, group.city.id); }}
-                      className="p-2.5 md:p-3 text-white bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 rounded-lg md:rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      className="p-1.5 md:p-3 text-white bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 rounded-lg md:rounded-xl transition-all shadow-md hover:shadow-xl flex items-center justify-center"
                       title="Add hotel to this city"
                     >
-                      <Plus className="w-5 h-5" />
+                      <Plus className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); openCityModal(group.city); }}
-                      className="p-2.5 md:p-3 text-white bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-lg md:rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      className="p-1.5 md:p-3 text-white bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-lg md:rounded-xl transition-all shadow-md hover:shadow-xl flex items-center justify-center"
                       title="Edit city"
                     >
-                      <Edit className="w-5 h-5" />
+                      <Edit className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteCity(group.city); }}
-                      className="p-2.5 md:p-3 text-white bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-lg md:rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      className="p-1.5 md:p-3 text-white bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-lg md:rounded-xl transition-all shadow-md hover:shadow-xl flex items-center justify-center"
                       title="Delete city"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
                   </div>
                 </div>
@@ -750,114 +744,160 @@ export default function Hotels() {
                           <div className={`flex ${isMobile ? 'flex-col' : 'items-stretch'}`}>
                             {/* Hotel Info - Left Side */}
                             <div
-                              className={`${isMobile ? 'w-full' : 'w-80 flex-shrink-0 border-r-2'} p-4 md:p-6 border-slate-100 cursor-pointer hover:bg-gradient-to-br hover:from-slate-50 hover:to-white transition-all duration-300 bg-gradient-to-br ${cityColors.light}`}
-                              onClick={() => toggleHotel(hotel.id)}
+                              className={`${isMobile ? 'w-full' : 'w-80 flex-shrink-0 border-r-2'} p-3 md:p-6 border-slate-100 bg-gradient-to-br ${cityColors.light}`}
                             >
-                              <div className="flex items-center gap-3 md:gap-4">
-                                <div className={`w-14 h-14 md:w-20 md:h-20 bg-white rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl border-2 border-slate-100 flex-shrink-0`}>
+                              {/* Hotel header row */}
+                              <div className="flex items-center gap-2.5 md:gap-4 cursor-pointer" onClick={() => toggleHotel(hotel.id)}>
+                                <div className={`w-11 h-11 md:w-20 md:h-20 bg-white rounded-xl md:rounded-3xl flex items-center justify-center shadow-xl border-2 border-slate-100 flex-shrink-0`}>
                                   {hotel.stars && !isNaN(parseInt(hotel.stars)) ? (
                                     <div className="flex flex-col items-center">
-                                      <Star className={`w-6 h-6 md:w-8 md:h-8 ${cityColors.text} fill-current`} />
-                                      <span className={`text-sm md:text-base font-black ${cityColors.text}`}>{hotel.stars}</span>
+                                      <Star className={`w-5 h-5 md:w-8 md:h-8 ${cityColors.text} fill-current`} />
+                                      <span className={`text-xs md:text-base font-black ${cityColors.text}`}>{hotel.stars}</span>
                                     </div>
                                   ) : hotel.stars === 'Guesthouse' || hotel.stars === 'Yurta' ? (
-                                    <Home className={`w-7 h-7 md:w-10 md:h-10 ${cityColors.text}`} />
+                                    <Home className={`w-5 h-5 md:w-10 md:h-10 ${cityColors.text}`} />
                                   ) : (
-                                    <Building2 className={`w-7 h-7 md:w-10 md:h-10 ${cityColors.text}`} />
+                                    <Building2 className={`w-5 h-5 md:w-10 md:h-10 ${cityColors.text}`} />
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-black text-base md:text-xl text-slate-900 truncate">{hotel.name}</h3>
+                                  <h3 className="font-black text-sm md:text-xl text-slate-900 truncate">{hotel.name}</h3>
                                   {hotel.address && (
-                                    <p className="text-xs md:text-sm text-slate-600 truncate mt-0.5 md:mt-1 font-medium">{hotel.address}</p>
+                                    <p className="text-xs text-slate-500 truncate mt-0.5 font-medium">{hotel.address}</p>
                                   )}
-                                  <div className="flex items-center gap-2 mt-1 md:mt-2">
-                                    <span className={`px-2 md:px-3 py-0.5 md:py-1 rounded-lg md:rounded-xl text-xs font-black ${cityColors.light} ${cityColors.text} shadow-sm`}>
-                                      {hotel.roomTypes?.length || 0} room types
-                                    </span>
-                                  </div>
+                                  <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-black ${cityColors.light} ${cityColors.text} shadow-sm mt-1`}>
+                                    {hotel.roomTypes?.length || 0} room types
+                                  </span>
                                 </div>
+                                {expandedHotels[hotel.id]
+                                  ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                                  : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                                }
                               </div>
+                              {/* Mobile action bar */}
+                              {isMobile && (
+                                <div className="flex gap-2 mt-2.5 pt-2 border-t border-white/60">
+                                  <button onClick={() => openImageModal(hotel)} className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-white/80 text-rose-500 rounded-lg text-xs font-semibold shadow-sm">
+                                    <Image className="w-3.5 h-3.5" />Photos
+                                  </button>
+                                  <button onClick={() => openHotelModal(hotel)} className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-white/80 text-primary-600 rounded-lg text-xs font-semibold shadow-sm">
+                                    <Edit className="w-3.5 h-3.5" />Edit
+                                  </button>
+                                  <button onClick={() => deleteHotel(hotel)} className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-white/80 text-red-500 rounded-lg text-xs font-semibold shadow-sm">
+                                    <Trash2 className="w-3.5 h-3.5" />Delete
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
-                            {/* Room Types - Middle (Scrollable) */}
-                            <div className={`flex-1 flex items-center gap-3 md:gap-4 px-3 md:px-6 py-3 md:py-5 overflow-x-auto ${isMobile ? 'border-t-2 border-slate-100' : ''}`}>
-                              {hotel.roomTypes?.length > 0 ? (
-                                hotel.roomTypes.map(room => {
+                            {/* Room Types */}
+                            {isMobile ? (
+                              /* Mobile: 2-column grid */
+                              <div className="grid grid-cols-2 gap-2 px-3 py-3 border-t-2 border-slate-100">
+                                {hotel.roomTypes?.length > 0 ? hotel.roomTypes.map(room => {
                                   const roomStyle = getRoomTypeStyle(room.name);
                                   const price = getDisplayPrice(room);
                                   const symbol = room.currency === 'USD' ? '$' : room.currency === 'EUR' ? '€' : '';
-
                                   return (
-                                    <div
-                                      key={room.id}
-                                      className={`flex-shrink-0 px-4 md:px-6 py-3 md:py-4 rounded-xl md:rounded-2xl border-2 ${roomStyle.bg} border-slate-200 hover:shadow-2xl hover:scale-105 md:hover:scale-110 transition-all duration-300 cursor-pointer group relative min-w-[140px]`}
-                                      onClick={() => openRoomModal(hotel.id, room)}
-                                    >
-                                      <div className="flex items-center gap-2 md:gap-3">
-                                        <span className={`font-black text-base md:text-lg ${roomStyle.color}`}>{room.name}</span>
-                                        <span className="text-base md:text-lg font-black text-slate-800">
-                                          {symbol}{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                          {room.currency === 'UZS' && ' UZS'}
-                                        </span>
+                                    <div key={room.id} onClick={() => openRoomModal(hotel.id, room)}
+                                      className={`relative px-3 py-2.5 rounded-xl border-2 ${roomStyle.bg} border-slate-200 cursor-pointer active:opacity-75`}>
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className={`font-black text-sm ${roomStyle.color}`}>{room.name}</span>
+                                        <div className="flex gap-1">
+                                          <button onClick={(e) => { e.stopPropagation(); openSeasonModal(hotel.id, room); }}
+                                            className="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center shadow-sm">
+                                            <Calendar className="w-2.5 h-2.5" />
+                                          </button>
+                                          <button onClick={(e) => { e.stopPropagation(); deleteRoom(hotel.id, room); }}
+                                            className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-sm">
+                                            <X className="w-2.5 h-2.5" />
+                                          </button>
+                                        </div>
                                       </div>
-                                      {/* Hover actions */}
-                                      <div className={`absolute -top-2 md:-top-3 -right-2 md:-right-3 flex gap-1 md:gap-1.5 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); openSeasonModal(hotel.id, room); }}
-                                          className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
-                                          title="Seasonal prices"
-                                        >
-                                          <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); deleteRoom(hotel.id, room); }}
-                                          className="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all"
-                                          title="Delete"
-                                        >
-                                          <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                                        </button>
+                                      <div className="font-black text-slate-800 text-sm leading-tight">
+                                        {symbol}{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        {room.currency === 'UZS' && <span className="text-xs font-bold ml-0.5">UZS</span>}
                                       </div>
                                     </div>
                                   );
-                                })
-                              ) : (
-                                <span className="text-sm md:text-base text-slate-400 italic font-medium">No room types</span>
-                              )}
-
-                              {/* Add Room Button */}
-                              <button
-                                onClick={() => openRoomModal(hotel.id)}
-                                className="flex-shrink-0 px-4 md:px-5 py-3 md:py-4 rounded-xl md:rounded-2xl border-3 border-dashed border-emerald-400 text-emerald-600 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-green-50 hover:border-emerald-500 hover:shadow-xl transition-all duration-300 transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                              >
-                                <Plus className="w-5 h-5 md:w-6 md:h-6" />
-                              </button>
-                            </div>
+                                }) : null}
+                                <button onClick={() => openRoomModal(hotel.id)}
+                                  className="py-2.5 rounded-xl border-2 border-dashed border-emerald-400 text-emerald-600 hover:bg-emerald-50 flex items-center justify-center transition-all">
+                                  <Plus className="w-5 h-5" />
+                                </button>
+                                {hotel.roomTypes?.length === 0 && (
+                                  <span className="col-span-2 text-xs text-slate-400 italic text-center py-1">No room types</span>
+                                )}
+                              </div>
+                            ) : (
+                              /* Desktop: horizontal scroll */
+                              <div className="flex-1 flex items-center gap-4 px-6 py-5 overflow-x-auto">
+                                {hotel.roomTypes?.length > 0 ? (
+                                  hotel.roomTypes.map(room => {
+                                    const roomStyle = getRoomTypeStyle(room.name);
+                                    const price = getDisplayPrice(room);
+                                    const symbol = room.currency === 'USD' ? '$' : room.currency === 'EUR' ? '€' : '';
+                                    return (
+                                      <div key={room.id}
+                                        className={`flex-shrink-0 px-6 py-4 rounded-2xl border-2 ${roomStyle.bg} border-slate-200 hover:shadow-2xl hover:scale-110 transition-all duration-300 cursor-pointer group relative min-w-[140px]`}
+                                        onClick={() => openRoomModal(hotel.id, room)}>
+                                        <div className="flex items-center gap-3">
+                                          <span className={`font-black text-lg ${roomStyle.color}`}>{room.name}</span>
+                                          <span className="text-lg font-black text-slate-800">
+                                            {symbol}{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            {room.currency === 'UZS' && ' UZS'}
+                                          </span>
+                                        </div>
+                                        <div className="absolute -top-3 -right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button onClick={(e) => { e.stopPropagation(); openSeasonModal(hotel.id, room); }}
+                                            className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all" title="Seasonal prices">
+                                            <Calendar className="w-4 h-4" />
+                                          </button>
+                                          <button onClick={(e) => { e.stopPropagation(); deleteRoom(hotel.id, room); }}
+                                            className="w-8 h-8 bg-gradient-to-br from-red-500 to-rose-500 text-white rounded-full flex items-center justify-center shadow-xl transform hover:scale-125 transition-all" title="Delete">
+                                            <X className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })
+                                ) : (
+                                  <span className="text-base text-slate-400 italic font-medium">No room types</span>
+                                )}
+                                <button onClick={() => openRoomModal(hotel.id)}
+                                  className="flex-shrink-0 px-5 py-4 rounded-2xl border-2 border-dashed border-emerald-400 text-emerald-600 hover:bg-emerald-50 hover:shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center">
+                                  <Plus className="w-6 h-6" />
+                                </button>
+                              </div>
+                            )}
 
                             {/* Actions - Right Side */}
-                            <div className={`flex-shrink-0 flex items-center ${isMobile ? 'justify-center' : ''} gap-2 md:gap-3 px-3 md:px-5 py-3 md:py-0 border-slate-100 bg-gradient-to-br from-slate-50 to-white ${isMobile ? 'border-t-2' : 'border-l-2'}`}>
-                              <button
-                                onClick={() => openImageModal(hotel)}
-                                className="p-2.5 md:p-3 text-white bg-gradient-to-br from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-xl md:rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                title="Photos"
-                              >
-                                <Image className="w-5 h-5 md:w-6 md:h-6" />
-                              </button>
-                              <button
-                                onClick={() => openHotelModal(hotel)}
-                                className="p-2.5 md:p-3 text-white bg-gradient-to-br from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-xl md:rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                title="Edit"
-                              >
-                                <Edit className="w-5 h-5 md:w-6 md:h-6" />
-                              </button>
-                              <button
-                                onClick={() => deleteHotel(hotel)}
-                                className="p-2.5 md:p-3 text-white bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl md:rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-5 h-5 md:w-6 md:h-6" />
-                              </button>
-                            </div>
+                            {/* Desktop-only actions panel */}
+                            {!isMobile && (
+                              <div className="flex-shrink-0 flex items-center gap-3 px-5 py-0 border-l-2 border-slate-100 bg-gradient-to-br from-slate-50 to-white">
+                                <button
+                                  onClick={() => openImageModal(hotel)}
+                                  className="p-3 text-white bg-gradient-to-br from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 flex items-center justify-center"
+                                  title="Photos"
+                                >
+                                  <Image className="w-6 h-6" />
+                                </button>
+                                <button
+                                  onClick={() => openHotelModal(hotel)}
+                                  className="p-3 text-white bg-gradient-to-br from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 flex items-center justify-center"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-6 h-6" />
+                                </button>
+                                <button
+                                  onClick={() => deleteHotel(hotel)}
+                                  className="p-3 text-white bg-gradient-to-br from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-2xl transition-all shadow-lg hover:shadow-2xl transform hover:scale-110 flex items-center justify-center"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-6 h-6" />
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* Expanded Details (Optional) */}

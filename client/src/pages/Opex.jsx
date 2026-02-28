@@ -1453,7 +1453,7 @@ export default function Opex() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-3 md:p-6 space-y-4 md:space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 px-2 py-3 md:p-6 space-y-3 md:space-y-6">
       {/* Header */}
       <div className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-emerald-100 p-4 md:p-8">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-cyan-500/10"></div>
@@ -1517,7 +1517,7 @@ export default function Opex() {
 
       {/* Category Tabs */}
       <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-slate-100 p-2 md:p-4">
-        <div className="flex gap-2 md:gap-4 overflow-x-auto justify-start md:justify-center pb-1">
+        <div className="grid grid-cols-2 gap-2 md:flex md:gap-4 md:justify-center">
           {categories.map((category) => {
             const Icon = category.icon;
             const isActive = activeCategory === category.id;
@@ -1538,19 +1538,16 @@ export default function Opex() {
               <button
                 key={category.id}
                 onClick={() => updateParams({ category: category.id })}
-                className={`group relative flex items-center gap-2 md:gap-3 px-4 md:px-8 py-2.5 md:py-4 rounded-xl md:rounded-2xl font-black transition-all duration-300 whitespace-nowrap transform min-h-[44px] flex-shrink-0 ${
+                className={`group relative flex items-center justify-center gap-2 md:gap-3 px-3 md:px-8 py-2.5 md:py-4 rounded-xl md:rounded-2xl font-black transition-all duration-300 min-h-[48px] md:flex-shrink-0 ${
                   isActive
-                    ? `${colors.bg} text-white shadow-2xl hover:shadow-3xl scale-105 md:scale-110 hover:scale-110 md:hover:scale-115`
-                    : `text-gray-700 bg-gradient-to-br ${colors.hoverBg} hover:shadow-xl hover:scale-105 border-2 border-slate-200`
+                    ? `${colors.bg} text-white shadow-xl`
+                    : `text-gray-700 bg-gradient-to-br ${colors.hoverBg} hover:shadow-xl border-2 border-slate-200`
                 }`}
               >
                 <div className={`${isActive ? 'bg-white/30 backdrop-blur-sm' : colors.iconBg} p-1.5 md:p-2 rounded-lg md:rounded-xl transition-all duration-300 shadow-md`}>
                   <Icon className="w-4 h-4 md:w-6 md:h-6" />
                 </div>
                 <span className="text-sm md:text-base">{category.name}</span>
-                {isActive && (
-                  <div className="absolute -bottom-1 md:-bottom-2 left-1/2 -translate-x-1/2 w-12 md:w-16 h-1 md:h-1.5 bg-white rounded-full shadow-lg"></div>
-                )}
               </button>
             );
           })}
@@ -1560,7 +1557,7 @@ export default function Opex() {
       {/* Transport Sub-Tabs */}
       {activeCategory === 'transport' && (
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl md:rounded-3xl shadow-2xl border-2 border-gray-100 p-2 md:p-4">
-          <div className="flex gap-2 md:gap-3 overflow-x-auto pb-1">
+          <div className="grid grid-cols-3 gap-2 md:flex md:gap-3">
             {transportSubTabs.map((subTab) => {
               const Icon = subTab.icon;
               const isActive = activeTransportTab === subTab.id;
@@ -1628,14 +1625,14 @@ export default function Opex() {
                 <button
                   key={subTab.id}
                   onClick={() => updateParams({ transport: subTab.id })}
-                  className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-xs md:text-sm min-h-[44px] flex-shrink-0 ${
+                  className={`flex items-center justify-center gap-1.5 md:gap-2.5 px-2 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all duration-300 text-xs md:text-sm min-h-[44px] md:flex-shrink-0 ${
                     isActive
-                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-105 md:scale-110 -translate-y-0.5`
-                      : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
+                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring}`
+                      : 'text-gray-600 bg-white shadow-md hover:shadow-lg border border-gray-200'
                   }`}
                 >
-                  <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                  {subTab.name}
+                  <Icon className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" />
+                  <span className="truncate">{subTab.name}</span>
                 </button>
               );
             })}
@@ -1646,7 +1643,7 @@ export default function Opex() {
       {/* Sightseeing Sub-Tabs */}
       {activeCategory === 'sightseeing' && (
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4">
-          <div className="flex gap-3 overflow-x-auto">
+          <div className="grid grid-cols-4 gap-2 md:flex md:gap-3">
             {sightseeingSubTabs.map((subTab) => {
               const Icon = subTab.icon;
               const isActive = activeSightseeingTab === subTab.id;
@@ -1684,14 +1681,14 @@ export default function Opex() {
                 <button
                   key={subTab.id}
                   onClick={() => updateParams({ sightseeing: subTab.id })}
-                  className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
+                  className={`flex items-center justify-center gap-1.5 md:gap-2.5 px-2 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all duration-300 text-xs md:text-sm min-h-[44px] md:flex-shrink-0 ${
                     isActive
-                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
-                      : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
+                      ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring}`
+                      : 'text-gray-600 bg-white shadow-md hover:shadow-lg border border-gray-200'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  {subTab.name}
+                  <Icon className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" />
+                  <span className="truncate">{subTab.name}</span>
                 </button>
               );
             })}
@@ -1700,7 +1697,7 @@ export default function Opex() {
       )}
 
       {/* Search */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-6">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl md:rounded-3xl shadow-2xl border-2 border-gray-100 p-3 md:p-6">
         <div className="relative group">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl opacity-0 group-focus-within:opacity-100 transition-all duration-300"></div>
           <div className="absolute left-5 top-1/2 -translate-y-1/2 p-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl opacity-70 group-focus-within:opacity-100 transition-all duration-300 shadow-lg">
@@ -1719,117 +1716,170 @@ export default function Opex() {
       {/* Content */}
       <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 overflow-hidden">
         {activeCategory === 'transport' && activeTransportTab === 'xayrulla' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-600 border-b-3 border-cyan-300">
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Название
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    PAX
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Pickup / Drop-off
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    chimgan Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Tag Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Oybek Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Chernyayevka Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    City Tour Rate
-                  </th>
-                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
                 {xayrullaVehicles.map((vehicle) => (
-                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-cyan-50 hover:to-teal-50 transition-all duration-300 border-b border-gray-100 group">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.name}
+                  <div key={vehicle.id} className="flex rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-cyan-400 to-teal-600" />
+                    <div className="flex-1 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-gray-900 text-sm">{vehicle.name}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 text-xs font-semibold">{vehicle.person || '-'} pax</span>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => handleEditVehicle(vehicle)} className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteVehicle(vehicle.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.person || '-'}
+                      <div className="mt-2 grid grid-cols-3 gap-1.5">
+                        <div className="rounded-xl bg-cyan-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-cyan-500 font-medium truncate">Pickup</div>
+                          <div className="font-bold text-cyan-800 text-sm">{vehicle.vstrecha || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-cyan-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-cyan-500 font-medium truncate">Chimgan</div>
+                          <div className="font-bold text-cyan-800 text-sm">{vehicle.chimgan || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-cyan-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-cyan-500 font-medium truncate">TAG</div>
+                          <div className="font-bold text-cyan-800 text-sm">{vehicle.tag || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-cyan-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-cyan-500 font-medium truncate">Oybek</div>
+                          <div className="font-bold text-cyan-800 text-sm">{vehicle.oybek || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-cyan-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-cyan-500 font-medium truncate">Chernyayevka</div>
+                          <div className="font-bold text-cyan-800 text-sm">{vehicle.chernyayevka || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-cyan-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-cyan-500 font-medium truncate">City Tour</div>
+                          <div className="font-bold text-cyan-800 text-sm">{vehicle.cityTour || '-'}</div>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.vstrecha || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.chimgan || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.tag || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.oybek || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.chernyayevka || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.cityTour || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditVehicle(vehicle)}
-                        className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
-                        title="Редактировать"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVehicle(vehicle.id)}
-                        className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
-                        title="Удалить"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-                <tr>
-                  <td colSpan="7" className="px-6 py-4">
-                    <button
-                      onClick={handleAddVehicle}
-                      className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
-                    >
-                      <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                        <Plus className="w-5 h-5" />
-                      </div>
-                      <span className="font-semibold">Добавить транспорт</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                <button onClick={handleAddVehicle} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-primary-600 font-semibold flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Добавить транспорт
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-cyan-500 via-teal-500 to-cyan-600 border-b-3 border-cyan-300">
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Название
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        PAX
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Pickup / Drop-off
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        chimgan Rate
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Tag Rate
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Oybek Rate
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Chernyayevka Rate
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        City Tour Rate
+                      </th>
+                      <th className="px-3 py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Действия
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {xayrullaVehicles.map((vehicle) => (
+                      <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-cyan-50 hover:to-teal-50 transition-all duration-300 border-b border-gray-100 group">
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.name}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">
+                            {vehicle.person || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">
+                            {vehicle.vstrecha || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.chimgan || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.tag || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.oybek || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.chernyayevka || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.cityTour || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleEditVehicle(vehicle)}
+                            className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
+                            title="Редактировать"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVehicle(vehicle.id)}
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
+                            title="Удалить"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan="7" className="px-6 py-4">
+                        <button
+                          onClick={handleAddVehicle}
+                          className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
+                        >
+                          <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
+                            <Plus className="w-5 h-5" />
+                          </div>
+                          <span className="font-semibold">Добавить транспорт</span>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
             {/* Save Button for Xayrulla */}
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end px-4">
               <button
                 onClick={() => handleSaveTransportData('Xayrulla')}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
@@ -1840,101 +1890,146 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'nosir' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 border-b-3 border-teal-300">
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Название
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    PAX
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Margilan Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Qoqon Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Dostlik Rate
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Toshkent Rate
-                  </th>
-                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
                 {nosirVehicles.map((vehicle) => (
-                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 transition-all duration-300 border-b border-gray-100 group">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.name}
+                  <div key={vehicle.id} className="flex rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-teal-400 to-emerald-600" />
+                    <div className="flex-1 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-gray-900 text-sm">{vehicle.name}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold">{vehicle.person || '-'} pax</span>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => handleEditVehicle(vehicle)} className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteVehicle(vehicle.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.person || '-'}
+                      <div className="mt-2 grid grid-cols-3 gap-1.5">
+                        <div className="rounded-xl bg-teal-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-teal-500 font-medium truncate">Margilan</div>
+                          <div className="font-bold text-teal-800 text-sm">{vehicle.margilan || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-teal-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-teal-500 font-medium truncate">Qoqon</div>
+                          <div className="font-bold text-teal-800 text-sm">{vehicle.qoqon || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-teal-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-teal-500 font-medium truncate">Dostlik</div>
+                          <div className="font-bold text-teal-800 text-sm">{vehicle.dostlik || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-teal-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-teal-500 font-medium truncate">Toshkent</div>
+                          <div className="font-bold text-teal-800 text-sm">{vehicle.toshkent || '-'}</div>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.margilan || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.qoqon || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.dostlik || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.toshkent || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditVehicle(vehicle)}
-                        className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
-                        title="Редактировать"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVehicle(vehicle.id)}
-                        className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
-                        title="Удалить"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-                <tr>
-                  <td colSpan="7" className="px-6 py-4">
-                    <button
-                      onClick={handleAddVehicle}
-                      className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
-                    >
-                      <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                        <Plus className="w-5 h-5" />
-                      </div>
-                      <span className="font-semibold">Добавить транспорт</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                <button onClick={handleAddVehicle} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-primary-600 font-semibold flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Добавить транспорт
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 border-b-3 border-teal-300">
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Название
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        PAX
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Margilan Rate
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Qoqon Rate
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Dostlik Rate
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Toshkent Rate
+                      </th>
+                      <th className="px-3 py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Действия
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {nosirVehicles.map((vehicle) => (
+                      <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 transition-all duration-300 border-b border-gray-100 group">
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.name}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">
+                            {vehicle.person || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.margilan || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.qoqon || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.dostlik || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.toshkent || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleEditVehicle(vehicle)}
+                            className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
+                            title="Редактировать"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVehicle(vehicle.id)}
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
+                            title="Удалить"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan="7" className="px-6 py-4">
+                        <button
+                          onClick={handleAddVehicle}
+                          className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
+                        >
+                          <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
+                            <Plus className="w-5 h-5" />
+                          </div>
+                          <span className="font-semibold">Добавить транспорт</span>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
             {/* Save Button for Nosir */}
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end px-4">
               <button
                 onClick={() => handleSaveTransportData('Nosir')}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
@@ -1945,94 +2040,123 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'metro' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-violet-500 via-purple-500 to-violet-600 border-b-3 border-violet-300">
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
                 {metroVehicles.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-200 rounded-full flex items-center justify-center shadow-lg">
-                          <Navigation className="w-10 h-10 text-violet-500" />
-                        </div>
-                        <div>
-                          <p className="text-gray-700 font-bold mb-1">Нет данных</p>
-                          <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
-                        </div>
-                        <button
-                          onClick={handleAddVehicle}
-                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-700 text-white rounded-2xl hover:from-violet-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-bold"
-                        >
-                          <Plus className="w-5 h-5" />
-                          <span>Добавить</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <div className="py-10 text-center text-gray-500 text-sm">Нет данных</div>
                 ) : (
                   metroVehicles.map((vehicle) => (
-                    <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-violet-50 hover:to-purple-50 transition-all duration-300 border-b border-gray-100 group">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.name}
+                    <div key={vehicle.id} className="flex rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                      <div className="w-1.5 shrink-0 bg-gradient-to-b from-violet-400 to-purple-600" />
+                      <div className="flex-1 px-3 py-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-gray-900 text-sm">{vehicle.name}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="px-3 py-1 rounded-full bg-violet-100 text-violet-700 font-bold text-sm">{vehicle.economPrice || '-'}</span>
+                            <button onClick={() => handleEditVehicle(vehicle)} className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteVehicle(vehicle.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.economPrice || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleEditVehicle(vehicle)}
-                          className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteVehicle(vehicle.id)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))
                 )}
-                {metroVehicles.length > 0 && (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-4">
-                      <button
-                        onClick={handleAddVehicle}
-                        className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
-                      >
-                        <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                          <Plus className="w-5 h-5" />
-                        </div>
-                        <span className="font-semibold">Добавить транспорт</span>
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                <button onClick={handleAddVehicle} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-primary-600 font-semibold flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Добавить транспорт
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-violet-500 via-purple-500 to-violet-600 border-b-3 border-violet-300">
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Name
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Price
+                      </th>
+                      <th className="px-3 py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Действия
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {metroVehicles.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" className="px-6 py-16 text-center">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-200 rounded-full flex items-center justify-center shadow-lg">
+                              <Navigation className="w-10 h-10 text-violet-500" />
+                            </div>
+                            <div>
+                              <p className="text-gray-700 font-bold mb-1">Нет данных</p>
+                              <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
+                            </div>
+                            <button
+                              onClick={handleAddVehicle}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-700 text-white rounded-2xl hover:from-violet-700 hover:to-purple-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-bold"
+                            >
+                              <Plus className="w-5 h-5" />
+                              <span>Добавить</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      metroVehicles.map((vehicle) => (
+                        <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-violet-50 hover:to-purple-50 transition-all duration-300 border-b border-gray-100 group">
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.name}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.economPrice || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleEditVehicle(vehicle)}
+                              className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteVehicle(vehicle.id)}
+                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    {metroVehicles.length > 0 && (
+                      <tr>
+                        <td colSpan="3" className="px-6 py-4">
+                          <button
+                            onClick={handleAddVehicle}
+                            className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
+                          >
+                            <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <span className="font-semibold">Добавить транспорт</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {/* Save Button for Metro */}
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end px-4">
               <button
                 onClick={() => handleSaveTransportData('Metro')}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
@@ -2043,154 +2167,196 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'plane' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-sky-500 via-blue-500 to-sky-600 border-b-3 border-sky-300">
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Flight Number
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Airline
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Route
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Econom
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Business
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    VIP
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Departure
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Arrival
-                  </th>
-                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
                 {planeVehicles.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-20 h-20 bg-gradient-to-br from-sky-100 to-blue-200 rounded-full flex items-center justify-center shadow-lg">
-                          <Plane className="w-10 h-10 text-sky-500" />
-                        </div>
-                        <div>
-                          <p className="text-gray-700 font-bold mb-1">Нет данных</p>
-                          <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
-                        </div>
-                        <button
-                          onClick={handleAddVehicle}
-                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
-                        >
-                          <Plus className="w-5 h-5" />
-                          <span className="font-medium">Добавить</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <div className="py-10 text-center text-gray-500 text-sm">Нет данных</div>
                 ) : (
                   planeVehicles.map((vehicle) => (
-                    <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.trainNumber || '-'}
+                    <div key={vehicle.id} className="flex rounded-2xl overflow-hidden border border-sky-200 shadow-sm bg-white">
+                      <div className="w-1.5 shrink-0 bg-gradient-to-b from-sky-400 to-blue-600" />
+                      <div className="flex-1 px-3 py-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-gray-900 text-sm">{vehicle.trainNumber || 'N/A'}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${vehicle.flightType === 'DOMESTIC' ? 'bg-green-100 text-green-700' : 'bg-sky-100 text-sky-700'}`}>
+                              {vehicle.flightType === 'DOMESTIC' ? 'Ički' : 'Xalqaro'}
+                            </span>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditVehicle(vehicle)} className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteVehicle(vehicle.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.name}
+                        <div className="text-xs text-sky-700 font-semibold mt-0.5">{vehicle.name}</div>
+                        {vehicle.route && <div className="text-xs text-gray-500 mt-0.5">{vehicle.route}</div>}
+                        <div className="mt-2 grid grid-cols-3 gap-1.5">
+                          <div className="rounded-xl bg-sky-50 px-2 py-1.5 text-center"><div className="text-xs text-sky-500 font-medium">Econom</div><div className="font-bold text-sky-800 text-sm">{vehicle.economPrice || '-'}</div></div>
+                          <div className="rounded-xl bg-sky-50 px-2 py-1.5 text-center"><div className="text-xs text-sky-500 font-medium">Business</div><div className="font-bold text-sky-800 text-sm">{vehicle.businessPrice || '-'}</div></div>
+                          <div className="rounded-xl bg-sky-50 px-2 py-1.5 text-center"><div className="text-xs text-sky-500 font-medium">VIP</div><div className="font-bold text-sky-800 text-sm">{vehicle.vipPrice || '-'}</div></div>
+                          <div className="rounded-xl bg-slate-50 px-2 py-1.5 text-center"><div className="text-xs text-gray-500 font-medium">Dep</div><div className="font-bold text-gray-800 text-sm">{vehicle.departure || '-'}</div></div>
+                          <div className="rounded-xl bg-slate-50 px-2 py-1.5 text-center"><div className="text-xs text-gray-500 font-medium">Arr</div><div className="font-bold text-gray-800 text-sm">{vehicle.arrival || '-'}</div></div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
-                          vehicle.flightType === 'DOMESTIC'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-sky-100 text-sky-700'
-                        }`}>
-                          {vehicle.flightType === 'DOMESTIC' ? 'Ички' : 'Халқаро'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">
-                          {vehicle.route || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.economPrice || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.businessPrice || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.vipPrice || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-600">
-                          {vehicle.departure || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-600">
-                          {vehicle.arrival || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleEditVehicle(vehicle)}
-                          className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteVehicle(vehicle.id)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))
                 )}
-                {planeVehicles.length > 0 && (
-                  <tr>
-                    <td colSpan="10" className="px-6 py-4">
-                      <button
-                        onClick={handleAddVehicle}
-                        className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
-                      >
-                        <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                          <Plus className="w-5 h-5" />
-                        </div>
-                        <span className="font-semibold">Добавить транспорт</span>
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                <button onClick={handleAddVehicle} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-primary-600 font-semibold flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Добавить транспорт
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-sky-500 via-blue-500 to-sky-600 border-b-3 border-sky-300">
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Flight Number
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Airline
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Type
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Route
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Econom
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Business
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        VIP
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Departure
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Arrival
+                      </th>
+                      <th className="px-3 py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Действия
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {planeVehicles.length === 0 ? (
+                      <tr>
+                        <td colSpan="10" className="px-6 py-16 text-center">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="w-20 h-20 bg-gradient-to-br from-sky-100 to-blue-200 rounded-full flex items-center justify-center shadow-lg">
+                              <Plane className="w-10 h-10 text-sky-500" />
+                            </div>
+                            <div>
+                              <p className="text-gray-700 font-bold mb-1">Нет данных</p>
+                              <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
+                            </div>
+                            <button
+                              onClick={handleAddVehicle}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                            >
+                              <Plus className="w-5 h-5" />
+                              <span className="font-medium">Добавить</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      planeVehicles.map((vehicle) => (
+                        <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.trainNumber || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.name}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
+                              vehicle.flightType === 'DOMESTIC'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-sky-100 text-sky-700'
+                            }`}>
+                              {vehicle.flightType === 'DOMESTIC' ? 'Ички' : 'Халқаро'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <div className="text-sm text-gray-600">
+                              {vehicle.route || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.economPrice || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.businessPrice || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.vipPrice || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm text-gray-600">
+                              {vehicle.departure || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm text-gray-600">
+                              {vehicle.arrival || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleEditVehicle(vehicle)}
+                              className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteVehicle(vehicle.id)}
+                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    {planeVehicles.length > 0 && (
+                      <tr>
+                        <td colSpan="10" className="px-6 py-4">
+                          <button
+                            onClick={handleAddVehicle}
+                            className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
+                          >
+                            <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <span className="font-semibold">Добавить транспорт</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {/* Save Button for Plane */}
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end px-4">
               <button
                 onClick={() => handleSaveTransportData('Plane')}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
@@ -2201,142 +2367,181 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab === 'train' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 border-b-3 border-emerald-300">
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Train Number
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Train Name
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Route
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Econom
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Business
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    VIP
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Departure
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Arrival
-                  </th>
-                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
                 {trainVehicles.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-green-200 rounded-full flex items-center justify-center shadow-lg">
-                          <Train className="w-10 h-10 text-emerald-500" />
-                        </div>
-                        <div>
-                          <p className="text-gray-700 font-bold mb-1">Нет данных</p>
-                          <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
-                        </div>
-                        <button
-                          onClick={handleAddVehicle}
-                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
-                        >
-                          <Plus className="w-5 h-5" />
-                          <span className="font-medium">Добавить</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <div className="py-10 text-center text-gray-500 text-sm">Нет данных</div>
                 ) : (
                   trainVehicles.map((vehicle) => (
-                    <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.trainNumber || '-'}
+                    <div key={vehicle.id} className="flex rounded-2xl overflow-hidden border border-emerald-200 shadow-sm bg-white">
+                      <div className="w-1.5 shrink-0 bg-gradient-to-b from-emerald-400 to-green-600" />
+                      <div className="flex-1 px-3 py-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <div className="font-bold text-gray-900 text-sm">{vehicle.trainNumber || vehicle.name}</div>
+                            {vehicle.trainNumber && <div className="text-xs text-emerald-700 font-semibold">{vehicle.name}</div>}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditVehicle(vehicle)} className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteVehicle(vehicle.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.name}
+                        {vehicle.route && <div className="text-xs text-gray-500 mt-0.5">{vehicle.route}</div>}
+                        <div className="mt-2 grid grid-cols-3 gap-1.5">
+                          <div className="rounded-xl bg-emerald-50 px-2 py-1.5 text-center"><div className="text-xs text-emerald-500 font-medium">Econom</div><div className="font-bold text-emerald-800 text-sm">{vehicle.economPrice || '-'}</div></div>
+                          <div className="rounded-xl bg-emerald-50 px-2 py-1.5 text-center"><div className="text-xs text-emerald-500 font-medium">Business</div><div className="font-bold text-emerald-800 text-sm">{vehicle.businessPrice || '-'}</div></div>
+                          <div className="rounded-xl bg-emerald-50 px-2 py-1.5 text-center"><div className="text-xs text-emerald-500 font-medium">VIP</div><div className="font-bold text-emerald-800 text-sm">{vehicle.vipPrice || '-'}</div></div>
+                          <div className="rounded-xl bg-slate-50 px-2 py-1.5 text-center"><div className="text-xs text-gray-500 font-medium">Dep</div><div className="font-bold text-gray-800 text-sm">{vehicle.departure || '-'}</div></div>
+                          <div className="rounded-xl bg-slate-50 px-2 py-1.5 text-center"><div className="text-xs text-gray-500 font-medium">Arr</div><div className="font-bold text-gray-800 text-sm">{vehicle.arrival || '-'}</div></div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">
-                          {vehicle.route || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.economPrice || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.businessPrice || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.vipPrice || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-600">
-                          {vehicle.departure || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm text-gray-600">
-                          {vehicle.arrival || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleEditVehicle(vehicle)}
-                          className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteVehicle(vehicle.id)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))
                 )}
-                {trainVehicles.length > 0 && (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-4">
-                      <button
-                        onClick={handleAddVehicle}
-                        className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
-                      >
-                        <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                          <Plus className="w-5 h-5" />
-                        </div>
-                        <span className="font-semibold">Добавить транспорт</span>
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                <button onClick={handleAddVehicle} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-primary-600 font-semibold flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Добавить транспорт
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 border-b-3 border-emerald-300">
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Train Number
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Train Name
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Route
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Econom
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Business
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        VIP
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Departure
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Arrival
+                      </th>
+                      <th className="px-3 py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Действия
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {trainVehicles.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-16 text-center">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-green-200 rounded-full flex items-center justify-center shadow-lg">
+                              <Train className="w-10 h-10 text-emerald-500" />
+                            </div>
+                            <div>
+                              <p className="text-gray-700 font-bold mb-1">Нет данных</p>
+                              <p className="text-gray-500 text-sm">Начните добавлять транспорт</p>
+                            </div>
+                            <button
+                              onClick={handleAddVehicle}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                            >
+                              <Plus className="w-5 h-5" />
+                              <span className="font-medium">Добавить</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      trainVehicles.map((vehicle) => (
+                        <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 border-b border-gray-100">
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.trainNumber || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.name}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <div className="text-sm text-gray-600">
+                              {vehicle.route || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.economPrice || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.businessPrice || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.vipPrice || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm text-gray-600">
+                              {vehicle.departure || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm text-gray-600">
+                              {vehicle.arrival || '-'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleEditVehicle(vehicle)}
+                              className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteVehicle(vehicle.id)}
+                              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                    {trainVehicles.length > 0 && (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-4">
+                          <button
+                            onClick={handleAddVehicle}
+                            className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
+                          >
+                            <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <span className="font-semibold">Добавить транспорт</span>
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {/* Save Button for Train */}
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end px-4">
               <button
                 onClick={() => handleSaveTransportData('Train')}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
@@ -2347,105 +2552,152 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'transport' && activeTransportTab.startsWith('sevil-') ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 border-b-3 border-blue-300">
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Название
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    PAX
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    Pickup / Drop-off
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    TAG Rate
-                  </th>
-                  {activeTransportTab !== 'sevil-za' && (
-                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                      Urgench Rate
-                    </th>
-                  )}
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    {activeTransportTab === 'sevil-za' ? 'Jartepa Rate' : 'Shovot Rate'}
-                  </th>
-                  <th className="px-6 py-5 text-right text-xs font-bold text-white uppercase tracking-wider">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
                 {currentSevilVehicles.map((vehicle) => (
-                  <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 border-b border-gray-100 group">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.person || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">
-                        {vehicle.pickupDropoff || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vehicle.tagRate || '-'}
-                      </div>
-                    </td>
-                    {activeTransportTab !== 'sevil-za' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vehicle.urgenchRate || '-'}
+                  <div key={vehicle.id} className="flex rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
+                    <div className="flex-1 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-gray-900 text-sm">{vehicle.name}</span>
+                          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">{vehicle.person || '-'} pax</span>
                         </div>
-                      </td>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="text-sm font-medium text-gray-900">
-                        {activeTransportTab === 'sevil-za' ? (vehicle.jartepaRate || '-') : (vehicle.shovotRate2 || '-')}
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => handleEditVehicle(vehicle)} className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteVehicle(vehicle.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditVehicle(vehicle)}
-                        className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
-                        title="Редактировать"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVehicle(vehicle.id)}
-                        className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
-                        title="Удалить"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                      <div className="mt-2 grid grid-cols-3 gap-1.5">
+                        <div className="rounded-xl bg-blue-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-blue-500 font-medium truncate">Pickup</div>
+                          <div className="font-bold text-blue-800 text-sm">{vehicle.pickupDropoff || '-'}</div>
+                        </div>
+                        <div className="rounded-xl bg-blue-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-blue-500 font-medium truncate">TAG</div>
+                          <div className="font-bold text-blue-800 text-sm">{vehicle.tagRate || '-'}</div>
+                        </div>
+                        {activeTransportTab !== 'sevil-za' && (
+                          <div className="rounded-xl bg-blue-50 px-2 py-1.5 text-center">
+                            <div className="text-xs text-blue-500 font-medium truncate">Urgench</div>
+                            <div className="font-bold text-blue-800 text-sm">{vehicle.urgenchRate || '-'}</div>
+                          </div>
+                        )}
+                        <div className="rounded-xl bg-blue-50 px-2 py-1.5 text-center">
+                          <div className="text-xs text-blue-500 font-medium truncate">{activeTransportTab === 'sevil-za' ? 'Jartepa' : 'Shovot'}</div>
+                          <div className="font-bold text-blue-800 text-sm">{activeTransportTab === 'sevil-za' ? (vehicle.jartepaRate || '-') : (vehicle.shovotRate2 || '-')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-                <tr>
-                  <td colSpan={activeTransportTab === 'sevil-za' ? "6" : "7"} className="px-6 py-4">
-                    <button
-                      onClick={handleAddVehicle}
-                      className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
-                    >
-                      <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
-                        <Plus className="w-5 h-5" />
-                      </div>
-                      <span className="font-semibold">Добавить транспорт</span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                <button onClick={handleAddVehicle} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-primary-600 font-semibold flex items-center justify-center gap-2">
+                  <Plus className="w-4 h-4" /> Добавить транспорт
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 border-b-3 border-blue-300">
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Название
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        PAX
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Pickup / Drop-off
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        TAG Rate
+                      </th>
+                      {activeTransportTab !== 'sevil-za' && (
+                        <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                          Urgench Rate
+                        </th>
+                      )}
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        {activeTransportTab === 'sevil-za' ? 'Jartepa Rate' : 'Shovot Rate'}
+                      </th>
+                      <th className="px-3 py-4 text-right text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Действия
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {currentSevilVehicles.map((vehicle) => (
+                      <tr key={vehicle.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 border-b border-gray-100 group">
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.name}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">
+                            {vehicle.person || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">
+                            {vehicle.pickupDropoff || '-'}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {vehicle.tagRate || '-'}
+                          </div>
+                        </td>
+                        {activeTransportTab !== 'sevil-za' && (
+                          <td className="px-3 py-3 whitespace-nowrap text-center">
+                            <div className="text-sm font-medium text-gray-900">
+                              {vehicle.urgenchRate || '-'}
+                            </div>
+                          </td>
+                        )}
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {activeTransportTab === 'sevil-za' ? (vehicle.jartepaRate || '-') : (vehicle.shovotRate2 || '-')}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleEditVehicle(vehicle)}
+                            className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
+                            title="Редактировать"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVehicle(vehicle.id)}
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 ml-2"
+                            title="Удалить"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={activeTransportTab === 'sevil-za' ? "6" : "7"} className="px-6 py-4">
+                        <button
+                          onClick={handleAddVehicle}
+                          className="group w-full flex items-center justify-center gap-3 py-4 text-primary-600 hover:text-primary-700 hover:bg-gradient-to-r hover:from-primary-50 hover:to-blue-50 rounded-xl transition-all duration-300 border-2 border-dashed border-gray-300 hover:border-primary-400 hover:scale-[1.02]"
+                        >
+                          <div className="p-1.5 bg-primary-100 rounded-lg group-hover:bg-primary-200 transition-colors">
+                            <Plus className="w-5 h-5" />
+                          </div>
+                          <span className="font-semibold">Добавить транспорт</span>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
             {/* Save Button for Sevil */}
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-end px-4">
               <button
                 onClick={() => handleSaveTransportData(activeTransportTab)}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 font-semibold"
@@ -2456,109 +2708,149 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'sightseeing' && activeSightseeingTab === 'er' ? (
-          <div className="overflow-x-auto rounded-2xl shadow-2xl border border-blue-100">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {erSightseeing.slice().sort((a, b) => {
+                  const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                  const orderA = cityOrder[(a.city || '').toLowerCase().trim()] || 999;
+                  const orderB = cityOrder[(b.city || '').toLowerCase().trim()] || 999;
+                  return orderA - orderB;
+                }).map((item, index) => (
+                  <div key={item.id} className="flex rounded-2xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-blue-600" />
+                    <div className="w-9 shrink-0 bg-blue-50 flex items-center justify-center">
+                      <span className="font-bold text-blue-600 text-xs">{index + 1}</span>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      City
+                    <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 inline-block"></span>
+                            {item.city}
+                          </span>
+                          {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => handleEditSightseeing(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteSightseeing(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Attraction
-                    </div>
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Price (UZS)
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-blue-100">
-                {erSightseeing
-                  .slice()
-                  .sort((a, b) => {
-                    // ER tour city order: Tashkent → Samarkand → Nurota → Bukhara → Khiva
-                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
-                    const cityA = (a.city || '').toLowerCase().trim();
-                    const cityB = (b.city || '').toLowerCase().trim();
-                    const orderA = cityOrder[cityA] || 999;
-                    const orderB = cityOrder[cityB] || 999;
-                    return orderA - orderB;
-                  })
-                  .map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                        {index + 1}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                        <span className="text-sm font-semibold text-gray-800">{item.city}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEditSightseeing(item)}
-                          className="p-2.5 text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSightseeing(item)}
-                          className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  </div>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                  <td colSpan="3" className="px-6 py-5 text-right">
-                    <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                      <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                        {erSightseeing.reduce((sum, item) => {
-                          const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                          return sum + price;
-                        }, 0).toLocaleString('ru-RU')}
-                      </span>
-                    </div>
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-            <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
+                <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-xl border border-orange-200">
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total</span>
+                  <span className="font-bold text-orange-700">{erSightseeing.reduce((sum, item) => { const price = parseInt(item.price.replace(/\s/g, '')) || 0; return sum + price; }, 0).toLocaleString('ru-RU')} UZS</span>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-blue-100">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
+                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          City
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Attraction
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Price (UZS)
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-blue-100">
+                    {erSightseeing
+                      .slice()
+                      .sort((a, b) => {
+                        // ER tour city order: Tashkent → Samarkand → Nurota → Bukhara → Khiva
+                        const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                        const cityA = (a.city || '').toLowerCase().trim();
+                        const cityB = (b.city || '').toLowerCase().trim();
+                        const orderA = cityOrder[cityA] || 999;
+                        const orderB = cityOrder[cityB] || 999;
+                        return orderA - orderB;
+                      })
+                      .map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditSightseeing(item)}
+                              className="p-2.5 text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSightseeing(item)}
+                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
+                      <td colSpan="3" className="px-6 py-5 text-right">
+                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
+                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
+                            {erSightseeing.reduce((sum, item) => {
+                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
+                              return sum + price;
+                            }, 0).toLocaleString('ru-RU')}
+                          </span>
+                        </div>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+            <div className="p-4 md:p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
               <button
                 onClick={handleAddSightseeing}
                 className="w-full flex items-center justify-center gap-3 py-4 text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 hover:text-white rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -2569,109 +2861,149 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'sightseeing' && activeSightseeingTab === 'co' ? (
-          <div className="overflow-x-auto rounded-2xl shadow-2xl border border-emerald-100">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700">
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {coSightseeing.slice().sort((a, b) => {
+                  const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                  const orderA = cityOrder[(a.city || '').toLowerCase().trim()] || 999;
+                  const orderB = cityOrder[(b.city || '').toLowerCase().trim()] || 999;
+                  return orderA - orderB;
+                }).map((item, index) => (
+                  <div key={item.id} className="flex rounded-2xl overflow-hidden border border-emerald-100 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-emerald-400 to-emerald-600" />
+                    <div className="w-9 shrink-0 bg-emerald-50 flex items-center justify-center">
+                      <span className="font-bold text-emerald-600 text-xs">{index + 1}</span>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      City
+                    <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 inline-block"></span>
+                            {item.city}
+                          </span>
+                          {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => handleEditSightseeing(item)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteSightseeing(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Attraction
-                    </div>
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Price (UZS)
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-emerald-100">
-                {coSightseeing
-                  .slice()
-                  .sort((a, b) => {
-                    // CO tour city order: same as ER
-                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
-                    const cityA = (a.city || '').toLowerCase().trim();
-                    const cityB = (b.city || '').toLowerCase().trim();
-                    const orderA = cityOrder[cityA] || 999;
-                    const orderB = cityOrder[cityB] || 999;
-                    return orderA - orderB;
-                  })
-                  .map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                        {index + 1}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span className="text-sm font-semibold text-gray-800">{item.city}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEditSightseeing(item)}
-                          className="p-2.5 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSightseeing(item)}
-                          className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  </div>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                  <td colSpan="3" className="px-6 py-5 text-right">
-                    <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                      <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                        {coSightseeing.reduce((sum, item) => {
-                          const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                          return sum + price;
-                        }, 0).toLocaleString('ru-RU')}
-                      </span>
-                    </div>
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-            <div className="p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
+                <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-xl border border-orange-200">
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total</span>
+                  <span className="font-bold text-orange-700">{coSightseeing.reduce((sum, item) => { const price = parseInt(item.price.replace(/\s/g, '')) || 0; return sum + price; }, 0).toLocaleString('ru-RU')} UZS</span>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-emerald-100">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700">
+                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          City
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Attraction
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Price (UZS)
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-emerald-100">
+                    {coSightseeing
+                      .slice()
+                      .sort((a, b) => {
+                        // CO tour city order: same as ER
+                        const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                        const cityA = (a.city || '').toLowerCase().trim();
+                        const cityB = (b.city || '').toLowerCase().trim();
+                        const orderA = cityOrder[cityA] || 999;
+                        const orderB = cityOrder[cityB] || 999;
+                        return orderA - orderB;
+                      })
+                      .map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditSightseeing(item)}
+                              className="p-2.5 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSightseeing(item)}
+                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
+                      <td colSpan="3" className="px-6 py-5 text-right">
+                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
+                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
+                            {coSightseeing.reduce((sum, item) => {
+                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
+                              return sum + price;
+                            }, 0).toLocaleString('ru-RU')}
+                          </span>
+                        </div>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+            <div className="p-4 md:p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
               <button
                 onClick={handleAddSightseeing}
                 className="w-full flex items-center justify-center gap-3 py-4 text-emerald-700 bg-white hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 hover:text-white rounded-xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -2682,109 +3014,149 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'sightseeing' && activeSightseeingTab === 'kas' ? (
-          <div className="overflow-x-auto rounded-2xl shadow-2xl border border-orange-100">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700">
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {kasSightseeing.slice().sort((a, b) => {
+                  const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                  const orderA = cityOrder[(a.city || '').toLowerCase().trim()] || 999;
+                  const orderB = cityOrder[(b.city || '').toLowerCase().trim()] || 999;
+                  return orderA - orderB;
+                }).map((item, index) => (
+                  <div key={item.id} className="flex rounded-2xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                    <div className="w-9 shrink-0 bg-orange-50 flex items-center justify-center">
+                      <span className="font-bold text-orange-600 text-xs">{index + 1}</span>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      City
+                    <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 inline-block"></span>
+                            {item.city}
+                          </span>
+                          {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => handleEditSightseeing(item)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteSightseeing(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Attraction
-                    </div>
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Price (UZS)
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-orange-100">
-                {kasSightseeing
-                  .slice()
-                  .sort((a, b) => {
-                    // KAS tour city order: same as ER
-                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
-                    const cityA = (a.city || '').toLowerCase().trim();
-                    const cityB = (b.city || '').toLowerCase().trim();
-                    const orderA = cityOrder[cityA] || 999;
-                    const orderB = cityOrder[cityB] || 999;
-                    return orderA - orderB;
-                  })
-                  .map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100/50 transition-all duration-300 group">
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                        {index + 1}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                        <span className="text-sm font-semibold text-gray-800">{item.city}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEditSightseeing(item)}
-                          className="p-2.5 text-orange-600 hover:text-white bg-orange-50 hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSightseeing(item)}
-                          className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  </div>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                  <td colSpan="3" className="px-6 py-5 text-right">
-                    <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                      <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                        {kasSightseeing.reduce((sum, item) => {
-                          const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                          return sum + price;
-                        }, 0).toLocaleString('ru-RU')}
-                      </span>
-                    </div>
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-            <div className="p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
+                <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-xl border border-orange-200">
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total</span>
+                  <span className="font-bold text-orange-700">{kasSightseeing.reduce((sum, item) => { const price = parseInt(item.price.replace(/\s/g, '')) || 0; return sum + price; }, 0).toLocaleString('ru-RU')} UZS</span>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-orange-100">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700">
+                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          City
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Attraction
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Price (UZS)
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-orange-100">
+                    {kasSightseeing
+                      .slice()
+                      .sort((a, b) => {
+                        // KAS tour city order: same as ER
+                        const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                        const cityA = (a.city || '').toLowerCase().trim();
+                        const cityB = (b.city || '').toLowerCase().trim();
+                        const orderA = cityOrder[cityA] || 999;
+                        const orderB = cityOrder[cityB] || 999;
+                        return orderA - orderB;
+                      })
+                      .map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100/50 transition-all duration-300 group">
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditSightseeing(item)}
+                              className="p-2.5 text-orange-600 hover:text-white bg-orange-50 hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSightseeing(item)}
+                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
+                      <td colSpan="3" className="px-6 py-5 text-right">
+                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
+                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
+                            {kasSightseeing.reduce((sum, item) => {
+                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
+                              return sum + price;
+                            }, 0).toLocaleString('ru-RU')}
+                          </span>
+                        </div>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+            <div className="p-4 md:p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
               <button
                 onClick={handleAddSightseeing}
                 className="w-full flex items-center justify-center gap-3 py-4 text-orange-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 hover:text-white rounded-xl border-2 border-dashed border-orange-300 hover:border-orange-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -2795,109 +3167,149 @@ export default function Opex() {
             </div>
           </div>
         ) : activeCategory === 'sightseeing' && activeSightseeingTab === 'za' ? (
-          <div className="overflow-x-auto rounded-2xl shadow-2xl border border-purple-100">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700">
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+          <div>
+            {isMobile ? (
+              <div className="p-3 space-y-2">
+                {zaSightseeing.slice().sort((a, b) => {
+                  const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                  const orderA = cityOrder[(a.city || '').toLowerCase().trim()] || 999;
+                  const orderB = cityOrder[(b.city || '').toLowerCase().trim()] || 999;
+                  return orderA - orderB;
+                }).map((item, index) => (
+                  <div key={item.id} className="flex rounded-2xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                    <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                    <div className="w-9 shrink-0 bg-purple-50 flex items-center justify-center">
+                      <span className="font-bold text-purple-600 text-xs">{index + 1}</span>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      City
+                    <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 inline-block"></span>
+                            {item.city}
+                          </span>
+                          {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => handleEditSightseeing(item)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteSightseeing(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
-                  </th>
-                  <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Attraction
-                    </div>
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Price (UZS)
-                  </th>
-                  <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-purple-100">
-                {zaSightseeing
-                  .slice()
-                  .sort((a, b) => {
-                    // ZA tour city order: same as ER
-                    const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
-                    const cityA = (a.city || '').toLowerCase().trim();
-                    const cityB = (b.city || '').toLowerCase().trim();
-                    const orderA = cityOrder[cityA] || 999;
-                    const orderB = cityOrder[cityB] || 999;
-                    return orderA - orderB;
-                  })
-                  .map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100/50 transition-all duration-300 group">
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                        {index + 1}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
-                        <span className="text-sm font-semibold text-gray-800">{item.city}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                        <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEditSightseeing(item)}
-                          className="p-2.5 text-purple-600 hover:text-white bg-purple-50 hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSightseeing(item)}
-                          className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  </div>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
-                  <td colSpan="3" className="px-6 py-5 text-right">
-                    <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
-                      <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
-                        {zaSightseeing.reduce((sum, item) => {
-                          const price = parseInt(item.price.replace(/\s/g, '')) || 0;
-                          return sum + price;
-                        }, 0).toLocaleString('ru-RU')}
-                      </span>
-                    </div>
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-            <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
+                <div className="flex items-center justify-between px-3 py-2 bg-orange-50 rounded-xl border border-orange-200">
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Total</span>
+                  <span className="font-bold text-orange-700">{zaSightseeing.reduce((sum, item) => { const price = parseInt(item.price.replace(/\s/g, '')) || 0; return sum + price; }, 0).toLocaleString('ru-RU')} UZS</span>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-purple-100">
+                <table className="w-full min-w-max">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700">
+                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          City
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Attraction
+                        </div>
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Price (UZS)
+                      </th>
+                      <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-purple-100">
+                    {zaSightseeing
+                      .slice()
+                      .sort((a, b) => {
+                        // ZA tour city order: same as ER
+                        const cityOrder = { 'tashkent': 1, 'samarkand': 2, 'nurota': 3, 'bukhara': 4, 'khiva': 5 };
+                        const cityA = (a.city || '').toLowerCase().trim();
+                        const cityB = (b.city || '').toLowerCase().trim();
+                        const orderA = cityOrder[cityA] || 999;
+                        const orderB = cityOrder[cityB] || 999;
+                        return orderA - orderB;
+                      })
+                      .map((item, index) => (
+                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100/50 transition-all duration-300 group">
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEditSightseeing(item)}
+                              className="p-2.5 text-purple-600 hover:text-white bg-purple-50 hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSightseeing(item)}
+                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 border-t-4 border-orange-300">
+                      <td colSpan="3" className="px-6 py-5 text-right">
+                        <span className="text-base font-bold text-white uppercase tracking-wider">Total:</span>
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-lg">
+                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">
+                            {zaSightseeing.reduce((sum, item) => {
+                              const price = parseInt(item.price.replace(/\s/g, '')) || 0;
+                              return sum + price;
+                            }, 0).toLocaleString('ru-RU')}
+                          </span>
+                        </div>
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+            <div className="p-4 md:p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
               <button
                 onClick={handleAddSightseeing}
                 className="w-full flex items-center justify-center gap-3 py-4 text-purple-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 hover:text-white rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -2911,7 +3323,7 @@ export default function Opex() {
           <div>
             {/* Meal Sub-tabs */}
             <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4 mb-6">
-              <div className="flex gap-3 overflow-x-auto">
+              <div className="grid grid-cols-4 gap-2 md:flex md:gap-3">
                 {mealSubTabs.map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeMealTab === tab.id;
@@ -2948,14 +3360,14 @@ export default function Opex() {
                     <button
                       key={tab.id}
                       onClick={() => updateParams({ meal: tab.id })}
-                      className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
+                      className={`flex items-center justify-center gap-1.5 md:gap-2.5 px-2 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all duration-300 text-xs md:text-sm min-h-[44px] md:flex-shrink-0 ${
                         isActive
-                          ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
-                          : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
+                          ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring}`
+                          : 'text-gray-600 bg-white shadow-md hover:shadow-lg border border-gray-200'
                       }`}
                     >
-                      <Icon className="w-5 h-5" />
-                      <span>{tab.name}</span>
+                      <Icon className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" />
+                      <span className="truncate">{tab.name}</span>
                     </button>
                   );
                 })}
@@ -2964,80 +3376,111 @@ export default function Opex() {
 
             {/* Meal tables content will go here */}
             {activeMealTab === 'er' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-blue-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Coffee className="w-4 h-4" />
-                          Restaurant
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-blue-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {erMeal.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-blue-600" />
+                        <div className="w-9 shrink-0 bg-blue-50 flex items-center justify-center">
+                          <span className="font-bold text-blue-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditMeal(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteMeal(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditMeal(item)}
-                              className="p-2.5 text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMeal(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-blue-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Coffee className="w-4 h-4" />
+                              Restaurant
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-blue-100">
+                        {erMeal.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditMeal(item)}
+                                  className="p-2.5 text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMeal(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
                   <button
                     onClick={handleAddMeal}
                     className="w-full flex items-center justify-center gap-3 py-4 text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 hover:text-white rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3050,80 +3493,111 @@ export default function Opex() {
             )}
 
             {activeMealTab === 'co' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-emerald-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Coffee className="w-4 h-4" />
-                          Restaurant
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-emerald-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {coMeal.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-emerald-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-emerald-400 to-emerald-600" />
+                        <div className="w-9 shrink-0 bg-emerald-50 flex items-center justify-center">
+                          <span className="font-bold text-emerald-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditMeal(item)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteMeal(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditMeal(item)}
-                              className="p-2.5 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMeal(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-emerald-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Coffee className="w-4 h-4" />
+                              Restaurant
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-emerald-100">
+                        {coMeal.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditMeal(item)}
+                                  className="p-2.5 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMeal(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
                   <button
                     onClick={handleAddMeal}
                     className="w-full flex items-center justify-center gap-3 py-4 text-emerald-700 bg-white hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 hover:text-white rounded-xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3136,80 +3610,111 @@ export default function Opex() {
             )}
 
             {activeMealTab === 'kas' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-orange-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Coffee className="w-4 h-4" />
-                          Restaurant
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-orange-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {kasMeal.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                        <div className="w-9 shrink-0 bg-orange-50 flex items-center justify-center">
+                          <span className="font-bold text-orange-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditMeal(item)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteMeal(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditMeal(item)}
-                              className="p-2.5 text-orange-600 hover:text-white bg-orange-50 hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMeal(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-orange-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Coffee className="w-4 h-4" />
+                              Restaurant
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-orange-100">
+                        {kasMeal.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditMeal(item)}
+                                  className="p-2.5 text-orange-600 hover:text-white bg-orange-50 hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMeal(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
                   <button
                     onClick={handleAddMeal}
                     className="w-full flex items-center justify-center gap-3 py-4 text-orange-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 hover:text-white rounded-xl border-2 border-dashed border-orange-300 hover:border-orange-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3222,80 +3727,111 @@ export default function Opex() {
             )}
 
             {activeMealTab === 'za' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-purple-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Coffee className="w-4 h-4" />
-                          Restaurant
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-purple-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {zaMeal.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                        <div className="w-9 shrink-0 bg-purple-50 flex items-center justify-center">
+                          <span className="font-bold text-purple-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditMeal(item)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteMeal(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditMeal(item)}
-                              className="p-2.5 text-purple-600 hover:text-white bg-purple-50 hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMeal(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-purple-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Coffee className="w-4 h-4" />
+                              Restaurant
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-purple-100">
+                        {zaMeal.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditMeal(item)}
+                                  className="p-2.5 text-purple-600 hover:text-white bg-purple-50 hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteMeal(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
                   <button
                     onClick={handleAddMeal}
                     className="w-full flex items-center justify-center gap-3 py-4 text-purple-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 hover:text-white rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3311,7 +3847,7 @@ export default function Opex() {
           <div>
             {/* Shows Sub-tabs */}
             <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4 mb-6">
-              <div className="flex gap-3 overflow-x-auto">
+              <div className="grid grid-cols-4 gap-2 md:flex md:gap-3">
                 {showsSubTabs.map(tab => {
                   const Icon = tab.icon;
                   const isActive = activeShowsTab === tab.id;
@@ -3348,14 +3884,14 @@ export default function Opex() {
                     <button
                       key={tab.id}
                       onClick={() => updateParams({ shows: tab.id })}
-                      className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold transition-all duration-300 whitespace-nowrap text-sm ${
+                      className={`flex items-center justify-center gap-1.5 md:gap-2.5 px-2 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl font-bold transition-all duration-300 text-xs md:text-sm min-h-[44px] md:flex-shrink-0 ${
                         isActive
-                          ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring} scale-110 -translate-y-0.5`
-                          : 'text-gray-600 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 shadow-md hover:shadow-lg border border-gray-200'
+                          ? `bg-gradient-to-r ${colors.gradient} ${colors.hover} text-white shadow-xl ${colors.shadow} ring-2 ${colors.ring}`
+                          : 'text-gray-600 bg-white shadow-md hover:shadow-lg border border-gray-200'
                       }`}
                     >
-                      <Icon className="w-5 h-5" />
-                      <span>{tab.name}</span>
+                      <Icon className="w-3.5 h-3.5 md:w-5 md:h-5 shrink-0" />
+                      <span className="truncate">{tab.name}</span>
                     </button>
                   );
                 })}
@@ -3363,80 +3899,111 @@ export default function Opex() {
             </div>
 
             {activeShowsTab === 'er' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-blue-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Drama className="w-4 h-4" />
-                          Show
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-blue-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {erShows.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-blue-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-blue-600" />
+                        <div className="w-9 shrink-0 bg-blue-50 flex items-center justify-center">
+                          <span className="font-bold text-blue-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditShow(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteShow(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditShow(item)}
-                              className="p-2.5 text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteShow(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-blue-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Drama className="w-4 h-4" />
+                              Show
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-blue-100">
+                        {erShows.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditShow(item)}
+                                  className="p-2.5 text-blue-600 hover:text-white bg-blue-50 hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteShow(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-200">
                   <button
                     onClick={handleAddShow}
                     className="w-full flex items-center justify-center gap-3 py-4 text-blue-700 bg-white hover:bg-gradient-to-r hover:from-blue-500 hover:to-blue-600 hover:text-white rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3449,80 +4016,111 @@ export default function Opex() {
             )}
 
             {activeShowsTab === 'co' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-emerald-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Drama className="w-4 h-4" />
-                          Show
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-emerald-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {coShows.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-emerald-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-emerald-400 to-emerald-600" />
+                        <div className="w-9 shrink-0 bg-emerald-50 flex items-center justify-center">
+                          <span className="font-bold text-emerald-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditShow(item)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteShow(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditShow(item)}
-                              className="p-2.5 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteShow(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-emerald-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-emerald-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Drama className="w-4 h-4" />
+                              Show
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-emerald-100">
+                        {coShows.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-emerald-50 hover:to-emerald-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditShow(item)}
+                                  className="p-2.5 text-emerald-600 hover:text-white bg-emerald-50 hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteShow(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-emerald-50 to-emerald-100 border-t border-emerald-200">
                   <button
                     onClick={handleAddShow}
                     className="w-full flex items-center justify-center gap-3 py-4 text-emerald-700 bg-white hover:bg-gradient-to-r hover:from-emerald-500 hover:to-emerald-600 hover:text-white rounded-xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3535,80 +4133,111 @@ export default function Opex() {
             )}
 
             {activeShowsTab === 'kas' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-orange-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Drama className="w-4 h-4" />
-                          Show
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-orange-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {kasShows.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-orange-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
+                        <div className="w-9 shrink-0 bg-orange-50 flex items-center justify-center">
+                          <span className="font-bold text-orange-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditShow(item)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteShow(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditShow(item)}
-                              className="p-2.5 text-orange-600 hover:text-white bg-orange-50 hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteShow(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-orange-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Drama className="w-4 h-4" />
+                              Show
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-orange-100">
+                        {kasShows.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditShow(item)}
+                                  className="p-2.5 text-orange-600 hover:text-white bg-orange-50 hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteShow(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-orange-50 to-orange-100 border-t border-orange-200">
                   <button
                     onClick={handleAddShow}
                     className="w-full flex items-center justify-center gap-3 py-4 text-orange-700 bg-white hover:bg-gradient-to-r hover:from-orange-500 hover:to-orange-600 hover:text-white rounded-xl border-2 border-dashed border-orange-300 hover:border-orange-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3621,80 +4250,111 @@ export default function Opex() {
             )}
 
             {activeShowsTab === 'za' && (
-              <div className="overflow-x-auto rounded-2xl shadow-2xl border border-purple-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700">
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          City
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <Drama className="w-4 h-4" />
-                          Show
-                        </div>
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Price (UZS)
-                      </th>
-                      <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-purple-100">
+              <div>
+                {isMobile ? (
+                  <div className="p-3 space-y-2">
                     {zaShows.map((item, index) => (
-                      <tr key={item.id} className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100/50 transition-all duration-300 group">
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
-                            {index + 1}
+                      <div key={item.id} className="flex rounded-2xl overflow-hidden border border-purple-100 shadow-sm bg-white">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
+                        <div className="w-9 shrink-0 bg-purple-50 flex items-center justify-center">
+                          <span className="font-bold text-purple-600 text-xs">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm leading-tight">{item.name}</div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="flex items-center gap-1 text-xs text-gray-500">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 inline-block"></span>
+                                {item.city}
+                              </span>
+                              {item.price && <span className="text-xs font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">{formatPrice(item.price)}</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
-                            <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => handleEditShow(item)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeleteShow(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
-                            <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEditShow(item)}
-                              className="p-2.5 text-purple-600 hover:text-white bg-purple-50 hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteShow(item)}
-                              className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl shadow-2xl border border-purple-100">
+                    <table className="w-full min-w-max">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700">
+                          <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider w-20">
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-sm">#</span>
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              City
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Drama className="w-4 h-4" />
+                              Show
+                            </div>
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Price (UZS)
+                          </th>
+                          <th className="px-3 py-4 text-center text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-purple-100">
+                        {zaShows.map((item, index) => (
+                          <tr key={item.id} className="hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-100/50 transition-all duration-300 group">
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-white font-bold text-sm shadow-lg group-hover:scale-110 transition-transform">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+                                <span className="text-sm font-semibold text-gray-800">{item.city}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200">
+                                <span className="text-sm font-bold text-green-700">{formatPrice(item.price)}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => handleEditShow(item)}
+                                  className="p-2.5 text-purple-600 hover:text-white bg-purple-50 hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteShow(item)}
+                                  className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="p-4 md:p-6 bg-gradient-to-r from-purple-50 to-purple-100 border-t border-purple-200">
                   <button
                     onClick={handleAddShow}
                     className="w-full flex items-center justify-center gap-3 py-4 text-purple-700 bg-white hover:bg-gradient-to-r hover:from-purple-500 hover:to-purple-600 hover:text-white rounded-xl border-2 border-dashed border-purple-300 hover:border-purple-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
@@ -3743,7 +4403,7 @@ export default function Opex() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-max">
               <thead>
                 <tr className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -3766,7 +4426,7 @@ export default function Opex() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredExpenses.map((expense) => (
                   <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-3 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {expense.name}
                       </div>
@@ -3776,7 +4436,7 @@ export default function Opex() {
                         {expense.description}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-3 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {expense.amount.toLocaleString()} UZS
                       </div>
@@ -3784,7 +4444,7 @@ export default function Opex() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {expense.date}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
                       <button className="text-primary-600 hover:text-primary-900 mr-4">
                         <Edit className="w-4 h-4" />
                       </button>
