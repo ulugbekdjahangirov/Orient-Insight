@@ -38,7 +38,6 @@ export default function Ausgaben() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]); // Store all booking data with calculations
-  const [globalTotals, setGlobalTotals] = useState({ usd: null, uzs: null }); // All tour types combined
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -46,10 +45,6 @@ export default function Ausgaben() {
   useEffect(() => {
     loadBookingsAndExpenses();
   }, [activeTourType, selectedYear]);
-
-  useEffect(() => {
-    loadGlobalTotals();
-  }, [selectedYear]);
 
   const loadBookingsAndExpenses = async () => {
     // Check cache first
@@ -225,52 +220,6 @@ export default function Ausgaben() {
     }
   };
 
-  // Load totals for ALL tour types combined (for hero header)
-  const loadGlobalTotals = async () => {
-    const cacheKey = `ausgaben_global_v1_${selectedYear}`;
-    try {
-      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-      if (cached && Date.now() - cached.ts < 5 * 60 * 1000) {
-        setGlobalTotals({ usd: cached.usd, uzs: cached.uzs });
-        return;
-      }
-    } catch {}
-
-    try {
-      const response = await bookingsApi.getAll({ year: selectedYear });
-      const allBookings = response.data.bookings.filter(b => b.status !== 'CANCELLED');
-
-      let metroVehiclesData = [];
-      try {
-        const tr = await transportApi.getAll(selectedYear);
-        metroVehiclesData = tr.data.grouped.metro || [];
-      } catch {}
-
-      // Load all 4 tour types in parallel
-      const allResults = await Promise.all(
-        tourTypeModules.map(async (m) => {
-          const tourBookings = allBookings.filter(b => b.tourType?.code === m.code);
-          return computeDetailedDataRaw(tourBookings, metroVehiclesData);
-        })
-      );
-
-      let usd = 0, uzs = 0;
-      allResults.flat().forEach(b => {
-        const e = b?.expenses || {};
-        usd += (e.hotelsUSD || 0) + (e.guide || 0);
-        uzs += (e.hotelsUZS || 0) + (e.transportSevil || 0) + (e.transportXayrulla || 0) +
-               (e.transportNosir || 0) + (e.railway || 0) + (e.flights || 0) +
-               (e.meals || 0) + (e.eintritt || 0) + (e.metro || 0) + (e.shou || 0) + (e.other || 0);
-      });
-
-      setGlobalTotals({ usd, uzs });
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify({ usd, uzs, ts: Date.now() }));
-      } catch {}
-    } catch (e) {
-      console.error('Failed to load global totals:', e);
-    }
-  };
 
   // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab (BookingDetail.jsx:11146-11264)
   const calculateExpensesLikeTotalTab = async (booking, tourists, grandTotalData, routes, railways, flights, tourServices = [], metroVehicles = []) => {
@@ -809,21 +758,23 @@ export default function Ausgaben() {
               <h1 className="text-5xl font-black text-white tracking-tight leading-none" style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Ausgaben</h1>
               <p className="text-green-200 text-sm mt-2 opacity-75">Barcha xarajatlar va to'lovlar tahlili</p>
             </div>
-            <div className="flex gap-4">
-              <div className="text-right">
-                <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami USD (barcha)</p>
-                <p className="text-2xl font-black text-white">
-                  {globalTotals.usd !== null ? `$${formatNumber(globalTotals.usd)}` : '...'}
-                </p>
+            {!loading && (
+              <div className="flex gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami USD</p>
+                  <p className="text-2xl font-black text-white">
+                    ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}
+                  </p>
+                </div>
+                <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                <div className="text-right">
+                  <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami UZS</p>
+                  <p className="text-2xl font-black text-amber-400">
+                    {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
+                  </p>
+                </div>
               </div>
-              <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
-              <div className="text-right">
-                <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami UZS (barcha)</p>
-                <p className="text-2xl font-black text-amber-400">
-                  {globalTotals.uzs !== null ? formatNumber(globalTotals.uzs) : '...'}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Tour Type Cards */}
