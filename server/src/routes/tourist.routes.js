@@ -4156,8 +4156,8 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
           let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
           let customDeparture = false;
 
-          // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
-          if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
+          // For UZ tourists in mixed (UZ+TM) Turkmenistan/Khiva hotels: they leave 1 day earlier
+          if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && (typeof hasTMTourists === 'undefined' || hasTMTourists) && isUzbekistan) {
 
             // Calculate departure date 1 day earlier
             const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -4252,8 +4252,8 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
         let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
         let customDeparture = false;
 
-        // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
-        if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
+        // For UZ tourists in mixed (UZ+TM) Turkmenistan/Khiva hotels: they leave 1 day earlier
+        if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && (typeof hasTMTourists === 'undefined' || hasTMTourists) && isUzbekistan) {
 
           // Calculate departure date 1 day earlier
           const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -4846,6 +4846,12 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
       });
     }
 
+    // Only apply -1 day checkout for UZ tourists when TM tourists are also present in this accommodation
+    const hasTMTourists = tourists.some(t => {
+      const placement = (t.accommodation || '').toLowerCase();
+      return placement.includes('turkmen') || placement.includes('туркмен');
+    });
+
     // Calculate totalPax and room counts AFTER filtering tourists
     const totalPax = tourists.length;
 
@@ -4992,8 +4998,8 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
           let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
           let customDeparture = false;
 
-          // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
-          if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
+          // For UZ tourists in mixed (UZ+TM) Turkmenistan/Khiva hotels: they leave 1 day earlier
+          if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && (typeof hasTMTourists === 'undefined' || hasTMTourists) && isUzbekistan) {
 
             // Calculate departure date 1 day earlier
             const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -5088,8 +5094,8 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
         let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
         let customDeparture = false;
 
-        // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier (if isTurkmenistanHotel is defined)
-        if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && isUzbekistan) {
+        // For UZ tourists in mixed (UZ+TM) Turkmenistan/Khiva hotels: they leave 1 day earlier
+        if (typeof isTurkmenistanHotel !== 'undefined' && isTurkmenistanHotel && (typeof hasTMTourists === 'undefined' || hasTMTourists) && isUzbekistan) {
 
           // Calculate departure date 1 day earlier
           const depDate = new Date(touristCheckOutDate || (typeof accommodation !== 'undefined' ? accommodation.checkOutDate : departureDate));
@@ -5661,6 +5667,12 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
         });
       }
 
+      // Check if this accommodation actually has TM tourists (needed for -1 day UZ logic)
+      const hasTMTourists = tourists.some(t => {
+        const placement = (t.accommodation || '').toLowerCase();
+        return placement.includes('turkmen') || placement.includes('туркмен');
+      });
+
       const totalPax = tourists.length;
       const arrivalDate = formatDisplayDate(accommodation.checkInDate);
       const departureDate = formatDisplayDate(accommodation.checkOutDate);
@@ -5809,8 +5821,8 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
             let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
             let customDeparture = false;
 
-            // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier
-            if (isTurkmenistanHotel && isUzbekistan) {
+            // For UZ tourists in mixed (UZ+TM) Turkmenistan/Khiva hotels: they leave 1 day earlier
+            if (isTurkmenistanHotel && hasTMTourists && isUzbekistan) {
               const depDate = new Date(touristCheckOutDate || accommodation.checkOutDate);
               depDate.setDate(depDate.getDate() - 1);
               displayDeparture = formatDisplayDate(depDate.toISOString());
@@ -5908,8 +5920,8 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
           let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
           let customDeparture = false;
 
-          // For UZ tourists in Turkmenistan hotels: they leave 1 day earlier
-          if (isTurkmenistanHotel && isUzbekistan) {
+          // For UZ tourists in mixed (UZ+TM) Turkmenistan/Khiva hotels: they leave 1 day earlier
+          if (isTurkmenistanHotel && hasTMTourists && isUzbekistan) {
             const depDate = new Date(touristCheckOutDate || accommodation.checkOutDate);
             depDate.setDate(depDate.getDate() - 1);
             displayDeparture = formatDisplayDate(depDate.toISOString());

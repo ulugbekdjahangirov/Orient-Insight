@@ -16950,7 +16950,12 @@ ${rowsHtml}
                                       const isKhivaHotel = cityName.includes('хива') || cityName.includes('khiva') || cityName.includes('chiwa') ||
                                                            hotelName.includes('khiva') || hotelName.includes('хива') || hotelName.includes('chiwa');
                                       const isUzTourist = t.accommodation?.toLowerCase().includes('uzbek') || t.accommodation?.toLowerCase() === 'uz';
-                                      const isKhivaUzTourist = isKhivaHotel && isUzTourist;
+                                      // Only apply -1 day logic when group has BOTH UZ and TM tourists (mixed group)
+                                      const hasTMTouristsInGroup = accTourists.some(tourist => {
+                                        const pl = (tourist.accommodation || '').toLowerCase();
+                                        return pl.includes('turkmen') || pl.includes('туркмен');
+                                      });
+                                      const isKhivaUzTourist = isKhivaHotel && isUzTourist && hasTMTouristsInGroup;
 
                                       // Tourist's individual dates - ONLY use for FIRST accommodation
                                       // For other hotels, use accommodation's standard dates

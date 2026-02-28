@@ -1530,21 +1530,30 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
                                  allAccommodations[allAccommodations.length - 1].id === accommodationIdInt;
 
     // CRITICAL: Check if this is a MIXED group (UZ + TM) for Khiva/Turkmenistan logic
-    // Only apply -1 day adjustment for UZ tourists if group is mixed
+    // Only apply -1 day adjustment for UZ tourists if group is in a SINGLE shared accommodation
+    // If hotel has multiple separate accommodations (split UZ/TM), each already has the correct
+    // checkout date — no -1 day adjustment needed
     let isMixedGroup = false;
     if (isTurkmenistanHotel) {
-      let hasUZ = false;
-      let hasTM = false;
-      tourists.forEach(t => {
-        const placement = (t.accommodation || '').toLowerCase();
-        if (placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz') {
-          hasUZ = true;
-        }
-        if (placement.includes('turkmen') || placement.includes('туркмен') || placement === 'tm') {
-          hasTM = true;
-        }
-      });
-      isMixedGroup = hasUZ && hasTM; // Check if group has both UZ and TM tourists
+      const sameHotelAccommodations = allAccommodations.filter(acc => acc.hotelId === accommodation.hotelId);
+      const hasSplitAccommodations = sameHotelAccommodations.length > 1;
+
+      if (!hasSplitAccommodations) {
+        // Single shared accommodation for all tourists — check if both UZ and TM are in booking
+        let hasUZ = false;
+        let hasTM = false;
+        tourists.forEach(t => {
+          const placement = (t.accommodation || '').toLowerCase();
+          if (placement.includes('uzbek') || placement.includes('узбек') || placement === 'uz') {
+            hasUZ = true;
+          }
+          if (placement.includes('turkmen') || placement.includes('туркмен') || placement === 'tm') {
+            hasTM = true;
+          }
+        });
+        isMixedGroup = hasUZ && hasTM;
+      }
+      // hasSplitAccommodations = true → isMixedGroup stays false → no -1 day adjustment
     }
 
     // CRITICAL FIX: For ER MIXED groups, filter last Tashkent hotel to only UZ tourists
@@ -1628,14 +1637,14 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
 
       if (entry?.checkOutDate) {
         checkOutDate = entry.checkOutDate;
-      } else if (isLastAccommodation && tourist.checkOutDate && tourTypeCode === 'ER') {
+      } else if (isLastAccommodation && tourist.checkOutDate && tourTypeCode === 'ER' && !isTurkmenistanHotel) {
         // CRITICAL: Only use tourist's global checkout date for LAST hotel in ER tours
-        // For ZA/CO/KAS tours: tour continues to other countries after last hotel,
-        // so tourist.checkOutDate is END of tour (including Kazakhstan/etc), not hotel checkout
-        // For first/middle hotels, ALWAYS use accommodation checkout date
+        // Exception: Turkmenistan/Khiva hotels — always use accommodation.checkOutDate
+        // because tourist.checkOutDate may be the departure-from-Uzbekistan date, not hotel checkout
+        // For ZA/CO/KAS tours: tour continues to other countries after last hotel
         checkOutDate = tourist.checkOutDate;
       } else {
-        // For all hotels in ZA/CO/KAS tours, and for first/middle hotels in ER tours
+        // For all hotels in ZA/CO/KAS tours, Khiva/TM hotels, and first/middle hotels in ER tours
         checkOutDate = accommodation.checkOutDate;
       }
 
