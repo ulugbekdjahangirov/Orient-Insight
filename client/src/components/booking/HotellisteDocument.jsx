@@ -67,12 +67,12 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
       } else if (tourTypeCode === 'CO') {
         return `für die Usbekistan ComfortPlus (${pax} Personen) ${start}- ${end}`;
       } else {
-        // ER: check if TM tourists exist
+        // ER: check if TM tourists exist, no PAX in label
         const hasTM = (booking?.paxTurkmenistan || 0) > 0;
         if (hasTM) {
-          return `für die Erlebnisreisen Usbekistan mit Turkmenistan (${pax} Personen) ${start}- ${end} (Usbekistan Teil)`;
+          return `für die Erlebnisreisen Usbekistan mit Turkmenistan ${start}- ${end}`;
         }
-        return `für die Erlebnisreisen Usbekistan (${pax} Personen) ${start}- ${end}`;
+        return `für die Erlebnisreisen Usbekistan ${start}- ${end}`;
       }
     }
     return '-';
