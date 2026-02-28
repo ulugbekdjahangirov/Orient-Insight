@@ -309,7 +309,7 @@ export default function GmailSettings() {
             { key: 'xayrulla', label: 'Xayrulla',  placeholder: '-123456789' },
             { key: 'sevil',    label: 'Sevil aka',  placeholder: '-123456789' },
             { key: 'nosir',    label: 'Nosir aka',  placeholder: '-123456789' },
-            { key: 'hammasi',  label: 'Hammasi',    placeholder: '-123456789 (barcha PDF tasdiqlash uchun)' },
+            { key: 'hammasi',  label: 'Siroj',      placeholder: '-123456789 (marshrut tasdiqlash + Eintritt)' },
           ].map(({ key, label, placeholder }) => (
             <div key={key} className="flex items-center gap-3">
               <label className="w-28 text-sm font-medium text-gray-700 flex-shrink-0">{label}</label>

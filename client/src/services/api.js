@@ -332,6 +332,9 @@ export const telegramApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  sendEintritt: (bookingId, formData) => api.post(`/telegram/send-eintritt/${bookingId}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   getTransportConfirmations: (year) => api.get('/telegram/transport-confirmations', year ? { params: { year } } : {}),
   deleteTransportConfirmation: (id) => api.delete(`/telegram/transport-confirmations/${id}`),
   getTransportSettings: () => api.get('/telegram/transport-settings'),

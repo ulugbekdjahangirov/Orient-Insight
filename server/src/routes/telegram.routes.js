@@ -5,6 +5,9 @@ const multer = require('multer');
 const FormData = require('form-data');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth.middleware');
+const fs = require('fs');
+const path = require('path');
+const puppeteer = require('puppeteer');
 
 const prisma = new PrismaClient();
 const BOT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
@@ -28,7 +31,7 @@ async function setProviderChatId(provider, chatId) {
   });
 }
 
-const PROVIDER_LABELS = { sevil: 'Sevil aka', xayrulla: 'Xayrulla', nosir: 'Nosir aka', hammasi: 'Hammasi' };
+const PROVIDER_LABELS = { sevil: 'Sevil aka', xayrulla: 'Xayrulla', nosir: 'Nosir aka', hammasi: 'Siroj' };
 
 // ── Meal chat ID helpers ─────────────────────────────────────────────────────
 const MEAL_CHAT_IDS_KEY = 'MEAL_RESTAURANT_CHAT_IDS';
@@ -1223,7 +1226,7 @@ router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('
       // ── Direct send: no 2-stage for "hammasi" ──────────────────────────────
       const chatId = await getProviderChatId('hammasi');
       if (!chatId) {
-        return res.status(400).json({ error: 'Hammasi uchun Telegram chat ID sozlanmagan' });
+        return res.status(400).json({ error: 'Siroj uchun Telegram chat ID sozlanmagan' });
       }
       const replyMarkup = JSON.stringify({
         inline_keyboard: [[
@@ -1251,7 +1254,7 @@ router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('
       // ── 2-stage: send to approver (hammasi) first ──────────────────────────
       const approverChatId = await getProviderChatId('hammasi');
       if (!approverChatId) {
-        return res.status(400).json({ error: 'Tasdiqlash uchun Hammasi chat ID sozlanmagan (GmailSettings → Transport)' });
+        return res.status(400).json({ error: 'Tasdiqlash uchun Siroj chat ID sozlanmagan (GmailSettings → Transport)' });
       }
       const approveMarkup = JSON.stringify({
         inline_keyboard: [[
@@ -1565,6 +1568,42 @@ router.put('/meal-settings', authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save meal settings' });
+  }
+});
+
+// POST /api/telegram/send-eintritt/:bookingId — receive PDF blob from frontend and send to Siroj
+router.post('/send-eintritt/:bookingId', authenticate, upload.single('pdf'), async (req, res) => {
+  try {
+    const bookingId = parseInt(req.params.bookingId);
+
+    const chatId = await getProviderChatId('hammasi');
+    if (!chatId) return res.status(400).json({ error: 'Siroj uchun chat ID sozlanmagan (GmailSettings → Transport → Siroj)' });
+    if (!req.file) return res.status(400).json({ error: 'PDF fayl topilmadi' });
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { bookingNumber: true, _count: { select: { tourists: true } } }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking topilmadi' });
+
+    const paxCount = booking._count.tourists;
+    const entriesCount = parseInt(req.body.count) || 0;
+
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('caption', `🎫 *Eintritt Vouchers*\n📋 Booking: *${booking.bookingNumber}*\n👥 PAX: *${paxCount}* kishi\n📄 ${entriesCount} ta attraksion`);
+    form.append('parse_mode', 'Markdown');
+    form.append('document', Buffer.from(req.file.buffer), {
+      filename: `${booking.bookingNumber}_Eintritt.pdf`,
+      contentType: 'application/pdf'
+    });
+    await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, { headers: form.getHeaders() });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('send-eintritt error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

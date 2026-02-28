@@ -965,6 +965,7 @@ export default function BookingDetail() {
   const [emailSubjectType, setEmailSubjectType] = useState('zayavka'); // 'zayavka' | 'izmenenie'
   const [sendTelegramModal, setSendTelegramModal] = useState(null); // { hotelId, hotelName, telegramChatId }
   const [sendingTelegram, setSendingTelegram] = useState(false);
+  const [sendingEintritt, setSendingEintritt] = useState(false);
   const [telegramChatIdInput, setTelegramChatIdInput] = useState('');
   const [telegramSubjectType, setTelegramSubjectType] = useState('zayavka'); // 'zayavka' | 'izmenenie'
 
@@ -2836,6 +2837,127 @@ export default function BookingDetail() {
   };
 
   // ===================== TOUR SERVICES FUNCTIONS =====================
+
+  const sendEintrittToTelegram = async (entries) => {
+    setSendingEintritt(true);
+    try {
+      // Process stamp (background removal via Canvas)
+      let stampDataUrl = '';
+      try {
+        const resp = await fetch('/stamp.png');
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const originalUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          stampDataUrl = await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width; canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const d = imageData.data;
+              let bgR = 0, bgG = 0, bgB = 0, bgCount = 0;
+              const ss = Math.min(10, Math.floor(img.width / 10));
+              for (let row = 0; row < ss; row++) {
+                for (let col = 0; col < ss; col++) {
+                  [[row,col],[row,img.width-col-1],[img.height-row-1,col],[img.height-row-1,img.width-col-1]]
+                  .forEach(([y,x]) => { const idx=(y*img.width+x)*4; bgR+=d[idx];bgG+=d[idx+1];bgB+=d[idx+2];bgCount++; });
+                }
+              }
+              bgR=Math.round(bgR/bgCount); bgG=Math.round(bgG/bgCount); bgB=Math.round(bgB/bgCount);
+              for (let i = 0; i < d.length; i += 4) {
+                const dr=d[i]-bgR, dg=d[i+1]-bgG, db=d[i+2]-bgB;
+                const dist=Math.sqrt(dr*dr+dg*dg+db*db);
+                d[i+3] = dist < 12 ? 0 : Math.floor(Math.min(1,(dist-12)/55)*255);
+              }
+              ctx.putImageData(imageData, 0, 0);
+              resolve(canvas.toDataURL('image/png'));
+            };
+            img.src = originalUrl;
+          });
+        }
+      } catch (e) { /* proceed without stamp */ }
+
+      // Build voucher HTML (same layout as downloadEintrittVouchers)
+      const bookingNum = booking?.bookingNumber || '';
+      const paxCount = entries[0]?.pax ?? tourists?.length ?? 0;
+      const guideName = mainGuide?.guide
+        ? (typeof mainGuide.guide === 'string'
+            ? mainGuide.guide
+            : [mainGuide.guide?.firstName, mainGuide.guide?.lastName].filter(Boolean).join(' ') || mainGuide.guide?.name || '')
+        : '';
+      const cityRuMap = {
+        tashkent:'Ташкент', samarkand:'Самарканд', bukhara:'Бухара',
+        khiva:'Хива', kokand:'Коканд', nurata:'Нурата', nurota:'Нурата',
+        fergana:'Фергана', asraf:'Асраф',
+      };
+      const fmtDate = (dt) => {
+        if (!dt) return '';
+        const d = new Date(dt);
+        if (isNaN(d.getTime())) return '';
+        return String(d.getDate()).padStart(2,'0') + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + d.getFullYear();
+      };
+      const ADDR = `140100, Shota Rustavelli, 45., Samarkand, Uzbekistan.<br>Tel.: +998 93 348 42 08<br>Email: orientinsightreisen@gmail.com<br>License №T-0084-08 from 2021-04-26`;
+      const COMPANY = `"ORIENT INSIGHT"<br>LLC<br>Travel Company`;
+      const makeVoucher = (entry) => {
+        if (!entry) return `<div style="flex:1;margin:1.5mm;"></div>`;
+        const cityRu = cityRuMap[(entry.city||'').toLowerCase().trim()] || entry.city || '';
+        return `<div style="flex:1;border:1px solid #000;margin:1.5mm;display:flex;flex-direction:column;">
+  <div style="display:flex;border-bottom:1px solid #000;">
+    <div style="flex:3;padding:1.8mm 2.5mm;font-size:7pt;border-right:1px solid #000;line-height:1.4;">${ADDR}</div>
+    <div style="flex:1;padding:1.5mm;text-align:center;font-weight:bold;font-size:7.5pt;display:flex;align-items:center;justify-content:center;line-height:1.4;">${COMPANY}</div>
+  </div>
+  <div style="padding:2.5mm 3.5mm;flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;">
+    <div style="font-weight:bold;text-align:center;margin-bottom:1.5mm;font-size:8.5pt;">VOUCHER № ${bookingNum}</div>
+    <div style="font-weight:bold;margin-bottom:1.8mm;font-size:8pt;">Предъявить в&nbsp; ${entry.name}</div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Страна:</span><span style="font-size:7.5pt;">Германия</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Количество туристов:</span><span style="font-size:7.5pt;">${paxCount}</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">№ группы:</span><span style="font-size:7.5pt;">${bookingNum}</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Дата:</span><span style="font-size:7.5pt;">${fmtDate(entry.date)}</span></div>
+    <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Ф.И.О. гида:</span><span style="font-size:7.5pt;">${guideName}</span></div>
+    <div style="display:flex;"><span style="min-width:46mm;font-size:7.5pt;">Город:</span><span style="font-size:7.5pt;">${cityRu}</span></div>
+    ${stampDataUrl ? `<img src="${stampDataUrl}" style="position:absolute;bottom:0mm;right:1mm;width:38mm;height:38mm;opacity:0.9;pointer-events:none;">` : ''}
+  </div>
+</div>`;
+      };
+      let rowsHtml = '';
+      for (let p = 0; p < entries.length; p += 8) {
+        const pe = entries.slice(p, p + 8);
+        while (pe.length < 8) pe.push(null);
+        let rows = '';
+        for (let r = 0; r < 4; r++) rows += `<div style="height:70mm;display:flex;">${makeVoucher(pe[r*2])}${makeVoucher(pe[r*2+1])}</div>`;
+        rowsHtml += `<div style="display:flex;flex-direction:column;${p > 0 ? 'page-break-before:always;' : ''}">${rows}</div>`;
+      }
+
+      // Generate PDF blob using html2pdf (frontend, no puppeteer)
+      const container = document.createElement('div');
+      container.style.cssText = 'font-family:Arial,sans-serif;';
+      container.innerHTML = rowsHtml;
+      const pdfBlob = await html2pdf().set({
+        margin: [6, 6, 6, 6],
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: 'css' }
+      }).from(container).output('blob');
+
+      // Send PDF blob to backend via FormData
+      const form = new FormData();
+      form.append('pdf', pdfBlob, `${bookingNum}_Eintritt.pdf`);
+      form.append('count', String(entries.length));
+      await telegramApi.sendEintritt(booking.id, form);
+      alert('✅ Eintritt vouchers Sirojga yuborildi!');
+    } catch (err) {
+      alert('Xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingEintritt(false);
+    }
+  };
 
   // Load tour services by type
   const loadTourServices = async (type) => {
@@ -12172,13 +12294,27 @@ ${rowsHtml}
                   </h3>
                   <div className="flex items-center gap-2 md:gap-3">
                     {visibleEntries.length > 0 && (
-                      <button
-                        onClick={downloadEintrittVouchers}
-                        className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-rose-700 transition-all shadow-lg flex items-center gap-2 text-sm md:text-base"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                        PDF Vouchers
-                      </button>
+                      <>
+                        <button
+                          onClick={downloadEintrittVouchers}
+                          className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-xl hover:from-red-600 hover:to-rose-700 transition-all shadow-lg flex items-center gap-2 text-sm md:text-base"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                          PDF Vouchers
+                        </button>
+                        <button
+                          onClick={() => sendEintrittToTelegram(visibleEntries)}
+                          disabled={sendingEintritt}
+                          className="px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-sky-500 to-blue-600 text-white font-bold rounded-xl hover:from-sky-600 hover:to-blue-700 transition-all shadow-lg flex items-center gap-2 text-sm md:text-base disabled:opacity-50"
+                          title="Sirojga Telegram orqali yuborish"
+                        >
+                          {sendingEintritt
+                            ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                            : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                          }
+                          {sendingEintritt ? 'Yuborilmoqda...' : 'Sirojga yuborish'}
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={() => openTourServiceModal('EINTRITT')}
