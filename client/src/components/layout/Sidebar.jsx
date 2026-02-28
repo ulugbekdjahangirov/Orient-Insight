@@ -43,7 +43,7 @@ const navItems = [
 
 const adminItems = [
   { path: '/import', icon: Upload, label: 'Import Excel' },
-  { path: '/gmail-settings', icon: Settings, label: 'Gmail Settings' },
+  { path: '/gmail-settings', icon: Settings, label: 'Sozlamalar' },
   { path: '/users', icon: UserCog, label: 'Users' },
 ];
 
