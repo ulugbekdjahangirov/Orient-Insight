@@ -665,7 +665,13 @@ export default function Ausgaben() {
   };
 
   const getGrandTotalUSD = () => {
-    if (activeExpenseTab === 'general' || activeExpenseTab === 'hotels') {
+    if (activeExpenseTab === 'general') {
+      return bookingsDetailedData.reduce((sum, b) => {
+        const e = b.expenses || {};
+        return sum + (e.hotelsUSD || 0) + (e.guide || 0);
+      }, 0);
+    }
+    if (activeExpenseTab === 'hotels') {
       return filteredBookingsWithHotels.reduce((sum, b) => sum + (b.grandTotalData?.grandTotalUSD || 0), 0);
     }
     if (activeExpenseTab === 'guides') {
@@ -675,7 +681,15 @@ export default function Ausgaben() {
   };
 
   const getGrandTotalUZS = () => {
-    if (activeExpenseTab === 'general' || activeExpenseTab === 'hotels') {
+    if (activeExpenseTab === 'general') {
+      return bookingsDetailedData.reduce((sum, b) => {
+        const e = b.expenses || {};
+        return sum + (e.hotelsUZS || 0) + (e.transportSevil || 0) + (e.transportXayrulla || 0) +
+               (e.transportNosir || 0) + (e.railway || 0) + (e.flights || 0) +
+               (e.meals || 0) + (e.eintritt || 0) + (e.metro || 0) + (e.shou || 0) + (e.other || 0);
+      }, 0);
+    }
+    if (activeExpenseTab === 'hotels') {
       return filteredBookingsWithHotels.reduce((sum, b) => sum + (b.grandTotalData?.grandTotalUZS || 0), 0);
     }
     if (activeExpenseTab === 'transport') {
