@@ -53,7 +53,7 @@ export default function Ausgaben() {
 
     // Try localStorage first (persists across page reloads)
     try {
-      const localStorageKey = `ausgaben_cache_v4_${cacheKey}`;
+      const localStorageKey = `ausgaben_cache_v5_${cacheKey}`;
       const cachedData = localStorage.getItem(localStorageKey);
 
       if (cachedData) {
@@ -141,7 +141,7 @@ export default function Ausgaben() {
 
       // Also save to localStorage for persistence
       try {
-        const localStorageKey = `ausgaben_cache_v4_${cacheKey}`;
+        const localStorageKey = `ausgaben_cache_v5_${cacheKey}`;
         localStorage.setItem(localStorageKey, JSON.stringify({
           ...cacheData,
           timestamp: Date.now()
@@ -589,10 +589,10 @@ export default function Ausgaben() {
 
   // Merge certain hotel names into a single display column
   // e.g. "Jahongir Premium" → "Jahongir" (same hotel, different room category)
-  const HOTEL_MERGE_MAP = { 'jahongir premium': 'Jahongir' };
   const normalizeHotel = (name) => {
     if (!name) return name;
-    return HOTEL_MERGE_MAP[name.toLowerCase()] || name;
+    if (name.toLowerCase().trim().includes('jahongir')) return 'Jahongir';
+    return name.trim();
   };
 
   // Pivot data: Hotels as columns, bookings as rows
