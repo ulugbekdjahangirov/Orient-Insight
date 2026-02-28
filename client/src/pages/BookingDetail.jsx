@@ -12020,7 +12020,67 @@ export default function BookingDetail() {
               });
 
             // ── Eintritt Vouchers PDF ──────────────────────────────────────────
-            const downloadEintrittVouchers = () => {
+            const downloadEintrittVouchers = async () => {
+              // Fetch stamp, remove gray background via Canvas, embed as transparent PNG
+              let stampDataUrl = '';
+              try {
+                const resp = await fetch('/stamp.png');
+                if (resp.ok) {
+                  const blob = await resp.blob();
+                  const originalUrl = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                  });
+                  stampDataUrl = await new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = () => {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = img.width;
+                      canvas.height = img.height;
+                      const ctx = canvas.getContext('2d');
+                      ctx.drawImage(img, 0, 0);
+                      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                      const d = imageData.data;
+                      // Sample background color from image corners (10x10 area)
+                      let bgR = 0, bgG = 0, bgB = 0, bgCount = 0;
+                      const ss = Math.min(10, Math.floor(img.width / 10));
+                      for (let row = 0; row < ss; row++) {
+                        for (let col = 0; col < ss; col++) {
+                          [[row, col], [row, img.width-col-1],
+                           [img.height-row-1, col], [img.height-row-1, img.width-col-1]
+                          ].forEach(([y, x]) => {
+                            const idx = (y * img.width + x) * 4;
+                            bgR += d[idx]; bgG += d[idx+1]; bgB += d[idx+2]; bgCount++;
+                          });
+                        }
+                      }
+                      bgR = Math.round(bgR / bgCount);
+                      bgG = Math.round(bgG / bgCount);
+                      bgB = Math.round(bgB / bgCount);
+
+                      for (let i = 0; i < d.length; i += 4) {
+                        const r = d[i], g = d[i+1], b = d[i+2];
+                        // Distance from background color
+                        const dr = r - bgR, dg = g - bgG, db = b - bgB;
+                        const dist = Math.sqrt(dr*dr + dg*dg + db*db);
+                        if (dist < 12) {
+                          d[i+3] = 0; // pure background → transparent
+                        } else {
+                          // Continuous alpha: lighter ink areas stay semi-transparent
+                          // so white background shows through → preserves original "havo rang" feel
+                          const t = Math.min(1, (dist - 12) / 55);
+                          d[i+3] = Math.floor(t * 255);
+                        }
+                      }
+                      ctx.putImageData(imageData, 0, 0);
+                      resolve(canvas.toDataURL('image/png'));
+                    };
+                    img.src = originalUrl;
+                  });
+                }
+              } catch (e) { /* proceed without stamp */ }
+
               const bookingNum = booking?.bookingNumber || '';
               const paxCount = visibleEntries[0]?.pax ?? tourists?.length ?? 0;
               const guideName = mainGuide?.guide
@@ -12056,7 +12116,7 @@ License №T-0084-08 from 2021-04-26`;
     <div style="flex:3;padding:1.8mm 2.5mm;font-size:7pt;border-right:1px solid #000;line-height:1.4;">${ADDR}</div>
     <div style="flex:1;padding:1.5mm;text-align:center;font-weight:bold;font-size:7.5pt;display:flex;align-items:center;justify-content:center;line-height:1.4;">${COMPANY}</div>
   </div>
-  <div style="padding:2.5mm 3.5mm;flex:1;display:flex;flex-direction:column;justify-content:center;">
+  <div style="padding:2.5mm 3.5mm;flex:1;display:flex;flex-direction:column;justify-content:center;position:relative;">
     <div style="font-weight:bold;text-align:center;margin-bottom:1.5mm;font-size:8.5pt;">VOUCHER № ${bookingNum}</div>
     <div style="font-weight:bold;margin-bottom:1.8mm;font-size:8pt;">Предъявить в&nbsp; ${entry.name}</div>
     <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Страна:</span><span style="font-size:7.5pt;">Германия</span></div>
@@ -12065,6 +12125,7 @@ License №T-0084-08 from 2021-04-26`;
     <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Дата:</span><span style="font-size:7.5pt;">${fmtDate(entry.date)}</span></div>
     <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Ф.И.О. гида:</span><span style="font-size:7.5pt;">${guideName}</span></div>
     <div style="display:flex;"><span style="min-width:46mm;font-size:7.5pt;">Город:</span><span style="font-size:7.5pt;">${cityRu}</span></div>
+    ${stampDataUrl ? `<img src="${stampDataUrl}" style="position:absolute;bottom:0mm;right:1mm;width:38mm;height:38mm;opacity:0.9;pointer-events:none;">` : ''}
   </div>
 </div>`;
               };
