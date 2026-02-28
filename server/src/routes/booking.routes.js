@@ -2542,6 +2542,7 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
         departureDate: true,
         endDate: true,
         pax: true,
+        paxTurkmenistan: true,
         tourType: { select: { name: true, code: true } }
       }
     });
@@ -2560,15 +2561,31 @@ router.post('/:bookingId/send-world-insight', authenticate, uploadWI.fields([
     const pax = booking.pax || '—';
 
     // Tour name mapping
-    const tourNames = {
-      ER:  'Erlebnisreisen Usbekistan mit Turkmenistan',
-      CO:  'Usbekistan ComfortPlus Reisen',
-      KAS: 'Kasachstan, Kirgistan und Usbekistan Reisen',
-      ZA:  'Zentralasien Erlebnisreisen',
-    };
-    const tourName = tourNames[booking.tourType?.code] || booking.tourType?.name || 'Tour';
     const tourCode = booking.tourType?.code;
-    const reiseLabel = tourCode === 'CO' ? tourName : `${tourName} (Usbekistan Teil)`;
+    const hasTM = (booking.paxTurkmenistan || 0) > 0;
+    let tourName;
+    let reiseLabel;
+    if (tourCode === 'ER') {
+      if (hasTM) {
+        tourName = 'Erlebnisreisen Usbekistan mit Turkmenistan';
+        reiseLabel = `${tourName} (Usbekistan Teil)`;
+      } else {
+        tourName = 'Erlebnisreisen Usbekistan';
+        reiseLabel = tourName;
+      }
+    } else if (tourCode === 'CO') {
+      tourName = 'Usbekistan ComfortPlus Reisen';
+      reiseLabel = tourName;
+    } else if (tourCode === 'KAS') {
+      tourName = 'Kasachstan, Kirgistan und Usbekistan Reisen';
+      reiseLabel = `${tourName} (Usbekistan Teil)`;
+    } else if (tourCode === 'ZA') {
+      tourName = 'Zentralasien Erlebnisreisen';
+      reiseLabel = `${tourName} (Usbekistan Teil)`;
+    } else {
+      tourName = booking.tourType?.name || 'Tour';
+      reiseLabel = tourName;
+    }
 
     const subject = docType === 'neue-rechnung'
       ? `Neue Hotelliste & Neue Rechnung für die ${tourName} (${bookingNum})`
