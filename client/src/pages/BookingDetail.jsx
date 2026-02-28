@@ -13253,6 +13253,30 @@ ${rowsHtml}
                   return; // Skip Jahongir - it belongs to Später tab
                 }
 
+                // Skip Arien Plaza (goes to Überweisung tab)
+                const isArienPlaza = hotelName.toLowerCase().includes('arien plaza');
+                if (isArienPlaza) {
+                  return; // Skip Arien Plaza - it belongs to Überweisung tab
+                }
+
+                // Skip Dargoh Hotel (goes to Später tab)
+                const isDargohHotel = hotelName.toLowerCase().includes('dargoh');
+                if (isDargohHotel) {
+                  return; // Skip Dargoh Hotel - it belongs to Später tab
+                }
+
+                // Skip Malika Khorazm (goes to Später tab)
+                const isMalikaKhorazm = hotelName.toLowerCase().includes('malika khorazm') || hotelName.toLowerCase().includes('malika xorazm');
+                if (isMalikaKhorazm) {
+                  return; // Skip Malika Khorazm - it belongs to Später tab
+                }
+
+                // Skip Yaxshigul's Guesthouse (goes to Später tab)
+                const isYaxshigul = hotelName.toLowerCase().includes('yaxshigul');
+                if (isYaxshigul) {
+                  return; // Skip Yaxshigul's Guesthouse - it belongs to Später tab
+                }
+
                 // Map to standard city name
                 let targetCity = mapCityName(cityName) || mapCityName(hotelName);
                 if (!targetCity) targetCity = 'Extra Kosten'; // Default to Extra Kosten if unknown
@@ -13329,6 +13353,12 @@ ${rowsHtml}
               const pricePerPerson = parseFloat(priceStr) || 0;
               const showPax = show.pax || pax;
               const total = pricePerPerson * showPax;
+
+              // Skip Folklore Show at Nadir Divan-Begi (goes to Überweisung tab)
+              const isFolkloreShow = name.toLowerCase().includes('folklore show') || name.toLowerCase().includes('nadir divan');
+              if (isFolkloreShow) {
+                return; // Skip - it belongs to Überweisung tab
+              }
 
               // Map to standard city name
               let targetCity = mapCityName(city) || mapCityName(name);
@@ -13563,6 +13593,9 @@ ${rowsHtml}
             // Collect expenses for Später tab
             const expensesByCity = {};
             expensesByCity['Samarkand'] = [];
+            expensesByCity['Asraf'] = [];
+            expensesByCity['Bukhara'] = [];
+            expensesByCity['Khiva'] = [];
             expensesByCity['Transport'] = [];
             expensesByCity['Reiseleiter'] = [];
 
@@ -13583,6 +13616,51 @@ ${rowsHtml}
                   const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
 
                   expensesByCity['Samarkand'].push({
+                    name: hotelName,
+                    pricePerPerson: null,
+                    pax: null,
+                    usd: totalUSD,
+                    uzs: totalUZS
+                  });
+                }
+
+                // Yaxshigul's Guesthouse (Asraf) → Später
+                const isYaxshigul = hotelName.toLowerCase().includes('yaxshigul');
+                if (isYaxshigul) {
+                  const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+                  const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+
+                  expensesByCity['Asraf'].push({
+                    name: hotelName,
+                    pricePerPerson: null,
+                    pax: null,
+                    usd: totalUSD,
+                    uzs: totalUZS
+                  });
+                }
+
+                // Dargoh Hotel (Bukhara) → Später
+                const isDargohHotel = hotelName.toLowerCase().includes('dargoh');
+                if (isDargohHotel) {
+                  const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+                  const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+
+                  expensesByCity['Bukhara'].push({
+                    name: hotelName,
+                    pricePerPerson: null,
+                    pax: null,
+                    usd: totalUSD,
+                    uzs: totalUZS
+                  });
+                }
+
+                // Malika Khorazm (Khiva) → Später
+                const isMalikaKhorazm = hotelName.toLowerCase().includes('malika khorazm') || hotelName.toLowerCase().includes('malika xorazm');
+                if (isMalikaKhorazm) {
+                  const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+                  const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+
+                  expensesByCity['Khiva'].push({
                     name: hotelName,
                     pricePerPerson: null,
                     pax: null,
@@ -13687,7 +13765,7 @@ ${rowsHtml}
             });
 
             // Filter out empty sections for display
-            const sections = ['Samarkand', 'Transport', 'Reiseleiter'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+            const sections = ['Samarkand', 'Asraf', 'Bukhara', 'Khiva', 'Transport', 'Reiseleiter'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
 
             const hasData = sections.length > 0;
 
@@ -13841,6 +13919,54 @@ ${rowsHtml}
                   name: name,
                   pricePerPerson: pricePerPerson,
                   pax: sightPax,
+                  usd: 0,
+                  uzs: total
+                });
+              }
+            });
+
+            // Process Arien Plaza hotel costs (from grandTotalData.hotelBreakdown)
+            if (grandTotalData && grandTotalData.hotelBreakdown) {
+              grandTotalData.hotelBreakdown.forEach(hotelData => {
+                const acc = accommodations.find(a => a.id === hotelData.accommodationId);
+                const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
+                const isArienPlaza = hotelName.toLowerCase().includes('arien plaza');
+                if (!isArienPlaza) return;
+
+                const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+                const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+
+                if (totalUSD > 0 || totalUZS > 0) {
+                  expensesByCity['Tashkent'].push({
+                    name: hotelName,
+                    pricePerPerson: null,
+                    pax: null,
+                    usd: totalUSD,
+                    uzs: totalUZS
+                  });
+                }
+              });
+            }
+
+            // Process Folklore Show at Nadir Divan-Begi (from showsData)
+            showsData.forEach(show => {
+              const name = show.name || 'Unknown Show';
+              const isFolkloreShow = name.toLowerCase().includes('folklore show') || name.toLowerCase().includes('nadir divan');
+              if (!isFolkloreShow) return;
+
+              const city = show.city || '';
+              const priceStr = (show.price || show.pricePerPerson || '0').toString().replace(/\s/g, '');
+              const pricePerPerson = parseFloat(priceStr) || 0;
+              const showPax = show.pax || pax;
+              const total = pricePerPerson * showPax;
+
+              let targetCity = mapCityName(city) || mapCityName(name) || 'Bukhara';
+
+              if (total > 0) {
+                expensesByCity[targetCity].push({
+                  name: name,
+                  pricePerPerson: pricePerPerson,
+                  pax: showPax,
                   usd: 0,
                   uzs: total
                 });
