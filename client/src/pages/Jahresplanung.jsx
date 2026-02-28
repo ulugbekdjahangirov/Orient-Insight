@@ -11,11 +11,12 @@ import { jahresplanungApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 const TOUR_TYPES = ['ER', 'CO', 'KAS', 'ZA'];
 const MAIN_TABS = [
-  { id: 'hotels', label: 'Hotels', icon: Building2 },
-  { id: 'restoran', label: 'Restoran', icon: UtensilsCrossed },
-  { id: 'transport', label: 'Transport', icon: Bus },
+  { id: 'hotels',   label: 'Hotels',   icon: Building2,      color: '#7c3aed', bg: '#f5f3ff' },
+  { id: 'restoran', label: 'Restoran', icon: UtensilsCrossed, color: '#be185d', bg: '#fdf2f8' },
+  { id: 'transport',label: 'Transport',icon: Bus,             color: '#1d4ed8', bg: '#eff6ff' },
 ];
-const TOUR_NAMES = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+const TOUR_NAMES  = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
+const TOUR_COLORS = { ER: '#3B82F6', CO: '#10B981', KAS: '#F59E0B', ZA: '#8B5CF6' };
 const CITY_ORDER = {
   ER:  ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'],
   CO:  ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'],
@@ -808,12 +809,13 @@ function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlo
   doc.save(`${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`);
 }
 
-function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverrideVal, rowStatuses, setRowStatus,
+function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides, setOverrideVal, rowStatuses, setRowStatus,
   onEmail, onTelegram, sendingEmail, sendingTelegram, onPDF,
   cityName, cityHotels, onMoveBooking, isExtra, onRemoveHotel,
   availableHotelsForSwap, onReplaceHotel }) {
   const { hotel, bookings } = hotelData;
   const { first, second, third, hasSplit, hasThird } = splitVisits(bookings);
+  const color = tourColor || '#3B82F6';
 
   const getVal = (b, field) => {
     const k = rowKey(hotel.id, b);
@@ -826,62 +828,105 @@ function HotelCard({ hotelData, tourType, isOpen, onToggle, overrides, setOverri
     cityName, cityHotels, onMoveBooking };
 
   return (
-    <div className={`bg-white border rounded-lg overflow-hidden ${isExtra ? 'border-blue-200' : 'border-gray-200'}`}>
-      <div className="px-3 md:px-4 py-2.5 md:py-3 flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3">
-        {/* Row 1: expand toggle + hotel name + stats */}
-        <button onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
-          {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
-          <Building2 className={`w-4 h-4 flex-shrink-0 ${isExtra ? 'text-blue-500' : 'text-blue-400'}`} />
+    <div className="rounded-xl overflow-hidden transition-all duration-200"
+      style={{
+        background: 'white',
+        border: `1px solid ${isExtra ? color + '40' : '#e2e8f0'}`,
+        boxShadow: isOpen ? `0 4px 20px ${color}10` : '0 1px 3px rgba(0,0,0,0.06)',
+      }}>
+      {/* Card Header */}
+      <div className="px-3 md:px-4 py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+        {/* Left: toggle + hotel info */}
+        <button onClick={onToggle} className="flex items-center gap-2.5 flex-1 min-w-0 text-left group">
+          <div className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+            style={{ background: isOpen ? `${color}18` : '#f1f5f9' }}>
+            {isOpen
+              ? <ChevronDown className="w-3.5 h-3.5" style={{ color }} />
+              : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+          </div>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: isExtra ? `${color}15` : '#f1f5f9' }}>
+            <Building2 className="w-3.5 h-3.5" style={{ color: isExtra ? color : '#64748b' }} />
+          </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-gray-800 text-sm truncate">{hotel.name}</span>
-              {isExtra && <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full shrink-0">qo'shimcha</span>}
-              {availableHotelsForSwap && availableHotelsForSwap.length > 0 && (
-                <HotelSwapButton
-                  currentHotelId={hotel.id}
-                  availableHotels={availableHotelsForSwap}
-                  onReplace={onReplaceHotel}
-                />
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-slate-800 text-sm truncate group-hover:text-blue-600 transition-colors">
+                {hotel.name}
+              </span>
+              {isExtra && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: `${color}15`, color }}>qo'shimcha</span>
+              )}
+              {availableHotelsForSwap?.length > 0 && (
+                <HotelSwapButton currentHotelId={hotel.id} availableHotels={availableHotelsForSwap} onReplace={onReplaceHotel} />
               )}
             </div>
-            {hotel.email && <div className="text-xs text-gray-400 truncate hidden md:block">{hotel.email}</div>}
+            {hotel.email && <div className="text-xs text-slate-400 truncate hidden md:block mt-0.5">{hotel.email}</div>}
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0 text-xs text-gray-500">
-            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">{bookings.length}</span>
-            <span className="hidden sm:inline">{totalPax} PAX</span>
-            <span className="hidden md:inline">· {totalRooms} ном.</span>
+          {/* Stats */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs font-black px-2.5 py-1 rounded-lg text-white"
+              style={{ background: `linear-gradient(135deg, ${color}, ${color}bb)` }}>
+              {bookings.length}
+            </span>
+            <span className="hidden sm:block text-xs font-semibold text-slate-500">{totalPax} PAX</span>
+            <span className="hidden md:block text-xs text-slate-400">· {totalRooms} ном.</span>
           </div>
         </button>
-        {/* Row 2 (mobile) / inline (desktop): action buttons */}
-        <div className="flex items-center gap-1 ml-6 md:ml-0 md:flex-shrink-0">
-          <button onClick={() => onPDF(hotelData)} className="flex items-center gap-1 px-2 md:px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors" title="PDF">
-            <Download className="w-3.5 h-3.5" /><span className="hidden sm:inline"> PDF</span>
+
+        {/* Right: action buttons */}
+        <div className="flex items-center gap-1.5 ml-7 md:ml-0 flex-shrink-0">
+          <button onClick={() => onPDF(hotelData)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: '#f1f5f9', color: '#475569' }}
+            onMouseEnter={e => { e.currentTarget.style.background='#e2e8f0'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='#f1f5f9'; }}
+            title="PDF">
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">PDF</span>
           </button>
-          <button onClick={() => onEmail(hotelData)} disabled={!!sendingEmail} className="flex items-center gap-1 px-2 md:px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.email||"Email yo'q"}>
-            {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Mail className="w-3.5 h-3.5"/>}<span className="hidden sm:inline"> Email</span>
+          <button onClick={() => onEmail(hotelData)} disabled={!!sendingEmail}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+            style={{ background: '#eff6ff', color: '#1d4ed8' }}
+            onMouseEnter={e => { if (!sendingEmail) e.currentTarget.style.background='#dbeafe'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='#eff6ff'; }}
+            title={hotel.email || "Email yo'q"}>
+            {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Mail className="w-3.5 h-3.5"/>}
+            <span className="hidden sm:inline">Email</span>
           </button>
-          <button onClick={() => onTelegram(hotelData)} disabled={!!sendingTelegram} className="flex items-center gap-1 px-2 md:px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50" title={hotel.telegramChatId?'TG':"Telegram yo'q"}>
-            {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}<span className="hidden sm:inline"> TG</span>
+          <button onClick={() => onTelegram(hotelData)} disabled={!!sendingTelegram}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+            style={{ background: '#f0f9ff', color: '#0369a1' }}
+            onMouseEnter={e => { if (!sendingTelegram) e.currentTarget.style.background='#e0f2fe'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='#f0f9ff'; }}
+            title={hotel.telegramChatId ? 'TG' : "Telegram yo'q"}>
+            {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}
+            <span className="hidden sm:inline">TG</span>
           </button>
           {isExtra && (
-            <button onClick={onRemoveHotel} title="Hotelni olib tashlash"
-              className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+            <button onClick={onRemoveHotel} title="Olib tashlash"
+              className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 transition-colors"
+              onMouseEnter={e => { e.currentTarget.style.background='#fff1f2'; }}
+              onMouseLeave={e => { e.currentTarget.style.background='transparent'; }}>
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
       </div>
 
+      {/* Expanded bookings */}
       {isOpen && (
-        hasSplit ? (
-          <>
-            <BookingsTable bookings={first}  {...sharedProps} visitLabel="Первый заезд" />
-            <BookingsTable bookings={second} {...sharedProps} visitLabel="Второй заезд" />
-            {hasThird && <BookingsTable bookings={third} {...sharedProps} visitLabel="Третий заезд" />}
-          </>
-        ) : (
-          <BookingsTable bookings={bookings} {...sharedProps} visitLabel={null} />
-        )
+        <div style={{ borderTop: `2px solid ${color}20` }}>
+          {hasSplit ? (
+            <>
+              <BookingsTable bookings={first}  {...sharedProps} visitLabel="Первый заезд" />
+              <BookingsTable bookings={second} {...sharedProps} visitLabel="Второй заезд" />
+              {hasThird && <BookingsTable bookings={third} {...sharedProps} visitLabel="Третий заезд" />}
+            </>
+          ) : (
+            <BookingsTable bookings={bookings} {...sharedProps} visitLabel={null} />
+          )}
+        </div>
       )}
     </div>
   );
@@ -984,7 +1029,7 @@ function DateCell({ value, onChange }) {
   );
 }
 
-function TransportTab({ tourType }) {
+function TransportTab({ tourType, tourColor }) {
   const { selectedYear: YEAR } = useYear();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
@@ -2105,7 +2150,7 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
   );
 }
 
-function RestoranTab({ tourType }) {
+function RestoranTab({ tourType, tourColor }) {
   const { selectedYear: YEAR } = useYear();
   const [loading, setLoading] = useState(true);
   const [restaurants, setRestaurants] = useState([]);
@@ -2170,24 +2215,29 @@ function RestoranTab({ tourType }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-gray-400">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        <span className="text-sm">Yuklanmoqda...</span>
-      </div>
-    );
-  }
+  const color = tourColor || TOUR_COLORS[tourType] || '#be185d';
 
-  if (!restaurants.length) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-        <UtensilsCrossed className="w-10 h-10 mb-3 opacity-30" />
-        <p className="text-sm font-medium">Restoran ma'lumotlari topilmadi</p>
-        <p className="text-xs mt-1 text-gray-400">OPEX → Meals → {tourType} tabida restoranlar qo'shing</p>
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+        style={{ background: `${color}18` }}>
+        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: `${color}40`, borderTopColor: color }} />
       </div>
-    );
-  }
+      <p className="text-slate-400 font-medium text-sm">Yuklanmoqda...</p>
+    </div>
+  );
+
+  if (!restaurants.length) return (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
+        style={{ background: `${color}15` }}>
+        <UtensilsCrossed className="w-10 h-10" style={{ color }} />
+      </div>
+      <p className="text-slate-600 font-semibold">Restoran ma'lumotlari topilmadi</p>
+      <p className="text-slate-400 text-sm mt-1">OPEX → Meals → {tourType} tabida restoranlar qo'shing</p>
+    </div>
+  );
 
   const totalBookings = restaurants[0]?.bookings.length || 0;
   const confirmedTotal = restaurants.reduce((s, r) =>
@@ -2195,16 +2245,20 @@ function RestoranTab({ tourType }) {
   const totalRestaurants = restaurants.length;
 
   return (
-    <div>
-      {/* Summary header */}
-      <div className="flex items-center gap-4 mb-4 px-1 text-sm text-gray-500">
-        <span>{totalRestaurants} ta restoran</span>
-        <span className="text-gray-300">·</span>
-        <span>{totalBookings} ta guruh</span>
+    <div className="space-y-3">
+      {/* Summary Strip */}
+      <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+        style={{ background: `linear-gradient(135deg, ${color}12, ${color}06)`, border: `1px solid ${color}25` }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}20` }}>
+          <UtensilsCrossed className="w-4 h-4" style={{ color }} />
+        </div>
+        <span className="text-sm font-semibold text-slate-700">{totalRestaurants} ta restoran</span>
+        <span className="text-slate-300">·</span>
+        <span className="text-sm text-slate-500">{totalBookings} ta guruh</span>
         {confirmedTotal > 0 && (
           <>
-            <span className="text-gray-300">·</span>
-            <span className="text-green-600 font-medium">{confirmedTotal} ta tasdiqlangan</span>
+            <span className="text-slate-300">·</span>
+            <span className="text-sm font-semibold text-emerald-600">✅ {confirmedTotal} ta tasdiqlangan</span>
           </>
         )}
       </div>
@@ -2228,7 +2282,7 @@ function RestoranTab({ tourType }) {
 
 // ── End RestoranTab ─────────────────────────────────────────────────────────
 
-function HotelsTab({ tourType }) {
+function HotelsTab({ tourType, tourColor }) {
   const { selectedYear: YEAR } = useYear();
   const [loading, setLoading] = useState(true);
   const [hotels, setHotels] = useState([]);
@@ -2499,13 +2553,27 @@ function HotelsTab({ tourType }) {
     } finally { setSendingTelegram(prev => ({ ...prev, [hotel.id]: false })); }
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary-600"/></div>;
+  const color = tourColor || TOUR_COLORS[tourType] || '#3B82F6';
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+        style={{ background: `${color}18` }}>
+        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: `${color}40`, borderTopColor: color }} />
+      </div>
+      <p className="text-slate-400 font-medium text-sm">Yuklanmoqda...</p>
+    </div>
+  );
 
   if (hotels.length === 0) return (
-    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-      <Building2 className="w-12 h-12 mb-3 opacity-30"/>
-      <p className="text-sm">{YEAR} yil uchun {tourType} — hotel ma'lumoti topilmadi</p>
-      <p className="text-xs mt-1">Bookings ichida Accommodations qo'shilganda ko'rinadi</p>
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5"
+        style={{ background: `${color}15` }}>
+        <Building2 className="w-10 h-10" style={{ color }} />
+      </div>
+      <p className="text-slate-600 font-semibold">{YEAR} yil uchun {tourType} — hotel topilmadi</p>
+      <p className="text-slate-400 text-sm mt-1">Bookings ichida Accommodations qo'shilganda ko'rinadi</p>
     </div>
   );
 
@@ -2521,13 +2589,14 @@ function HotelsTab({ tourType }) {
   return (
     <div className="space-y-4">
       {/* Edit hint */}
-      <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
-        💡 PAX, DBL, TWN, ЕД ustunlaridagi raqamlarni bosib tahrirlash mumkin
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium"
+        style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e' }}>
+        <span>💡</span>
+        <span>PAX, DBL, TWN, ЕД ustunlaridagi raqamlarni bosib tahrirlash mumkin</span>
       </div>
 
-      {sortedCities.map(city => {
+      {sortedCities.map((city, cityIdx) => {
         const originalHotels = cityMap[city];
-        // Compute effective hotel list with booking distribution
         const displayHotels = computeCityHotels(city, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels);
         const isCityOpen = openCities[city] !== false;
         const totalGroups = displayHotels.reduce((s,hd) => s + hd.bookings.filter(b=>b.status!=='CANCELLED').length, 0);
@@ -2537,36 +2606,51 @@ function HotelsTab({ tourType }) {
             return ss + (overrides[k]?.pax ?? b.pax ?? 0);
           }, 0);
         }, 0);
-
-        // Hotels available to add/swap in this city (same city, not already displayed)
         const displayHotelIds = new Set(displayHotels.map(h => h.hotel.id));
         const availableToAdd = allHotels.filter(h => h.city?.name === city && !displayHotelIds.has(h.id));
 
         return (
-          <div key={city} className="rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={city} className="rounded-2xl overflow-hidden shadow-sm" style={{ border: `1px solid ${color}25` }}>
+            {/* City Header */}
             <button
               onClick={() => setOpenCities(prev => ({ ...prev, [city]: !prev[city] }))}
-              className="w-full bg-gray-800 text-white px-3 md:px-5 py-3 md:py-3.5 flex items-center gap-2 md:gap-3 hover:bg-gray-700 transition-colors text-left"
+              className="w-full px-4 md:px-5 py-3.5 flex items-center gap-3 text-left transition-all duration-200 group"
+              style={{
+                background: `linear-gradient(135deg, #1e293b, #0f172a)`,
+                borderLeft: `4px solid ${color}`,
+              }}
             >
-              {isCityOpen ? <ChevronDown className="w-4 h-4 text-gray-300 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0"/>}
-              <MapPin className="w-4 h-4 md:w-5 md:h-5 text-blue-400 flex-shrink-0"/>
-              <span className="font-semibold text-sm md:text-base flex-1 truncate">{city}</span>
-              <div className="flex items-center gap-1 md:gap-3 text-xs md:text-sm text-gray-300 shrink-0">
-                <span className="bg-gray-700 px-1.5 py-0.5 rounded text-xs">{displayHotels.length}</span>
-                <span className="hidden md:inline">отель ·</span>
-                <span className="font-medium">{totalGroups}</span>
-                <span className="hidden md:inline">группы ·</span>
-                <span className="hidden sm:inline text-gray-400">{totalPax} PAX</span>
+              <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: `${color}25` }}>
+                <MapPin className="w-4 h-4" style={{ color }} />
+              </div>
+              <span className="font-bold text-white text-sm md:text-base flex-1 truncate">{city}</span>
+              <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                <span className="hidden md:flex items-center gap-1 text-xs text-slate-400">
+                  <span className="font-semibold text-slate-300">{displayHotels.length}</span> отель
+                </span>
+                <span className="text-slate-600 hidden md:inline">·</span>
+                <span className="hidden md:flex items-center gap-1 text-xs text-slate-400">
+                  <span className="font-semibold text-slate-300">{totalGroups}</span> группы
+                </span>
+                <span className="px-2.5 py-1 rounded-lg text-xs font-black text-white"
+                  style={{ background: `${color}cc` }}>
+                  {totalPax} PAX
+                </span>
+                {isCityOpen
+                  ? <ChevronDown className="w-4 h-4 text-slate-500" />
+                  : <ChevronRight className="w-4 h-4 text-slate-500" />}
               </div>
             </button>
 
             {isCityOpen && (
-              <div className="bg-gray-50 p-3 space-y-2">
+              <div className="p-3 space-y-2" style={{ background: '#f8fafc' }}>
                 {displayHotels.map(hd => (
                   <HotelCard
                     key={hd.hotel.id}
                     hotelData={hd}
                     tourType={tourType}
+                    tourColor={color}
                     isOpen={!!openHotels[hd.hotel.id]}
                     onToggle={() => setOpenHotels(prev => ({ ...prev, [hd.hotel.id]: !prev[hd.hotel.id] }))}
                     overrides={overrides}
@@ -2610,39 +2694,106 @@ export default function Jahresplanung() {
   const [mainTab, setMainTab] = useState(() => localStorage.getItem('jp_mainTab') || 'hotels');
   const [tourTab, setTourTab] = useState(() => localStorage.getItem('jp_tourTab') || 'ER');
 
+  const activeTabMeta  = MAIN_TABS.find(t => t.id === mainTab) || MAIN_TABS[0];
+  const activeTourColor = TOUR_COLORS[tourTab] || '#3B82F6';
+
   return (
-    <div className="px-2 py-4 md:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Jahresplanung {YEAR}</h1>
-        <p className="text-sm text-gray-500 mt-1">Yillik reja — hotellar, restoranlar, transport</p>
+    <div className="min-h-screen" style={{ background: '#0f1729' }}>
+
+      {/* ── HERO HEADER ── */}
+      <div className="relative overflow-hidden" style={{
+        background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 55%, #0f1729 100%)'
+      }}>
+        {/* Glow blob */}
+        <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none"
+          style={{ background: activeTourColor, opacity: 0.12, filter: 'blur(80px)', transform: 'translate(30%,-30%)' }} />
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: activeTabMeta.color, opacity: 0.08, filter: 'blur(60px)', transform: 'translate(-30%,30%)' }} />
+
+        <div className="relative px-4 md:px-6 pt-7 pb-6">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
+              style={{ background: `${activeTourColor}25`, color: activeTourColor }}>
+              {YEAR}
+            </span>
+            <span className="text-slate-600 text-xs">›</span>
+            <span className="text-slate-500 text-xs font-medium">Yillik Reja</span>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none">
+            Jahresplanung
+          </h1>
+          <p className="text-slate-500 text-sm mt-2">Yillik reja — hotellar, restoranlar, transport</p>
+
+          {/* Main Tabs */}
+          <div className="flex gap-3 mt-6">
+            {MAIN_TABS.map(tab => {
+              const Icon = tab.icon;
+              const isActive = mainTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setMainTab(tab.id); localStorage.setItem('jp_mainTab', tab.id); }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                  style={isActive ? {
+                    background: `linear-gradient(135deg, ${tab.color}, ${tab.color}bb)`,
+                    color: 'white',
+                    boxShadow: `0 0 20px ${tab.color}50`,
+                  } : {
+                    background: 'rgba(255,255,255,0.06)',
+                    color: 'rgba(255,255,255,0.45)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tour Type Pills */}
+          <div className="flex gap-2 mt-4">
+            {TOUR_TYPES.map(t => {
+              const isActive = tourTab === t;
+              const color = TOUR_COLORS[t];
+              return (
+                <button
+                  key={t}
+                  onClick={() => { setTourTab(t); localStorage.setItem('jp_tourTab', t); }}
+                  className="relative overflow-hidden px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200"
+                  style={isActive ? {
+                    background: `linear-gradient(135deg, ${color}, ${color}99)`,
+                    color: 'white',
+                    boxShadow: `0 0 25px ${color}45`,
+                    transform: 'translateY(-2px)',
+                  } : {
+                    background: 'rgba(255,255,255,0.04)',
+                    color: color,
+                    border: `1px solid ${color}40`,
+                  }}
+                >
+                  {t}
+                  {isActive && (
+                    <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-white opacity-60" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      <div className="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1 w-fit">
-        {MAIN_TABS.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button key={tab.id} onClick={() => { setMainTab(tab.id); localStorage.setItem('jp_mainTab', tab.id); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mainTab===tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              <Icon className="w-4 h-4"/> {tab.label}
-            </button>
-          );
-        })}
+      {/* ── CONTENT ── */}
+      <div className="bg-slate-50 min-h-screen">
+        <div className="px-3 md:px-6 py-5 max-w-7xl mx-auto">
+          {mainTab==='hotels'    && <HotelsTab   tourType={tourTab} tourColor={activeTourColor} />}
+          {mainTab==='restoran'  && <RestoranTab  tourType={tourTab} tourColor={activeTourColor} />}
+          {mainTab==='transport' && <TransportTab tourType={tourTab} tourColor={activeTourColor} />}
+        </div>
       </div>
-
-      <div className="flex gap-2 mb-5">
-        {TOUR_TYPES.map(t => (
-          <button key={t} onClick={() => { setTourTab(t); localStorage.setItem('jp_tourTab', t); }}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${tourTab===t ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {mainTab==='hotels' && <HotelsTab tourType={tourTab}/>}
-      {mainTab==='restoran' && <RestoranTab tourType={tourTab}/>}
-      {mainTab==='transport' && <TransportTab tourType={tourTab}/>}
     </div>
   );
 }
