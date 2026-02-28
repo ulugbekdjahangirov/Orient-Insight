@@ -354,6 +354,12 @@ export default function Ausgaben() {
 
       // 5. Guide - from mainGuide, secondGuide, bergreiseleiter
       guide: (mainGuide?.totalPayment || 0) + (secondGuide?.totalPayment || 0) + (bergreiseleiter?.totalPayment || 0),
+      guideMainCost: mainGuide?.totalPayment || 0,
+      guideMainName: booking.guide?.name || '',
+      guideSecondCost: secondGuide?.totalPayment || 0,
+      guideSecondName: secondGuide?.guide?.name || secondGuide?.guideName || '',
+      guideBergrCost: bergreiseleiter?.totalPayment || 0,
+      guideBergrName: bergreiseleiter?.guide?.name || bergreiseleiter?.guideName || '',
 
       // 6. Meals - from localStorage
       meals: 0,
@@ -1151,39 +1157,69 @@ export default function Ausgaben() {
                               style={{ background: '#dbeafe' }}>#</th>
                             <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
                               style={{ background: '#dbeafe' }}>Booking</th>
-                            <th className="px-4 py-3.5 text-left font-bold text-slate-700 border-r border-blue-200"
-                              style={{ background: '#dbeafe' }}>👤 Guide</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-indigo-700"
+                              style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Main Guide</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-indigo-700"
+                              style={{ background: 'linear-gradient(180deg,#312e81,#4338ca)' }}>Price</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-violet-700"
+                              style={{ background: 'linear-gradient(180deg,#4c1d95,#6d28d9)' }}>Second Guide</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-violet-700"
+                              style={{ background: 'linear-gradient(180deg,#4c1d95,#6d28d9)' }}>Price</th>
+                            <th className="px-4 py-3.5 text-left font-bold text-white border-r border-slate-600"
+                              style={{ background: 'linear-gradient(180deg,#1e293b,#334155)' }}>Bergreiseleiter</th>
+                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-slate-600"
+                              style={{ background: 'linear-gradient(180deg,#1e293b,#334155)' }}>Price</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white"
-                              style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Guide Cost (USD)</th>
+                              style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total (USD)</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {bookingsDetailedData.map((item, idx) => {
-                            const booking = bookings.find(b => b.id === item.bookingId);
-                            const guideName = booking?.guide?.name || '—';
-                            const guideCost = item.expenses?.guide || 0;
+                          {filteredBookingsWithHotels.map((item, idx) => {
+                            const e = item.expenses || {};
+                            const total = (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0);
                             const rowBg = idx%2===0 ? '#ffffff' : '#f8fafc';
                             return (
                               <tr key={item.bookingId} style={{ background: rowBg }}
-                                onMouseEnter={e => e.currentTarget.style.background='#ecfdf5'}
-                                onMouseLeave={e => e.currentTarget.style.background=rowBg}>
+                                onMouseEnter={ev => ev.currentTarget.style.background='#ecfdf5'}
+                                onMouseLeave={ev => ev.currentTarget.style.background=rowBg}>
                                 <td className="px-4 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx+1}</td>
                                 <td className="px-4 py-2.5 border-r border-slate-100">
                                   <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
                                 </td>
-                                <td className="px-4 py-2.5 text-slate-600 font-medium border-r border-slate-100">{guideName}</td>
+                                <td className="px-4 py-2.5 text-slate-700 font-medium border-r border-slate-100">{e.guideMainName||'—'}</td>
+                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  {e.guideMainCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideMainCost)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-slate-700 font-medium border-r border-slate-100">{e.guideSecondName||'—'}</td>
+                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  {e.guideSecondCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideSecondCost)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 text-slate-700 font-medium border-r border-slate-100">{e.guideBergrName||'—'}</td>
+                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  {e.guideBergrCost>0 ? <span className="font-semibold text-gray-800">${formatNumber(e.guideBergrCost)}</span> : <span className="text-slate-200">—</span>}
+                                </td>
                                 <td className="px-4 py-2.5 text-center">
-                                  {guideCost>0
-                                    ? <span className="font-semibold text-gray-800">${formatNumber(guideCost)}</span>
-                                    : <span className="text-slate-200">—</span>}
+                                  {total>0 ? <span className="font-black text-gray-900">${formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
                               </tr>
                             );
                           })}
                           <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
-                            <td className="px-4 py-3.5 border-r border-green-200" colSpan={3}></td>
-                            <td className="px-4 py-3.5 text-center text-sm font-black text-green-900">
-                              ${formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.guide||0),0))}
+                            <td className="px-4 py-3.5 border-r border-green-200" colSpan={2}></td>
+                            <td className="px-4 py-3.5 border-r border-green-200"></td>
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              ${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0))}
+                            </td>
+                            <td className="px-4 py-3.5 border-r border-green-200"></td>
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              ${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0))}
+                            </td>
+                            <td className="px-4 py-3.5 border-r border-green-200"></td>
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              ${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0))}
+                            </td>
+                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
+                              ${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0))}
                             </td>
                           </tr>
                         </tbody>
