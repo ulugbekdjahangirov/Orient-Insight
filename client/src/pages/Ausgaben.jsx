@@ -989,54 +989,53 @@ export default function Ausgaben() {
                                 );
                               })}
                             {/* TOTAL row */}
-                            <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
-                              <td className="px-3 py-3.5 border-r border-green-200"></td>
-                              <td className="px-3 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest sticky left-0 z-10 border-r border-green-200"
-                                style={{ background: '#dcfce7' }}>TOTAL</td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                            <tr style={{ background: 'linear-gradient(90deg,#14532d,#166534)', borderTop: '3px solid #15803d' }}>
+                              <td className="px-3 py-3.5 border-r border-green-700"></td>
+                              <td className="px-3 py-3.5 text-xs font-black text-white uppercase tracking-widest sticky left-0 z-10 border-r border-green-700"
+                                style={{ background: '#14532d' }}>TOTAL</td>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUSD||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.hotelsUZS||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportSevil||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportXayrulla||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.transportNosir||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.railway||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.flights||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.guide||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.meals||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.eintritt||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.metro||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.shou||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-white border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((s,b)=>s+(b.expenses?.other||0),0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-emerald-200 border-r border-green-700">
                                 {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
                               </td>
-                              <td className="px-3 py-3.5 text-center text-xs font-black text-green-900"
-                                style={{ background: '#dcfce7' }}>
+                              <td className="px-3 py-3.5 text-center text-xs font-black text-emerald-200">
                                 ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}
                               </td>
                             </tr>
