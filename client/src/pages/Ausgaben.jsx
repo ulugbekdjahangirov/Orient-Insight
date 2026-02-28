@@ -1221,10 +1221,8 @@ export default function Ausgaben() {
                               style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Xayrulla</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white border-r border-blue-700"
                               style={{ background: 'linear-gradient(180deg,#1e3a8a,#1d4ed8)' }}>🚌 Nosir</th>
-                            <th className="px-4 py-3.5 text-center font-bold text-white border-r border-green-700"
-                              style={{ background: 'linear-gradient(180deg,#14532d,#15803d)' }}>🚂 Train</th>
                             <th className="px-4 py-3.5 text-center font-bold text-white"
-                              style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
+                              style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total (UZS)</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1252,9 +1250,6 @@ export default function Ausgaben() {
                                 <td className="px-4 py-2.5 text-center border-r border-slate-100">
                                   {nosir>0 ? <span className="font-semibold text-gray-800">{formatNumber(nosir)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
-                                <td className="px-4 py-2.5 text-center border-r border-slate-100">
-                                  {railway>0 ? <span className="font-semibold text-gray-800">{formatNumber(railway)}</span> : <span className="text-slate-200">—</span>}
-                                </td>
                                 <td className="px-4 py-2.5 text-center">
                                   {total>0 ? <span className="font-black text-gray-900">{formatNumber(total)}</span> : <span className="text-slate-200">—</span>}
                                 </td>
@@ -1269,9 +1264,6 @@ export default function Ausgaben() {
                                 {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
                               </td>
                             ))}
-                            <td className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                              {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.railway||0),0))}
-                            </td>
                             <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
                               {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0)+(i.expenses?.railway||0),0))}
                             </td>
