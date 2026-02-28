@@ -1224,9 +1224,7 @@ export default function Ausgaben() {
                           </tr>
                         </thead>
                         <tbody>
-                          {bookingsDetailedData
-                            .filter(item => (item.expenses?.transportSevil||0)+(item.expenses?.transportXayrulla||0) > 0)
-                            .map((item, idx) => {
+                          {filteredBookingsWithHotels.map((item, idx) => {
                             const sevil=item.expenses?.transportSevil||0;
                             const xayrulla=item.expenses?.transportXayrulla||0;
                             const total=sevil+xayrulla;
@@ -1256,11 +1254,11 @@ export default function Ausgaben() {
                             <td className="px-4 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest border-r border-green-200">TOTAL</td>
                             {['transportSevil','transportXayrulla'].map(key => (
                               <td key={key} className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                                {formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
                               </td>
                             ))}
                             <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
-                              ${formatNumber(bookingsDetailedData.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0))}
+                              ${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0))}
                             </td>
                           </tr>
                         </tbody>
