@@ -1055,28 +1055,24 @@ export default function Ausgaben() {
                       <EmptyState icon={Hotel} label={`${activeModule?.name} uchun mehmonxona ma'lumoti yo'q`} />
                     ) : (() => {
                       const pivotData = getPivotData();
-                      const hotelPalette = ['#7c3aed','#db2777','#0891b2','#16a34a','#d97706','#dc2626','#2563eb','#0f766e'];
                       return (
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr>
-                              <th className="px-4 py-3.5 text-center font-bold text-white w-10 border-r border-slate-600"
-                                style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)' }}>#</th>
-                              <th className="px-4 py-3.5 text-left font-bold text-white sticky left-0 z-10 border-r border-slate-600"
-                                style={{ background: 'linear-gradient(180deg,#1e293b,#0f172a)', minWidth: '130px' }}>Booking</th>
-                              {pivotData.hotels.map((hotelName, idx) => {
-                                const color = hotelPalette[idx % hotelPalette.length];
-                                return (
-                                  <th key={idx} className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
-                                    style={{ minWidth: '120px', background: `linear-gradient(180deg, ${color}cc, ${color}88)` }}>
-                                    {hotelName}
-                                  </th>
-                                );
-                              })}
-                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
-                                style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
-                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
-                                style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
+                              <th className="px-4 py-3.5 text-center font-bold text-slate-600 w-10 border-r border-slate-200"
+                                style={{ background: '#f1f5f9' }}>#</th>
+                              <th className="px-4 py-3.5 text-left font-bold text-slate-700 sticky left-0 z-10 border-r border-slate-200"
+                                style={{ background: '#f1f5f9', minWidth: '130px' }}>Booking</th>
+                              {pivotData.hotels.map((hotelName, idx) => (
+                                <th key={idx} className="px-4 py-3.5 text-center font-bold text-slate-600 uppercase tracking-wider border-r border-slate-200"
+                                  style={{ minWidth: '120px', background: '#e2e8f0' }}>
+                                  {hotelName}
+                                </th>
+                              ))}
+                              <th className="px-4 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200"
+                                style={{ background: '#e2e8f0' }}>Σ UZS</th>
+                              <th className="px-4 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider"
+                                style={{ background: '#e2e8f0' }}>Σ USD</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1097,15 +1093,11 @@ export default function Ausgaben() {
                                     const uzs = hc?.uzs||0; const usd = hc?.usd||0;
                                     const val = uzs>0 ? uzs : usd;
                                     const isUZS = uzs>0;
-                                    const color = hotelPalette[hotelIdx % hotelPalette.length];
                                     return (
-                                      <td key={hotelIdx} className="px-4 py-2.5 text-center">
-                                        {val>0 ? (
-                                          <span className="font-bold inline-block px-2 py-0.5 rounded-md text-white text-xs"
-                                            style={{ background: `${color}cc` }}>
-                                            {isUZS ? formatNumber(val) : `$${formatNumber(val)}`}
-                                          </span>
-                                        ) : <span className="text-slate-200">—</span>}
+                                      <td key={hotelIdx} className="px-4 py-2.5 text-center border-r border-slate-100">
+                                        {val>0
+                                          ? <span className="font-semibold text-gray-800">{isUZS ? formatNumber(val) : `$${formatNumber(val)}`}</span>
+                                          : <span className="text-slate-300">—</span>}
                                       </td>
                                     );
                                   })}
@@ -1135,10 +1127,12 @@ export default function Ausgaben() {
                                   </td>
                                 );
                               })}
-                              <td className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
+                              <td className="px-4 py-3.5 text-center text-xs font-black text-sky-900 border-r border-sky-300"
+                                style={{ background: '#bae6fd' }}>
                                 {formatNumber(getGrandTotalUZS())}
                               </td>
-                              <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
+                              <td className="px-4 py-3.5 text-center text-xs font-black text-sky-900"
+                                style={{ background: '#bae6fd' }}>
                                 ${formatNumber(getGrandTotalUSD())}
                               </td>
                             </tr>
