@@ -38,6 +38,7 @@ export default function Ausgaben() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]); // Store all booking data with calculations
+  const [globalTotals, setGlobalTotals] = useState({ usd: null, uzs: null }); // All tour types combined
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -45,6 +46,10 @@ export default function Ausgaben() {
   useEffect(() => {
     loadBookingsAndExpenses();
   }, [activeTourType, selectedYear]);
+
+  useEffect(() => {
+    loadGlobalTotals();
+  }, [selectedYear]);
 
   const loadBookingsAndExpenses = async () => {
     // Check cache first
@@ -157,76 +162,113 @@ export default function Ausgaben() {
     }
   };
 
+  // Core computation — pure, no state side effects
+  const computeDetailedDataRaw = async (bookingsData, metroVehiclesData) => {
+    const detailedData = await Promise.all(bookingsData.map(async (booking) => {
+      try {
+        const [accResponse, touristsResponse, routesResponse, railwaysResponse, flightsResponse, tourServicesResponse] = await Promise.all([
+          bookingsApi.getAccommodations(booking.id).catch(() => ({ data: { accommodations: [] } })),
+          touristsApi.getAll(booking.id).catch(() => ({ data: { tourists: [] } })),
+          routesApi.getAll(booking.id).catch(() => ({ data: { routes: [] } })),
+          railwaysApi.getAll(booking.id).catch(() => ({ data: { railways: [] } })),
+          flightsApi.getAll(booking.id).catch(() => ({ data: { flights: [] } })),
+          tourServicesApi.getAll(booking.id).catch(() => ({ data: { services: [] } }))
+        ]);
+
+        const accommodations = accResponse.data.accommodations || [];
+        const tourists = touristsResponse.data.tourists || [];
+        const routes = routesResponse.data.routes || [];
+        const railways = railwaysResponse.data.railways || [];
+        const flights = flightsResponse.data.flights || [];
+        const tourServices = tourServicesResponse.data.services || [];
+
+        const accommodationRoomingLists = {};
+        await Promise.all(accommodations.map(async (acc) => {
+          try {
+            const r = await bookingsApi.getAccommodationRoomingList(booking.id, acc.id);
+            accommodationRoomingLists[acc.id] = r.data.roomingList || [];
+          } catch { accommodationRoomingLists[acc.id] = []; }
+        }));
+
+        const grandTotalData = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
+        const expenses = await calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
+
+        return {
+          bookingId: booking.id,
+          bookingName: booking.bookingNumber || `${booking.tourType?.code || 'Tour'}-${booking.id}`,
+          grandTotalData,
+          expenses
+        };
+      } catch (err) {
+        console.error(`Error loading data for booking ${booking.id}:`, err);
+        return null;
+      }
+    }));
+    return detailedData.filter(d => d !== null);
+  };
+
   const loadDetailedBookingsData = async (bookingsData) => {
     try {
-      // Load Metro vehicles from Opex Transport API (once for all bookings)
       let metroVehiclesData = [];
       try {
         const transportResponse = await transportApi.getAll(selectedYear);
-        const { grouped } = transportResponse.data;
-        metroVehiclesData = grouped.metro || [];
+        metroVehiclesData = transportResponse.data.grouped.metro || [];
       } catch (error) {
         console.error('Error loading metro vehicles:', error);
       }
-
-      // Load data for all bookings in parallel (OPTIMIZED)
-      const detailedData = await Promise.all(bookingsData.map(async (booking) => {
-        try {
-          // Load all data in parallel for this booking
-          const [accResponse, touristsResponse, routesResponse, railwaysResponse, flightsResponse, tourServicesResponse] = await Promise.all([
-            bookingsApi.getAccommodations(booking.id).catch(() => ({ data: { accommodations: [] } })),
-            touristsApi.getAll(booking.id).catch(() => ({ data: { tourists: [] } })),
-            routesApi.getAll(booking.id).catch(() => ({ data: { routes: [] } })),
-            railwaysApi.getAll(booking.id).catch(() => ({ data: { railways: [] } })),
-            flightsApi.getAll(booking.id).catch(() => ({ data: { flights: [] } })),
-            tourServicesApi.getAll(booking.id).catch(() => ({ data: { services: [] } }))
-          ]);
-
-          const accommodations = accResponse.data.accommodations || [];
-          const tourists = touristsResponse.data.tourists || [];
-          const routes = routesResponse.data.routes || [];
-          const railways = railwaysResponse.data.railways || [];
-          const flights = flightsResponse.data.flights || [];
-          const tourServices = tourServicesResponse.data.services || [];
-
-          // Load rooming lists in parallel
-          const accommodationRoomingLists = {};
-          const roomingPromises = accommodations.map(async (acc) => {
-            try {
-              const roomingResponse = await bookingsApi.getAccommodationRoomingList(booking.id, acc.id);
-              accommodationRoomingLists[acc.id] = roomingResponse.data.roomingList || [];
-            } catch (err) {
-              accommodationRoomingLists[acc.id] = [];
-            }
-          });
-          await Promise.all(roomingPromises);
-
-          // Calculate hotels total
-          const grandTotalData = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
-
-          // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab
-          const expenses = await calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
-
-          return {
-            bookingId: booking.id,
-            bookingName: booking.bookingNumber || `${booking.tourType?.code || 'Tour'}-${booking.id}`,
-            grandTotalData,
-            expenses
-          };
-        } catch (err) {
-          console.error(`Error loading data for booking ${booking.id}:`, err);
-          return null;
-        }
-      }));
-
-      // Filter out null results (failed bookings)
-      const validData = detailedData.filter(d => d !== null);
-
+      const validData = await computeDetailedDataRaw(bookingsData, metroVehiclesData);
       setBookingsDetailedData(validData);
       return validData;
     } catch (error) {
       console.error('Error loading detailed bookings data:', error);
       return [];
+    }
+  };
+
+  // Load totals for ALL tour types combined (for hero header)
+  const loadGlobalTotals = async () => {
+    const cacheKey = `ausgaben_global_v1_${selectedYear}`;
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (cached && Date.now() - cached.ts < 5 * 60 * 1000) {
+        setGlobalTotals({ usd: cached.usd, uzs: cached.uzs });
+        return;
+      }
+    } catch {}
+
+    try {
+      const response = await bookingsApi.getAll({ year: selectedYear });
+      const allBookings = response.data.bookings.filter(b => b.status !== 'CANCELLED');
+
+      let metroVehiclesData = [];
+      try {
+        const tr = await transportApi.getAll(selectedYear);
+        metroVehiclesData = tr.data.grouped.metro || [];
+      } catch {}
+
+      // Load all 4 tour types in parallel
+      const allResults = await Promise.all(
+        tourTypeModules.map(async (m) => {
+          const tourBookings = allBookings.filter(b => b.tourType?.code === m.code);
+          return computeDetailedDataRaw(tourBookings, metroVehiclesData);
+        })
+      );
+
+      let usd = 0, uzs = 0;
+      allResults.flat().forEach(b => {
+        const e = b?.expenses || {};
+        usd += (e.hotelsUSD || 0) + (e.guide || 0);
+        uzs += (e.hotelsUZS || 0) + (e.transportSevil || 0) + (e.transportXayrulla || 0) +
+               (e.transportNosir || 0) + (e.railway || 0) + (e.flights || 0) +
+               (e.meals || 0) + (e.eintritt || 0) + (e.metro || 0) + (e.shou || 0) + (e.other || 0);
+      });
+
+      setGlobalTotals({ usd, uzs });
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ usd, uzs, ts: Date.now() }));
+      } catch {}
+    } catch (e) {
+      console.error('Failed to load global totals:', e);
     }
   };
 
@@ -767,19 +809,21 @@ export default function Ausgaben() {
               <h1 className="text-5xl font-black text-white tracking-tight leading-none" style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Ausgaben</h1>
               <p className="text-green-200 text-sm mt-2 opacity-75">Barcha xarajatlar va to'lovlar tahlili</p>
             </div>
-            {!loading && (
-              <div className="flex gap-4">
-                <div className="text-right">
-                  <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami USD</p>
-                  <p className="text-2xl font-black text-white">${formatNumber(getGrandTotalUSD())}</p>
-                </div>
-                <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
-                <div className="text-right">
-                  <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami UZS</p>
-                  <p className="text-2xl font-black text-amber-400">{formatNumber(getGrandTotalUZS())}</p>
-                </div>
+            <div className="flex gap-4">
+              <div className="text-right">
+                <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami USD (barcha)</p>
+                <p className="text-2xl font-black text-white">
+                  {globalTotals.usd !== null ? `$${formatNumber(globalTotals.usd)}` : '...'}
+                </p>
               </div>
-            )}
+              <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
+              <div className="text-right">
+                <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami UZS (barcha)</p>
+                <p className="text-2xl font-black text-amber-400">
+                  {globalTotals.uzs !== null ? formatNumber(globalTotals.uzs) : '...'}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Tour Type Cards */}
