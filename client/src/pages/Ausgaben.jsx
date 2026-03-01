@@ -69,7 +69,7 @@ export default function Ausgaben() {
   const loadBookingsAndExpenses = async () => {
     // Check cache first
     const cacheKey = `${activeTourType}_${selectedYear}`;
-    const needsDetailedData = ['general', 'hotels', 'guides', 'transport'].includes(activeExpenseTab);
+    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport'].includes(activeExpenseTab);
 
     // Try localStorage first (persists across page reloads)
     try {
