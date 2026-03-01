@@ -122,6 +122,27 @@ router.get('/hotels', authenticate, async (req, res) => {
       hr.refBookings.get(acc.bookingId).push(acc);
     }
 
+    // ── Step 2b: If no accommodations exist yet (e.g. ZA), fall back to AccommodationTemplate
+    //    so that planned virtual entries can still be shown using hardcoded city offsets.
+    if (hotelRefMap.size === 0) {
+      const templates = await prisma.accommodationTemplate.findMany({
+        where: { tourTypeCode: tourType },
+        orderBy: { sortOrder: 'asc' }
+      });
+      const hotelIds = [...new Set(templates.map(t => t.hotelId).filter(Boolean))];
+      if (hotelIds.length > 0) {
+        const hotels = await prisma.hotel.findMany({
+          where: { id: { in: hotelIds } },
+          include: { city: true }
+        });
+        for (const hotel of hotels) {
+          if (!hotelRefMap.has(hotel.id)) {
+            hotelRefMap.set(hotel.id, { hotel, refBookings: new Map() });
+          }
+        }
+      }
+    }
+
     // ── Step 3: Build display hotelMap — only REAL entries for target year
     const hotelMap = new Map();
     for (const acc of allAccommodations) {
