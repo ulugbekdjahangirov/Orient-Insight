@@ -1851,8 +1851,8 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
   const [editingCell, setEditingCell] = useState(null); // `${bookingId}_pax` or `${bookingId}_date`
   const [editValue, setEditValue] = useState('');
 
-  const getKey = (bookingId) => `${name}_${bookingId}`;
-  const getEffPax = (b) => overrides[getKey(b.bookingId)]?.pax ?? 16;
+  const getKey = (bookingId) => `${name}_${city}_${bookingId}`;
+  const getEffPax = (b) => overrides[getKey(b.bookingId)]?.pax ?? b.pax;
   const getEffDate = (b) => overrides[getKey(b.bookingId)]?.date ?? b.mealDate;
 
   const confirmedCount = bookings.filter(b => b.confirmation?.status === 'CONFIRMED').length;
@@ -1870,7 +1870,8 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
     const prev = overrides[key] || {};
     if (field === 'pax') {
       const val = parseInt(editValue, 10);
-      onOverride(key, { ...prev, pax: isNaN(val) ? 16 : val });
+      if (isNaN(val)) { const { pax: _, ...rest } = prev; onOverride(key, rest); }
+      else onOverride(key, { ...prev, pax: val });
     } else {
       // editValue is YYYY-MM-DD from <input type="date">, store as DD.MM.YYYY
       onOverride(key, { ...prev, date: editValue ? fromInputDate(editValue) : null });
@@ -2203,7 +2204,8 @@ function RestoranTab({ tourType, tourColor }) {
   }, [tourType, YEAR]);
 
   const handleSendTelegram = async (restaurant, blob, bookingsData) => {
-    setSendingTelegram(prev => ({ ...prev, [restaurant.name]: true }));
+    const rKey = `${restaurant.name}_${restaurant.city}`;
+    setSendingTelegram(prev => ({ ...prev, [rKey]: true }));
     try {
       await jahresplanungApi.sendMealTelegram(restaurant.name, YEAR, tourType, blob, bookingsData);
       toast.success(`${restaurant.name} ga yuborildi ✅`);
@@ -2211,7 +2213,7 @@ function RestoranTab({ tourType, tourColor }) {
     } catch (err) {
       toast.error('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
     } finally {
-      setSendingTelegram(prev => ({ ...prev, [restaurant.name]: false }));
+      setSendingTelegram(prev => ({ ...prev, [rKey]: false }));
     }
   };
 
@@ -2263,19 +2265,22 @@ function RestoranTab({ tourType, tourColor }) {
         )}
       </div>
 
-      {restaurants.map(rest => (
-        <RestoranCard
-          key={rest.name}
-          restaurant={rest}
-          tourType={tourType}
-          open={!!openCards[rest.name]}
-          onToggle={() => setOpenCards(prev => ({ ...prev, [rest.name]: !prev[rest.name] }))}
-          overrides={overrides}
-          onOverride={handleOverride}
-          sendingTelegram={!!sendingTelegram[rest.name]}
-          onSendTelegram={(blob, bookingsData) => handleSendTelegram(rest, blob, bookingsData)}
-        />
-      ))}
+      {restaurants.map(rest => {
+        const rKey = `${rest.name}_${rest.city}`;
+        return (
+          <RestoranCard
+            key={rKey}
+            restaurant={rest}
+            tourType={tourType}
+            open={!!openCards[rKey]}
+            onToggle={() => setOpenCards(prev => ({ ...prev, [rKey]: !prev[rKey] }))}
+            overrides={overrides}
+            onOverride={handleOverride}
+            sendingTelegram={!!sendingTelegram[rKey]}
+            onSendTelegram={(blob, bookingsData) => handleSendTelegram(rest, blob, bookingsData)}
+          />
+        );
+      })}
     </div>
   );
 }
