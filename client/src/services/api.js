@@ -48,6 +48,7 @@ export const bookingsApi = {
   // Hotel Requests
   getHotelRequests: (bookingId) => api.get(`/bookings/${bookingId}/hotel-requests`),
   getHotelRequest: (bookingId, hotelId) => api.get(`/bookings/${bookingId}/hotel-requests/${hotelId}`),
+  getHotelRequestPdf: (bookingId, hotelId) => api.get(`/bookings/${bookingId}/hotel-request-pdf/${hotelId}`, { responseType: 'blob' }),
   sendHotelRequest: (bookingId, hotelId, email, subjectType) => api.post(`/bookings/${bookingId}/send-hotel-request/${hotelId}`, { email, subjectType }),
   sendHotelRequestTelegram: (bookingId, hotelId, chatId, subjectType) => api.post(`/bookings/${bookingId}/send-hotel-request-telegram/${hotelId}`, { chatId, subjectType }),
   // Cost Summary

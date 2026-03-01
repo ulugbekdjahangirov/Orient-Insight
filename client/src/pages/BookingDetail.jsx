@@ -2426,40 +2426,42 @@ export default function BookingDetail() {
     }
   };
 
-  // Download hotel request PDF and auto-save to Zayavka folder
+  // Download hotel request PDF — open in browser tab + auto-save to folder
   const handleDownloadPdfWithAutoSave = async (hotelId, accommodationId, hotelName, isCombined) => {
     try {
-      const previewUrl = isCombined
-        ? bookingsApi.getHotelRequestCombined(id, hotelId)
-        : bookingsApi.getHotelRequestPreview(id, accommodationId);
+      toast.loading('PDF tayyorlanmoqda...', { id: 'pdf-save' });
+      const safeHotelName = hotelName.replace(/[/\\?%*:|"<>]/g, '-');
+      const filename = `Zayavka ${booking.bookingNumber} - ${safeHotelName}.pdf`;
 
-      // Open for printing
-      const printWindow = window.open(previewUrl, '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => setTimeout(() => printWindow.print(), 500));
-      }
+      // Get real PDF blob from server (puppeteer)
+      const response = await bookingsApi.getHotelRequestPdf(id, hotelId);
+      const pdfBlob = response.data;
 
-      // Auto-save to Zayavka folder
+      // Open in new tab via blob URL (Chrome PDF viewer — no print dialog, no Downloads)
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+
+      // Save to configured folder
       if (pdfFolderConfigured && booking?.tourType?.code && booking?.bookingNumber) {
-        toast.loading('Papkaga saqlanmoqda...', { id: 'pdf-save' });
-        const safeHotelName = hotelName.replace(/[/\\?%*:|"<>]/g, '-');
-        const filename = `Zayavka ${booking.bookingNumber} - ${safeHotelName}.pdf`;
-        const result = await downloadAndSavePdf({
-          url: previewUrl,
+        const result = await savePdfToFolder({
           tourType: booking.tourType.code,
           bookingNumber: booking.bookingNumber,
           category: 'zayavka',
           filename,
+          pdfBlob,
         });
         if (result.success) {
           toast.success(`✓ Saqlandi: ${result.path}`, { id: 'pdf-save', duration: 4000 });
         } else {
-          toast.error(`Xatolik: ${result.error}`, { id: 'pdf-save' });
+          toast.dismiss('pdf-save');
         }
+      } else {
+        toast.dismiss('pdf-save');
       }
     } catch (error) {
       console.error('Error downloading PDF:', error);
-      toast.error('PDF yuklanmadi');
+      toast.error('PDF yuklanmadi', { id: 'pdf-save' });
     }
   };
 

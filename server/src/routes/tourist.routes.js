@@ -6180,6 +6180,29 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
   }
 });
 
+// GET /api/bookings/:bookingId/hotel-request-pdf/:hotelId - Generate real PDF via Puppeteer (for client-side download)
+router.get('/:bookingId/hotel-request-pdf/:hotelId', authenticate, async (req, res) => {
+  try {
+    const { bookingId, hotelId } = req.params;
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+    const page = await browser.newPage();
+    await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
+    const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`;
+    await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+    const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
+    await browser.close();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="Zayavka-${bookingId}-${hotelId}.pdf"`);
+    res.send(Buffer.from(pdfUint8));
+  } catch (error) {
+    console.error('Hotel request PDF error:', error);
+    res.status(500).json({ error: 'PDF yaratishda xatolik' });
+  }
+});
+
 // POST /api/bookings/:bookingId/send-hotel-request/:hotelId - Send hotel request PDF via Gmail
 router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req, res) => {
   try {
