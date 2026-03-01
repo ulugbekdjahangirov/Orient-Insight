@@ -372,6 +372,7 @@ export const telegramApi = {
   getKnownChats: () => api.get('/telegram/updates'),
   updateKnownChat: (chatId, data) => api.put(`/telegram/chats/${chatId}`, data),
   deleteKnownChat: (chatId) => api.delete(`/telegram/chats/${chatId}`),
+  sendMessage: (chatId, text) => api.post('/telegram/send-message', { chatId, text }),
   sendAusgabenPdf: (pdfBlob, filename, meta) => {
     const form = new FormData();
     form.append('pdf', pdfBlob, filename);

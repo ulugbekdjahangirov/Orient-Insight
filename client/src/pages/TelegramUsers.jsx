@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { telegramApi } from '../services/api';
-import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Hash, Building, Phone, Pencil, X } from 'lucide-react';
+import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Hash, Building, Phone, Pencil, X, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const typeLabels = {
@@ -151,11 +151,76 @@ function RoleCell({ chatId, value, onSave }) {
   );
 }
 
+function SendMessageModal({ chat, onClose }) {
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!text.trim()) return;
+    setSending(true);
+    try {
+      await telegramApi.sendMessage(chat.chatId, text);
+      toast.success('Xabar yuborildi!');
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Yuborib bo\'lmadi');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-sky-500 rounded-xl flex items-center justify-center">
+              <Send size={15} className="text-white" />
+            </div>
+            <div>
+              <div className="font-semibold text-gray-900 text-sm">{chat.name}</div>
+              <div className="text-xs text-gray-400">{chat.chatId}</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-5">
+          <textarea
+            autoFocus
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
+            placeholder="Xabar yozing... (Ctrl+Enter — yuborish)"
+            rows={4}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+          />
+          <div className="flex items-center justify-end gap-2 mt-3">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+              Bekor
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={!text.trim() || sending}
+              className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white text-sm font-medium rounded-xl hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send size={14} />
+              {sending ? 'Yuborilmoqda...' : 'Yuborish'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TelegramUsers() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [sendingTo, setSendingTo] = useState(null);
   const [roleFilter, setRoleFilter] = useState('all');
   const [deletingId, setDeletingId] = useState(null);
 
@@ -216,6 +281,8 @@ export default function TelegramUsers() {
 
   return (
     <div className="p-4 md:p-6">
+      {sendingTo && <SendMessageModal chat={sendingTo} onClose={() => setSendingTo(null)} />}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -338,13 +405,23 @@ export default function TelegramUsers() {
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(chat.date)}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleDelete(chat.chatId, chat.name)}
-                          disabled={deletingId === chat.chatId}
-                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setSendingTo(chat)}
+                            className="p-1.5 rounded-lg text-sky-400 hover:bg-sky-50 hover:text-sky-600 transition-colors"
+                            title="Xabar yuborish"
+                          >
+                            <Send size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(chat.chatId, chat.name)}
+                            disabled={deletingId === chat.chatId}
+                            className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
+                            title="O'chirish"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

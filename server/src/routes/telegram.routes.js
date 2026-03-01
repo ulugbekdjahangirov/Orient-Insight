@@ -84,6 +84,25 @@ router.get('/updates', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/telegram/send-message - Send message to a specific chat
+router.post('/send-message', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { chatId, text } = req.body;
+    if (!chatId || !text?.trim()) return res.status(400).json({ error: 'chatId va text kerak' });
+    const response = await axios.post(`${BOT_API}/sendMessage`, {
+      chat_id: chatId,
+      text: text.trim(),
+      parse_mode: 'HTML'
+    });
+    if (!response.data.ok) return res.status(400).json({ error: 'Telegram xatosi: ' + response.data.description });
+    res.json({ success: true, messageId: response.data.result.message_id });
+  } catch (error) {
+    const desc = error.response?.data?.description || error.message;
+    console.error('Send message error:', desc);
+    res.status(500).json({ error: desc || 'Xabar yuborishda xatolik' });
+  }
+});
+
 // PUT /api/telegram/chats/:chatId - Update chat role and phone
 router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
   try {
