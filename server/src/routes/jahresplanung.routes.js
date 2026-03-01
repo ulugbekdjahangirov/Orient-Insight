@@ -410,6 +410,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         const lines = [
           visitTitle,
           `🏨 ${hotel.name}`,
+          '',
           `📅 Заезд: ${v.checkIn}`,
           `📅 Выезд: ${v.checkOut}`,
           `👥 PAX: ${v.pax}`,

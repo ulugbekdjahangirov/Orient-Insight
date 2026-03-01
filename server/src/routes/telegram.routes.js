@@ -1347,6 +1347,7 @@ router.post('/webhook', (req, res, next) => {
           : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
         const lines = [visitTitle,
           `🏨 ${hotelName}`,
+          '',
           `📅 Заезд: ${v.checkIn}`,
           `📅 Выезд: ${v.checkOut}`,
           `👥 PAX: ${v.pax}`,
