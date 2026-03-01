@@ -133,53 +133,90 @@ function HotelsTab({ confirmations, onDelete }) {
               </div>
             </button>
 
-            {/* Confirmations table — collapsible */}
+            {/* Confirmations — collapsible */}
             {isOpen && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
-                      <th className="px-5 py-2.5 text-left font-medium">Booking</th>
-                      <th className="px-5 py-2.5 text-left font-medium">Jo'natilgan</th>
-                      <th className="px-5 py-2.5 text-left font-medium">Holat</th>
-                      <th className="px-5 py-2.5 text-left font-medium">Kim javob berdi</th>
-                      <th className="px-5 py-2.5 text-left font-medium">Javob vaqti</th>
-                      <th className="px-5 py-2.5 text-left font-medium w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {group.items.map(item => (
-                      <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors group/row">
-                        <td className="px-5 py-3">
-                          <Link to={`/bookings/${item.bookingId}`} className="font-medium text-primary-600 hover:underline">
+              <>
+                {/* Mobile cards */}
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {group.items.map(item => (
+                    <div key={item.id} className="px-4 py-3 flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <Link to={`/bookings/${item.bookingId}`} className="font-medium text-primary-600 hover:underline text-sm">
                             {item.booking?.bookingNumber || `#${item.bookingId}`}
                           </Link>
                           {item.booking?.departureDate && (
-                            <span className="ml-2 text-xs text-gray-400">{formatDate(item.booking.departureDate)}</span>
+                            <span className="text-xs text-gray-400">{formatDate(item.booking.departureDate)}</span>
                           )}
-                        </td>
-                        <td className="px-5 py-3 text-gray-600">{formatDateTime(item.sentAt)}</td>
-                        <td className="px-5 py-3"><StatusBadge status={item.status} /></td>
-                        <td className="px-5 py-3 text-gray-600">{item.confirmedBy || '—'}</td>
-                        <td className="px-5 py-3 text-gray-600">{item.respondedAt ? formatDateTime(item.respondedAt) : '—'}</td>
-                        <td className="px-3 py-3">
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            disabled={deletingId === item.id}
-                            className="opacity-0 group-hover/row:opacity-100 p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
-                            title="O'chirish"
-                          >
-                            {deletingId === item.id
-                              ? <Loader2 className="w-4 h-4 animate-spin" />
-                              : <Trash2 className="w-4 h-4" />
-                            }
-                          </button>
-                        </td>
+                          <StatusBadge status={item.status} />
+                        </div>
+                        {item.confirmedBy && (
+                          <p className="text-xs text-gray-500">👤 {item.confirmedBy}</p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {item.respondedAt ? formatDateTime(item.respondedAt) : formatDateTime(item.sentAt)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deletingId === item.id}
+                        className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 flex-shrink-0"
+                      >
+                        {deletingId === item.id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <Trash2 className="w-4 h-4" />
+                        }
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop table */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
+                        <th className="px-5 py-2.5 text-left font-medium">Booking</th>
+                        <th className="px-5 py-2.5 text-left font-medium">Jo'natilgan</th>
+                        <th className="px-5 py-2.5 text-left font-medium">Holat</th>
+                        <th className="px-5 py-2.5 text-left font-medium">Kim javob berdi</th>
+                        <th className="px-5 py-2.5 text-left font-medium">Javob vaqti</th>
+                        <th className="px-5 py-2.5 text-left font-medium w-10"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {group.items.map(item => (
+                        <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors group/row">
+                          <td className="px-5 py-3">
+                            <Link to={`/bookings/${item.bookingId}`} className="font-medium text-primary-600 hover:underline">
+                              {item.booking?.bookingNumber || `#${item.bookingId}`}
+                            </Link>
+                            {item.booking?.departureDate && (
+                              <span className="ml-2 text-xs text-gray-400">{formatDate(item.booking.departureDate)}</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3 text-gray-600">{formatDateTime(item.sentAt)}</td>
+                          <td className="px-5 py-3"><StatusBadge status={item.status} /></td>
+                          <td className="px-5 py-3 text-gray-600">{item.confirmedBy || '—'}</td>
+                          <td className="px-5 py-3 text-gray-600">{item.respondedAt ? formatDateTime(item.respondedAt) : '—'}</td>
+                          <td className="px-3 py-3">
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              disabled={deletingId === item.id}
+                              className="opacity-0 group-hover/row:opacity-100 p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                              title="O'chirish"
+                            >
+                              {deletingId === item.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Trash2 className="w-4 h-4" />
+                              }
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         );
@@ -843,52 +880,87 @@ function RestoranPlanTab({ mealConfirmations, subTab, onDelete }) {
 
             {/* Table */}
             {isOpen && (
-              <div className="border-t border-gray-100 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                      <th className="px-4 py-2 text-left font-medium">Gruppe</th>
-                      <th className="px-4 py-2 text-right font-medium">PAX</th>
-                      <th className="px-4 py-2 text-left font-medium">Sana</th>
-                      <th className="px-4 py-2 text-left font-medium">Holat</th>
-                      <th className="px-4 py-2 text-left font-medium">Kim</th>
-                      <th className="px-4 py-2 text-left font-medium">Vaqt</th>
-                      <th className="px-4 py-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sorted.map(c => {
-                      const cfg = MEAL_STATUS_CFG[c.status] || MEAL_STATUS_CFG.PENDING;
-                      return (
-                        <tr key={c.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors group">
-                          <td className="px-4 py-2">
-                            <Link to={`/bookings/${c.bookingId}`} className="text-blue-600 hover:underline font-mono text-xs font-medium">
+              <div className="border-t border-gray-100">
+                {/* Mobile cards */}
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {sorted.map(c => {
+                    const cfg = MEAL_STATUS_CFG[c.status] || MEAL_STATUS_CFG.PENDING;
+                    return (
+                      <div key={c.id} className="px-4 py-2.5 flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <Link to={`/bookings/${c.bookingId}`} className="text-blue-600 hover:underline font-mono text-xs font-semibold">
                               {c.booking?.bookingNumber || c.bookingId}
                             </Link>
-                          </td>
-                          <td className="px-4 py-2 text-right text-gray-700">{c.pax}</td>
-                          <td className="px-4 py-2 text-gray-700 text-xs">{c.mealDate || '—'}</td>
-                          <td className="px-4 py-2">
+                            <span className="text-xs text-gray-500">{c.pax} pax</span>
+                            {c.mealDate && <span className="text-xs text-gray-400">{c.mealDate}</span>}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
                               {cfg.icon} {cfg.label}
                             </span>
-                          </td>
-                          <td className="px-4 py-2 text-xs text-gray-500">{c.confirmedBy || '—'}</td>
-                          <td className="px-4 py-2 text-xs text-gray-400">{c.respondedAt ? formatDateTime(c.respondedAt) : '—'}</td>
-                          <td className="px-4 py-2 text-right">
-                            <button
-                              onClick={e => handleDelete(e, c.id)}
-                              disabled={deletingId === c.id}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-300 hover:text-red-500 transition-all"
-                            >
-                              {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            {c.confirmedBy && <span className="text-xs text-gray-500">👤 {c.confirmedBy}</span>}
+                          </div>
+                        </div>
+                        <button
+                          onClick={e => handleDelete(e, c.id)}
+                          disabled={deletingId === c.id}
+                          className="p-1 rounded text-gray-300 hover:text-red-500 transition-all flex-shrink-0"
+                        >
+                          {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Desktop table */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                        <th className="px-4 py-2 text-left font-medium">Gruppe</th>
+                        <th className="px-4 py-2 text-right font-medium">PAX</th>
+                        <th className="px-4 py-2 text-left font-medium">Sana</th>
+                        <th className="px-4 py-2 text-left font-medium">Holat</th>
+                        <th className="px-4 py-2 text-left font-medium">Kim</th>
+                        <th className="px-4 py-2 text-left font-medium">Vaqt</th>
+                        <th className="px-4 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sorted.map(c => {
+                        const cfg = MEAL_STATUS_CFG[c.status] || MEAL_STATUS_CFG.PENDING;
+                        return (
+                          <tr key={c.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors group">
+                            <td className="px-4 py-2">
+                              <Link to={`/bookings/${c.bookingId}`} className="text-blue-600 hover:underline font-mono text-xs font-medium">
+                                {c.booking?.bookingNumber || c.bookingId}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-2 text-right text-gray-700">{c.pax}</td>
+                            <td className="px-4 py-2 text-gray-700 text-xs">{c.mealDate || '—'}</td>
+                            <td className="px-4 py-2">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
+                                {cfg.icon} {cfg.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-xs text-gray-500">{c.confirmedBy || '—'}</td>
+                            <td className="px-4 py-2 text-xs text-gray-400">{c.respondedAt ? formatDateTime(c.respondedAt) : '—'}</td>
+                            <td className="px-4 py-2 text-right">
+                              <button
+                                onClick={e => handleDelete(e, c.id)}
+                                disabled={deletingId === c.id}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-gray-300 hover:text-red-500 transition-all"
+                              >
+                                {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -1255,53 +1327,56 @@ export default function Partners() {
   }, [selectedYear]);
 
   return (
-    <div className="p-6 max-w-full">
+    <div className="p-3 sm:p-6 max-w-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Hamkorlar</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Hotel, restoran, transport va gidlar bilan hamkorlik holatlari</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Hamkorlar</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Hotel, restoran, transport va gidlar bilan hamkorlik holatlari</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={openTelegramFinder}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold transition-colors"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold transition-colors"
             title="Telegram Chat ID topish"
           >
             <Send className="w-4 h-4" />
-            Telegram Finder
+            <span className="hidden sm:inline">Telegram Finder</span>
+            <span className="sm:hidden">Finder</span>
           </button>
           <button
             onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Yangilash
-            <span className="text-xs text-gray-400 ml-1">{countdown}s</span>
+            <span className="hidden sm:inline">Yangilash</span>
+            <span className="text-xs text-gray-400">{countdown}s</span>
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label}
-            </button>
-          );
-        })}
+      {/* Tabs — scrollable on mobile */}
+      <div className="mb-4 sm:mb-6 overflow-x-auto">
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-max sm:w-fit min-w-full sm:min-w-0">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                {tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Content */}
