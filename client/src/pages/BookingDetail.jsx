@@ -4796,7 +4796,7 @@ export default function BookingDetail() {
   };
 
   // Export Tourist List as PDF
-  const exportTouristListPDF = () => {
+  const exportTouristListPDF = async () => {
     if (!tourists || tourists.length === 0) {
       toast.error('Turistlar ro\'yxati bo\'sh');
       return;
@@ -5133,15 +5133,20 @@ export default function BookingDetail() {
     };
 
     // Generate PDF
-    toast.loading('PDF yaratilmoqda...');
-    html2pdf().set(opt).from(element).save().then(() => {
-      toast.dismiss();
-      toast.success('PDF yuklab olindi!');
-    }).catch((error) => {
-      toast.dismiss();
+    const filename = `Tourist_List_${bookingCode}_${departureDate.replace(/\./g, '-')}.pdf`;
+    const toastId = toast.loading('PDF yaratilmoqda...');
+    try {
+      const blob = await html2pdf().set(opt).from(element).output('blob');
+      toast.dismiss(toastId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      await autoSavePdf(blob, filename, 'transport');
+    } catch (error) {
+      toast.dismiss(toastId);
       console.error('PDF export error:', error);
       toast.error('PDF yaratishda xatolik');
-    });
+    }
   };
 
   // Load flights and railways when Fly&Railway or Tour Services tab is accessed
