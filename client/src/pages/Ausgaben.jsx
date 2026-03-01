@@ -1240,6 +1240,47 @@ export default function Ausgaben() {
                       <EmptyState icon={BarChart3} label={`${activeModule?.name} uchun ma'lumot yo'q`} />
                     ) : (
                       <>
+                        {/* ── Column filter pills ── */}
+                        {(() => {
+                          const FILTERS = [
+                            { key: 'hotelsUSD',  label: '🏨 Hotels USD' },
+                            { key: 'hotelsUZS',  label: '🏨 Hotels UZS' },
+                            { key: 'sevil',      label: '🚌 Sevil' },
+                            { key: 'xayrulla',   label: '🚌 Xayrulla' },
+                            { key: 'nosir',      label: '🚌 Nosir' },
+                            { key: 'railway',    label: '🚂 Train' },
+                            { key: 'flights',    label: '✈️ Flights' },
+                            { key: 'guide',      label: '👤 Guide' },
+                            { key: 'meals',      label: '🍽 Meals' },
+                            { key: 'eintritt',   label: '🎫 Eintritt' },
+                            { key: 'metro',      label: '🚇 Metro' },
+                            { key: 'shou',       label: '🎭 Shou' },
+                            { key: 'other',      label: '📦 Other' },
+                          ];
+                          return (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {FILTERS.map(f => {
+                                const active = selectedGeneralCol === f.key;
+                                return (
+                                  <button key={f.key}
+                                    onClick={() => setSelectedGeneralCol(active ? null : f.key)}
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 select-none"
+                                    style={{
+                                      background: active ? '#1d4ed8' : '#e0e7ff',
+                                      color: active ? '#fff' : '#3730a3',
+                                      border: active ? '2px solid #1d4ed8' : '2px solid transparent',
+                                      boxShadow: active ? '0 2px 8px #1d4ed844' : 'none',
+                                      transform: active ? 'translateY(-1px)' : 'none',
+                                    }}>
+                                    {f.label}
+                                    {active && <span className="ml-1 font-black">✕</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+
                         <table className="w-full table-fixed text-xs">
                           <colgroup>
                             <col style={{ width: '3%' }} />
@@ -1261,55 +1302,29 @@ export default function Ausgaben() {
                             <col style={{ width: '7%' }} />
                           </colgroup>
                           <thead>
-                            {(() => {
-                              const colBtn = (key, label, extra = {}) => {
-                                const active = selectedGeneralCol === key;
-                                return (
-                                  <th onClick={() => setSelectedGeneralCol(active ? null : key)}
-                                    className="px-2 py-2 text-center font-semibold border-r border-blue-200 cursor-pointer select-none transition-all duration-150"
-                                    style={{ background: active ? '#1d4ed8' : '#bfdbfe', color: active ? '#fff' : '#475569', ...extra }}>
-                                    {label}{active ? ' ✕' : ''}
-                                  </th>
-                                );
-                              };
-                              const singleBtn = (key, label) => {
-                                const active = selectedGeneralCol === key;
-                                return (
-                                  <th rowSpan="2" onClick={() => setSelectedGeneralCol(active ? null : key)}
-                                    className="px-2 py-3.5 text-center font-bold uppercase tracking-wider border-r border-blue-200 cursor-pointer select-none transition-all duration-150"
-                                    style={{ background: active ? '#1d4ed8' : '#dbeafe', color: active ? '#fff' : '#334155' }}>
-                                    {label}{active ? ' ✕' : ''}
-                                  </th>
-                                );
-                              };
-                              return (
-                                <>
-                                  <tr>
-                                    <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>#</th>
-                                    <th rowSpan="2" className="px-2 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>Booking</th>
-                                    <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#bfdbfe' }}>🏨 Hotels</th>
-                                    <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#bfdbfe' }}>🚌 Transport</th>
-                                    {singleBtn('railway', '🚂 Train')}
-                                    {singleBtn('flights', '✈️ Flights')}
-                                    {singleBtn('guide', '👤 Guide')}
-                                    {singleBtn('meals', '🍽 Meals')}
-                                    {singleBtn('eintritt', '🎫 Eintritt')}
-                                    {singleBtn('metro', '🚇 Metro')}
-                                    {singleBtn('shou', '🎭 Shou')}
-                                    {singleBtn('other', 'Other')}
-                                    <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700" style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
-                                    <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider" style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
-                                  </tr>
-                                  <tr>
-                                    {colBtn('hotelsUSD', 'USD')}
-                                    {colBtn('hotelsUZS', 'UZS')}
-                                    {colBtn('sevil', 'Sevil')}
-                                    {colBtn('xayrulla', 'Xayrulla')}
-                                    {colBtn('nosir', 'Nosir')}
-                                  </tr>
-                                </>
-                              );
-                            })()}
+                            <tr>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>#</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>Booking</th>
+                              <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#bfdbfe' }}>🏨 Hotels</th>
+                              <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#bfdbfe' }}>🚌 Transport</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>🚂 Train</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>✈️ Flights</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>👤 Guide</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>🍽 Meals</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>🎫 Eintritt</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>🚇 Metro</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>🎭 Shou</th>
+                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>Other</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700" style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
+                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider" style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
+                            </tr>
+                            <tr>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>USD</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>UZS</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Sevil</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Xayrulla</th>
+                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Nosir</th>
+                            </tr>
                           </thead>
                           <tbody>
                             {bookingsDetailedData
