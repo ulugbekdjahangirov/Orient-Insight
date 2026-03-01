@@ -76,7 +76,7 @@ export default function Sidebar({ open, onToggle }) {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Orient Insight" className="w-12 h-12 rounded-lg object-cover" />
+          <img src="/logo.png" alt="Orient Insight" className="w-14 h-14 rounded-lg object-cover" />
           {open && (
             <div>
               <h1 className="font-bold text-lg">Orient Insight</h1>
