@@ -63,6 +63,27 @@ function StatusBadge({ status }) {
   );
 }
 
+function StatusSummaryBadges({ counts }) {
+  if (!counts) return null;
+  const badges = [
+    counts.CONFIRMED > 0            && { label: `✅ ${counts.CONFIRMED}`,            cls: 'bg-green-100 text-green-700 border-green-200' },
+    counts.APPROVED > 0             && { label: `🔄 ${counts.APPROVED}`,             cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+    counts.WAITING > 0              && { label: `⏳ ${counts.WAITING}`,              cls: 'bg-sky-100 text-sky-700 border-sky-200' },
+    counts.PENDING_APPROVAL > 0     && { label: `⏳ ${counts.PENDING_APPROVAL}`,     cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+    counts.PENDING > 0              && { label: `🕐 ${counts.PENDING}`,              cls: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+    counts.REJECTED > 0             && { label: `❌ ${counts.REJECTED}`,             cls: 'bg-red-100 text-red-700 border-red-200' },
+    counts.REJECTED_BY_APPROVER > 0 && { label: `❌ ${counts.REJECTED_BY_APPROVER}`, cls: 'bg-red-100 text-red-700 border-red-200' },
+  ].filter(Boolean);
+  if (!badges.length) return null;
+  return (
+    <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+      {badges.map((b, i) => (
+        <span key={i} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${b.cls}`}>{b.label}</span>
+      ))}
+    </div>
+  );
+}
+
 function HotelsTab({ confirmations, onDelete }) {
   const [deletingId, setDeletingId] = useState(null);
   const [openHotels, setOpenHotels] = useState({});
@@ -135,7 +156,7 @@ function HotelsTab({ confirmations, onDelete }) {
                 ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
               }
-              <Building2 className="w-5 h-5 text-gray-500 flex-shrink-0" />
+              <Building2 className="w-5 h-5 text-blue-400 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-800">{group.hotelName}</h3>
                 {group.cityName && <p className="text-xs text-gray-500">{group.cityName}</p>}
@@ -329,7 +350,7 @@ function BookingsGroupedTab({ confirmations, onDelete }) {
                 )}
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
-                {statusSummary && <span className="text-sm">{statusSummary}</span>}
+                <StatusSummaryBadges counts={statusCounts} />
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta hotel
                 </span>
@@ -340,8 +361,13 @@ function BookingsGroupedTab({ confirmations, onDelete }) {
             {isOpen && (
               <div className="divide-y divide-gray-50">
                 {group.items.map(item => (
-                  <div key={item.id} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors group/row">
-                    <Building2 className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  <div key={item.id} className={`pl-4 pr-5 py-3 flex items-center gap-4 transition-colors group/row border-l-4 ${
+                    item.status === 'CONFIRMED' ? 'border-l-green-300 hover:bg-green-50/40'
+                    : item.status === 'REJECTED' ? 'border-l-red-300 hover:bg-red-50/30'
+                    : item.status === 'WAITING' ? 'border-l-blue-300 hover:bg-blue-50/30'
+                    : 'border-l-yellow-200 hover:bg-yellow-50/20'
+                  }`}>
+                    <Building2 className="w-4 h-4 text-blue-300 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <span className="font-medium text-gray-800 text-sm">
                         {item.hotel?.name || `Hotel #${item.hotelId}`}
@@ -480,7 +506,7 @@ function TransportTab({ confirmations, onDelete }) {
                 )}
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
-                {statusSummary && <span className="text-sm">{statusSummary}</span>}
+                <StatusSummaryBadges counts={statusCounts} />
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
@@ -615,7 +641,7 @@ function GidlarTab({ assignments }) {
                 )}
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
-                {assigned > 0 && <span className="text-sm">✅ {assigned}</span>}
+                {assigned > 0 && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border bg-green-100 text-green-700 border-green-200">✅ {assigned}</span>}
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta gid
                 </span>
@@ -624,8 +650,8 @@ function GidlarTab({ assignments }) {
             {isOpen && (
               <div className="divide-y divide-gray-50">
                 {group.items.map(item => (
-                  <div key={item.bookingId + '-' + (item.guideId || 'none')} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-                    <Users className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  <div key={item.bookingId + '-' + (item.guideId || 'none')} className={`pl-4 pr-5 py-3 flex items-center gap-4 transition-colors border-l-4 ${item.status === 'ASSIGNED' ? 'border-l-green-300 hover:bg-green-50/30' : 'border-l-gray-200 hover:bg-gray-50'}`}>
+                    <Users className="w-4 h-4 text-purple-300 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <span className="font-medium text-gray-800 text-sm">
                         {item.guideName || '—'}
@@ -736,7 +762,7 @@ function RestoranTab({ confirmations, onDelete }) {
                 )}
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
-                {statusSummary && <span className="text-sm">{statusSummary}</span>}
+                <StatusSummaryBadges counts={statusCounts} />
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
@@ -1085,13 +1111,13 @@ function HotelsPlanTab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
                   ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 }
-                <Building2 className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                <Building2 className="w-5 h-5 text-blue-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-800">{hotel.hotelName}</h3>
                   <p className="text-xs text-gray-400">Заявка {hotel.year} · {hotel.tourType}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  {statusSummary && <span className="text-sm">{statusSummary}</span>}
+                  <StatusSummaryBadges counts={statusCounts} />
                   <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                     {(hotel.groups || []).length} ta guruh
                   </span>
@@ -1457,7 +1483,7 @@ export default function Partners() {
             return (
               <>
                 {/* Sub-tabs */}
-                <div className="flex gap-1 mb-4">
+                <div className="flex flex-wrap gap-1.5 mb-4 bg-gray-50 rounded-xl p-1.5 w-fit">
                   {HOTEL_SUB_TABS.map(sub => (
                     <button
                       key={sub}
@@ -1560,7 +1586,7 @@ export default function Partners() {
             return (
               <>
                 {/* Sub-tabs */}
-                <div className="flex gap-1 mb-4">
+                <div className="flex flex-wrap gap-1.5 mb-4 bg-gray-50 rounded-xl p-1.5 w-fit">
                   {HOTEL_SUB_TABS.map(sub => (
                     <button
                       key={sub}
@@ -1650,7 +1676,7 @@ export default function Partners() {
             });
             return (
               <>
-                <div className="flex gap-1 mb-4">
+                <div className="flex flex-wrap gap-1.5 mb-4 bg-gray-50 rounded-xl p-1.5 w-fit">
                   {HOTEL_SUB_TABS.map(sub => (
                     <button key={sub} onClick={() => setTransportSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -1715,7 +1741,7 @@ export default function Partners() {
             return (
               <>
                 {/* Sub-tabs */}
-                <div className="flex gap-1 mb-4">
+                <div className="flex flex-wrap gap-1.5 mb-4 bg-gray-50 rounded-xl p-1.5 w-fit">
                   {HOTEL_SUB_TABS.map(sub => (
                     <button
                       key={sub}
@@ -1795,7 +1821,7 @@ export default function Partners() {
             return (
               <>
                 {/* Sub-tabs */}
-                <div className="flex gap-1 mb-4">
+                <div className="flex flex-wrap gap-1.5 mb-4 bg-gray-50 rounded-xl p-1.5 w-fit">
                   {HOTEL_SUB_TABS.map(sub => (
                     <button
                       key={sub}
@@ -1857,7 +1883,7 @@ export default function Partners() {
             });
             return (
               <>
-                <div className="flex gap-1 mb-4">
+                <div className="flex flex-wrap gap-1.5 mb-4 bg-gray-50 rounded-xl p-1.5 w-fit">
                   {TOUR_TYPES.map(sub => (
                     <button
                       key={sub}
@@ -1889,7 +1915,7 @@ export default function Partners() {
           })()}
           {activeTab === 'transport-plan' && (
             <>
-              <div className="flex gap-1 mb-4">
+              <div className="flex flex-wrap gap-1.5 mb-4 bg-gray-50 rounded-xl p-1.5 w-fit">
                 {HOTEL_SUB_TABS.map(sub => (
                   <button key={sub} onClick={() => setTransportPlanSubTab(sub)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
