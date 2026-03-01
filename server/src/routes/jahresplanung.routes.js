@@ -240,7 +240,7 @@ router.get('/hotels', authenticate, async (req, res) => {
     res.json({ hotels, year, tourType });
   } catch (err) {
     console.error('Jahresplanung hotels error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -291,7 +291,7 @@ router.post('/send-hotel-email/:hotelId', authenticate, upload.single('pdf'), as
     res.json({ success: true });
   } catch (err) {
     console.error('Send hotel email error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -431,7 +431,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
     res.json({ success: true });
   } catch (err) {
     console.error('Send hotel telegram error:', err);
-    res.status(500).json({ error: err.response?.data?.description || err.message });
+    res.status(500).json({ error: err.response?.data?.description || 'Telegram yuborishda xatolik' });
   }
 });
 
@@ -523,7 +523,7 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
     res.json({ success: true });
   } catch (err) {
     console.error('Send transport telegram error:', err);
-    res.status(500).json({ error: err.response?.data?.description || err.message });
+    res.status(500).json({ error: err.response?.data?.description || 'Telegram yuborishda xatolik' });
   }
 });
 
@@ -542,7 +542,7 @@ router.get('/transport-confirmations', authenticate, async (req, res) => {
     res.json({ confirmations });
   } catch (err) {
     console.error('Get transport confirmations error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -553,7 +553,7 @@ router.delete('/transport-confirmations/:key', authenticate, async (req, res) =>
     await prisma.systemSetting.delete({ where: { key } });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -738,7 +738,7 @@ router.post('/generate-pdf', authenticate, async (req, res) => {
     res.end(pdfBuffer);
   } catch (err) {
     console.error('Jahresplanung generate-pdf error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -765,7 +765,7 @@ router.get('/state', authenticate, async (req, res) => {
     const s = await prisma.systemSetting.findUnique({ where: { key } });
     res.json(s ? JSON.parse(s.value) : null);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -782,7 +782,7 @@ router.put('/state', authenticate, async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -794,7 +794,7 @@ router.get('/meal-overrides', authenticate, async (req, res) => {
     const s = await prisma.systemSetting.findUnique({ where: { key } });
     res.json(s ? JSON.parse(s.value) : {});
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -810,7 +810,7 @@ router.put('/meal-overrides', authenticate, async (req, res) => {
     });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -824,7 +824,7 @@ router.get('/all-hotels', authenticate, async (req, res) => {
     });
     res.json(hotels);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -859,7 +859,7 @@ router.put('/jp-sections/:hotelId/visit-status', authenticate, async (req, res) 
     res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -888,7 +888,7 @@ router.delete('/jp-sections/:hotelId/group/:bookingId/visit/:visitIdx', authenti
     res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -913,7 +913,7 @@ router.delete('/jp-sections/:hotelId/group/:bookingId', authenticate, async (req
     res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -957,7 +957,7 @@ router.delete('/jp-sections/:hotelId', authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -997,7 +997,7 @@ router.get('/jp-sections', authenticate, async (req, res) => {
     res.json({ sections });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -1111,7 +1111,7 @@ router.get('/meals', authenticate, async (req, res) => {
     res.json({ restaurants, year: yearInt, tourType });
   } catch (err) {
     console.error('JP meals error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -1187,7 +1187,7 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
     res.json({ success: true, count: bookings.length });
   } catch (err) {
     console.error('send-meal-telegram error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -1314,7 +1314,7 @@ router.get('/transport', authenticate, async (req, res) => {
     res.json({ bookings, routeMap, routeDetails, manualOverrides, year, tourType });
   } catch (err) {
     console.error('Jahresplanung transport error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
@@ -1331,7 +1331,7 @@ router.put('/transport', authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Jahresplanung transport save error:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server xatoligi' });
   }
 });
 
