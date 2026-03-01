@@ -17,10 +17,11 @@ const tourTypeModules = [
 ];
 
 const expenseTabs = [
-  { id: 'general',   name: 'General',   icon: BarChart3 },
-  { id: 'hotels',    name: 'Hotels',    icon: Hotel },
-  { id: 'transport', name: 'Transport', icon: Truck },
-  { id: 'guides',    name: 'Guides',    icon: Users },
+  { id: 'general',       name: 'General',        icon: BarChart3 },
+  { id: 'hotels',        name: 'Hotels',         icon: Hotel },
+  { id: 'hotel-analysis',name: 'Hotel Analysis', icon: Hotel },
+  { id: 'transport',     name: 'Transport',      icon: Truck },
+  { id: 'guides',        name: 'Guides',         icon: Users },
 ];
 
 export default function Ausgaben() {
@@ -593,6 +594,8 @@ export default function Ausgaben() {
         accommodationId: acc.id,
         hotel: acc.hotel?.name,
         city: acc.hotel?.city?.name,
+        checkInDate: acc.checkInDate,
+        checkOutDate: acc.checkOutDate,
         USD: hotelTotalUSD,
         UZS: hotelTotalUZS
       });
@@ -1503,6 +1506,114 @@ export default function Ausgaben() {
                     })()}
                   </div>
                 )}
+
+                {/* ── HOTEL ANALYSIS TAB ── */}
+                {activeExpenseTab === 'hotel-analysis' && (() => {
+                  // Build: { hotelName: { city, months: { "2026-03": [{ bookingName, bookingId, USD, UZS, checkIn, checkOut, nights }] } } }
+                  const hotelMap = {};
+                  filteredBookingsWithHotels.forEach(booking => {
+                    const breakdown = booking.grandTotalData?.hotelBreakdown || [];
+                    breakdown.forEach(h => {
+                      if (!h.hotel || (h.USD === 0 && h.UZS === 0)) return;
+                      const name = normalizeHotel(h.hotel);
+                      if (!hotelMap[name]) hotelMap[name] = { city: h.city, months: {} };
+                      const dateKey = h.checkInDate
+                        ? new Date(h.checkInDate).toISOString().slice(0, 7) // "2026-03"
+                        : 'unknown';
+                      if (!hotelMap[name].months[dateKey]) hotelMap[name].months[dateKey] = [];
+                      hotelMap[name].months[dateKey].push({
+                        bookingId: booking.bookingId,
+                        bookingName: booking.bookingName,
+                        USD: h.USD || 0,
+                        UZS: h.UZS || 0,
+                        checkIn: h.checkInDate,
+                        checkOut: h.checkOutDate,
+                      });
+                    });
+                  });
+
+                  const hotelNames = Object.keys(hotelMap).sort();
+
+                  const fmtShort = (d) => {
+                    if (!d) return '—';
+                    const dt = new Date(d);
+                    return dt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                  };
+                  const monthLabel = (key) => {
+                    if (key === 'unknown') return 'Sana noma\'lum';
+                    const [y, m] = key.split('-');
+                    const names = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+                    return `${names[parseInt(m)-1]} ${y}`;
+                  };
+
+                  if (hotelNames.length === 0) return (
+                    <EmptyState icon={Hotel} label={`${activeModule?.name} uchun mehmonxona ma'lumoti yo'q`} />
+                  );
+
+                  return (
+                    <div className="w-full space-y-4">
+                      {hotelNames.map(hotelName => {
+                        const hotel = hotelMap[hotelName];
+                        const sortedMonths = Object.keys(hotel.months).sort();
+                        const hotelTotalUSD = sortedMonths.reduce((s, mk) => s + hotel.months[mk].reduce((ss, b) => ss + b.USD, 0), 0);
+                        const hotelTotalUZS = sortedMonths.reduce((s, mk) => s + hotel.months[mk].reduce((ss, b) => ss + b.UZS, 0), 0);
+
+                        return (
+                          <div key={hotelName} className="rounded-xl overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
+                            {/* Hotel header */}
+                            <div className="flex items-center justify-between px-4 py-3"
+                              style={{ background: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)' }}>
+                              <div>
+                                <span className="text-white font-bold text-sm">🏨 {hotelName}</span>
+                                {hotel.city && <span className="text-blue-200 text-xs ml-2">— {hotel.city}</span>}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs font-bold">
+                                {hotelTotalUZS > 0 && <span className="text-amber-300">{formatNumber(hotelTotalUZS)} UZS</span>}
+                                {hotelTotalUSD > 0 && <span className="text-green-300">${formatNumber(hotelTotalUSD)}</span>}
+                              </div>
+                            </div>
+
+                            {/* Months */}
+                            {sortedMonths.map(mk => {
+                              const rows = hotel.months[mk];
+                              const mTotalUSD = rows.reduce((s, b) => s + b.USD, 0);
+                              const mTotalUZS = rows.reduce((s, b) => s + b.UZS, 0);
+                              return (
+                                <div key={mk}>
+                                  {/* Month sub-header */}
+                                  <div className="flex items-center justify-between px-4 py-2"
+                                    style={{ background: '#dbeafe', borderTop: '1px solid #bfdbfe' }}>
+                                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">📅 {monthLabel(mk)}</span>
+                                    <div className="flex gap-3 text-xs font-bold">
+                                      {mTotalUZS > 0 && <span className="text-amber-700">{formatNumber(mTotalUZS)} UZS</span>}
+                                      {mTotalUSD > 0 && <span className="text-green-700">${formatNumber(mTotalUSD)}</span>}
+                                    </div>
+                                  </div>
+                                  {/* Booking rows */}
+                                  {rows.map((b, i) => (
+                                    <div key={i} className="flex items-center justify-between px-4 py-2.5 text-xs"
+                                      style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
+                                      <div className="flex items-center gap-3">
+                                        <Link to={`/bookings/${b.bookingId}`}
+                                          className="font-bold text-blue-600 hover:underline w-16 shrink-0">{b.bookingName}</Link>
+                                        <span className="text-slate-400">
+                                          {fmtShort(b.checkIn)} → {fmtShort(b.checkOut)}
+                                        </span>
+                                      </div>
+                                      <div className="font-semibold text-slate-700">
+                                        {b.UZS > 0 ? <span>{formatNumber(b.UZS)} UZS</span> : <span className="text-green-700">${formatNumber(b.USD)}</span>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
                 {/* ── GUIDES TAB ── */}
                 {activeExpenseTab === 'guides' && (
