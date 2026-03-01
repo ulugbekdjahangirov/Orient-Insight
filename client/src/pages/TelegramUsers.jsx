@@ -545,6 +545,7 @@ export default function TelegramUsers() {
                   </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Chat ID</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Role</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Lang</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -579,6 +580,9 @@ export default function TelegramUsers() {
                       </td>
                       <td className="px-4 py-3">
                         <RoleCell chatId={chat.chatId} value={chat.role} onSave={handleUpdate} />
+                      </td>
+                      <td className="px-4 py-3 text-lg">
+                        {chat.lang === 'uz' ? '🇺🇿' : chat.lang === 'ru' ? '🇷🇺' : '—'}
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(chat.date)}</td>
                       <td className="px-4 py-3">
@@ -639,8 +643,9 @@ export default function TelegramUsers() {
                     </div>
                     <PhoneCell chatId={chat.chatId} value={chat.phone} onSave={handleUpdate} />
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-2 flex items-center gap-2">
                     <RoleCell chatId={chat.chatId} value={chat.role} onSave={handleUpdate} />
+                    {chat.lang && <span className="text-base">{chat.lang === 'uz' ? '🇺🇿' : '🇷🇺'}</span>}
                   </div>
                   <div className="text-xs text-gray-400 mt-2">{formatDate(chat.date)}</div>
                 </div>
