@@ -43,7 +43,6 @@ export default function Ausgaben() {
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]);
   const [selectedGuide, setSelectedGuide] = useState(null);
-  const [selectedGeneralCol, setSelectedGeneralCol] = useState(null);
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -1153,7 +1152,7 @@ export default function Ausgaben() {
               return (
                 <button
                   key={module.code}
-                  onClick={() => { updateParams({ tour: module.code }); setSelectedGuide(null); setSelectedGeneralCol(null); }}
+                  onClick={() => { updateParams({ tour: module.code }); setSelectedGuide(null); }}
                   className="relative overflow-hidden rounded-xl md:rounded-2xl p-2 md:p-4 text-left transition-all duration-300 group"
                   style={{
                     background: isActive ? activeBg : 'rgba(255,255,255,0.1)',
@@ -1240,47 +1239,6 @@ export default function Ausgaben() {
                       <EmptyState icon={BarChart3} label={`${activeModule?.name} uchun ma'lumot yo'q`} />
                     ) : (
                       <>
-                        {/* ── Column filter pills ── */}
-                        {(() => {
-                          const FILTERS = [
-                            { key: 'hotelsUSD',  label: '🏨 Hotels USD' },
-                            { key: 'hotelsUZS',  label: '🏨 Hotels UZS' },
-                            { key: 'sevil',      label: '🚌 Sevil' },
-                            { key: 'xayrulla',   label: '🚌 Xayrulla' },
-                            { key: 'nosir',      label: '🚌 Nosir' },
-                            { key: 'railway',    label: '🚂 Train' },
-                            { key: 'flights',    label: '✈️ Flights' },
-                            { key: 'guide',      label: '👤 Guide' },
-                            { key: 'meals',      label: '🍽 Meals' },
-                            { key: 'eintritt',   label: '🎫 Eintritt' },
-                            { key: 'metro',      label: '🚇 Metro' },
-                            { key: 'shou',       label: '🎭 Shou' },
-                            { key: 'other',      label: '📦 Other' },
-                          ];
-                          return (
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {FILTERS.map(f => {
-                                const active = selectedGeneralCol === f.key;
-                                return (
-                                  <button key={f.key}
-                                    onClick={() => setSelectedGeneralCol(active ? null : f.key)}
-                                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 select-none"
-                                    style={{
-                                      background: active ? '#1d4ed8' : '#e0e7ff',
-                                      color: active ? '#fff' : '#3730a3',
-                                      border: active ? '2px solid #1d4ed8' : '2px solid transparent',
-                                      boxShadow: active ? '0 2px 8px #1d4ed844' : 'none',
-                                      transform: active ? 'translateY(-1px)' : 'none',
-                                    }}>
-                                    {f.label}
-                                    {active && <span className="ml-1 font-black">✕</span>}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-
                         <table className="w-full table-fixed text-xs">
                           <colgroup>
                             <col style={{ width: '3%' }} />
@@ -1328,28 +1286,7 @@ export default function Ausgaben() {
                           </thead>
                           <tbody>
                             {bookingsDetailedData
-                              .filter(b => {
-                                const e = b.expenses || {};
-                                const hasData = e.hotelsUSD > 0 || e.hotelsUZS > 0;
-                                if (!hasData) return false;
-                                if (!selectedGeneralCol) return true;
-                                switch (selectedGeneralCol) {
-                                  case 'hotelsUSD': return e.hotelsUSD > 0;
-                                  case 'hotelsUZS': return e.hotelsUZS > 0;
-                                  case 'sevil':     return e.transportSevil > 0;
-                                  case 'xayrulla':  return e.transportXayrulla > 0;
-                                  case 'nosir':     return e.transportNosir > 0;
-                                  case 'railway':   return e.railway > 0;
-                                  case 'flights':   return e.flights > 0;
-                                  case 'guide':     return e.guide > 0;
-                                  case 'meals':     return e.meals > 0;
-                                  case 'eintritt':  return e.eintritt > 0;
-                                  case 'metro':     return e.metro > 0;
-                                  case 'shou':      return e.shou > 0;
-                                  case 'other':     return e.other > 0;
-                                  default: return true;
-                                }
-                              })
+                              .filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; })
                               .map((booking, idx) => {
                                 const e = booking.expenses || {};
                                 const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
