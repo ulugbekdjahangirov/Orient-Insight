@@ -405,12 +405,13 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       // Send all visit messages simultaneously — no batching
       await Promise.all(groups.flatMap(grp => grp.visits.map(async v => {
         const visitTitle = v.sectionLabel
-          ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
-          : `*${grp.no}. ${grp.group}*`;
+          ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
+          : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
         const lines = [
           header, '',
           visitTitle,
-          `⬜ ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
+          `📅 ${v.checkIn} → ${v.checkOut}`,
+          `👥 ${v.pax} PAX  |  🛏 DBL:${v.dbl}  TWN:${v.twn}  SNGL:${v.sngl}`
         ];
         const msgRes = await axios.post(`${TG_API}/sendMessage`, {
           chat_id: hotel.telegramChatId,
