@@ -12259,14 +12259,12 @@ export default function BookingDetail() {
 
                       for (let i = 0; i < d.length; i += 4) {
                         const r = d[i], g = d[i+1], b = d[i+2];
-                        // Distance from background color
                         const dr = r - bgR, dg = g - bgG, db = b - bgB;
                         const dist = Math.sqrt(dr*dr + dg*dg + db*db);
                         if (dist < 12) {
-                          d[i+3] = 0; // pure background → transparent
+                          d[i+3] = 0; // background → transparent
                         } else {
-                          // Continuous alpha: lighter ink areas stay semi-transparent
-                          // so white background shows through → preserves original "havo rang" feel
+                          // Colorize to light blue (havo rang)
                           const t = Math.min(1, (dist - 12) / 55);
                           d[i+3] = Math.floor(t * 255);
                         }
@@ -12329,16 +12327,19 @@ License №T-0084-08 from 2021-04-26`;
               };
 
               // Group into pages of 8, each page fills full A4 height
+              // Only include entries with a real name for PDF
+              const pdfEntries = visibleEntries.filter(e => e && e.name && e.name.trim());
               let rowsHtml = '';
-              for (let p = 0; p < visibleEntries.length; p += 8) {
-                const pageEntries = visibleEntries.slice(p, p + 8);
+              for (let p = 0; p < pdfEntries.length; p += 8) {
+                const pageEntries = pdfEntries.slice(p, p + 8);
                 while (pageEntries.length < 8) pageEntries.push(null);
                 let pageRows = '';
                 for (let r = 0; r < 4; r++) {
-                  pageRows += `<div style="flex:1;display:flex;">${makeVoucher(pageEntries[r*2])}${makeVoucher(pageEntries[r*2+1])}</div>`;
+                  pageRows += `<div style="min-height:68mm;display:flex;">${makeVoucher(pageEntries[r*2])}${makeVoucher(pageEntries[r*2+1])}</div>`;
                 }
-                const pb = p > 0 ? 'break-before:page;page-break-before:always;' : '';
-                rowsHtml += `<div style="display:flex;flex-direction:column;height:calc(297mm - 12mm);${pb}">${pageRows}</div>`;
+                const isLast = p + 8 >= pdfEntries.length;
+                const pb = isLast ? '' : 'page-break-after:always;';
+                rowsHtml += `<div style="display:flex;flex-direction:column;${pb}">${pageRows}</div>`;
               }
 
               // Generate real PDF blob via html2pdf
