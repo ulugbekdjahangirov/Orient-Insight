@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, authenticatePreview } = require('../middleware/auth.middleware');
+const { authenticate, authenticatePreview, requireAdmin } = require('../middleware/auth.middleware');
 const path = require('path');
 const fs = require('fs');
 
