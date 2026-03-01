@@ -9027,62 +9027,6 @@ export default function BookingDetail() {
     }
   };
 
-  // Generate accommodation PDF as Blob (for Telegram send)
-  const generateAccommodationPdfBlob = async (accommodation) => {
-    let logoDataUrl = '';
-    try {
-      const response = await fetch('/logo.png');
-      const blob = await response.blob();
-      logoDataUrl = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
-    } catch {}
-
-    const hotelName = accommodation.hotel?.name || 'Не указан отель';
-    const bookingNumber = booking?.bookingNumber || 'N/A';
-    const formatDisplayDate = (dateStr) => {
-      if (!dateStr) return '';
-      return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    };
-    const arrivalDate = formatDisplayDate(accommodation.checkInDate);
-    const departureDate = formatDisplayDate(accommodation.checkOutDate);
-    let dblRooms = 0, twnRooms = 0, snglRooms = 0;
-    accommodation.rooms?.forEach(room => {
-      const rt = room.roomTypeCode?.toUpperCase();
-      if (rt === 'DBL' || rt === 'DOUBLE') dblRooms += room.roomsCount || 0;
-      if (rt === 'TWN' || rt === 'TWIN') twnRooms += room.roomsCount || 0;
-      if (rt === 'SNGL' || rt === 'SINGLE') snglRooms += room.roomsCount || 0;
-    });
-    let touristRows = '';
-    tourists.forEach((t, idx) => {
-      const name = t.fullName || `${t.lastName}, ${t.firstName}`;
-      const displayArrival = t.checkInDate ? formatDisplayDate(t.checkInDate) : arrivalDate;
-      const displayDeparture = t.checkOutDate ? formatDisplayDate(t.checkOutDate) : departureDate;
-      const rowBg = (t.checkInDate || t.checkOutDate) ? 'background-color:#fffacd' : '';
-      touristRows += `<tr style="${rowBg}"><td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${idx + 1}</td><td style="border:1px solid #000;padding:3px;font-size:8pt;">${name}</td><td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayArrival}</td><td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;">${displayDeparture}</td><td style="border:1px solid #000;padding:3px;text-align:center;font-size:8pt;font-weight:bold;">${t.roomPreference || ''}</td><td style="border:1px solid #000;padding:3px;font-size:8pt;">${t.remarks && t.remarks !== '-' ? t.remarks : ''}</td></tr>`;
-    });
-
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;width:210mm;background:white;';
-    tempDiv.innerHTML = `<html><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Times New Roman',Times,serif;font-size:9pt;line-height:1.2;color:#000;padding:12mm;}.zayvka-title{text-align:center;font-size:13pt;font-weight:bold;margin:8px 0;}.intro-text{text-align:justify;margin:6px 0;font-size:9pt;}.summary-table,.rooming-table{width:100%;border-collapse:collapse;margin:8px 0;}.summary-table th,.summary-table td,.rooming-table th,.rooming-table td{border:1px solid #000;padding:3px;text-align:center;font-size:8pt;}.summary-table th,.rooming-table th{background:#f0f0f0;font-weight:bold;}.rooming-title{text-align:center;font-size:12pt;font-weight:bold;margin:10px 0 6px 0;}</style></head><body>
-      <div style="text-align:center;margin-bottom:15px;">${logoDataUrl ? `<img src="${logoDataUrl}" style="width:150px;height:auto;" />` : '<div style="font-size:18pt;font-weight:bold;color:#D4842F;">ORIENT INSIGHT</div>'}<div style="font-size:9pt;margin-top:5px"><strong>Республика Узбекистан,</strong><br>г.Самарканд, Шота Руставели, дом 45<br>Тел/fax.: +998 933484208, +998 97 9282814<br>E-Mail: orientinsightreisen@gmail.com</div></div>
-      <div style="text-align:right;margin-bottom:10px;font-size:9pt"><strong>Директору гостиницы</strong><br><strong style="font-size:11pt">${hotelName}</strong></div>
-      <div class="zayvka-title">ЗАЯВКА</div>
-      <div class="intro-text">ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.</div>
-      <table class="summary-table"><thead><tr><th>№</th><th>Группа</th><th>Страна</th><th>PAX</th><th>Заезд</th><th>Выезд</th><th>DBL</th><th>TWN</th><th>SNGL</th></tr></thead><tbody><tr><td>1</td><td>${bookingNumber}</td><td>Германия</td><td>${tourists.length}</td><td>${arrivalDate}</td><td>${departureDate}</td><td>${dblRooms}</td><td>${twnRooms}</td><td>${snglRooms}</td></tr></tbody></table>
-      <div class="rooming-title">ROOMING LISTE</div>
-      <table class="rooming-table"><thead><tr><th style="width:30px">№</th><th style="width:35%">ФИО</th><th>Дата заезда</th><th>Дата выезда</th><th>Категория</th><th>Инфо</th></tr></thead><tbody>${touristRows}</tbody></table>
-      <div style="margin:8px 0;font-size:8.5pt;">Оплату гости произведут на месте.</div>
-      <table style="width:100%;margin-top:15px;"><tr><td style="width:60%;font-size:8.5pt;"><strong>Директор ООО «ORIENT INSIGHT»</strong></td><td style="width:20%;border-bottom:1px solid #000;"></td><td style="width:20%;font-size:8.5pt;text-align:center;"><strong>Одилова М.У.</strong></td></tr></table>
-    </body></html>`;
-    document.body.appendChild(tempDiv);
-    const opt = { margin: 0, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-    const blob = await html2pdf().set(opt).from(tempDiv).output('blob');
-    document.body.removeChild(tempDiv);
-    return blob;
-  };
 
   if (loading) {
     return (
@@ -17068,25 +17012,6 @@ License №T-0084-08 from 2021-04-26`;
                             <Send className="w-5 h-5" />
                             {isMobile && <span className="font-medium">Telegram yuborish</span>}
                           </button>
-                          {/* Izmeneniya button — only if hotel has telegramChatId */}
-                          {acc.hotel?.telegramChatId && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  toast.loading('PDF tayyorlanmoqda...', { id: 'izm-pdf' });
-                                  const pdfBlob = await generateAccommodationPdfBlob(acc);
-                                  toast.dismiss('izm-pdf');
-                                  await telegramApi.sendChanges(booking.id, acc.hotel.id, pdfBlob);
-                                  toast.success('Izmeneniya yuborildi!');
-                                } catch { toast.dismiss('izm-pdf'); toast.error('Yuborishda xatolik'); }
-                              }}
-                              className={`p-3 text-orange-600 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 hover:border-orange-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
-                              title="Izmeneniya k zayavke"
-                            >
-                              <span className="text-base leading-none">📝</span>
-                              {isMobile && <span className="font-medium">Izmeneniya</span>}
-                            </button>
-                          )}
                           {/* Annulyatsiya button — only for CANCELLED + telegramChatId */}
                           {booking?.status === 'CANCELLED' && acc.hotel?.telegramChatId && (
                             <button

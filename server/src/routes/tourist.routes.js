@@ -6343,9 +6343,13 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
         sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s,r) => s+r.roomsCount, 0);
       }
 
-      const roomStr = [dbl&&`DBL:${dbl}`, twn&&`TWN:${twn}`, sngl&&`SNGL:${sngl}`].filter(Boolean).join(', ') || '—';
-      const prefix = accommodations.length > 1 ? `${i+1}-zaezd: ` : '';
-      return `${prefix}📅 ${fmt(acc.checkInDate)} → ${fmt(acc.checkOutDate)}  |  🛏 ${roomStr}`;
+      const lines = [];
+      if (accommodations.length > 1) lines.push(`*${i+1}-zaezd:*`);
+      lines.push(`📅 Заезд: ${fmt(acc.checkInDate)}`);
+      lines.push(`📅 Выезд: ${fmt(acc.checkOutDate)}`);
+      lines.push(`👥 PAX: ${booking.pax || 0}`);
+      lines.push(`🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`);
+      return lines;
     });
 
     const guideLines = [];
@@ -6355,9 +6359,8 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     const caption = [
       `🏨 *${hotelName}*`,
       `📋 ${isTgIzmenenie ? 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' : 'Заявка'}: *${booking.bookingNumber}*`,
-      `👥 PAX: *${booking.pax || 0}* kishi`,
       ``,
-      ...visitLines,
+      ...visitLines.flat(),
       ``,
       ...guideLines,
     ].filter(l => l !== undefined).join('\n');
