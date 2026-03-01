@@ -84,6 +84,23 @@ router.get('/updates', authenticate, async (req, res) => {
   }
 });
 
+// PUT /api/telegram/chats/:chatId - Update chat role and phone
+router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { role, phone } = req.body;
+    const chats = await loadKnownChats();
+    if (!chats[chatId]) return res.status(404).json({ error: 'Chat topilmadi' });
+    if (role !== undefined) chats[chatId].role = role;
+    if (phone !== undefined) chats[chatId].phone = phone;
+    await saveKnownChats(chats);
+    res.json({ chat: chats[chatId] });
+  } catch (error) {
+    console.error('Update chat error:', error.message);
+    res.status(500).json({ error: 'Xatolik yuz berdi' });
+  }
+});
+
 // DELETE /api/telegram/chats/:chatId - Remove a chat from known chats
 router.delete('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
   try {

@@ -1,13 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { telegramApi } from '../services/api';
-import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Hash, Building } from 'lucide-react';
+import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Hash, Building, Phone, Pencil, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const typeLabels = {
-  private: { label: 'Shaxsiy', color: 'bg-blue-100 text-blue-800', icon: MessageCircle },
-  group:   { label: 'Guruh',   color: 'bg-green-100 text-green-800', icon: Users },
+  private:    { label: 'Shaxsiy',    color: 'bg-blue-100 text-blue-800',   icon: MessageCircle },
+  group:      { label: 'Guruh',      color: 'bg-green-100 text-green-800', icon: Users },
   supergroup: { label: 'Supergroup', color: 'bg-purple-100 text-purple-800', icon: Users },
-  channel: { label: 'Kanal',  color: 'bg-orange-100 text-orange-800', icon: Hash },
+  channel:    { label: 'Kanal',      color: 'bg-orange-100 text-orange-800', icon: Hash },
+};
+
+const ROLES = [
+  { value: '',             label: '— Belgilanmagan' },
+  { value: 'admin',        label: 'Admin' },
+  { value: 'user',         label: 'Foydalanuvchi' },
+  { value: 'guide',        label: 'Gid' },
+  { value: 'transport',    label: 'Transport' },
+  { value: 'hotel',        label: 'Hotel' },
+  { value: 'restaurant',   label: 'Restaurant' },
+];
+
+const roleColors = {
+  admin:      'bg-red-100 text-red-700 border border-red-200',
+  user:       'bg-gray-100 text-gray-700 border border-gray-200',
+  guide:      'bg-blue-100 text-blue-700 border border-blue-200',
+  transport:  'bg-yellow-100 text-yellow-700 border border-yellow-200',
+  hotel:      'bg-purple-100 text-purple-700 border border-purple-200',
+  restaurant: 'bg-green-100 text-green-700 border border-green-200',
 };
 
 function formatDate(iso) {
@@ -32,11 +51,77 @@ function CopyButton({ text }) {
   );
 }
 
+function PhoneCell({ chatId, value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value || '');
+
+  const save = async () => {
+    await onSave(chatId, { phone: val });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+          className="w-32 px-2 py-1 text-xs border border-blue-400 rounded-lg focus:outline-none"
+          placeholder="+998..."
+        />
+        <button onClick={save} className="p-1 rounded text-green-600 hover:bg-green-50"><Check size={12} /></button>
+        <button onClick={() => setEditing(false)} className="p-1 rounded text-gray-400 hover:bg-gray-100"><X size={12} /></button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 group">
+      <span className="text-gray-600 text-sm">{value || <span className="text-gray-300">—</span>}</span>
+      <button onClick={() => setEditing(true)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 transition-all">
+        <Pencil size={11} className="text-gray-400" />
+      </button>
+    </div>
+  );
+}
+
+function RoleCell({ chatId, value, onSave }) {
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = async (e) => {
+    setSaving(true);
+    await onSave(chatId, { role: e.target.value });
+    setSaving(false);
+  };
+
+  const roleLabel = ROLES.find(r => r.value === (value || ''))?.label || '—';
+  const colorClass = roleColors[value] || 'bg-gray-50 text-gray-500 border border-gray-200';
+
+  return (
+    <div className="relative">
+      <select
+        value={value || ''}
+        onChange={handleChange}
+        disabled={saving}
+        className={`text-xs font-medium px-2 py-1 rounded-lg cursor-pointer appearance-none pr-5 ${colorClass} disabled:opacity-60 focus:outline-none`}
+        style={{ backgroundImage: 'none' }}
+      >
+        {ROLES.map(r => (
+          <option key={r.value} value={r.value}>{r.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function TelegramUsers() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
   const [deletingId, setDeletingId] = useState(null);
 
   const loadChats = useCallback(async () => {
@@ -52,6 +137,15 @@ export default function TelegramUsers() {
   }, []);
 
   useEffect(() => { loadChats(); }, [loadChats]);
+
+  const handleUpdate = async (chatId, data) => {
+    try {
+      await telegramApi.updateKnownChat(chatId, data);
+      setChats(prev => prev.map(c => c.chatId === chatId ? { ...c, ...data } : c));
+    } catch {
+      toast.error('Saqlashda xatolik');
+    }
+  };
 
   const handleDelete = async (chatId, name) => {
     if (!confirm(`"${name}" ni ro'yxatdan o'chirmoqchimisiz?`)) return;
@@ -71,9 +165,11 @@ export default function TelegramUsers() {
     const matchSearch = !search ||
       c.name?.toLowerCase().includes(search.toLowerCase()) ||
       c.username?.toLowerCase().includes(search.toLowerCase()) ||
-      c.chatId?.includes(search);
-    const matchType = typeFilter === 'all' || c.type === typeFilter;
-    return matchSearch && matchType;
+      c.chatId?.includes(search) ||
+      c.phone?.includes(search);
+    const matchType = typeFilter === 'all' || c.type === typeFilter || (typeFilter === 'group' && c.type === 'supergroup');
+    const matchRole = roleFilter === 'all' || (roleFilter === 'none' ? !c.role : c.role === roleFilter);
+    return matchSearch && matchType && matchRole;
   });
 
   const counts = {
@@ -84,7 +180,7 @@ export default function TelegramUsers() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -109,10 +205,10 @@ export default function TelegramUsers() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
-          { key: 'all', label: 'Hammasi', icon: Users, color: 'text-gray-600 bg-gray-100' },
-          { key: 'private', label: 'Shaxsiy', icon: MessageCircle, color: 'text-blue-600 bg-blue-100' },
-          { key: 'group', label: 'Guruh', icon: Users, color: 'text-green-600 bg-green-100' },
-          { key: 'channel', label: 'Kanal', icon: Hash, color: 'text-orange-600 bg-orange-100' },
+          { key: 'all',     label: 'Hammasi', icon: Users,          color: 'text-gray-600 bg-gray-100' },
+          { key: 'private', label: 'Shaxsiy', icon: MessageCircle,  color: 'text-blue-600 bg-blue-100' },
+          { key: 'group',   label: 'Guruh',   icon: Users,          color: 'text-green-600 bg-green-100' },
+          { key: 'channel', label: 'Kanal',   icon: Hash,           color: 'text-orange-600 bg-orange-100' },
         ].map(({ key, label, icon: Icon, color }) => (
           <button
             key={key}
@@ -132,15 +228,26 @@ export default function TelegramUsers() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <input
           type="text"
-          placeholder="Nom, username yoki Chat ID bo'yicha qidirish..."
+          placeholder="Nom, username, telefon yoki Chat ID..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
+        <select
+          value={roleFilter}
+          onChange={e => setRoleFilter(e.target.value)}
+          className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
+        >
+          <option value="all">Barcha rollar</option>
+          <option value="none">Belgilanmagan</option>
+          {ROLES.filter(r => r.value).map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}
@@ -163,8 +270,12 @@ export default function TelegramUsers() {
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Nom</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Username</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">
+                    <span className="flex items-center gap-1"><Phone size={13} />Telefon</span>
+                  </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Chat ID</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Tur</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Rol</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Oxirgi xabar</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Sana</th>
                   <th className="px-4 py-3"></th>
@@ -179,6 +290,9 @@ export default function TelegramUsers() {
                       <td className="px-4 py-3 font-medium text-gray-900">{chat.name || '—'}</td>
                       <td className="px-4 py-3 text-gray-500">{chat.username || '—'}</td>
                       <td className="px-4 py-3">
+                        <PhoneCell chatId={chat.chatId} value={chat.phone} onSave={handleUpdate} />
+                      </td>
+                      <td className="px-4 py-3">
                         <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
                           {chat.chatId}
                         </span>
@@ -190,7 +304,10 @@ export default function TelegramUsers() {
                           {typeInfo.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 max-w-[180px] truncate" title={chat.lastMessage}>
+                      <td className="px-4 py-3">
+                        <RoleCell chatId={chat.chatId} value={chat.role} onSave={handleUpdate} />
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate" title={chat.lastMessage}>
                         {chat.lastMessage || '—'}
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(chat.date)}</td>
@@ -199,7 +316,6 @@ export default function TelegramUsers() {
                           onClick={() => handleDelete(chat.chatId, chat.name)}
                           disabled={deletingId === chat.chatId}
                           className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
-                          title="O'chirish"
                         >
                           <Trash2 size={15} />
                         </button>
@@ -217,29 +333,41 @@ export default function TelegramUsers() {
               const typeInfo = typeLabels[chat.type] || { label: chat.type, color: 'bg-gray-100 text-gray-600', icon: Building };
               const TypeIcon = typeInfo.icon;
               return (
-                <div key={chat.chatId} className="p-4 flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-gray-900 truncate">{chat.name || '—'}</span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color} flex-shrink-0`}>
-                        <TypeIcon size={10} />
-                        {typeInfo.label}
-                      </span>
+                <div key={chat.chatId} className="p-4">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="font-semibold text-gray-900">{chat.name || '—'}</span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
+                          <TypeIcon size={10} />{typeInfo.label}
+                        </span>
+                        {chat.role && (
+                          <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${roleColors[chat.role] || 'bg-gray-100 text-gray-600'}`}>
+                            {ROLES.find(r => r.value === chat.role)?.label}
+                          </span>
+                        )}
+                      </div>
+                      {chat.username && <div className="text-xs text-gray-500">{chat.username}</div>}
                     </div>
-                    {chat.username && <div className="text-xs text-gray-500 mb-1">{chat.username}</div>}
+                    <button
+                      onClick={() => handleDelete(chat.chatId, chat.name)}
+                      disabled={deletingId === chat.chatId}
+                      className="p-2 rounded-lg text-red-400 hover:bg-red-50 flex-shrink-0"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <div className="flex items-center gap-1">
-                      <span className="font-mono text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{chat.chatId}</span>
+                      <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">{chat.chatId}</span>
                       <CopyButton text={chat.chatId} />
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">{formatDate(chat.date)}</div>
+                    <PhoneCell chatId={chat.chatId} value={chat.phone} onSave={handleUpdate} />
                   </div>
-                  <button
-                    onClick={() => handleDelete(chat.chatId, chat.name)}
-                    disabled={deletingId === chat.chatId}
-                    className="p-2 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40 flex-shrink-0"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="mt-2">
+                    <RoleCell chatId={chat.chatId} value={chat.role} onSave={handleUpdate} />
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">{formatDate(chat.date)}</div>
                 </div>
               );
             })}
