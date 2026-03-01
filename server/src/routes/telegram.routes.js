@@ -12,6 +12,7 @@ const puppeteer = require('puppeteer');
 const prisma = new PrismaClient();
 const BOT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const TRANSPORT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_TRANSPORT_TOKEN}`;
+const RESTAURANT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_RESTAURANT_TOKEN}`;
 const CHATS_SETTING_KEY = 'TELEGRAM_KNOWN_CHATS';
 
 // multer: accept PDF blob in memory
@@ -1562,6 +1563,109 @@ router.post('/webhook-transport', async (req, res) => {
 });
 
 // ============================================================
+// Restaurant Bot Webhook
+// ============================================================
+
+// POST /api/telegram/webhook-restaurant - Receive updates from Restaurant Bot
+router.post('/webhook-restaurant', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const update = req.body;
+
+    // Save incoming chat to known chats
+    const msg = update.message || update.channel_post;
+    if (msg) {
+      const chat = msg.chat;
+      const chats = await loadKnownChats();
+      const existing = chats[String(chat.id)] || {};
+      const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
+      chats[String(chat.id)] = {
+        ...existing,
+        chatId: String(chat.id),
+        name: existing.nameCustomized ? existing.name : telegramName,
+        username: chat.username ? `@${chat.username}` : (existing.username || null),
+        type: chat.type,
+        lastMessage: msg.text || '[file]',
+        date: new Date(msg.date * 1000).toISOString()
+      };
+      await saveKnownChats(chats);
+    }
+
+    const cb = update.callback_query;
+    if (!cb) return;
+
+    const callbackQueryId = cb.id;
+    const data = cb.data || '';
+    const fromUser = cb.from;
+    const fromDisplayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ');
+    const fromName = [fromDisplayName, fromUser.username ? `@${fromUser.username}` : ''].filter(Boolean).join(' ') || 'Noma\'lum';
+    const fromChatId = cb.message?.chat?.id;
+    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+    // ── meal_confirm / meal_reject ───────────────────────────────────────
+    if (data.startsWith('meal_confirm:') || data.startsWith('meal_reject:')) {
+      const parts = data.split(':');
+      const confId    = parseInt(parts[1]);
+      const isConfirm = data.startsWith('meal_confirm:');
+      const emoji     = isConfirm ? '✅' : '❌';
+
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isConfirm ? '✅ Tasdiqlandi! Rahmat.' : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      if (cb.message?.message_id && fromChatId) {
+        const statusLine = isConfirm
+          ? `\n\n✅ ${fromName} tomonidan tasdiqlandi`
+          : `\n\n❌ ${fromName} tomonidan rad qilindi`;
+        await axios.post(`${RESTAURANT_API()}/editMessageText`, {
+          chat_id: fromChatId,
+          message_id: cb.message.message_id,
+          text: (cb.message.text || '') + statusLine,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [] })
+        }).catch(() => {});
+      }
+
+      let mealConf = null;
+      try {
+        mealConf = await prisma.mealConfirmation.update({
+          where: { id: confId },
+          data: { status: isConfirm ? 'CONFIRMED' : 'REJECTED', confirmedBy: fromName, respondedAt: new Date() },
+          include: {
+            booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true, guide: { select: { name: true, phone: true } } } }
+          }
+        });
+      } catch (e) { console.warn('MealConfirmation update warn:', e.message); }
+
+      if (adminChatId && mealConf) {
+        const { booking, restaurantName, city, mealDate, pax } = mealConf;
+        const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000);
+        const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
+        const adminMsg = [
+          `${emoji} *${restaurantName}*`,
+          `📋 ${booking?.bookingNumber || `#${mealConf.bookingId}`}`,
+          city     ? `🏙 Shahar: *${city}*`   : null,
+          mealDate ? `📅 Sana: *${mealDate}*` : null,
+          pax      ? `👥 PAX: *${pax}* kishi` : null,
+          booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
+          `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
+        ].filter(Boolean).join('\n');
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: adminChatId, text: adminMsg, parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
+      return;
+    }
+
+  } catch (err) {
+    console.error('Restaurant webhook error:', err.response?.data || err.message);
+  }
+});
+
+// ============================================================
 // Transport Confirmations (Marshrut varaqasi)
 // ============================================================
 
@@ -1884,8 +1988,7 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
       booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
     ].filter(Boolean).join('\n');
 
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    await axios.post(`${BOT_API()}/sendMessage`, {
+    await axios.post(`${RESTAURANT_API()}/sendMessage`, {
       chat_id: chatId,
       text: msgText,
       parse_mode: 'Markdown',
