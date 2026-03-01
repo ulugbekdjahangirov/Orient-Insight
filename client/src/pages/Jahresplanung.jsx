@@ -875,7 +875,7 @@ function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides
         </button>
 
         {/* Right: action buttons */}
-        <div className="flex items-center gap-1.5 ml-7 md:ml-0 flex-shrink-0">
+        <div className="flex items-center gap-1.5 ml-9 md:ml-0 flex-shrink-0">
           <button onClick={() => onPDF(hotelData)}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
             style={{ background: '#f1f5f9', color: '#475569' }}
@@ -1940,26 +1940,31 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-3">
       {/* Header */}
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
-        <div className="flex items-center gap-3">
+      <button onClick={onToggle} className="w-full flex flex-col md:flex-row md:items-center md:justify-between px-4 md:px-5 py-3 hover:bg-gray-50 transition-colors gap-2">
+        {/* Row 1: icon + name + chevron */}
+        <div className="flex items-center gap-2.5 min-w-0">
           <UtensilsCrossed className="w-4 h-4 text-orange-500 flex-shrink-0" />
-          <div className="text-left">
-            <div className="font-semibold text-gray-900">{name}</div>
+          <div className="text-left min-w-0 flex-1">
+            <div className="font-semibold text-gray-900 truncate text-sm">{name}</div>
             <div className="text-xs text-gray-500">
               {city && <span>{city}</span>}
               {hasTelegram && <span className="ml-2 text-blue-500">· TG ✓</span>}
             </div>
           </div>
+          <div className="md:hidden flex-shrink-0">
+            {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs">
+        {/* Row 2 (mobile) / Row 1 right (desktop): stats + actions */}
+        <div className="flex items-center gap-2 md:gap-3 pl-6 md:pl-0">
+          <div className="flex items-center gap-1.5 text-xs flex-1 md:flex-none">
             {confirmedCount > 0 && <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{confirmedCount}✅</span>}
             {pendingCount > 0   && <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">{pendingCount}🕐</span>}
             <span className="text-gray-400">{bookings.length} guruh · {totalPax} pax</span>
           </div>
           <button
             onClick={e => { e.stopPropagation(); handlePdf(); }}
-            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
             title="PDF yuklab olish"
           >
             <Download className="w-3.5 h-3.5" />
@@ -1967,7 +1972,7 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
           <button
             onClick={e => { e.stopPropagation(); handleTelegram(); }}
             disabled={sendingTelegram}
-            className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600 disabled:opacity-50 transition-colors"
+            className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600 disabled:opacity-50 transition-colors flex-shrink-0"
             title="Telegram ga yuborish"
           >
             {sendingTelegram
@@ -1975,7 +1980,9 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
               : <Send className="w-3.5 h-3.5" />
             }
           </button>
-          {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+          <div className="hidden md:block">
+            {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+          </div>
         </div>
       </button>
 
@@ -2631,12 +2638,13 @@ function HotelsTab({ tourType, tourColor }) {
               </div>
               <span className="font-bold text-white text-sm md:text-base flex-1 truncate">{city}</span>
               <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                <span className="hidden md:flex items-center gap-1 text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">{displayHotels.length}</span> отель
+                <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <span className="font-semibold text-slate-300">{totalGroups}</span>
+                  <span className="hidden md:inline">группы</span>
                 </span>
                 <span className="text-slate-600 hidden md:inline">·</span>
                 <span className="hidden md:flex items-center gap-1 text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">{totalGroups}</span> группы
+                  <span className="font-semibold text-slate-300">{displayHotels.length}</span> отель
                 </span>
                 <span className="px-2.5 py-1 rounded-lg text-xs font-black text-white"
                   style={{ background: `${color}cc` }}>
@@ -2720,9 +2728,9 @@ export default function Jahresplanung() {
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 70%)' }} />
 
-        <div className="relative px-4 md:px-6 pt-7 pb-7">
+        <div className="relative px-4 md:px-6 pt-5 md:pt-7 pb-5 md:pb-7">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3 md:mb-4">
             <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
               style={{ background: `${activeTourColor}35`, color: 'white', border: `1px solid ${activeTourColor}60` }}>
               {YEAR}
@@ -2732,14 +2740,14 @@ export default function Jahresplanung() {
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-none"
+          <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none"
             style={{ textShadow: '0 0 40px rgba(255,255,255,0.3)' }}>
             Jahresplanung
           </h1>
-          <p className="text-indigo-200 text-sm mt-2 opacity-75">Yillik reja — hotellar, restoranlar, transport</p>
+          <p className="text-indigo-200 text-xs md:text-sm mt-1.5 md:mt-2 opacity-75">Yillik reja — hotellar, restoranlar, transport</p>
 
-          {/* Main Tabs */}
-          <div className="flex gap-3 mt-6">
+          {/* Main Tabs — scrollable on mobile */}
+          <div className="flex gap-2 mt-5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {MAIN_TABS.map(tab => {
               const Icon = tab.icon;
               const isActive = mainTab === tab.id;
@@ -2747,7 +2755,7 @@ export default function Jahresplanung() {
                 <button
                   key={tab.id}
                   onClick={() => { setMainTab(tab.id); localStorage.setItem('jp_mainTab', tab.id); }}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex-shrink-0"
                   style={isActive ? {
                     background: `linear-gradient(135deg, ${tab.color}, ${tab.color}cc)`,
                     color: 'white',
@@ -2759,7 +2767,7 @@ export default function Jahresplanung() {
                     border: '1px solid rgba(255,255,255,0.2)',
                   }}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4 flex-shrink-0" />
                   {tab.label}
                 </button>
               );
@@ -2767,7 +2775,7 @@ export default function Jahresplanung() {
           </div>
 
           {/* Tour Type Pills */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-3 md:mt-4">
             {TOUR_TYPES.map(t => {
               const isActive = tourTab === t;
               const color = TOUR_COLORS[t];
@@ -2775,7 +2783,7 @@ export default function Jahresplanung() {
                 <button
                   key={t}
                   onClick={() => { setTourTab(t); localStorage.setItem('jp_tourTab', t); }}
-                  className="relative overflow-hidden px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200"
+                  className="relative overflow-hidden flex-1 md:flex-none px-2 md:px-5 py-2 rounded-xl text-sm font-bold transition-all duration-200"
                   style={isActive ? {
                     background: `linear-gradient(135deg, ${color}, ${color}bb)`,
                     color: 'white',
@@ -2800,7 +2808,7 @@ export default function Jahresplanung() {
 
       {/* ── CONTENT ── */}
       <div className="bg-slate-50 min-h-screen">
-        <div className="px-3 md:px-6 py-5 max-w-7xl mx-auto">
+        <div className="px-3 md:px-6 py-4 md:py-5 pb-20 md:pb-6 max-w-7xl mx-auto">
           {mainTab==='hotels'    && <HotelsTab   tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='restoran'  && <RestoranTab  tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='transport' && <TransportTab tourType={tourTab} tourColor={activeTourColor} />}
