@@ -28,6 +28,9 @@ const searchRoutes = require('./routes/search.routes');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust nginx reverse proxy (needed for correct IP in rate limiting)
+app.set('trust proxy', 1);
+
 // ── Security Headers (Helmet) ──
 app.use(helmet({
   contentSecurityPolicy: false, // SPA handles its own CSP
@@ -42,13 +45,9 @@ const allowedOrigins = [
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    // Reject requests with no origin (curl, Postman) in production
-    if (!origin) {
-      if (process.env.NODE_ENV === 'production') {
-        return callback(new Error('Not allowed by CORS'));
-      }
-      return callback(null, true); // allow in development
-    }
+    // Allow requests with no origin (server-to-server, Puppeteer, mobile)
+    if (!origin) return callback(null, true);
+    // Reject unknown browser origins
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
