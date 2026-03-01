@@ -136,15 +136,17 @@ app.listen(PORT, () => {
 // Migrate old Gmail whitelist if needed
 const { PrismaClient } = require('@prisma/client');
 const _prisma = new PrismaClient();
-_prisma.systemSetting.findUnique({ where: { key: 'GMAIL_SENDER_WHITELIST' } }).then(setting => {
+_prisma.systemSetting.findUnique({ where: { key: 'GMAIL_SENDER_WHITELIST' } }).then(async setting => {
   if (setting) {
-    const whitelist = JSON.parse(setting.value);
-    if (whitelist.length === 1 && whitelist[0] === '@orient-tours.de') {
-      _prisma.systemSetting.update({
-        where: { key: 'GMAIL_SENDER_WHITELIST' },
-        data: { value: JSON.stringify(['@world-insight.de']) }
-      });
-    }
+    try {
+      const whitelist = JSON.parse(setting.value);
+      if (whitelist.length === 1 && whitelist[0] === '@orient-tours.de') {
+        await _prisma.systemSetting.update({
+          where: { key: 'GMAIL_SENDER_WHITELIST' },
+          data: { value: JSON.stringify(['@world-insight.de']) }
+        });
+      }
+    } catch {}
   }
 }).catch(() => {});
 

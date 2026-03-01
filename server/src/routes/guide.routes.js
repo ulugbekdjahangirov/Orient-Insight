@@ -180,8 +180,7 @@ router.get('/:id', authenticate, async (req, res) => {
     if (!isAdmin) {
       processedGuide.guidePayments = [];
       delete processedGuide.passportNumber;
-      delete processedGuide.passportIssued;
-      delete processedGuide.passportExpiry;
+      delete processedGuide.passportIssueDate;
       delete processedGuide.passportExpiryDate;
       delete processedGuide.bankAccountNumber;
       delete processedGuide.bankCardNumber;
