@@ -2717,6 +2717,8 @@ export default function Jahresplanung() {
       <div className="relative overflow-hidden" style={{
         background: 'linear-gradient(160deg, #312e81 0%, #4338ca 35%, #6d28d9 65%, #4338ca 100%)',
         paddingBottom: '4px',
+        borderBottomLeftRadius: '28px',
+        borderBottomRightRadius: '28px',
       }}>
         {/* Large tour-color glow — top right */}
         <div className="absolute top-0 right-0 rounded-full pointer-events-none"
@@ -2746,8 +2748,8 @@ export default function Jahresplanung() {
           </h1>
           <p className="text-indigo-200 text-xs md:text-sm mt-1.5 md:mt-2 opacity-75">Yillik reja — hotellar, restoranlar, transport</p>
 
-          {/* Main Tabs — scrollable on mobile */}
-          <div className="flex gap-2 mt-5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {/* Main Tabs — equal width, no scroll */}
+          <div className="flex gap-2 mt-5">
             {MAIN_TABS.map(tab => {
               const Icon = tab.icon;
               const isActive = mainTab === tab.id;
@@ -2755,7 +2757,7 @@ export default function Jahresplanung() {
                 <button
                   key={tab.id}
                   onClick={() => { setMainTab(tab.id); localStorage.setItem('jp_mainTab', tab.id); }}
-                  className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex-shrink-0"
+                  className="flex-1 md:flex-none flex items-center justify-center md:justify-start gap-1.5 md:gap-2 px-2 md:px-4 py-2 md:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
                   style={isActive ? {
                     background: `linear-gradient(135deg, ${tab.color}, ${tab.color}cc)`,
                     color: 'white',
