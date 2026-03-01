@@ -1839,7 +1839,7 @@ export default function Ausgaben() {
                           </tr>
                         </thead>
                         <tbody>
-                          {bookingsWithTransport.map((item, idx) => {
+                          {filteredBookingsWithHotels.map((item, idx) => {
                             const sevil=item.expenses?.transportSevil||0;
                             const xayrulla=item.expenses?.transportXayrulla||0;
                             const nosir=item.expenses?.transportNosir||0;
@@ -1873,11 +1873,11 @@ export default function Ausgaben() {
                             <td className="px-4 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest border-r border-green-200">TOTAL</td>
                             {['transportSevil','transportXayrulla','transportNosir'].map(key => (
                               <td key={key} className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                                {formatNumber(bookingsWithTransport.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
+                                {formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
                               </td>
                             ))}
                             <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
-                              ${formatNumber(bookingsWithTransport.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}
+                              ${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}
                             </td>
                           </tr>
                         </tbody>
@@ -1915,7 +1915,7 @@ export default function Ausgaben() {
                   // Build providerMap: { providerKey: { months: { "2026-03": [rows] } } }
                   const providerMap = {};
                   PROVIDERS.forEach(p => {
-                    bookingsWithTransport.forEach(booking => {
+                    filteredBookingsWithHotels.forEach(booking => {
                       const amount = booking.expenses?.[p.expenseKey] || 0;
                       if (amount === 0) return;
                       const depDate = deptDates[booking.bookingId];
@@ -1931,15 +1931,14 @@ export default function Ausgaben() {
                     });
                   });
 
-                  const activeProviders = PROVIDERS.filter(p => providerMap[p.key]);
-                  if (activeProviders.length === 0) return (
-                    <EmptyState icon={Truck} label={`${activeModule?.name} uchun transport ma'lumoti yo'q`} />
+                  if (filteredBookingsWithHotels.length === 0) return (
+                    <EmptyState icon={Truck} label={`${activeModule?.name} uchun ma'lumot yo'q`} />
                   );
 
                   return (
                     <div className="w-full space-y-2">
-                      {activeProviders.map(p => {
-                        const pData = providerMap[p.key];
+                      {PROVIDERS.map(p => {
+                        const pData = providerMap[p.key] || { months: {} };
                         const sortedMonths = Object.keys(pData.months).sort();
                         const allRows = sortedMonths.flatMap(mk => pData.months[mk]);
                         const totalAmt = allRows.reduce((s, b) => s + b.amount, 0);
@@ -1955,7 +1954,9 @@ export default function Ausgaben() {
                               onClick={() => toggleTransportProvider(p.key)}>
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-white font-bold text-sm">🚌 {p.label}</span>
-                                <span className="text-white/60 text-xs">({sortedMonths.length} oy)</span>
+                                <span className="text-white/60 text-xs">
+                                  {sortedMonths.length > 0 ? `(${sortedMonths.length} oy)` : '(gruppa yo\'q)'}
+                                </span>
                                 {paidAmt > 0 && (
                                   <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: '#16a34a22', color: '#86efac' }}>
                                     ✓ ${formatNumber(paidAmt)}
@@ -1973,7 +1974,12 @@ export default function Ausgaben() {
                               </div>
                             </button>
 
-                            {/* Months */}
+                            {/* Months — only shown when open and data exists */}
+                            {isOpen && sortedMonths.length === 0 && (
+                              <div className="px-6 py-3 text-xs text-slate-400 italic" style={{ background: '#f8fafc' }}>
+                                Bu gruppada {p.label} transport xarajati yo'q
+                              </div>
+                            )}
                             {isOpen && sortedMonths.map(mk => {
                               const rows = pData.months[mk];
                               const mTotal = rows.reduce((s, b) => s + b.amount, 0);
