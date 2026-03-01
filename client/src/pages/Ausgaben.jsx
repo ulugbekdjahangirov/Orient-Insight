@@ -42,6 +42,7 @@ export default function Ausgaben() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]);
+  const [selectedGuide, setSelectedGuide] = useState(null);
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -990,7 +991,7 @@ export default function Ausgaben() {
   };
   const activeTabGrad = tabGradients[activeExpenseTab] || tabGradients.general;
 
-  const GuideSummary = ({ data, formatNumber }) => {
+  const GuideSummary = ({ data, formatNumber, selected, onSelect }) => {
     const guideTotals = {};
     data.forEach(item => {
       const e = item.expenses || {};
@@ -1007,18 +1008,30 @@ export default function Ausgaben() {
       <div className="mt-6 mb-2">
         <div className="flex items-center gap-2 mb-3 px-1">
           <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,#6ee7b7,transparent)' }} />
-          <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest px-2">Gidlar bo'yicha jami</span>
+          <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest px-2">
+            Gidlar bo'yicha jami
+            {selected && <span className="ml-2 normal-case font-normal text-emerald-500">— {selected} filtrlangan</span>}
+          </span>
           <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,#6ee7b7,transparent)' }} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 px-1">
-          {entries.map(([name, total]) => (
-            <div key={name} className="flex flex-col items-center rounded-xl px-3 py-3"
-              style={{ background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)', border: '1px solid #6ee7b7' }}>
-              <span className="text-xs font-semibold text-emerald-800 text-center leading-tight mb-1.5 w-full"
-                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-              <span className="text-base font-black text-emerald-900">${formatNumber(total)}</span>
-            </div>
-          ))}
+          {entries.map(([name, total]) => {
+            const isActive = selected === name;
+            return (
+              <button key={name} onClick={() => onSelect(isActive ? null : name)}
+                className="flex flex-col items-center rounded-xl px-3 py-3 w-full transition-all duration-150"
+                style={{
+                  background: isActive ? 'linear-gradient(135deg,#065f46,#059669)' : 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+                  border: isActive ? '2px solid #059669' : '1px solid #6ee7b7',
+                  boxShadow: isActive ? '0 4px 14px #05966944' : 'none',
+                  transform: isActive ? 'translateY(-2px)' : 'none',
+                }}>
+                <span className="text-xs font-semibold text-center leading-tight mb-1.5 w-full"
+                  style={{ color: isActive ? '#d1fae5' : '#065f46', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                <span className="text-base font-black" style={{ color: isActive ? '#ffffff' : '#064e3b' }}>${formatNumber(total)}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -1139,7 +1152,7 @@ export default function Ausgaben() {
               return (
                 <button
                   key={module.code}
-                  onClick={() => updateParams({ tour: module.code })}
+                  onClick={() => { updateParams({ tour: module.code }); setSelectedGuide(null); }}
                   className="relative overflow-hidden rounded-xl md:rounded-2xl p-2 md:p-4 text-left transition-all duration-300 group"
                   style={{
                     background: isActive ? activeBg : 'rgba(255,255,255,0.1)',
@@ -1546,7 +1559,11 @@ export default function Ausgaben() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredBookingsWithHotels.map((item, idx) => {
+                          {filteredBookingsWithHotels.filter(item => {
+                            if (!selectedGuide) return true;
+                            const e = item.expenses || {};
+                            return e.guideMainName === selectedGuide || e.guideSecondName === selectedGuide || e.guideBergrName === selectedGuide;
+                          }).map((item, idx) => {
                             const e = item.expenses || {};
                             const total = (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0);
                             const rowBg = idx%2===0 ? '#ffffff' : '#f8fafc';
@@ -1599,7 +1616,7 @@ export default function Ausgaben() {
                     )}
 
                     {/* ── Per-guide earnings summary ── */}
-                    <GuideSummary data={filteredBookingsWithHotels} formatNumber={formatNumber} />
+                    <GuideSummary data={filteredBookingsWithHotels} formatNumber={formatNumber} selected={selectedGuide} onSelect={setSelectedGuide} />
                   </div>
                 )}
 
