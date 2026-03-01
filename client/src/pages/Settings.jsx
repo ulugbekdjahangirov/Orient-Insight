@@ -47,16 +47,16 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-3 sm:p-6 max-w-2xl mx-auto">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {/* Header */}
-        <div className="border-b border-gray-200 p-6">
-          <h1 className="text-2xl font-bold text-gray-900">Настройки</h1>
+        <div className="border-b border-gray-200 p-4 sm:p-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Настройки</h1>
           <p className="text-sm text-gray-500 mt-1">Управление аккаунтом и безопасностью</p>
         </div>
 
         {/* User Info */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <User className="w-5 h-5" />
             Информация о пользователе
@@ -64,7 +64,7 @@ export default function Settings() {
           <div className="space-y-3">
             <div>
               <label className="text-sm font-medium text-gray-700">Email</label>
-              <p className="text-gray-900">{user?.email}</p>
+              <p className="text-gray-900 break-all">{user?.email}</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Имя</label>
@@ -78,7 +78,7 @@ export default function Settings() {
         </div>
 
         {/* Change Password */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Lock className="w-5 h-5" />
             Изменить пароль
@@ -112,11 +112,11 @@ export default function Settings() {
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" />
                 {loading ? 'Сохранение...' : 'Сохранить пароль'}

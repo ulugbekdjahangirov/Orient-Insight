@@ -191,8 +191,8 @@ export default function GmailSettings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Sozlamalar</h1>
+    <div className="max-w-4xl mx-auto p-3 sm:p-6">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Sozlamalar</h1>
 
       {/* Message */}
       {message && (
@@ -204,27 +204,27 @@ export default function GmailSettings() {
       )}
 
       {/* Connection Status */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
         <h2 className="text-lg font-semibold mb-4">Статус подключения</h2>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full mr-3 ${connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <div className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
             <span className="text-gray-700">
               {connected ? 'Gmail подключен' : 'Gmail не подключен'}
             </span>
           </div>
           {connected ? (
-            <div className="space-x-2">
+            <div className="flex gap-2">
               <button
                 onClick={handlePollNow}
                 disabled={polling}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
               >
                 {polling ? 'Проверка...' : 'Проверить сейчас'}
               </button>
               <button
                 onClick={handleDisconnect}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                className="flex-1 sm:flex-none px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
               >
                 Отключить
               </button>
@@ -232,7 +232,7 @@ export default function GmailSettings() {
           ) : (
             <button
               onClick={handleAuthorize}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               Подключить Gmail
             </button>
@@ -245,7 +245,7 @@ export default function GmailSettings() {
       </div>
 
       {/* Email Whitelist */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
         <h2 className="text-lg font-semibold mb-4">Белый список отправителей</h2>
         <p className="text-sm text-gray-600 mb-4">
           Только письма от этих адресов будут обрабатываться. Можно добавить отдельные email'ы или домены (начинающиеся с @).
@@ -259,11 +259,11 @@ export default function GmailSettings() {
             onChange={(e) => setNewEmail(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAddEmail()}
             placeholder="booking@example.com или @world-insight.de"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
           <button
             onClick={handleAddEmail}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
           >
             Добавить
           </button>
@@ -298,21 +298,20 @@ export default function GmailSettings() {
       </div>
 
       {/* Transport Telegram Settings */}
-      <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-4 sm:mt-6">
         <h2 className="text-lg font-semibold mb-1">🚌 Transport Telegram sozlamalari</h2>
         <p className="text-sm text-gray-500 mb-4">
           Marshrut varaqasini Telegram orqali provayderga yuborish uchun har bir provayder uchun chat ID kiriting.
-          Chat ID ni bilish uchun provayderdan bot ga xabar yozishini so'rang, keyin GmailSettings → Known chats dan ID ni oling.
         </p>
         <div className="space-y-3 mb-4">
           {[
             { key: 'xayrulla', label: 'Xayrulla',  placeholder: '-123456789' },
             { key: 'sevil',    label: 'Sevil aka',  placeholder: '-123456789' },
             { key: 'nosir',    label: 'Nosir aka',  placeholder: '-123456789' },
-            { key: 'hammasi',  label: 'Siroj',      placeholder: '-123456789 (marshrut tasdiqlash + Eintritt)' },
+            { key: 'hammasi',  label: 'Siroj',      placeholder: '-123456789' },
           ].map(({ key, label, placeholder }) => (
-            <div key={key} className="flex items-center gap-3">
-              <label className="w-28 text-sm font-medium text-gray-700 flex-shrink-0">{label}</label>
+            <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+              <label className="sm:w-28 text-sm font-medium text-gray-700 sm:flex-shrink-0">{label}</label>
               <input
                 type="text"
                 value={transportChatIds[key] || ''}
@@ -326,27 +325,27 @@ export default function GmailSettings() {
         <button
           onClick={handleSaveTransport}
           disabled={savingTransport}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
         >
           {savingTransport ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
       </div>
 
       {/* Restoran Telegram Settings */}
-      <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-4 sm:mt-6">
         <h2 className="text-lg font-semibold mb-1">🍽 Restoran Telegram sozlamalari</h2>
         <p className="text-sm text-gray-500 mb-4">
           Har bir restoran uchun Telegram chat ID kiriting. Restoran nomi BookingDetail → Meals da ko'rsatilgan nom bilan bir xil bo'lishi kerak.
         </p>
         {/* Add new restaurant */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
           <input
             type="text"
             value={newRestaurant.name}
             onChange={e => setNewRestaurant(prev => ({ ...prev, name: e.target.value }))}
             onKeyPress={e => e.key === 'Enter' && handleAddRestaurant()}
             placeholder="Restoran nomi (masalan: Saida Opa)"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <input
             type="text"
@@ -354,11 +353,11 @@ export default function GmailSettings() {
             onChange={e => setNewRestaurant(prev => ({ ...prev, chatId: e.target.value }))}
             onKeyPress={e => e.key === 'Enter' && handleAddRestaurant()}
             placeholder="-123456789"
-            className="w-40 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="sm:w-40 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={handleAddRestaurant}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
           >
             Qo'shish
           </button>
@@ -369,18 +368,18 @@ export default function GmailSettings() {
             <div className="text-gray-500 text-sm">Hali restoran qo'shilmagan</div>
           ) : (
             Object.entries(mealChatIds).map(([name, chatId]) => (
-              <div key={name} className="flex items-center gap-3">
-                <label className="w-40 text-sm font-medium text-gray-700 flex-shrink-0">{name}</label>
+              <div key={name} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 p-2 bg-gray-50 rounded-lg sm:bg-transparent sm:p-0">
+                <label className="sm:w-40 text-sm font-semibold text-gray-700 sm:flex-shrink-0">{name}</label>
                 <input
                   type="text"
                   value={chatId}
                   onChange={e => setMealChatIds(prev => ({ ...prev, [name]: e.target.value }))}
                   placeholder="-123456789"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   onClick={() => handleRemoveRestaurant(name)}
-                  className="text-red-600 hover:text-red-800 text-sm"
+                  className="self-end sm:self-auto text-red-600 hover:text-red-800 text-sm px-2 py-1"
                 >
                   O'chirish
                 </button>
@@ -391,14 +390,14 @@ export default function GmailSettings() {
         <button
           onClick={handleSaveMeal}
           disabled={savingMeal}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
         >
           {savingMeal ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
       </div>
 
       {/* Info Box */}
-      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="mt-4 sm:mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">Как это работает</h3>
         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
           <li>Система проверяет Gmail каждые 5 минут на наличие новых писем</li>
