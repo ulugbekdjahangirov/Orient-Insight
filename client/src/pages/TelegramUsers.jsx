@@ -145,6 +145,31 @@ function RoleCell({ chatId, value, onSave }) {
   );
 }
 
+function HotelCell({ chatId, hotels, onLink }) {
+  const [saving, setSaving] = useState(false);
+  const linked = hotels.find(h => h.telegramChatId === chatId);
+
+  const handleChange = async (e) => {
+    setSaving(true);
+    await onLink(chatId, e.target.value || null);
+    setSaving(false);
+  };
+
+  return (
+    <select
+      value={linked?.id || ''}
+      onChange={handleChange}
+      disabled={saving}
+      className="text-sm px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:opacity-60 max-w-[200px]"
+    >
+      <option value="">— Tanlanmagan</option>
+      {hotels.map(h => (
+        <option key={h.id} value={h.id}>{h.name}</option>
+      ))}
+    </select>
+  );
+}
+
 function SendMessageModal({ chat, onClose }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -223,6 +248,7 @@ export default function TelegramUsers() {
   const [search, setSearch] = useState('');
   const [tabFilter, setTabFilter] = useState('all');
   const [sendingTo, setSendingTo] = useState(null);
+  const [hotels, setHotels] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
 
   const LS_KEY = 'tg_chats_cache';
@@ -247,6 +273,21 @@ export default function TelegramUsers() {
   }, []);
 
   useEffect(() => { loadChats(); }, [loadChats]);
+
+  useEffect(() => {
+    telegramApi.getHotelsList().then(r => setHotels(r.data.hotels || [])).catch(() => {});
+  }, []);
+
+  const handleLinkHotel = async (chatId, hotelId) => {
+    try {
+      await telegramApi.linkHotel(chatId, hotelId);
+      const res = await telegramApi.getHotelsList();
+      setHotels(res.data.hotels || []);
+      toast.success(hotelId ? 'Hotel bog\'landi!' : 'Bog\'liq olib tashlandi');
+    } catch {
+      toast.error('Saqlashda xatolik');
+    }
+  };
 
   const handleUpdate = async (chatId, data) => {
     try {
@@ -375,7 +416,7 @@ export default function TelegramUsers() {
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Username</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">{tabFilter === 'hotel' ? 'Hotel' : 'Username'}</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">
                     <span className="flex items-center gap-1"><Phone size={13} />Phone</span>
                   </th>
@@ -392,7 +433,12 @@ export default function TelegramUsers() {
                       <td className="px-4 py-3">
                         <NameCell chatId={chat.chatId} value={chat.name} onSave={handleUpdate} />
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{chat.username || '—'}</td>
+                      <td className="px-4 py-3">
+                        {tabFilter === 'hotel'
+                          ? <HotelCell chatId={chat.chatId} hotels={hotels} onLink={handleLinkHotel} />
+                          : <span className="text-gray-500">{chat.username || '—'}</span>
+                        }
+                      </td>
                       <td className="px-4 py-3">
                         <PhoneCell chatId={chat.chatId} value={chat.phone} onSave={handleUpdate} />
                       </td>

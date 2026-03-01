@@ -75,6 +75,40 @@ async function saveKnownChats(chats) {
   });
 }
 
+// GET /api/telegram/hotels-list - All hotels for linking
+router.get('/hotels-list', authenticate, async (req, res) => {
+  try {
+    const hotels = await prisma.hotel.findMany({
+      select: { id: true, name: true, telegramChatId: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json({ hotels });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/telegram/link-hotel - Link a chat to a hotel (sets hotel.telegramChatId)
+router.put('/link-hotel', authenticate, async (req, res) => {
+  try {
+    const { chatId, hotelId } = req.body;
+    // Clear chatId from any other hotel that had it
+    await prisma.hotel.updateMany({
+      where: { telegramChatId: String(chatId) },
+      data: { telegramChatId: null }
+    });
+    if (hotelId) {
+      await prisma.hotel.update({
+        where: { id: parseInt(hotelId) },
+        data: { telegramChatId: String(chatId) }
+      });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/telegram/updates - Known chats from DB (populated by webhook)
 router.get('/updates', authenticate, async (req, res) => {
   try {
