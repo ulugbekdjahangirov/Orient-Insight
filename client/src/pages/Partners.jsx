@@ -1392,104 +1392,93 @@ export default function Partners() {
   return (
     <div className="min-h-screen" style={{ background: '#f1f5f9' }}>
 
-      {/* ═══ HERO BANNER ═══ */}
-      <div className="relative overflow-hidden mx-3 mt-3" style={{
-        background: 'linear-gradient(160deg, #14532d 0%, #166534 35%, #15803d 65%, #166534 100%)',
-        borderRadius: '28px',
-      }}>
-        {/* Glow blobs */}
-        <div className="absolute top-0 right-0 rounded-full pointer-events-none"
-          style={{ width: '500px', height: '500px', background: '#3b82f6', opacity: 0.18, filter: 'blur(80px)', transform: 'translate(40%,-40%)' }} />
-        <div className="absolute bottom-0 left-0 rounded-full pointer-events-none"
-          style={{ width: '350px', height: '350px', background: '#10b981', opacity: 0.22, filter: 'blur(70px)', transform: 'translate(-30%,40%)' }} />
-        {/* Shimmer */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }} />
-
-        <div className="relative px-4 md:px-6 pt-5 md:pt-6 pb-5 md:pb-6">
-          {/* Title + Buttons */}
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4 md:mb-5">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none"
-                style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Hamkorlar</h1>
-              <p className="text-green-200 text-xs md:text-sm mt-1.5 opacity-75">Hotel, restoran, transport va gidlar tasdiqlash</p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={openTelegramFinder}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-              >
-                <Send size={13} /> Telegram Finder
-              </button>
-              <button
-                onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
-                disabled={loading}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-              >
-                <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-                <span>Yangilash</span>
-                <span className="opacity-60">{countdown}s</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Tab Cards — grid-cols-4 mobile, grid-cols-7 desktop */}
-          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-            {TABS.map(tab => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              const color = TAB_COLORS[tab.id];
-              const label = tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
-                  className="relative overflow-hidden rounded-xl p-2 sm:p-3 text-left transition-all duration-300"
-                  style={{
-                    background: isActive ? `linear-gradient(135deg, ${color}, ${color}99)` : 'rgba(255,255,255,0.1)',
-                    border: `1px solid ${isActive ? color + 'aa' : 'rgba(255,255,255,0.2)'}`,
-                    boxShadow: isActive ? `0 0 25px ${color}45, 0 6px 20px rgba(0,0,0,0.35)` : 'none',
-                    transform: isActive ? 'translateY(-3px)' : 'none',
-                  }}
-                >
-                  <div className="absolute top-[-10px] right-[-10px] w-14 h-14 rounded-full pointer-events-none"
-                    style={{ background: 'white', opacity: isActive ? 0.12 : 0.03 }} />
-                  {/* Mobile: icon + short label centered */}
-                  <div className="sm:hidden flex flex-col items-center gap-1">
-                    <Icon size={15} color="white" />
-                    <span className="text-[10px] font-bold text-center leading-tight text-white"
-                      style={{ opacity: isActive ? 1 : 0.8 }}>
-                      {tab.shortLabel}
-                    </span>
-                  </div>
-                  {/* Desktop: icon + full label + subtitle */}
-                  <div className="hidden sm:flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1">
-                      <Icon size={12} color="white" />
-                      <p className="text-xs font-black leading-none truncate"
-                        style={{ color: 'white', opacity: isActive ? 1 : 0.75 }}>{label}</p>
-                    </div>
-                    <p className="text-[10px] leading-tight"
-                      style={{ color: 'rgba(255,255,255,0.55)', opacity: isActive ? 1 : 0.7 }}>
-                      {TAB_SUBTITLES[tab.id]}
-                    </p>
-                  </div>
-                  {isActive && <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-white opacity-70" />}
-                </button>
-              );
-            })}
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 pt-3 pb-2 md:px-4 md:pt-4">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Hamkorlar</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Hotel, restoran, transport va gidlar tasdiqlash</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openTelegramFinder}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white transition-colors"
+          >
+            <Send size={13} />
+            <span className="hidden sm:inline">Telegram Finder</span>
+            <span className="sm:hidden">Finder</span>
+          </button>
+          <button
+            onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Yangilash</span>
+            <span className="text-gray-400">{countdown}s</span>
+          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-3 md:px-4 py-3 md:py-5">
+      {/* Main card: tabs + content */}
+      <div className="mx-3 mb-4 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
+        {/* ── Tab navigation ── */}
+        {/* Mobile: 2-row grid (4 + 3) */}
+        <div className="sm:hidden p-2 space-y-1.5" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0' }}>
+          {[TABS.slice(0, 4), TABS.slice(4)].map((row, ri) => (
+            <div key={ri} className={`grid gap-1.5 ${ri === 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              {row.map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
+                    className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-semibold transition-all"
+                    style={isActive
+                      ? { background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', boxShadow: '0 2px 8px #16a34a44' }
+                      : { background: 'white', color: '#374151', border: '1px solid #d1fae5' }}
+                  >
+                    <span className="w-6 h-6 rounded-lg flex items-center justify-center"
+                      style={isActive ? { background: 'rgba(255,255,255,0.2)' } : { background: '#d1fae5' }}>
+                      <Icon size={13} color={isActive ? 'white' : '#059669'} />
+                    </span>
+                    {tab.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: horizontal underline tabs */}
+        <div className="hidden sm:flex border-b border-gray-200" style={{ background: '#f9fafb' }}>
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const label = tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label;
+            const color = TAB_COLORS[tab.id];
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
+                className="flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all relative whitespace-nowrap"
+                style={{
+                  color: isActive ? color : '#6b7280',
+                  borderBottom: isActive ? `3px solid ${color}` : '3px solid transparent',
+                  marginBottom: '-1px',
+                  background: isActive ? `${color}08` : 'transparent',
+                }}
+              >
+                <Icon size={15} color={isActive ? color : '#9ca3af'} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        <div className="p-3 md:p-4">
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
@@ -1973,6 +1962,7 @@ export default function Partners() {
         </>
       )}
 
+        </div>
       </div>
 
       {/* Telegram Finder Modal */}
