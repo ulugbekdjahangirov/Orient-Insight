@@ -480,9 +480,9 @@ router.post('/send-transport-telegram/:provider', authenticate, upload.single('p
       return res.status(400).json({ error: 'Hammasi chat ID sozlanmagan (GmailSettings → Transport)' });
     }
 
-    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_TRANSPORT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
     if (!TELEGRAM_BOT_TOKEN) {
-      return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN sozlanmagan' });
+      return res.status(500).json({ error: 'TELEGRAM_TRANSPORT_TOKEN sozlanmagan' });
     }
 
     const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;

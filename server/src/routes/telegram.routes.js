@@ -11,6 +11,7 @@ const puppeteer = require('puppeteer');
 
 const prisma = new PrismaClient();
 const BOT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
+const TRANSPORT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_TRANSPORT_TOKEN}`;
 const CHATS_SETTING_KEY = 'TELEGRAM_KNOWN_CHATS';
 
 // multer: accept PDF blob in memory
@@ -1246,6 +1247,321 @@ router.get('/confirmations', authenticate, async (req, res) => {
 });
 
 // ============================================================
+// Transport Bot Webhook
+// ============================================================
+
+// POST /api/telegram/webhook-transport - Receive updates from Transport Bot
+router.post('/webhook-transport', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const update = req.body;
+
+    // Save any chat that messages the transport bot to known chats
+    const msg = update.message || update.channel_post;
+    if (msg) {
+      const chat = msg.chat;
+      const chats = await loadKnownChats();
+      const existing = chats[String(chat.id)] || {};
+      const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
+      chats[String(chat.id)] = {
+        ...existing,
+        chatId: String(chat.id),
+        name: existing.nameCustomized ? existing.name : telegramName,
+        username: chat.username ? `@${chat.username}` : (existing.username || null),
+        type: chat.type,
+        lastMessage: msg.text || '[file]',
+        date: new Date(msg.date * 1000).toISOString()
+      };
+      await saveKnownChats(chats);
+    }
+
+    const cb = update.callback_query;
+    if (!cb) return;
+
+    const callbackQueryId = cb.id;
+    const data = cb.data || '';
+    const fromUser = cb.from;
+    const fromDisplayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ');
+    const fromName = [fromDisplayName, fromUser.username ? `@${fromUser.username}` : ''].filter(Boolean).join(' ') || 'Noma\'lum';
+    const fromChatId = cb.message?.chat?.id;
+    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+    // ── tr_approve / tr_decline (Siroj approving marshrut for provider) ────
+    if (data.startsWith('tr_approve:') || data.startsWith('tr_decline:')) {
+      const parts = data.split(':');
+      const isApprove   = data.startsWith('tr_approve:');
+      const trBookingId = parseInt(parts[1]);
+      const trProvider  = parts[2];
+      const providerLabel = PROVIDER_LABELS[trProvider] || trProvider;
+
+      const confirmation = await prisma.transportConfirmation.findFirst({
+        where: { bookingId: trBookingId, provider: trProvider, status: 'PENDING_APPROVAL' },
+        include: {
+          booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true, guide: { select: { name: true, phone: true } } } }
+        }
+      });
+
+      if (!confirmation) {
+        await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+          callback_query_id: callbackQueryId, text: '⚠️ Allaqachon ishlov berilgan.', show_alert: true
+        }).catch(() => {});
+        return;
+      }
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isApprove ? `✅ ${providerLabel} ga yuborilmoqda...` : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      if (isApprove) {
+        const providerChatId = await getProviderChatId(trProvider);
+        if (!providerChatId) return;
+
+        const fileId = cb.message?.document?.file_id;
+        if (!fileId) return;
+
+        const booking = confirmation.booking;
+        const providerCaption = [
+          `🚌 *Marshrut varaqasi*`,
+          `📋 Booking: *${booking.bookingNumber}*`,
+          `🚗 Transport: *${providerLabel}*`,
+          booking.pax         ? `👥 PAX: *${booking.pax}* kishi`                     : null,
+          booking.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
+          booking.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
+          booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+        ].filter(Boolean).join('\n');
+
+        await axios.post(`${TRANSPORT_API()}/sendDocument`, {
+          chat_id: providerChatId,
+          document: fileId,
+          caption: providerCaption,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: '✅ Tasdiqlash', callback_data: `tr_confirm:${trBookingId}:${trProvider}` },
+              { text: '❌ Rad qilish', callback_data: `tr_reject:${trBookingId}:${trProvider}` }
+            ]]
+          })
+        }).catch(err => console.error('tr_approve sendDocument error:', err.response?.data || err.message));
+
+        await prisma.transportConfirmation.update({
+          where: { id: confirmation.id },
+          data: { status: 'APPROVED', approvedBy: fromName, respondedAt: new Date() }
+        });
+
+        if (cb.message?.message_id && fromChatId) {
+          const originalCaption = cb.message.caption || '';
+          await axios.post(`${TRANSPORT_API()}/editMessageCaption`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            caption: originalCaption + `\n\n✅ ${fromName} tasdiqladi — ${providerLabel} ga yuborildi`,
+            parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+      } else {
+        await prisma.transportConfirmation.update({
+          where: { id: confirmation.id },
+          data: { status: 'REJECTED_BY_APPROVER', approvedBy: fromName, respondedAt: new Date() }
+        });
+        if (cb.message?.message_id && fromChatId) {
+          const originalCaption = cb.message.caption || '';
+          await axios.post(`${TRANSPORT_API()}/editMessageCaption`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            caption: originalCaption + `\n\n❌ ${fromName} tomonidan rad qilindi`,
+            parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+        if (adminChatId) {
+          const booking = confirmation.booking;
+          await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+            chat_id: adminChatId,
+            text: [`❌ *${providerLabel}* uchun marshrut varaqasi rad etildi`,
+              `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
+              `👤 RAD ETDI: ${fromName}`].join('\n'),
+            parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // ── tr_confirm / tr_reject (provider confirming marshrut) ────────────
+    if (data.startsWith('tr_confirm:') || data.startsWith('tr_reject:')) {
+      const parts = data.split(':');
+      const isConfirm  = data.startsWith('tr_confirm:');
+      const trBookingId = parseInt(parts[1]);
+      const trProvider  = parts[2];
+      const emoji = isConfirm ? '✅' : '❌';
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isConfirm ? '✅ Tasdiqlandi! Rahmat.' : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      if (cb.message?.message_id && fromChatId) {
+        const statusLine = isConfirm
+          ? `\n\n✅ ${fromName} tomonidan tasdiqlandi`
+          : `\n\n❌ ${fromName} tomonidan rad qilindi`;
+        await axios.post(`${TRANSPORT_API()}/editMessageCaption`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          caption: (cb.message.caption || '') + statusLine,
+          parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+        }).catch(() => {});
+      }
+
+      let trApprovedBy = null;
+      try {
+        const existing = await prisma.transportConfirmation.findFirst({
+          where: { bookingId: trBookingId, provider: trProvider, status: { in: ['PENDING', 'APPROVED'] } },
+          select: { approvedBy: true }
+        });
+        trApprovedBy = existing?.approvedBy || null;
+      } catch {}
+
+      try {
+        await prisma.transportConfirmation.updateMany({
+          where: { bookingId: trBookingId, provider: trProvider, status: { in: ['PENDING', 'APPROVED'] } },
+          data: { status: isConfirm ? 'CONFIRMED' : 'REJECTED', confirmedBy: fromName, respondedAt: new Date() }
+        });
+      } catch (e) { console.warn('TransportConfirmation update warn:', e.message); }
+
+      if (adminChatId) {
+        const booking = await prisma.booking.findUnique({
+          where: { id: trBookingId },
+          select: { bookingNumber: true, arrivalDate: true, endDate: true, guide: { select: { name: true, phone: true } } }
+        });
+        const providerLabel = PROVIDER_LABELS[trProvider] || trProvider;
+        const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000);
+        const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
+        const adminMsg = [
+          `${emoji} *${providerLabel}*`,
+          `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
+          booking?.arrivalDate ? `📅 Boshlanishi: ${fmtDateUtil(booking.arrivalDate)}` : null,
+          booking?.endDate     ? `🏁 Tugashi: ${fmtDateUtil(booking.endDate)}`         : null,
+          booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
+          trApprovedBy         ? `👁 TEKSHIRDI: ${trApprovedBy}`                       : null,
+          `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
+          `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
+        ].filter(Boolean).join('\n');
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: adminChatId, text: adminMsg, parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
+      return;
+    }
+
+    // ── tp26_approve / tp26_decline (Jahresplanung transport approval) ───
+    if (data.startsWith('tp26_approve:') || data.startsWith('tp26_decline:')) {
+      const parts = data.split(':');
+      const isApprove    = data.startsWith('tp26_approve:');
+      const tp26Year     = parts[1];
+      const tp26TourType = parts[2];
+      const tp26Provider = parts[3];
+      const providerLabel = { sevil: 'Sevil', xayrulla: 'Xayrulla', nosir: 'Nosir' }[tp26Provider] || tp26Provider;
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isApprove ? `✅ ${providerLabel} ga yuborilmoqda...` : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      const confKey = `JP_TRANSPORT_CONFIRM_${tp26Year}_${tp26TourType}_${tp26Provider}`;
+      const setting = await prisma.systemSetting.findUnique({ where: { key: confKey } });
+      if (!setting) return;
+      const stored = JSON.parse(setting.value || '{}');
+
+      if (isApprove) {
+        const fileId = cb.message?.document?.file_id;
+        if (!fileId) return;
+        const providerChatId = stored.providerChatId;
+        if (!providerChatId) return;
+
+        const providerCaption = [
+          `🚌 *Transport Rejasi ${tp26Year} — ${tp26TourType}*`,
+          `👤 *${providerLabel}*`,
+          ``,
+          `Qabul qildingizmi?`
+        ].join('\n');
+
+        await axios.post(`${TRANSPORT_API()}/sendDocument`, {
+          chat_id: providerChatId,
+          document: fileId,
+          caption: providerCaption,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: '✅ Tasdiqlash', callback_data: `tp26_confirm:${tp26Year}:${tp26TourType}:${tp26Provider}` },
+              { text: '❌ Rad etish',  callback_data: `tp26_reject:${tp26Year}:${tp26TourType}:${tp26Provider}` }
+            ]]
+          })
+        }).catch(err => console.error('tp26_approve sendDocument error:', err.response?.data || err.message));
+
+        stored.status = 'APPROVED'; stored.approvedBy = fromName; stored.approvedAt = new Date().toISOString();
+        await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
+
+        if (cb.message?.message_id && fromChatId) {
+          await axios.post(`${TRANSPORT_API()}/editMessageCaption`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            caption: (cb.message.caption || '') + `\n\n✅ ${fromName} tasdiqladi — ${providerLabel} ga yuborildi`,
+            parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+      } else {
+        stored.status = 'DECLINED'; stored.approvedBy = fromName; stored.approvedAt = new Date().toISOString();
+        await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
+
+        if (cb.message?.message_id && fromChatId) {
+          await axios.post(`${TRANSPORT_API()}/editMessageCaption`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            caption: (cb.message.caption || '') + `\n\n❌ ${fromName} tomonidan rad qilindi`,
+            parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // ── tp26_confirm / tp26_reject (provider confirming Jahresplanung) ───
+    if (data.startsWith('tp26_confirm:') || data.startsWith('tp26_reject:')) {
+      const parts = data.split(':');
+      const isConfirm    = data.startsWith('tp26_confirm:');
+      const tp26Year     = parts[1];
+      const tp26TourType = parts[2];
+      const tp26Provider = parts[3];
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isConfirm ? '✅ Tasdiqlandi!' : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      const confKey = `JP_TRANSPORT_CONFIRM_${tp26Year}_${tp26TourType}_${tp26Provider}`;
+      const setting = await prisma.systemSetting.findUnique({ where: { key: confKey } });
+      if (setting) {
+        const stored = JSON.parse(setting.value || '{}');
+        stored.status = isConfirm ? 'CONFIRMED' : 'REJECTED';
+        stored.confirmedBy = fromName; stored.respondedAt = new Date().toISOString();
+        await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });
+
+        if (fromChatId && cb.message?.message_id) {
+          const resultLine = `\n\n${isConfirm ? '✅ TASDIQLADI' : '❌ RAD ETDI'}: *${fromName}*`;
+          await axios.post(`${TRANSPORT_API()}/editMessageCaption`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            caption: (cb.message.caption || '') + resultLine,
+            parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+      }
+      return;
+    }
+
+  } catch (err) {
+    console.error('Transport webhook error:', err.response?.data || err.message);
+  }
+});
+
+// ============================================================
 // Transport Confirmations (Marshrut varaqasi)
 // ============================================================
 
@@ -1287,7 +1603,7 @@ router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('
       booking.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
     ].filter(Boolean).join('\n');
 
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const token = process.env.TELEGRAM_TRANSPORT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
 
     if (provider === 'hammasi') {
       // ── Direct send: no 2-stage for "hammasi" ──────────────────────────────
