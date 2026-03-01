@@ -11,7 +11,6 @@ import {
   UserCog,
   ChevronLeft,
   ChevronRight,
-  Compass,
   Building2,
   Bell,
   Wallet,
@@ -77,9 +76,7 @@ export default function Sidebar({ open, onToggle }) {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-            <Compass className="w-6 h-6" />
-          </div>
+          <img src="/logo.png" alt="Orient Insight" className="w-10 h-10 rounded-lg object-cover" />
           {open && (
             <div>
               <h1 className="font-bold text-lg">Orient Insight</h1>
