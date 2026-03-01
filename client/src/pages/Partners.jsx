@@ -32,6 +32,26 @@ const TOUR_TAB_STYLE = {
   ZA:  { active: 'bg-gradient-to-r from-orange-400 to-amber-500 text-white shadow-sm',  inactive: 'bg-white border border-gray-200 text-gray-600 hover:border-orange-200 hover:text-orange-600' },
 };
 
+const TAB_COLORS = {
+  hotels:          '#3b82f6',
+  restoran:        '#f97316',
+  transport:       '#10b981',
+  gidlar:          '#a855f7',
+  'hotels-plan':   '#6366f1',
+  'restoran-plan': '#f59e0b',
+  'transport-plan':'#14b8a6',
+};
+
+const TAB_SUBTITLES = {
+  hotels:          'Hotel tasdiqlash',
+  restoran:        'Ovqat tasdiqlash',
+  transport:       'Marshrut tasdiqlash',
+  gidlar:          'Gid tayinlash',
+  'hotels-plan':   'Yillik reja',
+  'restoran-plan': 'Yillik reja',
+  'transport-plan':'Yillik reja',
+};
+
 const STATUS_CONFIG = {
   PENDING:              { label: 'Kutilmoqda',             color: 'bg-yellow-100 text-yellow-800', icon: '🕐' },
   CONFIRMED:            { label: 'Tasdiqladi',             color: 'bg-green-100 text-green-800',   icon: '✅' },
@@ -1370,84 +1390,97 @@ export default function Partners() {
   }, [selectedYear]);
 
   return (
-    <div className="p-3 sm:p-6 max-w-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Hamkorlar</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Hotel, restoran, transport va gidlar bilan hamkorlik holatlari</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={openTelegramFinder}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold transition-colors"
-            title="Telegram Chat ID topish"
-          >
-            <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">Telegram Finder</span>
-            <span className="sm:hidden">Finder</span>
-          </button>
-          <button
-            onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
-            disabled={loading}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Yangilash</span>
-            <span className="text-xs text-gray-400">{countdown}s</span>
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen" style={{ background: '#f1f5f9' }}>
 
-      {/* Tabs */}
-      {/* Mobile: 4-col card grid */}
-      <div className="sm:hidden grid grid-cols-4 gap-1.5 mb-4" style={{ background: '#f0fdf4', borderRadius: 14, padding: 8, border: '2px solid #bbf7d0' }}>
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          const label = tab.label.endsWith(' Plan')
-            ? `${tab.label.replace(' Plan', '')} ${selectedYear}`
-            : tab.label;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
-              className="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-semibold transition-all"
-              style={isActive
-                ? { background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', boxShadow: '0 2px 8px #16a34a44' }
-                : { background: 'white', color: '#374151', border: '1px solid #d1fae5' }}
-            >
-              <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={isActive ? { background: 'rgba(255,255,255,0.2)' } : { background: '#d1fae5' }}>
-                <Icon size={13} color={isActive ? 'white' : '#059669'} />
-              </span>
-              <span className="text-center leading-tight" style={{ fontSize: 10 }}>{label}</span>
-            </button>
-          );
-        })}
-      </div>
-      {/* Desktop: horizontal tab bar */}
-      <div className="hidden sm:flex gap-1 mb-6 bg-white rounded-2xl p-1.5 w-fit shadow-sm border border-gray-200">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                activeTab === tab.id
-                  ? (TAB_ACTIVE_CLASSES[tab.id] || 'bg-gray-800 text-white shadow-md')
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label}
-            </button>
-          );
-        })}
+      {/* ═══ HERO BANNER ═══ */}
+      <div className="relative overflow-hidden mx-3 mt-3" style={{
+        background: 'linear-gradient(160deg, #14532d 0%, #166534 35%, #15803d 65%, #166534 100%)',
+        borderRadius: '28px',
+      }}>
+        {/* Glow blobs */}
+        <div className="absolute top-0 right-0 rounded-full pointer-events-none"
+          style={{ width: '500px', height: '500px', background: '#3b82f6', opacity: 0.18, filter: 'blur(80px)', transform: 'translate(40%,-40%)' }} />
+        <div className="absolute bottom-0 left-0 rounded-full pointer-events-none"
+          style={{ width: '350px', height: '350px', background: '#10b981', opacity: 0.22, filter: 'blur(70px)', transform: 'translate(-30%,40%)' }} />
+        {/* Shimmer */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }} />
+
+        <div className="relative px-4 md:px-6 pt-5 md:pt-6 pb-5 md:pb-6">
+          {/* Title + Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4 md:mb-5">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-none"
+                style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Hamkorlar</h1>
+              <p className="text-green-200 text-xs md:text-sm mt-1.5 opacity-75">Hotel, restoran, transport va gidlar tasdiqlash</p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={openTelegramFinder}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+              >
+                <Send size={13} /> Telegram Finder
+              </button>
+              <button
+                onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
+                disabled={loading}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+              >
+                <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+                <span>Yangilash</span>
+                <span className="opacity-60">{countdown}s</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Cards — grid-cols-4 mobile, grid-cols-7 desktop */}
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            {TABS.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              const color = TAB_COLORS[tab.id];
+              const label = tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
+                  className="relative overflow-hidden rounded-xl p-2 sm:p-3 text-left transition-all duration-300"
+                  style={{
+                    background: isActive ? `linear-gradient(135deg, ${color}, ${color}99)` : 'rgba(255,255,255,0.1)',
+                    border: `1px solid ${isActive ? color + 'aa' : 'rgba(255,255,255,0.2)'}`,
+                    boxShadow: isActive ? `0 0 25px ${color}45, 0 6px 20px rgba(0,0,0,0.35)` : 'none',
+                    transform: isActive ? 'translateY(-3px)' : 'none',
+                  }}
+                >
+                  <div className="absolute top-[-10px] right-[-10px] w-14 h-14 rounded-full pointer-events-none"
+                    style={{ background: 'white', opacity: isActive ? 0.12 : 0.03 }} />
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1">
+                      <Icon size={12} color={isActive ? 'white' : color} />
+                      <p className="text-xs font-black leading-none truncate"
+                        style={{ color: isActive ? 'white' : color }}>{label}</p>
+                    </div>
+                    <p className="text-[10px] leading-tight hidden sm:block"
+                      style={{ color: isActive ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.3)' }}>
+                      {TAB_SUBTITLES[tab.id]}
+                    </p>
+                  </div>
+                  {isActive && <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-white opacity-70" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Content */}
+      <div className="px-3 md:px-4 py-3 md:py-5">
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
@@ -1930,6 +1963,8 @@ export default function Partners() {
           )}
         </>
       )}
+
+      </div>
 
       {/* Telegram Finder Modal */}
       {telegramFinderOpen && (
