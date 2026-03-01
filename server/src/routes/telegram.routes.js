@@ -164,10 +164,11 @@ router.put('/link-transport', authenticate, async (req, res) => {
   }
 });
 
-// GET /api/telegram/hotels-list - All hotels for linking
+// GET /api/telegram/hotels-list - Active hotels for linking
 router.get('/hotels-list', authenticate, async (req, res) => {
   try {
     const hotels = await prisma.hotel.findMany({
+      where: { isActive: true },
       select: { id: true, name: true, telegramChatId: true },
       orderBy: { name: 'asc' }
     });
