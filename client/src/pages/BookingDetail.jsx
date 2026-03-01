@@ -10421,7 +10421,17 @@ export default function BookingDetail() {
         <div className="space-y-3 md:space-y-6">
           {/* Sub-tabs for Documents */}
           <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-amber-100 p-3 md:p-4">
-            <nav className="flex space-x-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+            {/* Mobile card grid */}
+            <div className="sm:hidden grid grid-cols-3 gap-1.5 mb-1">
+              <button onClick={() => setDocumentsTab('tourist-list')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'tourist-list' ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><Users className="w-4 h-4" /><span>Tourists</span></button>
+              <button onClick={() => setDocumentsTab('marshrutiy')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'marshrutiy' ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><MapPin className="w-4 h-4" /><span>Marshrut</span></button>
+              <button onClick={() => setDocumentsTab('hotelliste')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'hotelliste' ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><Building2 className="w-4 h-4" /><span>Hotelliste</span></button>
+              <button onClick={() => setDocumentsTab('rechnung')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'rechnung' ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><DollarSign className="w-4 h-4" /><span>Rechnung</span></button>
+              <button onClick={() => setDocumentsTab('neue-rechnung')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'neue-rechnung' ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><FileText className="w-4 h-4" /><span>Neue</span></button>
+              <button onClick={() => setDocumentsTab('gutschrift')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'gutschrift' ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><FileText className="w-4 h-4" /><span>Gutschrift</span></button>
+            </div>
+            {/* Desktop nav */}
+            <nav className="hidden sm:flex space-x-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
               <button
                 onClick={() => setDocumentsTab('tourist-list')}
                 className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
@@ -11039,7 +11049,23 @@ export default function BookingDetail() {
         <div className="space-y-6">
           {/* Sub-tabs for Tour Services */}
           <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-purple-100 p-3 md:p-4">
-            <nav className="flex space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0">
+            {/* Mobile card grid */}
+            <div className="sm:hidden grid grid-cols-5 gap-1 mb-1">
+              <button onClick={() => setTourServicesTab('hotels')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'hotels' ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><Building2 className="w-4 h-4" /><span>Hotels</span></button>
+              <button onClick={() => setTourServicesTab('transport')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'transport' ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><Car className="w-4 h-4" /><span>Trans.</span></button>
+              <button onClick={() => setTourServicesTab('railway')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'railway' ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><Train className="w-4 h-4" /><span>Rail</span></button>
+              <button onClick={() => setTourServicesTab('flights')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'flights' ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><Plane className="w-4 h-4" /><span>Flights</span></button>
+              <button onClick={() => setTourServicesTab('guide')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'guide' ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><User className="w-4 h-4" /><span>Guide</span></button>
+              <button onClick={() => setTourServicesTab('meals')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'meals' ? 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><span className="text-sm">🍽️</span><span>Meals</span></button>
+              <button onClick={() => setTourServicesTab('eintritt')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'eintritt' ? 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><span className="text-sm">🎫</span><span>Eintrit</span></button>
+              {booking?.tourType?.code !== 'ZA' && (
+                <button onClick={() => setTourServicesTab('metro')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'metro' ? 'bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><span className="text-sm">🚇</span><span>Metro</span></button>
+              )}
+              <button onClick={() => setTourServicesTab('shou')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'shou' ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><span className="text-sm">🎭</span><span>Shou</span></button>
+              <button onClick={() => setTourServicesTab('other')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'other' ? 'bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><span className="text-sm">📋</span><span>Other</span></button>
+            </div>
+            {/* Desktop nav */}
+            <nav className="hidden sm:flex space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0">
               <button
                 onClick={() => setTourServicesTab('hotels')}
                 className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
@@ -12875,7 +12901,17 @@ ${rowsHtml}
         <div className="space-y-6">
           {/* Sub-tabs for Costs (Payment Methods) */}
           <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-green-100 p-3 md:p-4">
-            <nav className="flex space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0">
+            {/* Mobile card grid */}
+            <div className="sm:hidden grid grid-cols-3 gap-1.5 mb-1">
+              <button onClick={() => setCostsTab('ausgaben')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${costsTab === 'ausgaben' ? 'bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><FileText className="w-4 h-4" /><span>Ausgaben</span></button>
+              <button onClick={() => setCostsTab('rl')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${costsTab === 'rl' ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><User className="w-4 h-4" /><span>RL</span></button>
+              <button onClick={() => setCostsTab('spater')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${costsTab === 'spater' ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><Calendar className="w-4 h-4" /><span>Später</span></button>
+              <button onClick={() => setCostsTab('uberweisung')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${costsTab === 'uberweisung' ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><DollarSign className="w-4 h-4" /><span>Überweis.</span></button>
+              <button onClick={() => setCostsTab('karta')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${costsTab === 'karta' ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><span className="text-sm">💳</span><span>Karta</span></button>
+              <button onClick={() => setCostsTab('total')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${costsTab === 'total' ? 'bg-gradient-to-r from-slate-700 via-gray-700 to-zinc-700 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><DollarSign className="w-4 h-4" /><span>Total</span></button>
+            </div>
+            {/* Desktop nav */}
+            <nav className="hidden sm:flex space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0">
               <button
                 onClick={() => setCostsTab('ausgaben')}
                 className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
