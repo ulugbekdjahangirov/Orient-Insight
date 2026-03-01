@@ -191,7 +191,7 @@ router.post('/execute', authenticate, requireAdmin, async (req, res) => {
 
     // Создаём гидов
     for (const name of guideNames) {
-      const existing = await prisma.guide.findUnique({ where: { name } });
+      const existing = await prisma.guide.findFirst({ where: { name } });
       if (!existing) {
         await prisma.guide.create({ data: { name } });
         results.guides.created++;
@@ -280,13 +280,13 @@ router.post('/execute', authenticate, requireAdmin, async (req, res) => {
           };
 
           // Upsert бронирования
-          const existing = await prisma.booking.findUnique({
+          const existing = await prisma.booking.findFirst({
             where: { bookingNumber }
           });
 
           if (existing) {
             await prisma.booking.update({
-              where: { bookingNumber },
+              where: { id: existing.id },
               data: bookingData
             });
             results.bookings.updated++;
