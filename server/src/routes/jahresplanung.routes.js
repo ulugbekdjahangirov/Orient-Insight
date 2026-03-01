@@ -389,7 +389,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
 
     if (groups.length > 0) {
       const TG_API = TG_BASE;
-      const header = `📋 *Заявка ${year} — ${tourLabel}*  🏨 *${hotel.name}*`;
+      const header = `📋 *Заявка ${year} — ${tourLabel}*`;
 
       // Assign global visitIdx to each visit across all groups
       let visitIdx = 0;
@@ -410,6 +410,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         const lines = [
           header, '',
           visitTitle,
+          `🏨 ${hotel.name}`,
           `📅 Заезд: ${v.checkIn}`,
           `📅 Выезд: ${v.checkOut}`,
           `👥 PAX: ${v.pax}`,

@@ -1338,7 +1338,7 @@ router.post('/webhook', (req, res, next) => {
 
       const TOUR_LABELS = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' };
       const ST_ICON = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '⬜' };
-      const header = `📋 *Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}*  🏨 *${hotelName}*`;
+      const header = `📋 *Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}*`;
 
       // Helper — build one visit's message + keyboard (keyboard removed after action)
       function buildVisitMsg(grp, v, st) {
@@ -1346,6 +1346,7 @@ router.post('/webhook', (req, res, next) => {
           ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
           : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
         const lines = [header, '', visitTitle,
+          `🏨 ${hotelName}`,
           `📅 Заезд: ${v.checkIn}`,
           `📅 Выезд: ${v.checkOut}`,
           `👥 PAX: ${v.pax}`,
