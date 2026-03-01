@@ -5559,10 +5559,14 @@ export default function BookingDetail() {
         const dateLabel = tourTypeCode === 'KAS' ? 'baseDate (UZ arrival)' : 'baseDate';
 
         // Validation: don't create accommodation if checkout is after tour end date
-        const tourEndDate = new Date(booking.endDate);
-        if (checkOutDate > tourEndDate) {
-          console.warn(`Skipping accommodation ${hotel.name}: checkout ${checkOutDate.toISOString().split('T')[0]} is after tour end ${tourEndDate.toISOString().split('T')[0]}`);
-          continue;
+        // ZA Tashkent is excluded: booking.endDate = Jartepa (south leg end),
+        // but Tashkent hotel checkout is Jartepa+5 — legitimately exceeds endDate
+        if (!isZATashkent) {
+          const tourEndDate = new Date(booking.endDate);
+          if (checkOutDate > tourEndDate) {
+            console.warn(`Skipping accommodation ${hotel.name}: checkout ${checkOutDate.toISOString().split('T')[0]} is after tour end ${tourEndDate.toISOString().split('T')[0]}`);
+            continue;
+          }
         }
 
         // Calculate rooms based on tourists in this group
