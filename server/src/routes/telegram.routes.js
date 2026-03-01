@@ -58,6 +58,84 @@ function fmtDateUtil(d) {
   return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
 }
 
+// Translations
+const T = {
+  langKeyboard: {
+    uz: "Iltimos, tilni tanlang:",
+    ru: "Пожалуйста, выберите язык:"
+  },
+  langSelected: {
+    uz: "🇺🇿 *O'zbek tili* tanlandi! Keyingi xabarlar o'zbek tilida yuboriladi.",
+    ru: "🇷🇺 *Русский язык* выбран! Следующие сообщения будут на русском."
+  },
+  phoneButton: {
+    uz: "📱 Telefon raqamni ulashish",
+    ru: "📱 Поделиться номером телефона"
+  },
+  phoneSaved: {
+    uz: "✅ Telefon raqamingiz saqlandi! Rahmat.",
+    ru: "✅ Номер телефона сохранён! Спасибо."
+  },
+  roleAssigned: {
+    hotel: {
+      uz: "🏨 Sizga *Hotel* roli tayinlandi.\n\nEndi bu bot orqali mehmonxona zayavkalarini qabul qilasiz. ✅",
+      ru: "🏨 Вам назначена роль *Hotel*.\n\nТеперь через этот бот вы будете получать заявки на гостиницу. ✅"
+    },
+    transport: {
+      uz: "🚌 Sizga *Transport* roli tayinlandi.\n\nEndi bu bot orqali marshrut varaqalarini qabul qilasiz. ✅",
+      ru: "🚌 Вам назначена роль *Transport*.\n\nТеперь через этот бот вы будете получать маршрутные листы. ✅"
+    },
+    restaurant: {
+      uz: "🍽 Sizga *Restaurant* roli tayinlandi.\n\nEndi bu bot orqali ovqat buyurtmalarini qabul qilasiz. ✅",
+      ru: "🍽 Вам назначена роль *Restaurant*.\n\nТеперь через этот бот вы будете получать заказы питания. ✅"
+    },
+    guide: {
+      uz: "👤 Sizga *Gid* roli tayinlandi.\n\nEndi bu bot orqali tur yo'riqnomalarini qabul qilasiz. ✅",
+      ru: "👤 Вам назначена роль *Гид*.\n\nТеперь через этот бот вы будете получать туристические маршруты. ✅"
+    }
+  }
+};
+
+// Helper: get saved language for a chat (default: uz)
+async function getChatLang(chatId) {
+  try {
+    const chats = await loadKnownChats();
+    return chats[String(chatId)]?.lang || 'uz';
+  } catch { return 'uz'; }
+}
+
+// Helper: handle /start command — save chat, set role=user, show language selection
+async function handleStart(chat, msg, botApiUrl) {
+  try {
+    const chats = await loadKnownChats();
+    const existing = chats[String(chat.id)] || {};
+    const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
+    const lang = existing.lang || 'uz';
+    chats[String(chat.id)] = {
+      ...existing,
+      chatId: String(chat.id),
+      name: existing.nameCustomized ? existing.name : telegramName,
+      username: chat.username ? `@${chat.username}` : (existing.username || null),
+      type: chat.type,
+      role: existing.role || 'user',
+      lastMessage: '/start',
+      date: new Date(msg.date * 1000).toISOString()
+    };
+    await saveKnownChats(chats);
+    const firstName = chat.first_name || chat.title || 'Foydalanuvchi';
+    await axios.post(`${botApiUrl}/sendMessage`, {
+      chat_id: chat.id,
+      text: `Assalomu alaykum / Добро пожаловать, *${firstName}!* 👋\n\nSiz ro'yxatga qo'shildingiz. Admin tez orada sizga rol tayinlaydi.\nВы зарегистрированы. Администратор скоро назначит вам роль.\n\n${T.langKeyboard[lang]}`,
+      parse_mode: 'Markdown',
+      reply_markup: JSON.stringify({
+        keyboard: [[{ text: "🇺🇿 O'zbek tili" }, { text: "🇷🇺 Русский язык" }]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      })
+    }).catch(() => {});
+  } catch (e) { console.error('handleStart error:', e.message); }
+}
+
 // Helper: load known chats from DB
 async function loadKnownChats() {
   try {
@@ -241,9 +319,32 @@ router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
       chats[chatId].name = name.trim();
       chats[chatId].nameCustomized = true; // Prevent webhook from overwriting
     }
+    const prevRole = chats[chatId].role;
     if (role !== undefined) chats[chatId].role = role;
     if (phone !== undefined) chats[chatId].phone = phone;
     await saveKnownChats(chats);
+    // Send bot-specific welcome message + phone request when admin assigns a role
+    if (role !== undefined && role !== prevRole && T.roleAssigned[role]) {
+      const roleApis = { hotel: BOT_API(), transport: TRANSPORT_API(), restaurant: RESTAURANT_API(), guide: GUIDE_API() };
+      const api = roleApis[role];
+      if (api) {
+        const lang = await getChatLang(chatId);
+        const text = T.roleAssigned[role][lang] || T.roleAssigned[role].uz;
+        const phonePrompt = lang === 'ru'
+          ? '\n\n📱 Пожалуйста, поделитесь вашим номером телефона:'
+          : "\n\n📱 Iltimos, telefon raqamingizni ulashing:";
+        await axios.post(`${api}/sendMessage`, {
+          chat_id: chatId,
+          text: text + phonePrompt,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            keyboard: [[{ text: T.phoneButton[lang], request_contact: true }]],
+            resize_keyboard: true,
+            one_time_keyboard: true
+          })
+        }).catch(() => {});
+      }
+    }
     res.json({ chat: chats[chatId] });
   } catch (error) {
     console.error('Update chat error:', error.message);
@@ -294,6 +395,43 @@ router.post('/webhook', (req, res, next) => {
     const msg = update.message || update.channel_post;
     if (msg) {
       const chat = msg.chat;
+
+      // /start — welcome message + auto role=user
+      if (msg.text === '/start') {
+        await handleStart(chat, msg, BOT_API());
+        return;
+      }
+
+      // Language selection
+      if (msg.text === "🇺🇿 O'zbek tili" || msg.text === "🇷🇺 Русский язык") {
+        const lang = msg.text.includes("O'zbek") ? 'uz' : 'ru';
+        const chats = await loadKnownChats();
+        if (chats[String(chat.id)]) { chats[String(chat.id)].lang = lang; await saveKnownChats(chats); }
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: chat.id, text: T.langSelected[lang], parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
+      // Contact shared — save phone number
+      if (msg.contact) {
+        const phone = msg.contact.phone_number;
+        const chats = await loadKnownChats();
+        const lang = chats[String(chat.id)]?.lang || 'uz';
+        if (chats[String(chat.id)]) {
+          chats[String(chat.id)].phone = phone;
+          await saveKnownChats(chats);
+        }
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: T.phoneSaved[lang],
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
       const chats = await loadKnownChats();
       const existing = chats[String(chat.id)] || {};
       const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
@@ -1386,6 +1524,43 @@ router.post('/webhook-transport', async (req, res) => {
     const msg = update.message || update.channel_post;
     if (msg) {
       const chat = msg.chat;
+
+      // /start — welcome message + auto role=user
+      if (msg.text === '/start') {
+        await handleStart(chat, msg, TRANSPORT_API());
+        return;
+      }
+
+      // Language selection
+      if (msg.text === "🇺🇿 O'zbek tili" || msg.text === "🇷🇺 Русский язык") {
+        const lang = msg.text.includes("O'zbek") ? 'uz' : 'ru';
+        const chats = await loadKnownChats();
+        if (chats[String(chat.id)]) { chats[String(chat.id)].lang = lang; await saveKnownChats(chats); }
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chat.id, text: T.langSelected[lang], parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
+      // Contact shared — save phone number
+      if (msg.contact) {
+        const phone = msg.contact.phone_number;
+        const chats = await loadKnownChats();
+        const lang = chats[String(chat.id)]?.lang || 'uz';
+        if (chats[String(chat.id)]) {
+          chats[String(chat.id)].phone = phone;
+          await saveKnownChats(chats);
+        }
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: T.phoneSaved[lang],
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
       const chats = await loadKnownChats();
       const existing = chats[String(chat.id)] || {};
       const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
@@ -1701,6 +1876,43 @@ router.post('/webhook-restaurant', async (req, res) => {
     const msg = update.message || update.channel_post;
     if (msg) {
       const chat = msg.chat;
+
+      // /start — welcome message + auto role=user
+      if (msg.text === '/start') {
+        await handleStart(chat, msg, RESTAURANT_API());
+        return;
+      }
+
+      // Language selection
+      if (msg.text === "🇺🇿 O'zbek tili" || msg.text === "🇷🇺 Русский язык") {
+        const lang = msg.text.includes("O'zbek") ? 'uz' : 'ru';
+        const chats = await loadKnownChats();
+        if (chats[String(chat.id)]) { chats[String(chat.id)].lang = lang; await saveKnownChats(chats); }
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: chat.id, text: T.langSelected[lang], parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
+      // Contact shared — save phone number
+      if (msg.contact) {
+        const phone = msg.contact.phone_number;
+        const chats = await loadKnownChats();
+        const lang = chats[String(chat.id)]?.lang || 'uz';
+        if (chats[String(chat.id)]) {
+          chats[String(chat.id)].phone = phone;
+          await saveKnownChats(chats);
+        }
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: T.phoneSaved[lang],
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
       const chats = await loadKnownChats();
       const existing = chats[String(chat.id)] || {};
       const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
@@ -1804,6 +2016,43 @@ router.post('/webhook-guide', async (req, res) => {
     const msg = update.message || update.channel_post;
     if (msg) {
       const chat = msg.chat;
+
+      // /start — welcome message + auto role=user
+      if (msg.text === '/start') {
+        await handleStart(chat, msg, GUIDE_API());
+        return;
+      }
+
+      // Language selection
+      if (msg.text === "🇺🇿 O'zbek tili" || msg.text === "🇷🇺 Русский язык") {
+        const lang = msg.text.includes("O'zbek") ? 'uz' : 'ru';
+        const chats = await loadKnownChats();
+        if (chats[String(chat.id)]) { chats[String(chat.id)].lang = lang; await saveKnownChats(chats); }
+        await axios.post(`${GUIDE_API()}/sendMessage`, {
+          chat_id: chat.id, text: T.langSelected[lang], parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
+      // Contact shared — save phone number
+      if (msg.contact) {
+        const phone = msg.contact.phone_number;
+        const chats = await loadKnownChats();
+        const lang = chats[String(chat.id)]?.lang || 'uz';
+        if (chats[String(chat.id)]) {
+          chats[String(chat.id)].phone = phone;
+          await saveKnownChats(chats);
+        }
+        await axios.post(`${GUIDE_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: T.phoneSaved[lang],
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ remove_keyboard: true })
+        }).catch(() => {});
+        return;
+      }
+
       const chats = await loadKnownChats();
       const existing = chats[String(chat.id)] || {};
       const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
