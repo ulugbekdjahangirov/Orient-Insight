@@ -43,6 +43,7 @@ export default function Ausgaben() {
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]);
   const [selectedGuide, setSelectedGuide] = useState(null);
+  const [selectedGeneralCol, setSelectedGeneralCol] = useState(null);
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -1152,7 +1153,7 @@ export default function Ausgaben() {
               return (
                 <button
                   key={module.code}
-                  onClick={() => { updateParams({ tour: module.code }); setSelectedGuide(null); }}
+                  onClick={() => { updateParams({ tour: module.code }); setSelectedGuide(null); setSelectedGeneralCol(null); }}
                   className="relative overflow-hidden rounded-xl md:rounded-2xl p-2 md:p-4 text-left transition-all duration-300 group"
                   style={{
                     background: isActive ? activeBg : 'rgba(255,255,255,0.1)',
@@ -1260,47 +1261,80 @@ export default function Ausgaben() {
                             <col style={{ width: '7%' }} />
                           </colgroup>
                           <thead>
-                            <tr>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>#</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>Booking</th>
-                              <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#bfdbfe' }}>🏨 Hotels</th>
-                              <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#bfdbfe' }}>🚌 Transport</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>🚂 Train</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>✈️ Flights</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>👤 Guide</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>🍽 Meals</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>🎫 Eintritt</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>🚇 Metro</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>🎭 Shou</th>
-                              <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                style={{ background: '#dbeafe' }}>Other</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700"
-                                style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
-                              <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider"
-                                style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
-                            </tr>
-                            <tr>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>USD</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>UZS</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Sevil</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Xayrulla</th>
-                              <th className="px-3 py-2 text-center font-semibold text-slate-600 border-r border-blue-200" style={{ background: '#bfdbfe' }}>Nosir</th>
-                            </tr>
+                            {(() => {
+                              const colBtn = (key, label, extra = {}) => {
+                                const active = selectedGeneralCol === key;
+                                return (
+                                  <th onClick={() => setSelectedGeneralCol(active ? null : key)}
+                                    className="px-2 py-2 text-center font-semibold border-r border-blue-200 cursor-pointer select-none transition-all duration-150"
+                                    style={{ background: active ? '#1d4ed8' : '#bfdbfe', color: active ? '#fff' : '#475569', ...extra }}>
+                                    {label}{active ? ' ✕' : ''}
+                                  </th>
+                                );
+                              };
+                              const singleBtn = (key, label) => {
+                                const active = selectedGeneralCol === key;
+                                return (
+                                  <th rowSpan="2" onClick={() => setSelectedGeneralCol(active ? null : key)}
+                                    className="px-2 py-3.5 text-center font-bold uppercase tracking-wider border-r border-blue-200 cursor-pointer select-none transition-all duration-150"
+                                    style={{ background: active ? '#1d4ed8' : '#dbeafe', color: active ? '#fff' : '#334155' }}>
+                                    {label}{active ? ' ✕' : ''}
+                                  </th>
+                                );
+                              };
+                              return (
+                                <>
+                                  <tr>
+                                    <th rowSpan="2" className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>#</th>
+                                    <th rowSpan="2" className="px-2 py-3.5 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#dbeafe' }}>Booking</th>
+                                    <th colSpan="2" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#bfdbfe' }}>🏨 Hotels</th>
+                                    <th colSpan="3" className="px-2 py-2 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200" style={{ background: '#bfdbfe' }}>🚌 Transport</th>
+                                    {singleBtn('railway', '🚂 Train')}
+                                    {singleBtn('flights', '✈️ Flights')}
+                                    {singleBtn('guide', '👤 Guide')}
+                                    {singleBtn('meals', '🍽 Meals')}
+                                    {singleBtn('eintritt', '🎫 Eintritt')}
+                                    {singleBtn('metro', '🚇 Metro')}
+                                    {singleBtn('shou', '🎭 Shou')}
+                                    {singleBtn('other', 'Other')}
+                                    <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700" style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
+                                    <th rowSpan="2" className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider" style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
+                                  </tr>
+                                  <tr>
+                                    {colBtn('hotelsUSD', 'USD')}
+                                    {colBtn('hotelsUZS', 'UZS')}
+                                    {colBtn('sevil', 'Sevil')}
+                                    {colBtn('xayrulla', 'Xayrulla')}
+                                    {colBtn('nosir', 'Nosir')}
+                                  </tr>
+                                </>
+                              );
+                            })()}
                           </thead>
                           <tbody>
                             {bookingsDetailedData
-                              .filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; })
+                              .filter(b => {
+                                const e = b.expenses || {};
+                                const hasData = e.hotelsUSD > 0 || e.hotelsUZS > 0;
+                                if (!hasData) return false;
+                                if (!selectedGeneralCol) return true;
+                                switch (selectedGeneralCol) {
+                                  case 'hotelsUSD': return e.hotelsUSD > 0;
+                                  case 'hotelsUZS': return e.hotelsUZS > 0;
+                                  case 'sevil':     return e.transportSevil > 0;
+                                  case 'xayrulla':  return e.transportXayrulla > 0;
+                                  case 'nosir':     return e.transportNosir > 0;
+                                  case 'railway':   return e.railway > 0;
+                                  case 'flights':   return e.flights > 0;
+                                  case 'guide':     return e.guide > 0;
+                                  case 'meals':     return e.meals > 0;
+                                  case 'eintritt':  return e.eintritt > 0;
+                                  case 'metro':     return e.metro > 0;
+                                  case 'shou':      return e.shou > 0;
+                                  case 'other':     return e.other > 0;
+                                  default: return true;
+                                }
+                              })
                               .map((booking, idx) => {
                                 const e = booking.expenses || {};
                                 const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
