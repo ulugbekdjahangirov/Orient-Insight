@@ -20,7 +20,8 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const timestamp = Date.now();
-    cb(null, `import-${timestamp}-${file.originalname}`);
+    const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `import-${timestamp}-${safeName}`);
   }
 });
 
@@ -104,20 +105,33 @@ router.post('/preview', authenticate, requireAdmin, upload.single('file'), async
     });
   } catch (error) {
     console.error('Preview error:', error);
-    res.status(500).json({ error: 'Ошибка чтения файла: ' + error.message });
+    res.status(500).json({ error: 'Fayl o\'qishda xatolik' });
   }
 });
 
+const UPLOADS_DIR = path.resolve(path.join(__dirname, '../../../uploads'));
+
 // POST /api/import/execute - Импорт данных из Excel
 router.post('/execute', authenticate, requireAdmin, async (req, res) => {
+  let resolvedPath = null;
   try {
     const { filePath } = req.body;
 
-    if (!filePath || !fs.existsSync(filePath)) {
+    if (!filePath) {
       return res.status(400).json({ error: 'Файл не найден' });
     }
 
-    const workbook = XLSX.readFile(filePath);
+    // Path traversal himoyasi: faqat uploads papkasi ichidagi fayllar
+    resolvedPath = path.resolve(filePath);
+    if (!resolvedPath.startsWith(UPLOADS_DIR + path.sep)) {
+      return res.status(400).json({ error: 'Noto\'g\'ri fayl yo\'li' });
+    }
+
+    if (!fs.existsSync(resolvedPath)) {
+      return res.status(400).json({ error: 'Файл не найден' });
+    }
+
+    const workbook = XLSX.readFile(resolvedPath);
     const results = {
       tourTypes: { created: 0, existing: 0 },
       guides: { created: 0, existing: 0 },
@@ -293,7 +307,10 @@ router.post('/execute', authenticate, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Import error:', error);
-    res.status(500).json({ error: 'Ошибка импорта: ' + error.message });
+    res.status(500).json({ error: 'Import paytida xatolik yuz berdi' });
+  } finally {
+    // Import fayli keraksiz, o'chirib yuboramiz
+    if (resolvedPath) { try { fs.unlinkSync(resolvedPath); } catch {} }
   }
 });
 

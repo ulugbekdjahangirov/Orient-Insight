@@ -1763,7 +1763,7 @@ router.get('/templates/:tourTypeCode', authenticate, async (req, res) => {
 });
 
 // PUT /api/accommodations/templates/:tourTypeCode - Save accommodation template for tour type
-router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
+router.put('/templates/:tourTypeCode', authenticate, requireAdmin, async (req, res) => {
   try {
     const { tourTypeCode } = req.params;
     const { accommodations } = req.body;
@@ -2542,7 +2542,7 @@ router.get('/wi-contacts', authenticate, async (req, res) => {
   }
 });
 
-router.put('/wi-contacts', authenticate, async (req, res) => {
+router.put('/wi-contacts', authenticate, requireAdmin, async (req, res) => {
   try {
     const { contacts } = req.body;
     if (!Array.isArray(contacts)) return res.status(400).json({ error: 'contacts must be array' });
@@ -2553,7 +2553,7 @@ router.put('/wi-contacts', authenticate, async (req, res) => {
     });
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Saqlashda xatolik' });
   }
 });
 

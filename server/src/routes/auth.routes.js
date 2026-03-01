@@ -35,7 +35,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
     res.json({
@@ -67,6 +67,10 @@ router.post('/register', authenticate, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Все поля обязательны' });
     }
 
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Parol kamida 8 belgidan iborat bo\'lishi kerak' });
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     if (existingUser) {
@@ -80,7 +84,7 @@ router.post('/register', authenticate, requireAdmin, async (req, res) => {
         email,
         password: hashedPassword,
         name,
-        role: role || 'MANAGER'
+        role: ['MANAGER', 'ADMIN'].includes(role) ? role : 'MANAGER'
       },
       select: { id: true, email: true, name: true, role: true }
     });
@@ -112,9 +116,13 @@ router.patch('/users/:id', authenticate, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { name, role, isActive, password } = req.body;
 
+    if (password && password.length < 8) {
+      return res.status(400).json({ error: 'Parol kamida 8 belgidan iborat bo\'lishi kerak' });
+    }
+
     const updateData = {};
     if (name) updateData.name = name;
-    if (role) updateData.role = role;
+    if (role && ['MANAGER', 'ADMIN'].includes(role)) updateData.role = role;
     if (typeof isActive === 'boolean') updateData.isActive = isActive;
     if (password) updateData.password = await bcrypt.hash(password, 10);
 
