@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
+import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi, telegramApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
-import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText } from 'lucide-react';
+import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -889,6 +889,85 @@ export default function Ausgaben() {
     toast.success('PDF fayl yuklab olindi');
   };
 
+  const [sendingTelegram, setSendingTelegram] = useState(false);
+
+  const sendToTelegram = async () => {
+    setSendingTelegram(true);
+    try {
+      const blob = generatePDFBlob();
+      const filename = getExportFilename('pdf');
+      await telegramApi.sendAusgabenPdf(blob, filename, {
+        title: getExportTitle(),
+        tourType: activeTourType,
+        tab: activeExpenseTab,
+        year: selectedYear,
+      });
+      toast.success('PDF Sirojga yuborildi ✅');
+    } catch (err) {
+      toast.error('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingTelegram(false);
+    }
+  };
+
+  // generatePDFBlob — same as exportToPDF but returns blob instead of saving
+  const generatePDFBlob = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const title = getExportTitle();
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 14, 15);
+
+    let head = [], body = [], foot = [];
+
+    if (activeExpenseTab === 'general') {
+      const data = bookingsDetailedData.filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; });
+      head = [['#', 'Booking', 'Hotels USD', 'Hotels UZS', 'Sevil', 'Xayrulla', 'Nosir', 'Train', 'Flights', 'Guide', 'Meals', 'Eintritt', 'Metro', 'Shou', 'Other', 'Total UZS', 'Total USD']];
+      body = data.map((b, i) => {
+        const e = b.expenses || {};
+        const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
+        const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
+        return [i+1, b.bookingName, e.hotelsUSD||'—', e.hotelsUZS||'—', e.transportSevil||'—', e.transportXayrulla||'—', e.transportNosir||'—', e.railway||'—', e.flights||'—', e.guide||'—', e.meals||'—', e.eintritt||'—', e.metro||'—', e.shou||'—', e.other||'—', totalUZS||'—', totalUSD||'—'];
+      });
+      foot = [['', 'TOTAL', ...body.reduce((acc, r) => acc.map((v, i) => v + (typeof r[i+2]==='number'?r[i+2]:0)), new Array(15).fill(0))]];
+    } else if (activeExpenseTab === 'hotels') {
+      const pd = getPivotData();
+      head = [['#', 'Booking', ...pd.hotels, 'Total UZS', 'Total USD']];
+      body = pd.bookingRows.map((br, i) => {
+        const hotelVals = pd.hotels.map(h => { const hc = br.hotelCosts[h]; return (hc?.uzs || hc?.usd || '—'); });
+        return [i+1, br.bookingName, ...hotelVals, br.totalUZS||'—', br.totalUSD||'—'];
+      });
+      const hotelTotals = pd.hotels.map(h => { const uzs = getHotelGrandTotal(h,'uzs'); const usd = getHotelGrandTotal(h,'usd'); return uzs>0?uzs:usd; });
+      foot = [['', 'TOTAL', ...hotelTotals, getGrandTotalUZS(), getGrandTotalUSD()]];
+    } else if (activeExpenseTab === 'guides') {
+      head = [['#', 'Booking', 'Main Guide', 'Price', 'Second Guide', 'Price', 'Bergreiseleiter', 'Price', 'Total USD']];
+      body = filteredBookingsWithHotels.map((item, i) => {
+        const e = item.expenses || {};
+        return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||'—', e.guideSecondName||'—', e.guideSecondCost||'—', e.guideBergrName||'—', e.guideBergrCost||'—', (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0)||'—'];
+      });
+      foot = [['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)]];
+    } else if (activeExpenseTab === 'transport') {
+      head = [['#', 'Booking', 'Sevil', 'Xayrulla', 'Total']];
+      body = filteredBookingsWithHotels.map((item, i) => {
+        const sevil = item.expenses?.transportSevil||0;
+        const xayrulla = item.expenses?.transportXayrulla||0;
+        return [i+1, item.bookingName, sevil||'—', xayrulla||'—', (sevil+xayrulla)||'—'];
+      });
+      foot = [['', 'TOTAL', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0)]];
+    }
+
+    autoTable(doc, {
+      head, body, foot,
+      startY: 22,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [186, 230, 253], textColor: [7, 89, 133], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    return doc.output('blob');
+  };
+
   // Filter bookings with Hotels data (for General tab statistics)
   const filteredBookingsWithHotels = useMemo(() => {
     return bookingsDetailedData.filter(booking => {
@@ -988,6 +1067,13 @@ export default function Ausgaben() {
                           onMouseEnter={e=>e.currentTarget.style.background='rgba(220,38,38,0.55)'}
                           onMouseLeave={e=>e.currentTarget.style.background='rgba(220,38,38,0.35)'}>
                           <FileText size={13} /> PDF
+                        </button>
+                        <button onClick={sendToTelegram} disabled={sendingTelegram} title="Sirojga Telegram orqali yuborish"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                          style={{ background: 'rgba(37,99,235,0.35)', color: '#bfdbfe', border: '1px solid rgba(96,165,250,0.4)', opacity: sendingTelegram ? 0.6 : 1 }}
+                          onMouseEnter={e=>{ if(!sendingTelegram) e.currentTarget.style.background='rgba(37,99,235,0.55)'; }}
+                          onMouseLeave={e=>e.currentTarget.style.background='rgba(37,99,235,0.35)'}>
+                          <Send size={13} /> {sendingTelegram ? '...' : 'TG'}
                         </button>
                       </>
                     )}

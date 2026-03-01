@@ -349,6 +349,17 @@ export const telegramApi = {
   getMealSettings: () => api.get('/telegram/meal-settings'),
   saveMealSettings: (chatIds) => api.put('/telegram/meal-settings', { chatIds }),
   sendGuide: (bookingId, data) => api.post(`/telegram/send-guide/${bookingId}`, data),
+  sendAusgabenPdf: (pdfBlob, filename, meta) => {
+    const form = new FormData();
+    form.append('pdf', pdfBlob, filename);
+    form.append('title', meta.title);
+    form.append('tourType', meta.tourType);
+    form.append('tab', meta.tab);
+    form.append('year', String(meta.year));
+    return api.post('/telegram/send-ausgaben-pdf', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
 };
 
 // API for OPEX configuration (Operational Expenses)

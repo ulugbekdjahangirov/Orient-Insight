@@ -1664,4 +1664,36 @@ router.post('/send-cost-pdfs/:bookingId', authenticate, upload.fields([
   }
 });
 
+// POST /api/telegram/send-ausgaben-pdf — send Ausgaben PDF to Siroj
+router.post('/send-ausgaben-pdf', authenticate, upload.single('pdf'), async (req, res) => {
+  try {
+    const chatId = await getProviderChatId('hammasi');
+    if (!chatId) return res.status(400).json({ error: 'Siroj uchun chat ID sozlanmagan (GmailSettings → Transport → Siroj)' });
+    if (!req.file) return res.status(400).json({ error: 'PDF fayl topilmadi' });
+
+    const { title, tourType, tab, year } = req.body;
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+
+    const tabLabels = { general: 'General', hotels: 'Hotels', transport: 'Transport', guides: 'Guides' };
+    const tourLabels = { ALL: 'Barcha gruppalar', ER: 'Erlebnisreisen', CO: 'Comfort', KAS: 'Karawanen Seidenstrasse', ZA: 'Zentralasien' };
+
+    const caption = `📊 *Ausgaben Hisoboti*\n🗂 Guruh: *${tourLabels[tourType] || tourType}*\n📋 Tab: *${tabLabels[tab] || tab}*\n📅 Yil: *${year}*`;
+
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('caption', caption);
+    form.append('parse_mode', 'Markdown');
+    form.append('document', Buffer.from(req.file.buffer), {
+      filename: req.file.originalname || `Ausgaben_${tourType}_${tab}_${year}.pdf`,
+      contentType: 'application/pdf'
+    });
+    await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, { headers: form.getHeaders() });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('send-ausgaben-pdf error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
