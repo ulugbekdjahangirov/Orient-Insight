@@ -1373,7 +1373,7 @@ router.post('/webhook-transport', async (req, res) => {
         }
         if (adminChatId) {
           const booking = confirmation.booking;
-          await axios.post(`${BOT_API()}/sendMessage`, {
+          await axios.post(`${TRANSPORT_API()}/sendMessage`, {
             chat_id: adminChatId,
             text: [`❌ *${providerLabel}* uchun marshrut varaqasi rad etildi`,
               `📋 ${booking?.bookingNumber || `#${trBookingId}`}`,
@@ -1444,7 +1444,7 @@ router.post('/webhook-transport', async (req, res) => {
           `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
-        await axios.post(`${BOT_API()}/sendMessage`, {
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
           chat_id: adminChatId, text: adminMsg, parse_mode: 'Markdown'
         }).catch(() => {});
       }
