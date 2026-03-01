@@ -46,9 +46,11 @@ import {
 } from 'lucide-react';
 import {
   isFileSystemAccessSupported,
-  selectBaseFolder,
-  getBaseFolderHandle,
-  downloadAndSavePdf
+  selectTourTypeFolder,
+  getTourTypeFolderHandle,
+  getTourTypeFolderName,
+  downloadAndSavePdf,
+  savePdfToFolder,
 } from '../utils/fileSystemUtils';
 import html2pdf from 'html2pdf.js';
 
@@ -2374,82 +2376,87 @@ export default function BookingDetail() {
     }
   };
 
-  // Check if PDF folder is configured
+  // Check if PDF folder is configured for this booking's tour type
   useEffect(() => {
-    const checkFolderConfiguration = async () => {
-      if (!isFileSystemAccessSupported()) {
-        return; // API not supported
-      }
-
-      try {
-        const handle = await getBaseFolderHandle();
-        if (handle) {
-          setPdfFolderConfigured(true);
-          setPdfFolderName(handle.name);
-        }
-      } catch (error) {
-        console.error('Error checking folder configuration:', error);
+    const check = async () => {
+      if (!isFileSystemAccessSupported() || !booking?.tourType?.code) return;
+      const name = await getTourTypeFolderName(booking.tourType.code);
+      if (name) {
+        setPdfFolderConfigured(true);
+        setPdfFolderName(name);
+      } else {
+        setPdfFolderConfigured(false);
+        setPdfFolderName('');
       }
     };
+    check();
+  }, [booking?.tourType?.code]);
 
-    checkFolderConfiguration();
-  }, []);
-
-  // Configure PDF auto-save folder
+  // Configure PDF folder for this booking's tour type
   const handleConfigurePdfFolder = async () => {
+    const tourType = booking?.tourType?.code;
+    if (!tourType) return;
     try {
-      const result = await selectBaseFolder();
-
+      const result = await selectTourTypeFolder(tourType);
       if (result.success) {
         setPdfFolderConfigured(true);
         setPdfFolderName(result.folderName);
-        toast.success(`Papka tanlandi: ${result.folderName}`);
-      } else if (result.error && !result.error.includes('cancelled')) {
-        toast.error(`Xatolik: ${result.error}`);
+        toast.success(`${tourType} papkasi tanlandi: ${result.folderName}`);
+      } else if (!result.cancelled) {
+        toast.error(result.error || 'Xatolik');
       }
-    } catch (error) {
-      console.error('Error configuring folder:', error);
+    } catch {
       toast.error('Papka tanlashda xatolik');
     }
   };
 
-  // Download PDF and auto-save to folder
+  // Helper: auto-save any PDF blob to the correct subfolder
+  const autoSavePdf = async (pdfBlob, filename, category) => {
+    const tourType = booking?.tourType?.code;
+    const bookingNumber = booking?.bookingNumber;
+    if (!tourType || !bookingNumber) return;
+    const handle = await getTourTypeFolderHandle(tourType);
+    if (!handle) return; // no folder configured — silent skip
+    toast.loading('Papkaga saqlanmoqda...', { id: 'pdf-save' });
+    const result = await savePdfToFolder({ tourType, bookingNumber, category, filename, pdfBlob });
+    if (result.success) {
+      toast.success(`✓ Saqlandi: ${result.path}`, { id: 'pdf-save', duration: 4000 });
+    } else {
+      toast.dismiss('pdf-save');
+    }
+  };
+
+  // Download hotel request PDF and auto-save to Zayavka folder
   const handleDownloadPdfWithAutoSave = async (hotelId, accommodationId, hotelName, isCombined) => {
     try {
-      // Determine preview URL
       const previewUrl = isCombined
         ? bookingsApi.getHotelRequestCombined(id, hotelId)
         : bookingsApi.getHotelRequestPreview(id, accommodationId);
 
-      // Open in new window for printing (traditional behavior)
+      // Open for printing
       const printWindow = window.open(previewUrl, '_blank');
       if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
-        });
+        printWindow.addEventListener('load', () => setTimeout(() => printWindow.print(), 500));
       }
 
-      // Auto-save to folder if configured
+      // Auto-save to Zayavka folder
       if (pdfFolderConfigured && booking?.tourType?.code && booking?.bookingNumber) {
         toast.loading('Papkaga saqlanmoqda...', { id: 'pdf-save' });
-
+        const safeHotelName = hotelName.replace(/[/\\?%*:|"<>]/g, '-');
+        const filename = `Zayavka ${booking.bookingNumber} - ${safeHotelName}.pdf`;
         const result = await downloadAndSavePdf({
           url: previewUrl,
           tourType: booking.tourType.code,
           bookingNumber: booking.bookingNumber,
-          hotelName: hotelName,
-          isCombined
+          category: 'zayavka',
+          filename,
         });
-
         if (result.success) {
           toast.success(`✓ Saqlandi: ${result.path}`, { id: 'pdf-save', duration: 4000 });
         } else {
           toast.error(`Xatolik: ${result.error}`, { id: 'pdf-save' });
         }
       }
-
     } catch (error) {
       console.error('Error downloading PDF:', error);
       toast.error('PDF yuklanmadi');
@@ -4257,7 +4264,9 @@ export default function BookingDetail() {
       // Save PDF
       const fileName = `Ausgaben_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
+      const ausgabenBlob = doc.output('blob');
       doc.save(fileName);
+      autoSavePdf(ausgabenBlob, fileName, 'ausgaben');
       toast.success('PDF muvaffaqiyatli yaratildi');
     } catch (error) {
       console.error('PDF export error:', error);
@@ -4457,8 +4466,9 @@ export default function BookingDetail() {
       // Save PDF
       const fileName = `Spater_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
+      const spaterBlob = doc.output('blob');
       doc.save(fileName);
-      toast.success('PDF muvaffaqiyatli yaratildi');
+      autoSavePdf(spaterBlob, fileName, 'ausgaben');
     } catch (error) {
       console.error('PDF export error:', error);
       if (returnBlob) return null;
@@ -4614,8 +4624,9 @@ export default function BookingDetail() {
       // Save PDF
       const fileName = `Uberweisung_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
+      const uberweisungBlob = doc.output('blob');
       doc.save(fileName);
-      toast.success('PDF muvaffaqiyatli yaratildi');
+      autoSavePdf(uberweisungBlob, fileName, 'ausgaben');
     } catch (error) {
       console.error('PDF export error:', error);
       if (returnBlob) return null;
@@ -4764,8 +4775,9 @@ export default function BookingDetail() {
       // Save PDF
       const fileName = `Karta_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
+      const kartaBlob = doc.output('blob');
       doc.save(fileName);
-      toast.success('PDF muvaffaqiyatli yaratildi');
+      autoSavePdf(kartaBlob, fileName, 'ausgaben');
     } catch (error) {
       console.error('PDF export error:', error);
       if (returnBlob) return null;

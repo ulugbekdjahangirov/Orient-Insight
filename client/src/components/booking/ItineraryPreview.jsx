@@ -6,6 +6,7 @@ import { MapPin, Loader2, Edit, Save, X, Plus, Trash2, FileDown, Send, Clock } f
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getTourTypeFolderHandle, savePdfToFolder } from '../../utils/fileSystemUtils';
 
 export default function ItineraryPreview({ bookingId, booking }) {
   const [routes, setRoutes] = useState([]);
@@ -777,8 +778,17 @@ export default function ItineraryPreview({ bookingId, booking }) {
         : '';
       const filename = `${booking?.bookingNumber || 'ER'} Marshrut varaqasi${providerSuffix}.pdf`;
       if (returnBlob) return doc.output('blob');
+      const marshrutBlob = doc.output('blob');
       doc.save(filename);
       toast.success('PDF сақланди!');
+      // Auto-save to Transport folder
+      const tourType = booking?.tourType?.code;
+      const bookingNumber = booking?.bookingNumber;
+      if (tourType && bookingNumber) {
+        getTourTypeFolderHandle(tourType).then(handle => {
+          if (handle) savePdfToFolder({ tourType, bookingNumber, category: 'transport', filename, pdfBlob: marshrutBlob });
+        });
+      }
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('PDF экспорт хатолиги');

@@ -1,23 +1,26 @@
 /**
  * File System Access API Utilities
- * Chrome/Edge support for saving PDFs to local folders automatically
+ * Per-tour-type folder management with automatic subfolder structure
  */
 
-// IndexedDB database name
 const DB_NAME = 'OrientInsightDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'folderHandles';
 
-/**
- * Open IndexedDB database
- */
+// Subfolder mapping per document category
+export const PDF_CATEGORIES = {
+  zayavka:     'Zayavka',       // Hotel request PDF
+  worldInsight:'World Insight', // Rechnung, Hotelliste
+  transport:   'Transport',     // Marshrut varaqasi
+  ausgaben:    'Ausgaben',      // Cost / Ausgaben
+  eintritt:    'Eintritt',      // Eintritt vouchers
+};
+
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
-
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -27,206 +30,164 @@ function openDatabase() {
   });
 }
 
-/**
- * Save directory handle to IndexedDB
- */
-export async function saveFolderHandle(key, directoryHandle) {
+async function saveFolderHandle(key, directoryHandle) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(directoryHandle, key);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    const tx = db.transaction([STORE_NAME], 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.put(directoryHandle, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Get directory handle from IndexedDB
- */
-export async function getFolderHandle(key) {
+async function getFolderHandle(key) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.get(key);
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const tx = db.transaction([STORE_NAME], 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Check if File System Access API is supported
- */
 export function isFileSystemAccessSupported() {
   return 'showDirectoryPicker' in window;
 }
 
 /**
- * Request folder selection from user
+ * Select folder for a specific tour type (ER, CO, KAS, ZA)
+ * Saves handle to IndexedDB under key `pdfFolder_ER` etc.
  */
-export async function selectBaseFolder() {
+export async function selectTourTypeFolder(tourType) {
   try {
-    const dirHandle = await window.showDirectoryPicker({
-      mode: 'readwrite',
-      startIn: 'documents'
-    });
-
-    // Save to IndexedDB
-    await saveFolderHandle('basePdfFolder', dirHandle);
-
-    return {
-      success: true,
-      folderName: dirHandle.name,
-      handle: dirHandle
-    };
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await saveFolderHandle(`pdfFolder_${tourType}`, dirHandle);
+    return { success: true, folderName: dirHandle.name };
   } catch (error) {
-    if (error.name === 'AbortError') {
-      return { success: false, error: 'User cancelled folder selection' };
-    }
+    if (error.name === 'AbortError') return { success: false, cancelled: true };
     return { success: false, error: error.message };
   }
 }
 
 /**
- * Get or request permission for saved folder
+ * Get folder handle for a tour type, checking/requesting permission
  */
-export async function getBaseFolderHandle() {
-  const handle = await getFolderHandle('basePdfFolder');
+export async function getTourTypeFolderHandle(tourType) {
+  const handle = await getFolderHandle(`pdfFolder_${tourType}`);
+  if (!handle) return null;
 
-  if (!handle) {
-    return null;
+  const perm = await handle.queryPermission({ mode: 'readwrite' });
+  if (perm === 'granted') return handle;
+
+  if (perm === 'prompt') {
+    const newPerm = await handle.requestPermission({ mode: 'readwrite' });
+    if (newPerm === 'granted') return handle;
   }
-
-  // Check/request permission
-  const permission = await handle.queryPermission({ mode: 'readwrite' });
-
-  if (permission === 'granted') {
-    return handle;
-  }
-
-  if (permission === 'prompt') {
-    const newPermission = await handle.requestPermission({ mode: 'readwrite' });
-    if (newPermission === 'granted') {
-      return handle;
-    }
-  }
-
   return null;
 }
 
 /**
- * Create nested folder structure
- * Example: createFolderStructure(baseHandle, ['ER', '2026', 'ER-01', 'Hotel Zayavka'])
+ * Get folder name (display only) without requesting permission
  */
-export async function createFolderStructure(baseHandle, pathParts) {
-  let currentHandle = baseHandle;
-
-  for (const part of pathParts) {
-    currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+export async function getTourTypeFolderName(tourType) {
+  try {
+    const handle = await getFolderHandle(`pdfFolder_${tourType}`);
+    return handle ? handle.name : null;
+  } catch {
+    return null;
   }
-
-  return currentHandle;
 }
 
 /**
- * Save PDF to local folder with automatic folder structure
+ * Get all tour type folder statuses at once
+ * Returns { ER: 'FolderName' | null, CO: ..., KAS: ..., ZA: ... }
+ */
+export async function getAllFolderStatuses() {
+  const tourTypes = ['ER', 'CO', 'KAS', 'ZA'];
+  const result = {};
+  await Promise.all(
+    tourTypes.map(async (tt) => {
+      result[tt] = await getTourTypeFolderName(tt);
+    })
+  );
+  return result;
+}
+
+/**
+ * Create nested folder structure from a base handle
+ */
+async function createFolderStructure(baseHandle, pathParts) {
+  let current = baseHandle;
+  for (const part of pathParts) {
+    current = await current.getDirectoryHandle(part, { create: true });
+  }
+  return current;
+}
+
+/**
+ * Save a PDF blob to the correct subfolder
  *
  * @param {Object} params
- * @param {string} params.tourType - Tour type code (ER, CO, KAS, ZA)
- * @param {string} params.bookingNumber - Booking number (e.g., ER-01)
- * @param {string} params.hotelName - Hotel name
- * @param {Blob} params.pdfBlob - PDF content as Blob
- * @param {boolean} params.isCombined - Whether this is a combined PDF
+ * @param {string} params.tourType       - 'ER' | 'CO' | 'KAS' | 'ZA'
+ * @param {string} params.bookingNumber  - e.g. 'ER-01'
+ * @param {string} params.category       - key from PDF_CATEGORIES, or 'root'
+ * @param {string} params.filename       - final file name, e.g. 'Zayavka ER-01 - Arien Plaza.pdf'
+ * @param {Blob}   params.pdfBlob        - PDF content
  */
-export async function savePdfToFolder({ tourType, bookingNumber, hotelName, pdfBlob, isCombined = false }) {
+export async function savePdfToFolder({ tourType, bookingNumber, category, filename, pdfBlob }) {
   try {
-    // Get base folder handle
-    const baseHandle = await getBaseFolderHandle();
-
+    const baseHandle = await getTourTypeFolderHandle(tourType);
     if (!baseHandle) {
-      throw new Error('No base folder configured. Please select a folder first.');
+      return { success: false, error: 'Papka tanlanmagan. Settings → PDF Papkalari' };
     }
 
-    // Determine folder structure based on tour type
-    let folderPath = [];
-    const year = new Date().getFullYear();
+    // Build path: [bookingNumber] or [bookingNumber, subfolder]
+    const subfolder = PDF_CATEGORIES[category];
+    const pathParts = subfolder ? [bookingNumber, subfolder] : [bookingNumber];
 
-    switch (tourType.toUpperCase()) {
-      case 'ER':
-        folderPath = [bookingNumber, 'Hotel Zayavka'];
-        break;
-      case 'CO':
-        folderPath = [bookingNumber, 'Hotel Zayavka'];
-        break;
-      case 'KAS':
-        folderPath = [bookingNumber, 'Hotel Zayavka'];
-        break;
-      case 'ZA':
-        folderPath = [bookingNumber, 'Hotel Zayavka'];
-        break;
-      default:
-        folderPath = [bookingNumber, 'Hotel Zayavka'];
-    }
+    const targetDir = await createFolderStructure(baseHandle, pathParts);
 
-    // Create folder structure
-    const targetFolder = await createFolderStructure(baseHandle, folderPath);
-
-    // Generate filename
-    const filename = `ЗАЯВКА ${bookingNumber} - ${hotelName}.pdf`;
-
-    // Create file
-    const fileHandle = await targetFolder.getFileHandle(filename, { create: true });
+    const fileHandle = await targetDir.getFileHandle(filename, { create: true });
     const writable = await fileHandle.createWritable();
-
-    // Write content
     await writable.write(pdfBlob);
     await writable.close();
 
-    return {
-      success: true,
-      path: `${folderPath.join('/')}/${filename}`,
-      filename
-    };
+    const displayPath = [...pathParts, filename].join(' / ');
+    return { success: true, path: displayPath, filename };
 
   } catch (error) {
-    console.error('Error saving PDF to folder:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    console.error('savePdfToFolder error:', error);
+    return { success: false, error: error.message };
   }
 }
 
 /**
- * Download PDF from URL and save to folder
+ * Fetch a PDF from URL and save to folder
  */
-export async function downloadAndSavePdf({ url, tourType, bookingNumber, hotelName, isCombined = false }) {
+export async function downloadAndSavePdf({ url, tourType, bookingNumber, category, filename }) {
   try {
-    // Fetch PDF content
     const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Failed to download PDF');
-    }
-
+    if (!response.ok) throw new Error('PDF yuklab olinmadi');
     const pdfBlob = await response.blob();
-
-    // Save to folder
-    return await savePdfToFolder({
-      tourType,
-      bookingNumber,
-      hotelName,
-      pdfBlob,
-      isCombined
-    });
-
+    return await savePdfToFolder({ tourType, bookingNumber, category, filename, pdfBlob });
   } catch (error) {
-    console.error('Error downloading and saving PDF:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    return { success: false, error: error.message };
   }
+}
+
+// ── Legacy compatibility (used by older BookingDetail code) ──────────────────
+
+export async function selectBaseFolder() {
+  return selectTourTypeFolder('ER');
+}
+
+export async function getBaseFolderHandle() {
+  return getTourTypeFolderHandle('ER');
+}
+
+export async function savePdfToFolderLegacy({ tourType, bookingNumber, hotelName, pdfBlob }) {
+  const filename = `ZAЯВКА ${bookingNumber} - ${hotelName}.pdf`;
+  return savePdfToFolder({ tourType, bookingNumber, category: 'zayavka', filename, pdfBlob });
 }

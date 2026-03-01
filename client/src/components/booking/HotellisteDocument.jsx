@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getTourTypeFolderHandle, savePdfToFolder } from '../../utils/fileSystemUtils';
 
 const HotellisteDocument = React.forwardRef(function HotellisteDocument({ booking, tourists, accommodations, guide, onWorldInsightSend }, ref) {
   const [emergencyContacts, setEmergencyContacts] = useState([
@@ -242,8 +243,16 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
       // Save or return blob
       const filename = `Hotelliste_${booking?.bookingNumber || 'booking'}.pdf`;
       if (returnBlob) return doc.output('blob');
+      const blob = doc.output('blob');
       doc.save(filename);
       toast.success('PDF сақланди!');
+      const tourType = booking?.tourType?.code;
+      const bookingNumber = booking?.bookingNumber;
+      if (tourType && bookingNumber) {
+        getTourTypeFolderHandle(tourType).then(handle => {
+          if (handle) savePdfToFolder({ tourType, bookingNumber, category: 'worldInsight', filename, pdfBlob: blob });
+        });
+      }
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('PDF экспорт хатолиги');

@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import api, { invoicesApi, pricesApi } from '../../services/api';
+import { getTourTypeFolderHandle, savePdfToFolder } from '../../utils/fileSystemUtils';
 
 const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0, onWorldInsightSend }, ref) {
   // Format number with space as thousands separator (1234 → 1 234)
@@ -1010,8 +1011,16 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       const docType = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
       const filename = `${docType}_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
       if (returnBlob) return doc.output('blob');
+      const blob = doc.output('blob');
       doc.save(filename);
       toast.success('Orient Insight PDF сақланди!');
+      const tourType = booking?.tourType?.code;
+      const bookingNumber = booking?.bookingNumber;
+      if (tourType && bookingNumber) {
+        getTourTypeFolderHandle(tourType).then(handle => {
+          if (handle) savePdfToFolder({ tourType, bookingNumber, category: 'worldInsight', filename, pdfBlob: blob });
+        });
+      }
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('PDF экспорт хатолиги');
@@ -1250,8 +1259,16 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       const docType = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
       const filename = `${docType}_INFUTURESTORM_${booking?.bookingNumber || 'invoice'}.pdf`;
       if (returnBlob) return doc.output('blob');
+      const blob2 = doc.output('blob');
       doc.save(filename);
       toast.success('INFUTURESTORM PDF сақланди!');
+      const tourType2 = booking?.tourType?.code;
+      const bookingNumber2 = booking?.bookingNumber;
+      if (tourType2 && bookingNumber2) {
+        getTourTypeFolderHandle(tourType2).then(handle => {
+          if (handle) savePdfToFolder({ tourType: tourType2, bookingNumber: bookingNumber2, category: 'worldInsight', filename, pdfBlob: blob2 });
+        });
+      }
     } catch (error) {
       console.error('PDF export error:', error);
       toast.error('PDF экспорт хатолиги');
