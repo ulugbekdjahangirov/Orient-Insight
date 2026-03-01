@@ -1237,8 +1237,38 @@ export default function Ausgaben() {
           {/* Main Content Card */}
           <div className="rounded-2xl overflow-hidden shadow-lg border border-white/40" style={{ background: 'white' }}>
 
-            {/* Sub-tabs */}
-            <div className="flex overflow-x-auto" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {/* Sub-tabs — Mobile: 3-col card grid */}
+            <div className="sm:hidden grid grid-cols-3 gap-2 p-2" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0' }}>
+              {expenseTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeExpenseTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => updateParams({ tab: tab.id })}
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-xl text-xs font-semibold transition-all"
+                    style={isActive ? {
+                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px #16a34a44',
+                    } : {
+                      background: 'white',
+                      color: '#374151',
+                      border: '1px solid #d1fae5',
+                    }}
+                  >
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={isActive ? { background: 'rgba(255,255,255,0.2)' } : { background: '#d1fae5' }}>
+                      <Icon size={15} color={isActive ? 'white' : '#059669'} />
+                    </span>
+                    <span className="text-center leading-tight">{tab.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sub-tabs — Desktop: horizontal tab bar */}
+            <div className="hidden sm:flex" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0' }}>
               {expenseTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeExpenseTab === tab.id;
@@ -1247,7 +1277,7 @@ export default function Ausgaben() {
                   <button
                     key={tab.id}
                     onClick={() => updateParams({ tab: tab.id })}
-                    className="shrink-0 md:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-2 py-3 md:py-4 text-xs md:text-sm font-semibold transition-all relative whitespace-nowrap"
+                    className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold transition-all relative"
                     style={isActive ? {
                       background: 'linear-gradient(180deg, #dcfce7 0%, white 100%)',
                       color: '#15803d',
@@ -1258,7 +1288,7 @@ export default function Ausgaben() {
                       borderBottom: '3px solid transparent',
                     }}
                   >
-                    <span className="w-6 h-6 md:w-7 md:h-7 rounded-lg flex items-center justify-center transition-all shrink-0"
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
                       style={isActive
                         ? { background: 'linear-gradient(135deg, #16a34a, #15803d)' }
                         : { background: '#d1fae5' }}>
