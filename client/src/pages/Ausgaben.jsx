@@ -25,7 +25,7 @@ export default function Ausgaben() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get state from URL or use defaults
-  const activeTourType = searchParams.get('tour') || 'ER';
+  const activeTourType = searchParams.get('tour') || 'ALL';
   const activeExpenseTab = searchParams.get('tab') || 'general';
 
   // Function to update URL params
