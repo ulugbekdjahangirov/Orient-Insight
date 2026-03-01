@@ -3,12 +3,6 @@ import { telegramApi } from '../services/api';
 import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Building, Phone, Pencil, X, Send, Bus, UtensilsCrossed, Compass } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const typeLabels = {
-  private:    { label: 'Shaxsiy',    color: 'bg-blue-100 text-blue-800',   icon: MessageCircle },
-  group:      { label: 'Guruh',      color: 'bg-green-100 text-green-800', icon: Users },
-  supergroup: { label: 'Supergroup', color: 'bg-purple-100 text-purple-800', icon: Users },
-  channel:    { label: 'Kanal',      color: 'bg-orange-100 text-orange-800', icon: Hash },
-};
 
 const ROLES = [
   { value: '',             label: '— Belgilanmagan' },
@@ -393,8 +387,6 @@ export default function TelegramUsers() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.map(chat => {
-                  const typeInfo = typeLabels[chat.type] || { label: chat.type, color: 'bg-gray-100 text-gray-600', icon: Building };
-                  const TypeIcon = typeInfo.icon;
                   return (
                     <tr key={chat.chatId} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
@@ -443,8 +435,6 @@ export default function TelegramUsers() {
           {/* Mobile cards */}
           <div className="md:hidden divide-y divide-gray-100">
             {filtered.map(chat => {
-              const typeInfo = typeLabels[chat.type] || { label: chat.type, color: 'bg-gray-100 text-gray-600', icon: Building };
-              const TypeIcon = typeInfo.icon;
               return (
                 <div key={chat.chatId} className="p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
