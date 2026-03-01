@@ -274,9 +274,7 @@ export default function TelegramUsers() {
                     <span className="flex items-center gap-1"><Phone size={13} />Telefon</span>
                   </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Chat ID</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Tur</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Rol</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Oxirgi xabar</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Sana</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -299,16 +297,7 @@ export default function TelegramUsers() {
                         <CopyButton text={chat.chatId} />
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
-                          <TypeIcon size={11} />
-                          {typeInfo.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
                         <RoleCell chatId={chat.chatId} value={chat.role} onSave={handleUpdate} />
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate" title={chat.lastMessage}>
-                        {chat.lastMessage || '—'}
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(chat.date)}</td>
                       <td className="px-4 py-3">
@@ -338,9 +327,6 @@ export default function TelegramUsers() {
                     <div>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-semibold text-gray-900">{chat.name || '—'}</span>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
-                          <TypeIcon size={10} />{typeInfo.label}
-                        </span>
                         {chat.role && (
                           <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${roleColors[chat.role] || 'bg-gray-100 text-gray-600'}`}>
                             {ROLES.find(r => r.value === chat.role)?.label}
