@@ -402,6 +402,10 @@ export default function Ausgaben() {
       transportSevil: routes.filter(r => r.provider?.toLowerCase().includes('sevil')).reduce((sum, r) => sum + (r.price || 0), 0),
       transportXayrulla: routes.filter(r => r.provider?.toLowerCase().includes('xayrulla')).reduce((sum, r) => sum + (r.price || 0), 0),
       transportNosir: routes.filter(r => r.provider?.toLowerCase().includes('nosir')).reduce((sum, r) => sum + (r.price || 0), 0),
+      // Date ranges per provider (first and last route date)
+      transportSevilDates: (() => { const d = routes.filter(r => r.provider?.toLowerCase().includes('sevil') && r.date).map(r => r.date).sort(); return { from: d[0] || null, to: d[d.length-1] || null }; })(),
+      transportXayrullaDates: (() => { const d = routes.filter(r => r.provider?.toLowerCase().includes('xayrulla') && r.date).map(r => r.date).sort(); return { from: d[0] || null, to: d[d.length-1] || null }; })(),
+      transportNosirDates: (() => { const d = routes.filter(r => r.provider?.toLowerCase().includes('nosir') && r.date).map(r => r.date).sort(); return { from: d[0] || null, to: d[d.length-1] || null }; })(),
 
       // 3. Railway - from railways array
       railway: railways.reduce((sum, r) => sum + (r.price || 0), 0),
@@ -1889,11 +1893,11 @@ export default function Ausgaben() {
                 {/* ── TRANSPORT ANALYSIS TAB ── */}
                 {activeExpenseTab === 'transport-analysis' && (() => {
                   const PROVIDERS = [
-                    { key: 'sevil',    label: 'Sevil',    expenseKey: 'transportSevil',
+                    { key: 'sevil',    label: 'Sevil',    expenseKey: 'transportSevil',    datesKey: 'transportSevilDates',
                       headerBg: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', monthBg: '#dbeafe', monthBgOpen: '#bfdbfe', textColor: '#1e40af' },
-                    { key: 'xayrulla', label: 'Xayrulla', expenseKey: 'transportXayrulla',
+                    { key: 'xayrulla', label: 'Xayrulla', expenseKey: 'transportXayrulla', datesKey: 'transportXayrullaDates',
                       headerBg: 'linear-gradient(135deg,#064e3b,#065f46)', monthBg: '#dcfce7', monthBgOpen: '#bbf7d0', textColor: '#065f46' },
-                    { key: 'nosir',    label: 'Nosir',    expenseKey: 'transportNosir',
+                    { key: 'nosir',    label: 'Nosir',    expenseKey: 'transportNosir',    datesKey: 'transportNosirDates',
                       headerBg: 'linear-gradient(135deg,#4c1d95,#6d28d9)', monthBg: '#ede9fe', monthBgOpen: '#ddd6fe', textColor: '#6d28d9' },
                   ];
 
@@ -1922,11 +1926,14 @@ export default function Ausgaben() {
                       const mk = depDate ? new Date(depDate).toISOString().slice(0, 7) : 'unknown';
                       if (!providerMap[p.key]) providerMap[p.key] = { months: {} };
                       if (!providerMap[p.key].months[mk]) providerMap[p.key].months[mk] = [];
+                      const dateRange = booking.expenses?.[p.datesKey] || { from: null, to: null };
                       providerMap[p.key].months[mk].push({
                         bookingId: booking.bookingId,
                         bookingName: booking.bookingName,
                         amount,
                         depDate,
+                        dateFrom: dateRange.from,
+                        dateTo: dateRange.to,
                       });
                     });
                   });
@@ -2024,7 +2031,10 @@ export default function Ausgaben() {
                                           </button>
                                           <Link to={`/bookings/${b.bookingId}`}
                                             className="font-bold text-blue-600 hover:underline w-16 shrink-0">{b.bookingName}</Link>
-                                          <span className="text-slate-400">{fmtShort(b.depDate)}</span>
+                                          <span className="text-slate-400">
+                                            {b.dateFrom ? fmtShort(b.dateFrom) : fmtShort(b.depDate)}
+                                            {b.dateTo && b.dateTo !== b.dateFrom ? ` → ${fmtShort(b.dateTo)}` : ''}
+                                          </span>
                                           {isPaid && <span className="text-green-600 font-semibold">To'landi</span>}
                                         </div>
                                         <div className="font-semibold" style={{ color: isPaid ? '#16a34a' : '#334155' }}>
