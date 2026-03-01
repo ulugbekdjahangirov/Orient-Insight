@@ -1343,10 +1343,11 @@ router.post('/webhook', (req, res, next) => {
       // Helper — build one visit's message + keyboard (keyboard removed after action)
       function buildVisitMsg(grp, v, st) {
         const visitTitle = v.sectionLabel
-          ? `*${grp.no}. ${grp.group} — ${v.sectionLabel}*`
-          : `*${grp.no}. ${grp.group}*`;
+          ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
+          : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
         const lines = [header, '', visitTitle,
-          `${ST_ICON[st]} ${v.checkIn} → ${v.checkOut} | ${v.pax} pax | DBL:${v.dbl} TWN:${v.twn} SNGL:${v.sngl}`
+          `📅 ${v.checkIn} → ${v.checkOut}`,
+          `👥 ${v.pax} PAX  |  🛏 DBL:${v.dbl}  TWN:${v.twn}  SNGL:${v.sngl}`
         ];
         // PENDING — 3 buttons; WAITING — 2 buttons (no WL); CONFIRMED/REJECTED — no buttons
         const keyboard = st === 'PENDING' ? [[
@@ -2259,13 +2260,13 @@ router.post('/send-changes/:bookingId/:hotelId', authenticate, async (req, res) 
     const checkIn  = fmtDateUtil(acc?.checkIn  || booking?.arrivalDate);
     const checkOut = fmtDateUtil(acc?.checkOut || booking?.endDate);
     const text = [
-      `📝 *Izmeneniya k zayavke ${booking?.bookingNumber}*`,
+      `📝 *ЗАЯВКА ${booking?.bookingNumber} — Izmeneniya*`,
       `🏨 ${hotel.name}`,
       '',
       `📅 Zaezd: ${checkIn}`,
       `📅 Vyezd: ${checkOut}`,
       `👥 PAX: ${booking?.pax || 0}`,
-      `🛏 DBL: ${dbl} | TWN: ${twn} | SNGL: ${sngl}`,
+      `🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`,
     ].join('\n');
     await axios.post(`${BOT_API()}/sendMessage`, { chat_id: hotel.telegramChatId, text, parse_mode: 'Markdown' });
     res.json({ success: true });
@@ -2294,8 +2295,7 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
     const checkIn  = fmtDateUtil(acc?.checkIn  || booking?.arrivalDate);
     const checkOut = fmtDateUtil(acc?.checkOut || booking?.endDate);
     const text = [
-      `❌ *ANNULYATSIYA*`,
-      `Zayavka: *${booking?.bookingNumber}*`,
+      `❌ *ЗАЯВКА ${booking?.bookingNumber} — Annulyatsiya*`,
       `🏨 ${hotel.name}`,
       '',
       `📅 Zaezd: ${checkIn}`,
