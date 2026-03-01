@@ -15,6 +15,23 @@ const TABS = [
   { id: 'transport-plan', label: 'Transport Plan', icon: CalendarRange },
 ];
 
+const TAB_ACTIVE_CLASSES = {
+  hotels:          'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md',
+  restoran:        'bg-gradient-to-r from-orange-400 to-amber-500 text-white shadow-md',
+  transport:       'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md',
+  gidlar:          'bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-md',
+  'hotels-plan':   'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md',
+  'restoran-plan': 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md',
+  'transport-plan':'bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-md',
+};
+
+const TOUR_TAB_STYLE = {
+  ER:  { active: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm',     inactive: 'bg-white border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600' },
+  CO:  { active: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm',  inactive: 'bg-white border border-gray-200 text-gray-600 hover:border-emerald-200 hover:text-emerald-600' },
+  KAS: { active: 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-sm', inactive: 'bg-white border border-gray-200 text-gray-600 hover:border-purple-200 hover:text-purple-600' },
+  ZA:  { active: 'bg-gradient-to-r from-orange-400 to-amber-500 text-white shadow-sm',  inactive: 'bg-white border border-gray-200 text-gray-600 hover:border-orange-200 hover:text-orange-600' },
+};
+
 const STATUS_CONFIG = {
   PENDING:              { label: 'Kutilmoqda',             color: 'bg-yellow-100 text-yellow-800', icon: '🕐' },
   CONFIRMED:            { label: 'Tasdiqladi',             color: 'bg-green-100 text-green-800',   icon: '✅' },
@@ -108,11 +125,11 @@ function HotelsTab({ confirmations, onDelete }) {
         ].filter(Boolean).join('  ');
 
         return (
-          <div key={group.hotelId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={group.hotelId} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             {/* Hotel header — clickable */}
             <button
               onClick={() => toggleHotel(group.hotelId)}
-              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              className="w-full bg-gradient-to-r from-slate-50 to-white border-b border-gray-100 px-5 py-3.5 flex items-center gap-3 hover:from-slate-100 hover:to-gray-50 transition-all text-left"
             >
               {isOpen
                 ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -127,7 +144,7 @@ function HotelsTab({ confirmations, onDelete }) {
                 {statusSummary && (
                   <span className="text-sm">{statusSummary}</span>
                 )}
-                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
               </div>
@@ -289,11 +306,11 @@ function BookingsGroupedTab({ confirmations, onDelete }) {
         ].filter(Boolean).join('  ');
 
         return (
-          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             {/* Booking header — clickable */}
             <button
               onClick={() => toggleBooking(group.bookingId)}
-              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              className="w-full bg-gradient-to-r from-slate-50 to-white border-b border-gray-100 px-5 py-3.5 flex items-center gap-3 hover:from-slate-100 hover:to-gray-50 transition-all text-left"
             >
               {isOpen
                 ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -313,7 +330,7 @@ function BookingsGroupedTab({ confirmations, onDelete }) {
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 {statusSummary && <span className="text-sm">{statusSummary}</span>}
-                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta hotel
                 </span>
               </div>
@@ -441,10 +458,10 @@ function TransportTab({ confirmations, onDelete }) {
         ].filter(Boolean).join('  ');
 
         return (
-          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             <button
               onClick={() => toggleBooking(group.bookingId)}
-              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              className="w-full bg-gradient-to-r from-slate-50 to-white border-b border-gray-100 px-5 py-3.5 flex items-center gap-3 hover:from-slate-100 hover:to-gray-50 transition-all text-left"
             >
               {isOpen
                 ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -464,7 +481,7 @@ function TransportTab({ confirmations, onDelete }) {
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 {statusSummary && <span className="text-sm">{statusSummary}</span>}
-                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
               </div>
@@ -576,10 +593,10 @@ function GidlarTab({ assignments }) {
         const isOpen = !!openBookings[group.bookingId];
         const assigned = group.items.filter(i => i.status === 'ASSIGNED').length;
         return (
-          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             <button
               onClick={() => toggleBooking(group.bookingId)}
-              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              className="w-full bg-gradient-to-r from-slate-50 to-white border-b border-gray-100 px-5 py-3.5 flex items-center gap-3 hover:from-slate-100 hover:to-gray-50 transition-all text-left"
             >
               {isOpen
                 ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -599,7 +616,7 @@ function GidlarTab({ assignments }) {
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 {assigned > 0 && <span className="text-sm">✅ {assigned}</span>}
-                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta gid
                 </span>
               </div>
@@ -697,10 +714,10 @@ function RestoranTab({ confirmations, onDelete }) {
         ].filter(Boolean).join('  ');
 
         return (
-          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             <button
               onClick={() => toggleBooking(group.bookingId)}
-              className="w-full bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              className="w-full bg-gradient-to-r from-slate-50 to-white border-b border-gray-100 px-5 py-3.5 flex items-center gap-3 hover:from-slate-100 hover:to-gray-50 transition-all text-left"
             >
               {isOpen
                 ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -720,7 +737,7 @@ function RestoranTab({ confirmations, onDelete }) {
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 {statusSummary && <span className="text-sm">{statusSummary}</span>}
-                <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
               </div>
@@ -854,7 +871,7 @@ function RestoranPlanTab({ mealConfirmations, subTab, onDelete }) {
         );
 
         return (
-          <div key={restName} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={restName} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             {/* Header */}
             <button
               onClick={() => setOpenRestaurants(prev => ({ ...prev, [restName]: !prev[restName] }))}
@@ -1058,7 +1075,7 @@ function HotelsPlanTab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
         ].filter(Boolean).join('  ');
 
         return (
-          <div key={hotel.hotelId} className="group/hotel bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div key={hotel.hotelId} className="group/hotel bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-200 flex items-center">
               <button
                 onClick={() => setOpenHotels(prev => ({ ...prev, [hotel.hotelId]: !prev[hotel.hotelId] }))}
@@ -1075,7 +1092,7 @@ function HotelsPlanTab({ sections, subTab, onDeleteHotel, onDeleteGroup, onDelet
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   {statusSummary && <span className="text-sm">{statusSummary}</span>}
-                  <span className="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                     {(hotel.groups || []).length} ta guruh
                   </span>
                 </div>
@@ -1384,17 +1401,17 @@ export default function Partners() {
         })}
       </div>
       {/* Desktop: horizontal tab bar */}
-      <div className="hidden sm:flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="hidden sm:flex gap-1 mb-6 bg-white rounded-2xl p-1.5 w-fit shadow-sm border border-gray-200">
         {TABS.map(tab => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                 activeTab === tab.id
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? (TAB_ACTIVE_CLASSES[tab.id] || 'bg-gray-800 text-white shadow-md')
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -1447,8 +1464,8 @@ export default function Partners() {
                       onClick={() => setHotelSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         hotelSubTab === sub
-                          ? 'bg-gray-800 text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? (TOUR_TAB_STYLE[sub]?.active || 'bg-gray-800 text-white')
+                          : (TOUR_TAB_STYLE[sub]?.inactive || 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')
                       }`}
                     >
                       {sub}
@@ -1550,8 +1567,8 @@ export default function Partners() {
                       onClick={() => setRestoranSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         restoranSubTab === sub
-                          ? 'bg-gray-800 text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? (TOUR_TAB_STYLE[sub]?.active || 'bg-gray-800 text-white')
+                          : (TOUR_TAB_STYLE[sub]?.inactive || 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')
                       }`}
                     >
                       {sub}
@@ -1637,7 +1654,7 @@ export default function Partners() {
                   {HOTEL_SUB_TABS.map(sub => (
                     <button key={sub} onClick={() => setTransportSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        transportSubTab === sub ? 'bg-gray-800 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        transportSubTab === sub ? (TOUR_TAB_STYLE[sub]?.active || 'bg-gray-800 text-white') : (TOUR_TAB_STYLE[sub]?.inactive || 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')
                       }`}>
                       {sub}
                       {trCounts[sub] ? (
@@ -1705,8 +1722,8 @@ export default function Partners() {
                       onClick={() => setGidlarSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         gidlarSubTab === sub
-                          ? 'bg-gray-800 text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? (TOUR_TAB_STYLE[sub]?.active || 'bg-gray-800 text-white')
+                          : (TOUR_TAB_STYLE[sub]?.inactive || 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')
                       }`}
                     >
                       {sub}
@@ -1785,8 +1802,8 @@ export default function Partners() {
                       onClick={() => setHotelsPlanSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         hotelsPlanSubTab === sub
-                          ? 'bg-gray-800 text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? (TOUR_TAB_STYLE[sub]?.active || 'bg-gray-800 text-white')
+                          : (TOUR_TAB_STYLE[sub]?.inactive || 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')
                       }`}
                     >
                       {sub}
@@ -1847,8 +1864,8 @@ export default function Partners() {
                       onClick={() => setRestoranPlanSubTab(sub)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         restoranPlanSubTab === sub
-                          ? 'bg-gray-800 text-white'
-                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? (TOUR_TAB_STYLE[sub]?.active || 'bg-gray-800 text-white')
+                          : (TOUR_TAB_STYLE[sub]?.inactive || 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50')
                       }`}
                     >
                       {sub}
