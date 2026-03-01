@@ -2263,8 +2263,8 @@ router.post('/send-changes/:bookingId/:hotelId', authenticate, async (req, res) 
       `📝 *ЗАЯВКА ${booking?.bookingNumber} — Izmeneniya*`,
       `🏨 ${hotel.name}`,
       '',
-      `📅 Zaezd: ${checkIn}`,
-      `📅 Vyezd: ${checkOut}`,
+      `📅 Заезд: ${checkIn}`,
+      `📅 Выезд: ${checkOut}`,
       `👥 PAX: ${booking?.pax || 0}`,
       `🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`,
     ].join('\n');
@@ -2298,8 +2298,8 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
       `❌ *ЗАЯВКА ${booking?.bookingNumber} — Annulyatsiya*`,
       `🏨 ${hotel.name}`,
       '',
-      `📅 Zaezd: ${checkIn}`,
-      `📅 Vyezd: ${checkOut}`,
+      `📅 Заезд: ${checkIn}`,
+      `📅 Выезд: ${checkOut}`,
       `👥 PAX: ${booking?.pax || 0}`,
       '',
       '⚠️ Bu bron bekor qilindi.'
