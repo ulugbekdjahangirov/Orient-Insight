@@ -2704,7 +2704,7 @@ export default function Jahresplanung() {
   const activeTourColor = TOUR_COLORS[tourTab] || '#3B82F6';
 
   return (
-    <div className="min-h-screen" style={{ background: '#1e1b4b' }}>
+    <div className="min-h-screen bg-slate-50">
 
       {/* ── HERO HEADER ── */}
       <div className="relative overflow-hidden mx-3 mt-3" style={{
