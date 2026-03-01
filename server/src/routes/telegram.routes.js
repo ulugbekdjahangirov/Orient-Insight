@@ -429,7 +429,7 @@ router.post('/webhook', (req, res, next) => {
           pax        ? `👥 PAX: *${pax}* kishi`  : null,
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
           `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
-          `🕐 ${fmtDateUtil(now)} ${timeStr}`
+          `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: adminChatId,
@@ -657,7 +657,7 @@ router.post('/webhook', (req, res, next) => {
           booking?.guide?.name ? `🧭 Gid: *${booking.guide.name}*${booking.guide.phone ? `  ${booking.guide.phone}` : ''}` : null,
           trApprovedBy         ? `👁 TEKSHIRDI: ${trApprovedBy}`                       : null,
           `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
-          `🕐 ${fmtDateUtil(now)} ${timeStr}`
+          `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: adminChatId,

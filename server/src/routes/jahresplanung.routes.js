@@ -991,7 +991,10 @@ router.get('/jp-sections', authenticate, async (req, res) => {
     });
 
     // Collect all hotelIds and fetch city info in one query
-    const hotelIds = settings.map(s => parseInt(s.key.replace('JP_SECTIONS_', '')));
+    const hotelIds = settings.map(s => {
+      const m = s.key.match(/JP_SECTIONS_(\d+)/);
+      return m ? parseInt(m[1]) : null;
+    }).filter(Boolean);
     const hotels = await prisma.hotel.findMany({
       where: { id: { in: hotelIds } },
       include: { city: { select: { name: true, sortOrder: true } } }
@@ -1000,7 +1003,7 @@ router.get('/jp-sections', authenticate, async (req, res) => {
     hotels.forEach(h => { hotelMap[h.id] = h; });
 
     const sections = settings.map(s => {
-      const hotelId = parseInt(s.key.replace('JP_SECTIONS_', ''));
+      const hotelId = parseInt(s.key.match(/JP_SECTIONS_(\d+)/)?.[1]);
       try {
         const data = JSON.parse(s.value);
         const hotel = hotelMap[hotelId];
