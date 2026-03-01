@@ -6,13 +6,13 @@ import TransportPlanTab from '../components/common/TransportPlanTab';
 import { useYear } from '../context/YearContext';
 
 const TABS = [
-  { id: 'hotels', label: 'Hotels', icon: Building2 },
-  { id: 'restoran', label: 'Restoran', icon: UtensilsCrossed },
-  { id: 'transport', label: 'Transport', icon: Bus },
-  { id: 'gidlar', label: 'Gidlar', icon: Users },
-  { id: 'hotels-plan', label: 'Hotels Plan', icon: CalendarRange },
-  { id: 'restoran-plan', label: 'Restoran Plan', icon: CalendarRange },
-  { id: 'transport-plan', label: 'Transport Plan', icon: CalendarRange },
+  { id: 'hotels',          label: 'Hotels',        shortLabel: 'Hotels',  icon: Building2 },
+  { id: 'restoran',        label: 'Restoran',       shortLabel: 'Rest.',   icon: UtensilsCrossed },
+  { id: 'transport',       label: 'Transport',      shortLabel: 'Trans.',  icon: Bus },
+  { id: 'gidlar',          label: 'Gidlar',         shortLabel: 'Gidlar', icon: Users },
+  { id: 'hotels-plan',     label: 'Hotels Plan',    shortLabel: 'H.Plan', icon: CalendarRange },
+  { id: 'restoran-plan',   label: 'Restoran Plan',  shortLabel: 'R.Plan', icon: CalendarRange },
+  { id: 'transport-plan',  label: 'Transport Plan', shortLabel: 'T.Plan', icon: CalendarRange },
 ];
 
 const TAB_ACTIVE_CLASSES = {
@@ -1460,13 +1460,22 @@ export default function Partners() {
                 >
                   <div className="absolute top-[-10px] right-[-10px] w-14 h-14 rounded-full pointer-events-none"
                     style={{ background: 'white', opacity: isActive ? 0.12 : 0.03 }} />
-                  <div className="flex flex-col gap-0.5">
+                  {/* Mobile: icon + short label centered */}
+                  <div className="sm:hidden flex flex-col items-center gap-1">
+                    <Icon size={15} color="white" />
+                    <span className="text-[10px] font-bold text-center leading-tight text-white"
+                      style={{ opacity: isActive ? 1 : 0.8 }}>
+                      {tab.shortLabel}
+                    </span>
+                  </div>
+                  {/* Desktop: icon + full label + subtitle */}
+                  <div className="hidden sm:flex flex-col gap-0.5">
                     <div className="flex items-center gap-1">
                       <Icon size={12} color="white" />
                       <p className="text-xs font-black leading-none truncate"
                         style={{ color: 'white', opacity: isActive ? 1 : 0.75 }}>{label}</p>
                     </div>
-                    <p className="text-[10px] leading-tight hidden sm:block"
+                    <p className="text-[10px] leading-tight"
                       style={{ color: 'rgba(255,255,255,0.55)', opacity: isActive ? 1 : 0.7 }}>
                       {TAB_SUBTITLES[tab.id]}
                     </p>
