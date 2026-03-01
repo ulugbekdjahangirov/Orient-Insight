@@ -995,11 +995,12 @@ export default function Ausgaben() {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: '#052e16' }}>
+    <div className="min-h-screen" style={{ background: '#f1f5f9' }}>
 
       {/* ═══ HERO HEADER ═══ */}
-      <div className="relative overflow-hidden" style={{
+      <div className="relative overflow-hidden mx-3 mt-3" style={{
         background: 'linear-gradient(160deg, #14532d 0%, #166534 35%, #15803d 65%, #166534 100%)',
+        borderRadius: '28px',
       }}>
         {/* Glow blobs */}
         <div className="absolute top-0 right-0 rounded-full pointer-events-none"
@@ -1010,9 +1011,9 @@ export default function Ausgaben() {
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)' }} />
 
-        <div className="relative px-6 pt-7 pb-6">
+        <div className="relative px-4 md:px-6 pt-5 md:pt-7 pb-5 md:pb-6">
           {/* Eyebrow */}
-          <div className="flex items-center gap-2 mb-5">
+          <div className="flex items-center gap-2 mb-3 md:mb-5">
             <span className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
               style={{ background: `${activeModule?.color}35`, color: 'white', border: `1px solid ${activeModule?.color}60` }}>
               {activeModule?.code}
@@ -1022,64 +1023,61 @@ export default function Ausgaben() {
           </div>
 
           {/* Title + Quick Totals */}
-          <div className="flex items-end justify-between gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4 mb-4 md:mb-6">
             <div>
-              <h1 className="text-5xl font-black text-white tracking-tight leading-none" style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Ausgaben</h1>
-              <p className="text-green-200 text-sm mt-2 opacity-75">Barcha xarajatlar va to'lovlar tahlili</p>
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none" style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Ausgaben</h1>
+              <p className="text-green-200 text-xs md:text-sm mt-1.5 md:mt-2 opacity-75">Barcha xarajatlar va to'lovlar tahlili</p>
             </div>
             {!loading && (
-              <div className="flex gap-4">
-                <div className="text-right">
+              <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                <div>
                   <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami USD</p>
-                  <p className="text-2xl font-black text-white">
+                  <p className="text-xl md:text-2xl font-black text-white">
                     ${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}
                   </p>
                 </div>
-                <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
-                <div className="text-right">
+                <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                <div>
                   <p className="text-xs text-green-200 mb-0.5 uppercase tracking-wider opacity-70">Jami UZS</p>
-                  <p className="text-2xl font-black text-amber-400">
+                  <p className="text-xl md:text-2xl font-black text-amber-400">
                     {formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}
                   </p>
                 </div>
-                <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
-                <div className="flex flex-col items-end justify-center gap-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={handleRefresh} disabled={loading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                      style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
-                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
-                      {loading ? '⏳ Yuklanmoqda...' : '🔄 Yangilash'}
-                    </button>
-                    {!loading && bookingsDetailedData.length > 0 && (
-                      <>
-                        <button onClick={exportToExcel} title="Excel yuklab olish"
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                          style={{ background: 'rgba(22,163,74,0.35)', color: '#bbf7d0', border: '1px solid rgba(74,222,128,0.4)' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='rgba(22,163,74,0.55)'}
-                          onMouseLeave={e=>e.currentTarget.style.background='rgba(22,163,74,0.35)'}>
-                          <FileSpreadsheet size={13} /> Excel
-                        </button>
-                        <button onClick={exportToPDF} title="PDF yuklab olish"
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                          style={{ background: 'rgba(220,38,38,0.35)', color: '#fecaca', border: '1px solid rgba(248,113,113,0.4)' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='rgba(220,38,38,0.55)'}
-                          onMouseLeave={e=>e.currentTarget.style.background='rgba(220,38,38,0.35)'}>
-                          <FileText size={13} /> PDF
-                        </button>
-                        <button onClick={sendToTelegram} disabled={sendingTelegram} title="Sirojga Telegram orqali yuborish"
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                          style={{ background: 'rgba(37,99,235,0.35)', color: '#bfdbfe', border: '1px solid rgba(96,165,250,0.4)', opacity: sendingTelegram ? 0.6 : 1 }}
-                          onMouseEnter={e=>{ if(!sendingTelegram) e.currentTarget.style.background='rgba(37,99,235,0.55)'; }}
-                          onMouseLeave={e=>e.currentTarget.style.background='rgba(37,99,235,0.35)'}>
-                          <Send size={13} /> {sendingTelegram ? '...' : 'TG'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  {lastUpdated && !loading && (
-                    <p className="text-xs opacity-50 text-green-100">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button onClick={handleRefresh} disabled={loading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
+                    {loading ? '⏳' : '🔄 Yangilash'}
+                  </button>
+                  {bookingsDetailedData.length > 0 && (
+                    <>
+                      <button onClick={exportToExcel} title="Excel yuklab olish"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={{ background: 'rgba(22,163,74,0.35)', color: '#bbf7d0', border: '1px solid rgba(74,222,128,0.4)' }}
+                        onMouseEnter={e=>e.currentTarget.style.background='rgba(22,163,74,0.55)'}
+                        onMouseLeave={e=>e.currentTarget.style.background='rgba(22,163,74,0.35)'}>
+                        <FileSpreadsheet size={13} /> Excel
+                      </button>
+                      <button onClick={exportToPDF} title="PDF yuklab olish"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={{ background: 'rgba(220,38,38,0.35)', color: '#fecaca', border: '1px solid rgba(248,113,113,0.4)' }}
+                        onMouseEnter={e=>e.currentTarget.style.background='rgba(220,38,38,0.55)'}
+                        onMouseLeave={e=>e.currentTarget.style.background='rgba(220,38,38,0.35)'}>
+                        <FileText size={13} /> PDF
+                      </button>
+                      <button onClick={sendToTelegram} disabled={sendingTelegram} title="Sirojga Telegram orqali yuborish"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={{ background: 'rgba(37,99,235,0.35)', color: '#bfdbfe', border: '1px solid rgba(96,165,250,0.4)', opacity: sendingTelegram ? 0.6 : 1 }}
+                        onMouseEnter={e=>{ if(!sendingTelegram) e.currentTarget.style.background='rgba(37,99,235,0.55)'; }}
+                        onMouseLeave={e=>e.currentTarget.style.background='rgba(37,99,235,0.35)'}>
+                        <Send size={13} /> {sendingTelegram ? '...' : 'TG'}
+                      </button>
+                    </>
+                  )}
+                  {lastUpdated && (
+                    <p className="text-xs opacity-50 text-green-100 w-full">
                       {lastUpdated.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </p>
                   )}
@@ -1089,7 +1087,7 @@ export default function Ausgaben() {
           </div>
 
           {/* Tour Type Cards */}
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-5 gap-2 md:gap-3">
             {tourTypeModules.map((module) => {
               const isActive = activeTourType === module.code;
               const isTotal = module.code === 'ALL';
@@ -1102,7 +1100,7 @@ export default function Ausgaben() {
                 <button
                   key={module.code}
                   onClick={() => updateParams({ tour: module.code })}
-                  className="relative overflow-hidden rounded-2xl p-4 text-left transition-all duration-300 group"
+                  className="relative overflow-hidden rounded-xl md:rounded-2xl p-2 md:p-4 text-left transition-all duration-300 group"
                   style={{
                     background: isActive ? activeBg : 'rgba(255,255,255,0.1)',
                     border: `1px solid ${isActive ? (isTotal ? '#6b7280aa' : module.color + 'aa') : 'rgba(255,255,255,0.2)'}`,
@@ -1114,11 +1112,11 @@ export default function Ausgaben() {
                     style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 70%)' }} />
                   <div className="absolute top-[-15px] right-[-15px] w-20 h-20 rounded-full pointer-events-none"
                     style={{ background: 'white', opacity: isActive ? 0.12 : 0.03 }} />
-                  <p className="text-2xl font-black leading-none"
+                  <p className="text-base md:text-2xl font-black leading-none"
                     style={{ color: isActive ? activeColor : inactiveColor }}>
-                    {isTotal ? 'TOTAL' : module.code}
+                    {isTotal ? 'ALL' : module.code}
                   </p>
-                  <p className="text-xs mt-1.5 font-medium leading-tight"
+                  <p className="text-xs mt-1 font-medium leading-tight hidden md:block"
                     style={{ color: isActive ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.28)' }}>
                     {module.name}
                   </p>
@@ -1132,7 +1130,7 @@ export default function Ausgaben() {
 
       {/* ═══ STATS + CONTENT ═══ */}
       <div style={{ background: '#f1f5f9' }} className="min-h-screen">
-        <div className="px-6 py-6">
+        <div className="px-3 md:px-6 py-4 md:py-6 pb-20 md:pb-8">
 
           {/* Main Content Card */}
           <div className="rounded-2xl overflow-hidden shadow-lg border border-white/40" style={{ background: 'white' }}>
@@ -1147,7 +1145,7 @@ export default function Ausgaben() {
                   <button
                     key={tab.id}
                     onClick={() => updateParams({ tab: tab.id })}
-                    className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold transition-all relative"
+                    className="flex-1 flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-4 text-xs md:text-sm font-semibold transition-all relative"
                     style={isActive ? {
                       background: 'linear-gradient(180deg, #dcfce7 0%, white 100%)',
                       color: '#15803d',
@@ -1158,7 +1156,7 @@ export default function Ausgaben() {
                       borderBottom: '3px solid transparent',
                     }}
                   >
-                    <span className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                    <span className="w-6 h-6 md:w-7 md:h-7 rounded-lg flex items-center justify-center transition-all"
                       style={isActive
                         ? { background: 'linear-gradient(135deg, #16a34a, #15803d)' }
                         : { background: '#d1fae5' }}>
