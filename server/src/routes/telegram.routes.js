@@ -478,14 +478,45 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
         if (msg.text.startsWith('📋 Zayavka')) {
+          const hotelZv = await getHotelByChatId(chat.id);
+          if (!hotelZv) {
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz hali hech qaysi hotelga bog\'lanmagan ekansiz.' }).catch(() => {});
+            return;
+          }
+          const zvSettings = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotelZv.id}_` } } });
+          if (zvSettings.length === 0) {
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '📋 Hali hech qanday zayavka yuborilmagan.', parse_mode: 'Markdown' }).catch(() => {});
+            return;
+          }
+          if (zvSettings.length === 1) {
+            // Directly show the only available tour type
+            const s = zvSettings[0];
+            const tt = s.key.replace(`JP_SECTIONS_${hotelZv.id}_`, '');
+            const jpData = JSON.parse(s.value);
+            const lines = [`📋 *${tt} ${year} — ${hotelZv.name}*`, ''];
+            for (const grp of (jpData.groups || [])) {
+              for (const v of grp.visits) {
+                const si = v.status === 'CONFIRMED' ? '✅' : v.status === 'WAITING' ? '⏳' : v.status === 'REJECTED' ? '❌' : '⬜';
+                const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
+                lines.push(`${si} *${label}* — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`);
+              }
+            }
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
+            return;
+          }
+          // Multiple tour types — show only available ones
+          const availTypes = zvSettings.map(s => s.key.replace(`JP_SECTIONS_${hotelZv.id}_`, ''));
+          const ORDER = ['ER', 'CO', 'KAS', 'ZA'];
+          const sorted = ORDER.filter(t => availTypes.includes(t));
+          const rows = [];
+          for (let i = 0; i < sorted.length; i += 2) {
+            rows.push(sorted.slice(i, i + 2).map(t => ({ text: `${t} ${year}`, callback_data: `zv:${t}:${year}` })));
+          }
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: chat.id,
             text: `📋 *${year} yil zayavkalari*\nQaysi tur turini tanlang:`,
             parse_mode: 'Markdown',
-            reply_markup: JSON.stringify({ inline_keyboard: [
-              [{ text: `ER ${year}`, callback_data: `zv:ER:${year}` }, { text: `CO ${year}`, callback_data: `zv:CO:${year}` }],
-              [{ text: `KAS ${year}`, callback_data: `zv:KAS:${year}` }, { text: `ZA ${year}`, callback_data: `zv:ZA:${year}` }]
-            ]})
+            reply_markup: JSON.stringify({ inline_keyboard: rows })
           }).catch(() => {});
           return;
         }
