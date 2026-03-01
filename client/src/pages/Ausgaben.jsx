@@ -1923,10 +1923,12 @@ export default function Ausgaben() {
                       const amount = booking.expenses?.[p.expenseKey] || 0;
                       if (amount === 0) return;
                       const depDate = deptDates[booking.bookingId];
-                      const mk = depDate ? new Date(depDate).toISOString().slice(0, 7) : 'unknown';
+                      const dateRange = booking.expenses?.[p.datesKey] || { from: null, to: null };
+                      // Group by last route date (dateTo), fallback to depDate
+                      const groupDate = dateRange.to || depDate;
+                      const mk = groupDate ? new Date(groupDate).toISOString().slice(0, 7) : 'unknown';
                       if (!providerMap[p.key]) providerMap[p.key] = { months: {} };
                       if (!providerMap[p.key].months[mk]) providerMap[p.key].months[mk] = [];
-                      const dateRange = booking.expenses?.[p.datesKey] || { from: null, to: null };
                       providerMap[p.key].months[mk].push({
                         bookingId: booking.bookingId,
                         bookingName: booking.bookingName,
