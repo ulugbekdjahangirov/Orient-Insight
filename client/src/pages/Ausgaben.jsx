@@ -1018,6 +1018,14 @@ export default function Ausgaben() {
     });
   }, [bookingsDetailedData]);
 
+  // Filter bookings with any Transport data (hotel not required — CO/KAS may have Nosir routes but no hotels yet)
+  const bookingsWithTransport = useMemo(() => {
+    return bookingsDetailedData.filter(booking => {
+      const e = booking.expenses || {};
+      return (e.transportSevil || 0) + (e.transportXayrulla || 0) + (e.transportNosir || 0) > 0;
+    });
+  }, [bookingsDetailedData]);
+
   const tabGradients = {
     general:   { from: '#6366f1', to: '#8b5cf6', light: '#eef2ff' },
     hotels:    { from: '#7c3aed', to: '#a855f7', light: '#f5f3ff' },
@@ -1831,7 +1839,7 @@ export default function Ausgaben() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredBookingsWithHotels.map((item, idx) => {
+                          {bookingsWithTransport.map((item, idx) => {
                             const sevil=item.expenses?.transportSevil||0;
                             const xayrulla=item.expenses?.transportXayrulla||0;
                             const nosir=item.expenses?.transportNosir||0;
@@ -1865,11 +1873,11 @@ export default function Ausgaben() {
                             <td className="px-4 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest border-r border-green-200">TOTAL</td>
                             {['transportSevil','transportXayrulla','transportNosir'].map(key => (
                               <td key={key} className="px-4 py-3.5 text-center text-xs font-black text-green-900 border-r border-green-200">
-                                {formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
+                                {formatNumber(bookingsWithTransport.reduce((s,i)=>s+(i.expenses?.[key]||0),0))}
                               </td>
                             ))}
                             <td className="px-4 py-3.5 text-center text-xs font-black text-green-900">
-                              ${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}
+                              ${formatNumber(bookingsWithTransport.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}
                             </td>
                           </tr>
                         </tbody>
@@ -1907,7 +1915,7 @@ export default function Ausgaben() {
                   // Build providerMap: { providerKey: { months: { "2026-03": [rows] } } }
                   const providerMap = {};
                   PROVIDERS.forEach(p => {
-                    filteredBookingsWithHotels.forEach(booking => {
+                    bookingsWithTransport.forEach(booking => {
                       const amount = booking.expenses?.[p.expenseKey] || 0;
                       if (amount === 0) return;
                       const depDate = deptDates[booking.bookingId];
