@@ -408,7 +408,6 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
           ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
           : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
         const lines = [
-          header, '',
           visitTitle,
           `🏨 ${hotel.name}`,
           `📅 Заезд: ${v.checkIn}`,

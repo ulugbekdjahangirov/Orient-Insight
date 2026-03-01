@@ -1345,7 +1345,7 @@ router.post('/webhook', (req, res, next) => {
         const visitTitle = v.sectionLabel
           ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
           : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
-        const lines = [header, '', visitTitle,
+        const lines = [visitTitle,
           `🏨 ${hotelName}`,
           `📅 Заезд: ${v.checkIn}`,
           `📅 Выезд: ${v.checkOut}`,
