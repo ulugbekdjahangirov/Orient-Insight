@@ -335,6 +335,7 @@ export default function TelegramUsers() {
   const [restaurants, setRestaurants] = useState([]);
   const [guides, setGuides] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [countdown, setCountdown] = useState(5);
 
   const LS_KEY = 'tg_chats_cache';
 
@@ -358,6 +359,18 @@ export default function TelegramUsers() {
   }, []);
 
   useEffect(() => { loadChats(); }, [loadChats]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    setCountdown(30);
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { loadChats(); return 5; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loadChats]);
 
   useEffect(() => {
     telegramApi.getHotelsList().then(r => setHotels(r.data.hotels || [])).catch(() => {});
@@ -467,12 +480,13 @@ export default function TelegramUsers() {
           </div>
         </div>
         <button
-          onClick={loadChats}
+          onClick={() => { loadChats(); setCountdown(5); }}
           disabled={loading}
           className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors shadow-sm"
         >
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           Yangilash
+          <span className="text-xs text-gray-400">{countdown}s</span>
         </button>
       </div>
 
