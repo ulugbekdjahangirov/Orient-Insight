@@ -132,63 +132,110 @@ export default function Users() {
         </button>
       </div>
 
-      {/* Users table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Mobile cards */}
+      <div className="sm:hidden space-y-2">
+        {users.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-200">
+            Пользователи не найдены
+          </div>
+        ) : users.map((user) => (
+          <div key={user.id} className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 ${!user.isActive ? 'opacity-60' : ''}`}>
+            {/* Top row: avatar + name + badges */}
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                user.role === 'ADMIN' ? 'bg-purple-100' : 'bg-blue-100'
+              }`}>
+                {user.role === 'ADMIN'
+                  ? <Shield className="w-5 h-5 text-purple-600" />
+                  : <User className="w-5 h-5 text-blue-600" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-sm">{user.name}</p>
+                <p className="text-xs text-gray-500 break-all">{user.email}</p>
+              </div>
+            </div>
+            {/* Badges row */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {roleLabels[user.role]}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {user.isActive ? 'Активен' : 'Неактивен'}
+              </span>
+              <span className="text-xs text-gray-400 ml-auto">
+                {format(new Date(user.createdAt), 'dd.MM.yyyy')}
+              </span>
+            </div>
+            {/* Actions */}
+            <div className="flex gap-2 pt-2 border-t border-gray-100">
+              <button
+                onClick={() => openModal(user)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                Tahrirlash
+              </button>
+              <button
+                onClick={() => toggleActive(user)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-lg ${
+                  user.isActive
+                    ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                    : 'text-green-600 bg-green-50 hover:bg-green-100'
+                }`}
+              >
+                <UserCog className="w-3.5 h-3.5" />
+                {user.isActive ? 'Deaktivlash' : 'Aktivlash'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Пользователь
-              </th>
-              <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Email
-              </th>
-              <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Роль
-              </th>
-              <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Статус
-              </th>
-              <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Создан
-              </th>
-              <th className="px-3 md:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Действия
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Пользователь</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Роль</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
+              <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Создан</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {users.map((user) => (
               <tr key={user.id} className={!user.isActive ? 'bg-gray-50 opacity-60' : ''}>
-                <td className="px-3 md:px-6 py-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center ${
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                       user.role === 'ADMIN' ? 'bg-purple-100' : 'bg-blue-100'
                     }`}>
-                      {user.role === 'ADMIN' ? (
-                        <Shield className="w-5 h-5 text-purple-600" />
-                      ) : (
-                        <User className="w-5 h-5 text-blue-600" />
-                      )}
+                      {user.role === 'ADMIN'
+                        ? <Shield className="w-5 h-5 text-purple-600" />
+                        : <User className="w-5 h-5 text-blue-600" />
+                      }
                     </div>
-                    <span className="font-medium text-sm md:text-base text-gray-900">{user.name}</span>
+                    <span className="font-medium text-gray-900">{user.name}</span>
                   </div>
                 </td>
-                <td className="px-3 md:px-6 py-4 text-xs md:text-sm text-gray-600 truncate max-w-[150px] md:max-w-none">{user.email}</td>
-                <td className="hidden md:table-cell px-6 py-4">
+                <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
+                <td className="px-6 py-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    user.role === 'ADMIN'
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-blue-100 text-blue-800'
+                    user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                   }`}>
                     {roleLabels[user.role]}
                   </span>
                 </td>
-                <td className="hidden md:table-cell px-6 py-4">
+                <td className="px-6 py-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    user.isActive
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
+                    user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}>
                     {user.isActive ? 'Активен' : 'Неактивен'}
                   </span>
@@ -196,25 +243,23 @@ export default function Users() {
                 <td className="hidden lg:table-cell px-6 py-4 text-sm text-gray-500">
                   {format(new Date(user.createdAt), 'dd.MM.yyyy')}
                 </td>
-                <td className="px-3 md:px-6 py-4">
-                  <div className="flex items-center justify-end gap-1 md:gap-2">
+                <td className="px-6 py-4">
+                  <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => openModal(user)}
-                      className="p-2.5 md:p-1.5 text-gray-400 hover:text-primary-600 rounded min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
+                      className="p-1.5 text-gray-400 hover:text-primary-600 rounded"
                       title="Редактировать"
                     >
-                      <Edit className="w-5 h-5 md:w-4 md:h-4" />
+                      <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => toggleActive(user)}
-                      className={`p-2.5 md:p-1.5 rounded min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center ${
-                        user.isActive
-                          ? 'text-gray-400 hover:text-red-600'
-                          : 'text-gray-400 hover:text-green-600'
+                      className={`p-1.5 rounded ${
+                        user.isActive ? 'text-gray-400 hover:text-red-600' : 'text-gray-400 hover:text-green-600'
                       }`}
                       title={user.isActive ? 'Деактивировать' : 'Активировать'}
                     >
-                      <UserCog className="w-5 h-5 md:w-4 md:h-4" />
+                      <UserCog className="w-4 h-4" />
                     </button>
                   </div>
                 </td>
@@ -222,11 +267,8 @@ export default function Users() {
             ))}
           </tbody>
         </table>
-
         {users.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            Пользователи не найдены
-          </div>
+          <div className="text-center py-12 text-gray-500">Пользователи не найдены</div>
         )}
       </div>
 
