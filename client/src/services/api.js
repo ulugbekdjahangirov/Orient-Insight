@@ -380,7 +380,11 @@ export const telegramApi = {
   linkRestaurant: (chatId, restaurantName) => api.put('/telegram/link-restaurant', { chatId, restaurantName }),
   getGuidesList: () => api.get('/telegram/guides-list'),
   linkGuide: (chatId, guideId) => api.put('/telegram/link-guide', { chatId, guideId }),
-  sendChanges: (bookingId, hotelId) => api.post(`/telegram/send-changes/${bookingId}/${hotelId}`),
+  sendChanges: (bookingId, hotelId, pdfBlob) => {
+    const form = new FormData();
+    if (pdfBlob) form.append('pdf', pdfBlob, `Izmeneniye_${bookingId}.pdf`);
+    return api.post(`/telegram/send-changes/${bookingId}/${hotelId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
   sendAnnulment: (bookingId, hotelId) => api.post(`/telegram/send-annulment/${bookingId}/${hotelId}`),
   sendAusgabenPdf: (pdfBlob, filename, meta) => {
     const form = new FormData();

@@ -2243,7 +2243,7 @@ router.post('/webhook-guide', async (req, res) => {
 // ============================================================
 
 // POST /api/telegram/send-changes/:bookingId/:hotelId
-router.post('/send-changes/:bookingId/:hotelId', authenticate, async (req, res) => {
+router.post('/send-changes/:bookingId/:hotelId', authenticate, upload.single('pdf'), async (req, res) => {
   try {
     const bookingId = parseInt(req.params.bookingId);
     const hotelId   = parseInt(req.params.hotelId);
@@ -2263,8 +2263,8 @@ router.post('/send-changes/:bookingId/:hotelId', authenticate, async (req, res) 
     const sngl = acc?.rooms?.filter(r => r.type === 'SNGL').length || 0;
     const checkIn  = fmtDateUtil(acc?.checkIn  || booking?.arrivalDate);
     const checkOut = fmtDateUtil(acc?.checkOut || booking?.endDate);
-    const text = [
-      `📝 *ЗАЯВКА ${booking?.bookingNumber} — Izmeneniya*`,
+    const caption = [
+      `📝 *Izmeneniye k Zayavke ${booking?.bookingNumber}*`,
       `🏨 ${hotel.name}`,
       '',
       `📅 Заезд: ${checkIn}`,
@@ -2272,7 +2272,20 @@ router.post('/send-changes/:bookingId/:hotelId', authenticate, async (req, res) 
       `👥 PAX: ${booking?.pax || 0}`,
       `🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`,
     ].join('\n');
-    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: hotel.telegramChatId, text, parse_mode: 'Markdown' });
+
+    if (req.file?.buffer) {
+      const form = new FormData();
+      form.append('chat_id', hotel.telegramChatId);
+      form.append('document', req.file.buffer, {
+        filename: `Izmeneniye_${booking.bookingNumber}_${hotel.name}.pdf`,
+        contentType: 'application/pdf'
+      });
+      form.append('caption', caption);
+      form.append('parse_mode', 'Markdown');
+      await axios.post(`${BOT_API()}/sendDocument`, form, { headers: form.getHeaders() });
+    } else {
+      await axios.post(`${BOT_API()}/sendMessage`, { chat_id: hotel.telegramChatId, text: caption, parse_mode: 'Markdown' });
+    }
     res.json({ success: true });
   } catch (e) {
     console.error('send-changes error:', e.message);
