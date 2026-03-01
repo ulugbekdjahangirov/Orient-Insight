@@ -369,6 +369,8 @@ export const telegramApi = {
   getMealSettings: () => api.get('/telegram/meal-settings'),
   saveMealSettings: (chatIds) => api.put('/telegram/meal-settings', { chatIds }),
   sendGuide: (bookingId, data) => api.post(`/telegram/send-guide/${bookingId}`, data),
+  getKnownChats: () => api.get('/telegram/updates'),
+  deleteKnownChat: (chatId) => api.delete(`/telegram/chats/${chatId}`),
   sendAusgabenPdf: (pdfBlob, filename, meta) => {
     const form = new FormData();
     form.append('pdf', pdfBlob, filename);

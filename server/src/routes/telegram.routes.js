@@ -84,6 +84,21 @@ router.get('/updates', authenticate, async (req, res) => {
   }
 });
 
+// DELETE /api/telegram/chats/:chatId - Remove a chat from known chats
+router.delete('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const chats = await loadKnownChats();
+    if (!chats[chatId]) return res.status(404).json({ error: 'Chat topilmadi' });
+    delete chats[chatId];
+    await saveKnownChats(chats);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete chat error:', error.message);
+    res.status(500).json({ error: 'Xatolik yuz berdi' });
+  }
+});
+
 // POST /api/telegram/webhook - Receive updates from Telegram
 router.post('/webhook', (req, res, next) => {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;

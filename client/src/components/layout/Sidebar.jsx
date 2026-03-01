@@ -21,7 +21,8 @@ import {
   Receipt,
   X,
   Handshake,
-  CalendarRange
+  CalendarRange,
+  MessageCircle
 } from 'lucide-react';
 
 const navItems = [
@@ -38,6 +39,7 @@ const navItems = [
   { path: '/ausgaben', icon: Receipt, label: 'Ausgaben' },
   { path: '/email-imports', icon: Mail, label: 'Email Imports' },
   { path: '/partners', icon: Handshake, label: 'Hamkorlar' },
+  { path: '/telegram', icon: MessageCircle, label: 'Telegram' },
 ];
 
 const adminItems = [

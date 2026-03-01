@@ -24,6 +24,7 @@ const GmailSettings  = lazy(() => import('./pages/GmailSettings'));
 const EmailImports   = lazy(() => import('./pages/EmailImports'));
 const Partners       = lazy(() => import('./pages/Partners'));
 const Jahresplanung  = lazy(() => import('./pages/Jahresplanung'));
+const TelegramUsers  = lazy(() => import('./pages/TelegramUsers'));
 
 function PageLoader() {
   return (
@@ -156,6 +157,11 @@ export default function App() {
         <Route path="jahresplanung" element={
           <Suspense fallback={<PageLoader />}>
             <Jahresplanung />
+          </Suspense>
+        } />
+        <Route path="telegram" element={
+          <Suspense fallback={<PageLoader />}>
+            <TelegramUsers />
           </Suspense>
         } />
         <Route path="settings" element={
