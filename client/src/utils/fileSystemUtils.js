@@ -13,7 +13,7 @@ export const PDF_CATEGORIES = {
   worldInsight:'World Insight', // Rechnung, Hotelliste
   transport:   'Transport',     // Marshrut varaqasi
   ausgaben:    'Ausgaben',      // Cost / Ausgaben
-  eintritt:    'Eintritt',      // Eintritt vouchers
+  eintritt:    'Voucher',       // Eintritt vouchers
 };
 
 function openDatabase() {

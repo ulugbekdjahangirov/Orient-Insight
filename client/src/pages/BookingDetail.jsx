@@ -12363,22 +12363,32 @@ License №T-0084-08 from 2021-04-26`;
                 rowsHtml += `<div style="display:flex;flex-direction:column;height:calc(297mm - 12mm);${pb}">${pageRows}</div>`;
               }
 
-              const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Vouchers ${bookingNum}</title>
-<style>
-  @page { margin: 6mm; size: A4 portrait; }
-  @media print { .no-print { display: none !important; } }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; }
-  .print-btn { margin: 8px; padding: 8px 20px; background: #2563eb; color: #fff;
-    border: none; cursor: pointer; font-size: 14px; border-radius: 4px; }
-</style></head><body>
-<button class="print-btn no-print" onclick="window.print()">&#128438; Печать / Сохранить как PDF</button>
-${rowsHtml}
-</body></html>`;
+              // Generate real PDF blob via html2pdf
+              const container = document.createElement('div');
+              container.style.cssText = 'font-family:Arial,sans-serif;';
+              container.innerHTML = rowsHtml;
+              const voucherBlob = await html2pdf().set({
+                margin: [6, 6, 6, 6],
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: 'css' }
+              }).from(container).output('blob');
 
-              const win = window.open('', '_blank');
-              if (win) { win.document.write(html); win.document.close(); }
+              // Open in browser tab (Chrome PDF viewer — no Downloads)
+              const voucherUrl = URL.createObjectURL(voucherBlob);
+              window.open(voucherUrl, '_blank');
+              setTimeout(() => URL.revokeObjectURL(voucherUrl), 30000);
+
+              // Save to Voucher folder
+              const vFilename = `Voucher ${bookingNum}.pdf`;
+              const vTourType = booking?.tourType?.code;
+              const vBookingNum = booking?.bookingNumber;
+              if (vTourType && vBookingNum) {
+                getTourTypeFolderHandle(vTourType).then(handle => {
+                  if (handle) savePdfToFolder({ tourType: vTourType, bookingNumber: vBookingNum, category: 'eintritt', filename: vFilename, pdfBlob: voucherBlob });
+                });
+              }
             };
             // ─────────────────────────────────────────────────────────────────
 
