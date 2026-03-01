@@ -5523,24 +5523,36 @@ export default function BookingDetail() {
         // Calculate dates using baseDate
         // - KAS tours: arrivalDate = first day in Uzbekistan, offset from first Uzbekistan hotel
         // - ER/CO tours: arrivalDate = first day of tour, offset from first hotel
-        // - ZA tours: baseDate = arrivalDate + 4 days, offset from first hotel
-        const checkInDate = new Date(baseDate);
-        checkInDate.setDate(checkInDate.getDate() + (startDay - firstHotelDay));
-
-        // IMPORTANT: For CO tours and ER Only UZ with Khiva, don't add +1 to checkout
+        // - ZA tours: baseDate = arrivalDate + 4 days (Bukhara/Samarkand leg)
+        //             Tashkent leg uses booking.dateOybek as check-in (different entry point)
         const cityName = hotel.city?.name?.toLowerCase() || '';
         const hotelName = hotel.name.toLowerCase();
-        const isKhivaHotel = cityName.includes('хива') || cityName.includes('khiva') || cityName.includes('chiwa') ||
-                            hotelName.includes('khiva') || hotelName.includes('chiwa') || hotelName.includes('хива');
-        const isCOKhiva = tourTypeCode === 'CO' && isKhivaHotel;
-        const isEROnlyUZKhiva = isERTour && onlyUZ && isKhivaHotel;
 
-        const checkOutDate = new Date(baseDate);
-        if (isCOKhiva || isEROnlyUZKhiva) {
-          // For CO Khiva or ER Only UZ Khiva: Fixed to 2 nights (endDay without +1)
-          checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay));
+        const isZATashkent = tourTypeCode === 'ZA' && (
+          cityName.includes('tashkent') || cityName.includes('ташкент') || cityName.includes('toshkent')
+        );
+
+        let checkInDate, checkOutDate;
+
+        if (isZATashkent && booking.dateOybek) {
+          // ZA Tashkent: tourists arrive via Oybek border — use dateOybek as check-in
+          checkInDate = new Date(booking.dateOybek);
+          checkOutDate = new Date(booking.endDate);
         } else {
-          checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay) + 1);
+          checkInDate = new Date(baseDate);
+          checkInDate.setDate(checkInDate.getDate() + (startDay - firstHotelDay));
+
+          const isKhivaHotel = cityName.includes('хива') || cityName.includes('khiva') || cityName.includes('chiwa') ||
+                              hotelName.includes('khiva') || hotelName.includes('chiwa') || hotelName.includes('хива');
+          const isCOKhiva = tourTypeCode === 'CO' && isKhivaHotel;
+          const isEROnlyUZKhiva = isERTour && onlyUZ && isKhivaHotel;
+
+          checkOutDate = new Date(baseDate);
+          if (isCOKhiva || isEROnlyUZKhiva) {
+            checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay));
+          } else {
+            checkOutDate.setDate(checkOutDate.getDate() + (endDay - firstHotelDay) + 1);
+          }
         }
 
         const hotelCountry = hotel.city?.country || 'Unknown';
