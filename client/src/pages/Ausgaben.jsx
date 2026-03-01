@@ -17,11 +17,12 @@ const tourTypeModules = [
 ];
 
 const expenseTabs = [
-  { id: 'general',       name: 'General',        icon: BarChart3 },
-  { id: 'hotels',        name: 'Hotels',         icon: Hotel },
-  { id: 'hotel-analysis',name: 'Hotel Analysis', icon: Hotel },
-  { id: 'transport',     name: 'Transport',      icon: Truck },
-  { id: 'guides',        name: 'Guides',         icon: Users },
+  { id: 'general',            name: 'General',            icon: BarChart3 },
+  { id: 'hotels',             name: 'Hotels',             icon: Hotel },
+  { id: 'hotel-analysis',     name: 'Hotel Analysis',     icon: Hotel },
+  { id: 'transport',          name: 'Transport',          icon: Truck },
+  { id: 'transport-analysis', name: 'Transport Analysis', icon: Truck },
+  { id: 'guides',             name: 'Guides',             icon: Users },
 ];
 
 export default function Ausgaben() {
@@ -59,6 +60,22 @@ export default function Ausgaben() {
       return next;
     });
   };
+  const [openTransportProviders, setOpenTransportProviders] = useState(new Set());
+  const [openTransportMonths, setOpenTransportMonths] = useState(new Set());
+  const toggleTransportProvider = (key) => setOpenTransportProviders(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
+  const toggleTransportMonth = (key) => setOpenTransportMonths(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
+  const [paidTransport, setPaidTransport] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ausgaben_transport_paid_v1') || '{}'); } catch { return {}; }
+  });
+  const toggleTransportPaid = (e, bookingId, providerKey) => {
+    e.stopPropagation();
+    const tkey = `${bookingId}_${providerKey}`;
+    setPaidTransport(prev => {
+      const next = { ...prev, [tkey]: !prev[tkey] };
+      localStorage.setItem('ausgaben_transport_paid_v1', JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -80,7 +97,7 @@ export default function Ausgaben() {
   const loadBookingsAndExpenses = async () => {
     // Check cache first
     const cacheKey = `${activeTourType}_${selectedYear}`;
-    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport'].includes(activeExpenseTab);
+    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis'].includes(activeExpenseTab);
 
     // Try localStorage first (persists across page reloads)
     try {
@@ -1854,6 +1871,158 @@ export default function Ausgaben() {
                     )}
                   </div>
                 )}
+
+                {/* ── TRANSPORT ANALYSIS TAB ── */}
+                {activeExpenseTab === 'transport-analysis' && (() => {
+                  const PROVIDERS = [
+                    { key: 'sevil',    label: 'Sevil',    expenseKey: 'transportSevil',
+                      headerBg: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)', monthBg: '#dbeafe', monthBgOpen: '#bfdbfe', textColor: '#1e40af' },
+                    { key: 'xayrulla', label: 'Xayrulla', expenseKey: 'transportXayrulla',
+                      headerBg: 'linear-gradient(135deg,#064e3b,#065f46)', monthBg: '#dcfce7', monthBgOpen: '#bbf7d0', textColor: '#065f46' },
+                    { key: 'nosir',    label: 'Nosir',    expenseKey: 'transportNosir',
+                      headerBg: 'linear-gradient(135deg,#4c1d95,#6d28d9)', monthBg: '#ede9fe', monthBgOpen: '#ddd6fe', textColor: '#6d28d9' },
+                  ];
+
+                  // Departure date lookup from bookings state
+                  const deptDates = {};
+                  bookings.forEach(b => { deptDates[b.id] = b.departureDate; });
+
+                  const fmtShort = (d) => {
+                    if (!d) return '—';
+                    return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                  };
+                  const monthLabel = (key) => {
+                    if (key === 'unknown') return 'Sana noma\'lum';
+                    const [y, m] = key.split('-');
+                    const names = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+                    return `${names[parseInt(m)-1]} ${y}`;
+                  };
+
+                  // Build providerMap: { providerKey: { months: { "2026-03": [rows] } } }
+                  const providerMap = {};
+                  PROVIDERS.forEach(p => {
+                    filteredBookingsWithHotels.forEach(booking => {
+                      const amount = booking.expenses?.[p.expenseKey] || 0;
+                      if (amount === 0) return;
+                      const depDate = deptDates[booking.bookingId];
+                      const mk = depDate ? new Date(depDate).toISOString().slice(0, 7) : 'unknown';
+                      if (!providerMap[p.key]) providerMap[p.key] = { months: {} };
+                      if (!providerMap[p.key].months[mk]) providerMap[p.key].months[mk] = [];
+                      providerMap[p.key].months[mk].push({
+                        bookingId: booking.bookingId,
+                        bookingName: booking.bookingName,
+                        amount,
+                        depDate,
+                      });
+                    });
+                  });
+
+                  const activeProviders = PROVIDERS.filter(p => providerMap[p.key]);
+                  if (activeProviders.length === 0) return (
+                    <EmptyState icon={Truck} label={`${activeModule?.name} uchun transport ma'lumoti yo'q`} />
+                  );
+
+                  return (
+                    <div className="w-full space-y-2">
+                      {activeProviders.map(p => {
+                        const pData = providerMap[p.key];
+                        const sortedMonths = Object.keys(pData.months).sort();
+                        const allRows = sortedMonths.flatMap(mk => pData.months[mk]);
+                        const totalAmt = allRows.reduce((s, b) => s + b.amount, 0);
+                        const paidAmt = allRows.filter(b => paidTransport[`${b.bookingId}_${p.key}`]).reduce((s, b) => s + b.amount, 0);
+                        const debtAmt = totalAmt - paidAmt;
+                        const isOpen = openTransportProviders.has(p.key);
+
+                        return (
+                          <div key={p.key} className="rounded-xl overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
+                            {/* Provider header */}
+                            <button className="w-full flex items-center justify-between px-4 py-3 text-left"
+                              style={{ background: p.headerBg }}
+                              onClick={() => toggleTransportProvider(p.key)}>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white font-bold text-sm">🚌 {p.label}</span>
+                                <span className="text-white/60 text-xs">({sortedMonths.length} oy)</span>
+                                {paidAmt > 0 && (
+                                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: '#16a34a22', color: '#86efac' }}>
+                                    ✓ ${formatNumber(paidAmt)}
+                                  </span>
+                                )}
+                                {debtAmt > 0 && (
+                                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: '#ef444422', color: '#fca5a5' }}>
+                                    ✗ ${formatNumber(debtAmt)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-white font-bold text-sm">${formatNumber(totalAmt)}</span>
+                                <span className="text-white text-xs">{isOpen ? '▲' : '▼'}</span>
+                              </div>
+                            </button>
+
+                            {/* Months */}
+                            {isOpen && sortedMonths.map(mk => {
+                              const rows = pData.months[mk];
+                              const mTotal = rows.reduce((s, b) => s + b.amount, 0);
+                              const mPaid = rows.filter(b => paidTransport[`${b.bookingId}_${p.key}`]).reduce((s, b) => s + b.amount, 0);
+                              const mDebt = mTotal - mPaid;
+                              const monthKey = `${p.key}__${mk}`;
+                              const monthOpen = openTransportMonths.has(monthKey);
+
+                              return (
+                                <div key={mk}>
+                                  <button className="w-full flex items-center justify-between px-4 py-2.5 text-left"
+                                    style={{ background: monthOpen ? p.monthBgOpen : p.monthBg, borderTop: '1px solid #e2e8f0' }}
+                                    onClick={() => toggleTransportMonth(monthKey)}>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-bold uppercase tracking-wide" style={{ color: p.textColor }}>
+                                        📅 {monthLabel(mk)}
+                                      </span>
+                                      <span className="text-xs" style={{ color: p.textColor + '99' }}>{rows.length} gruppa</span>
+                                      {mPaid > 0 && <span className="text-xs font-semibold text-green-700">✓ ${formatNumber(mPaid)}</span>}
+                                      {mDebt > 0 && <span className="text-xs font-semibold text-red-500">✗ ${formatNumber(mDebt)}</span>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold" style={{ color: p.textColor }}>${formatNumber(mTotal)}</span>
+                                      <span className="text-xs" style={{ color: p.textColor + '99' }}>{monthOpen ? '▲' : '▼'}</span>
+                                    </div>
+                                  </button>
+
+                                  {/* Booking rows */}
+                                  {monthOpen && rows.map((b, i) => {
+                                    const tkey = `${b.bookingId}_${p.key}`;
+                                    const isPaid = !!paidTransport[tkey];
+                                    return (
+                                      <div key={i} className="flex items-center justify-between px-4 py-2.5 text-xs"
+                                        style={{ background: isPaid ? '#f0fdf4' : (i % 2 === 0 ? '#ffffff' : '#f8fafc'), borderTop: '1px solid #f1f5f9' }}>
+                                        <div className="flex items-center gap-3">
+                                          <button
+                                            onClick={(e) => toggleTransportPaid(e, b.bookingId, p.key)}
+                                            title={isPaid ? 'To\'landi — bekor qilish' : 'To\'landi deb belgilash'}
+                                            className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all"
+                                            style={{ background: isPaid ? '#16a34a' : 'white', borderColor: isPaid ? '#16a34a' : '#cbd5e1' }}>
+                                            {isPaid && <span className="text-white font-bold" style={{ fontSize: 10 }}>✓</span>}
+                                          </button>
+                                          <Link to={`/bookings/${b.bookingId}`}
+                                            className="font-bold text-blue-600 hover:underline w-16 shrink-0">{b.bookingName}</Link>
+                                          <span className="text-slate-400">{fmtShort(b.depDate)}</span>
+                                          {isPaid && <span className="text-green-600 font-semibold">To'landi</span>}
+                                        </div>
+                                        <div className="font-semibold" style={{ color: isPaid ? '#16a34a' : '#334155' }}>
+                                          ${formatNumber(b.amount)}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
               </>
             )}
           </div>
