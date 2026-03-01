@@ -2431,7 +2431,7 @@ export default function BookingDetail() {
     try {
       toast.loading('PDF tayyorlanmoqda...', { id: 'pdf-save' });
       const safeHotelName = hotelName.replace(/[/\\?%*:|"<>]/g, '-');
-      const filename = `Zayavka ${booking.bookingNumber} - ${safeHotelName}.pdf`;
+      const filename = `Заявка ${booking.bookingNumber} - ${safeHotelName}.pdf`;
 
       // Get real PDF blob from server (puppeteer)
       const response = await bookingsApi.getHotelRequestPdf(id, hotelId);
