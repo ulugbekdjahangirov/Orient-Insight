@@ -779,7 +779,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
       const filename = `${booking?.bookingNumber || 'ER'} Marshrut varaqasi${providerSuffix}.pdf`;
       if (returnBlob) return doc.output('blob');
       const marshrutBlob = doc.output('blob');
-      doc.save(filename);
+      const blobUrl = URL.createObjectURL(marshrutBlob);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
       toast.success('PDF сақланди!');
       // Auto-save to Transport folder
       const tourType = booking?.tourType?.code;

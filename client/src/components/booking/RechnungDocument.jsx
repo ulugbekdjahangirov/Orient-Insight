@@ -1012,7 +1012,9 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       const filename = `${docType}_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
       if (returnBlob) return doc.output('blob');
       const blob = doc.output('blob');
-      doc.save(filename);
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
       toast.success('Orient Insight PDF сақланди!');
       const tourType = booking?.tourType?.code;
       const bookingNumber = booking?.bookingNumber;
@@ -1260,7 +1262,9 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       const filename = `${docType}_INFUTURESTORM_${booking?.bookingNumber || 'invoice'}.pdf`;
       if (returnBlob) return doc.output('blob');
       const blob2 = doc.output('blob');
-      doc.save(filename);
+      const blobUrl2 = URL.createObjectURL(blob2);
+      window.open(blobUrl2, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl2), 30000);
       toast.success('INFUTURESTORM PDF сақланди!');
       const tourType2 = booking?.tourType?.code;
       const bookingNumber2 = booking?.bookingNumber;

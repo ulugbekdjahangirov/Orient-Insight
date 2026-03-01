@@ -4267,7 +4267,9 @@ export default function BookingDetail() {
       const fileName = `Ausgaben_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       const ausgabenBlob = doc.output('blob');
-      doc.save(fileName);
+      const ausgabenUrl = URL.createObjectURL(ausgabenBlob);
+      window.open(ausgabenUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(ausgabenUrl), 30000);
       autoSavePdf(ausgabenBlob, fileName, 'ausgaben');
       toast.success('PDF muvaffaqiyatli yaratildi');
     } catch (error) {
@@ -4469,7 +4471,9 @@ export default function BookingDetail() {
       const fileName = `Spater_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       const spaterBlob = doc.output('blob');
-      doc.save(fileName);
+      const spaterUrl = URL.createObjectURL(spaterBlob);
+      window.open(spaterUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(spaterUrl), 30000);
       autoSavePdf(spaterBlob, fileName, 'ausgaben');
     } catch (error) {
       console.error('PDF export error:', error);
@@ -4627,7 +4631,9 @@ export default function BookingDetail() {
       const fileName = `Uberweisung_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       const uberweisungBlob = doc.output('blob');
-      doc.save(fileName);
+      const uberweisungUrl = URL.createObjectURL(uberweisungBlob);
+      window.open(uberweisungUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(uberweisungUrl), 30000);
       autoSavePdf(uberweisungBlob, fileName, 'ausgaben');
     } catch (error) {
       console.error('PDF export error:', error);
@@ -4778,7 +4784,9 @@ export default function BookingDetail() {
       const fileName = `Karta_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
       const kartaBlob = doc.output('blob');
-      doc.save(fileName);
+      const kartaUrl = URL.createObjectURL(kartaBlob);
+      window.open(kartaUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(kartaUrl), 30000);
       autoSavePdf(kartaBlob, fileName, 'ausgaben');
     } catch (error) {
       console.error('PDF export error:', error);

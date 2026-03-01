@@ -244,7 +244,9 @@ const HotellisteDocument = React.forwardRef(function HotellisteDocument({ bookin
       const filename = `Hotelliste_${booking?.bookingNumber || 'booking'}.pdf`;
       if (returnBlob) return doc.output('blob');
       const blob = doc.output('blob');
-      doc.save(filename);
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
       toast.success('PDF сақланди!');
       const tourType = booking?.tourType?.code;
       const bookingNumber = booking?.bookingNumber;
