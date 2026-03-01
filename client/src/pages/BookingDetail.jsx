@@ -76,10 +76,10 @@ const statusOptions = Object.entries(statusLabels);
 
 // Transport ticket status options
 const ticketStatusOptions = [
-  { value: '', label: 'Not specified' },
-  { value: 'Issued', label: 'Issued' },
-  { value: 'Not issued', label: 'Not issued' }
+  { value: '', label: '-' },
+  { value: 'Issued', label: 'OK' }
 ];
+const ticketStatusLabel = { '': '-', 'Issued': 'OK', 'Not issued': '-' };
 
 // Countries list in English (ISO countries commonly used in tourism)
 const countriesList = [
@@ -16008,7 +16008,7 @@ License №T-0084-08 from 2021-04-26`;
                 ) : (
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${getTicketStatusStyle(formData.trainTickets)}`}>
                     <span className="font-medium">{getTicketStatusIcon(formData.trainTickets)}</span>
-                    <span>{formData.trainTickets || 'Not specified'}</span>
+                    <span>{ticketStatusLabel[formData.trainTickets] ?? '-'}</span>
                   </div>
                 )}
               </div>
@@ -16033,7 +16033,7 @@ License №T-0084-08 from 2021-04-26`;
                 ) : (
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${getTicketStatusStyle(formData.avia)}`}>
                     <span className="font-medium">{getTicketStatusIcon(formData.avia)}</span>
-                    <span>{formData.avia || 'Not specified'}</span>
+                    <span>{ticketStatusLabel[formData.avia] ?? '-'}</span>
                   </div>
                 )}
               </div>
