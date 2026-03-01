@@ -60,6 +60,8 @@ export default function Ausgaben() {
       return next;
     });
   };
+  const [openMobileCards, setOpenMobileCards] = useState(new Set());
+  const toggleMobileCard = (id) => setOpenMobileCards(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   const [openTransportProviders, setOpenTransportProviders] = useState(new Set());
   const [openTransportMonths, setOpenTransportMonths] = useState(new Set());
   const toggleTransportProvider = (key) => setOpenTransportProviders(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
@@ -1287,10 +1289,10 @@ export default function Ausgaben() {
                     ) : (
                       <>
                         {/* Mobile cards */}
-                        <div className="sm:hidden space-y-2 p-1">
+                        <div className="sm:hidden divide-y divide-slate-100">
                           {bookingsDetailedData
                             .filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; })
-                            .map((booking) => {
+                            .map((booking, idx) => {
                               const e = booking.expenses || {};
                               const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
                               const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
@@ -1309,28 +1311,34 @@ export default function Ausgaben() {
                                 e.shou>0 && ['🎭 Shou', formatNumber(e.shou)],
                                 e.other>0 && ['Other', formatNumber(e.other)],
                               ].filter(Boolean);
+                              const isOpen = openMobileCards.has(`gen_${booking.bookingId}`);
                               return (
-                                <div key={booking.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
-                                  <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
-                                    <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600">{booking.bookingName}</Link>
-                                    <div className="flex gap-2 text-xs font-black">
-                                      {totalUZS>0 && <span className="text-amber-700">{formatNumber(totalUZS)}</span>}
-                                      {totalUSD>0 && <span className="text-green-700">${formatNumber(totalUSD)}</span>}
+                                <div key={booking.bookingId}>
+                                  <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
+                                    style={{background: isOpen ? '#eff6ff' : (idx%2===0 ? '#fff' : '#f8fafc')}}
+                                    onClick={() => toggleMobileCard(`gen_${booking.bookingId}`)}>
+                                    <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{booking.bookingName}</Link>
+                                    <div className="flex items-center gap-2">
+                                      {totalUZS>0 && <span className="text-xs font-bold text-amber-700">{formatNumber(totalUZS)}</span>}
+                                      {totalUSD>0 && <span className="text-xs font-bold text-green-700">${formatNumber(totalUSD)}</span>}
+                                      <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
                                     </div>
                                   </div>
-                                  <div className="divide-y divide-slate-100 text-xs">
-                                    {rows.map(([label, val]) => (
-                                      <div key={label} className="flex justify-between px-3 py-1.5">
-                                        <span className="text-slate-500">{label}</span>
-                                        <span className="font-semibold">{val}</span>
-                                      </div>
-                                    ))}
-                                  </div>
+                                  {isOpen && (
+                                    <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
+                                      {rows.map(([label, val]) => (
+                                        <div key={label} className="flex justify-between px-5 py-2">
+                                          <span className="text-slate-500">{label}</span>
+                                          <span className="font-semibold text-slate-800">{val}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
-                          <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
-                            <span className="text-xs font-black text-white uppercase">TOTAL</span>
+                          <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
+                            <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
                             <div className="flex gap-3 text-xs font-black text-white">
                               <span>{formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}</span>
                               <span>${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}</span>
@@ -1519,33 +1527,41 @@ export default function Ausgaben() {
                       const pivotData = getPivotData();
                       return (<>
                         {/* Mobile cards */}
-                        <div className="sm:hidden space-y-2 p-1">
-                          {pivotData.bookingRows.map((bookingRow) => (
-                            <div key={bookingRow.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
-                              <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
-                                <Link to={`/bookings/${bookingRow.bookingId}`} className="font-bold text-blue-600">{bookingRow.bookingName}</Link>
-                                <div className="flex gap-2 text-xs font-black">
-                                  {bookingRow.totalUZS>0 && <span className="text-amber-700">{formatNumber(bookingRow.totalUZS)}</span>}
-                                  {bookingRow.totalUSD>0 && <span className="text-green-700">${formatNumber(bookingRow.totalUSD)}</span>}
+                        <div className="sm:hidden divide-y divide-slate-100">
+                          {pivotData.bookingRows.map((bookingRow, idx) => {
+                            const isOpen = openMobileCards.has(`htl_${bookingRow.bookingId}`);
+                            return (
+                              <div key={bookingRow.bookingId}>
+                                <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
+                                  style={{background: isOpen ? '#eff6ff' : (idx%2===0 ? '#fff' : '#f8fafc')}}
+                                  onClick={() => toggleMobileCard(`htl_${bookingRow.bookingId}`)}>
+                                  <Link to={`/bookings/${bookingRow.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{bookingRow.bookingName}</Link>
+                                  <div className="flex items-center gap-2">
+                                    {bookingRow.totalUZS>0 && <span className="text-xs font-bold text-amber-700">{formatNumber(bookingRow.totalUZS)}</span>}
+                                    {bookingRow.totalUSD>0 && <span className="text-xs font-bold text-green-700">${formatNumber(bookingRow.totalUSD)}</span>}
+                                    <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                                  </div>
                                 </div>
+                                {isOpen && (
+                                  <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
+                                    {pivotData.hotels.map(hotelName => {
+                                      const hc = bookingRow.hotelCosts[hotelName];
+                                      const uzs = hc?.uzs||0; const usd = hc?.usd||0;
+                                      if (!uzs && !usd) return null;
+                                      return (
+                                        <div key={hotelName} className="flex justify-between px-5 py-2">
+                                          <span className="text-slate-500 truncate pr-2">🏨 {hotelName}</span>
+                                          <span className="font-semibold shrink-0 text-slate-800">{uzs>0 ? formatNumber(uzs) : `$${formatNumber(usd)}`}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </div>
-                              <div className="divide-y divide-slate-100 text-xs">
-                                {pivotData.hotels.map(hotelName => {
-                                  const hc = bookingRow.hotelCosts[hotelName];
-                                  const uzs = hc?.uzs||0; const usd = hc?.usd||0;
-                                  if (!uzs && !usd) return null;
-                                  return (
-                                    <div key={hotelName} className="flex justify-between px-3 py-1.5">
-                                      <span className="text-slate-500 truncate pr-2">🏨 {hotelName}</span>
-                                      <span className="font-semibold shrink-0">{uzs>0 ? formatNumber(uzs) : `$${formatNumber(usd)}`}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                          <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
-                            <span className="text-xs font-black text-white uppercase">TOTAL</span>
+                            );
+                          })}
+                          <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
+                            <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
                             <div className="flex gap-3 text-xs font-black text-white">
                               <span>{formatNumber(getGrandTotalUZS())}</span>
                               <span>${formatNumber(getGrandTotalUSD())}</span>
@@ -1815,30 +1831,38 @@ export default function Ausgaben() {
                       <EmptyState icon={Users} label={`${activeModule?.name} uchun gid ma'lumoti yo'q`} />
                     ) : (<>
                       {/* Mobile cards */}
-                      <div className="sm:hidden space-y-2 p-1">
+                      <div className="sm:hidden divide-y divide-slate-100">
                         {filteredBookingsWithHotels.filter(item => {
                           if (!selectedGuide) return true;
                           const e = item.expenses || {};
                           return e.guideMainName === selectedGuide || e.guideSecondName === selectedGuide || e.guideBergrName === selectedGuide;
-                        }).map((item) => {
+                        }).map((item, idx) => {
                           const e = item.expenses || {};
                           const total = (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0);
+                          const isOpen = openMobileCards.has(`gd_${item.bookingId}`);
                           return (
-                            <div key={item.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
-                              <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
-                                <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600">{item.bookingName}</Link>
-                                <span className="font-black text-green-700 text-xs">${formatNumber(total)}</span>
+                            <div key={item.bookingId}>
+                              <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
+                                style={{background: isOpen ? '#f0fdf4' : (idx%2===0 ? '#fff' : '#f8fafc')}}
+                                onClick={() => toggleMobileCard(`gd_${item.bookingId}`)}>
+                                <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{item.bookingName}</Link>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-green-700">${formatNumber(total)}</span>
+                                  <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                                </div>
                               </div>
-                              <div className="divide-y divide-slate-100 text-xs">
-                                {e.guideMainName && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500 truncate pr-2">👤 {e.guideMainName}</span>{e.guideMainCost>0 && <span className="font-semibold shrink-0">${formatNumber(e.guideMainCost)}</span>}</div>}
-                                {e.guideSecondName && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500 truncate pr-2">👤 {e.guideSecondName}</span>{e.guideSecondCost>0 && <span className="font-semibold shrink-0">${formatNumber(e.guideSecondCost)}</span>}</div>}
-                                {e.guideBergrName && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500 truncate pr-2">🏔 {e.guideBergrName}</span>{e.guideBergrCost>0 && <span className="font-semibold shrink-0">${formatNumber(e.guideBergrCost)}</span>}</div>}
-                              </div>
+                              {isOpen && (
+                                <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
+                                  {e.guideMainName && <div className="flex justify-between px-5 py-2"><span className="text-slate-500 truncate pr-2">👤 {e.guideMainName}</span>{e.guideMainCost>0 && <span className="font-semibold text-slate-800 shrink-0">${formatNumber(e.guideMainCost)}</span>}</div>}
+                                  {e.guideSecondName && <div className="flex justify-between px-5 py-2"><span className="text-slate-500 truncate pr-2">👤 {e.guideSecondName}</span>{e.guideSecondCost>0 && <span className="font-semibold text-slate-800 shrink-0">${formatNumber(e.guideSecondCost)}</span>}</div>}
+                                  {e.guideBergrName && <div className="flex justify-between px-5 py-2"><span className="text-slate-500 truncate pr-2">🏔 {e.guideBergrName}</span>{e.guideBergrCost>0 && <span className="font-semibold text-slate-800 shrink-0">${formatNumber(e.guideBergrCost)}</span>}</div>}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
-                        <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
-                          <span className="text-xs font-black text-white uppercase">TOTAL</span>
+                        <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
+                          <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
                           <span className="font-black text-white text-xs">${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0))}</span>
                         </div>
                       </div>
@@ -1948,29 +1972,37 @@ export default function Ausgaben() {
                       <EmptyState icon={Truck} label={`${activeModule?.name} uchun transport ma'lumoti yo'q`} />
                     ) : (<>
                         {/* Mobile cards */}
-                        <div className="sm:hidden space-y-2 p-1">
-                          {filteredBookingsWithHotels.map((item) => {
+                        <div className="sm:hidden divide-y divide-slate-100">
+                          {filteredBookingsWithHotels.map((item, idx) => {
                             const sevil=item.expenses?.transportSevil||0;
                             const xayrulla=item.expenses?.transportXayrulla||0;
                             const nosir=item.expenses?.transportNosir||0;
                             const total=sevil+xayrulla+nosir;
+                            const isOpen = openMobileCards.has(`tr_${item.bookingId}`);
                             return (
-                              <div key={item.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
-                                <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
-                                  <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600">{item.bookingName}</Link>
-                                  <span className="font-black text-green-700">${formatNumber(total)}</span>
+                              <div key={item.bookingId}>
+                                <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
+                                  style={{background: isOpen ? '#eff6ff' : (idx%2===0 ? '#fff' : '#f8fafc')}}
+                                  onClick={() => toggleMobileCard(`tr_${item.bookingId}`)}>
+                                  <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{item.bookingName}</Link>
+                                  <div className="flex items-center gap-2">
+                                    {total>0 && <span className="text-xs font-bold text-green-700">${formatNumber(total)}</span>}
+                                    <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                                  </div>
                                 </div>
-                                <div className="divide-y divide-slate-100 text-xs">
-                                  {sevil>0 && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500">🚌 Sevil</span><span className="font-semibold">{formatNumber(sevil)}</span></div>}
-                                  {xayrulla>0 && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500">🚌 Xayrulla</span><span className="font-semibold">{formatNumber(xayrulla)}</span></div>}
-                                  {nosir>0 && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500">🚌 Nosir</span><span className="font-semibold">{formatNumber(nosir)}</span></div>}
-                                </div>
+                                {isOpen && (
+                                  <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
+                                    {sevil>0 && <div className="flex justify-between px-5 py-2"><span className="text-slate-500">🚌 Sevil</span><span className="font-semibold text-slate-800">{formatNumber(sevil)}</span></div>}
+                                    {xayrulla>0 && <div className="flex justify-between px-5 py-2"><span className="text-slate-500">🚌 Xayrulla</span><span className="font-semibold text-slate-800">{formatNumber(xayrulla)}</span></div>}
+                                    {nosir>0 && <div className="flex justify-between px-5 py-2"><span className="text-slate-500">🚌 Nosir</span><span className="font-semibold text-slate-800">{formatNumber(nosir)}</span></div>}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
-                          <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
-                            <span className="text-xs font-black text-white uppercase">TOTAL</span>
-                            <span className="font-black text-white">${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}</span>
+                          <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
+                            <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
+                            <span className="font-black text-white text-xs">${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}</span>
                           </div>
                         </div>
                         {/* Desktop table */}
