@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth.routes');
 const bookingRoutes = require('./routes/booking.routes');
@@ -26,7 +28,13 @@ const searchRoutes = require('./routes/search.routes');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// ── Security Headers (Helmet) ──
+app.use(helmet({
+  contentSecurityPolicy: false, // SPA handles its own CSP
+  crossOriginEmbedderPolicy: false,
+}));
+
+// ── CORS ──
 const allowedOrigins = [
   'https://booking-calendar.uz',
   'http://localhost:3000',
@@ -34,7 +42,14 @@ const allowedOrigins = [
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Reject requests with no origin (curl, Postman) in production
+    if (!origin) {
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error('Not allowed by CORS'));
+      }
+      return callback(null, true); // allow in development
+    }
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -42,7 +57,30 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json());
+
+// ── Rate Limiting ──
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: 'Juda ko\'p urinish. 15 daqiqadan keyin qayta urining.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 300,
+  message: { error: 'Juda ko\'p so\'rov. Biroz kuting.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/', apiLimiter);
+
+// ── Body Parsers ──
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
@@ -84,10 +122,12 @@ app.get('*', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Внутренняя ошибка сервера',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(err.stack);
+  }
+  const status = err.status || 500;
+  res.status(status).json({
+    error: process.env.NODE_ENV === 'production' ? 'Ichki server xatoligi' : err.message,
   });
 });
 

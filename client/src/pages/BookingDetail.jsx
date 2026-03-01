@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, worldInsightApi } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, worldInsightApi, openPreviewUrl } from '../services/api';
 import { format, addDays, parseISO } from 'date-fns';
 import { UZS_PER_USD, UZS_PER_EUR } from '../constants/rates';
 import toast from 'react-hot-toast';
@@ -16999,8 +16999,7 @@ ${rowsHtml}
                                 // Open combined storno PDF for ALL visits to this hotel
                                 const hotelId = acc.hotel?.id;
                                 if (!hotelId) { toast.error('Hotel topilmadi'); return; }
-                                const url = `/api/bookings/${id}/storno-combined/${hotelId}`;
-                                window.open(url, '_blank');
+                                openPreviewUrl((pt, uid) => bookingsApi.getStornoCombined(id, hotelId, pt, uid));
                               }}
                               className={`p-3 text-orange-600 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 hover:border-orange-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
                               title="Stornierungsschreiben (Annulyatsiya xati)"
@@ -19256,7 +19255,7 @@ ${rowsHtml}
                   if (stornoDbl > 0) roomParts.push(`${stornoDbl}x DBL`);
                   if (stornoTwn > 0) roomParts.push(`${stornoTwn}x TWN`);
                   if (stornoSngl > 0) roomParts.push(`${stornoSngl}x SNGL`);
-                  const url = `/api/bookings/${id}/storno-preview?` + new URLSearchParams({
+                  const stornoParams = {
                     hotelId: stornoHotelId,
                     hotelName: selectedHotel?.name || '',
                     hotelCity: selectedHotel?.city?.name || '',
@@ -19268,8 +19267,8 @@ ${rowsHtml}
                     bookingNumber: booking?.bookingNumber || '',
                     pax: 0,
                     visitNumber: stornoVisitNumber
-                  });
-                  window.open(url, '_blank');
+                  };
+                  openPreviewUrl((pt, uid) => bookingsApi.getStornoPreview(id, stornoParams, pt, uid));
                 }}
                 className="px-6 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-colors font-bold flex items-center gap-2 shadow-lg"
               >

@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate } = require('../middleware/auth.middleware');
+const { authenticate, authenticatePreview } = require('../middleware/auth.middleware');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const PDFDocument = require('pdfkit');
@@ -2488,7 +2488,8 @@ router.delete('/:bookingId/railway-sections', authenticate, async (req, res) => 
 
 // POST /api/bookings/:bookingId/rooming-list/import-pdf - Import rooming list from PDF
 router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
-  if (req.headers['x-internal-call'] === 'true') return next();
+  const internalSecret = process.env.INTERNAL_API_SECRET;
+  if (internalSecret && req.headers['x-internal-secret'] === internalSecret) return next();
   return authenticate(req, res, next);
 }, upload.single('file'), async (req, res) => {
   try {
@@ -3969,8 +3970,7 @@ function formatFlightListAsRaw(flights) {
 // ============================================
 
 
-// Remove authenticate middleware for preview - no auth required for PDF view
-router.get('/:bookingId/rooming-list-preview', async (req, res) => {
+router.get('/:bookingId/rooming-list-preview', authenticatePreview, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const bookingIdInt = parseInt(bookingId);
@@ -4609,8 +4609,7 @@ router.get('/:bookingId/rooming-list-preview', async (req, res) => {
 // ============================================
 
 
-// Remove authenticate middleware for preview - no auth required for PDF view
-router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res) => {
+router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePreview, async (req, res) => {
   try {
     const { bookingId, accommodationId } = req.params;
     const bookingIdInt = parseInt(bookingId);
@@ -5460,7 +5459,7 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', async (req, res
 // HOTEL REQUEST PREVIEW - COMBINED (all visits to same hotel)
 // ============================================
 
-router.get('/:bookingId/hotel-request-combined/:hotelId', async (req, res) => {
+router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, async (req, res) => {
   try {
     const { bookingId, hotelId } = req.params;
     const bookingIdInt = parseInt(bookingId);
@@ -6207,6 +6206,7 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
+    await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
     const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`;
     await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
     const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
@@ -6273,6 +6273,7 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
     const page = await browser.newPage();
+    await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
     const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`;
     await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
     const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { touristsApi, bookingsApi } from '../../services/api';
+import { touristsApi, bookingsApi, getPreviewToken } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
   Edit, Upload, Users, User, FileText,
@@ -655,7 +655,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         window.URL.revokeObjectURL(url);
       } else if (format === 'pdf') {
         // Open server-generated PDF preview in new tab
-        const previewUrl = `/api/bookings/${bookingId}/rooming-list-preview`;
+        const { token: pt, uid } = await getPreviewToken();
+        const previewUrl = bookingsApi.getRoomingListPreview(bookingId, pt, uid);
         const printWindow = window.open(previewUrl, '_blank');
         if (!printWindow) {
           toast.error('Please allow popups to export PDF');
@@ -1014,7 +1015,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       }
 
       // Open server-generated PDF preview in new tab
-      const previewUrl = `/api/bookings/${bookingId}/hotel-request-preview/${accommodation.id}`;
+      const { token: pt, uid } = await getPreviewToken();
+      const previewUrl = bookingsApi.getHotelRequestPreview(bookingId, accommodation.id, pt, uid);
       const printWindow = window.open(previewUrl, '_blank');
       if (!printWindow) {
         toast.error('Please allow popups to export PDF');

@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
+const { authenticate, requireAdmin, generatePreviewToken } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -129,6 +129,12 @@ router.patch('/users/:id', authenticate, requireAdmin, async (req, res) => {
     console.error('Update user error:', error);
     res.status(500).json({ error: 'Ошибка обновления пользователя' });
   }
+});
+
+// GET /api/auth/preview-token — short-lived token for window.open() PDF previews
+router.get('/preview-token', authenticate, (req, res) => {
+  const token = generatePreviewToken(req.user.id);
+  res.json({ token, uid: req.user.id });
 });
 
 module.exports = router;

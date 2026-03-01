@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate } = require('../middleware/auth.middleware');
+const { authenticate, authenticatePreview } = require('../middleware/auth.middleware');
 const path = require('path');
 const fs = require('fs');
 
@@ -2096,7 +2096,7 @@ router.post('/:id/load-template', authenticate, async (req, res) => {
 });
 
 // GET /api/bookings/:id/storno-preview - Annulyatsiya (Cancellation letter) PDF
-router.get('/:id/storno-preview', async (req, res) => {
+router.get('/:id/storno-preview', authenticatePreview, async (req, res) => {
   try {
     const { id } = req.params;
     const { hotelName, hotelCity, checkIn, checkOut, dbl, twn, sngl, bookingNumber, pax, visitNumber } = req.query;
@@ -2301,7 +2301,7 @@ router.get('/:id/storno-preview', async (req, res) => {
 });
 
 // GET /api/bookings/:id/storno-combined/:hotelId - Combined Annulation PDF (all visits to same hotel)
-router.get('/:id/storno-combined/:hotelId', async (req, res) => {
+router.get('/:id/storno-combined/:hotelId', authenticatePreview, async (req, res) => {
   try {
     const { id, hotelId } = req.params;
     const bookingIdInt = parseInt(id);

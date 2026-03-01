@@ -85,7 +85,16 @@ router.get('/updates', authenticate, async (req, res) => {
 });
 
 // POST /api/telegram/webhook - Receive updates from Telegram
-router.post('/webhook', async (req, res) => {
+router.post('/webhook', (req, res, next) => {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (secret) {
+    const received = req.headers['x-telegram-bot-api-secret-token'];
+    if (received !== secret) {
+      return res.sendStatus(401);
+    }
+  }
+  next();
+}, async (req, res) => {
   // Respond immediately so Telegram doesn't retry
   res.sendStatus(200);
 

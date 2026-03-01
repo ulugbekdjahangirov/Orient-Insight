@@ -40,9 +40,11 @@ export const bookingsApi = {
     accommodationId
       ? api.get(`/bookings/${bookingId}/accommodations/${accommodationId}/rooming-list`)
       : api.get(`/bookings/${bookingId}/rooming-list`),
-  getRoomingListPreview: (bookingId) => `/api/bookings/${bookingId}/rooming-list-preview`,
-  getHotelRequestPreview: (bookingId, accommodationId) => `/api/bookings/${bookingId}/hotel-request-preview/${accommodationId}`,
-  getHotelRequestCombined: (bookingId, hotelId) => `/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`,
+  getRoomingListPreview: (bookingId, pt, uid) => `/api/bookings/${bookingId}/rooming-list-preview?_pt=${pt}&_uid=${uid}`,
+  getHotelRequestPreview: (bookingId, accommodationId, pt, uid) => `/api/bookings/${bookingId}/hotel-request-preview/${accommodationId}?_pt=${pt}&_uid=${uid}`,
+  getHotelRequestCombined: (bookingId, hotelId, pt, uid) => `/api/bookings/${bookingId}/hotel-request-combined/${hotelId}?_pt=${pt}&_uid=${uid}`,
+  getStornoPreview: (bookingId, params, pt, uid) => `/api/bookings/${bookingId}/storno-preview?${new URLSearchParams(params)}&_pt=${pt}&_uid=${uid}`,
+  getStornoCombined: (bookingId, hotelId, pt, uid) => `/api/bookings/${bookingId}/storno-combined/${hotelId}?_pt=${pt}&_uid=${uid}`,
   // Hotel Requests
   getHotelRequests: (bookingId) => api.get(`/bookings/${bookingId}/hotel-requests`),
   getHotelRequest: (bookingId, hotelId) => api.get(`/bookings/${bookingId}/hotel-requests/${hotelId}`),
@@ -213,6 +215,23 @@ export const usersApi = {
   getAll: () => api.get('/auth/users'),
   create: (data) => api.post('/auth/register', data),
   update: (id, data) => api.patch(`/auth/users/${id}`, data)
+};
+
+// Preview token helper — for window.open() PDF endpoints
+let _previewTokenCache = null;
+export const getPreviewToken = async () => {
+  const now = Date.now();
+  if (_previewTokenCache && now < _previewTokenCache.expires) {
+    return _previewTokenCache;
+  }
+  const res = await api.get('/auth/preview-token');
+  _previewTokenCache = { token: res.data.token, uid: res.data.uid, expires: now + 25 * 60 * 1000 };
+  return _previewTokenCache;
+};
+
+export const openPreviewUrl = async (buildUrl) => {
+  const { token, uid } = await getPreviewToken();
+  window.open(buildUrl(token, uid), '_blank');
 };
 
 // API для городов
