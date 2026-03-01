@@ -44,6 +44,10 @@ export default function Ausgaben() {
   const [loading, setLoading] = useState(true);
   const [bookingsDetailedData, setBookingsDetailedData] = useState([]);
   const [selectedGuide, setSelectedGuide] = useState(null);
+  const [openHotels, setOpenHotels] = useState(new Set());
+  const [openMonths, setOpenMonths] = useState(new Set());
+  const toggleHotel = (name) => setOpenHotels(prev => { const s = new Set(prev); s.has(name) ? s.delete(name) : s.add(name); return s; });
+  const toggleMonth = (key) => setOpenMonths(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -1551,54 +1555,65 @@ export default function Ausgaben() {
                   );
 
                   return (
-                    <div className="w-full space-y-4">
+                    <div className="w-full space-y-2">
                       {hotelNames.map(hotelName => {
                         const hotel = hotelMap[hotelName];
                         const sortedMonths = Object.keys(hotel.months).sort();
                         const hotelTotalUSD = sortedMonths.reduce((s, mk) => s + hotel.months[mk].reduce((ss, b) => ss + b.USD, 0), 0);
                         const hotelTotalUZS = sortedMonths.reduce((s, mk) => s + hotel.months[mk].reduce((ss, b) => ss + b.UZS, 0), 0);
+                        const hotelOpen = openHotels.has(hotelName);
 
                         return (
                           <div key={hotelName} className="rounded-xl overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
-                            {/* Hotel header */}
-                            <div className="flex items-center justify-between px-4 py-3"
-                              style={{ background: 'linear-gradient(135deg,#1e3a8a,#1d4ed8)' }}>
-                              <div>
+                            {/* Hotel header — clickable */}
+                            <button className="w-full flex items-center justify-between px-4 py-3 text-left"
+                              style={{ background: hotelOpen ? 'linear-gradient(135deg,#1e3a8a,#1d4ed8)' : 'linear-gradient(135deg,#1e40af,#2563eb)' }}
+                              onClick={() => toggleHotel(hotelName)}>
+                              <div className="flex items-center gap-2">
                                 <span className="text-white font-bold text-sm">🏨 {hotelName}</span>
-                                {hotel.city && <span className="text-blue-200 text-xs ml-2">— {hotel.city}</span>}
+                                {hotel.city && <span className="text-blue-200 text-xs">— {hotel.city}</span>}
+                                <span className="text-blue-300 text-xs ml-1">({sortedMonths.length} oy)</span>
                               </div>
-                              <div className="flex items-center gap-3 text-xs font-bold">
-                                {hotelTotalUZS > 0 && <span className="text-amber-300">{formatNumber(hotelTotalUZS)} UZS</span>}
-                                {hotelTotalUSD > 0 && <span className="text-green-300">${formatNumber(hotelTotalUSD)}</span>}
+                              <div className="flex items-center gap-3">
+                                {hotelTotalUZS > 0 && <span className="text-amber-300 text-xs font-bold">{formatNumber(hotelTotalUZS)} UZS</span>}
+                                {hotelTotalUSD > 0 && <span className="text-green-300 text-xs font-bold">${formatNumber(hotelTotalUSD)}</span>}
+                                <span className="text-white text-xs ml-1">{hotelOpen ? '▲' : '▼'}</span>
                               </div>
-                            </div>
+                            </button>
 
-                            {/* Months */}
-                            {sortedMonths.map(mk => {
+                            {/* Months — visible only when hotel is open */}
+                            {hotelOpen && sortedMonths.map(mk => {
                               const rows = hotel.months[mk];
                               const mTotalUSD = rows.reduce((s, b) => s + b.USD, 0);
                               const mTotalUZS = rows.reduce((s, b) => s + b.UZS, 0);
+                              const monthKey = `${hotelName}__${mk}`;
+                              const monthOpen = openMonths.has(monthKey);
+
                               return (
                                 <div key={mk}>
-                                  {/* Month sub-header */}
-                                  <div className="flex items-center justify-between px-4 py-2"
-                                    style={{ background: '#dbeafe', borderTop: '1px solid #bfdbfe' }}>
-                                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">📅 {monthLabel(mk)}</span>
-                                    <div className="flex gap-3 text-xs font-bold">
-                                      {mTotalUZS > 0 && <span className="text-amber-700">{formatNumber(mTotalUZS)} UZS</span>}
-                                      {mTotalUSD > 0 && <span className="text-green-700">${formatNumber(mTotalUSD)}</span>}
+                                  {/* Month row — clickable */}
+                                  <button className="w-full flex items-center justify-between px-4 py-2.5 text-left"
+                                    style={{ background: monthOpen ? '#bfdbfe' : '#dbeafe', borderTop: '1px solid #bfdbfe' }}
+                                    onClick={() => toggleMonth(monthKey)}>
+                                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+                                      📅 {monthLabel(mk)}
+                                      <span className="ml-2 font-normal text-blue-500 normal-case">{rows.length} gruppa</span>
+                                    </span>
+                                    <div className="flex items-center gap-3">
+                                      {mTotalUZS > 0 && <span className="text-xs font-bold text-amber-700">{formatNumber(mTotalUZS)} UZS</span>}
+                                      {mTotalUSD > 0 && <span className="text-xs font-bold text-green-700">${formatNumber(mTotalUSD)}</span>}
+                                      <span className="text-blue-500 text-xs">{monthOpen ? '▲' : '▼'}</span>
                                     </div>
-                                  </div>
-                                  {/* Booking rows */}
-                                  {rows.map((b, i) => (
-                                    <div key={i} className="flex items-center justify-between px-4 py-2.5 text-xs"
+                                  </button>
+
+                                  {/* Booking rows — visible only when month is open */}
+                                  {monthOpen && rows.map((b, i) => (
+                                    <div key={i} className="flex items-center justify-between px-6 py-2.5 text-xs"
                                       style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
                                       <div className="flex items-center gap-3">
                                         <Link to={`/bookings/${b.bookingId}`}
                                           className="font-bold text-blue-600 hover:underline w-16 shrink-0">{b.bookingName}</Link>
-                                        <span className="text-slate-400">
-                                          {fmtShort(b.checkIn)} → {fmtShort(b.checkOut)}
-                                        </span>
+                                        <span className="text-slate-400">{fmtShort(b.checkIn)} → {fmtShort(b.checkOut)}</span>
                                       </div>
                                       <div className="font-semibold text-slate-700">
                                         {b.UZS > 0 ? <span>{formatNumber(b.UZS)} UZS</span> : <span className="text-green-700">${formatNumber(b.USD)}</span>}
