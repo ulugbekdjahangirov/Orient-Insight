@@ -18,6 +18,7 @@ const tourTypeModules = [
 const statusLabels = {
   PENDING: 'Pending',
   CONFIRMED: 'Confirmed',
+  FINAL_CONFIRMED: 'Final Confirmed',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled'
@@ -26,6 +27,7 @@ const statusLabels = {
 const statusClasses = {
   PENDING: 'bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900 border border-yellow-400 shadow-sm',
   CONFIRMED: 'bg-gradient-to-r from-green-200 to-green-300 text-green-900 border border-green-400 shadow-sm',
+  FINAL_CONFIRMED: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border border-emerald-700 shadow-sm',
   IN_PROGRESS: 'bg-gradient-to-r from-sky-200 to-cyan-200 text-sky-900 border border-sky-400 shadow-sm',
   COMPLETED: 'bg-gradient-to-r from-blue-200 to-blue-300 text-blue-900 border border-blue-400 shadow-sm',
   CANCELLED: 'bg-gradient-to-r from-red-500 to-red-600 text-white border border-red-700 shadow-sm'

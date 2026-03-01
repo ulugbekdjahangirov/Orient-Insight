@@ -38,6 +38,7 @@ import {
 const statusLabels = {
   PENDING: 'Ожидает',
   CONFIRMED: 'Подтверждено',
+  FINAL_CONFIRMED: 'Final Confirmed',
   IN_PROGRESS: 'В процессе',
   COMPLETED: 'Завершено',
   CANCELLED: 'Отменено'
@@ -45,8 +46,9 @@ const statusLabels = {
 
 const statusColors = {
   PENDING: '#F59E0B',      // Желтый (Ожидает)
-  CONFIRMED: '#10B981',    // Зеленый (Подтверждено)
-  IN_PROGRESS: '#8B5CF6',  // Фиолетовый (В процессе)
+  CONFIRMED: '#10B981',        // Зеленый (Подтверждено)
+  FINAL_CONFIRMED: '#059669', // Темно-зеленый (Final Confirmed)
+  IN_PROGRESS: '#8B5CF6',     // Фиолетовый (В процессе)
   COMPLETED: '#3B82F6',    // Синий (Завершено)
   CANCELLED: '#EF4444'     // Красный (Отменено)
 };
@@ -54,6 +56,7 @@ const statusColors = {
 const statusClasses = {
   PENDING: 'bg-gradient-to-r from-yellow-200 to-amber-300 text-yellow-900 border-2 border-yellow-400',
   CONFIRMED: 'bg-gradient-to-r from-green-200 to-emerald-300 text-green-900 border-2 border-green-400',
+  FINAL_CONFIRMED: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-2 border-emerald-700',
   IN_PROGRESS: 'bg-gradient-to-r from-purple-200 to-violet-300 text-purple-900 border-2 border-purple-400',
   COMPLETED: 'bg-gradient-to-r from-blue-200 to-indigo-300 text-blue-900 border-2 border-blue-400',
   CANCELLED: 'bg-gradient-to-r from-red-200 to-rose-300 text-red-900 border-2 border-red-400'

@@ -67,6 +67,7 @@ import GutschriftDocument from '../components/booking/GutschriftDocument';
 const statusLabels = {
   PENDING: 'Pending',
   CONFIRMED: 'Confirmed',
+  FINAL_CONFIRMED: 'Final Confirmed',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled'
