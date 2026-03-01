@@ -171,39 +171,47 @@ function SendMessageModal({ chat, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header — violet */}
+        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-violet-600 to-purple-600">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-sky-500 rounded-xl flex items-center justify-center">
-              <Send size={15} className="text-white" />
-            </div>
-            <div>
-              <div className="font-semibold text-gray-900 text-sm">{chat.name}</div>
-              <div className="text-xs text-gray-400">{chat.chatId}</div>
-            </div>
+            <MessageCircle size={20} className="text-white" />
+            <span className="font-semibold text-white">Telegram xabar yuborish</span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/20 text-white transition-colors">
             <X size={18} />
           </button>
         </div>
-        <div className="p-5">
-          <textarea
-            autoFocus
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
-            placeholder="Xabar yozing... (Ctrl+Enter — yuborish)"
-            rows={4}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-          />
-          <div className="flex items-center justify-end gap-2 mt-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+        {/* Body */}
+        <div className="p-5 space-y-3">
+          <div className="text-sm text-gray-700">
+            Qabul qiluvchi: <span className="font-bold text-gray-900">{chat.name}</span>
+          </div>
+          {chat.phone && (
+            <div className="text-sm text-gray-700">
+              Telefon: <span className="font-medium text-red-500">{chat.phone}</span>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 mb-1">Xabar matni</label>
+            <textarea
+              autoFocus
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
+              placeholder="Xabaringizni yozing..."
+              rows={4}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-white bg-gray-500 hover:bg-gray-600 rounded-xl transition-colors">
               Bekor
             </button>
             <button
               onClick={handleSend}
               disabled={!text.trim() || sending}
-              className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white text-sm font-medium rounded-xl hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-5 py-2 bg-blue-500 text-white text-sm font-medium rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Send size={14} />
               {sending ? 'Yuborilmoqda...' : 'Yuborish'}
