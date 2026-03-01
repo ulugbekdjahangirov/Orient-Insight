@@ -89,7 +89,7 @@ router.post('/send-message', authenticate, requireAdmin, async (req, res) => {
   try {
     const { chatId, text } = req.body;
     if (!chatId || !text?.trim()) return res.status(400).json({ error: 'chatId va text kerak' });
-    const response = await axios.post(`${BOT_API}/sendMessage`, {
+    const response = await axios.post(`${BOT_API()}/sendMessage`, {
       chat_id: chatId,
       text: text.trim(),
       parse_mode: 'HTML'
