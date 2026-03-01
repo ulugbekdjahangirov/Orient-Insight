@@ -1462,12 +1462,12 @@ export default function Partners() {
                     style={{ background: 'white', opacity: isActive ? 0.12 : 0.03 }} />
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1">
-                      <Icon size={12} color={isActive ? 'white' : color} />
+                      <Icon size={12} color="white" />
                       <p className="text-xs font-black leading-none truncate"
-                        style={{ color: isActive ? 'white' : color }}>{label}</p>
+                        style={{ color: 'white', opacity: isActive ? 1 : 0.75 }}>{label}</p>
                     </div>
                     <p className="text-[10px] leading-tight hidden sm:block"
-                      style={{ color: isActive ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.3)' }}>
+                      style={{ color: 'rgba(255,255,255,0.55)', opacity: isActive ? 1 : 0.7 }}>
                       {TAB_SUBTITLES[tab.id]}
                     </p>
                   </div>
