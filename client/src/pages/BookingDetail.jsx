@@ -17011,6 +17011,38 @@ License №T-0084-08 from 2021-04-26`;
                             <Send className="w-5 h-5" />
                             {isMobile && <span className="font-medium">Telegram yuborish</span>}
                           </button>
+                          {/* Izmeneniya button — only if hotel has telegramChatId */}
+                          {acc.hotel?.telegramChatId && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await telegramApi.sendChanges(booking.id, acc.hotel.id);
+                                  toast.success('Izmeneniya yuborildi!');
+                                } catch { toast.error('Yuborishda xatolik'); }
+                              }}
+                              className={`p-3 text-orange-600 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 hover:border-orange-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                              title="Izmeneniya k zayavke"
+                            >
+                              <span className="text-base leading-none">📝</span>
+                              {isMobile && <span className="font-medium">Izmeneniya</span>}
+                            </button>
+                          )}
+                          {/* Annulyatsiya button — only for CANCELLED + telegramChatId */}
+                          {booking?.status === 'CANCELLED' && acc.hotel?.telegramChatId && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await telegramApi.sendAnnulment(booking.id, acc.hotel.id);
+                                  toast.success('Annulyatsiya yuborildi!');
+                                } catch { toast.error('Yuborishda xatolik'); }
+                              }}
+                              className={`p-3 text-red-600 bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                              title="Annulyatsiya yuborish"
+                            >
+                              <span className="text-base leading-none">❌</span>
+                              {isMobile && <span className="font-medium">Annulyatsiya</span>}
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               setEditingAccommodation(acc);
