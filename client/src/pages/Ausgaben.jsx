@@ -990,6 +990,40 @@ export default function Ausgaben() {
   };
   const activeTabGrad = tabGradients[activeExpenseTab] || tabGradients.general;
 
+  const GuideSummary = ({ data, formatNumber }) => {
+    const guideTotals = {};
+    data.forEach(item => {
+      const e = item.expenses || {};
+      if (e.guideMainName && e.guideMainCost > 0)
+        guideTotals[e.guideMainName] = (guideTotals[e.guideMainName] || 0) + e.guideMainCost;
+      if (e.guideSecondName && e.guideSecondCost > 0)
+        guideTotals[e.guideSecondName] = (guideTotals[e.guideSecondName] || 0) + e.guideSecondCost;
+      if (e.guideBergrName && e.guideBergrCost > 0)
+        guideTotals[e.guideBergrName] = (guideTotals[e.guideBergrName] || 0) + e.guideBergrCost;
+    });
+    const entries = Object.entries(guideTotals).sort((a, b) => b[1] - a[1]);
+    if (entries.length === 0) return null;
+    return (
+      <div className="mt-6 mb-2">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,#6ee7b7,transparent)' }} />
+          <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest px-2">Gidlar bo'yicha jami</span>
+          <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,#6ee7b7,transparent)' }} />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 px-1">
+          {entries.map(([name, total]) => (
+            <div key={name} className="flex flex-col items-center rounded-xl px-3 py-3"
+              style={{ background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)', border: '1px solid #6ee7b7' }}>
+              <span className="text-xs font-semibold text-emerald-800 text-center leading-tight mb-1.5 w-full"
+                style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+              <span className="text-base font-black text-emerald-900">${formatNumber(total)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const EmptyState = ({ icon: Icon, label }) => (
     <div className="py-20 text-center">
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-5"
@@ -1563,6 +1597,9 @@ export default function Ausgaben() {
                         </tbody>
                       </table>
                     )}
+
+                    {/* ── Per-guide earnings summary ── */}
+                    <GuideSummary data={filteredBookingsWithHotels} formatNumber={formatNumber} />
                   </div>
                 )}
 
