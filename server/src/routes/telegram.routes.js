@@ -126,8 +126,15 @@ async function getHotelByChatId(chatId) {
   return await prisma.hotel.findFirst({ where: { telegramChatId: String(chatId) } });
 }
 
-// Helper: find all JP_SECTIONS belonging to this chatId (by chatId stored inside JSON)
+// Helper: find all JP_SECTIONS for a chatId
+// Primary: look up hotel by telegramChatId (hotel table) → use hotel.id
+// Fallback: scan JP_SECTIONS JSON chatId field (if hotel not found in table)
 async function findJpSectionsByChatId(chatId) {
+  const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chatId) } });
+  if (hotel) {
+    return await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotel.id}_` } } });
+  }
+  // Fallback: scan by chatId stored in JSON value
   const all = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_SECTIONS_' } } });
   return all.filter(s => {
     try { return String(JSON.parse(s.value).chatId) === String(chatId); } catch { return false; }
