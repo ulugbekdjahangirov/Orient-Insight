@@ -3,7 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
-import { Hotel, BarChart3, Users, Truck } from 'lucide-react';
+import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const tourTypeModules = [
   { code: 'ALL', name: 'Barcha gruppalar', color: '#E5E7EB' },
@@ -724,6 +727,168 @@ export default function Ausgaben() {
 
   const activeModule = tourTypeModules.find(m => m.code === activeTourType);
 
+  // ── EXPORT FUNCTIONS ──
+
+  const getExportTitle = () => {
+    const tabName = expenseTabs.find(t => t.id === activeExpenseTab)?.name || activeExpenseTab;
+    return `Ausgaben — ${activeModule?.name} — ${tabName} (${selectedYear})`;
+  };
+
+  const getExportFilename = (ext) => {
+    const tab = activeExpenseTab;
+    const tour = activeTourType;
+    return `Ausgaben_${tour}_${tab}_${selectedYear}.${ext}`;
+  };
+
+  const exportToExcel = () => {
+    let headers = [];
+    let rows = [];
+    let footerRow = null;
+
+    if (activeExpenseTab === 'general') {
+      const data = bookingsDetailedData.filter(b => {
+        const e = b.expenses || {};
+        return e.hotelsUSD > 0 || e.hotelsUZS > 0;
+      });
+      headers = ['#', 'Booking', 'Hotels USD', 'Hotels UZS', 'Sevil', 'Xayrulla', 'Nosir', 'Train', 'Flights', 'Guide USD', 'Meals', 'Eintritt', 'Metro', 'Shou', 'Other', 'Total UZS', 'Total USD'];
+      rows = data.map((b, i) => {
+        const e = b.expenses || {};
+        const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
+        const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
+        return [i+1, b.bookingName, e.hotelsUSD||0, e.hotelsUZS||0, e.transportSevil||0, e.transportXayrulla||0, e.transportNosir||0, e.railway||0, e.flights||0, e.guide||0, e.meals||0, e.eintritt||0, e.metro||0, e.shou||0, e.other||0, totalUZS, totalUSD];
+      });
+      const totals = headers.slice(2).map((_, i) => rows.reduce((s, r) => s + (r[i+2]||0), 0));
+      footerRow = ['', 'TOTAL', ...totals];
+    }
+
+    else if (activeExpenseTab === 'hotels') {
+      const pd = getPivotData();
+      headers = ['#', 'Booking', ...pd.hotels, 'Total UZS', 'Total USD'];
+      rows = pd.bookingRows.map((br, i) => {
+        const hotelVals = pd.hotels.map(h => {
+          const hc = br.hotelCosts[h];
+          return (hc?.uzs || hc?.usd || 0);
+        });
+        return [i+1, br.bookingName, ...hotelVals, br.totalUZS, br.totalUSD];
+      });
+      const hotelTotals = pd.hotels.map(h => {
+        const uzs = getHotelGrandTotal(h, 'uzs');
+        const usd = getHotelGrandTotal(h, 'usd');
+        return uzs > 0 ? uzs : usd;
+      });
+      footerRow = ['', 'TOTAL', ...hotelTotals, getGrandTotalUZS(), getGrandTotalUSD()];
+    }
+
+    else if (activeExpenseTab === 'guides') {
+      headers = ['#', 'Booking', 'Main Guide', 'Price USD', 'Second Guide', 'Price USD', 'Bergreiseleiter', 'Price USD', 'Total USD'];
+      rows = filteredBookingsWithHotels.map((item, i) => {
+        const e = item.expenses || {};
+        const total = (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0);
+        return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||0, e.guideSecondName||'—', e.guideSecondCost||0, e.guideBergrName||'—', e.guideBergrCost||0, total];
+      });
+      footerRow = ['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)];
+    }
+
+    else if (activeExpenseTab === 'transport') {
+      headers = ['#', 'Booking', 'Sevil', 'Xayrulla', 'Total'];
+      rows = filteredBookingsWithHotels.map((item, i) => {
+        const sevil = item.expenses?.transportSevil||0;
+        const xayrulla = item.expenses?.transportXayrulla||0;
+        return [i+1, item.bookingName, sevil, xayrulla, sevil+xayrulla];
+      });
+      footerRow = ['', 'TOTAL',
+        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0),
+        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0),
+        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0)
+      ];
+    }
+
+    const titleRow = [getExportTitle()];
+    const wsData = [titleRow, [], headers, ...rows];
+    if (footerRow) wsData.push(footerRow);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, activeExpenseTab);
+    XLSX.writeFile(wb, getExportFilename('xlsx'));
+    toast.success('Excel fayl yuklab olindi');
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const title = getExportTitle();
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 14, 15);
+
+    let head = [];
+    let body = [];
+    let foot = [];
+
+    if (activeExpenseTab === 'general') {
+      const data = bookingsDetailedData.filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; });
+      head = [['#', 'Booking', 'Hotels USD', 'Hotels UZS', 'Sevil', 'Xayrulla', 'Nosir', 'Train', 'Flights', 'Guide', 'Meals', 'Eintritt', 'Metro', 'Shou', 'Other', 'Total UZS', 'Total USD']];
+      body = data.map((b, i) => {
+        const e = b.expenses || {};
+        const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
+        const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
+        return [i+1, b.bookingName, e.hotelsUSD||'—', e.hotelsUZS||'—', e.transportSevil||'—', e.transportXayrulla||'—', e.transportNosir||'—', e.railway||'—', e.flights||'—', e.guide||'—', e.meals||'—', e.eintritt||'—', e.metro||'—', e.shou||'—', e.other||'—', totalUZS||'—', totalUSD||'—'];
+      });
+      const totals = [2,3,4,5,6,7,8,9,10,11,12,13,14].map(ci => body.reduce((s,r)=>s+(typeof r[ci]==='number'?r[ci]:0),0));
+      const totalUZS = [3,4,5,6,7,8,9,10,11,12,13].reduce((s,i)=>s+(typeof body.reduce((a,r)=>a+(typeof r[i]==='number'?r[i]:0),0)==='number'?body.reduce((a,r)=>a+(typeof r[i]==='number'?r[i]:0),0):0),0);
+      const totalUSD = body.reduce((s,r)=>s+(typeof r[16]==='number'?r[16]:0),0);
+      foot = [['', 'TOTAL', ...totals, totalUZS, totalUSD]];
+    }
+
+    else if (activeExpenseTab === 'hotels') {
+      const pd = getPivotData();
+      head = [['#', 'Booking', ...pd.hotels, 'Total UZS', 'Total USD']];
+      body = pd.bookingRows.map((br, i) => {
+        const hotelVals = pd.hotels.map(h => { const hc = br.hotelCosts[h]; return (hc?.uzs || hc?.usd || '—'); });
+        return [i+1, br.bookingName, ...hotelVals, br.totalUZS||'—', br.totalUSD||'—'];
+      });
+      const hotelTotals = pd.hotels.map(h => { const uzs = getHotelGrandTotal(h,'uzs'); const usd = getHotelGrandTotal(h,'usd'); return uzs>0?uzs:usd; });
+      foot = [['', 'TOTAL', ...hotelTotals, getGrandTotalUZS(), getGrandTotalUSD()]];
+    }
+
+    else if (activeExpenseTab === 'guides') {
+      head = [['#', 'Booking', 'Main Guide', 'Price', 'Second Guide', 'Price', 'Bergreiseleiter', 'Price', 'Total USD']];
+      body = filteredBookingsWithHotels.map((item, i) => {
+        const e = item.expenses || {};
+        return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||'—', e.guideSecondName||'—', e.guideSecondCost||'—', e.guideBergrName||'—', e.guideBergrCost||'—', (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0)||'—'];
+      });
+      foot = [['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)]];
+    }
+
+    else if (activeExpenseTab === 'transport') {
+      head = [['#', 'Booking', 'Sevil', 'Xayrulla', 'Total']];
+      body = filteredBookingsWithHotels.map((item, i) => {
+        const sevil = item.expenses?.transportSevil||0;
+        const xayrulla = item.expenses?.transportXayrulla||0;
+        return [i+1, item.bookingName, sevil||'—', xayrulla||'—', (sevil+xayrulla)||'—'];
+      });
+      foot = [['', 'TOTAL',
+        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0),
+        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0),
+        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0)
+      ]];
+    }
+
+    autoTable(doc, {
+      head,
+      body,
+      foot,
+      startY: 22,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [186, 230, 253], textColor: [7, 89, 133], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+    });
+
+    doc.save(getExportFilename('pdf'));
+    toast.success('PDF fayl yuklab olindi');
+  };
+
   // Filter bookings with Hotels data (for General tab statistics)
   const filteredBookingsWithHotels = useMemo(() => {
     return bookingsDetailedData.filter(booking => {
@@ -800,13 +965,33 @@ export default function Ausgaben() {
                 </div>
                 <div className="w-px" style={{ background: 'rgba(255,255,255,0.2)' }} />
                 <div className="flex flex-col items-end justify-center gap-1.5">
-                  <button onClick={handleRefresh} disabled={loading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                    style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
-                    onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
-                    {loading ? '⏳ Yuklanmoqda...' : '🔄 Yangilash'}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={handleRefresh} disabled={loading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                      style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
+                      onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
+                      {loading ? '⏳ Yuklanmoqda...' : '🔄 Yangilash'}
+                    </button>
+                    {!loading && bookingsDetailedData.length > 0 && (
+                      <>
+                        <button onClick={exportToExcel} title="Excel yuklab olish"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                          style={{ background: 'rgba(22,163,74,0.35)', color: '#bbf7d0', border: '1px solid rgba(74,222,128,0.4)' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='rgba(22,163,74,0.55)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='rgba(22,163,74,0.35)'}>
+                          <FileSpreadsheet size={13} /> Excel
+                        </button>
+                        <button onClick={exportToPDF} title="PDF yuklab olish"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                          style={{ background: 'rgba(220,38,38,0.35)', color: '#fecaca', border: '1px solid rgba(248,113,113,0.4)' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='rgba(220,38,38,0.55)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='rgba(220,38,38,0.35)'}>
+                          <FileText size={13} /> PDF
+                        </button>
+                      </>
+                    )}
+                  </div>
                   {lastUpdated && !loading && (
                     <p className="text-xs opacity-50 text-green-100">
                       {lastUpdated.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
