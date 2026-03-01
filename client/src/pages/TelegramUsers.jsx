@@ -177,6 +177,56 @@ function TransportCell({ chatId, transportSettings, onLink }) {
   );
 }
 
+function RestaurantCell({ chatId, restaurants, onLink }) {
+  const [saving, setSaving] = useState(false);
+  const linked = restaurants.find(r => r.chatId === chatId)?.name || '';
+
+  const handleChange = async (e) => {
+    setSaving(true);
+    await onLink(chatId, e.target.value || null);
+    setSaving(false);
+  };
+
+  return (
+    <select
+      value={linked}
+      onChange={handleChange}
+      disabled={saving}
+      className="text-sm px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-60 max-w-[200px]"
+    >
+      <option value="">— Tanlanmagan</option>
+      {restaurants.map(r => (
+        <option key={r.name} value={r.name}>{r.name}</option>
+      ))}
+    </select>
+  );
+}
+
+function GuideCell({ chatId, guides, onLink }) {
+  const [saving, setSaving] = useState(false);
+  const linked = guides.find(g => g.telegramChatId === chatId);
+
+  const handleChange = async (e) => {
+    setSaving(true);
+    await onLink(chatId, e.target.value || null);
+    setSaving(false);
+  };
+
+  return (
+    <select
+      value={linked?.id || ''}
+      onChange={handleChange}
+      disabled={saving}
+      className="text-sm px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 max-w-[200px]"
+    >
+      <option value="">— Tanlanmagan</option>
+      {guides.map(g => (
+        <option key={g.id} value={g.id}>{g.name}</option>
+      ))}
+    </select>
+  );
+}
+
 function HotelCell({ chatId, hotels, onLink }) {
   const [saving, setSaving] = useState(false);
   const linked = hotels.find(h => h.telegramChatId === chatId);
@@ -282,6 +332,8 @@ export default function TelegramUsers() {
   const [sendingTo, setSendingTo] = useState(null);
   const [hotels, setHotels] = useState([]);
   const [transportSettings, setTransportSettings] = useState({});
+  const [restaurants, setRestaurants] = useState([]);
+  const [guides, setGuides] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
 
   const LS_KEY = 'tg_chats_cache';
@@ -310,7 +362,27 @@ export default function TelegramUsers() {
   useEffect(() => {
     telegramApi.getHotelsList().then(r => setHotels(r.data.hotels || [])).catch(() => {});
     telegramApi.getTransportSettings().then(r => setTransportSettings(r.data || {})).catch(() => {});
+    telegramApi.getRestaurantList().then(r => setRestaurants(r.data.restaurants || [])).catch(() => {});
+    telegramApi.getGuidesList().then(r => setGuides(r.data.guides || [])).catch(() => {});
   }, []);
+
+  const handleLinkRestaurant = async (chatId, restaurantName) => {
+    try {
+      await telegramApi.linkRestaurant(chatId, restaurantName);
+      const r = await telegramApi.getRestaurantList();
+      setRestaurants(r.data.restaurants || []);
+      toast.success(restaurantName ? 'Restaurant bog\'landi!' : 'Bog\'liq olib tashlandi');
+    } catch { toast.error('Saqlashda xatolik'); }
+  };
+
+  const handleLinkGuide = async (chatId, guideId) => {
+    try {
+      await telegramApi.linkGuide(chatId, guideId);
+      const r = await telegramApi.getGuidesList();
+      setGuides(r.data.guides || []);
+      toast.success(guideId ? 'Gid bog\'landi!' : 'Bog\'liq olib tashlandi');
+    } catch { toast.error('Saqlashda xatolik'); }
+  };
 
   const handleLinkTransport = async (chatId, provider) => {
     try {
@@ -462,7 +534,11 @@ export default function TelegramUsers() {
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">
-                    {tabFilter === 'hotel' ? 'Hotel' : tabFilter === 'transport' ? 'Provider' : 'Username'}
+                    { tabFilter === 'hotel'      ? 'Hotel'
+                    : tabFilter === 'transport'  ? 'Provider'
+                    : tabFilter === 'restaurant' ? 'Restaurant'
+                    : tabFilter === 'guide'      ? 'Guide'
+                    : 'Username' }
                   </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">
                     <span className="flex items-center gap-1"><Phone size={13} />Phone</span>
@@ -481,10 +557,14 @@ export default function TelegramUsers() {
                         <NameCell chatId={chat.chatId} value={chat.name} onSave={handleUpdate} />
                       </td>
                       <td className="px-4 py-3">
-                        {tabFilter === 'hotel'
+                        { tabFilter === 'hotel'
                           ? <HotelCell chatId={chat.chatId} hotels={hotels} onLink={handleLinkHotel} />
                           : tabFilter === 'transport'
                           ? <TransportCell chatId={chat.chatId} transportSettings={transportSettings} onLink={handleLinkTransport} />
+                          : tabFilter === 'restaurant'
+                          ? <RestaurantCell chatId={chat.chatId} restaurants={restaurants} onLink={handleLinkRestaurant} />
+                          : tabFilter === 'guide'
+                          ? <GuideCell chatId={chat.chatId} guides={guides} onLink={handleLinkGuide} />
                           : <span className="text-gray-500">{chat.username || '—'}</span>
                         }
                       </td>

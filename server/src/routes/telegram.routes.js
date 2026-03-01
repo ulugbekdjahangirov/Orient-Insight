@@ -75,6 +75,78 @@ async function saveKnownChats(chats) {
   });
 }
 
+// GET /api/telegram/restaurant-list - Restaurant names for linking
+router.get('/restaurant-list', authenticate, async (req, res) => {
+  try {
+    const chatIds = await getMealChatIds(); // { restaurantName: chatId }
+    // Also get unique names from MealConfirmation history
+    const history = await prisma.mealConfirmation.findMany({
+      select: { restaurantName: true },
+      distinct: ['restaurantName']
+    });
+    const namesFromHistory = history.map(r => r.restaurantName).filter(Boolean);
+    const namesFromSettings = Object.keys(chatIds);
+    const allNames = [...new Set([...namesFromSettings, ...namesFromHistory])].sort();
+    const restaurants = allNames.map(name => ({ name, chatId: chatIds[name] || null }));
+    res.json({ restaurants });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/telegram/link-restaurant - Link a chat to a restaurant
+router.put('/link-restaurant', authenticate, async (req, res) => {
+  try {
+    const { chatId, restaurantName } = req.body;
+    const chatIds = await getMealChatIds();
+    // Clear this chatId from any restaurant
+    for (const name of Object.keys(chatIds)) {
+      if (chatIds[name] === String(chatId)) delete chatIds[name];
+    }
+    if (restaurantName) chatIds[restaurantName] = String(chatId);
+    await saveMealChatIds(chatIds);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/telegram/guides-list - All guides for linking
+router.get('/guides-list', authenticate, async (req, res) => {
+  try {
+    const year = new Date().getFullYear();
+    const guides = await prisma.guide.findMany({
+      where: { year },
+      select: { id: true, name: true, telegramChatId: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json({ guides });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/telegram/link-guide - Link a chat to a guide
+router.put('/link-guide', authenticate, async (req, res) => {
+  try {
+    const { chatId, guideId } = req.body;
+    // Clear chatId from any other guide
+    await prisma.guide.updateMany({
+      where: { telegramChatId: String(chatId) },
+      data: { telegramChatId: null }
+    });
+    if (guideId) {
+      await prisma.guide.update({
+        where: { id: parseInt(guideId) },
+        data: { telegramChatId: String(chatId) }
+      });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/telegram/link-transport - Link a chat to a transport provider
 router.put('/link-transport', authenticate, async (req, res) => {
   try {

@@ -376,6 +376,10 @@ export const telegramApi = {
   getHotelsList: () => api.get('/telegram/hotels-list'),
   linkHotel: (chatId, hotelId) => api.put('/telegram/link-hotel', { chatId, hotelId }),
   linkTransport: (chatId, provider) => api.put('/telegram/link-transport', { chatId, provider }),
+  getRestaurantList: () => api.get('/telegram/restaurant-list'),
+  linkRestaurant: (chatId, restaurantName) => api.put('/telegram/link-restaurant', { chatId, restaurantName }),
+  getGuidesList: () => api.get('/telegram/guides-list'),
+  linkGuide: (chatId, guideId) => api.put('/telegram/link-guide', { chatId, guideId }),
   sendAusgabenPdf: (pdfBlob, filename, meta) => {
     const form = new FormData();
     form.append('pdf', pdfBlob, filename);
