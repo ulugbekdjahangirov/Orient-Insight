@@ -145,6 +145,38 @@ function RoleCell({ chatId, value, onSave }) {
   );
 }
 
+const TRANSPORT_PROVIDERS = [
+  { value: 'sevil',    label: 'Sevil' },
+  { value: 'xayrulla', label: 'Xayrulla' },
+  { value: 'nosir',    label: 'Nosir' },
+  { value: 'hammasi',  label: 'Siroj (Hammasi)' },
+];
+
+function TransportCell({ chatId, transportSettings, onLink }) {
+  const [saving, setSaving] = useState(false);
+  const linked = Object.entries(transportSettings).find(([, v]) => v === chatId)?.[0] || '';
+
+  const handleChange = async (e) => {
+    setSaving(true);
+    await onLink(chatId, e.target.value || null);
+    setSaving(false);
+  };
+
+  return (
+    <select
+      value={linked}
+      onChange={handleChange}
+      disabled={saving}
+      className="text-sm px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400 disabled:opacity-60 max-w-[200px]"
+    >
+      <option value="">— Tanlanmagan</option>
+      {TRANSPORT_PROVIDERS.map(p => (
+        <option key={p.value} value={p.value}>{p.label}</option>
+      ))}
+    </select>
+  );
+}
+
 function HotelCell({ chatId, hotels, onLink }) {
   const [saving, setSaving] = useState(false);
   const linked = hotels.find(h => h.telegramChatId === chatId);
@@ -249,6 +281,7 @@ export default function TelegramUsers() {
   const [tabFilter, setTabFilter] = useState('all');
   const [sendingTo, setSendingTo] = useState(null);
   const [hotels, setHotels] = useState([]);
+  const [transportSettings, setTransportSettings] = useState({});
   const [deletingId, setDeletingId] = useState(null);
 
   const LS_KEY = 'tg_chats_cache';
@@ -276,7 +309,19 @@ export default function TelegramUsers() {
 
   useEffect(() => {
     telegramApi.getHotelsList().then(r => setHotels(r.data.hotels || [])).catch(() => {});
+    telegramApi.getTransportSettings().then(r => setTransportSettings(r.data || {})).catch(() => {});
   }, []);
+
+  const handleLinkTransport = async (chatId, provider) => {
+    try {
+      await telegramApi.linkTransport(chatId, provider);
+      const r = await telegramApi.getTransportSettings();
+      setTransportSettings(r.data || {});
+      toast.success(provider ? 'Transport bog\'landi!' : 'Bog\'liq olib tashlandi');
+    } catch {
+      toast.error('Saqlashda xatolik');
+    }
+  };
 
   const handleLinkHotel = async (chatId, hotelId) => {
     try {
@@ -416,7 +461,9 @@ export default function TelegramUsers() {
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">{tabFilter === 'hotel' ? 'Hotel' : 'Username'}</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">
+                    {tabFilter === 'hotel' ? 'Hotel' : tabFilter === 'transport' ? 'Provider' : 'Username'}
+                  </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">
                     <span className="flex items-center gap-1"><Phone size={13} />Phone</span>
                   </th>
@@ -436,6 +483,8 @@ export default function TelegramUsers() {
                       <td className="px-4 py-3">
                         {tabFilter === 'hotel'
                           ? <HotelCell chatId={chat.chatId} hotels={hotels} onLink={handleLinkHotel} />
+                          : tabFilter === 'transport'
+                          ? <TransportCell chatId={chat.chatId} transportSettings={transportSettings} onLink={handleLinkTransport} />
                           : <span className="text-gray-500">{chat.username || '—'}</span>
                         }
                       </td>

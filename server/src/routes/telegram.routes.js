@@ -75,6 +75,23 @@ async function saveKnownChats(chats) {
   });
 }
 
+// PUT /api/telegram/link-transport - Link a chat to a transport provider
+router.put('/link-transport', authenticate, async (req, res) => {
+  try {
+    const { chatId, provider } = req.body;
+    // Clear this chatId from all providers first
+    const allProviders = ['sevil', 'xayrulla', 'nosir', 'hammasi'];
+    for (const p of allProviders) {
+      const current = await getProviderChatId(p);
+      if (current === String(chatId)) await setProviderChatId(p, '');
+    }
+    if (provider) await setProviderChatId(provider, String(chatId));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/telegram/hotels-list - All hotels for linking
 router.get('/hotels-list', authenticate, async (req, res) => {
   try {

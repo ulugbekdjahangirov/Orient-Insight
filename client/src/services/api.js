@@ -375,6 +375,7 @@ export const telegramApi = {
   sendMessage: (chatId, text) => api.post('/telegram/send-message', { chatId, text }),
   getHotelsList: () => api.get('/telegram/hotels-list'),
   linkHotel: (chatId, hotelId) => api.put('/telegram/link-hotel', { chatId, hotelId }),
+  linkTransport: (chatId, provider) => api.put('/telegram/link-transport', { chatId, provider }),
   sendAusgabenPdf: (pdfBlob, filename, meta) => {
     const form = new FormData();
     form.append('pdf', pdfBlob, filename);
