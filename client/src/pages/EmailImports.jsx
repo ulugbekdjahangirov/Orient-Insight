@@ -108,19 +108,20 @@ export default function EmailImports() {
   };
 
   return (
-    <div className="max-w-full mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Email Импорты</h1>
-        <div className="flex gap-3">
+    <div className="max-w-full mx-auto p-3 sm:p-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">Email Импорты</h1>
+        <div className="flex gap-2">
           <button
             onClick={handleBulkDelete}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
           >
             Удалить все
           </button>
           <button
             onClick={loadImports}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
           >
             Обновить
           </button>
@@ -128,7 +129,7 @@ export default function EmailImports() {
       </div>
 
       {/* Status Filter */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Фильтр по статусу
         </label>
@@ -138,7 +139,7 @@ export default function EmailImports() {
             setStatusFilter(e.target.value);
             setPage(1);
           }}
-          className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Все</option>
           <option value="PENDING">Ожидание</option>
@@ -149,7 +150,7 @@ export default function EmailImports() {
         </select>
       </div>
 
-      {/* Imports Table */}
+      {/* Imports List */}
       {loading ? (
         <div className="text-center py-12">
           <div className="text-gray-500">Загрузка...</div>
@@ -159,130 +160,199 @@ export default function EmailImports() {
           <div className="text-gray-500">Нет импортов</div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
-          <table className="w-full table-fixed divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Дата</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[15%]">От кого</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[12%]">Тема</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[8%]">Статус</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Tour Type</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Результат</th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[22%]">Сообщение</th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[13%]">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {imports.map((imp) => (
-                <tr key={imp.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 truncate">
-                    {formatDate(imp.emailDate)}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-gray-900 truncate">
-                    {imp.emailFrom}
-                  </td>
-                  <td className="px-3 py-3 text-xs text-gray-900 truncate">
-                    {imp.emailSubject || '(Без темы)'}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap truncate">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${STATUS_COLORS[imp.status]}`}>
-                      {STATUS_LABELS[imp.status]}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-gray-900 truncate">
-                    {imp.tourTypeCodes ? (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+        <>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {imports.map((imp) => (
+              <div key={imp.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                {/* Top row: date + status + tour type */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-400">{formatDate(imp.emailDate)}</span>
+                  <div className="flex items-center gap-1.5">
+                    {imp.tourTypeCodes && (
+                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
                         {imp.tourTypeCodes}
                       </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
                     )}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 truncate">
-                    {imp.status === 'SUCCESS' ? (
-                      <span className="text-green-600">
-                        +{imp.bookingsCreated} / ~{imp.bookingsUpdated}
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${STATUS_COLORS[imp.status]}`}>
+                      {STATUS_LABELS[imp.status]}
+                    </span>
+                  </div>
+                </div>
+
+                {/* From */}
+                <p className="text-xs font-medium text-gray-900 truncate mb-0.5">{imp.emailFrom}</p>
+
+                {/* Subject */}
+                <p className="text-xs text-gray-500 truncate mb-2">{imp.emailSubject || '(Без темы)'}</p>
+
+                {/* Result / Error */}
+                {imp.status === 'SUCCESS' && (
+                  <p className="text-xs text-green-600 mb-2">
+                    ✓ Создано: +{imp.bookingsCreated} / Обновлено: ~{imp.bookingsUpdated}
+                  </p>
+                )}
+                {(imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW') && imp.errorMessage && (
+                  <p className="text-xs text-red-600 mb-2 line-clamp-2">
+                    ⚠️ {imp.errorMessage}
+                  </p>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  {imp.status === 'SUCCESS' && (
+                    <button
+                      onClick={() => handleViewDetails(imp.id)}
+                      className="flex-1 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100"
+                    >
+                      Детали
+                    </button>
+                  )}
+                  {(imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' || imp.status === 'SUCCESS') && (
+                    <button
+                      onClick={() => handleRetry(imp.id)}
+                      className="flex-1 py-1.5 text-xs font-medium text-green-600 bg-green-50 rounded hover:bg-green-100"
+                    >
+                      Повторить
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(imp.id)}
+                    className="flex-1 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block bg-white rounded-lg shadow overflow-x-auto">
+            <table className="w-full table-fixed divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Дата</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[15%]">От кого</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[12%]">Тема</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[8%]">Статус</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Tour Type</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Результат</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[22%]">Сообщение</th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[13%]">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {imports.map((imp) => (
+                  <tr key={imp.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 truncate">
+                      {formatDate(imp.emailDate)}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-gray-900 truncate">
+                      {imp.emailFrom}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-gray-900 truncate">
+                      {imp.emailSubject || '(Без темы)'}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap truncate">
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${STATUS_COLORS[imp.status]}`}>
+                        {STATUS_LABELS[imp.status]}
                       </span>
-                    ) : imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' ? (
-                      <span className="text-red-600">Ошибка</span>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-xs truncate">
-                    {imp.status === 'SUCCESS' ? (
-                      <span className="text-green-600 font-medium">✓</span>
-                    ) : imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' ? (
-                      <span className="text-red-700 text-xs">
-                        ⚠️ {imp.errorMessage || 'Неизвестная ошибка'}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium space-x-1">
-                    {imp.status === 'SUCCESS' && (
-                      <>
-                        <button
-                          onClick={() => handleViewDetails(imp.id)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          Детали
-                        </button>
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-gray-900 truncate">
+                      {imp.tourTypeCodes ? (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                          {imp.tourTypeCodes}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 truncate">
+                      {imp.status === 'SUCCESS' ? (
+                        <span className="text-green-600">
+                          +{imp.bookingsCreated} / ~{imp.bookingsUpdated}
+                        </span>
+                      ) : imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' ? (
+                        <span className="text-red-600">Ошибка</span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-xs truncate">
+                      {imp.status === 'SUCCESS' ? (
+                        <span className="text-green-600 font-medium">✓</span>
+                      ) : imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW' ? (
+                        <span className="text-red-700 text-xs">
+                          ⚠️ {imp.errorMessage || 'Неизвестная ошибка'}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium space-x-1">
+                      {imp.status === 'SUCCESS' && (
+                        <>
+                          <button
+                            onClick={() => handleViewDetails(imp.id)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Детали
+                          </button>
+                          <button
+                            onClick={() => handleRetry(imp.id)}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Повторить
+                          </button>
+                        </>
+                      )}
+                      {(imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW') && (
                         <button
                           onClick={() => handleRetry(imp.id)}
                           className="text-green-600 hover:text-green-900"
                         >
                           Повторить
                         </button>
-                      </>
-                    )}
-                    {(imp.status === 'FAILED' || imp.status === 'MANUAL_REVIEW') && (
+                      )}
                       <button
-                        onClick={() => handleRetry(imp.id)}
-                        className="text-green-600 hover:text-green-900"
+                        onClick={() => handleDelete(imp.id)}
+                        className="text-red-600 hover:text-red-900"
                       >
-                        Повторить
+                        Удалить
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(imp.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Удалить
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
           {pagination && pagination.pages > 1 && (
-            <div className="px-6 py-4 flex items-center justify-between border-t">
-              <div className="text-sm text-gray-700">
-                Страница {pagination.page} из {pagination.pages} ({pagination.total} всего)
+            <div className="px-4 sm:px-6 py-4 flex items-center justify-between bg-white rounded-lg shadow mt-2 sm:mt-0 sm:rounded-t-none sm:border-t border-gray-200">
+              <div className="text-xs sm:text-sm text-gray-700">
+                {pagination.page} / {pagination.pages} ({pagination.total})
               </div>
-              <div className="space-x-2">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
+                  className="px-3 py-1 border rounded text-sm disabled:opacity-50"
                 >
-                  Назад
+                  ←
                 </button>
                 <button
                   onClick={() => setPage(page + 1)}
                   disabled={page === pagination.pages}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
+                  className="px-3 py-1 border rounded text-sm disabled:opacity-50"
                 >
-                  Вперед
+                  →
                 </button>
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Details Modal */}
