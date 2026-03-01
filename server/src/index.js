@@ -68,7 +68,7 @@ const loginLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 300,
+  max: 1000, // Ausgaben loads ~50 bookings × 6 parallel calls each
   message: { error: 'Juda ko\'p so\'rov. Biroz kuting.' },
   standardHeaders: true,
   legacyHeaders: false,

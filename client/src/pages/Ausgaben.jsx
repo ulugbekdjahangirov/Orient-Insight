@@ -174,9 +174,13 @@ export default function Ausgaben() {
     }
   };
 
-  // Core computation — pure, no state side effects
+  // Core computation — process bookings in batches of 5 to avoid rate limiting
   const computeDetailedDataRaw = async (bookingsData, metroVehiclesData) => {
-    const detailedData = await Promise.all(bookingsData.map(async (booking) => {
+    const BATCH_SIZE = 5;
+    const results = [];
+    for (let i = 0; i < bookingsData.length; i += BATCH_SIZE) {
+      const batch = bookingsData.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(async (booking) => {
       try {
         const [accResponse, touristsResponse, routesResponse, railwaysResponse, flightsResponse, tourServicesResponse] = await Promise.all([
           bookingsApi.getAccommodations(booking.id).catch(() => ({ data: { accommodations: [] } })),
@@ -215,8 +219,10 @@ export default function Ausgaben() {
         console.error(`Error loading data for booking ${booking.id}:`, err);
         return null;
       }
-    }));
-    return detailedData.filter(d => d !== null);
+      }));
+      results.push(...batchResults);
+    }
+    return results.filter(d => d !== null);
   };
 
   const loadDetailedBookingsData = async (bookingsData) => {
