@@ -4931,9 +4931,6 @@ export default function BookingDetail() {
             }
           }
 
-          const roomBgColor = roomType === 'DBL' ? '#dbeafe' : '#d1fae5';
-          const roomTextColor = roomType === 'DBL' ? '#1e40af' : '#065f46';
-
           const tourStart = tourist.checkInDate
             ? format(new Date(tourist.checkInDate), 'dd.MM.yyyy')
             : booking?.departureDate ? format(new Date(booking.departureDate), 'dd.MM.yyyy') : '-';
@@ -4942,14 +4939,14 @@ export default function BookingDetail() {
             : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-';
 
           tableRows += `
-            <tr style="border-bottom: 1px solid #dbeafe;">
-              <td style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-size: 10px;">${counter}</td>
-              <td style="border: 1px solid #dbeafe; padding: 5px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${tourist.lastName}, ${tourist.firstName}</td>
-              <td style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-size: 9px;">${tourStart}</td>
-              <td style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-size: 9px;">${tourEnd}</td>
-              <td style="border: 1px solid #dbeafe; padding: 5px 5px; font-size: 9px;">${remarks}</td>
-              ${isFirstInGroup ? `<td rowspan="${group.length}" style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-weight: bold; vertical-align: middle; background-color: ${roomBgColor}; color: ${roomTextColor}; font-size: 10px;">${roomType}</td>` : ''}
-              <td style="border: 1px solid #dbeafe; padding: 5px 4px; font-size: 10px;">${tourist.accommodation || 'Uzbekistan'}</td>
+            <tr>
+              <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 10px;">${counter}</td>
+              <td style="border: 1px solid #000; padding: 4px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${tourist.lastName}, ${tourist.firstName}</td>
+              <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourStart}</td>
+              <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourEnd}</td>
+              <td style="border: 1px solid #000; padding: 4px 5px; font-size: 9px;">${remarks}</td>
+              ${isFirstInGroup ? `<td rowspan="${group.length}" style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-weight: bold; vertical-align: middle; font-size: 10px;">${roomType}</td>` : ''}
+              <td style="border: 1px solid #000; padding: 4px 4px; font-size: 10px;">${tourist.accommodation || 'Uzbekistan'}</td>
             </tr>
           `;
         });
@@ -4966,9 +4963,6 @@ export default function BookingDetail() {
         if (roomType === 'DZ' || roomType === 'DOUBLE') roomType = 'DBL';
         else if (roomType === 'TWIN') roomType = 'TWN';
         else if (roomType === 'EZ' || roomType === 'SINGLE') roomType = 'SNGL';
-
-        const roomBgColor = roomType === 'DBL' ? '#dbeafe' : roomType === 'TWN' ? '#d1fae5' : '#e9d5ff';
-        const roomTextColor = roomType === 'DBL' ? '#1e40af' : roomType === 'TWN' ? '#065f46' : '#6b21a8';
 
         // Filter remarks
         let remarks = '-';
@@ -4992,14 +4986,14 @@ export default function BookingDetail() {
           : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-';
 
         tableRows += `
-          <tr style="border-bottom: 1px solid #dbeafe;">
-            <td style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-size: 10px;">${counter}</td>
-            <td style="border: 1px solid #dbeafe; padding: 5px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${tourist.lastName}, ${tourist.firstName}</td>
-            <td style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-size: 9px;">${tourStart}</td>
-            <td style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-size: 9px;">${tourEnd}</td>
-            <td style="border: 1px solid #dbeafe; padding: 5px 5px; font-size: 9px;">${remarks}</td>
-            <td style="border: 1px solid #dbeafe; padding: 5px 3px; text-align: center; font-weight: bold; background-color: ${roomBgColor}; color: ${roomTextColor}; font-size: 10px;">${roomType}</td>
-            <td style="border: 1px solid #dbeafe; padding: 5px 4px; font-size: 10px;">${tourist.accommodation || 'Uzbekistan'}</td>
+          <tr>
+            <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 10px;">${counter}</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${tourist.lastName}, ${tourist.firstName}</td>
+            <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourStart}</td>
+            <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourEnd}</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; font-size: 9px;">${remarks}</td>
+            <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-weight: bold; font-size: 10px;">${roomType}</td>
+            <td style="border: 1px solid #000; padding: 4px 4px; font-size: 10px;">${tourist.accommodation || 'Uzbekistan'}</td>
           </tr>
         `;
       }
@@ -5045,71 +5039,50 @@ export default function BookingDetail() {
     // Create HTML content for PDF
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; padding: 12px;">
-        <div style="text-align: center; margin-bottom: 15px;">
-          <h1 style="color: #2563eb; margin: 0; font-size: 18px;">Tourist List</h1>
-          <h2 style="color: #4b5563; margin: 5px 0; font-size: 14px;">${bookingCode} - ${tourName}</h2>
-          <p style="color: #6b7280; margin: 3px 0; font-size: 11px;">Date: ${departureDate} – ${endDate}</p>
+        <div style="text-align: center; margin-bottom: 12px;">
+          <h1 style="color: #000; margin: 0; font-size: 16px;">Tourist List</h1>
+          <h2 style="color: #000; margin: 4px 0; font-size: 13px;">${booking?.bookingNumber || bookingCode} – ${tourName}</h2>
+          <p style="color: #000; margin: 2px 0; font-size: 10px;">Date: ${departureDate} – ${endDate}</p>
         </div>
 
-        <!-- Statistics Cards -->
-        <div style="display: flex; gap: 3px; margin-bottom: 8px; justify-content: space-between;">
-          <!-- Total -->
-          <div style="flex: 1; background: linear-gradient(135deg, #dbeafe 0%, #c7d2fe 100%); border: 1px solid #3b82f6; border-radius: 4px; padding: 3px 4px; text-align: center;">
-            <div style="font-size: 10px; font-weight: bold; color: #1e40af; margin-bottom: 1px;">TOTAL</div>
-            <div style="font-size: 18px; font-weight: bold; color: #1e3a8a; line-height: 1;">${tourists.length}</div>
-            <div style="font-size: 9px; color: #2563eb; margin-top: 1px;">guests</div>
+        <!-- Statistics row -->
+        <div style="display: flex; gap: 4px; margin-bottom: 10px;">
+          <div style="border: 1px solid #000; padding: 3px 6px; text-align: center; min-width: 50px;">
+            <div style="font-size: 9px; font-weight: bold;">TOTAL</div>
+            <div style="font-size: 16px; font-weight: bold;">${tourists.length}</div>
+            <div style="font-size: 8px;">guests</div>
           </div>
-
-          <!-- DBL -->
-          <div style="flex: 1; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border: 1px solid #3b82f6; border-radius: 4px; padding: 3px 4px; text-align: center;">
-            <div style="font-size: 11px; font-weight: bold; color: white; background-color: #3b82f6; border-radius: 3px; padding: 1px 7px; margin-bottom: 1px; display: inline-block;">DBL</div>
-            <div style="font-size: 18px; font-weight: bold; color: #1e3a8a; line-height: 1;">${roomCounts.DBL}</div>
-            <div style="font-size: 9px; color: #2563eb; margin-top: 1px;">rooms</div>
+          <div style="border: 1px solid #000; padding: 3px 6px; text-align: center; min-width: 50px;">
+            <div style="font-size: 9px; font-weight: bold;">DBL</div>
+            <div style="font-size: 16px; font-weight: bold;">${roomCounts.DBL}</div>
+            <div style="font-size: 8px;">rooms</div>
           </div>
-
-          <!-- TWN -->
-          <div style="flex: 1; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 1px solid #10b981; border-radius: 4px; padding: 3px 4px; text-align: center;">
-            <div style="font-size: 11px; font-weight: bold; color: white; background-color: #10b981; border-radius: 3px; padding: 1px 7px; margin-bottom: 1px; display: inline-block;">TWN</div>
-            <div style="font-size: 18px; font-weight: bold; color: #064e3b; line-height: 1;">${roomCounts.TWN}</div>
-            <div style="font-size: 9px; color: #059669; margin-top: 1px;">rooms</div>
+          <div style="border: 1px solid #000; padding: 3px 6px; text-align: center; min-width: 50px;">
+            <div style="font-size: 9px; font-weight: bold;">TWN</div>
+            <div style="font-size: 16px; font-weight: bold;">${roomCounts.TWN}</div>
+            <div style="font-size: 8px;">rooms</div>
           </div>
-
-          <!-- SNGL -->
-          <div style="flex: 1; background: linear-gradient(135deg, #e9d5ff 0%, #ddd6fe 100%); border: 1px solid #8b5cf6; border-radius: 4px; padding: 3px 4px; text-align: center;">
-            <div style="font-size: 11px; font-weight: bold; color: white; background-color: #8b5cf6; border-radius: 3px; padding: 1px 7px; margin-bottom: 1px; display: inline-block;">SNGL</div>
-            <div style="font-size: 18px; font-weight: bold; color: #4c1d95; line-height: 1;">${roomCounts.SNGL}</div>
-            <div style="font-size: 9px; color: #7c3aed; margin-top: 1px;">rooms</div>
+          <div style="border: 1px solid #000; padding: 3px 6px; text-align: center; min-width: 50px;">
+            <div style="font-size: 9px; font-weight: bold;">SNGL</div>
+            <div style="font-size: 16px; font-weight: bold;">${roomCounts.SNGL}</div>
+            <div style="font-size: 8px;">rooms</div>
           </div>
-
-          <!-- Placement -->
-          <div style="flex: 1; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border: 1px solid #9ca3af; border-radius: 4px; padding: 2px 4px; font-size: 9px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-              <div style="display: flex; align-items: center; gap: 2px;">
-                <div style="width: 4px; height: 4px; border-radius: 50%; background-color: #10b981;"></div>
-                <span style="font-weight: bold; color: #374151; font-size: 9px;">UZBEKISTAN</span>
-              </div>
-              <span style="font-size: 13px; font-weight: bold; color: #111827;">${uzbekistanCount}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 2px;">
-                <div style="width: 4px; height: 4px; border-radius: 50%; background-color: #8b5cf6;"></div>
-                <span style="font-weight: bold; color: #374151; font-size: 9px;">TURKMENISTAN</span>
-              </div>
-              <span style="font-size: 13px; font-weight: bold; color: #111827;">${turkmenistanCount}</span>
-            </div>
+          <div style="border: 1px solid #000; padding: 3px 8px; font-size: 9px; display: flex; flex-direction: column; justify-content: center; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="font-weight: bold;">UZB</span><span style="font-weight: bold;">${uzbekistanCount}</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 10px;"><span style="font-weight: bold;">TKM</span><span style="font-weight: bold;">${turkmenistanCount}</span></div>
           </div>
         </div>
 
-        <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+        <table style="width: 100%; border-collapse: collapse;">
           <thead>
-            <tr style="background: linear-gradient(to right, #2563eb, #7c3aed); color: white;">
-              <th style="border: 1px solid #93c5fd; padding: 6px 3px; text-align: center; font-size: 10px;">No</th>
-              <th style="border: 1px solid #93c5fd; padding: 6px 5px; text-align: left; font-size: 10px;">Name</th>
-              <th style="border: 1px solid #93c5fd; padding: 6px 3px; text-align: center; font-size: 9px;">Tour Start</th>
-              <th style="border: 1px solid #93c5fd; padding: 6px 3px; text-align: center; font-size: 9px;">Tour End</th>
-              <th style="border: 1px solid #93c5fd; padding: 6px 5px; text-align: left; font-size: 10px;">Remarks</th>
-              <th style="border: 1px solid #93c5fd; padding: 6px 3px; text-align: center; font-size: 10px;">Rm</th>
-              <th style="border: 1px solid #93c5fd; padding: 6px 4px; text-align: left; font-size: 10px;">Placement</th>
+            <tr style="background: #e0e0e0;">
+              <th style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-size: 10px;">No</th>
+              <th style="border: 1px solid #000; padding: 5px 5px; text-align: left; font-size: 10px;">Name</th>
+              <th style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-size: 9px;">Tour Start</th>
+              <th style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-size: 9px;">Tour End</th>
+              <th style="border: 1px solid #000; padding: 5px 5px; text-align: left; font-size: 10px;">Remarks</th>
+              <th style="border: 1px solid #000; padding: 5px 3px; text-align: center; font-size: 10px;">Rm</th>
+              <th style="border: 1px solid #000; padding: 5px 4px; text-align: left; font-size: 10px;">Placement</th>
             </tr>
           </thead>
           <tbody>
