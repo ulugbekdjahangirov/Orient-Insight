@@ -385,10 +385,10 @@ export default function Guides() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1729' }}>
+    <div style={{ minHeight: '100vh', background: '#f1f5f9' }}>
 
       {/* ━━━━━━━━━━━━━━━━━━ DARK HERO HEADER ━━━━━━━━━━━━━━━━━━ */}
-      <div style={{ background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 50%, #0f1729 100%)', position: 'relative', overflow: 'hidden', padding: '32px 24px 28px' }}>
+      <div style={{ background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 50%, #0f1729 100%)', position: 'relative', overflow: 'hidden', padding: '32px 24px 28px', margin: '12px 12px 0', borderRadius: '28px' }}>
         {/* Glow blobs */}
         <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '-60px', left: '-60px', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.45) 0%, transparent 70%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
@@ -460,7 +460,7 @@ export default function Guides() {
       </div>
 
       {/* ━━━━━━━━━━━━━━━━━━ CONTENT AREA ━━━━━━━━━━━━━━━━━━ */}
-      <div style={{ background: '#f1f5f9', padding: '20px 24px 32px', minHeight: 'calc(100vh - 220px)' }}>
+      <div className="px-3 md:px-6 pb-20 md:pb-8" style={{ background: '#f1f5f9', paddingTop: '20px', minHeight: 'calc(100vh - 220px)' }}>
 
       {/* Tabs */}
       <div style={{ background: 'white', borderRadius: '16px', padding: '8px', marginBottom: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', border: '1px solid rgba(99,102,241,0.1)' }}>
