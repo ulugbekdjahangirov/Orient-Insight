@@ -51,6 +51,41 @@ function CopyButton({ text }) {
   );
 }
 
+function NameCell({ chatId, value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value || '');
+
+  const save = async () => {
+    if (val.trim()) await onSave(chatId, { name: val.trim() });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+          className="w-44 px-2 py-1 text-sm border border-blue-400 rounded-lg focus:outline-none font-medium"
+        />
+        <button onClick={save} className="p-1 rounded text-green-600 hover:bg-green-50"><Check size={12} /></button>
+        <button onClick={() => setEditing(false)} className="p-1 rounded text-gray-400 hover:bg-gray-100"><X size={12} /></button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 group">
+      <span className="font-medium text-gray-900">{value || '—'}</span>
+      <button onClick={() => setEditing(true)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200 transition-all">
+        <Pencil size={11} className="text-gray-400" />
+      </button>
+    </div>
+  );
+}
+
 function PhoneCell({ chatId, value, onSave }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(value || '');
@@ -285,7 +320,9 @@ export default function TelegramUsers() {
                   const TypeIcon = typeInfo.icon;
                   return (
                     <tr key={chat.chatId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900">{chat.name || '—'}</td>
+                      <td className="px-4 py-3">
+                        <NameCell chatId={chat.chatId} value={chat.name} onSave={handleUpdate} />
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{chat.username || '—'}</td>
                       <td className="px-4 py-3">
                         <PhoneCell chatId={chat.chatId} value={chat.phone} onSave={handleUpdate} />
@@ -326,7 +363,7 @@ export default function TelegramUsers() {
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="font-semibold text-gray-900">{chat.name || '—'}</span>
+                        <NameCell chatId={chat.chatId} value={chat.name} onSave={handleUpdate} />
                         {chat.role && (
                           <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${roleColors[chat.role] || 'bg-gray-100 text-gray-600'}`}>
                             {ROLES.find(r => r.value === chat.role)?.label}
