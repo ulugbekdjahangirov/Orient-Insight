@@ -126,6 +126,14 @@ async function getHotelByChatId(chatId) {
   return await prisma.hotel.findFirst({ where: { telegramChatId: String(chatId) } });
 }
 
+// Helper: find all JP_SECTIONS belonging to this chatId (by chatId stored inside JSON)
+async function findJpSectionsByChatId(chatId) {
+  const all = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_SECTIONS_' } } });
+  return all.filter(s => {
+    try { return String(JSON.parse(s.value).chatId) === String(chatId); } catch { return false; }
+  });
+}
+
 // Helper: handle /start command — save chat, set role=user, show language selection
 async function handleStart(chat, msg, botApiUrl) {
   try {
@@ -478,22 +486,15 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
         if (msg.text.startsWith('📋 Zayavka')) {
-          const hotelZv = await getHotelByChatId(chat.id);
-          if (!hotelZv) {
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz hali hech qaysi hotelga bog\'lanmagan ekansiz.' }).catch(() => {});
-            return;
-          }
-          const zvSettings = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotelZv.id}_` } } });
+          const zvSettings = await findJpSectionsByChatId(chat.id);
           if (zvSettings.length === 0) {
             await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '📋 Hali hech qanday zayavka yuborilmagan.', parse_mode: 'Markdown' }).catch(() => {});
             return;
           }
           if (zvSettings.length === 1) {
-            // Directly show the only available tour type
-            const s = zvSettings[0];
-            const tt = s.key.replace(`JP_SECTIONS_${hotelZv.id}_`, '');
-            const jpData = JSON.parse(s.value);
-            const lines = [`📋 *${tt} ${year} — ${hotelZv.name}*`, ''];
+            const jpData = JSON.parse(zvSettings[0].value);
+            const tt = jpData.tourType || '';
+            const lines = [`📋 *${tt} ${year} — ${jpData.hotelName || ''}*`, ''];
             for (const grp of (jpData.groups || [])) {
               for (const v of grp.visits) {
                 const si = v.status === 'CONFIRMED' ? '✅' : v.status === 'WAITING' ? '⏳' : v.status === 'REJECTED' ? '❌' : '⬜';
@@ -504,9 +505,8 @@ router.post('/webhook', (req, res, next) => {
             await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
             return;
           }
-          // Multiple tour types — show only available ones
-          const availTypes = zvSettings.map(s => s.key.replace(`JP_SECTIONS_${hotelZv.id}_`, ''));
           const ORDER = ['ER', 'CO', 'KAS', 'ZA'];
+          const availTypes = zvSettings.map(s => { try { return JSON.parse(s.value).tourType; } catch { return null; } }).filter(Boolean);
           const sorted = ORDER.filter(t => availTypes.includes(t));
           const rows = [];
           for (let i = 0; i < sorted.length; i += 2) {
@@ -521,58 +521,54 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
         if (msg.text === '⏳ Waiting List') {
-          const hotel = await getHotelByChatId(chat.id);
-          if (!hotel) {
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz hali hech qaysi hotelga bog\'lanmagan ekansiz.' }).catch(() => {});
-          } else {
-            const settings = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotel.id}_` } } });
-            const items = [];
-            for (const s of settings) {
-              const tourType = s.key.replace(`JP_SECTIONS_${hotel.id}_`, '');
-              const d = JSON.parse(s.value);
-              for (const grp of (d.groups || [])) {
-                for (const v of grp.visits) {
-                  if (v.status === 'WAITING') {
-                    const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
-                    items.push(`⏳ *${label}* (${tourType}) — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`);
-                  }
+          const settings = await findJpSectionsByChatId(chat.id);
+          const items = [];
+          let wlHotelName = '';
+          for (const s of settings) {
+            const d = JSON.parse(s.value);
+            if (!wlHotelName) wlHotelName = d.hotelName || '';
+            const tourType = d.tourType || '';
+            for (const grp of (d.groups || [])) {
+              for (const v of grp.visits) {
+                if (v.status === 'WAITING') {
+                  const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
+                  items.push(`⏳ *${label}* (${tourType}) — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`);
                 }
               }
             }
-            const text = items.length ? `⏳ *Waiting List — ${hotel.name}*\n\n${items.join('\n')}` : '✅ Waiting List bo\'sh.';
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
           }
+          const text = items.length ? `⏳ *Waiting List — ${wlHotelName}*\n\n${items.join('\n')}` : '✅ Waiting List bo\'sh.';
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
           return;
         }
         if (msg.text === '🏨 Zayavkalarim') {
-          const hotel = await getHotelByChatId(chat.id);
-          if (!hotel) {
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz hali hech qaysi hotelga bog\'lanmagan ekansiz.' }).catch(() => {});
-          } else {
-            const settings = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotel.id}_` } } });
-            const confirmed = [], waiting = [], pending = [], rejected = [];
-            for (const s of settings) {
-              const tourType = s.key.replace(`JP_SECTIONS_${hotel.id}_`, '');
-              const d = JSON.parse(s.value);
-              for (const grp of (d.groups || [])) {
-                for (const v of grp.visits) {
-                  const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
-                  const line = `*${label}* (${tourType}) — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`;
-                  if (v.status === 'CONFIRMED') confirmed.push('✅ ' + line);
-                  else if (v.status === 'WAITING') waiting.push('⏳ ' + line);
-                  else if (v.status === 'PENDING') pending.push('⬜ ' + line);
-                  else if (v.status === 'REJECTED') rejected.push('❌ ' + line);
-                }
+          const settings = await findJpSectionsByChatId(chat.id);
+          const confirmed = [], waiting = [], pending = [], rejected = [];
+          let myHotelName = '';
+          for (const s of settings) {
+            const d = JSON.parse(s.value);
+            if (!myHotelName) myHotelName = d.hotelName || '';
+            const tourType = d.tourType || '';
+            for (const grp of (d.groups || [])) {
+              for (const v of grp.visits) {
+                const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
+                const line = `*${label}* (${tourType}) — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`;
+                if (v.status === 'CONFIRMED') confirmed.push('✅ ' + line);
+                else if (v.status === 'WAITING') waiting.push('⏳ ' + line);
+                else if (v.status === 'PENDING') pending.push('⬜ ' + line);
+                else if (v.status === 'REJECTED') rejected.push('❌ ' + line);
               }
             }
-            const sections = [];
-            if (confirmed.length) sections.push('*✅ Tasdiqlangan:*\n' + confirmed.join('\n'));
-            if (waiting.length) sections.push('*⏳ Waiting List:*\n' + waiting.join('\n'));
-            if (pending.length) sections.push('*⬜ Kutilmoqda:*\n' + pending.join('\n'));
-            if (rejected.length) sections.push('*❌ Rad etilgan:*\n' + rejected.join('\n'));
-            const text = sections.length ? `🏨 *${hotel.name}*\n\n${sections.join('\n\n')}` : `🏨 *${hotel.name}*\n\nHech qanday zayavka topilmadi.`;
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
           }
+          const sections = [];
+          if (confirmed.length) sections.push('*✅ Tasdiqlangan:*\n' + confirmed.join('\n'));
+          if (waiting.length) sections.push('*⏳ Waiting List:*\n' + waiting.join('\n'));
+          if (pending.length) sections.push('*⬜ Kutilmoqda:*\n' + pending.join('\n'));
+          if (rejected.length) sections.push('*❌ Rad etilgan:*\n' + rejected.join('\n'));
+          const text = sections.length
+            ? `🏨 *${myHotelName}*\n\n${sections.join('\n\n')}`
+            : (myHotelName ? `🏨 *${myHotelName}*\n\nHech qanday zayavka topilmadi.` : '📋 Hali hech qanday zayavka yuborilmagan.');
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
           return;
         }
       }
@@ -1517,12 +1513,8 @@ router.post('/webhook', (req, res, next) => {
     if (data.startsWith('zv:')) {
       const [, tourType, year] = data.split(':');
       await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
-      const hotel = await getHotelByChatId(fromChatId);
-      if (!hotel) {
-        await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: '⚠️ Siz hali hech qaysi hotelga bog\'lanmagan ekansiz.' }).catch(() => {});
-        return;
-      }
-      const setting = await prisma.systemSetting.findUnique({ where: { key: `JP_SECTIONS_${hotel.id}_${tourType}` } });
+      const allForChat = await findJpSectionsByChatId(fromChatId);
+      const setting = allForChat.find(s => { try { return JSON.parse(s.value).tourType === tourType; } catch { return false; } });
       if (!setting) {
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: fromChatId,
@@ -1532,7 +1524,7 @@ router.post('/webhook', (req, res, next) => {
         return;
       }
       const jpData = JSON.parse(setting.value);
-      const lines = [`📋 *${tourType} ${year} — ${hotel.name}*`, ''];
+      const lines = [`📋 *${tourType} ${year} — ${jpData.hotelName || ''}*`, ''];
       for (const grp of (jpData.groups || [])) {
         for (const v of grp.visits) {
           const si = v.status === 'CONFIRMED' ? '✅' : v.status === 'WAITING' ? '⏳' : v.status === 'REJECTED' ? '❌' : '⬜';
