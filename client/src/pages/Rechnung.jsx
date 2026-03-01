@@ -260,27 +260,27 @@ export default function Rechnung() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-3 sm:p-6">
       <div className="w-full">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <div className={`p-3 bg-gradient-to-br ${colorClasses[activeModuleData?.color || 'amber'].bg} rounded-2xl shadow-lg`}>
-              <Icon className="w-8 h-8 text-white" />
+        <div className="mb-4 sm:mb-8">
+          <div className="flex items-center gap-3 mb-3 sm:mb-4">
+            <div className={`p-2 sm:p-3 bg-gradient-to-br ${colorClasses[activeModuleData?.color || 'amber'].bg} rounded-xl sm:rounded-2xl shadow-lg`}>
+              <Icon className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
             </div>
             <div>
-              <h1 className={`text-4xl font-bold bg-gradient-to-r ${colorClasses[activeModuleData?.color || 'amber'].text} bg-clip-text text-transparent`}>
+              <h1 className={`text-xl sm:text-4xl font-bold bg-gradient-to-r ${colorClasses[activeModuleData?.color || 'amber'].text} bg-clip-text text-transparent`}>
                 Invoice - {activeModuleData?.name}
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-500 text-xs sm:text-base mt-0.5 sm:mt-1">
                 Invoice Management and Overview
               </p>
             </div>
           </div>
         </div>
 
-        {/* Module tabs */}
-        <div className="mb-6 flex flex-wrap gap-3">
+        {/* Module tabs — mobile: 3-col grid, desktop: flex wrap */}
+        <div className="mb-4 sm:mb-6 grid grid-cols-3 sm:flex sm:flex-wrap gap-2 sm:gap-3">
           {modules.map((module) => {
             const ModuleIcon = module.icon;
             const isActive = activeModule === module.id;
@@ -290,14 +290,14 @@ export default function Rechnung() {
               <button
                 key={module.id}
                 onClick={() => handleModuleChange(module.id)}
-                className={`flex items-center gap-2.5 px-6 py-3 text-sm font-bold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl ${
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 px-2 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 shadow sm:shadow-lg hover:shadow-xl ${
                   isActive
-                    ? `${colors.active} ${colors.hover} text-white scale-105`
-                    : 'bg-white text-gray-700 hover:bg-gray-50 hover:scale-105 border border-gray-200'
+                    ? `${colors.active} ${colors.hover} text-white`
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <ModuleIcon className="w-5 h-5" />
-                {module.name}
+                <ModuleIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-center leading-tight">{module.name}</span>
               </button>
             );
           })}
@@ -307,8 +307,41 @@ export default function Rechnung() {
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
           {activeModule === 'rechnung' ? (
             <>
-              {/* Table - Read-only view of bookings */}
-              <div className="overflow-x-auto">
+              {/* Mobile cards */}
+              {loading ? (
+                <div className="sm:hidden flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-600"></div>
+                </div>
+              ) : (
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {rechnungItems.map((item, index) => (
+                    <div key={item.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
+                            <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</span>
+                          <button onClick={() => { const docTab = item.name === 'Rechnung' ? 'rechnung' : item.name === 'Neue Rechnung' ? 'neue-rechnung' : 'gutschrift'; navigate(`/bookings/${item.bookingId}?tab=documents&docTab=${docTab}`); }} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {rechnungItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                  {rechnungItems.length > 0 && (
+                    <div className="px-4 py-3 flex justify-between font-bold bg-gradient-to-r from-amber-50 to-orange-50">
+                      <span className="text-gray-700 uppercase text-xs tracking-widest">TOTAL</span>
+                      <span className="text-gray-900">{formatNumber(rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0))}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
@@ -382,6 +415,7 @@ export default function Rechnung() {
               </div>
             </>
           ) : activeModule === 'gutschrift' ? (
+
             <>
               {/* Add Item button */}
               <div className="p-6 border-b border-gray-200">
@@ -394,8 +428,33 @@ export default function Rechnung() {
                 </button>
               </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
+              {/* Mobile cards — Gutschrift */}
+              <div className="sm:hidden divide-y divide-gray-100">
+                {gutschriftItems.map((item, index) => (
+                  <div key={item.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
+                          <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</span>
+                        <button onClick={() => navigate(`/bookings/${item.bookingId}?tab=documents&docTab=gutschrift`)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {gutschriftItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                <div className="px-4 py-3 flex justify-between font-bold bg-gradient-to-r from-emerald-50 to-green-50">
+                  <span className="text-gray-700 uppercase text-xs tracking-widest">TOTAL</span>
+                  <span className="text-gray-900">{formatNumber(gutschriftItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0))}</span>
+                </div>
+              </div>
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gradient-to-r from-emerald-100 to-green-100">
@@ -454,8 +513,57 @@ export default function Rechnung() {
             </>
           ) : activeModule === 'orient' ? (
             <>
-              {/* Table - Read-only view matching Invoice module */}
-              <div className="overflow-x-auto">
+              {/* Mobile cards — Orient */}
+              {loading ? (
+                <div className="sm:hidden flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {orientItems.map((item, index) => {
+                    const rAmt = (item.name === 'Rechnung' || item.name === 'Neue Rechnung') ? (parseFloat(item.summe) || 0) : 0;
+                    const gAmt = item.name === 'Gutschrift' ? (parseFloat(item.summe) || 0) : 0;
+                    const tot = rAmt - gAmt;
+                    return (
+                      <div key={item.id} className="px-4 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
+                              <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-bold text-gray-900 text-sm">{formatNumber(tot)}</div>
+                            {rAmt > 0 && <div className="text-xs text-blue-500">R: {formatNumber(rAmt)}</div>}
+                            {gAmt > 0 && <div className="text-xs text-red-400">G: -{formatNumber(gAmt)}</div>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {orientItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                  {orientItems.length > 0 && (() => {
+                    const tR = orientItems.filter(i => i.name === 'Rechnung' || i.name === 'Neue Rechnung').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    const tG = orientItems.filter(i => i.name === 'Gutschrift').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    return (
+                      <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50">
+                        <div className="flex justify-between font-bold text-gray-900">
+                          <span className="uppercase text-xs tracking-widest text-gray-600">TOTAL</span>
+                          <span>{formatNumber(tR - tG)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>Rechnung: {formatNumber(tR)}</span>
+                          <span>Gutschrift: -{formatNumber(tG)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -542,8 +650,57 @@ export default function Rechnung() {
             </>
           ) : activeModule === 'infuturestorm' ? (
             <>
-              {/* Table - Read-only view matching Invoice module */}
-              <div className="overflow-x-auto">
+              {/* Mobile cards — INFUTURESTORM */}
+              {loading ? (
+                <div className="sm:hidden flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600"></div>
+                </div>
+              ) : (
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {infuturestormItems.map((item, index) => {
+                    const rAmt = (item.name === 'Rechnung' || item.name === 'Neue Rechnung') ? (parseFloat(item.summe) || 0) : 0;
+                    const gAmt = item.name === 'Gutschrift' ? (parseFloat(item.summe) || 0) : 0;
+                    const tot = rAmt - gAmt;
+                    return (
+                      <div key={item.id} className="px-4 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
+                              <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-bold text-gray-900 text-sm">{formatNumber(tot)}</div>
+                            {rAmt > 0 && <div className="text-xs text-orange-500">R: {formatNumber(rAmt)}</div>}
+                            {gAmt > 0 && <div className="text-xs text-red-400">G: -{formatNumber(gAmt)}</div>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {infuturestormItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                  {infuturestormItems.length > 0 && (() => {
+                    const tR = infuturestormItems.filter(i => i.name === 'Rechnung' || i.name === 'Neue Rechnung').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    const tG = infuturestormItems.filter(i => i.name === 'Gutschrift').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    return (
+                      <div className="px-4 py-3 bg-gradient-to-r from-orange-50 to-red-50">
+                        <div className="flex justify-between font-bold text-gray-900">
+                          <span className="uppercase text-xs tracking-widest text-gray-600">TOTAL</span>
+                          <span>{formatNumber(tR - tG)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>Rechnung: {formatNumber(tR)}</span>
+                          <span>Gutschrift: -{formatNumber(tG)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
@@ -641,8 +798,70 @@ export default function Rechnung() {
                 </button>
               </div>
 
-              {/* Table - Editable */}
-              <div className="overflow-x-auto">
+              {/* Mobile cards — Shamixon (editable) */}
+              <div className="sm:hidden divide-y divide-gray-100">
+                {shamixonItems.map((item, index) => {
+                  const payAmt = parseFloat(item.gruppe) || 0;
+                  const commission = payAmt * 0.01;
+                  const transferFee = 50;
+                  const incomingPayment = payAmt - commission - transferFee;
+                  const serviceFee = parseFloat(item.serviceFee) || 0;
+                  const totalAmount = incomingPayment - serviceFee;
+                  return (
+                    <div key={item.id} className="px-4 py-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-bold text-purple-700 text-sm">#{index + 1} {item.name || '—'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 text-sm">{formatNumber(totalAmount)}</span>
+                          <button onClick={() => handleDeleteShamixonItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                        <div>
+                          <div className="text-gray-400 mb-0.5">Date</div>
+                          <input type="date" value={item.name || ''} onChange={e => handleUpdateShamixonItem(item.id, 'name', e.target.value)} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" />
+                        </div>
+                        <div>
+                          <div className="text-gray-400 mb-0.5">Income date</div>
+                          <input type="date" value={item.firma || ''} onChange={e => handleUpdateShamixonItem(item.id, 'firma', e.target.value)} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" />
+                        </div>
+                        <div>
+                          <div className="text-gray-400 mb-0.5">Payment</div>
+                          <input type="text" value={item.gruppe ? formatNumber(parseFloat(item.gruppe)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'gruppe', v); }} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" placeholder="0" />
+                        </div>
+                        <div>
+                          <div className="text-gray-400 mb-0.5">Service fee</div>
+                          <input type="number" value={item.serviceFee || ''} onChange={e => handleUpdateShamixonItem(item.id, 'serviceFee', parseFloat(e.target.value) || 0)} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" step="0.01" />
+                        </div>
+                        <div className="text-gray-500">Commission (1%): <span className="font-medium text-gray-700">{formatNumber(commission)}</span></div>
+                        <div className="text-gray-500">Transfer fee: <span className="font-medium text-gray-700">{formatNumber(transferFee)}</span></div>
+                        <div className="col-span-2 text-gray-500">Incoming: <span className="font-medium text-gray-700">{formatNumber(incomingPayment)}</span></div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {shamixonItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                {shamixonItems.length > 0 && (() => {
+                  let tComm = 0, tFee = 0, tInc = 0, tSvc = 0, tTotal = 0;
+                  shamixonItems.forEach(i => { const p = parseFloat(i.gruppe)||0; const c = p*0.01; const f = 50; const inc = p-c-f; const s = parseFloat(i.serviceFee)||0; tComm+=c; tFee+=f; tInc+=inc; tSvc+=s; tTotal+=inc-s; });
+                  return (
+                    <div className="px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50">
+                      <div className="flex justify-between font-bold text-gray-900 mb-1">
+                        <span className="uppercase text-xs tracking-widest text-gray-600">TOTAL</span>
+                        <span>{formatNumber(tTotal)}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 text-xs text-gray-500">
+                        <span>Commission: {formatNumber(tComm)}</span>
+                        <span>Transfer: {formatNumber(tFee)}</span>
+                        <span>Incoming: {formatNumber(tInc)}</span>
+                        <span>Service: {formatNumber(tSvc)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              {/* Desktop table - Editable */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gradient-to-r from-purple-100 to-pink-100">
