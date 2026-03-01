@@ -410,8 +410,10 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
         const lines = [
           header, '',
           visitTitle,
-          `📅 ${v.checkIn} → ${v.checkOut}`,
-          `👥 ${v.pax} PAX  |  🛏 DBL:${v.dbl}  TWN:${v.twn}  SNGL:${v.sngl}`
+          `📅 Заезд: ${v.checkIn}`,
+          `📅 Выезд: ${v.checkOut}`,
+          `👥 PAX: ${v.pax}`,
+          `🛏 DBL:${v.dbl}  |  TWN:${v.twn}  |  SNGL:${v.sngl}`
         ];
         const msgRes = await axios.post(`${TG_API}/sendMessage`, {
           chat_id: hotel.telegramChatId,

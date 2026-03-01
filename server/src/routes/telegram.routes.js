@@ -1346,8 +1346,10 @@ router.post('/webhook', (req, res, next) => {
           ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
           : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
         const lines = [header, '', visitTitle,
-          `📅 ${v.checkIn} → ${v.checkOut}`,
-          `👥 ${v.pax} PAX  |  🛏 DBL:${v.dbl}  TWN:${v.twn}  SNGL:${v.sngl}`
+          `📅 Заезд: ${v.checkIn}`,
+          `📅 Выезд: ${v.checkOut}`,
+          `👥 PAX: ${v.pax}`,
+          `🛏 DBL:${v.dbl}  |  TWN:${v.twn}  |  SNGL:${v.sngl}`
         ];
         // PENDING — 3 buttons; WAITING — 2 buttons (no WL); CONFIRMED/REJECTED — no buttons
         const keyboard = st === 'PENDING' ? [[
