@@ -103,13 +103,17 @@ router.post('/send-message', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-// PUT /api/telegram/chats/:chatId - Update chat role and phone
+// PUT /api/telegram/chats/:chatId - Update chat name, role and phone
 router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { role, phone } = req.body;
+    const { role, phone, name } = req.body;
     const chats = await loadKnownChats();
     if (!chats[chatId]) return res.status(404).json({ error: 'Chat topilmadi' });
+    if (name !== undefined && name.trim()) {
+      chats[chatId].name = name.trim();
+      chats[chatId].nameCustomized = true; // Prevent webhook from overwriting
+    }
     if (role !== undefined) chats[chatId].role = role;
     if (phone !== undefined) chats[chatId].phone = phone;
     await saveKnownChats(chats);
@@ -164,10 +168,13 @@ router.post('/webhook', (req, res, next) => {
     if (msg) {
       const chat = msg.chat;
       const chats = await loadKnownChats();
+      const existing = chats[String(chat.id)] || {};
+      const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
       chats[String(chat.id)] = {
+        ...existing,
         chatId: String(chat.id),
-        name: chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' '),
-        username: chat.username ? `@${chat.username}` : null,
+        name: existing.nameCustomized ? existing.name : telegramName,
+        username: chat.username ? `@${chat.username}` : (existing.username || null),
         type: chat.type,
         lastMessage: msg.text || '[file]',
         date: new Date(msg.date * 1000).toISOString()

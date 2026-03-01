@@ -232,11 +232,20 @@ export default function TelegramUsers() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [deletingId, setDeletingId] = useState(null);
 
+  const LS_KEY = 'tg_chats_cache';
+
   const loadChats = useCallback(async () => {
+    // Show cached data immediately to avoid blank screen on refresh
+    const cached = localStorage.getItem(LS_KEY);
+    if (cached) {
+      try { setChats(JSON.parse(cached)); } catch {}
+    }
     setLoading(true);
     try {
       const res = await telegramApi.getKnownChats();
-      setChats(res.data.chats || []);
+      const list = res.data.chats || [];
+      setChats(list);
+      localStorage.setItem(LS_KEY, JSON.stringify(list));
     } catch {
       toast.error('Yuklab bo\'lmadi');
     } finally {
@@ -249,7 +258,11 @@ export default function TelegramUsers() {
   const handleUpdate = async (chatId, data) => {
     try {
       await telegramApi.updateKnownChat(chatId, data);
-      setChats(prev => prev.map(c => c.chatId === chatId ? { ...c, ...data } : c));
+      setChats(prev => {
+        const updated = prev.map(c => c.chatId === chatId ? { ...c, ...data } : c);
+        localStorage.setItem(LS_KEY, JSON.stringify(updated));
+        return updated;
+      });
     } catch {
       toast.error('Saqlashda xatolik');
     }
