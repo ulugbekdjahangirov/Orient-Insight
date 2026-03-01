@@ -933,7 +933,10 @@ export default function Ausgaben() {
       alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
-    doc.save(getExportFilename('pdf'));
+    const ausgabenBlob = doc.output('blob');
+    const ausgabenUrl = URL.createObjectURL(ausgabenBlob);
+    window.open(ausgabenUrl, '_blank');
+    setTimeout(() => URL.revokeObjectURL(ausgabenUrl), 30000);
     toast.success('PDF fayl yuklab olindi');
   };
 
