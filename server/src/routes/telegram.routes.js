@@ -13,6 +13,7 @@ const prisma = new PrismaClient();
 const BOT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const TRANSPORT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_TRANSPORT_TOKEN}`;
 const RESTAURANT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_RESTAURANT_TOKEN}`;
+const GUIDE_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}`;
 const CHATS_SETTING_KEY = 'TELEGRAM_KNOWN_CHATS';
 
 // multer: accept PDF blob in memory
@@ -1666,6 +1667,39 @@ router.post('/webhook-restaurant', async (req, res) => {
 });
 
 // ============================================================
+// Guide Bot Webhook
+// ============================================================
+
+// POST /api/telegram/webhook-guide - Receive updates from Guide Bot
+router.post('/webhook-guide', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const update = req.body;
+
+    // Save incoming chat to known chats
+    const msg = update.message || update.channel_post;
+    if (msg) {
+      const chat = msg.chat;
+      const chats = await loadKnownChats();
+      const existing = chats[String(chat.id)] || {};
+      const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
+      chats[String(chat.id)] = {
+        ...existing,
+        chatId: String(chat.id),
+        name: existing.nameCustomized ? existing.name : telegramName,
+        username: chat.username ? `@${chat.username}` : (existing.username || null),
+        type: chat.type,
+        lastMessage: msg.text || '[file]',
+        date: new Date(msg.date * 1000).toISOString()
+      };
+      await saveKnownChats(chats);
+    }
+  } catch (err) {
+    console.error('Guide webhook error:', err.response?.data || err.message);
+  }
+});
+
+// ============================================================
 // Transport Confirmations (Marshrut varaqasi)
 // ============================================================
 
@@ -1923,7 +1957,7 @@ router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
       totalPayment ? `💵 Jami to'lov: *$${Math.round(totalPayment)}*` : null,
     ].filter(Boolean).join('\n');
 
-    await axios.post(`${BOT_API()}/sendMessage`, {
+    await axios.post(`${GUIDE_API()}/sendMessage`, {
       chat_id: guide.telegramChatId,
       text: msgText,
       parse_mode: 'Markdown'
