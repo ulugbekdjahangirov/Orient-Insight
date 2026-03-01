@@ -374,14 +374,14 @@ export default function TelegramUsers() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Nom</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Username</th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">
-                    <span className="flex items-center gap-1"><Phone size={13} />Telefon</span>
+                    <span className="flex items-center gap-1"><Phone size={13} />Phone</span>
                   </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">Chat ID</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Rol</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Sana</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Role</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
