@@ -1060,7 +1060,7 @@ export default function BookingDetail() {
   const [formData, setFormData] = useState({
     bookingNumber: '',
     tourTypeId: '',
-    country: '',
+    country: 'Germany',
     departureDate: '',
     arrivalDate: '',
     endDate: '',
