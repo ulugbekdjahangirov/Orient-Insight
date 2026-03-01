@@ -48,6 +48,17 @@ export default function Ausgaben() {
   const [openMonths, setOpenMonths] = useState(new Set());
   const toggleHotel = (name) => setOpenHotels(prev => { const s = new Set(prev); s.has(name) ? s.delete(name) : s.add(name); return s; });
   const toggleMonth = (key) => setOpenMonths(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
+  const [paidAccs, setPaidAccs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ausgaben_hotel_paid_v1') || '{}'); } catch { return {}; }
+  });
+  const togglePaid = (e, accId) => {
+    e.stopPropagation();
+    setPaidAccs(prev => {
+      const next = { ...prev, [String(accId)]: !prev[String(accId)] };
+      localStorage.setItem('ausgaben_hotel_paid_v1', JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
@@ -1528,6 +1539,7 @@ export default function Ausgaben() {
                       hotelMap[name].months[dateKey].push({
                         bookingId: booking.bookingId,
                         bookingName: booking.bookingName,
+                        accommodationId: h.accommodationId,
                         USD: h.USD || 0,
                         UZS: h.UZS || 0,
                         checkIn: h.checkInDate,
@@ -1559,8 +1571,13 @@ export default function Ausgaben() {
                       {hotelNames.map(hotelName => {
                         const hotel = hotelMap[hotelName];
                         const sortedMonths = Object.keys(hotel.months).sort();
-                        const hotelTotalUSD = sortedMonths.reduce((s, mk) => s + hotel.months[mk].reduce((ss, b) => ss + b.USD, 0), 0);
-                        const hotelTotalUZS = sortedMonths.reduce((s, mk) => s + hotel.months[mk].reduce((ss, b) => ss + b.UZS, 0), 0);
+                        const allRows = sortedMonths.flatMap(mk => hotel.months[mk]);
+                        const hotelTotalUSD = allRows.reduce((s, b) => s + b.USD, 0);
+                        const hotelTotalUZS = allRows.reduce((s, b) => s + b.UZS, 0);
+                        const paidUSD = allRows.filter(b => paidAccs[String(b.accommodationId)]).reduce((s, b) => s + b.USD, 0);
+                        const paidUZS = allRows.filter(b => paidAccs[String(b.accommodationId)]).reduce((s, b) => s + b.UZS, 0);
+                        const debtUSD = hotelTotalUSD - paidUSD;
+                        const debtUZS = hotelTotalUZS - paidUZS;
                         const hotelOpen = openHotels.has(hotelName);
 
                         return (
@@ -1569,10 +1586,20 @@ export default function Ausgaben() {
                             <button className="w-full flex items-center justify-between px-4 py-3 text-left"
                               style={{ background: hotelOpen ? 'linear-gradient(135deg,#1e3a8a,#1d4ed8)' : 'linear-gradient(135deg,#1e40af,#2563eb)' }}
                               onClick={() => toggleHotel(hotelName)}>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-white font-bold text-sm">🏨 {hotelName}</span>
                                 {hotel.city && <span className="text-blue-200 text-xs">— {hotel.city}</span>}
                                 <span className="text-blue-300 text-xs ml-1">({sortedMonths.length} oy)</span>
+                                {(paidUZS > 0 || paidUSD > 0) && (
+                                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: '#16a34a22', color: '#86efac' }}>
+                                    ✓ {paidUZS > 0 ? `${formatNumber(paidUZS)} UZS` : `$${formatNumber(paidUSD)}`}
+                                  </span>
+                                )}
+                                {(debtUZS > 0 || debtUSD > 0) && (
+                                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full" style={{ background: '#ef444422', color: '#fca5a5' }}>
+                                    ✗ {debtUZS > 0 ? `${formatNumber(debtUZS)} UZS` : `$${formatNumber(debtUSD)}`}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-3">
                                 {hotelTotalUZS > 0 && <span className="text-amber-300 text-xs font-bold">{formatNumber(hotelTotalUZS)} UZS</span>}
@@ -1586,6 +1613,10 @@ export default function Ausgaben() {
                               const rows = hotel.months[mk];
                               const mTotalUSD = rows.reduce((s, b) => s + b.USD, 0);
                               const mTotalUZS = rows.reduce((s, b) => s + b.UZS, 0);
+                              const mPaidUSD = rows.filter(b => paidAccs[String(b.accommodationId)]).reduce((s, b) => s + b.USD, 0);
+                              const mPaidUZS = rows.filter(b => paidAccs[String(b.accommodationId)]).reduce((s, b) => s + b.UZS, 0);
+                              const mDebtUSD = mTotalUSD - mPaidUSD;
+                              const mDebtUZS = mTotalUZS - mPaidUZS;
                               const monthKey = `${hotelName}__${mk}`;
                               const monthOpen = openMonths.has(monthKey);
 
@@ -1595,10 +1626,22 @@ export default function Ausgaben() {
                                   <button className="w-full flex items-center justify-between px-4 py-2.5 text-left"
                                     style={{ background: monthOpen ? '#bfdbfe' : '#dbeafe', borderTop: '1px solid #bfdbfe' }}
                                     onClick={() => toggleMonth(monthKey)}>
-                                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">
-                                      📅 {monthLabel(mk)}
-                                      <span className="ml-2 font-normal text-blue-500 normal-case">{rows.length} gruppa</span>
-                                    </span>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+                                        📅 {monthLabel(mk)}
+                                      </span>
+                                      <span className="text-blue-500 text-xs normal-case">{rows.length} gruppa</span>
+                                      {(mPaidUZS > 0 || mPaidUSD > 0) && (
+                                        <span className="text-xs font-semibold text-green-700">
+                                          ✓ {mPaidUZS > 0 ? `${formatNumber(mPaidUZS)} UZS` : `$${formatNumber(mPaidUSD)}`}
+                                        </span>
+                                      )}
+                                      {(mDebtUZS > 0 || mDebtUSD > 0) && (
+                                        <span className="text-xs font-semibold text-red-500">
+                                          ✗ {mDebtUZS > 0 ? `${formatNumber(mDebtUZS)} UZS` : `$${formatNumber(mDebtUSD)}`}
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="flex items-center gap-3">
                                       {mTotalUZS > 0 && <span className="text-xs font-bold text-amber-700">{formatNumber(mTotalUZS)} UZS</span>}
                                       {mTotalUSD > 0 && <span className="text-xs font-bold text-green-700">${formatNumber(mTotalUSD)}</span>}
@@ -1607,19 +1650,34 @@ export default function Ausgaben() {
                                   </button>
 
                                   {/* Booking rows — visible only when month is open */}
-                                  {monthOpen && rows.map((b, i) => (
-                                    <div key={i} className="flex items-center justify-between px-6 py-2.5 text-xs"
-                                      style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
-                                      <div className="flex items-center gap-3">
-                                        <Link to={`/bookings/${b.bookingId}`}
-                                          className="font-bold text-blue-600 hover:underline w-16 shrink-0">{b.bookingName}</Link>
-                                        <span className="text-slate-400">{fmtShort(b.checkIn)} → {fmtShort(b.checkOut)}</span>
+                                  {monthOpen && rows.map((b, i) => {
+                                    const isPaid = !!paidAccs[String(b.accommodationId)];
+                                    return (
+                                      <div key={i} className="flex items-center justify-between px-4 py-2.5 text-xs"
+                                        style={{ background: isPaid ? '#f0fdf4' : (i % 2 === 0 ? '#ffffff' : '#f8fafc'), borderTop: '1px solid #f1f5f9' }}>
+                                        <div className="flex items-center gap-3">
+                                          {/* Checkbox */}
+                                          <button
+                                            onClick={(e) => togglePaid(e, b.accommodationId)}
+                                            title={isPaid ? 'To\'landi — bekor qilish' : 'To\'landi deb belgilash'}
+                                            className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all"
+                                            style={{
+                                              background: isPaid ? '#16a34a' : 'white',
+                                              borderColor: isPaid ? '#16a34a' : '#cbd5e1',
+                                            }}>
+                                            {isPaid && <span className="text-white font-bold" style={{ fontSize: 10 }}>✓</span>}
+                                          </button>
+                                          <Link to={`/bookings/${b.bookingId}`}
+                                            className="font-bold text-blue-600 hover:underline w-16 shrink-0">{b.bookingName}</Link>
+                                          <span className="text-slate-400">{fmtShort(b.checkIn)} → {fmtShort(b.checkOut)}</span>
+                                          {isPaid && <span className="text-green-600 font-semibold">To'landi</span>}
+                                        </div>
+                                        <div className="font-semibold" style={{ color: isPaid ? '#16a34a' : '#334155' }}>
+                                          {b.UZS > 0 ? <span>{formatNumber(b.UZS)} UZS</span> : <span>${formatNumber(b.USD)}</span>}
+                                        </div>
                                       </div>
-                                      <div className="font-semibold text-slate-700">
-                                        {b.UZS > 0 ? <span>{formatNumber(b.UZS)} UZS</span> : <span className="text-green-700">${formatNumber(b.USD)}</span>}
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               );
                             })}
