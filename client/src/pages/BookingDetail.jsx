@@ -2422,7 +2422,7 @@ export default function BookingDetail() {
     if (result.success) {
       toast.success(`✓ Saqlandi: ${result.path}`, { id: 'pdf-save', duration: 4000 });
     } else {
-      toast.dismiss('pdf-save');
+      toast.error(`Saqlashda xatolik: ${result.error}`, { id: 'pdf-save', duration: 4000 });
     }
   };
 
@@ -13445,7 +13445,7 @@ License №T-0084-08 from 2021-04-26`;
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''}</h3>
                   <button
-                    onClick={exportAusgabenToPDF}
+                    onClick={async () => { const r = exportAusgabenToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }}
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl self-start md:self-auto text-sm md:text-base"
                   >
                     <Download className="w-4 h-4 md:w-5 md:h-5" />
@@ -14105,7 +14105,7 @@ License №T-0084-08 from 2021-04-26`;
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Später)</h3>
                   {hasData && (
-                    <button onClick={exportSpaterToPDF} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
+                    <button onClick={async () => { const r = exportSpaterToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
                       <Download className="w-4 h-4 md:w-5 md:h-5" />
                       PDF saqlab olish
                     </button>
@@ -14325,7 +14325,7 @@ License №T-0084-08 from 2021-04-26`;
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Überweisung)</h3>
                   {hasData && (
-                    <button onClick={exportUberweisungToPDF} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
+                    <button onClick={async () => { const r = exportUberweisungToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
                       <Download className="w-4 h-4 md:w-5 md:h-5" />
                       PDF saqlab olish
                     </button>
@@ -14497,7 +14497,7 @@ License №T-0084-08 from 2021-04-26`;
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Card Payments)</h3>
                   {hasData && (
-                    <button onClick={exportKartaToPDF} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
+                    <button onClick={async () => { const r = exportKartaToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
                       <Download className="w-4 h-4 md:w-5 md:h-5" />
                       PDF saqlab olish
                     </button>
