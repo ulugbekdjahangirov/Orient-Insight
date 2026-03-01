@@ -1356,27 +1356,52 @@ export default function Partners() {
         </div>
       </div>
 
-      {/* Tabs — scrollable on mobile */}
-      <div className="mb-4 sm:mb-6 overflow-x-auto">
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-max sm:w-fit min-w-full sm:min-w-0">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                {tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label}
-              </button>
-            );
-          })}
-        </div>
+      {/* Tabs */}
+      {/* Mobile: 4-col card grid */}
+      <div className="sm:hidden grid grid-cols-4 gap-1.5 mb-4" style={{ background: '#f0fdf4', borderRadius: 14, padding: 8, border: '2px solid #bbf7d0' }}>
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          const label = tab.label.endsWith(' Plan')
+            ? `${tab.label.replace(' Plan', '')} ${selectedYear}`
+            : tab.label;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
+              className="flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-semibold transition-all"
+              style={isActive
+                ? { background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', boxShadow: '0 2px 8px #16a34a44' }
+                : { background: 'white', color: '#374151', border: '1px solid #d1fae5' }}
+            >
+              <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={isActive ? { background: 'rgba(255,255,255,0.2)' } : { background: '#d1fae5' }}>
+                <Icon size={13} color={isActive ? 'white' : '#059669'} />
+              </span>
+              <span className="text-center leading-tight" style={{ fontSize: 10 }}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+      {/* Desktop: horizontal tab bar */}
+      <div className="hidden sm:flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label.endsWith(' Plan') ? `${tab.label.replace(' Plan', '')} ${selectedYear}` : tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Content */}
