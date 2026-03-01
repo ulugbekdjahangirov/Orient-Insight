@@ -1238,7 +1238,7 @@ export default function Ausgaben() {
           <div className="rounded-2xl overflow-hidden shadow-lg border border-white/40" style={{ background: 'white' }}>
 
             {/* Sub-tabs */}
-            <div className="flex" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0' }}>
+            <div className="flex overflow-x-auto" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {expenseTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeExpenseTab === tab.id;
@@ -1247,7 +1247,7 @@ export default function Ausgaben() {
                   <button
                     key={tab.id}
                     onClick={() => updateParams({ tab: tab.id })}
-                    className="flex-1 flex items-center justify-center gap-1.5 md:gap-2 py-3 md:py-4 text-xs md:text-sm font-semibold transition-all relative"
+                    className="shrink-0 md:flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-2 py-3 md:py-4 text-xs md:text-sm font-semibold transition-all relative whitespace-nowrap"
                     style={isActive ? {
                       background: 'linear-gradient(180deg, #dcfce7 0%, white 100%)',
                       color: '#15803d',
@@ -1258,7 +1258,7 @@ export default function Ausgaben() {
                       borderBottom: '3px solid transparent',
                     }}
                   >
-                    <span className="w-6 h-6 md:w-7 md:h-7 rounded-lg flex items-center justify-center transition-all"
+                    <span className="w-6 h-6 md:w-7 md:h-7 rounded-lg flex items-center justify-center transition-all shrink-0"
                       style={isActive
                         ? { background: 'linear-gradient(135deg, #16a34a, #15803d)' }
                         : { background: '#d1fae5' }}>
