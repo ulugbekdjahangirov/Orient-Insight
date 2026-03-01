@@ -2600,13 +2600,6 @@ function HotelsTab({ tourType, tourColor }) {
 
   return (
     <div className="space-y-4">
-      {/* Edit hint */}
-      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium"
-        style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e' }}>
-        <span>💡</span>
-        <span>PAX, DBL, TWN, ЕД ustunlaridagi raqamlarni bosib tahrirlash mumkin</span>
-      </div>
-
       {sortedCities.map((city, cityIdx) => {
         const originalHotels = cityMap[city];
         const displayHotels = computeCityHotels(city, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels);
@@ -2714,11 +2707,10 @@ export default function Jahresplanung() {
     <div className="min-h-screen" style={{ background: '#1e1b4b' }}>
 
       {/* ── HERO HEADER ── */}
-      <div className="relative overflow-hidden" style={{
+      <div className="relative overflow-hidden mx-3 mt-3" style={{
         background: 'linear-gradient(160deg, #312e81 0%, #4338ca 35%, #6d28d9 65%, #4338ca 100%)',
         paddingBottom: '4px',
-        borderBottomLeftRadius: '28px',
-        borderBottomRightRadius: '28px',
+        borderRadius: '28px',
       }}>
         {/* Large tour-color glow — top right */}
         <div className="absolute top-0 right-0 rounded-full pointer-events-none"
