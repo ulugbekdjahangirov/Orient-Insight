@@ -1286,6 +1286,59 @@ export default function Ausgaben() {
                       <EmptyState icon={BarChart3} label={`${activeModule?.name} uchun ma'lumot yo'q`} />
                     ) : (
                       <>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden space-y-2 p-1">
+                          {bookingsDetailedData
+                            .filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; })
+                            .map((booking) => {
+                              const e = booking.expenses || {};
+                              const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
+                              const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
+                              const rows = [
+                                e.hotelsUSD>0 && ['🏨 Hotels USD', `$${formatNumber(e.hotelsUSD)}`],
+                                e.hotelsUZS>0 && ['🏨 Hotels UZS', formatNumber(e.hotelsUZS)],
+                                e.transportSevil>0 && ['🚌 Sevil', formatNumber(e.transportSevil)],
+                                e.transportXayrulla>0 && ['🚌 Xayrulla', formatNumber(e.transportXayrulla)],
+                                e.transportNosir>0 && ['🚌 Nosir', formatNumber(e.transportNosir)],
+                                e.railway>0 && ['🚂 Train', formatNumber(e.railway)],
+                                e.flights>0 && ['✈️ Flights', formatNumber(e.flights)],
+                                e.guide>0 && ['👤 Guide', `$${formatNumber(e.guide)}`],
+                                e.meals>0 && ['🍽 Meals', formatNumber(e.meals)],
+                                e.eintritt>0 && ['🎫 Eintritt', formatNumber(e.eintritt)],
+                                e.metro>0 && ['🚇 Metro', formatNumber(e.metro)],
+                                e.shou>0 && ['🎭 Shou', formatNumber(e.shou)],
+                                e.other>0 && ['Other', formatNumber(e.other)],
+                              ].filter(Boolean);
+                              return (
+                                <div key={booking.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
+                                  <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
+                                    <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600">{booking.bookingName}</Link>
+                                    <div className="flex gap-2 text-xs font-black">
+                                      {totalUZS>0 && <span className="text-amber-700">{formatNumber(totalUZS)}</span>}
+                                      {totalUSD>0 && <span className="text-green-700">${formatNumber(totalUSD)}</span>}
+                                    </div>
+                                  </div>
+                                  <div className="divide-y divide-slate-100 text-xs">
+                                    {rows.map(([label, val]) => (
+                                      <div key={label} className="flex justify-between px-3 py-1.5">
+                                        <span className="text-slate-500">{label}</span>
+                                        <span className="font-semibold">{val}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
+                            <span className="text-xs font-black text-white uppercase">TOTAL</span>
+                            <div className="flex gap-3 text-xs font-black text-white">
+                              <span>{formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}</span>
+                              <span>${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
                         <table className="w-full table-fixed text-xs">
                           <colgroup>
                             <col style={{ width: '3%' }} />
@@ -1451,6 +1504,7 @@ export default function Ausgaben() {
                             </tr>
                           </tbody>
                         </table>
+                        </div>
                       </>
                     )}
                   </div>
@@ -1458,12 +1512,48 @@ export default function Ausgaben() {
 
                 {/* ── HOTELS TAB ── */}
                 {activeExpenseTab === 'hotels' && (
-                  <div className="overflow-x-auto">
+                  <div>
                     {bookingsDetailedData.length === 0 ? (
                       <EmptyState icon={Hotel} label={`${activeModule?.name} uchun mehmonxona ma'lumoti yo'q`} />
                     ) : (() => {
                       const pivotData = getPivotData();
-                      return (
+                      return (<>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden space-y-2 p-1">
+                          {pivotData.bookingRows.map((bookingRow) => (
+                            <div key={bookingRow.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
+                              <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
+                                <Link to={`/bookings/${bookingRow.bookingId}`} className="font-bold text-blue-600">{bookingRow.bookingName}</Link>
+                                <div className="flex gap-2 text-xs font-black">
+                                  {bookingRow.totalUZS>0 && <span className="text-amber-700">{formatNumber(bookingRow.totalUZS)}</span>}
+                                  {bookingRow.totalUSD>0 && <span className="text-green-700">${formatNumber(bookingRow.totalUSD)}</span>}
+                                </div>
+                              </div>
+                              <div className="divide-y divide-slate-100 text-xs">
+                                {pivotData.hotels.map(hotelName => {
+                                  const hc = bookingRow.hotelCosts[hotelName];
+                                  const uzs = hc?.uzs||0; const usd = hc?.usd||0;
+                                  if (!uzs && !usd) return null;
+                                  return (
+                                    <div key={hotelName} className="flex justify-between px-3 py-1.5">
+                                      <span className="text-slate-500 truncate pr-2">🏨 {hotelName}</span>
+                                      <span className="font-semibold shrink-0">{uzs>0 ? formatNumber(uzs) : `$${formatNumber(usd)}`}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                          <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
+                            <span className="text-xs font-black text-white uppercase">TOTAL</span>
+                            <div className="flex gap-3 text-xs font-black text-white">
+                              <span>{formatNumber(getGrandTotalUZS())}</span>
+                              <span>${formatNumber(getGrandTotalUSD())}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr>
@@ -1546,7 +1636,8 @@ export default function Ausgaben() {
                             </tr>
                           </tbody>
                         </table>
-                      );
+                        </div>
+                      </>);
                     })()}
                   </div>
                 )}
@@ -1722,7 +1813,37 @@ export default function Ausgaben() {
                   <div className="w-full">
                     {bookingsDetailedData.length === 0 ? (
                       <EmptyState icon={Users} label={`${activeModule?.name} uchun gid ma'lumoti yo'q`} />
-                    ) : (
+                    ) : (<>
+                      {/* Mobile cards */}
+                      <div className="sm:hidden space-y-2 p-1">
+                        {filteredBookingsWithHotels.filter(item => {
+                          if (!selectedGuide) return true;
+                          const e = item.expenses || {};
+                          return e.guideMainName === selectedGuide || e.guideSecondName === selectedGuide || e.guideBergrName === selectedGuide;
+                        }).map((item) => {
+                          const e = item.expenses || {};
+                          const total = (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0);
+                          return (
+                            <div key={item.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
+                              <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
+                                <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600">{item.bookingName}</Link>
+                                <span className="font-black text-green-700 text-xs">${formatNumber(total)}</span>
+                              </div>
+                              <div className="divide-y divide-slate-100 text-xs">
+                                {e.guideMainName && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500 truncate pr-2">👤 {e.guideMainName}</span>{e.guideMainCost>0 && <span className="font-semibold shrink-0">${formatNumber(e.guideMainCost)}</span>}</div>}
+                                {e.guideSecondName && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500 truncate pr-2">👤 {e.guideSecondName}</span>{e.guideSecondCost>0 && <span className="font-semibold shrink-0">${formatNumber(e.guideSecondCost)}</span>}</div>}
+                                {e.guideBergrName && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500 truncate pr-2">🏔 {e.guideBergrName}</span>{e.guideBergrCost>0 && <span className="font-semibold shrink-0">${formatNumber(e.guideBergrCost)}</span>}</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
+                          <span className="text-xs font-black text-white uppercase">TOTAL</span>
+                          <span className="font-black text-white text-xs">${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0))}</span>
+                        </div>
+                      </div>
+                      {/* Desktop table */}
+                      <div className="hidden sm:block">
                       <table className="w-full table-fixed text-xs">
                         <colgroup>
                           <col style={{ width: '4%' }} />
@@ -1812,7 +1933,8 @@ export default function Ausgaben() {
                           </tr>
                         </tbody>
                       </table>
-                    )}
+                      </div>
+                    </>)}
 
                     {/* ── Per-guide earnings summary ── */}
                     <GuideSummary data={filteredBookingsWithHotels} formatNumber={formatNumber} selected={selectedGuide} onSelect={setSelectedGuide} />
@@ -1821,11 +1943,39 @@ export default function Ausgaben() {
 
                 {/* ── TRANSPORT TAB ── */}
                 {activeExpenseTab === 'transport' && (
-                  <div className="overflow-x-auto">
+                  <div>
                     {bookingsDetailedData.length === 0 ? (
                       <EmptyState icon={Truck} label={`${activeModule?.name} uchun transport ma'lumoti yo'q`} />
-                    ) : (
-                      <table className="min-w-full text-xs">
+                    ) : (<>
+                        {/* Mobile cards */}
+                        <div className="sm:hidden space-y-2 p-1">
+                          {filteredBookingsWithHotels.map((item) => {
+                            const sevil=item.expenses?.transportSevil||0;
+                            const xayrulla=item.expenses?.transportXayrulla||0;
+                            const nosir=item.expenses?.transportNosir||0;
+                            const total=sevil+xayrulla+nosir;
+                            return (
+                              <div key={item.bookingId} className="rounded-xl overflow-hidden" style={{border:'1px solid #e2e8f0'}}>
+                                <div className="flex items-center justify-between px-3 py-2.5" style={{background:'#dbeafe'}}>
+                                  <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600">{item.bookingName}</Link>
+                                  <span className="font-black text-green-700">${formatNumber(total)}</span>
+                                </div>
+                                <div className="divide-y divide-slate-100 text-xs">
+                                  {sevil>0 && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500">🚌 Sevil</span><span className="font-semibold">{formatNumber(sevil)}</span></div>}
+                                  {xayrulla>0 && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500">🚌 Xayrulla</span><span className="font-semibold">{formatNumber(xayrulla)}</span></div>}
+                                  {nosir>0 && <div className="flex justify-between px-3 py-1.5"><span className="text-slate-500">🚌 Nosir</span><span className="font-semibold">{formatNumber(nosir)}</span></div>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div className="rounded-xl px-3 py-2.5 flex justify-between" style={{background:'linear-gradient(135deg,#065f46,#059669)'}}>
+                            <span className="text-xs font-black text-white uppercase">TOTAL</span>
+                            <span className="font-black text-white">${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}</span>
+                          </div>
+                        </div>
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
+                        <table className="min-w-full text-xs">
                         <thead>
                           <tr>
                             <th className="px-4 py-3.5 text-center font-bold text-slate-700 w-12 border-r border-blue-200"
@@ -1885,7 +2035,9 @@ export default function Ausgaben() {
                             </td>
                           </tr>
                         </tbody>
-                      </table>
+                        </table>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
