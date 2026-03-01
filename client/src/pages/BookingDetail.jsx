@@ -5126,14 +5126,14 @@ export default function BookingDetail() {
     // PDF options
     const opt = {
       margin: 8,
-      filename: `Tourist_List_${bookingCode}_${departureDate.replace(/\./g, '-')}.pdf`,
+      filename: `Tourist List ${booking?.bookingNumber || bookingCode}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     // Generate PDF
-    const filename = `Tourist_List_${bookingCode}_${departureDate.replace(/\./g, '-')}.pdf`;
+    const filename = `Tourist List ${booking?.bookingNumber || bookingCode}.pdf`;
     const toastId = toast.loading('PDF yaratilmoqda...');
     try {
       const blob = await html2pdf().set(opt).from(element).output('blob');
