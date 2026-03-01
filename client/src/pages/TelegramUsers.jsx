@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { telegramApi } from '../services/api';
-import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Hash, Building, Phone, Pencil, X, Send } from 'lucide-react';
+import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Building, Phone, Pencil, X, Send, Bus, UtensilsCrossed, Compass } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const typeLabels = {
@@ -227,9 +227,8 @@ export default function TelegramUsers() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [tabFilter, setTabFilter] = useState('all');
   const [sendingTo, setSendingTo] = useState(null);
-  const [roleFilter, setRoleFilter] = useState('all');
   const [deletingId, setDeletingId] = useState(null);
 
   const LS_KEY = 'tg_chats_cache';
@@ -288,16 +287,16 @@ export default function TelegramUsers() {
       c.username?.toLowerCase().includes(search.toLowerCase()) ||
       c.chatId?.includes(search) ||
       c.phone?.includes(search);
-    const matchType = typeFilter === 'all' || c.type === typeFilter || (typeFilter === 'group' && c.type === 'supergroup');
-    const matchRole = roleFilter === 'all' || (roleFilter === 'none' ? !c.role : c.role === roleFilter);
-    return matchSearch && matchType && matchRole;
+    const matchTab = tabFilter === 'all' || c.role === tabFilter;
+    return matchSearch && matchTab;
   });
 
   const counts = {
-    all: chats.length,
-    private: chats.filter(c => c.type === 'private').length,
-    group: chats.filter(c => c.type === 'group' || c.type === 'supergroup').length,
-    channel: chats.filter(c => c.type === 'channel').length,
+    all:        chats.length,
+    hotel:      chats.filter(c => c.role === 'hotel').length,
+    transport:  chats.filter(c => c.role === 'transport').length,
+    restaurant: chats.filter(c => c.role === 'restaurant').length,
+    guide:      chats.filter(c => c.role === 'guide').length,
   };
 
   return (
@@ -325,19 +324,20 @@ export default function TelegramUsers() {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      {/* Stats / Tabs */}
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mb-5">
         {[
-          { key: 'all',     label: 'Hammasi', icon: Users,          color: 'text-gray-600 bg-gray-100' },
-          { key: 'private', label: 'Shaxsiy', icon: MessageCircle,  color: 'text-blue-600 bg-blue-100' },
-          { key: 'group',   label: 'Guruh',   icon: Users,          color: 'text-green-600 bg-green-100' },
-          { key: 'channel', label: 'Kanal',   icon: Hash,           color: 'text-orange-600 bg-orange-100' },
+          { key: 'all',        label: 'Hammasi',    icon: Users,            color: 'text-gray-600 bg-gray-100' },
+          { key: 'hotel',      label: 'Hotel',      icon: Building,         color: 'text-purple-600 bg-purple-100' },
+          { key: 'transport',  label: 'Transport',  icon: Bus,              color: 'text-yellow-600 bg-yellow-100' },
+          { key: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed,  color: 'text-green-600 bg-green-100' },
+          { key: 'guide',      label: 'Gidlar',     icon: Compass,          color: 'text-blue-600 bg-blue-100' },
         ].map(({ key, label, icon: Icon, color }) => (
           <button
             key={key}
-            onClick={() => setTypeFilter(key)}
+            onClick={() => setTabFilter(key)}
             className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-              typeFilter === key ? 'border-sky-500 bg-sky-50' : 'border-gray-100 bg-white hover:border-gray-200'
+              tabFilter === key ? 'border-sky-500 bg-sky-50' : 'border-gray-100 bg-white hover:border-gray-200'
             }`}
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
@@ -351,26 +351,15 @@ export default function TelegramUsers() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      {/* Search */}
+      <div className="mb-4">
         <input
           type="text"
           placeholder="Nom, username, telefon yoki Chat ID..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
         />
-        <select
-          value={roleFilter}
-          onChange={e => setRoleFilter(e.target.value)}
-          className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
-        >
-          <option value="all">Barcha rollar</option>
-          <option value="none">Belgilanmagan</option>
-          {ROLES.filter(r => r.value).map(r => (
-            <option key={r.value} value={r.value}>{r.label}</option>
-          ))}
-        </select>
       </div>
 
       {/* Table */}
