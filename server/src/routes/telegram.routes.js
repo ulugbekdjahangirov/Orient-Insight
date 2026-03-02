@@ -112,8 +112,8 @@ async function sendHotelMenu(chatId) {
     text: '🏨 Asosiy menyu:',
     reply_markup: JSON.stringify({
       keyboard: [
-        [{ text: `📋 Zayavka ${year}` }],
-        [{ text: '⏳ Waiting List' }, { text: '🏨 Zayavkalarim' }]
+        [{ text: `📋 Заявка ${year}` }, { text: '📝 Изменения к Заявке' }],
+        [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -492,7 +492,7 @@ router.post('/webhook', (req, res, next) => {
           await sendHotelMenu(chat.id);
           return;
         }
-        if (msg.text.startsWith('📋 Zayavka')) {
+        if (msg.text.startsWith('📋 Заявка')) {
           const zvSettings = await findJpSectionsByChatId(chat.id);
           if (zvSettings.length === 0) {
             await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '📋 Hali hech qanday zayavka yuborilmagan.', parse_mode: 'Markdown' }).catch(() => {});
@@ -548,34 +548,50 @@ router.post('/webhook', (req, res, next) => {
           await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
           return;
         }
-        if (msg.text === '🏨 Zayavkalarim') {
-          const settings = await findJpSectionsByChatId(chat.id);
-          const confirmed = [], waiting = [], pending = [], rejected = [];
-          let myHotelName = '';
-          for (const s of settings) {
-            const d = JSON.parse(s.value);
-            if (!myHotelName) myHotelName = d.hotelName || '';
-            const tourType = d.tourType || '';
-            for (const grp of (d.groups || [])) {
-              for (const v of grp.visits) {
-                const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
-                const line = `*${label}* (${tourType}) — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`;
-                if (v.status === 'CONFIRMED') confirmed.push('✅ ' + line);
-                else if (v.status === 'WAITING') waiting.push('⏳ ' + line);
-                else if (v.status === 'PENDING') pending.push('⬜ ' + line);
-                else if (v.status === 'REJECTED') rejected.push('❌ ' + line);
-              }
-            }
+        if (msg.text === '📝 Изменения к Заявке') {
+          const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
+          if (!hotel) { await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '🏨 Hotel topilmadi.' }).catch(() => {}); return; }
+          const confs = await prisma.telegramConfirmation.findMany({
+            where: { hotelId: hotel.id },
+            include: { booking: { select: { bookingNumber: true, status: true, pax: true } } },
+            orderBy: { sentAt: 'desc' },
+            take: 30
+          });
+          const izm = confs.filter(c => c.booking?.status !== 'CANCELLED');
+          if (!izm.length) {
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '📝 Изменения к Заявке пока нет.', parse_mode: 'Markdown' }).catch(() => {});
+            return;
           }
-          const sections = [];
-          if (confirmed.length) sections.push('*✅ Tasdiqlangan:*\n' + confirmed.join('\n'));
-          if (waiting.length) sections.push('*⏳ Waiting List:*\n' + waiting.join('\n'));
-          if (pending.length) sections.push('*⬜ Kutilmoqda:*\n' + pending.join('\n'));
-          if (rejected.length) sections.push('*❌ Rad etilgan:*\n' + rejected.join('\n'));
-          const text = sections.length
-            ? `🏨 *${myHotelName}*\n\n${sections.join('\n\n')}`
-            : (myHotelName ? `🏨 *${myHotelName}*\n\nHech qanday zayavka topilmadi.` : '📋 Hali hech qanday zayavka yuborilmagan.');
-          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
+          const fmtDate = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+          const statusIcon = { PENDING: '⬜', CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌' };
+          const lines = [`📝 *Изменения к Заявке — ${hotel.name}*`, ''];
+          izm.forEach(c => {
+            const si = statusIcon[c.status] || '⬜';
+            lines.push(`${si} *ЗАЯВКА ${c.booking?.bookingNumber || '—'}* — ${fmtDate(c.sentAt)}`);
+          });
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
+          return;
+        }
+        if (msg.text === '❌ Аннуляция') {
+          const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
+          if (!hotel) { await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '🏨 Hotel topilmadi.' }).catch(() => {}); return; }
+          const confs = await prisma.telegramConfirmation.findMany({
+            where: { hotelId: hotel.id },
+            include: { booking: { select: { bookingNumber: true, status: true } } },
+            orderBy: { sentAt: 'desc' },
+            take: 30
+          });
+          const ann = confs.filter(c => c.booking?.status === 'CANCELLED');
+          if (!ann.length) {
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '❌ Аннуляций пока нет.', parse_mode: 'Markdown' }).catch(() => {});
+            return;
+          }
+          const fmtDate = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+          const lines = [`❌ *Аннуляция — ${hotel.name}*`, ''];
+          ann.forEach(c => {
+            lines.push(`❌ *ЗАЯВКА ${c.booking?.bookingNumber || '—'}* — ${fmtDate(c.sentAt)}`);
+          });
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
           return;
         }
       }
