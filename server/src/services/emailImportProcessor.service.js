@@ -669,14 +669,18 @@ class EmailImportProcessor {
       const toUpdate = [];
       const toCreate = [];
 
+      const normalizeName = (n) => (n || '')
+        .toLowerCase()
+        .replace(/^(mr\.|mrs\.|ms\.)\s*/i, '')
+        .replace(/\b(dr\.|prof\.|dipl\.|ing\.)\s*/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
       for (const pdfT of pdfTourists) {
         const birthdayRemark = getBirthdayRemark(pdfT);
-        // Normalize name for matching (strip Mr./Mrs./Ms. prefix)
-        const pdfName = (pdfT.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
-        const existing = existingTourists.find(t => {
-          const name = (t.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
-          return name === pdfName;
-        });
+        // Normalize name for matching (strip Mr./Mrs./Ms. and academic titles)
+        const pdfName = normalizeName(pdfT.fullName);
+        const existing = existingTourists.find(t => normalizeName(t.fullName) === pdfName);
 
         if (existing) {
           matchedIds.add(existing.id);
