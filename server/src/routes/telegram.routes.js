@@ -528,9 +528,13 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
         if (msg.text === '⏳ Waiting List') {
+          const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
           const settings = await findJpSectionsByChatId(chat.id);
-          const items = [];
-          let wlHotelName = '';
+          let wlHotelName = hotel?.name || '';
+          const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+          const wlItems = []; // { text, keyboard }
+
+          // 1. JP_SECTIONS WAITING items (from jahresplanung sends)
           for (const s of settings) {
             const d = JSON.parse(s.value);
             if (!wlHotelName) wlHotelName = d.hotelName || '';
@@ -539,13 +543,82 @@ router.post('/webhook', (req, res, next) => {
               for (const v of grp.visits) {
                 if (v.status === 'WAITING') {
                   const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
-                  items.push(`⏳ *${label}* (${tourType}) — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`);
+                  const itemLines = [
+                    `⏳ *ЗАЯВКА ${label}* (${tourType})`,
+                    `  📅 Заезд: ${v.checkIn}`,
+                    `  📅 Выезд: ${v.checkOut}`,
+                    `  👥 PAX: ${v.pax}`,
+                    `  🛏 DBL: ${v.dbl||0}  |  TWN: ${v.twn||0}  |  SNGL: ${v.sngl||0}`
+                  ];
+                  wlItems.push({
+                    text: itemLines.join('\n'),
+                    keyboard: [[
+                      { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotel?.id}:${v.visitIdx}` },
+                      { text: '❌ Rad qilish', callback_data: `jp_r:${grp.bookingId}:${hotel?.id}:${v.visitIdx}` }
+                    ]]
+                  });
                 }
               }
             }
           }
-          const text = items.length ? `⏳ *Waiting List — ${wlHotelName}*\n\n${items.join('\n')}` : '✅ Waiting List bo\'sh.';
-          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
+
+          // 2. TelegramConfirmation WAITING items (from tourist send / "Telegram orqali yuborish")
+          if (hotel) {
+            const wlConfs = await prisma.telegramConfirmation.findMany({
+              where: { hotelId: hotel.id, status: 'WAITING' },
+              include: { booking: { select: { bookingNumber: true, pax: true, status: true } } },
+              orderBy: { sentAt: 'asc' }
+            });
+            const seen = new Set();
+            for (const c of wlConfs) {
+              if (seen.has(c.bookingId)) continue;
+              seen.add(c.bookingId);
+              const accs = await prisma.accommodation.findMany({
+                where: { bookingId: c.bookingId, hotelId: hotel.id },
+                include: { rooms: true },
+                orderBy: { checkInDate: 'asc' }
+              });
+              const bookNum = c.booking?.bookingNumber || '—';
+              const itemLines = [`⏳ *ЗАЯВКА ${bookNum}*`];
+              if (accs.length > 0) {
+                accs.forEach((acc, i) => {
+                  const dbl = acc.rooms.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + r.roomsCount, 0);
+                  const twn = acc.rooms.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + r.roomsCount, 0);
+                  const sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + r.roomsCount, 0);
+                  if (accs.length > 1) itemLines.push(`  *${i + 1}-заезд:*`);
+                  itemLines.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
+                  itemLines.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
+                  itemLines.push(`  👥 PAX: ${c.booking?.pax || 0}`);
+                  itemLines.push(`  🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`);
+                });
+              } else {
+                itemLines.push(`  📅 Yuborilgan: ${fmt(c.sentAt)}`);
+              }
+              wlItems.push({
+                text: itemLines.join('\n'),
+                keyboard: [[
+                  { text: '✅ Tasdiqlash', callback_data: `confirm:${c.bookingId}:${hotel.id}` },
+                  { text: '❌ Rad qilish', callback_data: `reject:${c.bookingId}:${hotel.id}` }
+                ]]
+              });
+            }
+          }
+
+          if (!wlItems.length) {
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '✅ Waiting List bo\'sh.', parse_mode: 'Markdown' }).catch(() => {});
+            return;
+          }
+          // Header
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: `⏳ *Waiting List — ${wlHotelName}*`, parse_mode: 'Markdown' }).catch(() => {});
+          // Each item with confirm/reject buttons
+          for (const item of wlItems) {
+            await axios.post(`${BOT_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: item.text,
+              parse_mode: 'Markdown',
+              reply_markup: { inline_keyboard: item.keyboard }
+            }).catch(() => {});
+          }
           return;
         }
         if (msg.text === '📝 Изменения к Заявке' || msg.text === '❌ Аннуляция') {
@@ -1616,20 +1689,27 @@ router.post('/webhook', (req, res, next) => {
       show_alert: false
     });
 
-    // 2. Edit caption to add status + remove buttons (one call)
+    // 2. Edit caption to add status; remove buttons only on confirm/reject (waiting keeps buttons)
     if (cb.message?.message_id && fromChatId) {
       const statusEmoji = isConfirm ? '✅' : isWaiting ? '⏳' : '❌';
       const statusLabel = isConfirm ? 'Tasdiqlandi!' : isWaiting ? "Waiting List ga qo'shildi." : 'Rad qilindi.';
       const originalCaption = cb.message.caption || '';
       const originalEntities = cb.message.caption_entities || [];
       const newCaption = (originalCaption + `\n\n${statusEmoji} ${statusLabel}`).slice(0, 1024);
+      // On waiting: keep ✅ and ❌ buttons (remove ⏳ WL); on confirm/reject: remove all
+      const newReplyMarkup = isWaiting ? {
+        inline_keyboard: [[
+          { text: '✅ Tasdiqlash', callback_data: `confirm:${bookingId}:${hotelId}` },
+          { text: '❌ Rad qilish', callback_data: `reject:${bookingId}:${hotelId}` }
+        ]]
+      } : { inline_keyboard: [] };
 
       await axios.post(`${BOT_API()}/editMessageCaption`, {
         chat_id: fromChatId,
         message_id: cb.message.message_id,
         caption: newCaption,
         caption_entities: originalEntities,
-        reply_markup: { inline_keyboard: [] }
+        reply_markup: newReplyMarkup
       }).catch(e => console.warn('editCaption err:', e.response?.data || e.message));
     }
 
