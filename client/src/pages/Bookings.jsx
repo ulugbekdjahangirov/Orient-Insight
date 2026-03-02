@@ -432,14 +432,21 @@ export default function Bookings() {
                 >
                   {/* Header with Booking Number and Status */}
                   <div className="flex items-center justify-between mb-3">
-                    <Link to={`/bookings/${booking.id}?edit=true`}>
-                      <span
-                        className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg"
-                        style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
-                      >
-                        {booking.bookingNumber}
-                      </span>
-                    </Link>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link to={`/bookings/${booking.id}?edit=true`}>
+                        <span
+                          className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg"
+                          style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
+                        >
+                          {booking.bookingNumber}
+                        </span>
+                      </Link>
+                      {booking.emailImportedAt && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700" title={`Email import: ${format(new Date(booking.emailImportedAt), 'dd.MM.yyyy HH:mm')}`}>
+                          📧 {format(new Date(booking.emailImportedAt), 'dd.MM')}
+                        </span>
+                      )}
+                    </div>
                     <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
                       {statusLabels[calculatedStatus]}
                     </span>
@@ -574,16 +581,21 @@ export default function Bookings() {
                     </td>
                     {/* ТИП ТУРА */}
                     <td className="px-2 md:px-4 py-4">
-                      <Link
-                        to={`/bookings/${booking.id}?edit=true`}
-                      >
-                        <span
-                          className="inline-flex items-center px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-white whitespace-nowrap hover:shadow-lg hover:scale-105 transition-all duration-200 shadow-sm"
-                          style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
-                        >
-                          {booking.bookingNumber}
-                        </span>
-                      </Link>
+                      <div className="flex flex-col gap-1">
+                        <Link to={`/bookings/${booking.id}?edit=true`}>
+                          <span
+                            className="inline-flex items-center px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-white whitespace-nowrap hover:shadow-lg hover:scale-105 transition-all duration-200 shadow-sm"
+                            style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
+                          >
+                            {booking.bookingNumber}
+                          </span>
+                        </Link>
+                        {booking.emailImportedAt && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-600" title={`Email import: ${format(new Date(booking.emailImportedAt), 'dd.MM.yyyy HH:mm')}`}>
+                            📧 {format(new Date(booking.emailImportedAt), 'dd.MM')}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     {/* TOUR START */}
                     <td className="px-2 md:px-4 py-4 text-xs md:text-sm text-gray-700 font-medium">

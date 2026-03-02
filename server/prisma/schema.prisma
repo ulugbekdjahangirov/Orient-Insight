@@ -143,6 +143,7 @@ model Booking {
   paxUzbekistan   Int?      // Туристы в Узбекистане
   paxTurkmenistan Int?      // Туристы в Туркменистане
   paxSource       String?   // 'EMAIL_TABLE' | 'EXCEL' | 'PDF' | 'MANUAL'
+  emailImportedAt DateTime? // Last successful email PDF import timestamp
   country         String?   // Страна группы (Germany, France, etc.)
 
   // Гид
