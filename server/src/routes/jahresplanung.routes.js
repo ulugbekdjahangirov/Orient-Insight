@@ -345,29 +345,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
     const tourLabel = tourNames[tourType] || tourType;
     const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-    // ── 1. Send PDF document first (if provided)
-    if (pdfBuffer) {
-      const docForm = new FormData();
-      docForm.append('chat_id', hotel.telegramChatId);
-      docForm.append('document', pdfBuffer, {
-        filename: `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`,
-        contentType: 'application/pdf'
-      });
-      docForm.append('caption', `📅 Jahresplanung ${year} — ${tourLabel}\n🏨 ${hotel.name}`);
-      await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
-    }
-
-    // ── 2. Intro text message
-    const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
-    await axios.post(`${TG_BASE}/sendMessage`, {
-      chat_id: hotel.telegramChatId,
-      text: intro,
-      parse_mode: 'Markdown'
-    });
-
-    // ── Interactive confirmation messages ─────────────────────────────────
-
-    // Group rows by bookingId — each booking shows all its visits together
+    // ── Build groups (synchronous, fast) ─────────────────────────────────
     const groupedMap = new Map();
     let grpNo = 0;
     for (const sec of sections) {
@@ -386,74 +364,96 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
       }
     }
     const groups = Array.from(groupedMap.values());
-
-    if (groups.length > 0) {
-      const TG_API = TG_BASE;
-      const header = `📋 *Заявка ${year} — ${tourLabel}*`;
-
-      // Assign global visitIdx to each visit across all groups
-      let visitIdx = 0;
-      for (const grp of groups) {
-        for (const v of grp.visits) {
-          v.visitIdx = visitIdx++;
-          v.status = 'PENDING';
-          v.msgId = null;
-        }
+    let visitIdx = 0;
+    for (const grp of groups) {
+      for (const v of grp.visits) {
+        v.visitIdx = visitIdx++;
+        v.status = 'PENDING';
+        v.msgId = null;
       }
-
-      // Send visit messages in parallel batches of 10 (much faster than sequential)
-      // Send all visit messages simultaneously — no batching
-      await Promise.all(groups.flatMap(grp => grp.visits.map(async v => {
-        const visitTitle = v.sectionLabel
-          ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
-          : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
-        const lines = [
-          visitTitle,
-          `🏨 ${hotel.name}`,
-          '',
-          `📅 Заезд: ${v.checkIn}`,
-          `📅 Выезд: ${v.checkOut}`,
-          `👥 PAX: ${v.pax}`,
-          `🛏 DBL:${v.dbl}  |  TWN:${v.twn}  |  SNGL:${v.sngl}`
-        ];
-        const msgRes = await axios.post(`${TG_API}/sendMessage`, {
-          chat_id: hotel.telegramChatId,
-          text: lines.join('\n'),
-          parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [[
-            { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-            { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-            { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-          ]]}
-        });
-        v.msgId = msgRes.data?.result?.message_id || null;
-      })));
-
-      // Final bulk-action message
-      const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
-      const bulkRes = await axios.post(`${TG_API}/sendMessage`, {
-        chat_id: hotel.telegramChatId,
-        text: `${header}\n\nBarcha *${totalVisits}* ta zaezd uchun:`,
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [[
-          { text: '✅ Barchasini',     callback_data: `jp_ca:${hotelId}` },
-          { text: '⏳ WL barchasi',    callback_data: `jp_wa:${hotelId}` },
-          { text: '❌ Barchasini rad', callback_data: `jp_ra:${hotelId}` },
-        ]]}
-      });
-      const bulkMsgId = bulkRes.data?.result?.message_id || null;
-
-      // Store for webhook rebuilding (key includes tourType so same hotel can have multiple tour entries)
-      const jpKey = `JP_SECTIONS_${hotelId}_${tourType}`;
-      await prisma.systemSetting.upsert({
-        where: { key: jpKey },
-        update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) },
-        create: { key: jpKey, value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) }
-      });
-
     }
 
+    // ── Save initial state to DB immediately ─────────────────────────────
+    const jpKey = `JP_SECTIONS_${hotelId}_${tourType}`;
+    await prisma.systemSetting.upsert({
+      where: { key: jpKey },
+      update: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId: null }) },
+      create: { key: jpKey, value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId: null }) }
+    });
+
+    // ── Respond immediately ───────────────────────────────────────────────
     res.json({ success: true });
+
+    // ── Send all Telegram messages in background (fire & forget) ─────────
+    (async () => {
+      try {
+        const TG_API = TG_BASE;
+        const header = `📋 *Заявка ${year} — ${tourLabel}*`;
+
+        // 1. PDF document
+        if (pdfBuffer) {
+          const docForm = new FormData();
+          docForm.append('chat_id', hotel.telegramChatId);
+          docForm.append('document', pdfBuffer, {
+            filename: `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`,
+            contentType: 'application/pdf'
+          });
+          docForm.append('caption', `📅 Jahresplanung ${year} — ${tourLabel}\n🏨 ${hotel.name}`);
+          await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() }).catch(e => console.warn('JP PDF send error:', e.message));
+        }
+
+        // 2. Intro message
+        const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
+        await axios.post(`${TG_API}/sendMessage`, { chat_id: hotel.telegramChatId, text: intro, parse_mode: 'Markdown' }).catch(() => {});
+
+        // 3. Individual visit messages (sequential, 100ms apart)
+        for (const grp of groups) {
+          for (const v of grp.visits) {
+            const visitTitle = v.sectionLabel
+              ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
+              : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
+            const lines = [visitTitle, `🏨 ${hotel.name}`, '', `📅 Заезд: ${v.checkIn}`, `📅 Выезд: ${v.checkOut}`, `👥 PAX: ${v.pax}`, `🛏 DBL:${v.dbl}  |  TWN:${v.twn}  |  SNGL:${v.sngl}`];
+            try {
+              const msgRes = await axios.post(`${TG_API}/sendMessage`, {
+                chat_id: hotel.telegramChatId,
+                text: lines.join('\n'),
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[
+                  { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+                  { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+                  { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+                ]]}
+              });
+              v.msgId = msgRes.data?.result?.message_id || null;
+            } catch (e) { console.warn(`JP visit send failed (${grp.group}):`, e.message); }
+            await new Promise(r => setTimeout(r, 100));
+          }
+        }
+
+        // 4. Bulk message
+        const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
+        const bulkRes = await axios.post(`${TG_API}/sendMessage`, {
+          chat_id: hotel.telegramChatId,
+          text: `${header}\n\nBarcha *${totalVisits}* ta zaezd uchun:`,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[
+            { text: '✅ Barchasini',     callback_data: `jp_ca:${hotelId}` },
+            { text: '⏳ WL barchasi',    callback_data: `jp_wa:${hotelId}` },
+            { text: '❌ Barchasini rad', callback_data: `jp_ra:${hotelId}` },
+          ]]}
+        }).catch(() => null);
+        const bulkMsgId = bulkRes?.data?.result?.message_id || null;
+
+        // 5. Update DB with msgIds + bulkMsgId
+        await prisma.systemSetting.update({
+          where: { key: jpKey },
+          data: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) }
+        }).catch(e => console.warn('JP DB update error:', e.message));
+
+      } catch (bgErr) {
+        console.error('JP background send error:', bgErr.message);
+      }
+    })();
   } catch (err) {
     console.error('Send hotel telegram error:', err);
     res.status(500).json({ error: err.response?.data?.description || 'Telegram yuborishda xatolik' });

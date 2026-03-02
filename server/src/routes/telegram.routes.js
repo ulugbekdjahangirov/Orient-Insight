@@ -1342,9 +1342,10 @@ router.post('/webhook', (req, res, next) => {
 
       // Helper — build one visit's message + keyboard (keyboard removed after action)
       function buildVisitMsg(grp, v, st) {
+        const statusIcon = st === 'CONFIRMED' ? '✅ ' : st === 'WAITING' ? '⏳ ' : st === 'REJECTED' ? '❌ ' : '';
         const visitTitle = v.sectionLabel
-          ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
-          : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
+          ? `${statusIcon}*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
+          : `${statusIcon}*${grp.no}. ЗАЯВКА ${grp.group}*`;
         const lines = [visitTitle,
           `🏨 ${hotelName}`,
           '',
@@ -1402,10 +1403,11 @@ router.post('/webhook', (req, res, next) => {
           const msgId = cb.message?.message_id;
           if (msgId && editChatId) {
             const { text, keyboard } = buildVisitMsg(targetGrp, targetVisit, newStatus);
+            console.log('JP editMessageText attempt:', { editChatId, msgId, newStatus });
             await axios.post(`${BOT_API()}/editMessageText`, {
               chat_id: editChatId, message_id: msgId,
               text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard }
-            }).catch(e => console.warn('JP editMessageText error:', e.response?.data || e.message));
+            }).then(() => console.log('JP editMessageText OK')).catch(e => console.error('JP editMessageText error:', e.response?.data || e.message));
           }
         }
       }
@@ -1495,26 +1497,36 @@ router.post('/webhook', (req, res, next) => {
         if (isBulk) {
           const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
           adminText = [
-            `${emoji} ${hotelName} — ${actionLabel} (barcha)`,
-            `Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`,
-            `Jami ${totalVisits} ta zaezd`,
+            `${emoji} *Barcha ${totalVisits} ta zaezd — ${actionLabel}*`,
+            `🏨 ${hotelName}`,
+            `📋 Заявка ${year} — ${TOUR_LABELS[tourType] || tourType}`,
+            ``,
             `👤 ${fromName}`,
             `🕐 ${timeStr}`
           ].join('\n');
         } else {
           const grp = groups.find(g => g.bookingId === jpBookingId);
           const v = grp?.visits.find(v => v.visitIdx === jpVisitIdx);
+          const title = v?.sectionLabel
+            ? `${emoji} *${grp?.no ? grp.no + '. ' : ''}ЗАЯВКА ${grp?.group || ''} — ${v.sectionLabel}*`
+            : `${emoji} *${grp?.no ? grp.no + '. ' : ''}ЗАЯВКА ${grp?.group || ''}*`;
           adminText = [
-            `${emoji} ${hotelName} — ${actionLabel}`,
-            `${grp?.group || ''}${v?.sectionLabel ? ` — ${v.sectionLabel}` : ''}`,
-            `${v?.checkIn || ''} → ${v?.checkOut || ''}`,
+            title,
+            `🏨 ${hotelName}`,
+            ``,
+            `📅 Заезд: ${v?.checkIn || '—'}`,
+            `📅 Выезд: ${v?.checkOut || '—'}`,
+            `👥 PAX: ${v?.pax || 0}`,
+            `🛏 DBL:${v?.dbl || 0}  |  TWN:${v?.twn || 0}  |  SNGL:${v?.sngl || 0}`,
+            ``,
             `👤 ${fromName}`,
             `🕐 ${timeStr}`
           ].join('\n');
         }
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: adminChatId,
-          text: adminText
+          text: adminText,
+          parse_mode: 'Markdown'
         }).catch(e => console.warn('JP admin notify error:', e.response?.data || e.message));
       }
       return;
@@ -1574,21 +1586,21 @@ router.post('/webhook', (req, res, next) => {
       show_alert: false
     });
 
-    // 2. Edit the original message to show status (remove buttons)
+    // 2. Edit caption to add status + remove buttons (one call)
     if (cb.message?.message_id && fromChatId) {
-      const statusLine = isConfirm
-        ? `\n\n✅ ${fromName} tomonidan tasdiqlandi`
-        : isWaiting
-        ? `\n\n⏳ ${fromName} - Waiting List`
-        : `\n\n❌ ${fromName} tomonidan rad qilindi`;
-
+      const statusEmoji = isConfirm ? '✅' : isWaiting ? '⏳' : '❌';
+      const statusLabel = isConfirm ? 'Tasdiqlandi!' : isWaiting ? "Waiting List ga qo'shildi." : 'Rad qilindi.';
       const originalCaption = cb.message.caption || '';
+      const originalEntities = cb.message.caption_entities || [];
+      const newCaption = (originalCaption + `\n\n${statusEmoji} ${statusLabel}`).slice(0, 1024);
+
       await axios.post(`${BOT_API()}/editMessageCaption`, {
         chat_id: fromChatId,
         message_id: cb.message.message_id,
-        caption: originalCaption + statusLine,
-        parse_mode: 'Markdown'
-      }).catch(() => {});
+        caption: newCaption,
+        caption_entities: originalEntities,
+        reply_markup: { inline_keyboard: [] }
+      }).catch(e => console.warn('editCaption err:', e.response?.data || e.message));
     }
 
     // 3. Notify admin (improved format with zaezd/viyezd)
@@ -1604,16 +1616,27 @@ router.post('/webhook', (req, res, next) => {
         orderBy: { checkInDate: 'asc' }
       });
 
-      let datesStr = '';
+      const dateLines = [];
       if (accs.length === 1) {
-        datesStr = `\n🏠 Заезд: ${fmtDate(accs[0].checkInDate)}  |  Выезд: ${fmtDate(accs[0].checkOutDate)}`;
-      } else if (accs.length > 1) {
-        datesStr = accs.map((a, i) =>
-          `\n🏠 ${i + 1}-заезд: ${fmtDate(a.checkInDate)} → ${fmtDate(a.checkOutDate)}`
-        ).join('');
+        dateLines.push(`📅 Заезд: ${fmtDate(accs[0].checkInDate)}`);
+        dateLines.push(`📅 Выезд: ${fmtDate(accs[0].checkOutDate)}`);
+      } else {
+        accs.forEach((a, i) => {
+          dateLines.push(`*${i + 1}-zaezd:*`);
+          dateLines.push(`📅 Заезд: ${fmtDate(a.checkInDate)}`);
+          dateLines.push(`📅 Выезд: ${fmtDate(a.checkOutDate)}`);
+        });
       }
 
-      const adminMsg = `${emoji} *${hotelName}*\n📋 ${bookingNum}${datesStr}\n👤 ${actionText}: ${fromName}\n🕐 ${dateStr} ${timeStr}`;
+      const adminMsg = [
+        `${emoji} *ЗАЯВКА ${bookingNum}*`,
+        `🏨 ${hotelName}`,
+        ``,
+        ...dateLines,
+        ``,
+        `👤 ${fromName}`,
+        `🕐 ${timeStr}`
+      ].join('\n');
       await axios.post(`${BOT_API()}/sendMessage`, {
         chat_id: adminChatId,
         text: adminMsg,

@@ -6265,6 +6265,22 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
   }
 });
 
+// Singleton puppeteer browser — launch once, reuse pages (avoids 5-10s cold start)
+let _puppeteerBrowser = null;
+async function getPuppeteerBrowser() {
+  if (_puppeteerBrowser) {
+    try { await _puppeteerBrowser.pages(); } // check if alive
+    catch { _puppeteerBrowser = null; }
+  }
+  if (!_puppeteerBrowser) {
+    const puppeteer = require('puppeteer');
+    _puppeteerBrowser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+  }
+  return _puppeteerBrowser;
+}
+
 // POST /api/bookings/:bookingId/send-hotel-request-telegram/:hotelId
 router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, async (req, res) => {
   try {
@@ -6290,18 +6306,18 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
       orderBy: { checkInDate: 'asc' }
     });
 
-    // Generate PDF via puppeteer
-    const puppeteer = require('puppeteer');
-    const browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
+    // Generate PDF via puppeteer (reuse singleton browser — no cold start after first call)
+    const browser = await getPuppeteerBrowser();
     const page = await browser.newPage();
-    await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
-    const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`;
-    await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
-    const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
-    const pdfBuffer = Buffer.from(pdfUint8);
-    await browser.close();
+    try {
+      await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
+      const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/hotel-request-combined/${hotelId}`;
+      await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+      const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
+      var pdfBuffer = Buffer.from(pdfUint8);
+    } finally {
+      await page.close().catch(() => {});
+    }
 
     // Build rich caption
     const axios = require('axios');
