@@ -844,6 +844,7 @@ export default function BookingDetail() {
 
       // Calculate guest-nights per room type FROM FINAL LIST
       const guestNightsPerRoomType = {};
+      const guestCountPerRoomType = {};
       accTourists.forEach(tourist => {
         // Use INDIVIDUAL check-in/check-out dates from Final List
         const checkIn = tourist.checkInDate ? new Date(tourist.checkInDate) : accCheckIn;
@@ -858,10 +859,10 @@ export default function BookingDetail() {
         if (roomType === 'TWIN') roomType = 'TWN';
         if (roomType === 'SINGLE' || roomType === 'EZ') roomType = 'SNGL';
 
-        if (!guestNightsPerRoomType[roomType]) {
-          guestNightsPerRoomType[roomType] = 0;
-        }
+        if (!guestNightsPerRoomType[roomType]) guestNightsPerRoomType[roomType] = 0;
+        if (!guestCountPerRoomType[roomType]) guestCountPerRoomType[roomType] = 0;
         guestNightsPerRoomType[roomType] += nights;
+        guestCountPerRoomType[roomType] += 1;
       });
 
       // Determine currency for this hotel (same logic as individual cards)
@@ -896,16 +897,17 @@ export default function BookingDetail() {
         // Convert guest-nights to room-nights
         let roomNights;
         if (normalizedRoomType === 'PAX') {
-          roomNights = guestNights || accTourists.length; // For PAX, use total guest count if guestNights is 0
+          roomNights = guestNights || accTourists.length;
         } else if (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL') {
-          roomNights = guestNights / 2;
+          // Use Math.ceil(guestCount/2) × avgNights to correctly handle odd-number occupancy
+          const guestCount = guestCountPerRoomType[normalizedRoomType] || 0;
+          const avgNights = guestCount > 0 ? guestNights / guestCount : 0;
+          roomNights = Math.ceil(guestCount / 2) * avgNights;
         } else {
           roomNights = guestNights;
         }
 
         const roomCost = roomNights * pricePerNight;
-
-        // Debug log
 
         if (hotelCurrency === 'USD' || hotelCurrency === 'EUR') {
           grandTotalUSD += roomCost;
@@ -16561,7 +16563,8 @@ License №T-0084-08 from 2021-04-26`;
                                   if (normalizedRoomType === 'PAX') {
                                     roomNights = guestNights;
                                   } else if (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL') {
-                                    roomNights = guestNights / 2;
+                                    const avgNights = guestCount > 0 ? guestNights / guestCount : 0;
+                                    roomNights = Math.ceil(guestCount / 2) * avgNights;
                                   } else { // SNGL
                                     roomNights = guestNights;
                                   }
@@ -16605,6 +16608,7 @@ License №T-0084-08 from 2021-04-26`;
 
                                   // Calculate guest-nights per room type for breakdown display
                                   const guestNightsPerRoomType = {};
+                                  const guestCountPerRoomType = {};
                                   const touristDetails = {};
 
                                   accTourists.forEach(tourist => {
@@ -16632,10 +16636,10 @@ License №T-0084-08 from 2021-04-26`;
                                       if (roomType === 'SINGLE' || roomType === 'EZ') roomType = 'SNGL';
                                     }
 
-                                    if (!guestNightsPerRoomType[roomType]) {
-                                      guestNightsPerRoomType[roomType] = 0;
-                                    }
+                                    if (!guestNightsPerRoomType[roomType]) guestNightsPerRoomType[roomType] = 0;
+                                    if (!guestCountPerRoomType[roomType]) guestCountPerRoomType[roomType] = 0;
                                     guestNightsPerRoomType[roomType] += nights;
+                                    guestCountPerRoomType[roomType] += 1;
 
                                     if (!touristDetails[roomType]) {
                                       touristDetails[roomType] = [];
@@ -16663,7 +16667,9 @@ License №T-0084-08 from 2021-04-26`;
                                     if (normalizedRoomType === 'PAX') {
                                       roomNights = guestNights;
                                     } else if (normalizedRoomType === 'TWN' || normalizedRoomType === 'DBL') {
-                                      roomNights = guestNights / 2;
+                                      const guestCount = guestCountPerRoomType[normalizedRoomType] || 0;
+                                      const avgNights = guestCount > 0 ? guestNights / guestCount : 0;
+                                      roomNights = Math.ceil(guestCount / 2) * avgNights;
                                     } else {
                                       roomNights = guestNights;
                                     }

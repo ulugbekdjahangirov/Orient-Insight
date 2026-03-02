@@ -1761,7 +1761,7 @@ router.post('/webhook', (req, res, next) => {
         where: {
           bookingId: parseInt(bookingId),
           hotelId: parseInt(hotelId),
-          status: 'PENDING'
+          status: { in: ['PENDING', 'WAITING'] }
         },
         data: {
           status: newStatus,

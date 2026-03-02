@@ -516,6 +516,14 @@ class EmailImportProcessor {
       const [, d, m, y] = dateMatch;
       const departureDate = new Date(`${y}-${m}-${d}`);
 
+      // Try to extract end date from range pattern "DD.MM.YYYY – DD.MM.YYYY"
+      let pdfEndDate = null;
+      const dateRangeMatch = text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]\s*(\d{2})\.(\d{2})\.(\d{4})/);
+      if (dateRangeMatch) {
+        const [, , , , d2, m2, y2] = dateRangeMatch;
+        pdfEndDate = new Date(`${y2}-${m2}-${d2}`);
+      }
+
       // Find matching booking (±3 days tolerance)
       const from = new Date(departureDate); from.setDate(from.getDate() - 3);
       const to = new Date(departureDate); to.setDate(to.getDate() + 3);
@@ -580,7 +588,8 @@ class EmailImportProcessor {
         if (tourType) {
           booking = await prisma.booking.findFirst({
             where: { tourTypeId: tourType.id, departureDate: { gte: from, lte: to } },
-            orderBy: { departureDate: 'asc' }
+            orderBy: { departureDate: 'asc' },
+            select: { id: true, bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true }
           });
         }
       }
@@ -591,7 +600,8 @@ class EmailImportProcessor {
         const to1 = new Date(departureDate); to1.setDate(to1.getDate() + 1);
         const candidates = await prisma.booking.findMany({
           where: { departureDate: { gte: from1, lte: to1 } },
-          orderBy: { departureDate: 'asc' }
+          orderBy: { departureDate: 'asc' },
+          select: { id: true, bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true }
         });
         if (candidates.length === 1) {
           booking = candidates[0];
@@ -620,6 +630,11 @@ class EmailImportProcessor {
         where: { bookingId: booking.id }
       });
 
+      // Resolve tourist dates from PDF range or booking dates
+      const touristCheckIn = booking.departureDate ? new Date(booking.departureDate) : null;
+      const touristCheckOut = pdfEndDate || (booking.arrivalDate ? new Date(booking.arrivalDate) : null)
+                              || (booking.endDate ? new Date(booking.endDate) : null);
+
       const matchedIds = new Set();
       const toUpdate = [];
       const toCreate = [];
@@ -639,7 +654,9 @@ class EmailImportProcessor {
             data: {
               roomPreference: pdfT.roomPreference,
               accommodation: pdfT.accommodation,
-              roomNumber: pdfT.roomNumber || null
+              roomNumber: pdfT.roomNumber || null,
+              ...(touristCheckIn && { checkInDate: touristCheckIn }),
+              ...(touristCheckOut && { checkOutDate: touristCheckOut })
             }
           });
         } else {
@@ -651,7 +668,9 @@ class EmailImportProcessor {
             gender: 'unknown',
             roomPreference: pdfT.roomPreference,
             accommodation: pdfT.accommodation,
-            roomNumber: pdfT.roomNumber || null
+            roomNumber: pdfT.roomNumber || null,
+            ...(touristCheckIn && { checkInDate: touristCheckIn }),
+            ...(touristCheckOut && { checkOutDate: touristCheckOut })
           });
         }
       }
