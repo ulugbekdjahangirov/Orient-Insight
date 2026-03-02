@@ -2536,6 +2536,9 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
     let vegetariansList = []; // Array of vegetarian names
     let birthdaysMap = new Map(); // Map of name -> birthday date
     let globalRemark = ''; // General remark for all tourists
+    // Uzbekistan section date range (for birthday UZ check)
+    let uzSectionStart = null; // Date object
+    let uzSectionEnd = null;   // Date object
 
     // Room grouping counters for DBL and TWN
     let roomCounters = { DBL: 0, TWN: 0, SNGL: 0 };
@@ -2572,10 +2575,20 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
             currentTourType = 'Uzbekistan';
           }
         }
-        // Check for "Tour: Usbekistan" (without Turkmenistan)
-        else if (lowerLine.includes('usbekistan') || lowerLine.includes('uzbekistan')) {
+        // All non-Turkmenistan sections (Uzbekistan, KAS, ZA, CO, etc.) — capture UZ section dates
+        else {
           inTurkmenistanSection = false;
           currentTourType = 'Uzbekistan';
+          // Extract tour section date range for birthday UZ-portion check
+          if (!uzSectionStart) {
+            const uzDateMatch = line.match(/(\d{2}\.\d{2}\.\d{4})\s*[-–—]+\s*(\d{2}\.\d{2}\.\d{4})/);
+            if (uzDateMatch) {
+              const [d1, m1, y1] = uzDateMatch[1].split('.');
+              const [d2, m2, y2] = uzDateMatch[2].split('.');
+              uzSectionStart = new Date(parseInt(y1), parseInt(m1) - 1, parseInt(d1));
+              uzSectionEnd   = new Date(parseInt(y2), parseInt(m2) - 1, parseInt(d2));
+            }
+          }
         }
         // DON'T reset room counters - continue numbering across both sections
         // This ensures Uzbekistan gets DBL-1, DBL-2... and Turkmenistan gets DBL-3, DBL-4...
@@ -3220,7 +3233,25 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         }
       }
       if (birthdayDate) {
-        additionalInfo.push(`Birthday: ${birthdayDate}`);
+        // Check if birthday day+month falls within the Uzbekistan portion of the tour
+        // Use UZ section dates from PDF if available; otherwise fall back to full tour dates
+        const parts = birthdayDate.split('.');
+        const bDay   = parseInt(parts[0], 10);
+        const bMonth = parseInt(parts[1], 10);
+        const refStart = uzSectionStart || (tourStartDate ? (() => {
+          const [d, m, y] = tourStartDate.split('.');
+          return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        })() : null);
+        const refEnd = uzSectionEnd || (tourEndDate ? (() => {
+          const [d, m, y] = tourEndDate.split('.');
+          return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        })() : null);
+        const bdYear = refStart ? refStart.getFullYear() : tourYear;
+        const bdInTour = new Date(bdYear, bMonth - 1, bDay);
+        const inUzPortion = !refStart || !refEnd || (bdInTour >= refStart && bdInTour <= refEnd);
+        if (inUzPortion) {
+          additionalInfo.push(`Birthday: ${parts[0]}.${parts[1]}`); // DD.MM only
+        }
       }
 
       // Add additional info from PDF table column (if exists)

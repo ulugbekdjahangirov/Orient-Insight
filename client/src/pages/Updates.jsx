@@ -892,7 +892,7 @@ export default function Updates() {
           ) : isMobile ? (
             <div className="space-y-3">
               {bookings.map((booking, index) => {
-                const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                 return (
                   <div
@@ -901,6 +901,7 @@ export default function Updates() {
                       calculatedStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
                       calculatedStatus === 'PENDING' ? 'bg-yellow-50 border-yellow-300' :
                       calculatedStatus === 'IN_PROGRESS' ? 'bg-purple-50 border-purple-300' :
+                      calculatedStatus === 'FINAL_CONFIRMED' ? 'bg-emerald-100 border-emerald-500' :
                       calculatedStatus === 'CONFIRMED' ? 'bg-green-50 border-green-300' :
                       calculatedStatus === 'COMPLETED' ? 'bg-blue-50 border-blue-300' :
                       'bg-white border-gray-200'
@@ -908,14 +909,24 @@ export default function Updates() {
                   >
                     {/* Header: Booking Number + Status */}
                     <div className="flex items-center justify-between mb-3">
-                      <Link to={`/bookings/${booking.id}?edit=true`}>
-                        <span
-                          className="inline-flex items-center px-4 py-2 rounded-xl text-base font-bold text-white shadow-md hover:shadow-lg transition-all"
-                          style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
-                        >
-                          {booking.bookingNumber}
-                        </span>
-                      </Link>
+                      <div className="flex flex-col items-start gap-1">
+                        <Link to={`/bookings/${booking.id}?edit=true`}>
+                          <span
+                            className="inline-flex items-center px-4 py-2 rounded-xl text-base font-bold text-white shadow-md hover:shadow-lg transition-all"
+                            style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
+                          >
+                            {booking.bookingNumber}
+                          </span>
+                        </Link>
+                        {booking.emailImportedAt && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-blue-100 text-blue-700"
+                            title={`Email import: ${format(new Date(booking.emailImportedAt), 'dd.MM.yyyy HH:mm')}`}
+                          >
+                            📧 {format(new Date(booking.emailImportedAt), 'dd.MM')}
+                          </span>
+                        )}
+                      </div>
                       <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
                         {statusLabels[calculatedStatus]}
                       </span>
@@ -1040,7 +1051,7 @@ export default function Updates() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {bookings.map((booking, index) => {
-                    const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                    const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                     // Set row background color based on status
                     let rowClass = 'hover:bg-gray-50';
@@ -1050,6 +1061,8 @@ export default function Updates() {
                       rowClass = 'bg-yellow-100 hover:bg-yellow-200';
                     } else if (calculatedStatus === 'IN_PROGRESS') {
                       rowClass = 'bg-sky-200 hover:bg-sky-300';
+                    } else if (calculatedStatus === 'FINAL_CONFIRMED') {
+                      rowClass = 'bg-emerald-200 hover:bg-emerald-300';
                     } else if (calculatedStatus === 'CONFIRMED') {
                       rowClass = 'bg-green-100 hover:bg-green-200';
                     } else if (calculatedStatus === 'COMPLETED') {
@@ -1062,17 +1075,27 @@ export default function Updates() {
                         <span className="font-bold text-gray-900 text-base">{index + 1}</span>
                       </td>
                       <td className="px-2 py-4">
-                        <Link
-                          to={`/bookings/${booking.id}?edit=true`}
-                          className="inline-flex items-center"
-                        >
-                          <span
-                            className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-bold text-white hover:shadow-lg hover:scale-105 transition-all duration-200 whitespace-nowrap shadow-sm"
-                            style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
+                        <div className="flex flex-col items-start gap-1">
+                          <Link
+                            to={`/bookings/${booking.id}?edit=true`}
+                            className="inline-flex items-center"
                           >
-                            {booking.bookingNumber}
-                          </span>
-                        </Link>
+                            <span
+                              className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-bold text-white hover:shadow-lg hover:scale-105 transition-all duration-200 whitespace-nowrap shadow-sm"
+                              style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
+                            >
+                              {booking.bookingNumber}
+                            </span>
+                          </Link>
+                          {booking.emailImportedAt && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-600"
+                              title={`Email import: ${format(new Date(booking.emailImportedAt), 'dd.MM.yyyy HH:mm')}`}
+                            >
+                              📧 {format(new Date(booking.emailImportedAt), 'dd.MM')}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-700 font-medium">
                         {format(new Date(booking.departureDate), 'dd.MM.yyyy')}
@@ -1115,10 +1138,10 @@ export default function Updates() {
                           </td>
                         </>
                       ) : (
-                        <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                          <span className="truncate max-w-[140px] block" title={booking.trainTickets || ''}>
-                            {booking.trainTickets || '-'}
-                          </span>
+                        <td className="px-4 py-4 text-sm font-semibold text-center">
+                          {booking.trainTickets === 'Issued'
+                            ? <span className="text-emerald-600">OK</span>
+                            : <span className="text-gray-400">-</span>}
                         </td>
                       )}
                       <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">

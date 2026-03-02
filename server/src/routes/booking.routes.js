@@ -451,7 +451,7 @@ router.put('/:id', authenticate, async (req, res) => {
 
     // Auto-set status based on PAX count (only if status not explicitly provided)
     // AND only if current status is not CANCELLED or COMPLETED
-    const preservedStatuses = ['CANCELLED', 'COMPLETED'];
+    const preservedStatuses = ['CANCELLED', 'COMPLETED', 'FINAL_CONFIRMED'];
     if (status === undefined && !preservedStatuses.includes(currentBooking?.status)) {
       const calculatedPax = updateData.pax;
       if (calculatedPax >= 6) {

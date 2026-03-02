@@ -634,8 +634,10 @@ export default function Bookings() {
                       {booking.guide?.name || '-'}
                     </td>
                     {/* ЖД БИЛЕТЫ */}
-                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {booking.trainTickets || '-'}
+                    <td className="hidden lg:table-cell px-4 py-4 text-sm font-semibold text-center">
+                      {booking.trainTickets === 'Issued'
+                        ? <span className="text-emerald-600">OK</span>
+                        : <span className="text-gray-400">-</span>}
                     </td>
                     {/* DBL */}
                     <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">

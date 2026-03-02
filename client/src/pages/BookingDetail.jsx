@@ -2821,6 +2821,11 @@ export default function BookingDetail() {
         // Create new railway
         const response = await railwaysApi.create(id, railwayForm);
         toast.success('Poezd qo\'shildi');
+        // Auto-set Train Tickets to Issued if not already set
+        if (formData.trainTickets !== 'Issued') {
+          await bookingsApi.update(id, { trainTickets: 'Issued' });
+          setFormData(prev => ({ ...prev, trainTickets: 'Issued' }));
+        }
       }
 
       closeRailwayModal();
@@ -17143,11 +17148,9 @@ License №T-0084-08 from 2021-04-26`;
 
                         // Use accommodation-specific rooming list if available, otherwise use filtered tourists
                         const accommodationRoomingList = accommodationRoomingLists[acc.id];
-                        // Show tourists with room numbers if any have room numbers (PDF imported),
-                        // otherwise show all tourists (auto-filled from CO/KAS/ZA Hotels button)
                         const baseList = accommodationRoomingList || accTourists;
-                        const hasAnyRoomNumbers = baseList.some(t => t.roomNumber);
-                        const touristsToDisplay = hasAnyRoomNumbers ? baseList.filter(t => t.roomNumber) : baseList;
+                        // Always show all tourists — roomNumber is informational only, not a visibility filter
+                        const touristsToDisplay = baseList;
 
                         // Use touristsToDisplay for counting (fixes mismatch between header count and actual list)
                         const displayCount = touristsToDisplay.length;

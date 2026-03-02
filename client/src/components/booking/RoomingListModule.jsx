@@ -2120,19 +2120,24 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                             const remarks = t.remarks || '';
                             if (remarks && remarks !== '-') {
                               // Split by newline and filter important info only
-                              const lines = remarks.split('\n').filter(line => {
-                                const lower = line.toLowerCase();
-                                // Include only important information
-                                return lower.includes('vegetarian') ||
-                                       lower.includes('birthday') ||
-                                       lower.includes('flight') ||
-                                       lower.includes('arrival') ||
-                                       lower.includes('заезд') ||
-                                       lower.includes('выезд') ||
-                                       lower.includes('ранний') ||
-                                       lower.includes('поздний') ||
-                                       lower.includes('book extra nights');
-                              });
+                              const lines = remarks.split('\n')
+                                .filter(line => {
+                                  const lower = line.toLowerCase();
+                                  return lower.includes('vegetarian') ||
+                                         lower.includes('birthday') ||
+                                         lower.includes('flight') ||
+                                         lower.includes('arrival') ||
+                                         lower.includes('заезд') ||
+                                         lower.includes('выезд') ||
+                                         lower.includes('ранний') ||
+                                         lower.includes('поздний') ||
+                                         lower.includes('book extra nights');
+                                })
+                                .map(line => {
+                                  // Normalize "Vegetarian pax NAME and NAME" → "Vegetarian"
+                                  if (/^vegetarian\s+pax\b/i.test(line.trim())) return 'Vegetarian';
+                                  return line;
+                                });
                               remarksLines.push(...lines);
                             }
 

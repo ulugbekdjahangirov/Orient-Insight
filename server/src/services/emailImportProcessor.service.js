@@ -619,11 +619,41 @@ class EmailImportProcessor {
       // Parse tourists directly from the already-parsed text (no second pdfParse call)
       // This avoids making an internal HTTP request (axios.post) which would cause
       // a second pdfParse + SQLite write lock contention with manual imports
-      const pdfTourists = this._parseTouristsFromText(text, tourTypeCode);
+      const { tourists: pdfTourists, birthdaysMap, uzSectionStart, uzSectionEnd } = this._parseTouristsFromText(text, tourTypeCode);
 
       if (pdfTourists.length === 0) {
         return null;
       }
+
+      // UZ date range: prefer PDF section dates; fall back to booking dates
+      const uzStart = uzSectionStart || (booking.departureDate ? new Date(booking.departureDate) : null);
+      const uzEnd   = uzSectionEnd   || (booking.endDate ? new Date(booking.endDate) : (booking.arrivalDate ? new Date(booking.arrivalDate) : null));
+
+      // Helper: check if tourist's birthday falls within the Uzbekistan portion of the tour
+      // Does NOT use tourist placement — checks dates only
+      const getBirthdayRemark = (pdfT) => {
+        if (!birthdaysMap.size) return null;
+        const nameNorm = (pdfT.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+        for (const [bName, bDate] of birthdaysMap.entries()) {
+          const bNameNorm = bName.toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+          // Match by last name (part before comma)
+          const touristLast = nameNorm.split(',')[0].trim();
+          const bLast = bNameNorm.split(',')[0].trim();
+          if (!touristLast || !bLast || !bLast.includes(touristLast)) continue;
+          // Check birthday day+month falls within UZ portion
+          const parts = bDate.split('.');
+          if (parts.length < 2) continue;
+          const bDay   = parseInt(parts[0], 10);
+          const bMonth = parseInt(parts[1], 10);
+          const bdYear = uzStart ? uzStart.getFullYear() : new Date().getFullYear();
+          const bdInTour = new Date(bdYear, bMonth - 1, bDay);
+          if (uzStart && uzEnd && bdInTour >= uzStart && bdInTour <= uzEnd) {
+            return `Birthday: ${parts[0]}.${parts[1]}`; // DD.MM only
+          }
+          break;
+        }
+        return null;
+      };
 
       // Get existing tourists for this booking
       const existingTourists = await prisma.tourist.findMany({
@@ -640,6 +670,7 @@ class EmailImportProcessor {
       const toCreate = [];
 
       for (const pdfT of pdfTourists) {
+        const birthdayRemark = getBirthdayRemark(pdfT);
         // Normalize name for matching (strip Mr./Mrs./Ms. prefix)
         const pdfName = (pdfT.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
         const existing = existingTourists.find(t => {
@@ -649,6 +680,28 @@ class EmailImportProcessor {
 
         if (existing) {
           matchedIds.add(existing.id);
+          // Merge PDF remarks (vegetarian + birthday) with existing remarks
+          let updatedRemarks = existing.remarks || null;
+          // Apply vegetarian
+          if (pdfT.isVegetarian) {
+            const existLines = (!updatedRemarks || updatedRemarks === '-') ? [] : updatedRemarks.split('\n').filter(Boolean);
+            if (!existLines.some(l => l.toLowerCase() === 'vegetarian')) {
+              existLines.unshift('Vegetarian');
+              updatedRemarks = existLines.join('\n');
+            }
+          }
+          // Apply birthday remark
+          if (birthdayRemark) {
+            if (!updatedRemarks || updatedRemarks === '-') {
+              updatedRemarks = birthdayRemark;
+            } else if (!updatedRemarks.includes('Birthday:')) {
+              updatedRemarks = updatedRemarks + '\n' + birthdayRemark;
+            } else {
+              // Replace existing Birthday line
+              updatedRemarks = updatedRemarks.split('\n').map(l => l.startsWith('Birthday:') ? birthdayRemark : l).join('\n');
+            }
+          }
+          const shouldUpdateRemarks = pdfT.isVegetarian || birthdayRemark !== null;
           toUpdate.push({
             id: existing.id,
             data: {
@@ -656,10 +709,15 @@ class EmailImportProcessor {
               accommodation: pdfT.accommodation,
               roomNumber: pdfT.roomNumber || null,
               ...(touristCheckIn && { checkInDate: touristCheckIn }),
-              ...(touristCheckOut && { checkOutDate: touristCheckOut })
+              ...(touristCheckOut && { checkOutDate: touristCheckOut }),
+              ...(shouldUpdateRemarks && { remarks: updatedRemarks })
             }
           });
         } else {
+          // Build remarks for new tourist
+          const newRemarks = [];
+          if (pdfT.isVegetarian) newRemarks.push('Vegetarian');
+          if (birthdayRemark) newRemarks.push(birthdayRemark);
           toCreate.push({
             bookingId: booking.id,
             fullName: pdfT.fullName || '',
@@ -670,7 +728,8 @@ class EmailImportProcessor {
             accommodation: pdfT.accommodation,
             roomNumber: pdfT.roomNumber || null,
             ...(touristCheckIn && { checkInDate: touristCheckIn }),
-            ...(touristCheckOut && { checkOutDate: touristCheckOut })
+            ...(touristCheckOut && { checkOutDate: touristCheckOut }),
+            ...(newRemarks.length > 0 && { remarks: newRemarks.join('\n') })
           });
         }
       }
@@ -753,6 +812,8 @@ class EmailImportProcessor {
    */
   _parseTouristsFromText(text, tourTypeCode) {
     const tourists = [];
+    const birthdaysMap = new Map(); // name → "DD.MM.YYYY"
+    const vegetariansList = []; // names of vegetarian tourists
     const lines = text.split('\n').map(l => l.trim()).filter(l => l);
 
     let currentRoomType = null;
@@ -760,6 +821,12 @@ class EmailImportProcessor {
     let roomCounters = { DBL: 0, TWN: 0, SNGL: 0 };
     let roomPersonCount = 0;
     let currentRoomNumber = null;
+    let inAdditionalInfo = false;
+    let inBirthdaysSection = false;
+    let inVegetariansSection = false;
+    // UZ section date range extracted from "Tour: Uzbekistan DD.MM.YYYY – DD.MM.YYYY"
+    let uzSectionStart = null; // Date object
+    let uzSectionEnd   = null; // Date object
 
     for (const line of lines) {
       const lower = line.toLowerCase();
@@ -770,32 +837,124 @@ class EmailImportProcessor {
           currentAccommodation = 'Turkmenistan';
         } else {
           currentAccommodation = 'Uzbekistan';
+          // Capture UZ section date range (first occurrence): "Tour: Uzbekistan 12.09.2026 – 22.09.2026"
+          if (!uzSectionStart) {
+            const dm = line.match(/(\d{2}\.\d{2}\.\d{4})\s*[-–—]+\s*(\d{2}\.\d{2}\.\d{4})/);
+            if (dm) {
+              const [d1, m1, y1] = dm[1].split('.');
+              const [d2, m2, y2] = dm[2].split('.');
+              uzSectionStart = new Date(parseInt(y1), parseInt(m1) - 1, parseInt(d1));
+              uzSectionEnd   = new Date(parseInt(y2), parseInt(m2) - 1, parseInt(d2));
+            }
+          }
         }
         roomPersonCount = 0;
+        inAdditionalInfo = false;
         continue;
       }
 
-      // Room type headers
+      // Room type headers — also reset inAdditionalInfo
       if (line === 'DOUBLE' || lower === 'double') {
-        currentRoomType = 'DBL'; roomPersonCount = 0; continue;
+        currentRoomType = 'DBL'; roomPersonCount = 0; inAdditionalInfo = false; continue;
       }
       if (line === 'TWIN' || lower === 'twin') {
-        currentRoomType = 'TWN'; roomPersonCount = 0; continue;
+        currentRoomType = 'TWN'; roomPersonCount = 0; inAdditionalInfo = false; continue;
       }
       if (line === 'SINGLE' || lower === 'single') {
-        currentRoomType = 'SNGL'; roomPersonCount = 0; continue;
+        currentRoomType = 'SNGL'; roomPersonCount = 0; inAdditionalInfo = false; continue;
       }
 
       // Skip section separators and totals
       if (!currentRoomType) continue;
-      if (/^(TOTAL|Additional|Flights|Remark|Date|Tour|\/\/|\*|___)/i.test(line)) continue;
+      if (/^(TOTAL|Flights|Date|Tour|\/\/|\*|___)/i.test(line)) continue;
       if (/^\d+\s+PAX/i.test(line)) continue;
+
+      // "Additional information" section: parse vegetarians/birthdays, stop parsing tourists
+      if (/^Additional/i.test(line)) {
+        inAdditionalInfo = true; inBirthdaysSection = false; inVegetariansSection = false; continue;
+      }
+      if (inAdditionalInfo) {
+        // Parse Vegetarians section
+        if (/^Vegetarians?:/i.test(line)) {
+          inVegetariansSection = true; inBirthdaysSection = false;
+          const val = line.replace(/^Vegetarians?:/i, '').trim();
+          if (val && val !== '//' && val !== '-') {
+            val.split('//').map(n => n.trim()).filter(n => n).forEach(n => vegetariansList.push(n));
+          }
+          continue;
+        }
+        // Parse Birthdays section
+        if (/^Birthdays:/i.test(line)) {
+          inBirthdaysSection = true; inVegetariansSection = false;
+          const val = line.replace(/^Birthdays:/i, '').trim();
+          if (val && val !== '//' && val !== '-') {
+            val.split('//').forEach(entry => {
+              const m = entry.trim().match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
+              if (m) birthdaysMap.set(m[2].trim(), m[1]);
+            });
+          }
+          continue;
+        }
+        // Switch section on known headers
+        if (/^(Remark:|International\s+Flights|Flights)/i.test(line)) {
+          inBirthdaysSection = false; inVegetariansSection = false;
+        }
+        if (inVegetariansSection) {
+          if (/^(Remark:|Birthdays:|International|Flights)/i.test(line)) {
+            inVegetariansSection = false;
+          } else if (/^(Mr\.|Mrs\.|Ms\.)/i.test(line)) {
+            vegetariansList.push(line.trim());
+          }
+        }
+        if (inBirthdaysSection) {
+          if (/^(Remark:|Vegetarians?:|International|Flights)/i.test(line)) {
+            inBirthdaysSection = false;
+          } else if (/^(Mr\.|Mrs\.|Ms\.)/i.test(line)) {
+            // "Mrs. Diermeier, Melanie Katrin    18.10.1980"
+            const bm = line.match(/^((?:Mr\.|Mrs\.|Ms\.)\s+.+?)\s+(\d{2}\.\d{2}\.\d{4})$/);
+            if (bm) birthdaysMap.set(bm[1].trim(), bm[2]);
+          }
+        }
+        continue;
+      }
 
       // Tourist name lines: must start with Mr./Mrs./Ms.
       if (/^(Mr\.|Mrs\.|Ms\.)/i.test(line)) {
+        // Check for asterisk BEFORE stripping (asterisk = half double, no roommate → SNGL)
+        const hasAsterisk = line.includes('*');
+
+        // Normalize name: strip asterisk, DOB patterns like (17.09.1956), academic titles
+        let fullName = line.trim().replace(/\*/g, '').trim();
+        fullName = fullName.replace(/\s*\(\d{2}\.\d{2}\.\d{4}\)\s*/g, ' ').trim();
+        fullName = fullName.replace(/\b(Dr\.|Prof\.|Dipl\.|Ing\.)\s*/g, '').trim();
+
+        if (hasAsterisk) {
+          // Find the tourist already added (same person appears twice: first without asterisk, then with)
+          const normName = (n) => n.toLowerCase().replace(/[*\s]/g, '');
+          const normalizedSearch = normName(fullName);
+          const existing = tourists.find(t => normName(t.fullName) === normalizedSearch);
+          if (existing) {
+            // Update existing tourist: move from DBL/TWN to SNGL (no roommate)
+            existing.roomPreference = 'SNGL';
+            roomCounters.SNGL++;
+            existing.roomNumber = `SNGL-${roomCounters.SNGL}`;
+          } else {
+            // Asterisked tourist appearing for the first time → add as SNGL directly
+            roomCounters.SNGL++;
+            tourists.push({
+              fullName,
+              roomPreference: 'SNGL',
+              accommodation: currentAccommodation,
+              roomNumber: `SNGL-${roomCounters.SNGL}`
+            });
+          }
+          roomPersonCount++; // keep counter in sync
+          continue;
+        }
+
         roomPersonCount++;
 
-        // Assign room number
+        // Assign room number based on room type
         if (currentRoomType === 'DBL') {
           if (roomPersonCount % 2 === 1) {
             roomCounters.DBL++;
@@ -813,7 +972,7 @@ class EmailImportProcessor {
         }
 
         tourists.push({
-          fullName: line.trim(),
+          fullName,
           roomPreference: currentRoomType,
           accommodation: currentAccommodation,
           roomNumber: currentRoomNumber
@@ -821,7 +980,31 @@ class EmailImportProcessor {
       }
     }
 
-    return tourists;
+    // Match vegetariansList against tourists and mark them
+    if (vegetariansList.length > 0) {
+      const normVeg = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+      for (const tourist of tourists) {
+        const tNorm = normVeg(tourist.fullName);
+        const tLast = tNorm.split(',')[0].trim();
+        if (vegetariansList.some(veg => {
+          const vNorm = normVeg(veg);
+          return vNorm.includes(tLast) && tLast.length > 1;
+        })) {
+          tourist.isVegetarian = true;
+        }
+      }
+    }
+
+    // Deduplicate tourists by normalized fullName (same person may appear in multiple sections)
+    const seenNames = new Set();
+    const uniqueTourists = tourists.filter(t => {
+      const key = t.fullName.toLowerCase().replace(/\s/g, '');
+      if (seenNames.has(key)) return false;
+      seenNames.add(key);
+      return true;
+    });
+
+    return { tourists: uniqueTourists, birthdaysMap, uzSectionStart, uzSectionEnd };
   }
 
   /**
