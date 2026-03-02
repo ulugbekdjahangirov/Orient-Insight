@@ -548,49 +548,63 @@ router.post('/webhook', (req, res, next) => {
           await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text, parse_mode: 'Markdown' }).catch(() => {});
           return;
         }
-        if (msg.text === '📝 Изменения к Заявке') {
+        if (msg.text === '📝 Изменения к Заявке' || msg.text === '❌ Аннуляция') {
+          const isAnn = msg.text === '❌ Аннуляция';
           const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
           if (!hotel) { await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '🏨 Hotel topilmadi.' }).catch(() => {}); return; }
+
           const confs = await prisma.telegramConfirmation.findMany({
             where: { hotelId: hotel.id },
             include: { booking: { select: { bookingNumber: true, status: true, pax: true } } },
-            orderBy: { sentAt: 'desc' },
-            take: 30
+            orderBy: { sentAt: 'asc' }
           });
-          const izm = confs.filter(c => c.booking?.status !== 'CANCELLED');
-          if (!izm.length) {
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '📝 Изменения к Заявке пока нет.', parse_mode: 'Markdown' }).catch(() => {});
+
+          // Unique by bookingId — keep latest per booking, filter by cancelled/active
+          const seen = new Set();
+          const filtered = confs.filter(c => {
+            const isCancelled = c.booking?.status === 'CANCELLED';
+            if (isAnn ? !isCancelled : isCancelled) return false;
+            if (seen.has(c.bookingId)) return false;
+            seen.add(c.bookingId);
+            return true;
+          });
+
+          if (!filtered.length) {
+            const emptyText = isAnn ? '❌ Аннуляций пока нет.' : '📝 Изменения к Заявке пока нет.';
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: emptyText }).catch(() => {});
             return;
           }
-          const fmtDate = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+
+          const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
           const statusIcon = { PENDING: '⬜', CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌' };
-          const lines = [`📝 *Изменения к Заявке — ${hotel.name}*`, ''];
-          izm.forEach(c => {
-            const si = statusIcon[c.status] || '⬜';
-            lines.push(`${si} *ЗАЯВКА ${c.booking?.bookingNumber || '—'}* — ${fmtDate(c.sentAt)}`);
-          });
-          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
-          return;
-        }
-        if (msg.text === '❌ Аннуляция') {
-          const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
-          if (!hotel) { await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '🏨 Hotel topilmadi.' }).catch(() => {}); return; }
-          const confs = await prisma.telegramConfirmation.findMany({
-            where: { hotelId: hotel.id },
-            include: { booking: { select: { bookingNumber: true, status: true } } },
-            orderBy: { sentAt: 'desc' },
-            take: 30
-          });
-          const ann = confs.filter(c => c.booking?.status === 'CANCELLED');
-          if (!ann.length) {
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '❌ Аннуляций пока нет.', parse_mode: 'Markdown' }).catch(() => {});
-            return;
+          const header = isAnn ? `❌ *Аннуляция — ${hotel.name}*` : `📝 *Изменения к Заявке — ${hotel.name}*`;
+          const lines = [header];
+
+          for (const c of filtered) {
+            const si = isAnn ? '❌' : (statusIcon[c.status] || '⬜');
+            const accs = await prisma.accommodation.findMany({
+              where: { bookingId: c.bookingId, hotelId: hotel.id },
+              include: { rooms: true },
+              orderBy: { checkInDate: 'asc' }
+            });
+            lines.push('');
+            lines.push(`${si} *ЗАЯВКА ${c.booking?.bookingNumber || '—'}*`);
+            if (accs.length > 0) {
+              accs.forEach((acc, i) => {
+                const dbl = acc.rooms.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + r.roomsCount, 0);
+                const twn = acc.rooms.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + r.roomsCount, 0);
+                const sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + r.roomsCount, 0);
+                if (accs.length > 1) lines.push(`  *${i + 1}-заезд:*`);
+                lines.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
+                lines.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
+                lines.push(`  👥 PAX: ${c.booking?.pax || 0}`);
+                lines.push(`  🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`);
+              });
+            } else {
+              lines.push(`  📅 Yuborilgan: ${fmt(c.sentAt)}`);
+            }
           }
-          const fmtDate = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
-          const lines = [`❌ *Аннуляция — ${hotel.name}*`, ''];
-          ann.forEach(c => {
-            lines.push(`❌ *ЗАЯВКА ${c.booking?.bookingNumber || '—'}* — ${fmtDate(c.sentAt)}`);
-          });
+
           await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
           return;
         }
