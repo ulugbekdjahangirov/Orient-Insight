@@ -694,10 +694,10 @@ class EmailImportProcessor {
         }
       });
 
-      // Mark paxSource as PDF and record email import timestamp
+      // Mark paxSource as PDF, set Final Confirmed status, and record email import timestamp
       await prisma.booking.update({
         where: { id: booking.id },
-        data: { paxSource: 'PDF', emailImportedAt: new Date() }
+        data: { paxSource: 'PDF', emailImportedAt: new Date(), status: 'FINAL_CONFIRMED' }
       });
 
       const summary = { updated: toUpdate.length, created: toCreate.length, deleted: toDeleteIds.length };

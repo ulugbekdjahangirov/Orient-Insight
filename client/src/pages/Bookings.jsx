@@ -130,7 +130,7 @@ export default function Bookings() {
       // Filter by calculated status on frontend
       if (status) {
         bookingsData = bookingsData.filter(booking => {
-          const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+          const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
           return calculatedStatus === status;
         });
       }
@@ -418,7 +418,7 @@ export default function Bookings() {
         ) : isMobile ? (
           <div className="space-y-3 px-3 py-2">
             {bookings.map((booking, index) => {
-              const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+              const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
               return (
                 <div
                   key={booking.id}
@@ -426,6 +426,7 @@ export default function Bookings() {
                     calculatedStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
                     calculatedStatus === 'PENDING' ? 'bg-yellow-50 border-yellow-300' :
                     calculatedStatus === 'IN_PROGRESS' ? 'bg-purple-50 border-purple-300' :
+                    calculatedStatus === 'FINAL_CONFIRMED' ? 'bg-emerald-100 border-emerald-500' :
                     calculatedStatus === 'CONFIRMED' ? 'bg-green-50 border-green-300' :
                     'bg-blue-50 border-blue-300'
                   }`}
@@ -555,7 +556,7 @@ export default function Bookings() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {bookings.map((booking, index) => {
-                  const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                  const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                   // Set row background color based on status
                   let rowClass = 'hover:bg-gray-50';
@@ -565,6 +566,8 @@ export default function Bookings() {
                     rowClass = 'bg-yellow-100 hover:bg-yellow-200';
                   } else if (calculatedStatus === 'IN_PROGRESS') {
                     rowClass = 'bg-sky-200 hover:bg-sky-300';
+                  } else if (calculatedStatus === 'FINAL_CONFIRMED') {
+                    rowClass = 'bg-emerald-200 hover:bg-emerald-300';
                   } else if (calculatedStatus === 'CONFIRMED') {
                     rowClass = 'bg-green-100 hover:bg-green-200';
                   } else if (calculatedStatus === 'COMPLETED') {
