@@ -523,11 +523,45 @@ export default function ItineraryPreview({ bookingId, booking }) {
           filteredRoutes = routes.filter(r => checkIsFergana(r));
         }
 
+        // CO groups: merge routes with same date + routeName + departureTime into one row
+        // Shows combined vehicle info: "3 Staria" or "2 Staria + 1 PKW"
+        const _ttCode = typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code;
+        const isCOTour = _ttCode === 'CO';
+        let displayRoutes = filteredRoutes;
+        if (isCOTour) {
+          const merged = [];
+          const seen = new Map();
+          for (const r of filteredRoutes) {
+            const key = `${r.date?.split('T')[0]}||${(r.routeName || '').trim()}||${r.departureTime || ''}`;
+            if (seen.has(key)) {
+              const existing = seen.get(key);
+              existing._paxSum = (existing._paxSum || existing.personCount || 0) + (r.personCount || 0);
+              existing._vehicles = existing._vehicles || {};
+              const vt = (r.transportType || '').trim() || '—';
+              existing._vehicles[vt] = (existing._vehicles[vt] || 0) + 1;
+            } else {
+              const entry = { ...r, _paxSum: r.personCount || 0, _vehicles: {} };
+              const vt = (r.transportType || '').trim() || '—';
+              entry._vehicles[vt] = 1;
+              seen.set(key, entry);
+              merged.push(entry);
+            }
+          }
+          // Build combined transportType string: "2 Staria + 1 PKW"
+          displayRoutes = merged.map(r => ({
+            ...r,
+            personCount: r._paxSum,
+            transportType: Object.entries(r._vehicles)
+              .map(([type, count]) => count > 1 ? `${count} ${type}` : type)
+              .join(' + ')
+          }));
+        }
+
         // Store which rows should be colored (Tashkent → yellow, Fergana → blue)
         const yellowRowIndices = [];
         const blueRowIndices = [];
 
-        const routeRows = filteredRoutes.map((r, idx) => {
+        const routeRows = displayRoutes.map((r, idx) => {
           // Find matching flight for arrival time
           const routeDate = r.date?.split('T')[0];
           const matchingFlight = flights.find(f => f.date?.split('T')[0] === routeDate);

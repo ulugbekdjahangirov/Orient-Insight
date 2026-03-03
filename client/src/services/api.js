@@ -316,7 +316,12 @@ export const invoicesApi = {
   getById: (id) => api.get(`/invoices/${id}`),
   create: (data) => api.post('/invoices', data),
   update: (id, data) => api.put(`/invoices/${id}`, data),
-  delete: (id) => api.delete(`/invoices/${id}`)
+  delete: (id) => api.delete(`/invoices/${id}`),
+  getShamixon: () => api.get('/invoices/shamixon'),
+  saveShamixon: (items) => api.put('/invoices/shamixon', { items }),
+  getAusgabenPaid: () => api.get('/invoices/ausgaben-paid'),
+  saveAusgabenHotelPaid: (data) => api.put('/invoices/ausgaben-paid/hotel', { data }),
+  saveAusgabenTransportPaid: (data) => api.put('/invoices/ausgaben-paid/transport', { data }),
 };
 
 // API for price configurations

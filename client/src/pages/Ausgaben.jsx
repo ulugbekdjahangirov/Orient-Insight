@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi, telegramApi } from '../services/api';
+import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi, telegramApi, invoicesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
 import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send } from 'lucide-react';
@@ -49,14 +49,37 @@ export default function Ausgaben() {
   const [openMonths, setOpenMonths] = useState(new Set());
   const toggleHotel = (name) => setOpenHotels(prev => { const s = new Set(prev); s.has(name) ? s.delete(name) : s.add(name); return s; });
   const toggleMonth = (key) => setOpenMonths(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
-  const [paidAccs, setPaidAccs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ausgaben_hotel_paid_v1') || '{}'); } catch { return {}; }
-  });
+  const [paidAccs, setPaidAccs] = useState({});
+  const [paidTransport, setPaidTransport] = useState({});
+
+  // Load paid status from DB (with one-time localStorage migration)
+  useEffect(() => {
+    invoicesApi.getAusgabenPaid().then(res => {
+      let hotel = res.data.hotel || {};
+      let transport = res.data.transport || {};
+      // One-time migration from localStorage
+      if (Object.keys(hotel).length === 0) {
+        try {
+          const legacy = localStorage.getItem('ausgaben_hotel_paid_v1');
+          if (legacy) { hotel = JSON.parse(legacy); invoicesApi.saveAusgabenHotelPaid(hotel); localStorage.removeItem('ausgaben_hotel_paid_v1'); }
+        } catch {}
+      }
+      if (Object.keys(transport).length === 0) {
+        try {
+          const legacy = localStorage.getItem('ausgaben_transport_paid_v1');
+          if (legacy) { transport = JSON.parse(legacy); invoicesApi.saveAusgabenTransportPaid(transport); localStorage.removeItem('ausgaben_transport_paid_v1'); }
+        } catch {}
+      }
+      setPaidAccs(hotel);
+      setPaidTransport(transport);
+    }).catch(() => {});
+  }, []);
+
   const togglePaid = (e, accId) => {
     e.stopPropagation();
     setPaidAccs(prev => {
       const next = { ...prev, [String(accId)]: !prev[String(accId)] };
-      localStorage.setItem('ausgaben_hotel_paid_v1', JSON.stringify(next));
+      invoicesApi.saveAusgabenHotelPaid(next).catch(() => {});
       return next;
     });
   };
@@ -66,15 +89,12 @@ export default function Ausgaben() {
   const [openTransportMonths, setOpenTransportMonths] = useState(new Set());
   const toggleTransportProvider = (key) => setOpenTransportProviders(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
   const toggleTransportMonth = (key) => setOpenTransportMonths(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
-  const [paidTransport, setPaidTransport] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('ausgaben_transport_paid_v1') || '{}'); } catch { return {}; }
-  });
   const toggleTransportPaid = (e, bookingId, providerKey) => {
     e.stopPropagation();
     const tkey = `${bookingId}_${providerKey}`;
     setPaidTransport(prev => {
       const next = { ...prev, [tkey]: !prev[tkey] };
-      localStorage.setItem('ausgaben_transport_paid_v1', JSON.stringify(next));
+      invoicesApi.saveAusgabenTransportPaid(next).catch(() => {});
       return next;
     });
   };
@@ -211,7 +231,7 @@ export default function Ausgaben() {
   };
 
   // Core computation — process bookings in batches of 5 to avoid rate limiting
-  const computeDetailedDataRaw = async (bookingsData, metroVehiclesData) => {
+  const computeDetailedDataRaw = async (bookingsData, metroVehiclesData, opexCache = {}) => {
     const BATCH_SIZE = 5;
     const results = [];
     for (let i = 0; i < bookingsData.length; i += BATCH_SIZE) {
@@ -243,7 +263,7 @@ export default function Ausgaben() {
         }));
 
         const grandTotalData = calculateGrandTotal(accommodations, tourists, accommodationRoomingLists);
-        const expenses = await calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData);
+        const expenses = await calculateExpensesLikeTotalTab(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehiclesData, opexCache);
 
         return {
           bookingId: booking.id,
@@ -270,7 +290,24 @@ export default function Ausgaben() {
       } catch (error) {
         console.error('Error loading metro vehicles:', error);
       }
-      const validData = await computeDetailedDataRaw(bookingsData, metroVehiclesData);
+
+      // Pre-fetch OPEX data once per tour type (not per booking)
+      const tourTypes = [...new Set(bookingsData.map(b => (b.tourType?.code || 'ER').toUpperCase()))];
+      const opexCache = {};
+      await Promise.all(tourTypes.map(async (ttCode) => {
+        const [mealRes, showsRes, sightsRes] = await Promise.all([
+          opexApi.get(ttCode, 'meal').catch(() => ({ data: { items: [] } })),
+          opexApi.get(ttCode, 'shows').catch(() => ({ data: { items: [] } })),
+          opexApi.get(ttCode, 'sightseeing').catch(() => ({ data: { items: [] } })),
+        ]);
+        opexCache[ttCode] = {
+          meal: mealRes.data?.items || [],
+          shows: showsRes.data?.items || [],
+          sightseeing: sightsRes.data?.items || [],
+        };
+      }));
+
+      const validData = await computeDetailedDataRaw(bookingsData, metroVehiclesData, opexCache);
       setBookingsDetailedData(validData);
       return validData;
     } catch (error) {
@@ -281,7 +318,7 @@ export default function Ausgaben() {
 
 
   // Calculate expenses using EXACT SAME LOGIC as Costs → Total tab (BookingDetail.jsx:11146-11264)
-  const calculateExpensesLikeTotalTab = async (booking, tourists, grandTotalData, routes, railways, flights, tourServices = [], metroVehicles = []) => {
+  const calculateExpensesLikeTotalTab = async (booking, tourists, grandTotalData, routes, railways, flights, tourServices = [], metroVehicles = [], opexCache = {}) => {
     const pax = tourists?.length || 0;
     const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
 
@@ -459,51 +496,39 @@ export default function Ausgaben() {
       })()
     };
 
-    // Load Meals from database (OPEX API)
-    try {
-      const response = await opexApi.get(tourTypeCode.toUpperCase(), 'meal');
-      const mealsData = response.data?.items || [];
-      if (mealsData.length > 0) {
-        expenses.meals = mealsData.reduce((sum, meal) => {
-          const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
-          const pricePerPerson = parseFloat(priceStr) || 0;
-          return sum + (pricePerPerson * pax);
-        }, 0);
-      }
-    } catch (e) {
-      console.error('  ❌ Error loading meals:', e);
+    // Load Meals from OPEX cache (pre-fetched once per tour type)
+    const ttCodeUpper = tourTypeCode.toUpperCase();
+    const cachedOpex = opexCache[ttCodeUpper] || {};
+
+    const mealsData = cachedOpex.meal || [];
+    if (mealsData.length > 0) {
+      expenses.meals = mealsData.reduce((sum, meal) => {
+        const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
+        const pricePerPerson = parseFloat(priceStr) || 0;
+        return sum + (pricePerPerson * pax);
+      }, 0);
     }
 
-    // ADD Shows from database (OPEX API) (in addition to tourServices)
-    try {
-      const response = await opexApi.get(tourTypeCode.toUpperCase(), 'shows');
-      const showsData = response.data?.items || [];
-      if (showsData.length > 0) {
-        const opexShows = showsData.reduce((sum, show) => {
-          const rawPrice = show.price || show.pricePerPerson || 0;
-          const priceStr = rawPrice.toString().replace(/\s/g, '');
-          const pricePerPerson = parseFloat(priceStr) || 0;
-          return sum + (pricePerPerson * pax);
-        }, 0);
-        expenses.shou += opexShows; // ADD to existing tourServices value
-      }
-    } catch (e) {
-      console.error('  ❌ Error loading shows:', e);
+    // ADD Shows from OPEX cache (in addition to tourServices)
+    const showsData = cachedOpex.shows || [];
+    if (showsData.length > 0) {
+      const opexShows = showsData.reduce((sum, show) => {
+        const rawPrice = show.price || show.pricePerPerson || 0;
+        const priceStr = rawPrice.toString().replace(/\s/g, '');
+        const pricePerPerson = parseFloat(priceStr) || 0;
+        return sum + (pricePerPerson * pax);
+      }, 0);
+      expenses.shou += opexShows; // ADD to existing tourServices value
     }
 
-    // ADD Eintritt from database (OPEX API) (in addition to tourServices)
-    try {
-      const response = await opexApi.get(tourTypeCode.toUpperCase(), 'sightseeing');
-      const sightseeingData = response.data?.items || [];
-      if (sightseeingData.length > 0) {
-        const opexEintritt = sightseeingData.reduce((sum, item) => {
-          const pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
-          return sum + (pricePerPerson * pax);
-        }, 0);
-        expenses.eintritt += opexEintritt; // ADD to existing tourServices value
-      }
-    } catch (e) {
-      console.error('  ❌ Error loading sightseeing:', e);
+    // ADD Eintritt from OPEX cache (in addition to tourServices)
+    const sightseeingData = cachedOpex.sightseeing || [];
+    if (sightseeingData.length > 0) {
+      const opexEintritt = sightseeingData.reduce((sum, item) => {
+        const pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
+        return sum + (pricePerPerson * pax);
+      }, 0);
+      expenses.eintritt += opexEintritt; // ADD to existing tourServices value
     }
 
 

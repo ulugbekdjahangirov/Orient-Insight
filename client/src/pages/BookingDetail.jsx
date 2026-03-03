@@ -1015,10 +1015,11 @@ export default function BookingDetail() {
   ];
 
   const defaultNosirVehicles = [
-    { id: 1, name: 'PKW', seats: '4', person: '1-2', margilan: '', qoqon: 20, dostlik: 60, toshkent: 170, extra: 60 },
-    { id: 2, name: 'Starex', seats: '7', person: '3-4', margilan: 30, qoqon: 100, dostlik: 100, toshkent: 120, extra: '' },
-    { id: 3, name: 'Joylong', seats: '30', person: '5-8', margilan: 80, qoqon: 180, dostlik: 180, toshkent: 200, extra: '' },
-    { id: 4, name: 'Yutong 33', seats: '45', person: '9-20', margilan: 100, qoqon: 220, dostlik: 220, toshkent: '', extra: '' },
+    { id: 1, name: 'PKW',          seats: '4',  person: '1-2',   margilan: 20, qoqon: 60,  dostlik: 80,  toshkent: 60,  extra: '' },
+    { id: 2, name: 'Staria',       seats: '7',  person: '3-4',   margilan: 40, qoqon: 100, dostlik: 120, toshkent: 120, extra: '' },
+    { id: 3, name: 'Toyota Hiace', seats: '12', person: '5-8',   margilan: 50, qoqon: 120, dostlik: 120, toshkent: '',  extra: '' },
+    { id: 4, name: 'Sprinter',     seats: '20', person: '9-12',  margilan: 80, qoqon: 160, dostlik: 160, toshkent: '',  extra: '' },
+    { id: 5, name: 'Karotishka',   seats: '16', person: '13-16', margilan: 90, qoqon: 200, dostlik: 200, toshkent: '',  extra: '' },
   ];
 
   // Vehicle data from API (initialized with defaults)
@@ -8221,6 +8222,20 @@ export default function BookingDetail() {
             transportType: chimganVehicle,
             choiceRate: 'chimgan',
             price: chimganPrice || route.price
+          }];
+        }
+
+        // Qoqon - Fergana: Nosir, PAX 9-16 → Sprinter at qoqon rate ($160)
+        const isQoqonFergana = route.route === 'Qoqon - Fergana';
+        if (isQoqonFergana && provider === 'nosir' && routePax >= 9 && routePax <= 16) {
+          const qfPrice = getPriceFromOpex('nosir', 'Sprinter', 'qoqon');
+          return [{
+            ...route,
+            person: routePax.toString(),
+            choiceTab: 'nosir',
+            transportType: 'Sprinter',
+            choiceRate: 'qoqon',
+            price: qfPrice || route.price
           }];
         }
 

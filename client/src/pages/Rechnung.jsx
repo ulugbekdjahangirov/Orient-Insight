@@ -91,14 +91,22 @@ export default function Rechnung() {
     try {
       setLoading(true);
 
-      // Special handling for Shamixon module - load from localStorage
+      // Special handling for Shamixon module - load from backend
       if (activeModule === 'shamixon') {
-        const savedItems = localStorage.getItem('shamixonItems');
-        if (savedItems) {
-          setShamixonItems(JSON.parse(savedItems));
-        } else {
-          setShamixonItems([]);
+        const res = await invoicesApi.getShamixon();
+        let items = res.data.items || [];
+        // One-time migration: if backend is empty but localStorage has data, migrate it
+        if (items.length === 0) {
+          const legacy = localStorage.getItem('shamixonItems');
+          if (legacy) {
+            try {
+              items = JSON.parse(legacy);
+              await invoicesApi.saveShamixon(items);
+              localStorage.removeItem('shamixonItems');
+            } catch {}
+          }
         }
+        setShamixonItems(items);
         setLoading(false);
         return;
       }
@@ -236,14 +244,14 @@ export default function Rechnung() {
     };
     const updatedItems = [...shamixonItems, newItem];
     setShamixonItems(updatedItems);
-    localStorage.setItem('shamixonItems', JSON.stringify(updatedItems));
+    invoicesApi.saveShamixon(updatedItems).catch(() => toast.error('Saqlashda xatolik'));
   };
 
   // Delete item - Shamixon
   const handleDeleteShamixonItem = (id) => {
     const updatedItems = shamixonItems.filter(item => item.id !== id);
     setShamixonItems(updatedItems);
-    localStorage.setItem('shamixonItems', JSON.stringify(updatedItems));
+    invoicesApi.saveShamixon(updatedItems).catch(() => toast.error('Saqlashda xatolik'));
   };
 
   // Update item - Shamixon
@@ -255,7 +263,7 @@ export default function Rechnung() {
       return item;
     });
     setShamixonItems(updatedItems);
-    localStorage.setItem('shamixonItems', JSON.stringify(updatedItems));
+    invoicesApi.saveShamixon(updatedItems).catch(() => toast.error('Saqlashda xatolik'));
   };
 
 

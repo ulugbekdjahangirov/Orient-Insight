@@ -69,13 +69,22 @@ router.get('/', authenticate, async (req, res) => {
     const isAdmin = req.user.role === 'ADMIN';
 
     const where = includeInactive === 'true' ? {} : { isActive: true };
-    if (year) where.year = parseInt(year);
+    const guideYear = year ? parseInt(year) : null;
+    if (guideYear) where.year = guideYear;
+
+    // Filter booking count by year (same year as guide)
+    const bookingYearFilter = guideYear ? {
+      departureDate: {
+        gte: new Date(guideYear, 0, 1),
+        lt: new Date(guideYear + 1, 0, 1)
+      }
+    } : {};
 
     const guides = await prisma.guide.findMany({
       where,
       orderBy: { name: 'asc' },
       include: {
-        _count: { select: { bookings: true, guidePayments: true } }
+        _count: { select: { bookings: { where: bookingYearFilter }, guidePayments: true } }
       }
     });
 
@@ -146,10 +155,20 @@ router.get('/:id', authenticate, async (req, res) => {
     const { id } = req.params;
     const isAdmin = req.user.role === 'ADMIN';
 
+    const guideRecord = await prisma.guide.findUnique({ where: { id: parseInt(id) }, select: { year: true } });
+    const guideYear = guideRecord?.year;
+    const bYearFilter = guideYear ? {
+      departureDate: {
+        gte: new Date(guideYear, 0, 1),
+        lt: new Date(guideYear + 1, 0, 1)
+      }
+    } : {};
+
     const guide = await prisma.guide.findUnique({
       where: { id: parseInt(id) },
       include: {
         bookings: {
+          where: bYearFilter,
           orderBy: { departureDate: 'asc' },
           take: 20,
           select: {
@@ -161,6 +180,7 @@ router.get('/:id', authenticate, async (req, res) => {
             pax: true,
             paxUzbekistan: true,
             paxTurkmenistan: true,
+            status: true,
             tourType: { select: { code: true, name: true, color: true } }
           }
         },
@@ -168,7 +188,7 @@ router.get('/:id', authenticate, async (req, res) => {
           orderBy: { paymentDate: 'desc' },
           take: 10
         },
-        _count: { select: { bookings: true, guidePayments: true } }
+        _count: { select: { bookings: { where: bYearFilter }, guidePayments: true } }
       }
     });
 

@@ -2286,10 +2286,12 @@ export default function Price() {
 
     // Save to localStorage with tour-specific key (year-aware)
     const storageKey = `${selectedTour.id.toLowerCase()}-total-prices_${year}`;
+    const storageKeyNoYear = `${selectedTour.id.toLowerCase()}-total-prices`;
 
     try {
-      // 1. Save to localStorage (fast, immediate)
+      // 1. Save to localStorage (fast, immediate) — both year-aware and plain key
       localStorage.setItem(storageKey, JSON.stringify(pricesToSave));
+      localStorage.setItem(storageKeyNoYear, JSON.stringify(pricesToSave));
 
       Object.keys(pricesToSave).forEach(tierId => {
         const tierData = pricesToSave[tierId];

@@ -32,7 +32,9 @@ import {
 } from 'lucide-react';
 
 // Helper function to calculate booking status
-function getStatusByPax(pax, departureDate, endDate) {
+function getBookingStatus(booking) {
+  const { status, pax, departureDate, endDate } = booking;
+  if (status === 'CANCELLED' || status === 'FINAL_CONFIRMED' || status === 'COMPLETED') return status;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const departure = new Date(departureDate);
@@ -40,7 +42,6 @@ function getStatusByPax(pax, departureDate, endDate) {
   const end = new Date(endDate);
   end.setHours(0, 0, 0, 0);
   const daysUntilDeparture = Math.ceil((departure - today) / (1000 * 60 * 60 * 24));
-
   if (end < today) return 'COMPLETED';
   if (pax < 4 && daysUntilDeparture < 30) return 'CANCELLED';
   if (pax >= 6) return 'CONFIRMED';
@@ -109,7 +110,7 @@ export default function Guides() {
   useEffect(() => {
     loadGuides();
     loadAlerts();
-  }, []);
+  }, [selectedYear]);
 
   const loadGuides = async () => {
     try {
@@ -309,10 +310,6 @@ export default function Guides() {
       setEditingPayment(null);
       await loadGuides();
     } catch (error) {
-      console.error('🔴 [SAVE] Error occurred:', error);
-      console.error('🔴 [SAVE] Error response:', error.response);
-      console.error('🔴 [SAVE] Error data:', error.response?.data);
-      console.error('🔴 [SAVE] Error status:', error.response?.status);
       toast.error(error.response?.data?.error || 'Ошибка обновления ставок оплаты');
     }
   };
@@ -337,9 +334,6 @@ export default function Guides() {
       setEditingCityPayment(null);
       await loadGuides();
     } catch (error) {
-      console.error('🔴 [CITY SAVE] Error occurred:', error);
-      console.error('🔴 [CITY SAVE] Error response:', error.response);
-      console.error('🔴 [CITY SAVE] Error data:', error.response?.data);
       toast.error(error.response?.data?.error || 'Ошибка обновления городской ставки');
     }
   };
@@ -636,7 +630,7 @@ export default function Guides() {
                     guideBookings[guide.id].length > 0 ? (
                       <div className="space-y-1">
                         {guideBookings[guide.id].map((booking) => {
-                          const status = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                          const status = getBookingStatus(booking);
                           return (
                             <div key={booking.id} className="bg-white rounded-lg px-2 py-1.5 flex items-center gap-2 text-xs">
                               <span className="px-2 py-0.5 rounded-md text-white font-bold text-xs shrink-0" style={{ backgroundColor: booking.tourType?.color || '#3B82F6' }}>
@@ -647,11 +641,12 @@ export default function Guides() {
                               <span className="font-bold text-gray-800">{booking.pax || 0}</span>
                               <span className={`ml-auto px-2 py-0.5 rounded-md text-white text-xs font-bold shrink-0 ${
                                 status === 'COMPLETED' ? 'bg-blue-500' :
+                                status === 'FINAL_CONFIRMED' ? 'bg-emerald-500' :
                                 status === 'CONFIRMED' ? 'bg-green-500' :
                                 status === 'IN_PROGRESS' ? 'bg-purple-500' :
                                 status === 'CANCELLED' ? 'bg-red-500' : 'bg-yellow-500'
                               }`}>
-                                {status === 'COMPLETED' ? 'Done' : status === 'CONFIRMED' ? 'OK' : status === 'IN_PROGRESS' ? '...' : status === 'CANCELLED' ? 'X' : '?'}
+                                {status === 'COMPLETED' ? 'Done' : status === 'FINAL_CONFIRMED' ? 'Final' : status === 'CONFIRMED' ? 'OK' : status === 'IN_PROGRESS' ? '...' : status === 'CANCELLED' ? 'X' : '?'}
                               </span>
                             </div>
                           );
@@ -780,7 +775,7 @@ export default function Guides() {
                       )}
                       {guide.passportIssueDate && (
                         <div className="text-xs text-gray-500">
-                          до {format(new Date(guide.passportIssueDate), 'dd.MM.yy')}
+                          berilgan: {format(new Date(guide.passportIssueDate), 'dd.MM.yy')}
                         </div>
                       )}
                       {!guide.passportNumber && <span className="text-xs text-gray-400">—</span>}
@@ -906,7 +901,7 @@ export default function Guides() {
                                   </thead>
                                   <tbody className="divide-y divide-gray-200">
                                     {guideBookings[guide.id].map((booking, idx) => {
-                                      const status = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                                      const status = getBookingStatus(booking);
                                       return (
                                         <tr key={booking.id} className={`hover:bg-gradient-to-r hover:from-primary-50/80 hover:via-indigo-50/50 hover:to-purple-50/30 transition-all duration-300 hover:shadow-sm ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                                           <td className="px-4 py-3">
@@ -937,12 +932,14 @@ export default function Guides() {
                                           <td className="px-4 py-3">
                                             <span className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
                                               status === 'COMPLETED' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' :
+                                              status === 'FINAL_CONFIRMED' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' :
                                               status === 'CONFIRMED' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' :
                                               status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' :
                                               status === 'CANCELLED' ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' :
                                               'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white'
                                             }`}>
                                               {status === 'COMPLETED' ? 'Completed' :
+                                               status === 'FINAL_CONFIRMED' ? 'Final Confirmed' :
                                                status === 'CONFIRMED' ? 'Confirmed' :
                                                status === 'IN_PROGRESS' ? 'In Progress' :
                                                status === 'CANCELLED' ? 'Cancelled' :
@@ -1001,12 +998,13 @@ export default function Guides() {
               {/* MOBILE: compact booking list */}
               <div className="md:hidden divide-y divide-gray-100">
                 {allBookings.map((booking, idx) => {
-                  const status = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                  const status = getBookingStatus(booking);
                   const statusCfg = ({
-                    COMPLETED:   { bg: 'bg-blue-500',   label: 'Done' },
-                    CONFIRMED:   { bg: 'bg-green-500',  label: 'OK' },
-                    IN_PROGRESS: { bg: 'bg-purple-500', label: 'Active' },
-                    CANCELLED:   { bg: 'bg-red-500',    label: 'Cancelled' },
+                    COMPLETED:       { bg: 'bg-blue-500',    label: 'Done' },
+                    FINAL_CONFIRMED: { bg: 'bg-emerald-500', label: 'Final' },
+                    CONFIRMED:       { bg: 'bg-green-500',   label: 'OK' },
+                    IN_PROGRESS:     { bg: 'bg-purple-500',  label: 'Active' },
+                    CANCELLED:       { bg: 'bg-red-500',     label: 'Cancelled' },
                   })[status] || { bg: 'bg-yellow-400', label: 'Pending' };
                   const color = booking.tourType?.color || '#3B82F6';
                   return (
@@ -1076,7 +1074,7 @@ export default function Guides() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {allBookings.map((booking, idx) => {
-                    const status = getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                    const status = getBookingStatus(booking);
                     return (
                       <tr key={booking.id} className={`hover:bg-gradient-to-r hover:from-blue-50/80 hover:via-cyan-50/50 hover:to-sky-50/30 transition-all duration-300 hover:shadow-md ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                         <td className="px-3 md:px-4 py-3 md:py-4">
@@ -1107,12 +1105,14 @@ export default function Guides() {
                         <td className="px-3 md:px-4 py-3 md:py-4">
                           <span className={`px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap ${
                             status === 'COMPLETED' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' :
+                            status === 'FINAL_CONFIRMED' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' :
                             status === 'CONFIRMED' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' :
                             status === 'IN_PROGRESS' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' :
                             status === 'CANCELLED' ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' :
                             'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white'
                           }`}>
                             {status === 'COMPLETED' ? 'Completed' :
+                             status === 'FINAL_CONFIRMED' ? 'Final Confirmed' :
                              status === 'CONFIRMED' ? 'Confirmed' :
                              status === 'IN_PROGRESS' ? 'In Progress' :
                              status === 'CANCELLED' ? 'Cancelled' :

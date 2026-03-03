@@ -498,10 +498,12 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       const zusatzkostenRaw = localStorage.getItem(zusatzkostenKey) || '[]';
       const zusatzkosten = JSON.parse(zusatzkostenRaw);
 
+      const mainDescription = tourTypeCode === 'CO' ? 'Usbekistan ComfortPlus' : 'Usbekistan Teil';
+
       const items = [
         {
           id: 1,
-          description: 'Usbekistan Teil',
+          description: mainDescription,
           einzelpreis: einzelpreis,
           anzahl: anzahl,
           currency: 'USD'
@@ -586,7 +588,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       // CRITICAL: If this invoice is locked in localStorage (firma selected), use locked items
       if (hasFirma && lockedData && lockedData.items && lockedData.items.length > 0) {
         // If lock was saved with 0 prices (race condition) and totalPrices now available, clear stale lock
-        const mainItem = lockedData.items.find(item => item.description === 'Usbekistan Teil');
+        const mainItem = lockedData.items.find(item => item.description === 'Usbekistan Teil' || item.description === 'Usbekistan ComfortPlus');
         if (mainItem && mainItem.einzelpreis === 0 && totalPrices !== null && Object.keys(totalPrices).length > 0) {
           localStorage.removeItem(lockKey);
           lockedData = null; // Fall through to recalculation
@@ -619,7 +621,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
             if (Array.isArray(savedItems) && savedItems.length > 0) {
               // Use DB items only if they have valid (non-zero) prices
-              const mainItem = savedItems.find(item => item.description === 'Usbekistan Teil');
+              const mainItem = savedItems.find(item => item.description === 'Usbekistan Teil' || item.description === 'Usbekistan ComfortPlus');
               const hasValidPrice = !mainItem || mainItem.einzelpreis > 0;
 
               if (hasValidPrice) {
