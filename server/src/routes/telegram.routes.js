@@ -611,16 +611,21 @@ router.post('/webhook', (req, res, next) => {
           if (!hotel) { await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '🏨 Hotel topilmadi.' }).catch(() => {}); return; }
 
           const confs = await prisma.telegramConfirmation.findMany({
-            where: { hotelId: hotel.id },
+            where: {
+              hotelId: hotel.id,
+              // Изменения: faqat PENDING (javob kutilayotgan yangi o'zgarishlar)
+              // Аннуляция: barcha status (keyin cancelled booking bo'yicha filter)
+              ...(isAnn ? {} : { status: 'PENDING' })
+            },
             include: { booking: { select: { bookingNumber: true, status: true, pax: true } } },
             orderBy: { sentAt: 'asc' }
           });
 
-          // Unique by bookingId — keep latest per booking, filter by cancelled/active
+          // Unique by bookingId; Аннуляция uchun faqat cancelled bookinglar
           const seen = new Set();
           const filtered = confs.filter(c => {
             const isCancelled = c.booking?.status === 'CANCELLED';
-            if (isAnn ? !isCancelled : isCancelled) return false;
+            if (isAnn && !isCancelled) return false;
             if (seen.has(c.bookingId)) return false;
             seen.add(c.bookingId);
             return true;
