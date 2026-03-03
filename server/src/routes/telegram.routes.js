@@ -444,10 +444,12 @@ router.post('/webhook', (req, res, next) => {
         const lang = msg.text.includes("O'zbek") ? 'uz' : 'ru';
         const chats = await loadKnownChats();
         if (chats[String(chat.id)]) { chats[String(chat.id)].lang = lang; await saveKnownChats(chats); }
+        const userRole = chats[String(chat.id)]?.role;
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: chat.id, text: T.langSelected[lang], parse_mode: 'Markdown',
           reply_markup: JSON.stringify({ remove_keyboard: true })
         }).catch(() => {});
+        if (userRole === 'hotel') await sendHotelMenu(chat.id);
         return;
       }
 
