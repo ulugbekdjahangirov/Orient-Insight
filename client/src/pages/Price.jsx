@@ -3602,8 +3602,8 @@ export default function Price() {
       )}
 
       {selectedTourType === 'er' && selectedERSubTab === 'total' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-3 rounded-t-2xl">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
           {isMobile ? (() => {
@@ -3674,97 +3674,97 @@ export default function Price() {
               calculatedTotalPrices.current = {};
 
               return (
-            <table className="w-full border-collapse min-w-max">
+            <table className="w-full border-collapse" style={{minWidth:'780px'}}>
               <thead>
                 <tr className="bg-gradient-to-r from-purple-500 to-indigo-500">
-                  <th className="border border-purple-600 px-4 py-3 text-left font-bold text-white">Category</th>
+                  <th className="border border-purple-600 px-3 py-2 text-left font-bold text-white">Category</th>
                   {paxTiers.map(tier => (
-                    <th key={tier.id} className="border border-purple-600 px-4 py-3 text-center font-bold text-white">{tier.name}</th>
+                    <th key={tier.id} className="border border-purple-600 px-3 py-2 text-center font-bold text-white">{tier.name}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {/* Hotels */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Hotels</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Hotels</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(hotelTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Transport */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Transport</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Transport</td>
                   {transportTotals.map((total, idx) => (
-                    <td key={idx} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={idx} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(total)}
                     </td>
                   ))}
                 </tr>
                 {/* Railway */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Railway</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Railway</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(railwayTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Fly */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Fly</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Fly</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(flyTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 {/* Meal */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Meal</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Meal</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(mealTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Sightseing */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Sightseing</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Sightseing</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(sightseingTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Guide */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Guide</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Guide</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(guideTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 {/* Shou */}
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Shou</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Shou</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-blue-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-blue-600 font-bold">
                       {formatPrice(shouTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Price (Subtotal) */}
                 <tr className="bg-gray-100 border-t-2 border-gray-400">
-                  <td className="border border-gray-400 px-4 py-3 font-bold text-base text-gray-900">Price</td>
+                  <td className="border border-gray-400 px-3 py-2 font-bold text-base text-gray-900">Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-4 py-3 text-center font-bold text-lg text-gray-900">
+                      <td key={tier.id} className="border border-gray-400 px-3 py-2 text-center font-bold text-base text-gray-900">
                         {formatPrice(price)} $
                       </td>
                     );
@@ -3772,7 +3772,7 @@ export default function Price() {
                 </tr>
                 {/* Commission */}
                 <tr className="bg-gray-50">
-                  <td className="border border-gray-400 px-4 py-3 font-semibold text-base text-gray-700">commission (%)</td>
+                  <td className="border border-gray-400 px-3 py-2 font-semibold text-sm text-gray-700">commission (%)</td>
                   {paxTiers.map(tier => {
                     const commission = commissionValues[tier.id] || 0;
                     const transportPPP = calculateTransportTotals().grandTotal / tier.count;
@@ -3780,7 +3780,7 @@ export default function Price() {
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     const commissionAmount = (price * commission) / 100;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-2 py-2 text-center">
+                      <td key={tier.id} className="border border-gray-400 px-1 py-1 text-center">
                         <input
                           type="number"
                           step="0.1"
@@ -3788,9 +3788,9 @@ export default function Price() {
                           value={commission === 0 ? '' : commission}
                           onChange={(e) => updateCommissionValue(tier.id, e.target.value)}
                           onBlur={saveCommissionValues}
-                          className="w-full px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-base"
+                          className="w-full px-1 py-0.5 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm"
                         />
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-0.5">
                           {commissionAmount > 0 && `+${formatPrice(commissionAmount)} $`}
                         </div>
                       </td>
@@ -3799,7 +3799,7 @@ export default function Price() {
                 </tr>
                 {/* Total Price (Final) */}
                 <tr className="bg-gradient-to-r from-green-400 to-emerald-400 border-t-4 border-green-600">
-                  <td className="border border-green-600 px-4 py-4 font-black text-lg text-gray-900">Total Price</td>
+                  <td className="border border-green-600 px-3 py-3 font-black text-base text-gray-900">Total Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
@@ -3815,7 +3815,7 @@ export default function Price() {
                     };
 
                     return (
-                      <td key={tier.id} className="border border-green-600 px-4 py-4 text-center font-black text-xl text-gray-900">
+                      <td key={tier.id} className="border border-green-600 px-3 py-3 text-center font-black text-lg text-gray-900">
                         {formatPrice(totalPrice)} $
                       </td>
                     );
@@ -3827,10 +3827,10 @@ export default function Price() {
             })()}
 
             {/* EZ Zuschlag Info */}
-            <div className="px-6 py-4 bg-orange-50 border-t-2 border-orange-200">
+            <div className="px-6 py-3 bg-orange-50 border-t-2 border-orange-200">
               <div className="flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
-                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2))} $</span>
+                <span className="text-base font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
+                <span className="text-xl font-black text-orange-600">{formatPrice(calculateHotelTotals().totalEZZimmer - (calculateHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
 
@@ -4882,8 +4882,8 @@ export default function Price() {
       )}
 
       {selectedTourType === 'co' && selectedCOSubTab === 'total' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
+          <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 rounded-t-2xl">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
           {isMobile ? (() => {
@@ -4942,97 +4942,97 @@ export default function Price() {
               const shouTotal = coShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
 
               return (
-            <table className="w-full border-collapse min-w-max">
+            <table className="w-full border-collapse" style={{minWidth:'780px'}}>
               <thead>
                 <tr className="bg-gradient-to-r from-green-500 to-emerald-500">
-                  <th className="border border-green-600 px-4 py-3 text-left font-bold text-white">Category</th>
+                  <th className="border border-green-600 px-3 py-2 text-left font-bold text-white">Category</th>
                   {paxTiers.map(tier => (
-                    <th key={tier.id} className="border border-green-600 px-4 py-3 text-center font-bold text-white">{tier.name}</th>
+                    <th key={tier.id} className="border border-green-600 px-3 py-2 text-center font-bold text-white">{tier.name}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {/* Hotels */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Hotels</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Hotels</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(hotelTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Transport */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Transport</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Transport</td>
                   {transportTotals.map((total, idx) => (
-                    <td key={idx} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={idx} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(total)}
                     </td>
                   ))}
                 </tr>
                 {/* Railway */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Railway</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Railway</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(railwayTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Fly */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Fly</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Fly</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(flyTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 {/* Meal */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Meal</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Meal</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(mealTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Sightseing */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Sightseing</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Sightseing</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(sightseingTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Guide */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Guide</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Guide</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(guideTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 {/* Shou */}
                 <tr className="bg-green-50 hover:bg-green-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Shou</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Shou</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-green-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-green-600 font-bold">
                       {formatPrice(shouTotal)}
                     </td>
                   ))}
                 </tr>
                 {/* Price (Subtotal) */}
                 <tr className="bg-gray-100 border-t-2 border-gray-400">
-                  <td className="border border-gray-400 px-4 py-3 font-bold text-base text-gray-900">Price</td>
+                  <td className="border border-gray-400 px-3 py-2 font-bold text-base text-gray-900">Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateCoTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-4 py-3 text-center font-bold text-lg text-gray-900">
+                      <td key={tier.id} className="border border-gray-400 px-3 py-2 text-center font-bold text-base text-gray-900">
                         {formatPrice(price)} $
                       </td>
                     );
@@ -5040,7 +5040,7 @@ export default function Price() {
                 </tr>
                 {/* Commission */}
                 <tr className="bg-gray-50">
-                  <td className="border border-gray-400 px-4 py-3 font-semibold text-base text-gray-700">commission (%)</td>
+                  <td className="border border-gray-400 px-3 py-2 font-semibold text-sm text-gray-700">commission (%)</td>
                   {paxTiers.map(tier => {
                     const commission = coCommissionValues[tier.id] || 0;
                     const transportPPP = calculateCoTransportTotals().grandTotal / tier.count;
@@ -5048,7 +5048,7 @@ export default function Price() {
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     const commissionAmount = (price * commission) / 100;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-2 py-2 text-center">
+                      <td key={tier.id} className="border border-gray-400 px-1 py-1 text-center">
                         <input
                           type="number"
                           step="0.1"
@@ -5056,9 +5056,9 @@ export default function Price() {
                           value={commission === 0 ? '' : commission}
                           onChange={(e) => updateCoCommissionValue(tier.id, e.target.value)}
                           onBlur={saveCoCommissionValues}
-                          className="w-full px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold text-base"
+                          className="w-full px-1 py-0.5 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold text-sm"
                         />
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-0.5">
                           {commissionAmount > 0 && `+${formatPrice(commissionAmount)} $`}
                         </div>
                       </td>
@@ -5067,7 +5067,7 @@ export default function Price() {
                 </tr>
                 {/* Total Price (Final) */}
                 <tr className="bg-gradient-to-r from-green-400 to-emerald-400 border-t-4 border-green-600">
-                  <td className="border border-green-600 px-4 py-4 font-black text-lg text-gray-900">Total Price</td>
+                  <td className="border border-green-600 px-3 py-3 font-black text-base text-gray-900">Total Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateCoTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
@@ -5086,7 +5086,7 @@ export default function Price() {
                     };
 
                     return (
-                      <td key={tier.id} className="border border-green-600 px-4 py-4 text-center font-black text-xl text-gray-900">
+                      <td key={tier.id} className="border border-green-600 px-3 py-3 text-center font-black text-lg text-gray-900">
                         {formatPrice(totalPrice)} $
                       </td>
                     );
@@ -5098,10 +5098,10 @@ export default function Price() {
             })()}
 
             {/* EZ Zuschlag Info */}
-            <div className="px-6 py-4 bg-orange-50 border-t-2 border-orange-200">
+            <div className="px-6 py-3 bg-orange-50 border-t-2 border-orange-200">
               <div className="flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
-                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateCoHotelTotals().totalEZZimmer - (calculateCoHotelTotals().totalPerTraveler / 2))} $</span>
+                <span className="text-base font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
+                <span className="text-xl font-black text-orange-600">{formatPrice(calculateCoHotelTotals().totalEZZimmer - (calculateCoHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
           </div>}
@@ -5942,8 +5942,8 @@ export default function Price() {
       )}
 
       {selectedTourType === 'kas' && selectedKASSubTab === 'total' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-3">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
+          <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-3 rounded-t-2xl">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
           {isMobile ? (() => {
@@ -6002,95 +6002,95 @@ export default function Price() {
               const shouTotal = kasShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
 
               return (
-            <table className="w-full border-collapse min-w-max">
+            <table className="w-full border-collapse" style={{minWidth:'780px'}}>
               <thead>
                 <tr className="bg-gradient-to-r from-orange-500 to-orange-600">
-                  <th className="border border-orange-600 px-4 py-3 text-left font-bold text-white">Category</th>
+                  <th className="border border-orange-600 px-3 py-2 text-left font-bold text-white">Category</th>
                   {paxTiers.map(tier => (
-                    <th key={tier.id} className="border border-orange-600 px-4 py-3 text-center font-bold text-white">{tier.name}</th>
+                    <th key={tier.id} className="border border-orange-600 px-3 py-2 text-center font-bold text-white">{tier.name}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Hotels</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Hotels</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(hotelTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Transport</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Transport</td>
                   {transportTotals.map((total, idx) => (
-                    <td key={idx} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={idx} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(total)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Railway</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Railway</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(railwayTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Fly</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Fly</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(flyTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Meal</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Meal</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(mealTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Sightseing</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Sightseing</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(sightseingTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Guide</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Guide</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(guideTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Shou</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Shou</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-orange-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-orange-600 font-bold">
                       {formatPrice(shouTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-gray-100 border-t-2 border-gray-400">
-                  <td className="border border-gray-400 px-4 py-3 font-bold text-base text-gray-900">Price</td>
+                  <td className="border border-gray-400 px-3 py-2 font-bold text-base text-gray-900">Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateKasTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-4 py-3 text-center font-bold text-lg text-gray-900">
+                      <td key={tier.id} className="border border-gray-400 px-3 py-2 text-center font-bold text-base text-gray-900">
                         {formatPrice(price)} $
                       </td>
                     );
                   })}
                 </tr>
                 <tr className="bg-gray-50">
-                  <td className="border border-gray-400 px-4 py-3 font-semibold text-base text-gray-700">commission (%)</td>
+                  <td className="border border-gray-400 px-3 py-2 font-semibold text-sm text-gray-700">commission (%)</td>
                   {paxTiers.map(tier => {
                     const commission = kasCommissionValues[tier.id] || 0;
                     const transportPPP = calculateKasTransportTotals().grandTotal / tier.count;
@@ -6098,7 +6098,7 @@ export default function Price() {
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     const commissionAmount = (price * commission) / 100;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-2 py-2 text-center">
+                      <td key={tier.id} className="border border-gray-400 px-1 py-1 text-center">
                         <input
                           type="number"
                           step="0.1"
@@ -6106,9 +6106,9 @@ export default function Price() {
                           value={commission === 0 ? '' : commission}
                           onChange={(e) => updateKasCommissionValue(tier.id, e.target.value)}
                           onBlur={saveKasCommissionValues}
-                          className="w-full px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 font-semibold text-base"
+                          className="w-full px-1 py-0.5 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 font-semibold text-sm"
                         />
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-0.5">
                           {commissionAmount > 0 && `+${formatPrice(commissionAmount)} $`}
                         </div>
                       </td>
@@ -6116,7 +6116,7 @@ export default function Price() {
                   })}
                 </tr>
                 <tr className="bg-gradient-to-r from-green-400 to-emerald-400 border-t-4 border-green-600">
-                  <td className="border border-green-600 px-4 py-4 font-black text-lg text-gray-900">Total Price</td>
+                  <td className="border border-green-600 px-3 py-3 font-black text-base text-gray-900">Total Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateKasTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
@@ -6132,7 +6132,7 @@ export default function Price() {
                     };
 
                     return (
-                      <td key={tier.id} className="border border-green-600 px-4 py-4 text-center font-black text-xl text-gray-900">
+                      <td key={tier.id} className="border border-green-600 px-3 py-3 text-center font-black text-lg text-gray-900">
                         {formatPrice(totalPrice)} $
                       </td>
                     );
@@ -6142,10 +6142,10 @@ export default function Price() {
             </table>
               );
             })()}
-            <div className="px-6 py-4 bg-orange-50 border-t-2 border-orange-200">
+            <div className="px-6 py-3 bg-orange-50 border-t-2 border-orange-200">
               <div className="flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
-                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateKasHotelTotals().totalEZZimmer - (calculateKasHotelTotals().totalPerTraveler / 2))} $</span>
+                <span className="text-base font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
+                <span className="text-xl font-black text-orange-600">{formatPrice(calculateKasHotelTotals().totalEZZimmer - (calculateKasHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
           </div>}
@@ -6982,8 +6982,8 @@ export default function Price() {
       )}
 
       {selectedTourType === 'za' && selectedZASubTab === 'total' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-3">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
+          <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-3 rounded-t-2xl">
             <h3 className="text-xl font-bold text-white text-center">Total Price Summary - All Categories</h3>
           </div>
           {isMobile ? (() => {
@@ -7042,95 +7042,95 @@ export default function Price() {
               const shouTotal = zaShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0);
 
               return (
-            <table className="w-full border-collapse min-w-max">
+            <table className="w-full border-collapse" style={{minWidth:'780px'}}>
               <thead>
                 <tr className="bg-gradient-to-r from-purple-500 to-purple-600">
-                  <th className="border border-purple-600 px-4 py-3 text-left font-bold text-white">Category</th>
+                  <th className="border border-purple-600 px-3 py-2 text-left font-bold text-white">Category</th>
                   {paxTiers.map(tier => (
-                    <th key={tier.id} className="border border-purple-600 px-4 py-3 text-center font-bold text-white">{tier.name}</th>
+                    <th key={tier.id} className="border border-purple-600 px-3 py-2 text-center font-bold text-white">{tier.name}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Hotels</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Hotels</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(hotelTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Transport</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Transport</td>
                   {transportTotals.map((total, idx) => (
-                    <td key={idx} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={idx} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(total)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Railway</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Railway</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(railwayTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Fly</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Fly</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(flyTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Meal</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Meal</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(mealTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Sightseing</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Sightseing</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(sightseingTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Guide</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Guide</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(guideTotal / tier.count)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100 transition-colors">
-                  <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Shou</td>
+                  <td className="border border-gray-300 px-3 py-2 font-semibold text-gray-900">Shou</td>
                   {paxTiers.map(tier => (
-                    <td key={tier.id} className="border border-gray-300 px-4 py-3 text-center text-purple-600 font-bold">
+                    <td key={tier.id} className="border border-gray-300 px-3 py-2 text-center text-purple-600 font-bold">
                       {formatPrice(shouTotal)}
                     </td>
                   ))}
                 </tr>
                 <tr className="bg-gray-100 border-t-2 border-gray-400">
-                  <td className="border border-gray-400 px-4 py-3 font-bold text-base text-gray-900">Price</td>
+                  <td className="border border-gray-400 px-3 py-2 font-bold text-base text-gray-900">Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateZaTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-4 py-3 text-center font-bold text-lg text-gray-900">
+                      <td key={tier.id} className="border border-gray-400 px-3 py-2 text-center font-bold text-base text-gray-900">
                         {formatPrice(price)} $
                       </td>
                     );
                   })}
                 </tr>
                 <tr className="bg-gray-50">
-                  <td className="border border-gray-400 px-4 py-3 font-semibold text-base text-gray-700">commission (%)</td>
+                  <td className="border border-gray-400 px-3 py-2 font-semibold text-sm text-gray-700">commission (%)</td>
                   {paxTiers.map(tier => {
                     const commission = zaCommissionValues[tier.id] || 0;
                     const transportPPP = calculateZaTransportTotals().grandTotal / tier.count;
@@ -7138,7 +7138,7 @@ export default function Price() {
                                   mealTotal + sightseingTotal + (guideTotal / tier.count) + shouTotal;
                     const commissionAmount = (price * commission) / 100;
                     return (
-                      <td key={tier.id} className="border border-gray-400 px-2 py-2 text-center">
+                      <td key={tier.id} className="border border-gray-400 px-1 py-1 text-center">
                         <input
                           type="number"
                           step="0.1"
@@ -7146,9 +7146,9 @@ export default function Price() {
                           value={commission === 0 ? '' : commission}
                           onChange={(e) => updateZaCommissionValue(tier.id, e.target.value)}
                           onBlur={saveZaCommissionValues}
-                          className="w-full px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold text-base"
+                          className="w-full px-1 py-0.5 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold text-sm"
                         />
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-0.5">
                           {commissionAmount > 0 && `+${formatPrice(commissionAmount)} $`}
                         </div>
                       </td>
@@ -7156,7 +7156,7 @@ export default function Price() {
                   })}
                 </tr>
                 <tr className="bg-gradient-to-r from-green-400 to-emerald-400 border-t-4 border-green-600">
-                  <td className="border border-green-600 px-4 py-4 font-black text-lg text-gray-900">Total Price</td>
+                  <td className="border border-green-600 px-3 py-3 font-black text-base text-gray-900">Total Price</td>
                   {paxTiers.map(tier => {
                     const transportPPP = calculateZaTransportTotals().grandTotal / tier.count;
                     const price = hotelTotal + transportPPP + railwayTotal + (flyTotal / tier.count) +
@@ -7172,7 +7172,7 @@ export default function Price() {
                     };
 
                     return (
-                      <td key={tier.id} className="border border-green-600 px-4 py-4 text-center font-black text-xl text-gray-900">
+                      <td key={tier.id} className="border border-green-600 px-3 py-3 text-center font-black text-lg text-gray-900">
                         {formatPrice(totalPrice)} $
                       </td>
                     );
@@ -7182,10 +7182,10 @@ export default function Price() {
             </table>
               );
             })()}
-            <div className="px-6 py-4 bg-orange-50 border-t-2 border-orange-200">
+            <div className="px-6 py-3 bg-orange-50 border-t-2 border-orange-200">
               <div className="flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
-                <span className="text-2xl font-black text-orange-600">{formatPrice(calculateZaHotelTotals().totalEZZimmer - (calculateZaHotelTotals().totalPerTraveler / 2))} $</span>
+                <span className="text-base font-bold text-gray-700 mr-3">EZ Zuschlag:</span>
+                <span className="text-xl font-black text-orange-600">{formatPrice(calculateZaHotelTotals().totalEZZimmer - (calculateZaHotelTotals().totalPerTraveler / 2))} $</span>
               </div>
             </div>
           </div>}
