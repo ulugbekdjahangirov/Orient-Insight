@@ -141,13 +141,12 @@ async function findJpSectionsByChatId(chatId) {
   });
 }
 
-// Helper: handle /start command — save chat, set role=user, show language selection
+// Helper: handle /start command — save chat, set role=user
 async function handleStart(chat, msg, botApiUrl) {
   try {
     const chats = await loadKnownChats();
     const existing = chats[String(chat.id)] || {};
     const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
-    const lang = existing.lang || 'uz';
     chats[String(chat.id)] = {
       ...existing,
       chatId: String(chat.id),
@@ -160,16 +159,16 @@ async function handleStart(chat, msg, botApiUrl) {
     };
     await saveKnownChats(chats);
     const firstName = chat.first_name || chat.title || 'Foydalanuvchi';
-    await axios.post(`${botApiUrl}/sendMessage`, {
-      chat_id: chat.id,
-      text: `Assalomu alaykum / Добро пожаловать, *${firstName}!* 👋\n\nSiz ro'yxatga qo'shildingiz. Admin tez orada sizga rol tayinlaydi.\nВы зарегистрированы. Администратор скоро назначит вам роль.\n\n${T.langKeyboard[lang]}`,
-      parse_mode: 'Markdown',
-      reply_markup: JSON.stringify({
-        keyboard: [[{ text: "🇺🇿 O'zbek tili" }, { text: "🇷🇺 Русский язык" }]],
-        resize_keyboard: true,
-        one_time_keyboard: true
-      })
-    }).catch(() => {});
+    if (existing.role === 'hotel') {
+      await sendHotelMenu(chat.id);
+    } else {
+      await axios.post(`${botApiUrl}/sendMessage`, {
+        chat_id: chat.id,
+        text: `Assalomu alaykum, *${firstName}!* 👋\n\nSiz ro'yxatga qo'shildingiz. Admin tez orada sizga rol tayinlaydi.`,
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({ remove_keyboard: true })
+      }).catch(() => {});
+    }
   } catch (e) { console.error('handleStart error:', e.message); }
 }
 
@@ -360,26 +359,20 @@ router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
     if (role !== undefined) chats[chatId].role = role;
     if (phone !== undefined) chats[chatId].phone = phone;
     await saveKnownChats(chats);
-    // Send bot-specific welcome message + phone request when admin assigns a role
+    // Send bot-specific welcome message when admin assigns a role
     if (role !== undefined && role !== prevRole && T.roleAssigned[role]) {
       const roleApis = { hotel: BOT_API(), transport: TRANSPORT_API(), restaurant: RESTAURANT_API(), guide: GUIDE_API() };
       const api = roleApis[role];
       if (api) {
         const lang = await getChatLang(chatId);
         const text = T.roleAssigned[role][lang] || T.roleAssigned[role].uz;
-        const phonePrompt = lang === 'ru'
-          ? '\n\n📱 Пожалуйста, поделитесь вашим номером телефона:'
-          : "\n\n📱 Iltimos, telefon raqamingizni ulashing:";
         await axios.post(`${api}/sendMessage`, {
           chat_id: chatId,
-          text: text + phonePrompt,
+          text,
           parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({
-            keyboard: [[{ text: T.phoneButton[lang], request_contact: true }]],
-            resize_keyboard: true,
-            one_time_keyboard: true
-          })
+          reply_markup: JSON.stringify({ remove_keyboard: true })
         }).catch(() => {});
+        if (role === 'hotel') await sendHotelMenu(chatId);
       }
     }
     res.json({ chat: chats[chatId] });
@@ -439,36 +432,25 @@ router.post('/webhook', (req, res, next) => {
         return;
       }
 
-      // Language selection
+      // Language selection (eski userlar uchun saqlash, javob bermaydi)
       if (msg.text === "🇺🇿 O'zbek tili" || msg.text === "🇷🇺 Русский язык") {
         const lang = msg.text.includes("O'zbek") ? 'uz' : 'ru';
         const chats = await loadKnownChats();
         if (chats[String(chat.id)]) { chats[String(chat.id)].lang = lang; await saveKnownChats(chats); }
         const userRole = chats[String(chat.id)]?.role;
-        await axios.post(`${BOT_API()}/sendMessage`, {
-          chat_id: chat.id, text: T.langSelected[lang], parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({ remove_keyboard: true })
-        }).catch(() => {});
         if (userRole === 'hotel') await sendHotelMenu(chat.id);
         return;
       }
 
-      // Contact shared — save phone number
+      // Contact shared — save phone number (agar kimdir yuborsa)
       if (msg.contact) {
         const phone = msg.contact.phone_number;
         const chats = await loadKnownChats();
-        const lang = chats[String(chat.id)]?.lang || 'uz';
         const role = chats[String(chat.id)]?.role;
         if (chats[String(chat.id)]) {
           chats[String(chat.id)].phone = phone;
           await saveKnownChats(chats);
         }
-        await axios.post(`${BOT_API()}/sendMessage`, {
-          chat_id: chat.id,
-          text: T.phoneSaved[lang],
-          parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({ remove_keyboard: true })
-        }).catch(() => {});
         if (role === 'hotel') await sendHotelMenu(chat.id);
         return;
       }
