@@ -637,7 +637,10 @@ async function handleStart(chat, msg, botApiUrl, defaultRole = 'user') {
     await saveKnownChats(chats);
     const firstName = chat.first_name || chat.title || 'Foydalanuvchi';
     if (existing.role === 'admin') {
-      await sendAdminMenu(chat.id);
+      if (botApiUrl === RESTAURANT_API()) await sendRestaurantMenu(chat.id);
+      else if (botApiUrl === TRANSPORT_API()) await sendTransportAdminMenu(chat.id);
+      else if (botApiUrl === GUIDE_API()) await sendGuideMenu(chat.id, true);
+      else await sendAdminMenu(chat.id);
     } else if (existing.role === 'hotel') {
       await sendHotelMenu(chat.id);
     } else if (existing.role === 'transport') {
@@ -3717,10 +3720,9 @@ router.post('/webhook-restaurant', async (req, res) => {
     if (msg) {
       const chat = msg.chat;
 
-      // /start — welcome message + send restaurant menu
+      // /start — welcome message, menu based on role
       if (msg.text === '/start') {
         await handleStart(chat, msg, RESTAURANT_API());
-        await sendRestaurantMenu(chat.id);
         return;
       }
 
@@ -3768,33 +3770,172 @@ router.post('/webhook-restaurant', async (req, res) => {
       };
       await saveKnownChats(chats);
 
-      // /menu command
+      // /menu command — show menu based on role
       if (msg.text === '/menu') {
-        await sendRestaurantMenu(chat.id);
+        const chatsForMenu = await loadKnownChats();
+        const roleForMenu = chatsForMenu[String(chat.id)]?.role;
+        if (roleForMenu === 'restaurant') await sendRestaurantMenu(chat.id);
+        else if (roleForMenu === 'admin') await sendRestaurantMenu(chat.id);
+        else await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: `👋 Siz ro'yxatdan o'tdingiz. Admin tez orada sizga rol tayinlaydi.`,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
         return;
       }
 
-      // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
-      const REST_BTN_MAP = {
-        '📄 Заявка 2026': { key: 'PENDING',   emoji: '📄' },
-        '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
-        '❌ Ануляция':   { key: 'REJECTED',  emoji: '❌' }
-      };
-      if (msg.text && REST_BTN_MAP[msg.text]) {
-        const { key, emoji } = REST_BTN_MAP[msg.text];
+      // Menu button handlers — direct data display, no tour type sub-menu
+      const fmtD = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+      const isRestAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
+      const isZayavka2026     = msg.text === '📄 Заявка 2026';
+      const isTasdiqlangan    = msg.text === '✅ Tasdiqlangan';
+
+      if (isZayavka2026 || isTasdiqlangan || isRestAnulyatsiya) {
+        const isAdminUser  = existing.role === 'admin';
+        const restaurantName = isAdminUser ? null : await getRestaurantByChatId(chat.id);
+        const lines = [];
+
+        if (isRestAnulyatsiya) {
+          if (isAdminUser) {
+            // Admin: show ER/CO/KAS tour type selector
+            await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: `❌ *Anulyatsiya* — Tur turini tanlang:`,
+              parse_mode: 'Markdown',
+              reply_markup: JSON.stringify({
+                inline_keyboard: [[
+                  { text: 'ER', callback_data: 'rest_anu_tt:ER' },
+                  { text: 'CO', callback_data: 'rest_anu_tt:CO' },
+                  { text: 'KAS', callback_data: 'rest_anu_tt:KAS' }
+                ]]
+              })
+            }).catch(() => {});
+            return;
+          }
+          // Non-admin: show their own rejected confirmations + cancelled bookings
+          const rejWhere = { status: 'REJECTED' };
+          if (restaurantName) rejWhere.restaurantName = restaurantName;
+          const rejConfs = await prisma.mealConfirmation.findMany({
+            where: rejWhere,
+            include: { booking: { select: { bookingNumber: true, departureDate: true, endDate: true } } },
+            orderBy: { sentAt: 'desc' }, take: 30
+          });
+          const cancelledBks = await prisma.booking.findMany({
+            where: { status: 'CANCELLED' },
+            select: { bookingNumber: true, departureDate: true, endDate: true },
+            orderBy: { departureDate: 'asc' }
+          });
+          lines.push(`❌ *Anulyatsiya*`);
+          if (rejConfs.length) {
+            lines.push(`\n🍽 *Rad etilgan ovqatlanishlar*`);
+            for (const c of rejConfs) {
+              lines.push(`\n❌ *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+              if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+              if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+              if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+            }
+          }
+          if (cancelledBks.length) {
+            lines.push(`\n🚫 *Bekor qilingan gruppalar*`);
+            for (const b of cancelledBks) {
+              lines.push(`\n❌ *${b.bookingNumber}*`);
+              if (b.departureDate) lines.push(`📅 ${fmtD(b.departureDate)} – ${fmtD(b.endDate)}`);
+            }
+          }
+          if (!rejConfs.length && !cancelledBks.length) lines.push('\nHech narsa topilmadi.');
+
+        } else {
+          // Zaявka 2026: all statuses | Tasdiqlangan: CONFIRMED only
+          // split: isTasdiqlangan = BOOKING source, isZayavka2026 = JP source
+          if (isTasdiqlangan) {
+            if (isAdminUser) {
+              // Admin: show ER/CO/KAS tour type selector
+              await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+                chat_id: chat.id,
+                text: `✅ *Tasdiqlangan* — Tur turini tanlang:`,
+                parse_mode: 'Markdown',
+                reply_markup: JSON.stringify({
+                  inline_keyboard: [[
+                    { text: 'ER', callback_data: 'rest_tasd_tt:ER' },
+                    { text: 'CO', callback_data: 'rest_tasd_tt:CO' },
+                    { text: 'KAS', callback_data: 'rest_tasd_tt:KAS' }
+                  ]]
+                })
+              }).catch(() => {});
+              return;
+            }
+            // Non-admin: show their own confirmed booking confirmations
+            const confWhere = { source: 'BOOKING', status: 'CONFIRMED' };
+            if (restaurantName) confWhere.restaurantName = restaurantName;
+            const confs = await prisma.mealConfirmation.findMany({
+              where: confWhere,
+              include: {
+                booking: { select: { bookingNumber: true, guide: { select: { name: true, phone: true } } } }
+              },
+              orderBy: { sentAt: 'desc' }, take: 30
+            });
+            lines.push(`✅ *Tasdiqlangan*`);
+            if (!confs.length) {
+              lines.push('\nHech narsa topilmadi.');
+            } else {
+              for (const c of confs) {
+                lines.push(`\n✅ *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+                if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+                if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+                if (c.pricePerPerson) lines.push(`💰 Narx: ${Number(c.pricePerPerson).toLocaleString('ru-RU')} UZS/kishi`);
+                if (c.pricePerPerson && c.pax) lines.push(`💵 Jami: ${(c.pricePerPerson * c.pax).toLocaleString('ru-RU')} UZS`);
+                const guide = c.booking?.guide;
+                if (guide?.name) lines.push(`🧭 Gid: ${guide.name}${guide.phone ? '  ' + guide.phone : ''}`);
+                if (c.confirmedBy) lines.push(`👤 Tasdiqladi: ${c.confirmedBy}`);
+              }
+            }
+          } else {
+            // Zaявка 2026
+            if (isAdminUser) {
+              // Admin: show ER/CO/KAS tour type selector
+              await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+                chat_id: chat.id,
+                text: `📄 *Zaявка 2026* — Tur turini tanlang:`,
+                parse_mode: 'Markdown',
+                reply_markup: JSON.stringify({
+                  inline_keyboard: [[
+                    { text: 'ER', callback_data: 'rest_jp_tt:ER' },
+                    { text: 'CO', callback_data: 'rest_jp_tt:CO' },
+                    { text: 'KAS', callback_data: 'rest_jp_tt:KAS' }
+                  ]]
+                })
+              }).catch(() => {});
+              return;
+            }
+            // Non-admin: show their own JP confirmations directly
+            const confWhere = { source: 'JP' };
+            if (restaurantName) confWhere.restaurantName = restaurantName;
+            const confs = await prisma.mealConfirmation.findMany({
+              where: confWhere,
+              include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
+              orderBy: { sentAt: 'desc' }, take: 50
+            });
+            lines.push(`📄 *Zaявка 2026*`);
+            if (!confs.length) {
+              lines.push('\nHech narsa topilmadi.');
+            } else {
+              const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
+              for (const c of confs) {
+                lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+                if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+                if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+                if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+              }
+            }
+          }
+        }
+
         await axios.post(`${RESTAURANT_API()}/sendMessage`, {
-          chat_id: chat.id,
-          text: `${emoji} *${msg.text}* — Tur turini tanlang:`,
-          parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({
-            inline_keyboard: [[
-              { text: 'ER',  callback_data: `rest_conf:${key}:ER`  },
-              { text: 'CO',  callback_data: `rest_conf:${key}:CO`  },
-              { text: 'KAS', callback_data: `rest_conf:${key}:KAS` },
-              { text: 'ZA',  callback_data: `rest_conf:${key}:ZA`  }
-            ]]
-          })
-        }).catch(() => {});
+          chat_id: chat.id, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+        }).catch(async () => {
+          const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+          await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: chat.id, text: plain }).catch(() => {});
+        });
         return;
       }
     }
@@ -3854,30 +3995,53 @@ router.post('/webhook-restaurant', async (req, res) => {
         } else {
           lines.push('\nHech narsa topilmadi.');
         }
-      } else {
-        // Заявка 2026 / Tasdiqlangan — show MealConfirmation records
-        const where = {
-          status: { in: statusFilter },
-          booking: { tourTypeId: tourTypeRecord.id }
-        };
+      } else if (statusKey === 'CONFIRMED') {
+        // Tasdiqlangan: individual booking confirmations (BOOKING source)
+        const where = { source: 'BOOKING', status: 'CONFIRMED', booking: { tourTypeId: tourTypeRecord.id } };
         if (restaurantName) where.restaurantName = restaurantName;
-
         const confs = await prisma.mealConfirmation.findMany({
           where,
-          include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
-          orderBy: { sentAt: 'desc' },
-          take: 30
+          include: {
+            booking: {
+              select: {
+                bookingNumber: true,
+                guide: { select: { name: true, phone: true } }
+              }
+            }
+          },
+          orderBy: { sentAt: 'desc' }, take: 30
         });
-
         if (!confs.length) {
           lines.push('\nHech narsa topilmadi.');
         } else {
           for (const c of confs) {
-            const b = c.booking;
-            const st = statusKey === 'CONFIRMED' ? '✅' : '⏳';
-            lines.push(`\n${st} *${b?.bookingNumber || '#'+c.bookingId}*`);
+            lines.push(`\n✅ *${c.booking?.bookingNumber || '#'+c.bookingId}*`);
             if (!restaurantName && c.restaurantName) lines.push(`🍽 ${c.restaurantName}`);
-            if (c.city) lines.push(`🏙 ${c.city}`);
+            if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+            if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+            if (c.pricePerPerson) lines.push(`💰 Narx: ${Number(c.pricePerPerson).toLocaleString('ru-RU')} UZS/kishi`);
+            if (c.pricePerPerson && c.pax) lines.push(`💵 Jami: ${(c.pricePerPerson * c.pax).toLocaleString('ru-RU')} UZS`);
+            const guide = c.booking?.guide;
+            if (guide?.name) lines.push(`🧭 Gid: ${guide.name}${guide.phone ? '  ' + guide.phone : ''}`);
+            if (c.confirmedBy) lines.push(`👤 Tasdiqladi: ${c.confirmedBy}`);
+          }
+        }
+      } else {
+        // Zaявка 2026: JP meal confirmations (all statuses)
+        const where = { source: 'JP', booking: { tourTypeId: tourTypeRecord.id } };
+        if (restaurantName) where.restaurantName = restaurantName;
+        const confs = await prisma.mealConfirmation.findMany({
+          where,
+          include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
+          orderBy: { sentAt: 'desc' }, take: 50
+        });
+        if (!confs.length) {
+          lines.push('\nHech narsa topilmadi.');
+        } else {
+          const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
+          for (const c of confs) {
+            lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#'+c.bookingId}*`);
+            if (!restaurantName && c.restaurantName) lines.push(`🍽 ${c.restaurantName}`);
             if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
             if (c.pax) lines.push(`👥 ${c.pax} kishi`);
             if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
@@ -3890,6 +4054,260 @@ router.post('/webhook-restaurant', async (req, res) => {
       }).catch(async () => {
         const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
         await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: chatId, text: plain }).catch(() => {});
+      });
+      return;
+    }
+
+    // ── rest_jp_tt:{tourType} — Admin: show restaurants for this tour type ──
+    if (data.startsWith('rest_jp_tt:')) {
+      const tourType = data.split(':')[1]; // ER | CO | KAS
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      // Find distinct restaurants that have JP confirmations for this tour type
+      const confs = await prisma.mealConfirmation.findMany({
+        where: { source: 'JP', booking: { tourTypeId: tourTypeRecord.id } },
+        select: { restaurantName: true },
+        distinct: ['restaurantName'],
+        orderBy: { restaurantName: 'asc' }
+      });
+
+      if (!confs.length) {
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: fromChatId, text: `📄 *${tourType}* — Hech qanday restoran topilmadi.`, parse_mode: 'Markdown'
+        }).catch(() => {});
+        return;
+      }
+
+      // Build inline keyboard — one button per restaurant
+      const rows = confs.map(c => [{
+        text: `🍽 ${c.restaurantName}`,
+        callback_data: `rest_jp_rest:${tourType}:${c.restaurantName}`.substring(0, 64)
+      }]);
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: `📄 *Zaявка 2026 — ${tourType}*\nRestoranni tanlang:`,
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({ inline_keyboard: rows })
+      }).catch(() => {});
+      return;
+    }
+
+    // ── rest_jp_rest:{tourType}:{restaurantName} — show JP confirmations ──
+    if (data.startsWith('rest_jp_rest:')) {
+      const idx = data.indexOf(':', data.indexOf(':') + 1) + 1; // after second colon
+      const tourType = data.split(':')[1];
+      const restName = data.substring(idx); // everything after second colon
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${restName} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const confs = await prisma.mealConfirmation.findMany({
+        where: { source: 'JP', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id } },
+        include: { booking: { select: { bookingNumber: true } } },
+        orderBy: { mealDate: 'asc' }
+      });
+
+      const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
+      const lines = [`📄 *${tourType} — ${restName}*`];
+      if (!confs.length) {
+        lines.push('\nHech narsa topilmadi.');
+      } else {
+        for (const c of confs) {
+          lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+          if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+          if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+          if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+        }
+      }
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: fromChatId, text: plain }).catch(() => {});
+      });
+      return;
+    }
+
+    // ── rest_anu_tt:{tourType} — Admin: show restaurants for Anulyatsiya ──
+    if (data.startsWith('rest_anu_tt:')) {
+      const tourType = data.split(':')[1];
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      // Distinct restaurants from REJECTED meal confirmations for this tour type
+      const rejConfs = await prisma.mealConfirmation.findMany({
+        where: { status: 'REJECTED', booking: { tourTypeId: tourTypeRecord.id } },
+        select: { restaurantName: true },
+        distinct: ['restaurantName'],
+        orderBy: { restaurantName: 'asc' }
+      });
+
+      if (!rejConfs.length) {
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: fromChatId, text: `❌ *${tourType}* — Hech qanday restoran topilmadi.`, parse_mode: 'Markdown'
+        }).catch(() => {});
+        return;
+      }
+
+      const rows = rejConfs.map(c => [{
+        text: `🍽 ${c.restaurantName}`,
+        callback_data: `rest_anu_rest:${tourType}:${c.restaurantName}`.substring(0, 64)
+      }]);
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: `❌ *Anulyatsiya — ${tourType}*\nRestoranni tanlang:`,
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({ inline_keyboard: rows })
+      }).catch(() => {});
+      return;
+    }
+
+    // ── rest_anu_rest:{tourType}:{restaurantName} — show rejected + cancelled ──
+    if (data.startsWith('rest_anu_rest:')) {
+      const idx = data.indexOf(':', data.indexOf(':') + 1) + 1;
+      const tourType = data.split(':')[1];
+      const restName = data.substring(idx);
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${restName} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+      const rejConfs = await prisma.mealConfirmation.findMany({
+        where: { status: 'REJECTED', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id } },
+        include: { booking: { select: { bookingNumber: true, departureDate: true, endDate: true } } },
+        orderBy: { sentAt: 'desc' }
+      });
+      const cancelledBks = await prisma.booking.findMany({
+        where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
+        select: { bookingNumber: true, departureDate: true, endDate: true },
+        orderBy: { departureDate: 'asc' }
+      });
+
+      const lines = [`❌ *${tourType} — ${restName}*`];
+      if (rejConfs.length) {
+        lines.push(`\n🍽 *Rad etilgan ovqatlanishlar*`);
+        for (const c of rejConfs) {
+          lines.push(`\n❌ *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+          if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+          if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+          if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+        }
+      }
+      if (cancelledBks.length) {
+        lines.push(`\n🚫 *Bekor qilingan gruppalar*`);
+        for (const b of cancelledBks) {
+          lines.push(`\n❌ *${b.bookingNumber}*`);
+          if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
+        }
+      }
+      if (!rejConfs.length && !cancelledBks.length) lines.push('\nHech narsa topilmadi.');
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: fromChatId, text: plain }).catch(() => {});
+      });
+      return;
+    }
+
+    // ── rest_tasd_tt:{tourType} — Admin: show restaurants for Tasdiqlangan ──
+    if (data.startsWith('rest_tasd_tt:')) {
+      const tourType = data.split(':')[1];
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const confs = await prisma.mealConfirmation.findMany({
+        where: { source: 'BOOKING', status: 'CONFIRMED', booking: { tourTypeId: tourTypeRecord.id } },
+        select: { restaurantName: true },
+        distinct: ['restaurantName'],
+        orderBy: { restaurantName: 'asc' }
+      });
+
+      if (!confs.length) {
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: fromChatId, text: `✅ *${tourType}* — Hech qanday restoran topilmadi.`, parse_mode: 'Markdown'
+        }).catch(() => {});
+        return;
+      }
+
+      const rows = confs.map(c => [{
+        text: `🍽 ${c.restaurantName}`,
+        callback_data: `rest_tasd_rest:${tourType}:${c.restaurantName}`.substring(0, 64)
+      }]);
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: `✅ *Tasdiqlangan — ${tourType}*\nRestoranni tanlang:`,
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({ inline_keyboard: rows })
+      }).catch(() => {});
+      return;
+    }
+
+    // ── rest_tasd_rest:{tourType}:{restaurantName} — show confirmed bookings ──
+    if (data.startsWith('rest_tasd_rest:')) {
+      const idx = data.indexOf(':', data.indexOf(':') + 1) + 1;
+      const tourType = data.split(':')[1];
+      const restName = data.substring(idx);
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${restName} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const confs = await prisma.mealConfirmation.findMany({
+        where: { source: 'BOOKING', status: 'CONFIRMED', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id } },
+        include: {
+          booking: { select: { bookingNumber: true, guide: { select: { name: true, phone: true } } } }
+        },
+        orderBy: { sentAt: 'desc' }
+      });
+
+      const lines = [`✅ *${tourType} — ${restName}*`];
+      if (!confs.length) {
+        lines.push('\nHech narsa topilmadi.');
+      } else {
+        for (const c of confs) {
+          lines.push(`\n✅ *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+          if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+          if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+          if (c.pricePerPerson) lines.push(`💰 Narx: ${Number(c.pricePerPerson).toLocaleString('ru-RU')} UZS/kishi`);
+          if (c.pricePerPerson && c.pax) lines.push(`💵 Jami: ${(c.pricePerPerson * c.pax).toLocaleString('ru-RU')} UZS`);
+          const guide = c.booking?.guide;
+          if (guide?.name) lines.push(`🧭 Gid: ${guide.name}${guide.phone ? '  ' + guide.phone : ''}`);
+          if (c.confirmedBy) lines.push(`👤 Tasdiqladi: ${c.confirmedBy}`);
+        }
+      }
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: fromChatId, text: plain }).catch(() => {});
       });
       return;
     }
@@ -4950,12 +5368,52 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
       select: {
         bookingNumber: true,
         pax: true,
+        status: true,
+        departureDate: true,
+        endDate: true,
         guide: { select: { name: true, phone: true } }
       }
     });
     if (!booking) return res.status(404).json({ error: 'Booking topilmadi' });
 
-    // Create confirmation record first (need id for callback_data)
+    const isCancelled = booking.status === 'CANCELLED';
+
+    if (isCancelled) {
+      // Send anulyatsiya notification (no confirm buttons)
+      await prisma.mealConfirmation.create({
+        data: {
+          bookingId: parseInt(bookingId),
+          restaurantName,
+          city: city || null,
+          mealDate: mealDate || null,
+          pax: 0,
+          status: 'REJECTED',
+          sentAt: new Date(),
+          source: 'BOOKING',
+          pricePerPerson: null
+        }
+      });
+
+      const fmtD = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+      const anuMsg = [
+        `❌ *ANULYATSIYA*`,
+        `📋 Booking: *${booking.bookingNumber}*`,
+        `🍴 Restoran: *${restaurantName}*`,
+        city     ? `🏙 Shahar: *${city}*` : null,
+        mealDate ? `📅 Sana: *${mealDate}*` : null,
+        booking.departureDate ? `🗓 Guruh: *${fmtD(booking.departureDate)} – ${fmtD(booking.endDate)}*` : null,
+      ].filter(Boolean).join('\n');
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: chatId,
+        text: anuMsg,
+        parse_mode: 'Markdown'
+      });
+
+      return res.json({ success: true, cancelled: true });
+    }
+
+    // Normal booking: create confirmation record and send with buttons
     const conf = await prisma.mealConfirmation.create({
       data: {
         bookingId: parseInt(bookingId),
@@ -4964,7 +5422,9 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
         mealDate: mealDate || null,
         pax: parseInt(pax) || booking.pax || 0,
         status: 'PENDING',
-        sentAt: new Date()
+        sentAt: new Date(),
+        source: 'BOOKING',
+        pricePerPerson: pricePerPerson ? parseFloat(pricePerPerson) : null
       }
     });
 

@@ -1014,6 +1014,8 @@ model MealConfirmation {
   sentAt         DateTime @default(now())
   respondedAt    DateTime?
   createdAt      DateTime @default(now())
+  source         String?  // 'JP' | 'BOOKING'
+  pricePerPerson Float?   // stored for BOOKING source records
 
   @@index([bookingId])
 }

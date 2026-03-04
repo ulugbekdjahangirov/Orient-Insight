@@ -1149,15 +1149,15 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
     const { restaurantName, year, tourType } = req.body;
     const bookings = JSON.parse(req.body.bookings || '[]');
 
-    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-    if (!TELEGRAM_BOT_TOKEN) return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN sozlanmagan' });
+    const RESTAURANT_TOKEN = process.env.TELEGRAM_RESTAURANT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+    if (!RESTAURANT_TOKEN) return res.status(500).json({ error: 'TELEGRAM_RESTAURANT_TOKEN sozlanmagan' });
 
     const s = await prisma.systemSetting.findUnique({ where: { key: 'MEAL_RESTAURANT_CHAT_IDS' } });
     const chatIds = s ? JSON.parse(s.value) : {};
     const chatId = chatIds[restaurantName];
     if (!chatId) return res.status(400).json({ error: `${restaurantName} uchun Telegram chat ID topilmadi` });
 
-    const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+    const TG_BASE = `https://api.telegram.org/bot${RESTAURANT_TOKEN}`;
     const tourLabel = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tourType] || tourType;
 
     // 1. Send PDF
@@ -1189,11 +1189,11 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
       if (existing) {
         conf = await prisma.mealConfirmation.update({
           where: { id: existing.id },
-          data: { status: 'PENDING', sentAt: new Date(), mealDate: b.mealDate || null, pax: b.pax }
+          data: { status: 'PENDING', sentAt: new Date(), mealDate: b.mealDate || null, pax: b.pax, source: 'JP' }
         });
       } else {
         conf = await prisma.mealConfirmation.create({
-          data: { bookingId: b.bookingId, restaurantName, city: '', mealDate: b.mealDate || null, pax: b.pax, status: 'PENDING', sentAt: new Date() }
+          data: { bookingId: b.bookingId, restaurantName, city: '', mealDate: b.mealDate || null, pax: b.pax, status: 'PENDING', sentAt: new Date(), source: 'JP' }
         });
       }
 
