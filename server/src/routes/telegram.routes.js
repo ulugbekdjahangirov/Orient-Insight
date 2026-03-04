@@ -2865,8 +2865,25 @@ router.post('/webhook-transport', async (req, res) => {
       const STATUS_BTN_MAP = {
         '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
         '📄 Заявка 2026':  { key: 'PENDING',   emoji: '📄' },
-        '❌ Ануляция':    { key: 'REJECTED',  emoji: '❌' }
       };
+      // Ануляция — explicit check (multiple text variants for keyboard compatibility)
+      const isAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
+      if (isAnulyatsiya) {
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: `❌ *Anulyatsiya* — Tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: 'ER',  callback_data: 'tr_conf:REJECTED:ER'  },
+              { text: 'CO',  callback_data: 'tr_conf:REJECTED:CO'  },
+              { text: 'KAS', callback_data: 'tr_conf:REJECTED:KAS' },
+              { text: 'ZA',  callback_data: 'tr_conf:REJECTED:ZA'  }
+            ]]
+          })
+        }).catch(() => {});
+        return;
+      }
       if (msg.text && STATUS_BTN_MAP[msg.text]) {
         const { key, emoji } = STATUS_BTN_MAP[msg.text];
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
@@ -3091,14 +3108,44 @@ router.post('/webhook-transport', async (req, res) => {
       return;
     }
 
-    // ── tr_conf:{statusKey}:{tourType} — Show confirmations by status + tour type ─
-    if (data.startsWith('tr_conf:')) {
+    // ── tr_conf:{statusKey}:{tourType} / tr_conf_p:{statusKey}:{tourType}:{provider} ─
+    if (data.startsWith('tr_conf:') || data.startsWith('tr_conf_p:')) {
       const parts = data.split(':');
+      const isProviderConf = data.startsWith('tr_conf_p:');
       const statusKey = parts[1]; // CONFIRMED | PENDING | REJECTED
       const tourType  = parts[2]; // ER | CO | KAS | ZA
+      const selectedProvider = isProviderConf ? parts[3] : null;
       const chatId = fromChatId || cb.from?.id;
       const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
-      const providerName = isAdminCb ? null : await getProviderByChatId(chatId);
+
+      // Admin clicking tr_conf (no provider yet) → show provider submenu
+      if (!isProviderConf && isAdminCb) {
+        await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+          callback_query_id: callbackQueryId, text: `${tourType} — provider tanlang`, show_alert: false
+        }).catch(() => {});
+        const hasNosir = tourType === 'CO' || tourType === 'KAS';
+        const pButtons = hasNosir
+          ? [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${statusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${statusKey}:${tourType}:xayrulla` }],
+             [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }, { text: '👤 Nosir',    callback_data: `tr_conf_p:${statusKey}:${tourType}:nosir`    }]]
+          : [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${statusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${statusKey}:${tourType}:xayrulla` }],
+             [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }]];
+        const confLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chatId,
+          text: `${confLabel} — *${tourType}*\nProvider tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: pButtons })
+        }).catch(() => {});
+        return;
+      }
+
+      // Determine effective provider
+      let providerName;
+      if (isProviderConf) {
+        providerName = selectedProvider === 'hammasi' ? null : selectedProvider;
+      } else {
+        providerName = isAdminCb ? null : await getProviderByChatId(chatId);
+      }
 
       const STATUS_FILTERS = {
         CONFIRMED: ['CONFIRMED'],
@@ -3225,17 +3272,46 @@ router.post('/webhook-transport', async (req, res) => {
       return;
     }
 
-    // ── tr_list:{tourType} — Show ONE template route for provider + tour type ─
-    if (data.startsWith('tr_list:')) {
-      const tourType = data.split(':')[1]; // ER, CO, KAS, ZA
+    // ── tr_list:{tourType} / tr_list_p:{tourType}:{provider} ─────────────────
+    if (data.startsWith('tr_list:') || data.startsWith('tr_list_p:')) {
+      const parts = data.split(':');
+      const isProviderList = data.startsWith('tr_list_p:');
+      const tourType = parts[1]; // ER, CO, KAS, ZA
+      const selectedProvider = isProviderList ? parts[2] : null;
       const chatId = fromChatId || cb.from?.id;
-      console.log('[tr_list] callback received:', { tourType, chatId, from: cb.from?.id });
+      console.log('[tr_list] callback received:', { tourType, chatId, isProviderList, selectedProvider });
 
       const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
-      const providerName = isAdminCb ? null : await getProviderByChatId(chatId);
-      // hammasi (Siroj) sees all routes
-      const effectiveProvider = (providerName && providerName !== 'hammasi') ? providerName : null;
-      console.log('[tr_list] providerName:', providerName, '| effectiveProvider:', effectiveProvider);
+
+      // Admin clicking tr_list (no provider yet) → show provider submenu
+      if (!isProviderList && isAdminCb) {
+        await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+          callback_query_id: callbackQueryId, text: `📋 ${tourType} — provider tanlang`, show_alert: false
+        }).catch(() => {});
+        const hasNosir = tourType === 'CO' || tourType === 'KAS';
+        const pButtons = hasNosir
+          ? [[{ text: '🚌 Hammasi', callback_data: `tr_list_p:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_list_p:${tourType}:xayrulla` }],
+             [{ text: '👤 Sevil',   callback_data: `tr_list_p:${tourType}:sevil`    }, { text: '👤 Nosir',    callback_data: `tr_list_p:${tourType}:nosir`    }]]
+          : [[{ text: '🚌 Hammasi', callback_data: `tr_list_p:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_list_p:${tourType}:xayrulla` }],
+             [{ text: '👤 Sevil',   callback_data: `tr_list_p:${tourType}:sevil`    }]];
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chatId,
+          text: `📋 *Marshrut List — ${tourType}*\nProvider tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: pButtons })
+        }).catch(() => {});
+        return;
+      }
+
+      // Determine effective provider
+      let effectiveProvider;
+      if (isProviderList) {
+        effectiveProvider = selectedProvider === 'hammasi' ? null : selectedProvider;
+      } else {
+        const providerName = await getProviderByChatId(chatId);
+        effectiveProvider = (providerName && providerName !== 'hammasi') ? providerName : null;
+      }
+      console.log('[tr_list] effectiveProvider:', effectiveProvider);
 
       await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId,
@@ -3310,10 +3386,32 @@ router.post('/webhook-transport', async (req, res) => {
       const provLabel = effectiveProvider ? ` (${PROVIDER_LABELS[effectiveProvider] || effectiveProvider})` : '';
       const title = `Marshrut — ${tourType}${provLabel}`;
 
+      // Translate route name for Telegram display only (DB unchanged)
+      const translateRoute = (name) => {
+        if (!name) return name;
+        let t = name;
+        t = t.replace(/\s*City Tour\s*/gi, '').trim();
+        t = t.replace(/\bTashkent\b/g, 'Toshkent');
+        t = t.replace(/\bSamarkand\b/g, 'Samarqand');
+        t = t.replace(/\bBukhara\b/g, 'Buxoro');
+        t = t.replace(/\bKhiva\b/g, 'Xiva');
+        t = t.replace(/\bUrgench\b/g, 'Urganch');
+        t = t.replace(/\bChimgan\b/g, 'Chimyon');
+        t = t.replace(/\bFergana\b/g, "Farg'ona");
+        t = t.replace(/\bAndijan\b/g, 'Andijon');
+        t = t.replace(/\bNamangan\b/g, 'Namangan');
+        t = t.replace(/Airport Pickup/gi, 'Aeroportdan kutib olish');
+        t = t.replace(/Airport Drop-?off/gi, 'Aeroportga yetkazish');
+        t = t.replace(/Train Station Drop-?off/gi, 'Vokzalga yetkazish');
+        t = t.replace(/Train Station/gi, 'Vokzal');
+        t = t.replace(/\bAirport\b/gi, 'Aeroport');
+        return t || name;
+      };
+
       // 1. Text message — days re-numbered 1, 2, 3...
       const lines = [`📋 <b>${title}</b>`, `${'─'.repeat(22)}`];
       routes.forEach((r, i) => {
-        lines.push(`<b>${i + 1}.</b> ${r.routeName || r.city || '—'}`);
+        lines.push(`<b>${i + 1}.</b> ${translateRoute(r.routeName || r.city || '—')}`);
       });
 
       await axios.post(`${TRANSPORT_API()}/sendMessage`, {
