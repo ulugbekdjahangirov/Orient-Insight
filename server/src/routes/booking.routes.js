@@ -498,26 +498,40 @@ router.put('/:id', authenticate, async (req, res) => {
       }
     });
 
-    // Auto-notify guide when booking becomes FINAL_CONFIRMED
-    if (status === 'FINAL_CONFIRMED' && currentBooking?.status !== 'FINAL_CONFIRMED' && booking.guide?.telegramChatId) {
+    // Auto-notify guide on status change (FINAL_CONFIRMED or CANCELLED)
+    if (booking.guide?.telegramChatId) {
       const fmtDate = d => {
         if (!d) return '—';
         const dt = new Date(d);
         return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
       };
-      const text = [
-        `✅ <b>${booking.bookingNumber}</b> guruh tasdiqlandi!`,
-        ``,
-        `📅 <b>Boshlanish:</b> ${fmtDate(booking.departureDate)}`,
-        `🏁 <b>Tugash:</b> ${fmtDate(booking.endDate)}`,
-        ``,
-        `Ushbu guruh uchun tayyor bo'ling! 🧳`
-      ].join('\n');
-      axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}/sendMessage`, {
-        chat_id: booking.guide.telegramChatId,
-        text,
-        parse_mode: 'HTML'
-      }).catch(e => console.error('Guide FINAL_CONFIRMED notify error:', e.message));
+      let notifyText = null;
+      if (status === 'FINAL_CONFIRMED' && currentBooking?.status !== 'FINAL_CONFIRMED') {
+        notifyText = [
+          `✅ <b>${booking.bookingNumber}</b> guruh tasdiqlandi!`,
+          ``,
+          `📅 <b>Boshlanish:</b> ${fmtDate(booking.departureDate)}`,
+          `🏁 <b>Tugash:</b> ${fmtDate(booking.endDate)}`,
+          ``,
+          `Ushbu guruh uchun tayyor bo'ling! 🧳`
+        ].join('\n');
+      } else if (status === 'CANCELLED' && currentBooking?.status !== 'CANCELLED') {
+        notifyText = [
+          `❌ <b>${booking.bookingNumber}</b> guruh bekor qilindi!`,
+          ``,
+          `📅 <b>Boshlanish:</b> ${fmtDate(booking.departureDate)}`,
+          `🏁 <b>Tugash:</b> ${fmtDate(booking.endDate)}`,
+          ``,
+          `Bu guruh bo'yicha reja bekor. ℹ️`
+        ].join('\n');
+      }
+      if (notifyText) {
+        axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}/sendMessage`, {
+          chat_id: booking.guide.telegramChatId,
+          text: notifyText,
+          parse_mode: 'HTML'
+        }).catch(e => console.error('Guide status notify error:', e.message));
+      }
     }
 
     res.json({ booking });
@@ -552,11 +566,33 @@ router.patch('/:id/status', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Недопустимый статус' });
     }
 
+    const prevBooking = await prisma.booking.findUnique({ where: { id: parseInt(id) }, select: { status: true } });
+
     const booking = await prisma.booking.update({
       where: { id: parseInt(id) },
       data: { status },
       include: { tourType: true, guide: true }
     });
+
+    if (status === 'CANCELLED' && prevBooking?.status !== 'CANCELLED' && booking.guide?.telegramChatId) {
+      const fmtDate = d => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+      };
+      axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}/sendMessage`, {
+        chat_id: booking.guide.telegramChatId,
+        text: [
+          `❌ <b>${booking.bookingNumber}</b> guruh bekor qilindi!`,
+          ``,
+          `📅 <b>Boshlanish:</b> ${fmtDate(booking.departureDate)}`,
+          `🏁 <b>Tugash:</b> ${fmtDate(booking.endDate)}`,
+          ``,
+          `Bu guruh bo'yicha reja bekor. ℹ️`
+        ].join('\n'),
+        parse_mode: 'HTML'
+      }).catch(e => console.error('Guide CANCELLED notify error:', e.message));
+    }
 
     res.json({ booking });
   } catch (error) {
