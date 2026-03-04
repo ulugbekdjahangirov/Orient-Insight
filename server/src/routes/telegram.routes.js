@@ -2778,7 +2778,7 @@ router.post('/webhook-transport', async (req, res) => {
         const chats = await loadKnownChats();
         const existing = chats[String(chat.id)] || {};
         const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
-        const newRole = (!existing.role || existing.role === 'user') ? 'transport' : existing.role;
+        const newRole = existing.role || 'user';
         chats[String(chat.id)] = {
           ...existing,
           chatId: String(chat.id),
@@ -2793,8 +2793,14 @@ router.post('/webhook-transport', async (req, res) => {
         const isAdminUser = (adminEnvId && String(chat.id) === String(adminEnvId)) || newRole === 'admin';
         if (isAdminUser) {
           await sendTransportAdminMenu(chat.id);
-        } else {
+        } else if (newRole === 'transport') {
           await sendTransportMenu(chat.id);
+        } else {
+          await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+            chat_id: chat.id,
+            text: `👋 Assalomu alaykum!\n\nSiz ro'yxatdan o'tdingiz. Admin tez orada sizga rol tayinlaydi.`,
+            parse_mode: 'Markdown'
+          }).catch(() => {});
         }
         return;
       }
@@ -3191,16 +3197,22 @@ router.post('/webhook-transport', async (req, res) => {
 
       // Jahresplanung annual plan confirmations
       if (jpEntries.length) {
-        lines.push(`\n━━━━━━━━━━━━━━━━━━`);
-        lines.push(`📅 *Jahresplanung ${year}*`);
+        if (confs.length || cancelledBookings.length) lines.push(`\n━━━━━━━━━━━━━━━━━━`);
+        lines.push(`📅 *Yillik reja ${year} — ${tourType}*`);
         for (const jp of jpEntries) {
-          const st = STATUS_EMOJI[jp.status] || '❓';
+          const st = STATUS_EMOJI[jp.status] || '⏳';
           const pLabel = PROVIDER_LABELS[jp.provider] || jp.provider;
-          lines.push(`\n${st} *${pLabel}*`);
-          if (jp.sentAt) lines.push(`📤 Yuborildi: ${fmt(jp.sentAt)}`);
-          if (jp.approvedBy) lines.push(`👁 Tekshirdi: ${jp.approvedBy}`);
-          if (jp.confirmedBy) lines.push(`✅ Tasdiqladi: ${jp.confirmedBy}`);
-          if (jp.respondedAt) lines.push(`🕐 ${fmt(jp.respondedAt)}`);
+          const statusText = {
+            PENDING_APPROVAL: '⏳ Kutilmoqda (admin yubordi)',
+            APPROVED:         '✅ Tasdiqlandi va yuborildi',
+            CONFIRMED:        '✅ Provider tasdiqladi',
+            REJECTED:         '❌ Rad etildi'
+          }[jp.status] || jp.status;
+          lines.push(`\n${st} *${pLabel}* — ${statusText}`);
+          if (jp.sentAt) lines.push(`📤 ${fmt(jp.sentAt)}`);
+          if (jp.messageText) {
+            lines.push(`\`\`\`\n${jp.messageText.substring(0, 2000)}\n\`\`\``);
+          }
         }
       }
 
@@ -3299,18 +3311,17 @@ router.post('/webhook-transport', async (req, res) => {
       const title = `Marshrut — ${tourType}${provLabel}`;
 
       // 1. Text message — days re-numbered 1, 2, 3...
-      const lines = [`📋 *${title}*`];
+      const lines = [`📋 <b>${title}</b>`, `${'─'.repeat(22)}`];
       routes.forEach((r, i) => {
-        const vehicle = r.transportType ? ` [${r.transportType}]` : '';
-        lines.push(`  ${i + 1}-kun |${vehicle} ${r.routeName || r.city || ''}`);
+        lines.push(`<b>${i + 1}.</b> ${r.routeName || r.city || '—'}`);
       });
 
       await axios.post(`${TRANSPORT_API()}/sendMessage`, {
         chat_id: chatId,
         text: lines.join('\n').substring(0, 4000),
-        parse_mode: 'Markdown'
+        parse_mode: 'HTML'
       }).catch(async () => {
-        const plain = lines.join('\n').replace(/[*_`[\]]/g, '').substring(0, 4000);
+        const plain = lines.join('\n').replace(/<[^>]+>/g, '').substring(0, 4000);
         await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: chatId, text: plain }).catch(() => {});
       });
 
@@ -3513,6 +3524,21 @@ router.post('/webhook-transport', async (req, res) => {
             ]]
           })
         }).catch(err => console.error('tp26_approve sendDocument error:', err.response?.data || err.message));
+
+        // Send formatted table as separate text message
+        if (stored.messageText) {
+          const tourLabel = { ER: 'ER', CO: 'CO', KAS: 'KAS', ZA: 'ZA' }[tp26TourType] || tp26TourType;
+          const tableText = [
+            `🚌 *Transport Rejasi ${tp26Year} — ${tourLabel}* | 👤 *${providerLabel}*`,
+            ``,
+            `\`\`\`\n${stored.messageText}\n\`\`\``
+          ].join('\n');
+          await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+            chat_id: providerChatId,
+            text: tableText,
+            parse_mode: 'Markdown'
+          }).catch(err => console.warn('tp26_approve table warn:', err.response?.data?.description || err.message));
+        }
 
         stored.status = 'APPROVED'; stored.approvedBy = fromName; stored.approvedAt = new Date().toISOString();
         await prisma.systemSetting.update({ where: { key: confKey }, data: { value: JSON.stringify(stored) } });

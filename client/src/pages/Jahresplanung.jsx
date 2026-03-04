@@ -1413,7 +1413,7 @@ function TransportTab({ tourType, tourColor }) {
       const fmtFull = (d) => {
         if (!d) return '——';
         const dt = new Date(d);
-        return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+        return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`;
       };
       const pad = (s, w) => String(s ?? '').padEnd(w);
 
@@ -1452,38 +1452,49 @@ function TransportTab({ tourType, tourColor }) {
           const eff = getSegEffective(provId, tBkId, tSegs[idx]);
           isSingle = eff.von === eff.bis;
         }
-        if (isSingle) { segCols.push({ label: 'Vokzal', w: 12, idx, type: 'single' }); }
+        if (isSingle) { segCols.push({ label: 'Vokzal', w: 5, idx, type: 'single' }); }
         else {
           multiCnt++;
           const segLabel = provColCount > 1 ? `${multiCnt} Zaezd` : 'Zaezd';
-          const w = 23; // "dd.mm.yyyy-dd.mm.yyyy" = 21 chars, pad to 23
+          const w = 11; // "dd.mm-dd.mm" = 11 chars
           segCols.push({ label: segLabel, w, idx, type: 'multi' });
         }
       }
       const allCols = [
         { label: 'Guruh', w: 6 },
-        { label: 'PAX', w: 3 },
         ...segCols,
       ];
 
+      // Helper: join parts, wrapping 'single'-type entries with | (no surrounding spaces)
+      const joinParts = (parts) => {
+        let result = '';
+        parts.forEach(({ str, type }, i) => {
+          if (i === 0) { result = str; return; }
+          if (type === 'single') result += ` |${str}| `;
+          else if (parts[i - 1]?.type === 'single') result += str;
+          else result += ` ${str}`;
+        });
+        return result;
+      };
+
       // Header: segment labels centered in their column width
-      const headerLine = allCols.map(c => {
+      const headerLine = joinParts(allCols.map(c => {
         if (c.type === 'multi') {
           const left = Math.floor((c.w - c.label.length) / 2);
-          return ' '.repeat(left) + c.label + ' '.repeat(c.w - c.label.length - left);
+          return { str: ' '.repeat(left) + c.label + ' '.repeat(c.w - c.label.length - left), type: 'multi' };
         }
-        return pad(c.label, c.w);
-      }).join('  ');
-      const separator = allCols.map(c => '─'.repeat(c.w)).join('──');
+        if (c.type === 'single') {
+          return { str: c.label.substring(0, c.w).padEnd(c.w), type: 'single' };
+        }
+        return { str: pad(c.label, c.w), type: undefined };
+      }));
+      const separator = allCols.map(c => '─'.repeat(c.w)).join('─');
 
       const dataLines = items.map(b => {
         const bk = String(b.id);
         const allSegs = routeMap[provId]?.[bk]?.segments || [];
         const visSegs = getVisibleSegs(provId, bk, allSegs);
-        const { pax } = visSegs.length > 0
-          ? getSegEffective(provId, bk, visSegs[0])
-          : { pax: manualOverrides[vColKey(provId, bk, 0)]?.paxOverride ?? 16 };
-        const cells = [pad(b.bookingNumber, 6), pad(pax, 3)];
+        const parts = [{ str: pad(b.bookingNumber, 6), type: undefined }];
         segCols.forEach(({ idx, type, w }) => {
           const isVirtual = idx >= visSegs.length;
           let von, bis;
@@ -1495,10 +1506,10 @@ function TransportTab({ tourType, tourColor }) {
             von = ovr?.vonOverride || null;
             bis = ovr?.bisOverride || null;
           }
-          if (type === 'single') { cells.push(pad(fmtFull(von), w)); }
-          else { cells.push(pad(von || bis ? `${fmtFull(von)}-${fmtFull(bis)}` : '—', w)); }
+          if (type === 'single') { parts.push({ str: pad(fmtFull(von), w), type: 'single' }); }
+          else { parts.push({ str: pad(von || bis ? `${fmtFull(von)}-${fmtFull(bis)}` : '—', w), type: 'multi' }); }
         });
-        return cells.join('  ');
+        return joinParts(parts);
       }).join('\n');
 
       const messageText = `${headerLine}\n${separator}\n${dataLines}`;
