@@ -1114,7 +1114,7 @@ router.get('/meals', authenticate, async (req, res) => {
         return {
           bookingId:     booking.id,
           bookingNumber: booking.bookingNumber,
-          pax:           booking.pax || 0,
+          pax:           16,
           departureDate: booking.departureDate,
           bookingStatus: booking.status,
           mealDate:      computedDate,
