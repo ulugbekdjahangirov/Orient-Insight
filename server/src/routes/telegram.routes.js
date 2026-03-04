@@ -16,6 +16,9 @@ const RESTAURANT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM
 const GUIDE_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}`;
 const CHATS_SETTING_KEY = 'TELEGRAM_KNOWN_CHATS';
 
+// In-memory state: admin Telegram dan javob berish uchun (adminChatId → { targetChatId, targetName })
+const adminPendingReply = {};
+
 // multer: accept PDF blob in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
@@ -92,6 +95,10 @@ const T = {
     guide: {
       uz: "👤 Sizga *Gid* roli tayinlandi.\n\nEndi bu bot orqali tur yo'riqnomalarini qabul qilasiz. ✅",
       ru: "👤 Вам назначена роль *Гид*.\n\nТеперь через этот бот вы будете получать туристические маршруты. ✅"
+    },
+    admin: {
+      uz: "🤖 Sizga *Admin* roli tayinlandi.\n\nEndi Orient Insight admin panelidan foydalanishingiz mumkin. ✅",
+      ru: "🤖 Вам назначена роль *Admin*.\n\nТеперь вы можете использовать панель администратора. ✅"
     }
   }
 };
@@ -102,6 +109,24 @@ async function getChatLang(chatId) {
     const chats = await loadKnownChats();
     return chats[String(chatId)]?.lang || 'uz';
   } catch { return 'uz'; }
+}
+
+// Helper: send persistent admin menu keyboard
+async function sendAdminMenu(chatId) {
+  const year = new Date().getFullYear();
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId,
+    text: '🤖 *Orient Insight — Admin Panel*\n\nPastdagi menyudan bo\'lim tanlang:',
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({
+      keyboard: [
+        [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
+        [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+      ],
+      resize_keyboard: true,
+      is_persistent: true
+    })
+  }).catch(() => {});
 }
 
 // Helper: send persistent hotel menu keyboard
@@ -141,6 +166,337 @@ async function findJpSectionsByChatId(chatId) {
   });
 }
 
+// Helper: show Izmeneniye for admin — all hotels, filtered by tourType (CONFIRMED, non-cancelled)
+async function sendAdminChangesForTourType(chatId, tourType, replyMarkup) {
+  const year = new Date().getFullYear();
+  const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { status: { in: ['CONFIRMED', 'REJECTED'] } },
+    include: {
+      hotel: { select: { id: true, name: true } },
+      booking: { select: { bookingNumber: true, status: true, pax: true, tourType: { select: { code: true } } } }
+    },
+    orderBy: { sentAt: 'asc' }
+  });
+  const seen = new Set();
+  const filtered = confs.filter(c => {
+    if (c.booking?.status === 'CANCELLED') return false;
+    if (c.booking?.tourType?.code !== tourType) return false;
+    if (seen.has(`${c.bookingId}_${c.hotelId}`)) return false;
+    seen.add(`${c.bookingId}_${c.hotelId}`);
+    return true;
+  });
+  if (!filtered.length) {
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: chatId,
+      text: `📝 ${tourType} ${year} uchun tasdiqlangan o'zgarish yo'q.`,
+      reply_markup: replyMarkup
+    }).catch(() => {});
+    return;
+  }
+  // Group by hotel
+  const byHotel = {};
+  for (const c of filtered) {
+    const key = c.hotelId;
+    if (!byHotel[key]) byHotel[key] = { hotelName: c.hotel?.name || '?', items: [] };
+    const accs = await prisma.accommodation.findMany({
+      where: { bookingId: c.bookingId, hotelId: c.hotelId },
+      include: { rooms: true },
+      orderBy: { checkInDate: 'asc' }
+    });
+    const si = c.status === 'REJECTED' ? '❌' : '✅';
+    const block = [`${si} *ЗАЯВКА ${c.booking?.bookingNumber || '—'}*`];
+    if (accs.length > 0) {
+      accs.forEach((acc, i) => {
+        if (accs.length > 1) block.push(`  *${i + 1}-заезд:*`);
+        block.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
+        block.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
+        block.push(`  👥 PAX: ${c.booking?.pax || 0}`);
+      });
+    }
+    byHotel[key].items.push(block.join('\n'));
+  }
+  const lines = [`📝 *Изменения к Заявке — ${tourType} ${year}*`];
+  for (const { hotelName, items } of Object.values(byHotel)) {
+    lines.push('');
+    lines.push(`🏨 *${hotelName}*`);
+    items.forEach(item => { lines.push(''); lines.push(item); });
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown', reply_markup: replyMarkup
+  }).catch(() => {});
+}
+
+// Helper: admin WL — JP_SECTIONS WAITING for a specific tourType
+async function sendAdminWlJp(chatId, tourType) {
+  const year = new Date().getFullYear();
+  const allJp = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_SECTIONS_' } } });
+  const hotelBlocks = {};
+  for (const s of allJp) {
+    try {
+      const d = JSON.parse(s.value);
+      if (d.tourType !== tourType) continue;
+      const hotelName = d.hotelName || '?';
+      for (const grp of (d.groups || [])) {
+        for (const v of grp.visits) {
+          if (v.status !== 'WAITING') continue;
+          if (!hotelBlocks[hotelName]) hotelBlocks[hotelName] = [];
+          const title = v.sectionLabel ? `⏳ *ЗАЯВКА ${grp.group} — ${v.sectionLabel}*` : `⏳ *ЗАЯВКА ${grp.group}*`;
+          hotelBlocks[hotelName].push([title, `📅 Заезд: ${v.checkIn}`, `📅 Выезд: ${v.checkOut}`, `👥 PAX: ${v.pax}`, `🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}`].join('\n'));
+        }
+      }
+    } catch {}
+  }
+  if (Object.keys(hotelBlocks).length === 0) {
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `⏳ *Waiting List — Заявка ${tourType} ${year}*\n\n✅ Hech narsa yo'q.`, parse_mode: 'Markdown' }).catch(() => {});
+    return;
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `⏳ *Waiting List — Заявка ${tourType} ${year}*`, parse_mode: 'Markdown' }).catch(() => {});
+  for (const [hotelName, items] of Object.entries(hotelBlocks)) {
+    const text = [`🏨 *${hotelName}*`, '', ...items].join('\n\n');
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text, parse_mode: 'Markdown' }).catch(() => {});
+  }
+}
+
+// Helper: admin WL — TelegramConfirmation WAITING for a specific tourType
+async function sendAdminWlChg(chatId, tourType) {
+  const year = new Date().getFullYear();
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { status: 'WAITING' },
+    include: {
+      hotel: { select: { name: true } },
+      booking: { select: { bookingNumber: true, pax: true, status: true, tourType: { select: { code: true } } } }
+    },
+    orderBy: { sentAt: 'asc' }
+  });
+  const seen = new Set();
+  const hotelBlocks = {};
+  for (const c of confs) {
+    if (c.booking?.tourType?.code !== tourType) continue;
+    if (c.booking?.status === 'CANCELLED') continue;
+    const key = `${c.hotelId}_${c.bookingId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const hotelName = c.hotel?.name || `Hotel #${c.hotelId}`;
+    if (!hotelBlocks[hotelName]) hotelBlocks[hotelName] = [];
+    hotelBlocks[hotelName].push(`⏳ *${c.booking?.bookingNumber || `#${c.bookingId}`}* — ${c.booking?.pax || 0} PAX`);
+  }
+  if (Object.keys(hotelBlocks).length === 0) {
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `⏳ *Waiting List — Изменения ${tourType}*\n\n✅ Hech narsa yo'q.`, parse_mode: 'Markdown' }).catch(() => {});
+    return;
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `⏳ *Waiting List — Изменения к Заявке (${tourType})*`, parse_mode: 'Markdown' }).catch(() => {});
+  for (const [hotelName, items] of Object.entries(hotelBlocks)) {
+    const text = [`🏨 *${hotelName}*`, '', ...items].join('\n\n');
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text, parse_mode: 'Markdown' }).catch(() => {});
+  }
+}
+
+// Helper: admin Аннуляция — show cancelled bookings for a specific tourType, grouped by hotel
+async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
+  const year = new Date().getFullYear();
+  const confs = await prisma.telegramConfirmation.findMany({
+    include: {
+      hotel: { select: { id: true, name: true, city: { select: { name: true } } } },
+      booking: { select: { bookingNumber: true, status: true, tourType: { select: { code: true } } } }
+    },
+    orderBy: { sentAt: 'desc' }
+  });
+  const seen = new Set();
+  const byHotel = {};
+  for (const c of confs) {
+    if (c.booking?.status !== 'CANCELLED') continue;
+    if (c.booking?.tourType?.code !== tourType) continue;
+    const key = `${c.hotelId}_${c.bookingId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!byHotel[c.hotelId]) byHotel[c.hotelId] = { hotel: c.hotel, bookings: [] };
+    byHotel[c.hotelId].bookings.push(c.booking?.bookingNumber || `#${c.bookingId}`);
+  }
+  if (Object.keys(byHotel).length === 0) {
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: chatId,
+      text: `❌ *Аннуляция — ${tourType} ${year}*\n\n📭 Bekor qilingan zaявkalar yo'q.`,
+      parse_mode: 'Markdown',
+      reply_markup: replyMarkup
+    }).catch(() => {});
+    return;
+  }
+  const lines = [`❌ *Аннуляция — ${tourType} ${year}*\n`];
+  for (const { hotel, bookings } of Object.values(byHotel)) {
+    const city = hotel?.city?.name ? ` (${hotel.city.name})` : '';
+    lines.push(`🏨 *${hotel?.name || '?'}*${city}`);
+    bookings.forEach(b => lines.push(`  ❌ ${b}`));
+    lines.push('');
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown', reply_markup: replyMarkup
+  }).catch(() => {});
+}
+
+// Helper: hotel WL — JP_SECTIONS WAITING for hotel+tourType (with confirm/reject buttons)
+async function sendHotelWlJp(chatId, hotel, tourType) {
+  const settings = await findJpSectionsByChatId(chatId);
+  let found = false;
+  for (const s of settings) {
+    try {
+      const d = JSON.parse(s.value);
+      if (d.tourType !== tourType) continue;
+      for (const grp of (d.groups || [])) {
+        for (const v of grp.visits) {
+          if (v.status !== 'WAITING') continue;
+          found = true;
+          const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
+          const text = [`⏳ *ЗАЯВКА ${label}*`, `📅 Заезд: ${v.checkIn}`, `📅 Выезд: ${v.checkOut}`, `👥 PAX: ${v.pax}`, `🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}`].join('\n');
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: chatId, text, parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [[
+              { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotel.id}:${v.visitIdx}` },
+              { text: '❌ Rad qilish', callback_data: `jp_r:${grp.bookingId}:${hotel.id}:${v.visitIdx}` }
+            ]] })
+          }).catch(() => {});
+        }
+      }
+    } catch {}
+  }
+  if (!found) {
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `⏳ ${tourType} uchun Waiting List bo'sh.` }).catch(() => {});
+  }
+}
+
+// Helper: hotel WL — TelegramConfirmation WAITING for hotel+tourType (with confirm/reject buttons)
+async function sendHotelWlChg(chatId, hotel, tourType) {
+  const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { hotelId: hotel.id, status: 'WAITING' },
+    include: { booking: { select: { bookingNumber: true, pax: true, status: true, tourType: { select: { code: true } } } } },
+    orderBy: { sentAt: 'asc' }
+  });
+  const seen = new Set();
+  const items = confs.filter(c => {
+    if (c.booking?.tourType?.code !== tourType) return false;
+    if (seen.has(c.bookingId)) return false;
+    seen.add(c.bookingId); return true;
+  });
+  if (!items.length) {
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `⏳ ${tourType} uchun Waiting List bo'sh.` }).catch(() => {});
+    return;
+  }
+  for (const c of items) {
+    const accs = await prisma.accommodation.findMany({ where: { bookingId: c.bookingId, hotelId: hotel.id }, include: { rooms: true }, orderBy: { checkInDate: 'asc' } });
+    const lines = [`⏳ *ЗАЯВКА ${c.booking?.bookingNumber || '—'}*`];
+    if (accs.length > 0) {
+      accs.forEach((acc, i) => {
+        const dbl = acc.rooms.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + r.roomsCount, 0);
+        const twn = acc.rooms.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + r.roomsCount, 0);
+        const sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + r.roomsCount, 0);
+        if (accs.length > 1) lines.push(`  *${i + 1}-заезд:*`);
+        lines.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
+        lines.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
+        lines.push(`  👥 PAX: ${c.booking?.pax || 0}`);
+        lines.push(`  🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`);
+      });
+    }
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown',
+      reply_markup: JSON.stringify({ inline_keyboard: [[
+        { text: '✅ Tasdiqlash', callback_data: `confirm:${c.bookingId}:${hotel.id}` },
+        { text: '❌ Rad qilish', callback_data: `reject:${c.bookingId}:${hotel.id}` }
+      ]] })
+    }).catch(() => {});
+  }
+}
+
+// Helper: hotel Аннуляция for hotel+tourType
+async function sendHotelAnnulment(chatId, hotel, tourType) {
+  const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { hotelId: hotel.id },
+    include: { booking: { select: { bookingNumber: true, status: true, pax: true, tourType: { select: { code: true } } } } },
+    orderBy: { sentAt: 'asc' }
+  });
+  const seen = new Set();
+  const filtered = confs.filter(c => {
+    if (c.booking?.status !== 'CANCELLED') return false;
+    if (c.booking?.tourType?.code !== tourType) return false;
+    if (seen.has(c.bookingId)) return false;
+    seen.add(c.bookingId); return true;
+  });
+  if (!filtered.length) {
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `❌ ${tourType} uchun Аннуляций пока нет.` }).catch(() => {});
+    return;
+  }
+  const lines = [`❌ *Аннуляция — ${hotel.name} (${tourType})*`];
+  for (const c of filtered) {
+    const accs = await prisma.accommodation.findMany({ where: { bookingId: c.bookingId, hotelId: hotel.id }, orderBy: { checkInDate: 'asc' } });
+    lines.push('');
+    lines.push(`❌ *ЗАЯВКА ${c.booking?.bookingNumber || '—'}*`);
+    accs.forEach((acc, i) => {
+      if (accs.length > 1) lines.push(`  *${i + 1}-заезд:*`);
+      lines.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
+      lines.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
+      lines.push(`  👥 PAX: ${c.booking?.pax || 0}`);
+    });
+    if (!accs.length) lines.push(`  📅 Yuborilgan: ${fmt(c.sentAt)}`);
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
+}
+
+// Helper: show Izmeneniye k Zayavke for a specific hotel + tourType
+async function sendHotelChangesForTourType(chatId, hotel, tourType) {
+  const year = new Date().getFullYear();
+  const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { hotelId: hotel.id, status: { in: ['CONFIRMED', 'REJECTED'] } },
+    include: { booking: { select: { bookingNumber: true, status: true, pax: true, tourType: { select: { code: true } } } } },
+    orderBy: { sentAt: 'desc' }
+  });
+  // Keep only the latest TelegramConfirmation per bookingId, then sort by bookingNumber
+  const seen = new Set();
+  const latest = confs.filter(c => {
+    if (c.booking?.status === 'CANCELLED') return false;
+    if (c.booking?.tourType?.code !== tourType) return false;
+    if (seen.has(c.bookingId)) return false;
+    seen.add(c.bookingId);
+    return true;
+  });
+  const filtered = latest.sort((a, b) => {
+    const na = a.booking?.bookingNumber || '';
+    const nb = b.booking?.bookingNumber || '';
+    return na.localeCompare(nb);
+  });
+  if (!filtered.length) {
+    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `📝 ${tourType} ${year} uchun o'zgarish yo'q.` }).catch(() => {});
+    return;
+  }
+  const lines = [`📝 *Изменения к Заявке — ${hotel.name} (${tourType} ${year})*`];
+  for (const c of filtered) {
+    const accs = await prisma.accommodation.findMany({
+      where: { bookingId: c.bookingId, hotelId: hotel.id },
+      include: { rooms: true },
+      orderBy: { checkInDate: 'asc' }
+    });
+    const statusIcon = c.status === 'REJECTED' ? '❌' : '✅';
+    lines.push('');
+    lines.push(`${statusIcon} *ЗАЯВКА ${c.booking?.bookingNumber || '—'}*`);
+    if (accs.length > 0) {
+      accs.forEach((acc, i) => {
+        const dbl = acc.rooms.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + r.roomsCount, 0);
+        const twn = acc.rooms.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + r.roomsCount, 0);
+        const sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + r.roomsCount, 0);
+        if (accs.length > 1) lines.push(`  *${i + 1}-заезд:*`);
+        lines.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
+        lines.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
+        lines.push(`  👥 PAX: ${c.booking?.pax || 0}`);
+        lines.push(`  🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`);
+      });
+    } else {
+      lines.push(`  📅 Yuborilgan: ${fmt(c.sentAt)}`);
+    }
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
+}
+
 // Helper: handle /start command — save chat, set role=user
 async function handleStart(chat, msg, botApiUrl) {
   try {
@@ -159,7 +515,9 @@ async function handleStart(chat, msg, botApiUrl) {
     };
     await saveKnownChats(chats);
     const firstName = chat.first_name || chat.title || 'Foydalanuvchi';
-    if (existing.role === 'hotel') {
+    if (existing.role === 'admin') {
+      await sendAdminMenu(chat.id);
+    } else if (existing.role === 'hotel') {
       await sendHotelMenu(chat.id);
     } else {
       await axios.post(`${botApiUrl}/sendMessage`, {
@@ -325,6 +683,22 @@ router.get('/updates', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/telegram/messages - Get chat message history
+router.get('/messages', authenticate, async (req, res) => {
+  try {
+    const { chatId } = req.query;
+    const where = chatId ? { chatId: String(chatId) } : {};
+    const messages = await prisma.telegramMessage.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      take: 200
+    });
+    res.json({ messages });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/telegram/send-message - Send message to a specific chat
 router.post('/send-message', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -336,7 +710,19 @@ router.post('/send-message', authenticate, requireAdmin, async (req, res) => {
       parse_mode: 'HTML'
     });
     if (!response.data.ok) return res.status(400).json({ error: 'Telegram xatosi: ' + response.data.description });
-    res.json({ success: true, messageId: response.data.result.message_id });
+    const msgId = response.data.result.message_id;
+    // Save outgoing message to chat history
+    const chatsData = await loadKnownChats().catch(() => ({}));
+    await prisma.telegramMessage.create({
+      data: {
+        chatId: String(chatId),
+        chatName: chatsData[String(chatId)]?.name || null,
+        role: chatsData[String(chatId)]?.role || null,
+        text: text.trim(),
+        direction: 'OUT'
+      }
+    }).catch(() => {});
+    res.json({ success: true, messageId: msgId });
   } catch (error) {
     const desc = error.response?.data?.description || error.message;
     console.error('Send message error:', desc);
@@ -361,7 +747,7 @@ router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
     await saveKnownChats(chats);
     // Send bot-specific welcome message when admin assigns a role
     if (role !== undefined && role !== prevRole && T.roleAssigned[role]) {
-      const roleApis = { hotel: BOT_API(), transport: TRANSPORT_API(), restaurant: RESTAURANT_API(), guide: GUIDE_API() };
+      const roleApis = { hotel: BOT_API(), transport: TRANSPORT_API(), restaurant: RESTAURANT_API(), guide: GUIDE_API(), admin: BOT_API() };
       const api = roleApis[role];
       if (api) {
         const lang = await getChatLang(chatId);
@@ -372,7 +758,8 @@ router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
           parse_mode: 'Markdown',
           reply_markup: JSON.stringify({ remove_keyboard: true })
         }).catch(() => {});
-        if (role === 'hotel') await sendHotelMenu(chatId);
+        if (role === 'admin') await sendAdminMenu(chatId);
+        else if (role === 'hotel') await sendHotelMenu(chatId);
       }
     }
     res.json({ chat: chats[chatId] });
@@ -469,15 +856,74 @@ router.post('/webhook', (req, res, next) => {
       };
       await saveKnownChats(chats);
 
-      // Hotel menu commands (for hotel users)
+      // Block users without an assigned role (only hotel/transport/restaurant/guide/admin allowed)
+      const assignedRole = chats[String(chat.id)]?.role;
+      const ALLOWED_ROLES = ['hotel', 'transport', 'restaurant', 'guide', 'admin'];
+      const isAllowedByEnv = process.env.TELEGRAM_ADMIN_CHAT_ID && String(chat.id) === String(process.env.TELEGRAM_ADMIN_CHAT_ID);
+      if (!isAllowedByEnv && (!assignedRole || !ALLOWED_ROLES.includes(assignedRole))) {
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: '❌ Sizga bu botdan foydalanish ruxsati yo\'q.\n\nAdmin bilan bog\'laning.'
+        }).catch(() => {});
+        return;
+      }
+
+      // Save incoming text message to chat history + notify admins
       if (msg.text) {
+        await prisma.telegramMessage.create({
+          data: {
+            chatId: String(chat.id),
+            chatName: chats[String(chat.id)]?.name || null,
+            role: chats[String(chat.id)]?.role || null,
+            text: msg.text,
+            direction: 'IN'
+          }
+        }).catch(() => {});
+
+        // Notify all admins about incoming message with reply button
+        const senderInfo = chats[String(chat.id)];
+        const senderName = senderInfo?.name || telegramName;
+        const senderRoleLabel = senderInfo?.role
+          ? (senderInfo.role.charAt(0).toUpperCase() + senderInfo.role.slice(1))
+          : 'User';
+        const adminEnvId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+        const adminRoleIds = Object.values(chats).filter(c => c.role === 'admin').map(c => c.chatId);
+        const allAdmins = [...new Set([...(adminEnvId ? [String(adminEnvId)] : []), ...adminRoleIds])];
+        for (const aId of allAdmins) {
+          if (String(aId) === String(chat.id)) continue;
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: aId,
+            text: `💬 *${senderRoleLabel}: ${senderName}*\n\n📩 Yangi xabar:\n"${msg.text}"`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({
+              inline_keyboard: [[
+                { text: '✏️ Javob berish', callback_data: `reply_to:${chat.id}:${senderName.substring(0, 30)}` }
+              ]]
+            })
+          }).catch(() => {});
+        }
+      }
+
+      // Hotel menu commands (for hotel users — admin skip qiladi)
+      const senderRole = chats[String(chat.id)]?.role;
+      const senderIsAdmin = (process.env.TELEGRAM_ADMIN_CHAT_ID && String(chat.id) === String(process.env.TELEGRAM_ADMIN_CHAT_ID)) || senderRole === 'admin';
+      if (msg.text && !senderIsAdmin) {
         const year = new Date().getFullYear();
         if (msg.text === '/menu') {
           await sendHotelMenu(chat.id);
           return;
         }
         if (msg.text.startsWith('📋 Заявка')) {
-          const zvSettings = await findJpSectionsByChatId(chat.id);
+          const allZvSettings = await findJpSectionsByChatId(chat.id);
+          // Faqat Telegram ga haqiqatda yuborilganlarni ko'rsatish
+          // (bulkMsgId yoki visit msgId orqali tekshiriladi)
+          const zvSettings = allZvSettings.filter(s => {
+            try {
+              const d = JSON.parse(s.value);
+              if (d.bulkMsgId != null) return true;
+              return (d.groups || []).some(g => g.visits.some(v => v.msgId != null));
+            } catch { return false; }
+          });
           if (zvSettings.length === 0) {
             await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '📋 Hali hech qanday zayavka yuborilmagan.', parse_mode: 'Markdown' }).catch(() => {});
             return;
@@ -485,15 +931,27 @@ router.post('/webhook', (req, res, next) => {
           if (zvSettings.length === 1) {
             const jpData = JSON.parse(zvSettings[0].value);
             const tt = jpData.tourType || '';
-            const lines = [`📋 *${tt} ${year} — ${jpData.hotelName || ''}*`, ''];
+            const ST1 = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌' };
+            const visitBlocks = [];
             for (const grp of (jpData.groups || [])) {
               for (const v of grp.visits) {
-                const si = v.status === 'CONFIRMED' ? '✅' : v.status === 'WAITING' ? '⏳' : v.status === 'REJECTED' ? '❌' : '⬜';
-                const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
-                lines.push(`${si} *${label}* — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`);
+                const si = ST1[v.status] || '⬜';
+                const title = v.sectionLabel ? `${si} *ЗАЯВКА ${grp.group} — ${v.sectionLabel}*` : `${si} *ЗАЯВКА ${grp.group}*`;
+                visitBlocks.push([title, `📅 Заезд: ${v.checkIn}`, `📅 Выезд: ${v.checkOut}`, `👥 PAX: ${v.pax}`, `🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}`].join('\n'));
               }
             }
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: `📋 *${tt} ${year} — ${jpData.hotelName || ''}*`, parse_mode: 'Markdown' }).catch(() => {});
+            let chunk1 = [], chunkLen1 = 0;
+            for (let i = 0; i < visitBlocks.length; i++) {
+              if (chunkLen1 + visitBlocks[i].length > 3500 && chunk1.length > 0) {
+                await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: chunk1.join('\n\n'), parse_mode: 'Markdown' }).catch(() => {});
+                chunk1 = []; chunkLen1 = 0;
+              }
+              chunk1.push(visitBlocks[i]); chunkLen1 += visitBlocks[i].length;
+            }
+            if (chunk1.length > 0) {
+              await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: chunk1.join('\n\n'), parse_mode: 'Markdown' }).catch(() => {});
+            }
             return;
           }
           const ORDER = ['ER', 'CO', 'KAS', 'ZA'];
@@ -513,177 +971,135 @@ router.post('/webhook', (req, res, next) => {
         }
         if (msg.text === '⏳ Waiting List') {
           const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
-          const settings = await findJpSectionsByChatId(chat.id);
-          let wlHotelName = hotel?.name || '';
-          const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
-          const wlItems = []; // { text, keyboard }
-
-          // 1. JP_SECTIONS WAITING items (from jahresplanung sends)
-          for (const s of settings) {
-            const d = JSON.parse(s.value);
-            if (!wlHotelName) wlHotelName = d.hotelName || '';
-            const tourType = d.tourType || '';
-            for (const grp of (d.groups || [])) {
-              for (const v of grp.visits) {
-                if (v.status === 'WAITING') {
-                  const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
-                  const itemLines = [
-                    `⏳ *ЗАЯВКА ${label}* (${tourType})`,
-                    `  📅 Заезд: ${v.checkIn}`,
-                    `  📅 Выезд: ${v.checkOut}`,
-                    `  👥 PAX: ${v.pax}`,
-                    `  🛏 DBL: ${v.dbl||0}  |  TWN: ${v.twn||0}  |  SNGL: ${v.sngl||0}`
-                  ];
-                  wlItems.push({
-                    text: itemLines.join('\n'),
-                    keyboard: [[
-                      { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotel?.id}:${v.visitIdx}` },
-                      { text: '❌ Rad qilish', callback_data: `jp_r:${grp.bookingId}:${hotel?.id}:${v.visitIdx}` }
-                    ]]
-                  });
-                }
-              }
-            }
-          }
-
-          // 2. TelegramConfirmation WAITING items (from tourist send / "Telegram orqali yuborish")
-          if (hotel) {
-            const wlConfs = await prisma.telegramConfirmation.findMany({
-              where: { hotelId: hotel.id, status: 'WAITING' },
-              include: { booking: { select: { bookingNumber: true, pax: true, status: true } } },
-              orderBy: { sentAt: 'asc' }
-            });
-            const seen = new Set();
-            for (const c of wlConfs) {
-              if (seen.has(c.bookingId)) continue;
-              seen.add(c.bookingId);
-              const accs = await prisma.accommodation.findMany({
-                where: { bookingId: c.bookingId, hotelId: hotel.id },
-                include: { rooms: true },
-                orderBy: { checkInDate: 'asc' }
-              });
-              const bookNum = c.booking?.bookingNumber || '—';
-              const itemLines = [`⏳ *ЗАЯВКА ${bookNum}*`];
-              if (accs.length > 0) {
-                accs.forEach((acc, i) => {
-                  const dbl = acc.rooms.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + r.roomsCount, 0);
-                  const twn = acc.rooms.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + r.roomsCount, 0);
-                  const sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + r.roomsCount, 0);
-                  if (accs.length > 1) itemLines.push(`  *${i + 1}-заезд:*`);
-                  itemLines.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
-                  itemLines.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
-                  itemLines.push(`  👥 PAX: ${c.booking?.pax || 0}`);
-                  itemLines.push(`  🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`);
-                });
-              } else {
-                itemLines.push(`  📅 Yuborilgan: ${fmt(c.sentAt)}`);
-              }
-              wlItems.push({
-                text: itemLines.join('\n'),
-                keyboard: [[
-                  { text: '✅ Tasdiqlash', callback_data: `confirm:${c.bookingId}:${hotel.id}` },
-                  { text: '❌ Rad qilish', callback_data: `reject:${c.bookingId}:${hotel.id}` }
-                ]]
-              });
-            }
-          }
-
-          if (!wlItems.length) {
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '✅ Waiting List bo\'sh.', parse_mode: 'Markdown' }).catch(() => {});
-            return;
-          }
-          // Header
-          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: `⏳ *Waiting List — ${wlHotelName}*`, parse_mode: 'Markdown' }).catch(() => {});
-          // Each item with confirm/reject buttons
-          for (const item of wlItems) {
-            await axios.post(`${BOT_API()}/sendMessage`, {
-              chat_id: chat.id,
-              text: item.text,
-              parse_mode: 'Markdown',
-              reply_markup: { inline_keyboard: item.keyboard }
-            }).catch(() => {});
-          }
+          if (!hotel) return;
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: chat.id,
+            text: '⏳ *Waiting List*\nQaysi bo\'limni tanlang:',
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [
+              [{ text: '📋 Заявка 2026', callback_data: `hwl_jp:${hotel.id}` }],
+              [{ text: '📝 Изменения к Заявке', callback_data: `hwl_chg:${hotel.id}` }]
+            ]})
+          }).catch(() => {});
           return;
         }
-        if (msg.text === '📝 Изменения к Заявке' || msg.text === '❌ Аннуляция') {
-          const isAnn = msg.text === '❌ Аннуляция';
+        if (msg.text === '📝 Изменения к Заявке' || msg.text === "📝 O'zgarishlar" || msg.text === '❌ Аннуляция' || msg.text === "❌ Bekor qilish") {
+          const isAnn = msg.text === '❌ Аннуляция' || msg.text === "❌ Bekor qilish";
           const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
           if (!hotel) { await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '🏨 Hotel topilmadi.' }).catch(() => {}); return; }
 
-          const confs = await prisma.telegramConfirmation.findMany({
-            where: {
-              hotelId: hotel.id,
-              // Изменения: faqat PENDING (javob kutilayotgan yangi o'zgarishlar)
-              // Аннуляция: barcha status (keyin cancelled booking bo'yicha filter)
-              ...(isAnn ? {} : { status: 'PENDING' })
-            },
-            include: { booking: { select: { bookingNumber: true, status: true, pax: true } } },
-            orderBy: { sentAt: 'asc' }
-          });
-
-          // Unique by bookingId; Аннуляция uchun faqat cancelled bookinglar
-          const seen = new Set();
-          const filtered = confs.filter(c => {
-            const isCancelled = c.booking?.status === 'CANCELLED';
-            if (isAnn && !isCancelled) return false;
-            if (seen.has(c.bookingId)) return false;
-            seen.add(c.bookingId);
-            return true;
-          });
-
-          if (!filtered.length) {
-            const emptyText = isAnn ? '❌ Аннуляций пока нет.' : '📝 Изменения к Заявке пока нет.';
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: emptyText }).catch(() => {});
+          if (!isAnn) {
+            // 📝 Изменения: tour type selection
+            const confs = await prisma.telegramConfirmation.findMany({
+              where: { hotelId: hotel.id, status: { in: ['CONFIRMED', 'REJECTED'] } },
+              include: { booking: { select: { status: true, tourType: { select: { code: true } } } } }
+            });
+            const validTourTypes = [...new Set(
+              confs.filter(c => c.booking?.status !== 'CANCELLED')
+                   .map(c => c.booking?.tourType?.code).filter(Boolean)
+            )];
+            if (!validTourTypes.length) {
+              await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '📝 Изменения к Заявке пока нет.' }).catch(() => {});
+              return;
+            }
+            const ORDER = ['ER', 'CO', 'KAS', 'ZA'];
+            const sorted = ORDER.filter(t => validTourTypes.includes(t));
+            const rows = [];
+            for (let i = 0; i < sorted.length; i += 2) {
+              rows.push(sorted.slice(i, i + 2).map(t => ({ text: t, callback_data: `chg_tt:${t}:${hotel.id}` })));
+            }
+            await axios.post(`${BOT_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: '📝 *Изменения к Заявке*\nQaysi tur turini tanlang:',
+              parse_mode: 'Markdown',
+              reply_markup: JSON.stringify({ inline_keyboard: rows })
+            }).catch(() => {});
             return;
           }
 
-          const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
-          const statusIcon = { PENDING: '⬜', CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌' };
-          const header = isAnn ? `❌ *Аннуляция — ${hotel.name}*` : `📝 *Изменения к Заявке — ${hotel.name}*`;
-          const lines = [header];
-
-          for (const c of filtered) {
-            const si = isAnn ? '❌' : (statusIcon[c.status] || '⬜');
-            const accs = await prisma.accommodation.findMany({
-              where: { bookingId: c.bookingId, hotelId: hotel.id },
-              include: { rooms: true },
-              orderBy: { checkInDate: 'asc' }
-            });
-            lines.push('');
-            lines.push(`${si} *ЗАЯВКА ${c.booking?.bookingNumber || '—'}*`);
-            if (accs.length > 0) {
-              accs.forEach((acc, i) => {
-                const dbl = acc.rooms.filter(r => r.roomTypeCode === 'DBL').reduce((s, r) => s + r.roomsCount, 0);
-                const twn = acc.rooms.filter(r => r.roomTypeCode === 'TWN').reduce((s, r) => s + r.roomsCount, 0);
-                const sngl = acc.rooms.filter(r => r.roomTypeCode === 'SNGL').reduce((s, r) => s + r.roomsCount, 0);
-                if (accs.length > 1) lines.push(`  *${i + 1}-заезд:*`);
-                lines.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
-                lines.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
-                lines.push(`  👥 PAX: ${c.booking?.pax || 0}`);
-                lines.push(`  🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`);
-              });
-            } else {
-              lines.push(`  📅 Yuborilgan: ${fmt(c.sentAt)}`);
-            }
+          // ❌ Аннуляция — tour type selection filtered by hotel's cancelled bookings
+          const annConfs = await prisma.telegramConfirmation.findMany({
+            where: { hotelId: hotel.id },
+            include: { booking: { select: { status: true, tourType: { select: { code: true } } } } }
+          });
+          const annSeen = new Set();
+          const annTourTypes = [];
+          for (const c of annConfs) {
+            if (c.booking?.status !== 'CANCELLED') continue;
+            const code = c.booking?.tourType?.code;
+            if (code && !annSeen.has(code)) { annSeen.add(code); annTourTypes.push(code); }
           }
-
-          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
+          if (!annTourTypes.length) {
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '❌ Аннуляций пока нет.' }).catch(() => {});
+            return;
+          }
+          const ORDER_ANN = ['ER', 'CO', 'KAS', 'ZA'];
+          const sortedAnn = ORDER_ANN.filter(t => annTourTypes.includes(t));
+          const annRows = [];
+          for (let i = 0; i < sortedAnn.length; i += 2) {
+            annRows.push(sortedAnn.slice(i, i + 2).map(t => ({ text: t, callback_data: `hann:${hotel.id}:${t}` })));
+          }
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: chat.id,
+            text: '❌ *Аннуляция*\nQaysi tur turini tanlang:',
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: annRows })
+          }).catch(() => {});
           return;
         }
       }
 
-      // Handle admin commands (only responds to TELEGRAM_ADMIN_CHAT_ID)
+      // Handle admin commands — TELEGRAM_ADMIN_CHAT_ID (env) yoki role='admin' (KNOWN_CHATS)
       const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
       const senderChatId = String(chat.id);
-      if (adminChatId && senderChatId === String(adminChatId) && msg.text) {
+      const senderChats = await loadKnownChats();
+      const isAdmin = (adminChatId && senderChatId === String(adminChatId)) || senderChats[senderChatId]?.role === 'admin';
+      if (isAdmin && msg.text) {
         const text = msg.text.trim();
+        const adminSendId = senderChatId;
+        const year = new Date().getFullYear();
 
-        // Persistent reply keyboard shown on /start, /menu, /menyu
+        // ── Pending reply mode: admin Telegram dan to'g'ridan javob beradi ──
+        if (adminPendingReply[adminSendId]) {
+          if (text === '/cancel') {
+            delete adminPendingReply[adminSendId];
+            await axios.post(`${BOT_API()}/sendMessage`, {
+              chat_id: adminSendId,
+              text: '❌ Javob bekor qilindi.'
+            }).catch(() => {});
+            return;
+          }
+          const { targetChatId, targetName } = adminPendingReply[adminSendId];
+          delete adminPendingReply[adminSendId];
+          // Send reply to target via bot
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: targetChatId,
+            text: `💬 Admin:\n${text}`
+          }).catch(() => {});
+          // Save outgoing message to DB
+          await prisma.telegramMessage.create({
+            data: {
+              chatId: String(targetChatId),
+              chatName: targetName,
+              role: null,
+              text: text,
+              direction: 'OUT'
+            }
+          }).catch(() => {});
+          // Confirm to admin
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: adminSendId,
+            text: `✅ *${targetName}* ga javob yuborildi.`,
+            parse_mode: 'Markdown'
+          }).catch(() => {});
+          return;
+        }
+
+        // Admin persistent reply keyboard
         const MAIN_REPLY_KEYBOARD = JSON.stringify({
           keyboard: [
-            [{ text: '🏨 Hotellar' }],
-            [{ text: '🍽 Restoran' }, { text: '🚌 Transport' }],
-            [{ text: '👤 Gidlar' }]
+            [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
+            [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
           ],
           resize_keyboard: true,
           is_persistent: true
@@ -692,7 +1108,7 @@ router.post('/webhook', (req, res, next) => {
         // /start or /menu — attach persistent keyboard
         if (text === '/start' || text === '/menu' || text === '/menyu') {
           await axios.post(`${BOT_API()}/sendMessage`, {
-            chat_id: adminChatId,
+            chat_id: adminSendId,
             text: '🤖 *Orient Insight — Admin Panel*\n\nPastdagi menyudan bo\'lim tanlang:',
             parse_mode: 'Markdown',
             reply_markup: MAIN_REPLY_KEYBOARD
@@ -700,54 +1116,61 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
 
-        // 🏨 Hotellar button — show hotel list with inline keyboard
-        if (text === '🏨 Hotellar') {
-          const statusEmoji = { PENDING: '🕐', CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌' };
-          const hotels = await prisma.hotel.findMany({
-            where: { telegramConfirmations: { some: {} } },
-            include: {
-              telegramConfirmations: { select: { status: true } },
-              city: { select: { name: true } }
-            },
-            orderBy: { name: 'asc' }
-          });
-
-          if (hotels.length === 0) {
-            await axios.post(`${BOT_API()}/sendMessage`, {
-              chat_id: adminChatId,
-              text: '🏨 *Hotellar*\n\n📭 Hali hech qanday zayavka yuborilmagan.',
-              parse_mode: 'Markdown',
-              reply_markup: MAIN_REPLY_KEYBOARD
-            }).catch(() => {});
-            return;
-          }
-
-          const keyboard = hotels.slice(0, 20).map(hotel => {
-            const counts = {};
-            hotel.telegramConfirmations.forEach(c => { counts[c.status] = (counts[c.status] || 0) + 1; });
-            const countStr = ['PENDING','CONFIRMED','WAITING','REJECTED']
-              .filter(s => counts[s])
-              .map(s => `${statusEmoji[s]}${counts[s]}`)
-              .join(' ');
-            const cityTag = hotel.city?.name ? ` · ${hotel.city.name}` : '';
-            return [{ text: `${hotel.name}${cityTag}  ${countStr}`, callback_data: `admin:hotel:${hotel.id}` }];
-          });
-
+        // 📋 Заявка 2026 — tur turi tanlash
+        if (text === '📋 Заявка 2026') {
+          const year = new Date().getFullYear();
           await axios.post(`${BOT_API()}/sendMessage`, {
-            chat_id: adminChatId,
-            text: `🏨 *Hotellar* (${hotels.length} ta)\n\nHotelni tanlang:`,
+            chat_id: adminSendId,
+            text: `📋 *Заявка ${year}*\n\nQaysi tur turini tanlang:`,
             parse_mode: 'Markdown',
-            reply_markup: JSON.stringify({ inline_keyboard: keyboard })
+            reply_markup: JSON.stringify({
+              inline_keyboard: [
+                [{ text: `ER ${year}`, callback_data: 'admin:zv:ER' }, { text: `CO ${year}`, callback_data: 'admin:zv:CO' }],
+                [{ text: `KAS ${year}`, callback_data: 'admin:zv:KAS' }, { text: `ZA ${year}`, callback_data: 'admin:zv:ZA' }]
+              ]
+            })
           }).catch(() => {});
           return;
         }
 
-        // 🍽 Restoran / 🚌 Transport / 👤 Gidlar buttons
-        if (text === '🍽 Restoran' || text === '🚌 Transport' || text === '👤 Gidlar') {
+        // 📝 Изменения к Заявке — tour type tanlash (CONFIRMED bo'lgan)
+        if (text === "📝 Изменения к Заявке") {
           await axios.post(`${BOT_API()}/sendMessage`, {
-            chat_id: adminChatId,
-            text: `${text}\n\n🚧 Bu bo'lim tez kunda...`,
-            reply_markup: MAIN_REPLY_KEYBOARD
+            chat_id: adminSendId,
+            text: '📝 *Изменения к Заявке*\nQaysi tur turini tanlang:',
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [
+              [{ text: 'ER', callback_data: 'admin:chg_tt:ER' }, { text: 'CO', callback_data: 'admin:chg_tt:CO' }],
+              [{ text: 'KAS', callback_data: 'admin:chg_tt:KAS' }, { text: 'ZA', callback_data: 'admin:chg_tt:ZA' }]
+            ]})
+          }).catch(() => {});
+          return;
+        }
+
+        // ⏳ Waiting List — avval Заявка 2026 yoki Изменения tanlash
+        if (text === '⏳ Waiting List') {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: adminSendId,
+            text: '⏳ *Waiting List*\nQaysi bo\'limni tanlang:',
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [
+              [{ text: '📋 Заявка 2026', callback_data: 'admin:wl:jp' }],
+              [{ text: '📝 Изменения к Заявке', callback_data: 'admin:wl:chg' }]
+            ]})
+          }).catch(() => {});
+          return;
+        }
+
+        // ❌ Аннуляция — tour type tanlash (har doim 4 ta)
+        if (text === '❌ Аннуляция') {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: adminSendId,
+            text: '❌ *Аннуляция*\nQaysi tur turini tanlang:',
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [
+              [{ text: 'ER', callback_data: 'admin:ann_tt:ER' }, { text: 'CO', callback_data: 'admin:ann_tt:CO' }],
+              [{ text: 'KAS', callback_data: 'admin:ann_tt:KAS' }, { text: 'ZA', callback_data: 'admin:ann_tt:ZA' }]
+            ]})
           }).catch(() => {});
           return;
         }
@@ -759,7 +1182,7 @@ router.post('/webhook', (req, res, next) => {
 
           if (!booking) {
             await axios.post(`${BOT_API()}/sendMessage`, {
-              chat_id: adminChatId,
+              chat_id: adminSendId,
               text: `❌ Booking *${bookingNum}* topilmadi.`,
               parse_mode: 'Markdown'
             }).catch(() => {});
@@ -774,7 +1197,7 @@ router.post('/webhook', (req, res, next) => {
 
           if (confs.length === 0) {
             await axios.post(`${BOT_API()}/sendMessage`, {
-              chat_id: adminChatId,
+              chat_id: adminSendId,
               text: `📭 *${bookingNum}* uchun hech qanday zayavka yuborilmagan.`,
               parse_mode: 'Markdown'
             }).catch(() => {});
@@ -797,12 +1220,12 @@ router.post('/webhook', (req, res, next) => {
           });
 
           await axios.post(`${BOT_API()}/sendMessage`, {
-            chat_id: adminChatId,
+            chat_id: adminSendId,
             text: lines.join('\n'),
             parse_mode: 'Markdown'
           }).catch(async () => {
             const plain = lines.join('\n').replace(/[*_`]/g, '');
-            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: adminChatId, text: plain }).catch(() => {});
+            await axios.post(`${BOT_API()}/sendMessage`, { chat_id: adminSendId, text: plain }).catch(() => {});
           });
           return;
         }
@@ -837,6 +1260,29 @@ router.post('/webhook', (req, res, next) => {
       }
     }
 
+    // ── Reply-to callback (admin "Javob berish" tugmasini bosdi) ─────────
+    if (data.startsWith('reply_to:')) {
+      const parts = data.split(':');
+      const targetChatId = parts[1];
+      const targetName = parts.slice(2).join(':') || 'Foydalanuvchi';
+      const adminCbId = String(fromChatId);
+      const adminEnvId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      const cbChats = await loadKnownChats();
+      const isAdminCb = (adminEnvId && adminCbId === String(adminEnvId)) || cbChats[adminCbId]?.role === 'admin';
+      if (!isAdminCb) {
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId, text: '⛔ Ruxsat yo\'q.' }).catch(() => {});
+        return;
+      }
+      adminPendingReply[adminCbId] = { targetChatId, targetName };
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+      await axios.post(`${BOT_API()}/sendMessage`, {
+        chat_id: adminCbId,
+        text: `✏️ *${targetName}* ga javob yozing:\n_(Bekor qilish uchun /cancel)_`,
+        parse_mode: 'Markdown'
+      }).catch(() => {});
+      return;
+    }
+
     // ── Admin interactive menu callbacks ──────────────────────────────────
     if (data.startsWith('admin:')) {
       const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
@@ -846,77 +1292,322 @@ router.post('/webhook', (req, res, next) => {
         return;
       }
 
-      const parts = data.split(':'); // ['admin', 'hotels'] or ['admin', 'hotel', '123']
+      const parts = data.split(':');
       const subAction = parts[1];
-      const statusEmoji = { PENDING: '🕐', CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌' };
-      const statusLabel = { PENDING: 'Kutilmoqda', CONFIRMED: 'Tasdiqladi', WAITING: 'Waiting List', REJECTED: 'Rad qildi' };
+      const ST = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌', PENDING: '🕐' };
 
       await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
 
-      if (subAction === 'hotel') {
-        // Show specific hotel's confirmations
-        const hotelId = parseInt(parts[2]);
-        const hotel = await prisma.hotel.findUnique({
-          where: { id: hotelId },
-          include: { city: { select: { name: true } } }
+      // admin:zv:CO — CO hotellarini JP holati bilan ko'rsatish
+      if (subAction === 'zv') {
+        const tourType = parts[2];
+        const year = new Date().getFullYear();
+        const allJp = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_SECTIONS_' } } });
+        // Faqat haqiqatda yuborilgan JP lar (bulkMsgId yoki visit msgId bor bo'lsa)
+        const settings = allJp.filter(s => {
+          try {
+            const d = JSON.parse(s.value);
+            if (d.tourType !== tourType) return false;
+            if (d.bulkMsgId != null) return true;
+            return (d.groups || []).some(g => g.visits.some(v => v.msgId != null));
+          } catch { return false; }
         });
 
-        const confs = await prisma.telegramConfirmation.findMany({
-          where: { hotelId },
-          include: { booking: { select: { bookingNumber: true, departureDate: true } } },
-          orderBy: { sentAt: 'desc' },
-          take: 25
-        });
-
-        const hotelName = hotel?.name || `Hotel #${hotelId}`;
-        const cityTag = hotel?.city?.name ? ` (${hotel.city.name})` : '';
-
-        const lines = [`🏨 *${hotelName}*${cityTag}\n`];
-        if (confs.length === 0) {
-          lines.push('📭 Hali hech qanday zayavka yuborilmagan.');
-        } else {
-          // Group summary
-          const counts = {};
-          confs.forEach(c => { counts[c.status] = (counts[c.status] || 0) + 1; });
-          const summary = ['PENDING','CONFIRMED','WAITING','REJECTED']
-            .filter(s => counts[s])
-            .map(s => `${statusEmoji[s]} ${statusLabel[s]}: ${counts[s]}`)
-            .join('  |  ');
-          lines.push(summary);
-          lines.push('');
-          // List each confirmation
-          confs.forEach(c => {
-            const em = statusEmoji[c.status] || '?';
-            const lb = statusLabel[c.status] || c.status;
-            const dep = c.booking?.departureDate ? ` · ${fmtDate(c.booking.departureDate)}` : '';
-            const by = c.confirmedBy ? `  (${c.confirmedBy})` : '';
-            lines.push(`${em} *${c.booking?.bookingNumber || `#${c.bookingId}`}*${dep} — ${lb}${by}`);
-          });
+        if (settings.length === 0) {
+          await axios.post(`${BOT_API()}/editMessageText`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            text: `📋 *${tourType} ${year}*\n\n📭 Bu tur uchun hali zaявka yuborilmagan.`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [[{ text: '⬅️ Orqaga', callback_data: 'admin:zvback' }]] })
+          }).catch(() => {});
+          return;
         }
 
+        const lines = [`📋 *${tourType} ${year} — Barcha hotellar*\n`];
+        const keyboard = [];
+        for (const s of settings) {
+          try {
+            const d = JSON.parse(s.value);
+            const counts = {};
+            for (const grp of (d.groups || [])) for (const v of grp.visits) counts[v.status] = (counts[v.status] || 0) + 1;
+            const countStr = ['PENDING','CONFIRMED','WAITING','REJECTED'].filter(st => counts[st]).map(st => `${ST[st]}${counts[st]}`).join(' ');
+            const hotelId = parseInt(s.key.replace('JP_SECTIONS_', '').replace(`_${tourType}`, ''));
+            lines.push(`🏨 *${d.hotelName}*  ${countStr}`);
+            keyboard.push([{ text: `🏨 ${d.hotelName}`, callback_data: `admin:zvh:${tourType}:${hotelId}` }]);
+          } catch {}
+        }
+        keyboard.push([{ text: '🔄 Yangilash', callback_data: `admin:zv:${tourType}` }, { text: '⬅️ Orqaga', callback_data: 'admin:zvback' }]);
+
         await axios.post(`${BOT_API()}/editMessageText`, {
-          chat_id: fromChatId,
-          message_id: cb.message.message_id,
-          text: lines.join('\n'),
-          parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({
-            inline_keyboard: [
-              [{ text: '🔄 Yangilash', callback_data: `admin:hotel:${hotelId}` }]
-            ]
-          })
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: lines.join('\n'), parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: keyboard })
+        }).catch(() => {});
+        return;
+      }
+
+      // admin:zvh:CO:16 — hotel 16ning CO visit holati (batafsil format, split by chunks)
+      if (subAction === 'zvh') {
+        const tourType = parts[2];
+        const hotelId = parseInt(parts[3]);
+        const year = new Date().getFullYear();
+        const setting = await prisma.systemSetting.findFirst({ where: { key: `JP_SECTIONS_${hotelId}_${tourType}` } });
+
+        if (!setting) {
+          await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId, text: "Ma'lumot topilmadi.", show_alert: true }).catch(() => {});
+          return;
+        }
+        const d = JSON.parse(setting.value);
+
+        // Har bir visit uchun batafsil blok yasash
+        const visitBlocks = [];
+        for (const grp of (d.groups || [])) {
+          for (const v of grp.visits) {
+            const si = ST[v.status] || '🕐';
+            const title = v.sectionLabel
+              ? `${si} *ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
+              : `${si} *ЗАЯВКА ${grp.group}*`;
+            const by = v.confirmedBy ? `\n👤 ${v.confirmedBy}` : '';
+            visitBlocks.push([
+              title,
+              `📅 Заезд: ${v.checkIn}`,
+              `📅 Выезд: ${v.checkOut}`,
+              `👥 PAX: ${v.pax}`,
+              `🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}${by}`
+            ].join('\n'));
+          }
+        }
+
+        // Header xabar (editMessageText bilan — asl xabarni o'zgartiradi)
+        const headerText = `📋 *${tourType} ${year} — ${d.hotelName}*`;
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: headerText, parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [[
+            { text: '🔄 Yangilash', callback_data: `admin:zvh:${tourType}:${hotelId}` },
+            { text: '⬅️ Orqaga', callback_data: `admin:zv:${tourType}` }
+          ]] })
         }).catch(() => {});
 
-      } else if (subAction === 'soon') {
-        await axios.post(`${BOT_API()}/answerCallbackQuery`, {
-          callback_query_id: callbackQueryId,
-          text: '🚧 Bu bo\'lim tez kunda...',
-          show_alert: true
+        // Visit bloklarini chunk qilib yuborish (har chunk ~3500 belgi)
+        let chunk = [];
+        let chunkLen = 0;
+        for (let i = 0; i < visitBlocks.length; i++) {
+          const block = visitBlocks[i];
+          if (chunkLen + block.length > 3500 && chunk.length > 0) {
+            await axios.post(`${BOT_API()}/sendMessage`, {
+              chat_id: fromChatId, text: chunk.join('\n\n'), parse_mode: 'Markdown'
+            }).catch(() => {});
+            chunk = [];
+            chunkLen = 0;
+          }
+          chunk.push(block);
+          chunkLen += block.length;
+        }
+        if (chunk.length > 0) {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: fromChatId, text: chunk.join('\n\n'), parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      // admin:zvback — tur turi tanlash sahifasiga qaytish
+      if (subAction === 'zvback') {
+        const year = new Date().getFullYear();
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: `📋 *Заявка ${year}*\n\nQaysi tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [
+            [{ text: `ER ${year}`, callback_data: 'admin:zv:ER' }, { text: `CO ${year}`, callback_data: 'admin:zv:CO' }],
+            [{ text: `KAS ${year}`, callback_data: 'admin:zv:KAS' }, { text: `ZA ${year}`, callback_data: 'admin:zv:ZA' }]
+          ] })
         }).catch(() => {});
+        return;
+      }
+
+      // admin:chg_tt:ER — admin Изменения к Заявке tur tanlash
+      if (subAction === 'chg_tt') {
+        const tourType = parts[2];
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        const ADMIN_KB = JSON.stringify({
+          keyboard: [
+            [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
+            [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+          ],
+          resize_keyboard: true, is_persistent: true
+        });
+        await sendAdminChangesForTourType(fromChatId, tourType, ADMIN_KB);
+        return;
+      }
+
+      // admin:wl:jp — Waiting List > Заявка 2026 → tour type tanlash
+      if (subAction === 'wl' && parts[2] === 'jp' && !parts[3]) {
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        const yr = new Date().getFullYear();
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: `⏳ *Waiting List — Заявка ${yr}*\nQaysi tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [
+            [{ text: `ER ${yr}`, callback_data: 'admin:wl:jp:ER' }, { text: `CO ${yr}`, callback_data: 'admin:wl:jp:CO' }],
+            [{ text: `KAS ${yr}`, callback_data: 'admin:wl:jp:KAS' }, { text: `ZA ${yr}`, callback_data: 'admin:wl:jp:ZA' }]
+          ]})
+        }).catch(() => {});
+        return;
+      }
+
+      // admin:wl:chg — Waiting List > Изменения → tour type tanlash
+      if (subAction === 'wl' && parts[2] === 'chg' && !parts[3]) {
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: '⏳ *Waiting List — Изменения к Заявке*\nQaysi tur turini tanlang:',
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [
+            [{ text: 'ER', callback_data: 'admin:wl:chg:ER' }, { text: 'CO', callback_data: 'admin:wl:chg:CO' }],
+            [{ text: 'KAS', callback_data: 'admin:wl:chg:KAS' }, { text: 'ZA', callback_data: 'admin:wl:chg:ZA' }]
+          ]})
+        }).catch(() => {});
+        return;
+      }
+
+      // admin:wl:jp:ER — JP_SECTIONS WAITING for tourType
+      if (subAction === 'wl' && parts[2] === 'jp' && parts[3]) {
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await sendAdminWlJp(fromChatId, parts[3]);
+        return;
+      }
+
+      // admin:wl:chg:ER — TelegramConfirmation WAITING for tourType
+      if (subAction === 'wl' && parts[2] === 'chg' && parts[3]) {
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await sendAdminWlChg(fromChatId, parts[3]);
+        return;
+      }
+
+      // admin:ann_tt:ER — admin Аннуляция tur tanlash
+      if (subAction === 'ann_tt') {
+        const tourType = parts[2];
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        const ADMIN_KB = JSON.stringify({
+          keyboard: [
+            [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
+            [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+          ],
+          resize_keyboard: true, is_persistent: true
+        });
+        await sendAdminAnnulmentForTourType(fromChatId, tourType, ADMIN_KB);
+        return;
       }
 
       return; // Don't continue to hotel confirm/reject handler
     }
     // ── End admin menu callbacks ───────────────────────────────────────────
+
+    // ── chg_tt: — hotel Izmeneniye tour type selection callback ───────────
+    if (data.startsWith('chg_tt:')) {
+      const parts = data.split(':');
+      const tourType = parts[1];
+      const hotelId  = parseInt(parts[2]);
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+      const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
+      if (!hotel) return;
+      await sendHotelChangesForTourType(fromChatId, hotel, tourType);
+      return;
+    }
+    // ── End chg_tt ─────────────────────────────────────────────────────────
+
+    // ── hwl_jp: — hotel Waiting List > Заявка 2026 callbacks ───────────────
+    if (data.startsWith('hwl_jp:')) {
+      const parts = data.split(':');
+      const hotelId = parseInt(parts[1]);
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+      const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
+      if (!hotel) return;
+      if (parts.length >= 3) {
+        // hwl_jp:{hotelId}:{tourType} — send WL JP for selected tour type
+        await sendHotelWlJp(fromChatId, hotel, parts[2]);
+      } else {
+        // hwl_jp:{hotelId} — show tour type selection (filter by hotel's JP WAITING items)
+        const settings = await findJpSectionsByChatId(fromChatId);
+        const jpTourTypes = [...new Set(
+          settings.map(s => { try { const d = JSON.parse(s.value); return d.tourType; } catch { return null; } }).filter(Boolean)
+        )];
+        const ORDER = ['ER', 'CO', 'KAS', 'ZA'];
+        const sorted = ORDER.filter(t => jpTourTypes.includes(t));
+        if (sorted.length === 0) {
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: '⏳ Waiting List bo\'sh.' }).catch(() => {});
+          return;
+        }
+        const rows = [];
+        for (let i = 0; i < sorted.length; i += 2) {
+          rows.push(sorted.slice(i, i + 2).map(t => ({ text: t, callback_data: `hwl_jp:${hotel.id}:${t}` })));
+        }
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: fromChatId,
+          text: '📋 *Заявка 2026 — Waiting List*\nQaysi tur turini tanlang:',
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: rows })
+        }).catch(() => {});
+      }
+      return;
+    }
+    // ── End hwl_jp ─────────────────────────────────────────────────────────
+
+    // ── hwl_chg: — hotel Waiting List > Изменения callbacks ────────────────
+    if (data.startsWith('hwl_chg:')) {
+      const parts = data.split(':');
+      const hotelId = parseInt(parts[1]);
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+      const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
+      if (!hotel) return;
+      if (parts.length >= 3) {
+        // hwl_chg:{hotelId}:{tourType} — send WL Chg for selected tour type
+        await sendHotelWlChg(fromChatId, hotel, parts[2]);
+      } else {
+        // hwl_chg:{hotelId} — show tour type selection (filter by hotel's TelegramConfirmation WAITING)
+        const wlConfs = await prisma.telegramConfirmation.findMany({
+          where: { hotelId: hotel.id, status: 'WAITING' },
+          include: { booking: { select: { tourType: { select: { code: true } } } } }
+        });
+        const ORDER = ['ER', 'CO', 'KAS', 'ZA'];
+        const chgTourTypes = [...new Set(wlConfs.map(c => c.booking?.tourType?.code).filter(Boolean))];
+        const sorted = ORDER.filter(t => chgTourTypes.includes(t));
+        if (sorted.length === 0) {
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: '⏳ Waiting List bo\'sh.' }).catch(() => {});
+          return;
+        }
+        const rows = [];
+        for (let i = 0; i < sorted.length; i += 2) {
+          rows.push(sorted.slice(i, i + 2).map(t => ({ text: t, callback_data: `hwl_chg:${hotel.id}:${t}` })));
+        }
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: fromChatId,
+          text: '📝 *Изменения — Waiting List*\nQaysi tur turini tanlang:',
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: rows })
+        }).catch(() => {});
+      }
+      return;
+    }
+    // ── End hwl_chg ────────────────────────────────────────────────────────
+
+    // ── hann: — hotel Аннуляция tour type selection callback ───────────────
+    if (data.startsWith('hann:')) {
+      const parts = data.split(':');
+      const hotelId = parseInt(parts[1]);
+      const tourType = parts[2]; // may be undefined if just hann:{hotelId}
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+      const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
+      if (!hotel) return;
+      if (tourType) {
+        await sendHotelAnnulment(fromChatId, hotel, tourType);
+      }
+      return;
+    }
+    // ── End hann ───────────────────────────────────────────────────────────
 
     // ── Meal (restoran) callbacks ──────────────────────────────────────────
     if (data.startsWith('meal_confirm:') || data.startsWith('meal_reject:')) {
@@ -1528,10 +2219,15 @@ router.post('/webhook', (req, res, next) => {
 
       // Save updated statuses back to SystemSetting
       stored.groups = groups;
-      await prisma.systemSetting.update({
-        where: { key: setting.key },
-        data: { value: JSON.stringify(stored) }
-      }).catch(() => {});
+      try {
+        await prisma.systemSetting.update({
+          where: { key: setting.key },
+          data: { value: JSON.stringify(stored) }
+        });
+        console.log(`JP_SECTIONS saved: key=${setting.key}, status=${newStatus}, visitIdx=${jpVisitIdx}`);
+      } catch (e) {
+        console.error('JP_SECTIONS save FAILED:', e.message, '| key:', setting.key);
+      }
 
       // Sync to JP_STATE statuses (so Jahresplanung page reflects Telegram responses)
       try {
@@ -1640,15 +2336,88 @@ router.post('/webhook', (req, res, next) => {
         return;
       }
       const jpData = JSON.parse(setting.value);
-      const lines = [`📋 *${tourType} ${year} — ${jpData.hotelName || ''}*`, ''];
+      const ST_ZV = { CONFIRMED: '✅', WAITING: '⏳', REJECTED: '❌' };
+      const zvBlocks = [];
       for (const grp of (jpData.groups || [])) {
         for (const v of grp.visits) {
-          const si = v.status === 'CONFIRMED' ? '✅' : v.status === 'WAITING' ? '⏳' : v.status === 'REJECTED' ? '❌' : '⬜';
-          const label = v.sectionLabel ? `${grp.group} — ${v.sectionLabel}` : grp.group;
-          lines.push(`${si} *${label}* — ${v.checkIn} → ${v.checkOut} | ${v.pax} PAX`);
+          const si = ST_ZV[v.status] || '⬜';
+          const title = v.sectionLabel ? `${si} *ЗАЯВКА ${grp.group} — ${v.sectionLabel}*` : `${si} *ЗАЯВКА ${grp.group}*`;
+          zvBlocks.push([title, `📅 Заезд: ${v.checkIn}`, `📅 Выезд: ${v.checkOut}`, `👥 PAX: ${v.pax}`, `🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}`].join('\n'));
         }
       }
-      await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: lines.join('\n'), parse_mode: 'Markdown' }).catch(() => {});
+      await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: `📋 *${tourType} ${year} — ${jpData.hotelName || ''}*`, parse_mode: 'Markdown' }).catch(() => {});
+      let zvChunk = [], zvChunkLen = 0;
+      for (let i = 0; i < zvBlocks.length; i++) {
+        if (zvChunkLen + zvBlocks[i].length > 3500 && zvChunk.length > 0) {
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: zvChunk.join('\n\n'), parse_mode: 'Markdown' }).catch(() => {});
+          zvChunk = []; zvChunkLen = 0;
+        }
+        zvChunk.push(zvBlocks[i]); zvChunkLen += zvBlocks[i].length;
+      }
+      if (zvChunk.length > 0) {
+        await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: zvChunk.join('\n\n'), parse_mode: 'Markdown' }).catch(() => {});
+      }
+      return;
+    }
+
+    // chg_c / chg_r — Izmeneniye k zayavke confirm/reject
+    if (data.startsWith('chg_c:') || data.startsWith('chg_r:')) {
+      const parts = data.split(':');
+      const chgBookingId = parseInt(parts[1]);
+      const chgHotelId   = parseInt(parts[2]);
+      const isConfirm    = data.startsWith('chg_c:');
+      const chgEmoji     = isConfirm ? '✅' : '❌';
+      const chgLabel     = isConfirm ? 'Tasdiqlandi!' : 'Rad qilindi.';
+      const chgStatus    = isConfirm ? 'CONFIRMED' : 'REJECTED';
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: `${chgEmoji} ${chgLabel}`,
+        show_alert: false
+      }).catch(() => {});
+
+      // Edit caption: add status, remove buttons
+      if (cb.message?.message_id) {
+        const origCaption = cb.message.caption || cb.message.text || '';
+        const newCaption  = (origCaption + `\n\n${chgEmoji} ${chgLabel}`).slice(0, 1024);
+        const editMethod  = cb.message.caption !== undefined ? 'editMessageCaption' : 'editMessageText';
+        const editKey     = cb.message.caption !== undefined ? 'caption' : 'text';
+        await axios.post(`${BOT_API()}/${editMethod}`, {
+          chat_id: fromChatId,
+          message_id: cb.message.message_id,
+          [editKey]: newCaption,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [] })
+        }).catch(() => {});
+      }
+
+      // Update TelegramConfirmation
+      try {
+        await prisma.telegramConfirmation.updateMany({
+          where: { bookingId: chgBookingId, hotelId: chgHotelId, status: 'PENDING' },
+          data: { status: chgStatus, confirmedBy: fromName, respondedAt: new Date() }
+        });
+      } catch (e) { console.warn('chg confirmation update:', e.message); }
+
+      // Notify admin
+      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      if (adminChatId) {
+        const chgBooking = await prisma.booking.findUnique({ where: { id: chgBookingId } });
+        const chgHotel   = await prisma.hotel.findUnique({ where: { id: chgHotelId } });
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: adminChatId,
+          text: [
+            `${chgEmoji} *Izmeneniye — ЗАЯВКА ${chgBooking?.bookingNumber || chgBookingId}*`,
+            `🏨 ${chgHotel?.name || chgHotelId}`,
+            ``,
+            `👤 ${fromName}`,
+            `🕐 ${timeStr}`
+          ].join('\n'),
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
       return;
     }
 
@@ -2395,6 +3164,13 @@ router.post('/send-changes/:bookingId/:hotelId', authenticate, upload.single('pd
       `🛏 DBL: ${dbl}  |  TWN: ${twn}  |  SNGL: ${sngl}`,
     ].join('\n');
 
+    const chgButtons = JSON.stringify({
+      inline_keyboard: [[
+        { text: '✅ Tasdiqlash', callback_data: `chg_c:${bookingId}:${hotelId}` },
+        { text: '❌ Rad qilish', callback_data: `chg_r:${bookingId}:${hotelId}` }
+      ]]
+    });
+
     if (req.file?.buffer) {
       const form = new FormData();
       form.append('chat_id', hotel.telegramChatId);
@@ -2404,10 +3180,19 @@ router.post('/send-changes/:bookingId/:hotelId', authenticate, upload.single('pd
       });
       form.append('caption', caption);
       form.append('parse_mode', 'Markdown');
+      form.append('reply_markup', chgButtons);
       await axios.post(`${BOT_API()}/sendDocument`, form, { headers: form.getHeaders() });
     } else {
-      await axios.post(`${BOT_API()}/sendMessage`, { chat_id: hotel.telegramChatId, text: caption, parse_mode: 'Markdown' });
+      await axios.post(`${BOT_API()}/sendMessage`, {
+        chat_id: hotel.telegramChatId, text: caption, parse_mode: 'Markdown', reply_markup: chgButtons
+      });
     }
+
+    // Create TelegramConfirmation so admin "O'zgarishlar" shows it
+    await prisma.telegramConfirmation.create({
+      data: { bookingId, hotelId, status: 'PENDING' }
+    });
+
     res.json({ success: true });
   } catch (e) {
     console.error('send-changes error:', e.message);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { telegramApi } from '../services/api';
 import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Building, Phone, Pencil, X, Send, Bus, UtensilsCrossed, Compass } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -252,17 +252,39 @@ function HotelCell({ chatId, hotels, onLink }) {
   );
 }
 
-function SendMessageModal({ chat, onClose }) {
+function ChatModal({ chat, onClose }) {
+  const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const bottomRef = useRef(null);
+
+  const loadMessages = useCallback(async () => {
+    try {
+      const res = await telegramApi.getMessages(chat.chatId);
+      setMessages(res.data.messages || []);
+    } catch {} finally {
+      setLoading(false);
+    }
+  }, [chat.chatId]);
+
+  useEffect(() => {
+    loadMessages();
+    const interval = setInterval(loadMessages, 5000);
+    return () => clearInterval(interval);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+  }, [messages]);
 
   const handleSend = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || sending) return;
     setSending(true);
     try {
-      await telegramApi.sendMessage(chat.chatId, text);
-      toast.success('Xabar yuborildi!');
-      onClose();
+      await telegramApi.sendMessage(chat.chatId, text.trim());
+      setText('');
+      await loadMessages();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Yuborib bo\'lmadi');
     } finally {
@@ -272,52 +294,84 @@ function SendMessageModal({ chat, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-        {/* Header — violet */}
-        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-violet-600 to-purple-600">
-          <div className="flex items-center gap-2">
-            <MessageCircle size={20} className="text-white" />
-            <span className="font-semibold text-white">Telegram xabar yuborish</span>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+        style={{ height: '75vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-violet-600 to-purple-600 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+              <MessageCircle size={18} className="text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-semibold text-white leading-tight truncate">{chat.name || chat.chatId}</div>
+              <div className="text-xs text-white/70">{chat.role || 'user'}{chat.phone ? ` · ${chat.phone}` : ''}</div>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/20 text-white transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/20 text-white transition-colors flex-shrink-0">
             <X size={18} />
           </button>
         </div>
-        {/* Body */}
-        <div className="p-5 space-y-3">
-          <div className="text-sm text-gray-700">
-            Qabul qiluvchi: <span className="font-bold text-gray-900">{chat.name}</span>
-          </div>
-          {chat.phone && (
-            <div className="text-sm text-gray-700">
-              Telefon: <span className="font-medium text-red-500">{chat.phone}</span>
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto p-4 bg-gray-50 min-h-0">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-500" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <MessageCircle size={32} className="mb-2 opacity-30" />
+              <p className="text-sm">Xabarlar tarixi yo'q</p>
+              <p className="text-xs mt-1 opacity-70">Yuborilgan va qabul qilingan xabarlar shu yerda ko'rinadi</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex ${msg.direction === 'OUT' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[78%] px-3 py-2 text-sm shadow-sm ${
+                    msg.direction === 'OUT'
+                      ? 'bg-blue-500 text-white rounded-2xl rounded-br-sm'
+                      : 'bg-white text-gray-800 border border-gray-100 rounded-2xl rounded-bl-sm'
+                  }`}>
+                    <div className="whitespace-pre-wrap break-words">{msg.text}</div>
+                    <div className={`text-[10px] mt-1 ${msg.direction === 'OUT' ? 'text-blue-200 text-right' : 'text-gray-400'}`}>
+                      {new Date(msg.createdAt).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div ref={bottomRef} />
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-1">Xabar matni</label>
+        </div>
+
+        {/* Input area */}
+        <div className="flex-shrink-0 p-3 bg-white border-t border-gray-100">
+          <div className="flex gap-2 items-end">
             <textarea
               autoFocus
               value={text}
               onChange={e => setText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleSend(); }}
+              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend(); }}
               placeholder="Xabaringizni yozing..."
-              rows={4}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              rows={2}
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
             />
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-white bg-gray-500 hover:bg-gray-600 rounded-xl transition-colors">
-              Bekor
-            </button>
             <button
               onClick={handleSend}
               disabled={!text.trim() || sending}
-              className="flex items-center gap-2 px-5 py-2 bg-blue-500 text-white text-sm font-medium rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
             >
-              <Send size={14} />
-              {sending ? 'Yuborilmoqda...' : 'Yuborish'}
+              {sending
+                ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                : <Send size={16} />
+              }
             </button>
           </div>
+          <p className="text-xs text-gray-400 mt-1">Ctrl+Enter — yuborish</p>
         </div>
       </div>
     </div>
@@ -466,7 +520,7 @@ export default function TelegramUsers() {
 
   return (
     <div className="p-4 md:p-6">
-      {sendingTo && <SendMessageModal chat={sendingTo} onClose={() => setSendingTo(null)} />}
+      {sendingTo && <ChatModal chat={sendingTo} onClose={() => setSendingTo(null)} />}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -604,9 +658,9 @@ export default function TelegramUsers() {
                           <button
                             onClick={() => setSendingTo(chat)}
                             className="p-1.5 rounded-lg text-sky-400 hover:bg-sky-50 hover:text-sky-600 transition-colors"
-                            title="Xabar yuborish"
+                            title="Chat"
                           >
-                            <Send size={15} />
+                            <MessageCircle size={15} />
                           </button>
                           <button
                             onClick={() => handleDelete(chat.chatId, chat.name)}

@@ -797,9 +797,9 @@ router.get('/state', authenticate, async (req, res) => {
 // PUT /api/jahresplanung/state
 router.put('/state', authenticate, async (req, res) => {
   try {
-    const { year, tourType, overrides, statuses, cityExtras, hotelAssign } = req.body;
+    const { year, tourType, overrides, statuses, cityExtras, hotelAssign, excludedHotels, hotelDefaults } = req.body;
     const key = `JP_STATE_${year}_${tourType}`;
-    const value = JSON.stringify({ overrides, statuses, cityExtras, hotelAssign });
+    const value = JSON.stringify({ overrides, statuses, cityExtras, hotelAssign, excludedHotels, hotelDefaults });
     await prisma.systemSetting.upsert({
       where: { key },
       update: { value },
@@ -1020,7 +1020,7 @@ router.get('/jp-sections', authenticate, async (req, res) => {
       } catch {
         return null;
       }
-    }).filter(Boolean).filter(s => !yearFilter || s.year === yearFilter);
+    }).filter(Boolean).filter(s => !yearFilter || parseInt(s.year) === yearFilter);
 
     res.json({ sections });
   } catch (err) {

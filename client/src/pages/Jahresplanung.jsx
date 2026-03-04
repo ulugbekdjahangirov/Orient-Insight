@@ -17,6 +17,13 @@ const MAIN_TABS = [
 ];
 const TOUR_NAMES  = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
 const TOUR_COLORS = { ER: '#3B82F6', CO: '#10B981', KAS: '#F59E0B', ZA: '#8B5CF6' };
+// Default template values sent to hotels at start of year (uniform pre-booking)
+const TOUR_TYPE_DEFAULTS = {
+  ER:  { pax: 16, dbl: 4, twn: 4, sngl: 4 },
+  CO:  { pax: 16, dbl: 4, twn: 4, sngl: 4 },
+  KAS: { pax: 16, dbl: 4, twn: 4, sngl: 4 },
+  ZA:  { pax: 16, dbl: 4, twn: 4, sngl: 4 },
+};
 const CITY_ORDER = {
   ER:  ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'],
   CO:  ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Bukhara', 'Khiva'],
@@ -257,7 +264,7 @@ function HotelSwapButton({ currentHotelId, availableHotels, onReplace }) {
     e.stopPropagation();
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX });
+      setPos({ top: r.bottom + 4, left: r.left });
     }
     setOpen(v => !v);
   };
@@ -308,7 +315,7 @@ function AddHotelButton({ cityName, availableHotels, onAdd }) {
   const handleOpen = () => {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX });
+      setPos({ top: r.bottom + 4, left: r.left });
     }
     setOpen(v => !v);
   };
@@ -346,10 +353,12 @@ function AddHotelButton({ cityName, availableHotels, onAdd }) {
 
 // Booking table for one visit group (Первый заезд or Второй заезд or no split)
 function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatuses, setRowStatus, visitLabel,
-  cityName, cityHotels, onMoveBooking }) {
+  cityName, cityHotels, onMoveBooking, hotelDefault }) {
   const getVal = (b, field) => {
     const k = rowKey(hotelId, b);
-    return overrides[k]?.[field] !== undefined ? overrides[k][field] : (b[field] ?? 0);
+    if (overrides[k]?.[field] !== undefined) return overrides[k][field];
+    if (hotelDefault?.[field] !== undefined) return hotelDefault[field];
+    return b[field] ?? 0;
   };
   const setVal = (b, field, val) => setOverrideVal(rowKey(hotelId, b), field, val);
 
@@ -540,20 +549,22 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
 const TOUR_COUNTRY = { ER: 'Германия', CO: 'Германия', KAS: 'Казахстан', ZA: 'Германия' };
 
 // Build structured data for server-side PDF generation
-function buildPdfPayload(hotelData, tourType, overrides, year) {
+function buildPdfPayload(hotelData, tourType, overrides, year, hotelDefault = null) {
   const { hotel, bookings } = hotelData;
   const country = TOUR_COUNTRY[tourType] || 'Германия';
+  const d = hotelDefault || {};
 
   const resolved = bookings.map(b => {
     const k = rowKey(hotel.id, b);
     const o = overrides[k] || {};
     const cancelled = b.status === 'CANCELLED';
+    const v = (field) => o[field] !== undefined ? o[field] : (d[field] !== undefined ? d[field] : (b[field] || 0));
     return {
       ...b,
-      pax:  cancelled ? 0 : (o.pax  !== undefined ? o.pax  : (b.pax  || 0)),
-      dbl:  cancelled ? 0 : (o.dbl  !== undefined ? o.dbl  : (b.dbl  || 0)),
-      twn:  cancelled ? 0 : (o.twn  !== undefined ? o.twn  : (b.twn  || 0)),
-      sngl: cancelled ? 0 : (o.sngl !== undefined ? o.sngl : (b.sngl || 0)),
+      pax:  cancelled ? 0 : v('pax'),
+      dbl:  cancelled ? 0 : v('dbl'),
+      twn:  cancelled ? 0 : v('twn'),
+      sngl: cancelled ? 0 : v('sngl'),
     };
   });
 
@@ -582,28 +593,30 @@ function buildPdfPayload(hotelData, tourType, overrides, year) {
 }
 
 // Fetch PDF blob from server
-async function fetchHotelPdfBlob(hotelData, tourType, overrides, year) {
-  const payload = buildPdfPayload(hotelData, tourType, overrides, year);
+async function fetchHotelPdfBlob(hotelData, tourType, overrides, year, hotelDefault = null) {
+  const payload = buildPdfPayload(hotelData, tourType, overrides, year, hotelDefault);
   const res = await jahresplanungApi.generatePDF(payload);
   return new Blob([res.data], { type: 'application/pdf' });
 }
 
 // Legacy stub — replaced by server-side PDF (kept to avoid breaking callers during transition)
-function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlob = false, year = new Date().getFullYear()) {
+function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlob = false, year = new Date().getFullYear(), hotelDefault = null) {
   const { hotel, bookings } = hotelData;
   const PW = 210, M = 15; // portrait A4, margins
+  const d = hotelDefault || {};
 
-  // Apply overrides
+  // Apply overrides + hotel defaults
   const resolved = bookings.map(b => {
     const k = rowKey(hotel.id, b);
     const o = overrides[k] || {};
     const cancelled = b.status === 'CANCELLED';
+    const v = (field) => o[field] !== undefined ? o[field] : (d[field] !== undefined ? d[field] : (b[field] || 0));
     return {
       ...b,
-      pax:  cancelled ? 0 : (o.pax  !== undefined ? o.pax  : (b.pax  || 0)),
-      dbl:  cancelled ? 0 : (o.dbl  !== undefined ? o.dbl  : (b.dbl  || 0)),
-      twn:  cancelled ? 0 : (o.twn  !== undefined ? o.twn  : (b.twn  || 0)),
-      sngl: cancelled ? 0 : (o.sngl !== undefined ? o.sngl : (b.sngl || 0)),
+      pax:  cancelled ? 0 : v('pax'),
+      dbl:  cancelled ? 0 : v('dbl'),
+      twn:  cancelled ? 0 : v('twn'),
+      sngl: cancelled ? 0 : v('sngl'),
     };
   });
 
@@ -812,20 +825,25 @@ function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlo
 function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides, setOverrideVal, rowStatuses, setRowStatus,
   onEmail, onTelegram, sendingEmail, sendingTelegram, onPDF,
   cityName, cityHotels, onMoveBooking, isExtra, onRemoveHotel,
-  availableHotelsForSwap, onReplaceHotel }) {
+  availableHotelsForSwap, onReplaceHotel, hotelDefault, onSetHotelDefault }) {
   const { hotel, bookings } = hotelData;
   const { first, second, third, hasSplit, hasThird } = splitVisits(bookings);
   const color = tourColor || '#3B82F6';
 
+  const tourTypeDefault = TOUR_TYPE_DEFAULTS[tourType] || {};
+  const effectiveDefault = hotelDefault || tourTypeDefault;
+
   const getVal = (b, field) => {
     const k = rowKey(hotel.id, b);
-    return overrides[k]?.[field] !== undefined ? overrides[k][field] : (b[field] ?? 0);
+    if (overrides[k]?.[field] !== undefined) return overrides[k][field];
+    if (effectiveDefault[field] !== undefined) return effectiveDefault[field];
+    return b[field] ?? 0;
   };
   const active = bookings.filter(b => b.status !== 'CANCELLED');
   const totalPax   = active.reduce((s,b) => s + getVal(b,'pax'), 0);
   const totalRooms = active.reduce((s,b) => s + getVal(b,'dbl') + getVal(b,'twn') + getVal(b,'sngl'), 0);
   const sharedProps = { hotelId: hotel.id, overrides, setOverrideVal, rowStatuses, setRowStatus,
-    cityName, cityHotels, onMoveBooking };
+    cityName, cityHotels, onMoveBooking, hotelDefault: effectiveDefault };
 
   return (
     <div className="rounded-xl overflow-hidden transition-all duration-200"
@@ -903,20 +921,59 @@ function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides
             {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}
             <span className="hidden sm:inline">TG</span>
           </button>
-          {isExtra && (
-            <button onClick={onRemoveHotel} title="Olib tashlash"
-              className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 transition-colors"
-              onMouseEnter={e => { e.currentTarget.style.background='#fff1f2'; }}
-              onMouseLeave={e => { e.currentTarget.style.background='transparent'; }}>
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button onClick={onRemoveHotel} title={isExtra ? "Olib tashlash" : "Yashirish"}
+            className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 transition-colors"
+            onMouseEnter={e => { e.currentTarget.style.background='#fff1f2'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='transparent'; }}>
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
       {/* Expanded bookings */}
       {isOpen && (
         <div style={{ borderTop: `2px solid ${color}20` }}>
+          {/* Shablon (uniform defaults) bar */}
+          <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-b border-slate-100"
+            style={{ background: hotelDefault ? `${color}08` : '#fafafa' }}>
+            <span className="text-xs font-semibold shrink-0" style={{ color: hotelDefault ? color : '#94a3b8' }}>
+              Shablon:
+            </span>
+            {!hotelDefault && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 shrink-0">standart</span>
+            )}
+            {hotelDefault && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full text-white shrink-0"
+                style={{ background: color }}>o'zgartirilgan</span>
+            )}
+            {['pax','dbl','twn','sngl'].map(field => (
+              <label key={field} className="flex items-center gap-1">
+                <span className="text-xs text-slate-400 uppercase w-7">{field}</span>
+                <input
+                  type="number" min="0"
+                  value={effectiveDefault[field] ?? ''}
+                  onFocus={e => e.target.select()}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    const val = raw === '' ? 0 : (parseInt(raw, 10) >= 0 ? parseInt(raw, 10) : 0);
+                    const base = hotelDefault || { ...tourTypeDefault };
+                    onSetHotelDefault({ ...base, [field]: val });
+                  }}
+                  className="w-12 text-center text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1"
+                  style={{ borderColor: hotelDefault?.[field] !== undefined ? color : '#e2e8f0',
+                           background: hotelDefault?.[field] !== undefined ? `${color}10` : 'white',
+                           fontWeight: hotelDefault?.[field] !== undefined ? '600' : '400' }}
+                />
+              </label>
+            ))}
+            {hotelDefault && (
+              <button onClick={() => onSetHotelDefault(null)} title="Standartga qaytarish"
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 px-1.5 py-0.5 rounded transition-colors ml-1">
+                <X className="w-3 h-3" />
+                <span>reset</span>
+              </button>
+            )}
+          </div>
           {hasSplit ? (
             <>
               <BookingsTable bookings={first}  {...sharedProps} visitLabel="Первый заезд" />
@@ -2308,6 +2365,10 @@ function HotelsTab({ tourType, tourColor }) {
   const [cityExtraHotels, setCityExtraHotels] = useState({});
   // Booking → hotel assignment within city: { cityAssignKey: hotelId }
   const [bookingHotelAssign, setBookingHotelAssign] = useState({});
+  // Hotel IDs hidden from this tourType's view (from DB accommodations, not extras)
+  const [excludedHotelIds, setExcludedHotelIds] = useState([]);
+  // Hotel-level uniform defaults: { [hotelId]: { pax, dbl, twn, sngl } }
+  const [hotelDefaults, setHotelDefaults] = useState({});
   // All hotels from DB (for picker)
   const [allHotels, setAllHotels] = useState([]);
   const [logoDataUrl, setLogoDataUrl] = useState(null);
@@ -2332,12 +2393,15 @@ function HotelsTab({ tourType, tourColor }) {
     setRowStatuses(fromLS(`jp_statuses_${YEAR}_${tourType}`));
     setCityExtraHotels(fromLS(`jp_cityExtras_${YEAR}_${tourType}`));
     setBookingHotelAssign(fromLS(`jp_hotelAssign_${YEAR}_${tourType}`));
+    const rawEx = fromLS(`jp_excluded_${YEAR}_${tourType}`);
+    setExcludedHotelIds(Array.isArray(rawEx) ? rawEx : []);
+    setHotelDefaults(fromLS(`jp_hotelDefaults_${YEAR}_${tourType}`));
     setLoading(true);
 
     Promise.all([
       jahresplanungApi.getHotels(YEAR, tourType),
       jahresplanungApi.getState(YEAR, tourType),
-      jahresplanungApi.getJpSections().catch(() => ({ data: [] }))
+      jahresplanungApi.getJpSections(YEAR).catch(() => ({ data: [] }))
     ]).then(([hotelsRes, stateRes, jpRes]) => {
       const hotelsList = hotelsRes.data.hotels || [];
       setHotels(hotelsList);
@@ -2345,14 +2409,14 @@ function HotelsTab({ tourType, tourColor }) {
       hotelsList.forEach(h => { cities[h.hotel.city?.name || 'Бошқа'] = true; });
       setOpenCities(cities);
 
-      const { overrides: o = {}, statuses: s = {}, cityExtras: c = {}, hotelAssign: h = {} } = stateRes.data || {};
+      const { overrides: o = {}, statuses: s = {}, cityExtras: c = {}, hotelAssign: h = {}, excludedHotels: ex = [], hotelDefaults: hd = {} } = stateRes.data || {};
       const sections = jpRes.data?.sections || [];
 
       // Merge JP_SECTIONS Telegram statuses into rowStatuses (use actual rowKeys from hotels data)
       const JP_TO_ROW = { CONFIRMED: 'confirmed', WAITING: 'waiting', REJECTED: 'cancelled' };
       const merged = { ...s };
       for (const hd of hotelsList) {
-        const sec = sections.find(sec2 => sec2.hotelId === hd.hotel.id);
+        const sec = sections.find(sec2 => sec2.hotelId === hd.hotel.id && sec2.tourType === tourType);
         if (!sec) continue;
         // Build visit-index map: for each bookingId, sort rows by checkInDate → index 0,1,2...
         const bookingVisitOrder = {};
@@ -2395,13 +2459,16 @@ function HotelsTab({ tourType, tourColor }) {
         }
       }
 
-      setOverrides(o); setRowStatuses(merged); setCityExtraHotels(c); setBookingHotelAssign(h);
+      const exArr = Array.isArray(ex) ? ex : [];
+      setOverrides(o); setRowStatuses(merged); setCityExtraHotels(c); setBookingHotelAssign(h); setExcludedHotelIds(exArr); setHotelDefaults(hd || {});
       // Update localStorage cache with authoritative DB data
       try {
         localStorage.setItem(`jp_overrides_${YEAR}_${tourType}`, JSON.stringify(o));
         localStorage.setItem(`jp_statuses_${YEAR}_${tourType}`, JSON.stringify(merged));
         localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(c));
         localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(h));
+        localStorage.setItem(`jp_excluded_${YEAR}_${tourType}`, JSON.stringify(exArr));
+        localStorage.setItem(`jp_hotelDefaults_${YEAR}_${tourType}`, JSON.stringify(hd || {}));
       } catch {}
     }).catch(err => {
       toast.error("Ma'lumot yuklanmadi: " + err.message);
@@ -2414,11 +2481,12 @@ function HotelsTab({ tourType, tourColor }) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       jahresplanungApi.saveState(YEAR, tourType, {
-        overrides, statuses: rowStatuses, cityExtras: cityExtraHotels, hotelAssign: bookingHotelAssign
+        overrides, statuses: rowStatuses, cityExtras: cityExtraHotels, hotelAssign: bookingHotelAssign,
+        excludedHotels: excludedHotelIds, hotelDefaults
       }).catch(() => {});
     }, 1500);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [overrides, rowStatuses, cityExtraHotels, bookingHotelAssign]);
+  }, [overrides, rowStatuses, cityExtraHotels, bookingHotelAssign, excludedHotelIds, hotelDefaults]);
 
   const setOverrideVal = (key, field, val) => {
     setOverrides(prev => {
@@ -2513,6 +2581,33 @@ function HotelsTab({ tourType, tourColor }) {
     });
   };
 
+  const handleExcludeHotel = (hotelId) => {
+    setExcludedHotelIds(prev => {
+      if (prev.includes(hotelId)) return prev;
+      const next = [...prev, hotelId];
+      try { localStorage.setItem(`jp_excluded_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleRestoreHotel = (hotelId) => {
+    setExcludedHotelIds(prev => {
+      const next = prev.filter(id => id !== hotelId);
+      try { localStorage.setItem(`jp_excluded_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const handleSetHotelDefault = (hotelId, defaults) => {
+    setHotelDefaults(prev => {
+      const next = { ...prev };
+      if (defaults === null) delete next[hotelId];
+      else next[hotelId] = defaults;
+      try { localStorage.setItem(`jp_hotelDefaults_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
   const handleMoveBooking = (cityKey, newHotelId) => {
     setBookingHotelAssign(prev => {
       const next = { ...prev, [cityKey]: newHotelId };
@@ -2524,7 +2619,7 @@ function HotelsTab({ tourType, tourColor }) {
   const handlePDF = async (hotelData) => {
     setSendingEmail(prev => ({ ...prev, [`pdf_${hotelData.hotel.id}`]: true }));
     try {
-      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR);
+      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR, hotelDefaults[hotelData.hotel.id] || TOUR_TYPE_DEFAULTS[tourType]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -2541,7 +2636,7 @@ function HotelsTab({ tourType, tourColor }) {
     if (!hotel.email) { toast.error(`${hotel.name} — email yo'q`); return; }
     setSendingEmail(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR);
+      const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR, hotelDefaults[hotel.id] || TOUR_TYPE_DEFAULTS[tourType]);
       await jahresplanungApi.sendHotelEmail(hotel.id, blob, `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g,'_')}.pdf`, YEAR, tourType);
       toast.success(`Email yuborildi → ${hotel.email}`);
     } catch (err) {
@@ -2555,8 +2650,9 @@ function HotelsTab({ tourType, tourColor }) {
     setSendingTelegram(prev => ({ ...prev, [hotel.id]: true }));
     try {
       // Use client-side jsPDF (avoids Puppeteer timeout issues on server)
-      const blob = generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, true, YEAR);
-      const payload = buildPdfPayload(hotelData, tourType, overrides, YEAR);
+      const effectiveHotelDefault = hotelDefaults[hotel.id] || TOUR_TYPE_DEFAULTS[tourType];
+      const blob = generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, true, YEAR, effectiveHotelDefault);
+      const payload = buildPdfPayload(hotelData, tourType, overrides, YEAR, effectiveHotelDefault);
       const filename = `${YEAR}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
       await jahresplanungApi.sendHotelTelegram(hotel.id, blob, filename, YEAR, tourType, payload.sections);
       toast.success(`Telegram → ${hotel.name}`);
@@ -2601,7 +2697,9 @@ function HotelsTab({ tourType, tourColor }) {
   return (
     <div className="space-y-4">
       {sortedCities.map((city, cityIdx) => {
-        const originalHotels = cityMap[city];
+        const allCityHotels = cityMap[city];
+        const excludedInCity = allCityHotels.filter(hd => excludedHotelIds.includes(hd.hotel.id));
+        const originalHotels = allCityHotels.filter(hd => !excludedHotelIds.includes(hd.hotel.id));
         const displayHotels = computeCityHotels(city, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels);
         const isCityOpen = openCities[city] !== false;
         const totalGroups = displayHotels.reduce((s,hd) => s + hd.bookings.filter(b=>b.status!=='CANCELLED').length, 0);
@@ -2612,7 +2710,7 @@ function HotelsTab({ tourType, tourColor }) {
           }, 0);
         }, 0);
         const displayHotelIds = new Set(displayHotels.map(h => h.hotel.id));
-        const availableToAdd = allHotels.filter(h => h.city?.name === city && !displayHotelIds.has(h.id));
+        const availableToAdd = allHotels.filter(h => h.city?.name === city && !displayHotelIds.has(h.id) && !excludedHotelIds.includes(h.id));
 
         return (
           <div key={city} className="rounded-2xl overflow-hidden shadow-sm" style={{ border: `1px solid ${color}25` }}>
@@ -2672,9 +2770,11 @@ function HotelsTab({ tourType, tourColor }) {
                     cityHotels={displayHotels}
                     onMoveBooking={handleMoveBooking}
                     isExtra={!!hd.isExtra}
-                    onRemoveHotel={() => handleRemoveHotel(city, hd.hotel.id)}
+                    onRemoveHotel={() => hd.isExtra ? handleRemoveHotel(city, hd.hotel.id) : handleExcludeHotel(hd.hotel.id)}
                     availableHotelsForSwap={allHotels.filter(h => h.city?.name === city && h.id !== hd.hotel.id)}
                     onReplaceHotel={newHotel => handleReplaceHotel(city, hd.hotel.id, hd.bookings, newHotel)}
+                    hotelDefault={hotelDefaults[hd.hotel.id] || null}
+                    onSetHotelDefault={defaults => handleSetHotelDefault(hd.hotel.id, defaults)}
                   />
                 ))}
                 {availableToAdd.length > 0 && (
@@ -2684,6 +2784,18 @@ function HotelsTab({ tourType, tourColor }) {
                       availableHotels={availableToAdd}
                       onAdd={h => handleAddHotel(city, h, displayHotels)}
                     />
+                  </div>
+                )}
+                {excludedInCity.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap px-2 pt-1">
+                    <span className="text-xs text-slate-400">Yashirilgan:</span>
+                    {excludedInCity.map(hd => (
+                      <button key={hd.hotel.id}
+                        onClick={() => handleRestoreHotel(hd.hotel.id)}
+                        className="text-xs px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:text-blue-600 hover:border-blue-400 transition-colors">
+                        + {hd.hotel.name}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>

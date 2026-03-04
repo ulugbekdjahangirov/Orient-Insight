@@ -6426,7 +6426,6 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
     form.append('caption', caption);
     form.append('parse_mode', 'Markdown');
     form.append('reply_markup', replyMarkup);
-    form.append('protect_content', 'true');
 
     const token = process.env.TELEGRAM_BOT_TOKEN;
     await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {

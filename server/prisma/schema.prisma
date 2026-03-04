@@ -1134,3 +1134,20 @@ model AuditLog {
   @@index([action])
   @@index([userId])
 }
+
+// ============================================
+// Module: Telegram Chat Messages
+// ============================================
+
+model TelegramMessage {
+  id        Int      @id @default(autoincrement())
+  chatId    String   // Telegram chat ID
+  chatName  String?  // Display name of the chat
+  role      String?  // Role at time of message
+  text      String   // Message text
+  direction String   @default("IN") // "IN" = from user, "OUT" = from admin
+  createdAt DateTime @default(now())
+
+  @@index([chatId])
+  @@index([createdAt])
+}

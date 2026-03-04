@@ -378,6 +378,7 @@ export const telegramApi = {
   updateKnownChat: (chatId, data) => api.put(`/telegram/chats/${chatId}`, data),
   deleteKnownChat: (chatId) => api.delete(`/telegram/chats/${chatId}`),
   sendMessage: (chatId, text) => api.post('/telegram/send-message', { chatId, text }),
+  getMessages: (chatId) => api.get('/telegram/messages', chatId ? { params: { chatId } } : {}),
   getHotelsList: () => api.get('/telegram/hotels-list'),
   linkHotel: (chatId, hotelId) => api.put('/telegram/link-hotel', { chatId, hotelId }),
   linkTransport: (chatId, provider) => api.put('/telegram/link-transport', { chatId, provider }),
