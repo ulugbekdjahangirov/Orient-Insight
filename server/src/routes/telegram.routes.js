@@ -163,7 +163,7 @@ async function sendAdminMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
-        [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+        [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -189,7 +189,7 @@ async function sendTransportMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '📄 Заявка 2026' }, { text: '❌ Аннуляция' }]
+        [{ text: '📄 Заявка 2026' }, { text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -206,7 +206,7 @@ async function sendTransportAdminMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '📄 Заявка 2026' }, { text: '❌ Аннуляция' }]
+        [{ text: '📄 Заявка 2026' }, { text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -222,8 +222,8 @@ async function sendGuideMenu(chatId) {
     parse_mode: 'Markdown',
     reply_markup: JSON.stringify({
       keyboard: [
-        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '❌ Аннуляция' }]
+        [{ text: '📋 Gruppalar' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '❌ Anulyatsiya' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -240,7 +240,7 @@ async function sendRestaurantMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '❌ Аннуляция' }]
+        [{ text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -257,7 +257,7 @@ async function sendHotelMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: `📋 Заявка ${year}` }, { text: '📝 Изменения к Заявке' }],
-        [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+        [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -411,7 +411,7 @@ async function sendAdminWlChg(chatId, tourType) {
   }
 }
 
-// Helper: admin Аннуляция — show cancelled bookings for a specific tourType, grouped by hotel
+// Helper: admin Ануляция — show cancelled bookings for a specific tourType, grouped by hotel
 async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
   const year = new Date().getFullYear();
   const confs = await prisma.telegramConfirmation.findMany({
@@ -435,13 +435,13 @@ async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
   if (Object.keys(byHotel).length === 0) {
     await axios.post(`${BOT_API()}/sendMessage`, {
       chat_id: chatId,
-      text: `❌ *Аннуляция — ${tourType} ${year}*\n\n📭 Bekor qilingan zaявkalar yo'q.`,
+      text: `❌ *Ануляция — ${tourType} ${year}*\n\n📭 Bekor qilingan zaявkalar yo'q.`,
       parse_mode: 'Markdown',
       reply_markup: replyMarkup
     }).catch(() => {});
     return;
   }
-  const lines = [`❌ *Аннуляция — ${tourType} ${year}*\n`];
+  const lines = [`❌ *Ануляция — ${tourType} ${year}*\n`];
   for (const { hotel, bookings } of Object.values(byHotel)) {
     const city = hotel?.city?.name ? ` (${hotel.city.name})` : '';
     lines.push(`🏨 *${hotel?.name || '?'}*${city}`);
@@ -526,7 +526,7 @@ async function sendHotelWlChg(chatId, hotel, tourType) {
   }
 }
 
-// Helper: hotel Аннуляция for hotel+tourType
+// Helper: hotel Ануляция for hotel+tourType
 async function sendHotelAnnulment(chatId, hotel, tourType) {
   const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
   const confs = await prisma.telegramConfirmation.findMany({
@@ -545,7 +545,7 @@ async function sendHotelAnnulment(chatId, hotel, tourType) {
     await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chatId, text: `❌ ${tourType} uchun Аннуляций пока нет.` }).catch(() => {});
     return;
   }
-  const lines = [`❌ *Аннуляция — ${hotel.name} (${tourType})*`];
+  const lines = [`❌ *Ануляция — ${hotel.name} (${tourType})*`];
   for (const c of filtered) {
     const accs = await prisma.accommodation.findMany({ where: { bookingId: c.bookingId, hotelId: hotel.id }, orderBy: { checkInDate: 'asc' } });
     lines.push('');
@@ -1127,8 +1127,8 @@ router.post('/webhook', (req, res, next) => {
           }).catch(() => {});
           return;
         }
-        if (msg.text === '📝 Изменения к Заявке' || msg.text === "📝 O'zgarishlar" || msg.text === '❌ Аннуляция' || msg.text === "❌ Bekor qilish") {
-          const isAnn = msg.text === '❌ Аннуляция' || msg.text === "❌ Bekor qilish";
+        if (msg.text === '📝 Изменения к Заявке' || msg.text === "📝 O'zgarishlar" || msg.text === '❌ Ануляция' || msg.text === "❌ Bekor qilish") {
+          const isAnn = msg.text === '❌ Ануляция' || msg.text === "❌ Bekor qilish";
           const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
           if (!hotel) { await axios.post(`${BOT_API()}/sendMessage`, { chat_id: chat.id, text: '🏨 Hotel topilmadi.' }).catch(() => {}); return; }
 
@@ -1161,7 +1161,7 @@ router.post('/webhook', (req, res, next) => {
             return;
           }
 
-          // ❌ Аннуляция — tour type selection filtered by hotel's cancelled bookings
+          // ❌ Ануляция — tour type selection filtered by hotel's cancelled bookings
           const annConfs = await prisma.telegramConfirmation.findMany({
             where: { hotelId: hotel.id },
             include: { booking: { select: { status: true, tourType: { select: { code: true } } } } }
@@ -1185,7 +1185,7 @@ router.post('/webhook', (req, res, next) => {
           }
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: chat.id,
-            text: '❌ *Аннуляция*\nQaysi tur turini tanlang:',
+            text: '❌ *Ануляция*\nQaysi tur turini tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: annRows })
           }).catch(() => {});
@@ -1243,7 +1243,7 @@ router.post('/webhook', (req, res, next) => {
         const MAIN_REPLY_KEYBOARD = JSON.stringify({
           keyboard: [
             [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
-            [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+            [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
           ],
           resize_keyboard: true,
           is_persistent: true
@@ -1305,11 +1305,11 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
 
-        // ❌ Аннуляция — tour type tanlash (har doim 4 ta)
-        if (text === '❌ Аннуляция') {
+        // ❌ Ануляция — tour type tanlash (har doim 4 ta)
+        if (text === '❌ Ануляция') {
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: adminSendId,
-            text: '❌ *Аннуляция*\nQaysi tur turini tanlang:',
+            text: '❌ *Ануляция*\nQaysi tur turini tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: [
               [{ text: 'ER', callback_data: 'admin:ann_tt:ER' }, { text: 'CO', callback_data: 'admin:ann_tt:CO' }],
@@ -1622,7 +1622,7 @@ router.post('/webhook', (req, res, next) => {
         const ADMIN_KB = JSON.stringify({
           keyboard: [
             [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
-            [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+            [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
           ],
           resize_keyboard: true, is_persistent: true
         });
@@ -1675,14 +1675,14 @@ router.post('/webhook', (req, res, next) => {
         return;
       }
 
-      // admin:ann_tt:ER — admin Аннуляция tur tanlash
+      // admin:ann_tt:ER — admin Ануляция tur tanlash
       if (subAction === 'ann_tt') {
         const tourType = parts[2];
         await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
         const ADMIN_KB = JSON.stringify({
           keyboard: [
             [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
-            [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+            [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
           ],
           resize_keyboard: true, is_persistent: true
         });
@@ -1782,7 +1782,7 @@ router.post('/webhook', (req, res, next) => {
     }
     // ── End hwl_chg ────────────────────────────────────────────────────────
 
-    // ── hann: — hotel Аннуляция tour type selection callback ───────────────
+    // ── hann: — hotel Ануляция tour type selection callback ───────────────
     if (data.startsWith('hann:')) {
       const parts = data.split(':');
       const hotelId = parseInt(parts[1]);
@@ -2857,7 +2857,7 @@ router.post('/webhook-transport', async (req, res) => {
       const STATUS_BTN_MAP = {
         '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
         '📄 Заявка 2026':  { key: 'PENDING',   emoji: '📄' },
-        '❌ Аннуляция':    { key: 'REJECTED',  emoji: '❌' }
+        '❌ Ануляция':    { key: 'REJECTED',  emoji: '❌' }
       };
       if (msg.text && STATUS_BTN_MAP[msg.text]) {
         const { key, emoji } = STATUS_BTN_MAP[msg.text];
@@ -3105,7 +3105,7 @@ router.post('/webhook-transport', async (req, res) => {
       const STATUS_EMOJI = { PENDING_APPROVAL: '🔄', APPROVED: '⏳', PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌', REJECTED_BY_APPROVER: '❌' };
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
       const jpStatusFilter = JP_STATUS_FILTERS[statusKey] || ['CONFIRMED'];
-      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Аннуляция' }[statusKey] || statusKey;
+      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
 
       await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
@@ -3141,7 +3141,7 @@ router.post('/webhook-transport', async (req, res) => {
         .filter(e => e && jpStatusFilter.includes(e.status))
         .filter(e => !providerName || providerName === 'hammasi' || e.provider === providerName);
 
-      // For Аннуляция — also fetch CANCELLED bookings from Booking table
+      // For Ануляция — also fetch CANCELLED bookings from Booking table
       let cancelledBookings = [];
       if (statusKey === 'REJECTED') {
         cancelledBookings = await prisma.booking.findMany({
@@ -3652,7 +3652,7 @@ router.post('/webhook-restaurant', async (req, res) => {
       const REST_BTN_MAP = {
         '📄 Заявка 2026': { key: 'PENDING',   emoji: '📄' },
         '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
-        '❌ Аннуляция':   { key: 'REJECTED',  emoji: '❌' }
+        '❌ Ануляция':   { key: 'REJECTED',  emoji: '❌' }
       };
       if (msg.text && REST_BTN_MAP[msg.text]) {
         const { key, emoji } = REST_BTN_MAP[msg.text];
@@ -3699,7 +3699,7 @@ router.post('/webhook-restaurant', async (req, res) => {
         REJECTED:  ['REJECTED']
       };
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
-      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Аннуляция' }[statusKey] || statusKey;
+      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
 
       await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
@@ -3713,7 +3713,7 @@ router.post('/webhook-restaurant', async (req, res) => {
       const lines = [`${statusLabel} — *${tourType}${restLabel}*`];
 
       if (statusKey === 'REJECTED') {
-        // Аннуляция — show CANCELLED bookings
+        // Ануляция — show CANCELLED bookings
         const cancelledBookings = await prisma.booking.findMany({
           where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
           select: { bookingNumber: true, departureDate: true, endDate: true },
@@ -3904,26 +3904,70 @@ router.post('/webhook-guide', async (req, res) => {
         return;
       }
 
-      // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
-      const GUIDE_BTN_MAP = {
-        '📄 Заявка 2026': { key: 'PENDING',   emoji: '📄' },
-        '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
-        '❌ Аннуляция':   { key: 'REJECTED',  emoji: '❌' }
-      };
-      if (msg.text && GUIDE_BTN_MAP[msg.text]) {
-        const { key, emoji } = GUIDE_BTN_MAP[msg.text];
+      // Menu button handlers — directly show bookings for this guide
+      const GUIDE_MENU_BTNS = ['📋 Gruppalar', '✅ Tasdiqlangan', '❌ Anulyatsiya'];
+      if (msg.text && GUIDE_MENU_BTNS.includes(msg.text)) {
+        const year = new Date().getFullYear();
+        const guide = await prisma.guide.findFirst({
+          where: { telegramChatId: String(chat.id) },
+          select: { id: true, name: true }
+        });
+
+        const fmtD  = d => { if (!d) return '—    '; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`; };
+        const fmtDY = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+
+        let bookings = [];
+        let headerText = '';
+
+        if (msg.text === '📋 Gruppalar') {
+          bookings = await prisma.booking.findMany({
+            where: { guideId: guide?.id, bookingYear: year, status: { not: 'CANCELLED' } },
+            select: { bookingNumber: true, departureDate: true, endDate: true, tourType: { select: { code: true } } },
+            orderBy: { departureDate: 'asc' }
+          });
+          headerText = `📋 <b>${guide?.name || 'Gid'}</b>\n📅 ${year} yil jadvali — jami <b>${bookings.length}</b> ta guruh`;
+        } else if (msg.text === '✅ Tasdiqlangan') {
+          bookings = await prisma.booking.findMany({
+            where: { guideId: guide?.id, bookingYear: year, status: { in: ['FINAL_CONFIRMED', 'COMPLETED'] } },
+            select: { bookingNumber: true, departureDate: true, endDate: true, tourType: { select: { code: true } } },
+            orderBy: { departureDate: 'asc' }
+          });
+          headerText = `✅ <b>Tasdiqlangan gruppalar</b>\n📅 ${year} yil — jami <b>${bookings.length}</b> ta`;
+        } else if (msg.text === '❌ Anulyatsiya') {
+          bookings = await prisma.booking.findMany({
+            where: { guideId: guide?.id, status: 'CANCELLED' },
+            select: { bookingNumber: true, departureDate: true, endDate: true, tourType: { select: { code: true } } },
+            orderBy: { departureDate: 'asc' }
+          });
+          headerText = `❌ <b>Bekor qilingan gruppalar</b>\n📅 Jami <b>${bookings.length}</b> ta`;
+        }
+
+        if (!guide) {
+          await axios.post(`${GUIDE_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz tizimda gid sifatida ro\'yxatga olinmagan.' }).catch(() => {});
+          return;
+        }
+
+        const SEP = '─'.repeat(36);
+        const rows = bookings.map((b, i) => {
+          const num   = String(i + 1).padStart(2);
+          const grp   = (b.bookingNumber || '').padEnd(8);
+          const start = fmtD(b.departureDate).padEnd(6);
+          const end   = fmtDY(b.endDate);
+          return `<code>${num}. ${grp}  ${start} ── ${end}</code>`;
+        });
+
+        const lines = [
+          headerText,
+          '',
+          `<code> #   Guruh     Boshlanish   Tugash</code>`,
+          `<code>${SEP}</code>`,
+          ...(rows.length ? rows : [`<i>Hech narsa topilmadi.</i>`]),
+        ];
+
         await axios.post(`${GUIDE_API()}/sendMessage`, {
           chat_id: chat.id,
-          text: `${emoji} *${msg.text}* — Tur turini tanlang:`,
-          parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({
-            inline_keyboard: [[
-              { text: 'ER',  callback_data: `guide_conf:${key}:ER`  },
-              { text: 'CO',  callback_data: `guide_conf:${key}:CO`  },
-              { text: 'KAS', callback_data: `guide_conf:${key}:KAS` },
-              { text: 'ZA',  callback_data: `guide_conf:${key}:ZA`  }
-            ]]
-          })
+          text: lines.join('\n').substring(0, 4096),
+          parse_mode: 'HTML'
         }).catch(() => {});
         return;
       }
@@ -4033,7 +4077,7 @@ router.post('/webhook-guide', async (req, res) => {
       const tourType  = parts[2]; // ER | CO | KAS | ZA
       const chatId = fromChatId || cb.from?.id;
       const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
-      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Аннуляция' }[statusKey] || statusKey;
+      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
 
       await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
@@ -4058,7 +4102,7 @@ router.post('/webhook-guide', async (req, res) => {
       const lines = [`${statusLabel} — *${tourType}${guideLabel}*`];
 
       if (statusKey === 'REJECTED') {
-        // Аннуляция — CANCELLED bookings
+        // Ануляция — CANCELLED bookings
         const cancelled = await prisma.booking.findMany({
           where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
           select: { bookingNumber: true, departureDate: true, endDate: true, pax: true },
@@ -4121,7 +4165,7 @@ router.post('/webhook-guide', async (req, res) => {
 });
 
 // ============================================================
-// Hotel Notifications — Izmeneniya & Annulyatsiya
+// Hotel Notifications — Izmeneniya & Anulyatsiya
 // ============================================================
 
 // POST /api/telegram/send-changes/:bookingId/:hotelId
@@ -4210,7 +4254,7 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
     const checkIn  = fmtDateUtil(acc?.checkIn  || booking?.arrivalDate);
     const checkOut = fmtDateUtil(acc?.checkOut || booking?.endDate);
     const text = [
-      `❌ *ЗАЯВКА ${booking?.bookingNumber} — Annulyatsiya*`,
+      `❌ *ЗАЯВКА ${booking?.bookingNumber} — Anulyatsiya*`,
       `🏨 ${hotel.name}`,
       '',
       `📅 Заезд: ${checkIn}`,

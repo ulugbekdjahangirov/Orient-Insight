@@ -103,7 +103,7 @@ export default function Bookings() {
     try {
       const [tourTypesRes, guidesRes] = await Promise.all([
         tourTypesApi.getAll(),
-        guidesApi.getAll()
+        guidesApi.getAll(false, new Date().getFullYear())
       ]);
       setTourTypes(tourTypesRes.data.tourTypes);
       setGuides(guidesRes.data.guides);

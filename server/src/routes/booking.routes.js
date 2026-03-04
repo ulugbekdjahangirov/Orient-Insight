@@ -100,7 +100,7 @@ router.get('/', authenticate, async (req, res) => {
       endDate,
       search,
       year,
-      sortBy = 'departureDate',
+      sortBy = 'arrivalDate',
       sortOrder = 'asc'
     } = req.query;
 
@@ -517,7 +517,7 @@ router.put('/:id', authenticate, async (req, res) => {
         ].join('\n');
       } else if (status === 'CANCELLED' && currentBooking?.status !== 'CANCELLED') {
         notifyText = [
-          `❌ <b>${booking.bookingNumber}</b> guruh bekor qilindi!`,
+          `❌ <b>${booking.bookingNumber}</b> guruh anulyatsiya bo'ldi!`,
           ``,
           `📅 <b>Boshlanish:</b> ${fmtDate(booking.departureDate)}`,
           `🏁 <b>Tugash:</b> ${fmtDate(booking.endDate)}`,
@@ -583,7 +583,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
       axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}/sendMessage`, {
         chat_id: booking.guide.telegramChatId,
         text: [
-          `❌ <b>${booking.bookingNumber}</b> guruh bekor qilindi!`,
+          `❌ <b>${booking.bookingNumber}</b> guruh anulyatsiya bo'ldi!`,
           ``,
           `📅 <b>Boshlanish:</b> ${fmtDate(booking.departureDate)}`,
           `🏁 <b>Tugash:</b> ${fmtDate(booking.endDate)}`,
