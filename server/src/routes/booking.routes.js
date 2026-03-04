@@ -3,6 +3,7 @@ const { PrismaClient } = require('@prisma/client');
 const { authenticate, authenticatePreview, requireAdmin } = require('../middleware/auth.middleware');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -496,6 +497,28 @@ router.put('/:id', authenticate, async (req, res) => {
         createdBy: { select: { id: true, name: true } }
       }
     });
+
+    // Auto-notify guide when booking becomes FINAL_CONFIRMED
+    if (status === 'FINAL_CONFIRMED' && currentBooking?.status !== 'FINAL_CONFIRMED' && booking.guide?.telegramChatId) {
+      const fmtDate = d => {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+      };
+      const text = [
+        `✅ <b>${booking.bookingNumber}</b> guruh tasdiqlandi!`,
+        ``,
+        `📅 <b>Boshlanish:</b> ${fmtDate(booking.departureDate)}`,
+        `🏁 <b>Tugash:</b> ${fmtDate(booking.endDate)}`,
+        ``,
+        `Ushbu guruh uchun tayyor bo'ling! 🧳`
+      ].join('\n');
+      axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}/sendMessage`, {
+        chat_id: booking.guide.telegramChatId,
+        text,
+        parse_mode: 'HTML'
+      }).catch(e => console.error('Guide FINAL_CONFIRMED notify error:', e.message));
+    }
 
     res.json({ booking });
   } catch (error) {
