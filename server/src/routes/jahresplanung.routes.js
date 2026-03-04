@@ -1363,4 +1363,55 @@ router.put('/transport', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/jahresplanung/guides?year=2026  (no tourType filter — shows all tour types per guide)
+router.get('/guides', authenticate, async (req, res) => {
+  try {
+    const year = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        bookingYear: year,
+        guideId: { not: null }
+      },
+      select: {
+        id: true,
+        bookingNumber: true,
+        departureDate: true,
+        endDate: true,
+        pax: true,
+        status: true,
+        guide:    { select: { id: true, name: true, phone: true, telegramChatId: true } },
+        tourType: { select: { code: true } },
+        guideConfirmations: { select: { guideId: true, status: true } }
+      },
+      orderBy: { departureDate: 'asc' }
+    });
+
+    // Group by guide
+    const guideMap = {};
+    for (const b of bookings) {
+      const gid = b.guide?.id;
+      if (!gid) continue;
+      if (!guideMap[gid]) guideMap[gid] = { guide: b.guide, bookings: [] };
+      // Find this guide's confirmation for this booking
+      const conf = b.guideConfirmations?.find(c => c.guideId === gid);
+      guideMap[gid].bookings.push({
+        bookingId:       b.id,
+        bookingNumber:   b.bookingNumber,
+        tourType:        b.tourType?.code || '—',
+        departureDate:   b.departureDate,
+        endDate:         b.endDate,
+        pax:             b.pax,
+        status:          b.status,
+        confirmStatus:   conf?.status || null  // PENDING | CONFIRMED | REJECTED | null
+      });
+    }
+
+    res.json({ guides: Object.values(guideMap) });
+  } catch (err) {
+    console.error('Guides fetch error:', err);
+    res.status(500).json({ error: 'Server xatoligi' });
+  }
+});
+
 module.exports = router;

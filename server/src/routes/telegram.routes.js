@@ -39,6 +39,43 @@ async function setProviderChatId(provider, chatId) {
 
 const PROVIDER_LABELS = { sevil: 'Sevil aka', xayrulla: 'Xayrulla', nosir: 'Nosir aka', hammasi: 'Siroj' };
 
+// ── Per-bot admin chat ID helpers ─────────────────────────────────────────────
+// Returns array of admin chat IDs for a bot type
+async function getBotAdminIds(botType) {
+  const keyMap = { hotel: 'HOTEL_ADMIN_CHAT_IDS', transport: 'TRANSPORT_ADMIN_CHAT_IDS', restaurant: 'RESTAURANT_ADMIN_CHAT_IDS', guide: 'GUIDE_ADMIN_CHAT_IDS' };
+  const key = keyMap[botType];
+  if (!key) return [process.env.TELEGRAM_ADMIN_CHAT_ID].filter(Boolean);
+  const s = await prisma.systemSetting.findUnique({ where: { key } });
+  try {
+    const arr = s?.value ? JSON.parse(s.value) : [];
+    return arr.length ? arr : [process.env.TELEGRAM_ADMIN_CHAT_ID].filter(Boolean);
+  } catch { return [process.env.TELEGRAM_ADMIN_CHAT_ID].filter(Boolean); }
+}
+// Toggle a chatId in the admin list for a bot type
+async function toggleBotAdmin(botType, chatId) {
+  const keyMap = { hotel: 'HOTEL_ADMIN_CHAT_IDS', transport: 'TRANSPORT_ADMIN_CHAT_IDS', restaurant: 'RESTAURANT_ADMIN_CHAT_IDS', guide: 'GUIDE_ADMIN_CHAT_IDS' };
+  const key = keyMap[botType];
+  if (!key) return;
+  const s = await prisma.systemSetting.findUnique({ where: { key } });
+  let arr = [];
+  try { arr = s?.value ? JSON.parse(s.value) : []; } catch {}
+  const idx = arr.indexOf(String(chatId));
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(String(chatId));
+  await prisma.systemSetting.upsert({ where: { key }, update: { value: JSON.stringify(arr) }, create: { key, value: JSON.stringify(arr) } });
+  return arr;
+}
+// Helper: notify all bot admins via a given bot API
+async function notifyBotAdmins(botType, apiUrl, text) {
+  const ids = await getBotAdminIds(botType);
+  for (const id of ids) {
+    await axios.post(`${apiUrl}/sendMessage`, { chat_id: id, text, parse_mode: 'Markdown' }).catch(() => {});
+  }
+}
+// Aliases for backward compat (returns first admin or null)
+const getTransportAdminChatId  = async () => { const ids = await getBotAdminIds('transport');  return ids[0] || null; };
+const getRestaurantAdminChatId = async () => { const ids = await getBotAdminIds('restaurant'); return ids[0] || null; };
+const getGuideAdminChatId      = async () => { const ids = await getBotAdminIds('guide');      return ids[0] || null; };
+
 // ── Meal chat ID helpers ─────────────────────────────────────────────────────
 const MEAL_CHAT_IDS_KEY = 'MEAL_RESTAURANT_CHAT_IDS';
 async function getMealChatIds() {
@@ -46,6 +83,11 @@ async function getMealChatIds() {
     const s = await prisma.systemSetting.findUnique({ where: { key: MEAL_CHAT_IDS_KEY } });
     return s ? JSON.parse(s.value) : {};
   } catch { return {}; }
+}
+async function getRestaurantByChatId(chatId) {
+  const map = await getMealChatIds();
+  const entry = Object.entries(map).find(([, v]) => String(v) === String(chatId));
+  return entry ? entry[0] : null;
 }
 async function saveMealChatIds(map) {
   await prisma.systemSetting.upsert({
@@ -122,6 +164,83 @@ async function sendAdminMenu(chatId) {
       keyboard: [
         [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
         [{ text: '⏳ Waiting List' }, { text: '❌ Аннуляция' }]
+      ],
+      resize_keyboard: true,
+      is_persistent: true
+    })
+  }).catch(() => {});
+}
+
+// Helper: find provider name by chatId (reverse lookup from SystemSetting)
+async function getProviderByChatId(chatId) {
+  for (const p of ['sevil', 'xayrulla', 'nosir', 'hammasi']) {
+    const id = await getProviderChatId(p);
+    if (id && String(id) === String(chatId)) return p;
+  }
+  return null;
+}
+
+// Helper: send transport provider menu
+async function sendTransportMenu(chatId) {
+  await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+    chat_id: chatId,
+    text: '🚌 *Transport menyu:*',
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({
+      keyboard: [
+        [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '📄 Заявка 2026' }, { text: '❌ Аннуляция' }]
+      ],
+      resize_keyboard: true,
+      is_persistent: true
+    })
+  }).catch(() => {});
+}
+
+// Helper: send transport admin menu
+async function sendTransportAdminMenu(chatId) {
+  await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+    chat_id: chatId,
+    text: '🤖 *Transport Admin Panel*',
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({
+      keyboard: [
+        [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '📄 Заявка 2026' }, { text: '❌ Аннуляция' }]
+      ],
+      resize_keyboard: true,
+      is_persistent: true
+    })
+  }).catch(() => {});
+}
+
+// Helper: send guide menu keyboard
+async function sendGuideMenu(chatId) {
+  await axios.post(`${GUIDE_API()}/sendMessage`, {
+    chat_id: chatId,
+    text: '🧭 *Gid menyu:*',
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({
+      keyboard: [
+        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '❌ Аннуляция' }]
+      ],
+      resize_keyboard: true,
+      is_persistent: true
+    })
+  }).catch(() => {});
+}
+
+// Helper: send restaurant menu keyboard
+async function sendRestaurantMenu(chatId) {
+  await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+    chat_id: chatId,
+    text: '🍽 *Restoran menyu:*',
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({
+      keyboard: [
+        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '❌ Аннуляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -498,7 +617,7 @@ async function sendHotelChangesForTourType(chatId, hotel, tourType) {
 }
 
 // Helper: handle /start command — save chat, set role=user
-async function handleStart(chat, msg, botApiUrl) {
+async function handleStart(chat, msg, botApiUrl, defaultRole = 'user') {
   try {
     const chats = await loadKnownChats();
     const existing = chats[String(chat.id)] || {};
@@ -509,7 +628,7 @@ async function handleStart(chat, msg, botApiUrl) {
       name: existing.nameCustomized ? existing.name : telegramName,
       username: chat.username ? `@${chat.username}` : (existing.username || null),
       type: chat.type,
-      role: existing.role || 'user',
+      role: existing.role || defaultRole,
       lastMessage: '/start',
       date: new Date(msg.date * 1000).toISOString()
     };
@@ -519,6 +638,12 @@ async function handleStart(chat, msg, botApiUrl) {
       await sendAdminMenu(chat.id);
     } else if (existing.role === 'hotel') {
       await sendHotelMenu(chat.id);
+    } else if (existing.role === 'transport') {
+      await sendTransportMenu(chat.id);
+    } else if (existing.role === 'restaurant') {
+      await sendRestaurantMenu(chat.id);
+    } else if (existing.role === 'guide') {
+      await sendGuideMenu(chat.id);
     } else {
       await axios.post(`${botApiUrl}/sendMessage`, {
         chat_id: chat.id,
@@ -734,7 +859,7 @@ router.post('/send-message', authenticate, requireAdmin, async (req, res) => {
 router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
   try {
     const { chatId } = req.params;
-    const { role, phone, name } = req.body;
+    const { role, phone, name, isChecker } = req.body;
     const chats = await loadKnownChats();
     if (!chats[chatId]) return res.status(404).json({ error: 'Chat topilmadi' });
     if (name !== undefined && name.trim()) {
@@ -744,6 +869,22 @@ router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
     const prevRole = chats[chatId].role;
     if (role !== undefined) chats[chatId].role = role;
     if (phone !== undefined) chats[chatId].phone = phone;
+    if (isChecker !== undefined) {
+      // Clear isChecker from any previously checked admin
+      if (isChecker) {
+        for (const [cid, chat] of Object.entries(chats)) {
+          if (cid !== chatId && chat.isChecker) chat.isChecker = false;
+        }
+      }
+      chats[chatId].isChecker = isChecker;
+      // Sync with TRANSPORT_HAMMASI_CHAT_ID (Tekshiruvchi transport setting)
+      if (isChecker) {
+        await setProviderChatId('hammasi', String(chatId));
+      } else {
+        const current = await getProviderChatId('hammasi');
+        if (String(current) === String(chatId)) await setProviderChatId('hammasi', '');
+      }
+    }
     await saveKnownChats(chats);
     // Send bot-specific welcome message when admin assigns a role
     if (role !== undefined && role !== prevRole && T.roleAssigned[role]) {
@@ -760,6 +901,9 @@ router.put('/chats/:chatId', authenticate, requireAdmin, async (req, res) => {
         }).catch(() => {});
         if (role === 'admin') await sendAdminMenu(chatId);
         else if (role === 'hotel') await sendHotelMenu(chatId);
+        else if (role === 'transport') await sendTransportMenu(chatId);
+        else if (role === 'restaurant') await sendRestaurantMenu(chatId);
+        else if (role === 'guide') await sendGuideMenu(chatId);
       }
     }
     res.json({ chat: chats[chatId] });
@@ -1280,6 +1424,50 @@ router.post('/webhook', (req, res, next) => {
         text: `✏️ *${targetName}* ga javob yozing:\n_(Bekor qilish uchun /cancel)_`,
         parse_mode: 'Markdown'
       }).catch(() => {});
+      return;
+    }
+
+    // ── gd_schedule_ok / gd_schedule_reject — guide confirms schedule (main bot) ─
+    if (data.startsWith('gd_schedule_ok:') || data.startsWith('gd_schedule_reject:')) {
+      const parts = data.split(':');
+      const newStatus = data.startsWith('gd_schedule_ok:') ? 'CONFIRMED' : 'REJECTED';
+      const guideId   = parseInt(parts[1]);
+      const year      = parseInt(parts[2]);
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: newStatus === 'CONFIRMED' ? '✅ Qabul qilindi!' : '❌ Rad etildi.',
+        show_alert: false
+      }).catch(() => {});
+
+      try {
+        const guide = await prisma.guide.findUnique({ where: { id: guideId }, select: { name: true } });
+        const bookings = await prisma.booking.findMany({
+          where: { guideId, bookingYear: year, status: { not: 'CANCELLED' } },
+          select: { id: true }
+        });
+        for (const b of bookings) {
+          await prisma.guideConfirmation.upsert({
+            where: { bookingId_guideId: { bookingId: b.id, guideId } },
+            create: { bookingId: b.id, guideId, status: newStatus, respondedAt: new Date(), confirmedBy: guide?.name || '' },
+            update: { status: newStatus, respondedAt: new Date(), confirmedBy: guide?.name || '' }
+          });
+        }
+        const emoji = newStatus === 'CONFIRMED' ? '✅' : '❌';
+        const label = newStatus === 'CONFIRMED' ? 'Qabul qilindi' : 'Rad etildi';
+        await axios.post(`${BOT_API()}/editMessageReplyMarkup`, {
+          chat_id: fromChatId, message_id: cb.message?.message_id,
+          reply_markup: JSON.stringify({ inline_keyboard: [[{ text: `${emoji} ${label}`, callback_data: 'noop' }]] })
+        }).catch(() => {});
+        const guideAdminIds = await getBotAdminIds('guide');
+        for (const id of guideAdminIds) {
+          await axios.post(`${GUIDE_API()}/sendMessage`, {
+            chat_id: id,
+            text: `${emoji} *${guide?.name || 'Gid'}* — ${year} yil jadvali: ${label.toLowerCase()} (${bookings.length} guruh)`,
+            parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
+      } catch (e) { console.error('gd_schedule (main bot) error:', e.message); }
       return;
     }
 
@@ -2471,9 +2659,10 @@ router.post('/webhook', (req, res, next) => {
       }).catch(e => console.warn('editCaption err:', e.response?.data || e.message));
     }
 
-    // 3. Notify admin (improved format with zaezd/viyezd)
-    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-    if (adminChatId) {
+    // 3. Notify hotel admins
+    const hotelAdminIds = await getBotAdminIds('hotel');
+    if (hotelAdminIds.length) {
+    const adminChatId = hotelAdminIds[0]; // use first for building message, then send to all
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
       const dateStr = fmtDate(now);
@@ -2505,11 +2694,9 @@ router.post('/webhook', (req, res, next) => {
         `👤 ${fromName}`,
         `🕐 ${timeStr}`
       ].join('\n');
-      await axios.post(`${BOT_API()}/sendMessage`, {
-        chat_id: adminChatId,
-        text: adminMsg,
-        parse_mode: 'Markdown'
-      }).catch(() => {});
+      for (const id of hotelAdminIds) {
+        await axios.post(`${BOT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' }).catch(() => {});
+      }
     }
 
     // 4. Update TelegramConfirmation status
@@ -2582,9 +2769,31 @@ router.post('/webhook-transport', async (req, res) => {
     if (msg) {
       const chat = msg.chat;
 
-      // /start — welcome message + auto role=user
-      if (msg.text === '/start') {
-        await handleStart(chat, msg, TRANSPORT_API());
+      const adminEnvId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+
+      // /start — register + send menu based on role
+      if (msg.text === '/start' || msg.text === '/menu') {
+        const chats = await loadKnownChats();
+        const existing = chats[String(chat.id)] || {};
+        const telegramName = chat.title || [chat.first_name, chat.last_name].filter(Boolean).join(' ');
+        const newRole = (!existing.role || existing.role === 'user') ? 'transport' : existing.role;
+        chats[String(chat.id)] = {
+          ...existing,
+          chatId: String(chat.id),
+          name: existing.nameCustomized ? existing.name : telegramName,
+          username: chat.username ? `@${chat.username}` : (existing.username || null),
+          type: chat.type,
+          role: newRole,
+          lastMessage: msg.text,
+          date: new Date(msg.date * 1000).toISOString()
+        };
+        await saveKnownChats(chats);
+        const isAdminUser = (adminEnvId && String(chat.id) === String(adminEnvId)) || newRole === 'admin';
+        if (isAdminUser) {
+          await sendTransportAdminMenu(chat.id);
+        } else {
+          await sendTransportMenu(chat.id);
+        }
         return;
       }
 
@@ -2604,16 +2813,10 @@ router.post('/webhook-transport', async (req, res) => {
       if (msg.contact) {
         const phone = msg.contact.phone_number;
         const chats = await loadKnownChats();
-        const lang = chats[String(chat.id)]?.lang || 'uz';
-        if (chats[String(chat.id)]) {
-          chats[String(chat.id)].phone = phone;
-          await saveKnownChats(chats);
-        }
+        if (chats[String(chat.id)]) { chats[String(chat.id)].phone = phone; await saveKnownChats(chats); }
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
-          chat_id: chat.id,
-          text: T.phoneSaved[lang],
-          parse_mode: 'Markdown',
-          reply_markup: JSON.stringify({ remove_keyboard: true })
+          chat_id: chat.id, text: T.phoneSaved[chats[String(chat.id)]?.lang || 'uz'],
+          parse_mode: 'Markdown', reply_markup: JSON.stringify({ remove_keyboard: true })
         }).catch(() => {});
         return;
       }
@@ -2631,6 +2834,76 @@ router.post('/webhook-transport', async (req, res) => {
         date: new Date(msg.date * 1000).toISOString()
       };
       await saveKnownChats(chats);
+
+      // "📋 Marshrut List" — show inline ER/CO/KAS/ZA keyboard
+      if (msg.text === '📋 Marshrut List') {
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: '📋 *Marshrut List* — Tur turini tanlang:',
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: 'ER',  callback_data: 'tr_list:ER'  },
+              { text: 'CO',  callback_data: 'tr_list:CO'  },
+              { text: 'KAS', callback_data: 'tr_list:KAS' },
+              { text: 'ZA',  callback_data: 'tr_list:ZA'  }
+            ]]
+          })
+        }).catch(() => {});
+        return;
+      }
+
+      // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
+      const STATUS_BTN_MAP = {
+        '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
+        '📄 Заявка 2026':  { key: 'PENDING',   emoji: '📄' },
+        '❌ Аннуляция':    { key: 'REJECTED',  emoji: '❌' }
+      };
+      if (msg.text && STATUS_BTN_MAP[msg.text]) {
+        const { key, emoji } = STATUS_BTN_MAP[msg.text];
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: `${emoji} *${msg.text}* — Tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: 'ER',  callback_data: `tr_conf:${key}:ER`  },
+              { text: 'CO',  callback_data: `tr_conf:${key}:CO`  },
+              { text: 'KAS', callback_data: `tr_conf:${key}:KAS` },
+              { text: 'ZA',  callback_data: `tr_conf:${key}:ZA`  }
+            ]]
+          })
+        }).catch(() => {});
+        return;
+      }
+
+      // Save incoming text + notify admin (only non-menu messages)
+      if (msg.text) {
+        await prisma.telegramMessage.create({
+          data: {
+            chatId: String(chat.id),
+            chatName: chats[String(chat.id)]?.name || null,
+            role: chats[String(chat.id)]?.role || 'transport',
+            text: msg.text,
+            direction: 'IN'
+          }
+        }).catch(() => {});
+
+        const senderName = chats[String(chat.id)]?.name || telegramName;
+        const adminRoleIds = Object.values(chats).filter(c => c.role === 'admin').map(c => c.chatId);
+        const allAdmins = [...new Set([...(adminEnvId ? [String(adminEnvId)] : []), ...adminRoleIds])];
+        for (const aId of allAdmins) {
+          if (String(aId) === String(chat.id)) continue;
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: aId,
+            text: `🚌 *Transport: ${senderName}*\n\n📩 Yangi xabar:\n"${msg.text}"`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({
+              inline_keyboard: [[{ text: '✏️ Javob berish', callback_data: `reply_to:${chat.id}:${senderName.substring(0, 30)}` }]]
+            })
+          }).catch(() => {});
+        }
+      }
     }
 
     const cb = update.callback_query;
@@ -2642,7 +2915,7 @@ router.post('/webhook-transport', async (req, res) => {
     const fromDisplayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ');
     const fromName = [fromDisplayName, fromUser.username ? `@${fromUser.username}` : ''].filter(Boolean).join(' ') || 'Noma\'lum';
     const fromChatId = cb.message?.chat?.id;
-    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+    const adminChatId = await getTransportAdminChatId();
 
     // ── tr_approve / tr_decline (Siroj approving marshrut for provider) ────
     if (data.startsWith('tr_approve:') || data.startsWith('tr_decline:')) {
@@ -2784,7 +3057,8 @@ router.post('/webhook-transport', async (req, res) => {
         });
       } catch (e) { console.warn('TransportConfirmation update warn:', e.message); }
 
-      if (adminChatId) {
+      const trAdminIds = await getBotAdminIds('transport');
+      if (trAdminIds.length) {
         const booking = await prisma.booking.findUnique({
           where: { id: trBookingId },
           select: { bookingNumber: true, arrivalDate: true, endDate: true, guide: { select: { name: true, phone: true } } }
@@ -2802,9 +3076,392 @@ router.post('/webhook-transport', async (req, res) => {
           `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
+        for (const id of trAdminIds) {
+          await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' }).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // ── tr_conf:{statusKey}:{tourType} — Show confirmations by status + tour type ─
+    if (data.startsWith('tr_conf:')) {
+      const parts = data.split(':');
+      const statusKey = parts[1]; // CONFIRMED | PENDING | REJECTED
+      const tourType  = parts[2]; // ER | CO | KAS | ZA
+      const chatId = fromChatId || cb.from?.id;
+      const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
+      const providerName = isAdminCb ? null : await getProviderByChatId(chatId);
+
+      const STATUS_FILTERS = {
+        CONFIRMED: ['CONFIRMED'],
+        PENDING:   ['PENDING_APPROVAL', 'APPROVED', 'PENDING'],
+        REJECTED:  ['REJECTED', 'REJECTED_BY_APPROVER']
+      };
+      const JP_STATUS_FILTERS = {
+        CONFIRMED: ['CONFIRMED'],
+        PENDING:   ['PENDING_APPROVAL', 'APPROVED'],
+        REJECTED:  ['REJECTED']
+      };
+      const STATUS_EMOJI = { PENDING_APPROVAL: '🔄', APPROVED: '⏳', PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌', REJECTED_BY_APPROVER: '❌' };
+      const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
+      const jpStatusFilter = JP_STATUS_FILTERS[statusKey] || ['CONFIRMED'];
+      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Аннуляция' }[statusKey] || statusKey;
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      // Build where clause — filter by status + tourType via booking relation
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const where = {
+        status: { in: statusFilter },
+        booking: { tourTypeId: tourTypeRecord.id }
+      };
+      if (providerName && providerName !== 'hammasi') {
+        where.provider = providerName;
+      }
+
+      const confs = await prisma.transportConfirmation.findMany({
+        where,
+        include: {
+          booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true } }
+        },
+        orderBy: { sentAt: 'desc' },
+        take: 25
+      });
+
+      // Fetch Jahresplanung annual plan confirmations from SystemSetting
+      const year = new Date().getFullYear();
+      const jpRows = await prisma.systemSetting.findMany({
+        where: { key: { startsWith: `JP_TRANSPORT_CONFIRM_${year}_${tourType}_` } }
+      });
+      const jpEntries = jpRows.map(r => { try { return JSON.parse(r.value); } catch { return null; } })
+        .filter(e => e && jpStatusFilter.includes(e.status))
+        .filter(e => !providerName || providerName === 'hammasi' || e.provider === providerName);
+
+      // For Аннуляция — also fetch CANCELLED bookings from Booking table
+      let cancelledBookings = [];
+      if (statusKey === 'REJECTED') {
+        cancelledBookings = await prisma.booking.findMany({
+          where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
+          select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true, departureDate: true },
+          orderBy: { arrivalDate: 'asc' }
+        });
+      }
+
+      const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+
+      if (!confs.length && !jpEntries.length && !cancelledBookings.length) {
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
-          chat_id: adminChatId, text: adminMsg, parse_mode: 'Markdown'
+          chat_id: chatId,
+          text: `${statusLabel} — *${tourType}*\n\nHech narsa topilmadi.`,
+          parse_mode: 'Markdown'
         }).catch(() => {});
+        return;
+      }
+
+      const provLabel = providerName && providerName !== 'hammasi'
+        ? ` (${PROVIDER_LABELS[providerName] || providerName})` : '';
+      const lines = [`${statusLabel} — *${tourType}${provLabel}*`];
+
+      // Individual booking marshrut confirmations
+      for (const c of confs) {
+        const b = c.booking;
+        const st = STATUS_EMOJI[c.status] || '❓';
+        lines.push(`\n${st} *${b?.bookingNumber || '#'+c.bookingId}*`);
+        if (b?.arrivalDate) lines.push(`📅 ${fmt(b.arrivalDate)} – ${fmt(b.endDate)}`);
+        if (b?.pax) lines.push(`👥 ${b.pax} kishi`);
+        if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+        else if (c.approvedBy) lines.push(`👤 ${c.approvedBy}`);
+      }
+
+      // Cancelled bookings section
+      if (cancelledBookings.length) {
+        if (confs.length) lines.push(`\n━━━━━━━━━━━━━━━━━━`);
+        lines.push(`\n🚫 *Отменённые группы ${year}*`);
+        for (const b of cancelledBookings) {
+          lines.push(`\n❌ *${b.bookingNumber}*`);
+          if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
+        }
+      }
+
+      // Jahresplanung annual plan confirmations
+      if (jpEntries.length) {
+        lines.push(`\n━━━━━━━━━━━━━━━━━━`);
+        lines.push(`📅 *Jahresplanung ${year}*`);
+        for (const jp of jpEntries) {
+          const st = STATUS_EMOJI[jp.status] || '❓';
+          const pLabel = PROVIDER_LABELS[jp.provider] || jp.provider;
+          lines.push(`\n${st} *${pLabel}*`);
+          if (jp.sentAt) lines.push(`📤 Yuborildi: ${fmt(jp.sentAt)}`);
+          if (jp.approvedBy) lines.push(`👁 Tekshirdi: ${jp.approvedBy}`);
+          if (jp.confirmedBy) lines.push(`✅ Tasdiqladi: ${jp.confirmedBy}`);
+          if (jp.respondedAt) lines.push(`🕐 ${fmt(jp.respondedAt)}`);
+        }
+      }
+
+      await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+        chat_id: chatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: chatId, text: plain }).catch(() => {});
+      });
+      return;
+    }
+
+    // ── tr_list:{tourType} — Show ONE template route for provider + tour type ─
+    if (data.startsWith('tr_list:')) {
+      const tourType = data.split(':')[1]; // ER, CO, KAS, ZA
+      const chatId = fromChatId || cb.from?.id;
+      console.log('[tr_list] callback received:', { tourType, chatId, from: cb.from?.id });
+
+      const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
+      const providerName = isAdminCb ? null : await getProviderByChatId(chatId);
+      // hammasi (Siroj) sees all routes
+      const effectiveProvider = (providerName && providerName !== 'hammasi') ? providerName : null;
+      console.log('[tr_list] providerName:', providerName, '| effectiveProvider:', effectiveProvider);
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: `📋 ${tourType} marshruti yuklanmoqda...`,
+        show_alert: false
+      }).catch(e => console.error('[tr_list] answerCB error:', e.message));
+
+      // Resolve tourTypeId first (avoid nested relation filter issues)
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      console.log('[tr_list] tourTypeRecord:', tourTypeRecord?.id, tourTypeRecord?.code);
+
+      if (!tourTypeRecord) {
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chatId,
+          text: `❌ "${tourType}" tur turi topilmadi.`,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Find ONE representative booking (upcoming, prefer future; fallback to most recent)
+      let sampleBooking = await prisma.booking.findFirst({
+        where: { tourTypeId: tourTypeRecord.id, arrivalDate: { gte: today }, status: { not: 'CANCELLED' } },
+        orderBy: { arrivalDate: 'asc' }
+      });
+      if (!sampleBooking) {
+        // Fallback: most recent booking of this type regardless of date
+        sampleBooking = await prisma.booking.findFirst({
+          where: { tourTypeId: tourTypeRecord.id, status: { not: 'CANCELLED' } },
+          orderBy: { arrivalDate: 'desc' }
+        });
+      }
+      console.log('[tr_list] sampleBooking:', sampleBooking?.id, sampleBooking?.bookingNumber);
+
+      if (!sampleBooking) {
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chatId,
+          text: `📋 *${tourType}* uchun hech qanday booking topilmadi.`,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+        return;
+      }
+
+      // Get routes for this booking, filtered by provider
+      // provider field in DB can be 'sevil', 'sevil-er', 'sevil-co', etc.
+      const routeWhere = { bookingId: sampleBooking.id };
+      if (effectiveProvider) {
+        routeWhere.provider = {
+          in: [effectiveProvider, `${effectiveProvider}-${tourType.toLowerCase()}`]
+        };
+      }
+      console.log('[tr_list] routeWhere:', JSON.stringify(routeWhere));
+
+      const routes = await prisma.route.findMany({
+        where: routeWhere,
+        orderBy: [{ sortOrder: 'asc' }, { dayNumber: 'asc' }]
+      });
+      console.log('[tr_list] routes count:', routes.length);
+
+      if (!routes.length) {
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chatId,
+          text: `📋 *${tourType}* uchun sizning marshrutingiz topilmadi.`,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+        return;
+      }
+
+      const provLabel = effectiveProvider ? ` (${PROVIDER_LABELS[effectiveProvider] || effectiveProvider})` : '';
+      const title = `Marshrut — ${tourType}${provLabel}`;
+
+      // 1. Text message — days re-numbered 1, 2, 3...
+      const lines = [`📋 *${title}*`];
+      routes.forEach((r, i) => {
+        const vehicle = r.transportType ? ` [${r.transportType}]` : '';
+        lines.push(`  ${i + 1}-kun |${vehicle} ${r.routeName || r.city || ''}`);
+      });
+
+      await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+        chat_id: chatId,
+        text: lines.join('\n').substring(0, 4000),
+        parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`[\]]/g, '').substring(0, 4000);
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: chatId, text: plain }).catch(() => {});
+      });
+
+      // 2. PDF — full marshrut varaqasi template, no dates, PAX=16
+      try {
+        const FIXED_PAX = 16;
+        const providerTitle = PROVIDER_LABELS[effectiveProvider] || effectiveProvider || 'Hammasi';
+
+        // Fetch railways, flights, accommodations for the sample booking
+        const [railways, flights, bookingFull, accommodations] = await Promise.all([
+          prisma.railway.findMany({ where: { bookingId: sampleBooking.id }, orderBy: { sortOrder: 'asc' } }).catch(() => []),
+          prisma.flight.findMany({ where: { bookingId: sampleBooking.id }, orderBy: { sortOrder: 'asc' } }).catch(() => []),
+          prisma.booking.findFirst({ where: { id: sampleBooking.id }, include: { guide: true } }).catch(() => null),
+          prisma.accommodation.findMany({
+            where: { bookingId: sampleBooking.id },
+            include: { hotel: { include: { city: true } } },
+            orderBy: { checkInDate: 'asc' }
+          }).catch(() => [])
+        ]);
+
+        const guide = bookingFull?.guide;
+        const nosirContact = "Nosir aka (+998 91 151 11 10) Farg\u2019ona";
+        const sevilContact  = "Sevil aka (+998 90 445 10 92) Marshrutda";
+        const xayrullaContact = "Xayrulla (+998 93 133 00 03) Toshkentda";
+
+        const findAccByCity = (cityName) => accommodations.find(a => {
+          const c = (a.hotel?.city?.name || '').toLowerCase();
+          const cn = (cityName || '').toLowerCase();
+          return c && cn && (c.includes(cn) || cn.includes(c));
+        });
+
+        // Routes rows
+        const routeRowsHtml = routes.map((r, i) => `
+          <tr>
+            <td class="c">${i + 1}</td><td class="c">—</td>
+            <td>${r.routeName || r.city || '—'}</td>
+            <td class="c">${FIXED_PAX}</td>
+            <td class="c">${r.departureTime || '—'}</td>
+            <td class="c">${r.transportType || '—'}</td>
+            <td>${r.itinerary || '—'}</td>
+          </tr>`).join('');
+
+        // Railway rows
+        const railwayRowsHtml = railways.map(r => {
+          const acc = findAccByCity(r.arrival);
+          return `<tr>
+            <td>—</td><td>${r.departure} - ${r.arrival}</td>
+            <td class="c">${r.trainNumber || r.trainName || '—'}</td>
+            <td class="c">${r.departureTime || ''}${r.arrivalTime ? '-'+r.arrivalTime : ''}</td>
+            <td>${r.arrival || '—'}</td>
+            <td>${acc?.hotel?.name || '—'}</td>
+            <td>${acc?.hotel?.phone || '—'}</td>
+          </tr>`;
+        }).join('');
+
+        // Domestic flights
+        const domFlights = flights.filter(f => f.type === 'DOMESTIC');
+        const domRowsHtml = domFlights.map(f => {
+          const rs = f.route || (f.departure && f.arrival ? `${f.departure}-${f.arrival}` : '—');
+          const acc = findAccByCity(f.arrival);
+          return `<tr>
+            <td>—</td><td>${rs}</td>
+            <td class="c">${f.flightNumber || '—'}</td>
+            <td class="c">${f.departureTime && f.arrivalTime ? f.departureTime+'-'+f.arrivalTime : '—'}</td>
+            <td>${f.arrival || '—'}</td>
+            <td>${acc?.hotel?.name || '—'}</td>
+            <td>${acc?.hotel?.phone || '—'}</td>
+          </tr>`;
+        }).join('');
+
+        // International flights
+        const intlFlights = flights.filter(f => f.type === 'INTERNATIONAL');
+        const intlRowsHtml = intlFlights.map(f => {
+          const rs = f.route || (f.departure && f.arrival ? `${f.departure}-${f.arrival}` : '—');
+          return `<tr>
+            <td>—</td><td>${rs}</td>
+            <td class="c">${f.flightNumber || '—'}</td>
+            <td class="c">${f.departureTime && f.arrivalTime ? f.departureTime+'-'+f.arrivalTime : '—'}</td>
+          </tr>`;
+        }).join('');
+
+        // Unique hotels
+        const seenH = new Set();
+        const hotelRowsHtml = accommodations.filter(a => {
+          if (!a.hotelId || seenH.has(a.hotelId)) return false;
+          seenH.add(a.hotelId); return true;
+        }).map(a => `<tr>
+          <td>${a.hotel?.city?.name || '—'}</td>
+          <td>${a.hotel?.name || '—'}</td>
+          <td>${a.hotel?.phone || '—'}</td>
+        </tr>`).join('');
+
+        const pdfHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+          body{font-family:Arial,sans-serif;padding:18px;font-size:10px;margin:0}
+          h1{text-align:center;font-size:15px;font-weight:bold;margin-bottom:12px}
+          h3{text-align:center;font-size:11px;font-weight:bold;margin:12px 0 4px}
+          table{width:100%;border-collapse:collapse;margin-bottom:6px}
+          th{background:#e5e7eb;color:#000;padding:4px 6px;border:1px solid #000;font-size:9px;font-weight:bold;text-align:left}
+          td{padding:3px 6px;border:1px solid #aaa;font-size:9px;vertical-align:middle}
+          .c{text-align:center}
+          .yellow{background:#fef3c7}
+          .blue{background:#eff6ff}
+        </style></head><body>
+        <h1>Marshrut varaqasi (${providerTitle})</h1>
+        <table>
+          <tr><td>Transport turi</td><td></td><td>Gruppa</td><td>${tourType}</td></tr>
+          <tr class="blue"><td>${nosirContact}</td><td></td><td>Davlat</td><td>Germaniya</td></tr>
+          <tr><td class="yellow">${sevilContact}</td><td></td><td>Turistlar soni</td><td>${FIXED_PAX}</td></tr>
+          <tr><td>${xayrullaContact}</td><td></td><td>gid: ${guide?.name || '—'}</td><td>${guide?.phone || '—'}</td></tr>
+        </table>
+        ${routes.length > 0 ? `
+        <table>
+          <thead><tr>
+            <th style="width:18px">!</th><th style="width:45px">Sana</th>
+            <th style="width:90px">Yo'nalish</th><th style="width:26px" class="c">PAX</th>
+            <th style="width:36px" class="c">Vaqt</th><th style="width:58px" class="c">Avtomobil</th>
+            <th>Sayohat dasturi</th>
+          </tr></thead>
+          <tbody>${routeRowsHtml}</tbody>
+        </table>` : ''}
+        ${railways.length > 0 ? `<h3>Poyezd bileti</h3>
+        <table><thead><tr>
+          <th>Sana</th><th>Yo'nalish</th><th>Poyezd</th><th class="c">Vaqti</th><th>Shahar</th><th>Hotel</th><th>Telefon</th>
+        </tr></thead><tbody>${railwayRowsHtml}</tbody></table>` : ''}
+        ${domFlights.length > 0 ? `<h3>Ichki aviareys</h3>
+        <table><thead><tr>
+          <th>Sana</th><th>Yo'nalish</th><th>Reys</th><th class="c">Vaqti</th><th>Shahar</th><th>Hotel</th><th>Telefon</th>
+        </tr></thead><tbody>${domRowsHtml}</tbody></table>` : ''}
+        ${intlFlights.length > 0 ? `<h3>Xalqaro aviareys</h3>
+        <table><thead><tr>
+          <th>Sana</th><th>Yo'nalish</th><th>Reys</th><th class="c">Vaqti</th>
+        </tr></thead><tbody>${intlRowsHtml}</tbody></table>` : ''}
+        ${hotelRowsHtml ? `<h3>Hotels</h3>
+        <table><thead><tr><th>Shahar</th><th>Hotel</th><th>Telefon</th></tr></thead>
+        <tbody>${hotelRowsHtml}</tbody></table>` : ''}
+        </body></html>`;
+
+        const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        const page = await browser.newPage();
+        await page.setContent(pdfHtml, { waitUntil: 'networkidle0' });
+        const pdfBuffer = await page.pdf({ format: 'A4', margin: { top: '12mm', bottom: '12mm', left: '10mm', right: '10mm' } });
+        await browser.close();
+
+        const formData = new FormData();
+        formData.append('chat_id', String(chatId));
+        formData.append('document', Buffer.from(pdfBuffer), {
+          filename: `Marshrut_${tourType}_${providerTitle}.pdf`, contentType: 'application/pdf'
+        });
+        formData.append('caption', `📋 Marshrut varaqasi — ${tourType} (${providerTitle})`);
+        await axios.post(`${TRANSPORT_API()}/sendDocument`, formData, { headers: formData.getHeaders() })
+          .catch(e => console.error('[tr_list] PDF send error:', e.message));
+      } catch (pdfErr) {
+        console.error('[tr_list] PDF generation error:', pdfErr.message);
       }
       return;
     }
@@ -2934,9 +3591,10 @@ router.post('/webhook-restaurant', async (req, res) => {
     if (msg) {
       const chat = msg.chat;
 
-      // /start — welcome message + auto role=user
+      // /start — welcome message + send restaurant menu
       if (msg.text === '/start') {
         await handleStart(chat, msg, RESTAURANT_API());
+        await sendRestaurantMenu(chat.id);
         return;
       }
 
@@ -2983,6 +3641,36 @@ router.post('/webhook-restaurant', async (req, res) => {
         date: new Date(msg.date * 1000).toISOString()
       };
       await saveKnownChats(chats);
+
+      // /menu command
+      if (msg.text === '/menu') {
+        await sendRestaurantMenu(chat.id);
+        return;
+      }
+
+      // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
+      const REST_BTN_MAP = {
+        '📄 Заявка 2026': { key: 'PENDING',   emoji: '📄' },
+        '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
+        '❌ Аннуляция':   { key: 'REJECTED',  emoji: '❌' }
+      };
+      if (msg.text && REST_BTN_MAP[msg.text]) {
+        const { key, emoji } = REST_BTN_MAP[msg.text];
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: `${emoji} *${msg.text}* — Tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: 'ER',  callback_data: `rest_conf:${key}:ER`  },
+              { text: 'CO',  callback_data: `rest_conf:${key}:CO`  },
+              { text: 'KAS', callback_data: `rest_conf:${key}:KAS` },
+              { text: 'ZA',  callback_data: `rest_conf:${key}:ZA`  }
+            ]]
+          })
+        }).catch(() => {});
+        return;
+      }
     }
 
     const cb = update.callback_query;
@@ -2994,7 +3682,91 @@ router.post('/webhook-restaurant', async (req, res) => {
     const fromDisplayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ');
     const fromName = [fromDisplayName, fromUser.username ? `@${fromUser.username}` : ''].filter(Boolean).join(' ') || 'Noma\'lum';
     const fromChatId = cb.message?.chat?.id;
-    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+    const adminChatId = await getRestaurantAdminChatId();
+
+    // ── rest_conf:{statusKey}:{tourType} — Show meal confirmations by status + tour type ─
+    if (data.startsWith('rest_conf:')) {
+      const parts = data.split(':');
+      const statusKey = parts[1]; // CONFIRMED | PENDING | REJECTED
+      const tourType  = parts[2]; // ER | CO | KAS | ZA
+      const chatId = fromChatId || cb.from?.id;
+      const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
+      const restaurantName = isAdminCb ? null : await getRestaurantByChatId(chatId);
+
+      const STATUS_FILTERS = {
+        CONFIRMED: ['CONFIRMED'],
+        PENDING:   ['PENDING'],
+        REJECTED:  ['REJECTED']
+      };
+      const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
+      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Аннуляция' }[statusKey] || statusKey;
+
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+      const restLabel = restaurantName ? ` (${restaurantName})` : '';
+      const lines = [`${statusLabel} — *${tourType}${restLabel}*`];
+
+      if (statusKey === 'REJECTED') {
+        // Аннуляция — show CANCELLED bookings
+        const cancelledBookings = await prisma.booking.findMany({
+          where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
+          select: { bookingNumber: true, departureDate: true, endDate: true },
+          orderBy: { arrivalDate: 'asc' }
+        });
+        if (cancelledBookings.length) {
+          lines.push(`\n🚫 *Отменённые группы ${new Date().getFullYear()}*`);
+          for (const b of cancelledBookings) {
+            lines.push(`\n❌ *${b.bookingNumber}*`);
+            if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
+          }
+        } else {
+          lines.push('\nHech narsa topilmadi.');
+        }
+      } else {
+        // Заявка 2026 / Tasdiqlangan — show MealConfirmation records
+        const where = {
+          status: { in: statusFilter },
+          booking: { tourTypeId: tourTypeRecord.id }
+        };
+        if (restaurantName) where.restaurantName = restaurantName;
+
+        const confs = await prisma.mealConfirmation.findMany({
+          where,
+          include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
+          orderBy: { sentAt: 'desc' },
+          take: 30
+        });
+
+        if (!confs.length) {
+          lines.push('\nHech narsa topilmadi.');
+        } else {
+          for (const c of confs) {
+            const b = c.booking;
+            const st = statusKey === 'CONFIRMED' ? '✅' : '⏳';
+            lines.push(`\n${st} *${b?.bookingNumber || '#'+c.bookingId}*`);
+            if (!restaurantName && c.restaurantName) lines.push(`🍽 ${c.restaurantName}`);
+            if (c.city) lines.push(`🏙 ${c.city}`);
+            if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+            if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+            if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+          }
+        }
+      }
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: chatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: chatId, text: plain }).catch(() => {});
+      });
+      return;
+    }
 
     // ── meal_confirm / meal_reject ───────────────────────────────────────
     if (data.startsWith('meal_confirm:') || data.startsWith('meal_reject:')) {
@@ -3033,7 +3805,8 @@ router.post('/webhook-restaurant', async (req, res) => {
         });
       } catch (e) { console.warn('MealConfirmation update warn:', e.message); }
 
-      if (adminChatId && mealConf) {
+      const restAdminIds = await getBotAdminIds('restaurant');
+      if (restAdminIds.length && mealConf) {
         const { booking, restaurantName, city, mealDate, pax } = mealConf;
         const tzNow = new Date(Date.now() + 5 * 60 * 60 * 1000);
         const timeStr = `${String(tzNow.getUTCHours()).padStart(2,'0')}:${String(tzNow.getUTCMinutes()).padStart(2,'0')}`;
@@ -3047,9 +3820,9 @@ router.post('/webhook-restaurant', async (req, res) => {
           `👤 ${isConfirm ? 'TASDIQLADI' : 'RAD ETDI'}: ${fromName}`,
           `🕐 ${fmtDateUtil(new Date())} ${timeStr}`
         ].filter(Boolean).join('\n');
-        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
-          chat_id: adminChatId, text: adminMsg, parse_mode: 'Markdown'
-        }).catch(() => {});
+        for (const id of restAdminIds) {
+          await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' }).catch(() => {});
+        }
       }
       return;
     }
@@ -3074,9 +3847,10 @@ router.post('/webhook-guide', async (req, res) => {
     if (msg) {
       const chat = msg.chat;
 
-      // /start — welcome message + auto role=user
+      // /start — welcome message + send guide menu
       if (msg.text === '/start') {
         await handleStart(chat, msg, GUIDE_API());
+        await sendGuideMenu(chat.id);
         return;
       }
 
@@ -3123,7 +3897,224 @@ router.post('/webhook-guide', async (req, res) => {
         date: new Date(msg.date * 1000).toISOString()
       };
       await saveKnownChats(chats);
+
+      // /menu command
+      if (msg.text === '/menu') {
+        await sendGuideMenu(chat.id);
+        return;
+      }
+
+      // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
+      const GUIDE_BTN_MAP = {
+        '📄 Заявка 2026': { key: 'PENDING',   emoji: '📄' },
+        '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
+        '❌ Аннуляция':   { key: 'REJECTED',  emoji: '❌' }
+      };
+      if (msg.text && GUIDE_BTN_MAP[msg.text]) {
+        const { key, emoji } = GUIDE_BTN_MAP[msg.text];
+        await axios.post(`${GUIDE_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: `${emoji} *${msg.text}* — Tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: 'ER',  callback_data: `guide_conf:${key}:ER`  },
+              { text: 'CO',  callback_data: `guide_conf:${key}:CO`  },
+              { text: 'KAS', callback_data: `guide_conf:${key}:KAS` },
+              { text: 'ZA',  callback_data: `guide_conf:${key}:ZA`  }
+            ]]
+          })
+        }).catch(() => {});
+        return;
+      }
     }
+
+    const cb = update.callback_query;
+    if (!cb) return;
+
+    const callbackQueryId = cb.id;
+    const data = cb.data || '';
+    const fromChatId = cb.message?.chat?.id;
+    const adminChatId = await getGuideAdminChatId();
+
+    // ── gd_schedule_ok / gd_schedule_reject — guide confirms full schedule ─
+    if (data.startsWith('gd_schedule_ok:') || data.startsWith('gd_schedule_reject:')) {
+      const parts = data.split(':');
+      const newStatus = data.startsWith('gd_schedule_ok:') ? 'CONFIRMED' : 'REJECTED';
+      const guideId   = parseInt(parts[1]);
+      const year      = parseInt(parts[2]);
+
+      await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: newStatus === 'CONFIRMED' ? '✅ Qabul qilindi!' : '❌ Rad etildi.',
+        show_alert: false
+      }).catch(() => {});
+
+      try {
+        const guide = await prisma.guide.findUnique({ where: { id: guideId }, select: { name: true } });
+        const bookings = await prisma.booking.findMany({
+          where: { guideId, bookingYear: year, status: { not: 'CANCELLED' } },
+          select: { id: true }
+        });
+        for (const b of bookings) {
+          await prisma.guideConfirmation.upsert({
+            where: { bookingId_guideId: { bookingId: b.id, guideId } },
+            create: { bookingId: b.id, guideId, status: newStatus, respondedAt: new Date(), confirmedBy: guide?.name || '' },
+            update: { status: newStatus, respondedAt: new Date(), confirmedBy: guide?.name || '' }
+          });
+        }
+        const emoji = newStatus === 'CONFIRMED' ? '✅' : '❌';
+        const label = newStatus === 'CONFIRMED' ? 'Qabul qilindi' : 'Rad etildi';
+        await axios.post(`${GUIDE_API()}/editMessageReplyMarkup`, {
+          chat_id: fromChatId, message_id: cb.message?.message_id,
+          reply_markup: JSON.stringify({ inline_keyboard: [[{ text: `${emoji} ${label}`, callback_data: 'noop' }]] })
+        }).catch(() => {});
+        const guideAdminIds = await getBotAdminIds('guide');
+        for (const adminId of guideAdminIds) {
+          await axios.post(`${GUIDE_API()}/sendMessage`, {
+            chat_id: adminId,
+            text: `${emoji} <b>${guide?.name || 'Gid'}</b> — ${year} yil jadvali: ${label.toLowerCase()} (${bookings.length} guruh)`,
+            parse_mode: 'HTML'
+          }).catch(() => {});
+        }
+      } catch (e) { console.error('gd_schedule error:', e.message); }
+      return;
+    }
+
+    // ── gd_ok / gd_reject — guide confirms/rejects booking ────────────────
+    if (data.startsWith('gd_ok:') || data.startsWith('gd_reject:')) {
+      const parts = data.split(':');
+      const newStatus = data.startsWith('gd_ok:') ? 'CONFIRMED' : 'REJECTED';
+      const bookingId = parseInt(parts[1]);
+      const guideId   = parseInt(parts[2]);
+
+      await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: newStatus === 'CONFIRMED' ? '✅ Qabul qilindi!' : '❌ Rad etildi.',
+        show_alert: false
+      }).catch(() => {});
+
+      try {
+        const guide = await prisma.guide.findUnique({ where: { id: guideId }, select: { name: true } });
+        const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { bookingNumber: true } });
+
+        await prisma.guideConfirmation.upsert({
+          where: { bookingId_guideId: { bookingId, guideId } },
+          create: { bookingId, guideId, status: newStatus, respondedAt: new Date(), confirmedBy: guide?.name || '' },
+          update: { status: newStatus, respondedAt: new Date(), confirmedBy: guide?.name || '' }
+        });
+
+        // Edit the original message to show result
+        const emoji = newStatus === 'CONFIRMED' ? '✅' : '❌';
+        const label = newStatus === 'CONFIRMED' ? 'Qabul qilindi' : 'Rad etildi';
+        await axios.post(`${GUIDE_API()}/editMessageReplyMarkup`, {
+          chat_id: fromChatId,
+          message_id: cb.message?.message_id,
+          reply_markup: JSON.stringify({ inline_keyboard: [[{ text: `${emoji} ${label}`, callback_data: 'noop' }]] })
+        }).catch(() => {});
+
+        // Notify guide admins
+        const guideAdminIds = await getBotAdminIds('guide');
+        for (const adminId of guideAdminIds) {
+          await axios.post(`${GUIDE_API()}/sendMessage`, {
+            chat_id: adminId,
+            text: `${emoji} *${guide?.name || 'Gid'}* — *${booking?.bookingNumber || bookingId}* ga ${label.toLowerCase()}`,
+            parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
+      } catch (e) { console.error('gd_ok/reject error:', e.message); }
+      return;
+    }
+
+    // ── guide_conf:{statusKey}:{tourType} ─────────────────────────────────
+    if (data.startsWith('guide_conf:')) {
+      const parts = data.split(':');
+      const statusKey = parts[1]; // CONFIRMED | PENDING | REJECTED
+      const tourType  = parts[2]; // ER | CO | KAS | ZA
+      const chatId = fromChatId || cb.from?.id;
+      const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
+      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Аннуляция' }[statusKey] || statusKey;
+
+      await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+      const year = new Date().getFullYear();
+
+      // Find guide by chatId (unless admin)
+      let guideId = null;
+      let guideName = null;
+      if (!isAdminCb) {
+        const guide = await prisma.guide.findFirst({ where: { telegramChatId: String(chatId) }, select: { id: true, name: true } });
+        guideId = guide?.id || null;
+        guideName = guide?.name || null;
+      }
+
+      const guideLabel = guideName ? ` (${guideName})` : '';
+      const lines = [`${statusLabel} — *${tourType}${guideLabel}*`];
+
+      if (statusKey === 'REJECTED') {
+        // Аннуляция — CANCELLED bookings
+        const cancelled = await prisma.booking.findMany({
+          where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
+          select: { bookingNumber: true, departureDate: true, endDate: true, pax: true },
+          orderBy: { arrivalDate: 'asc' }
+        });
+        if (cancelled.length) {
+          lines.push(`\n🚫 *Отменённые группы ${year}*`);
+          for (const b of cancelled) {
+            lines.push(`\n❌ *${b.bookingNumber}*`);
+            if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
+          }
+        } else {
+          lines.push('\nHech narsa topilmadi.');
+        }
+      } else {
+        // Заявка 2026 → IN_PROGRESS bookings | Tasdiqlangan → COMPLETED
+        const statusFilter = statusKey === 'CONFIRMED' ? ['COMPLETED'] : ['IN_PROGRESS', 'CONFIRMED'];
+        const where = {
+          status: { in: statusFilter },
+          tourTypeId: tourTypeRecord.id,
+          bookingYear: year
+        };
+        if (guideId) where.guideId = guideId;
+
+        const bookings = await prisma.booking.findMany({
+          where,
+          select: {
+            bookingNumber: true, departureDate: true, endDate: true, pax: true,
+            guide: { select: { name: true } }
+          },
+          orderBy: { departureDate: 'asc' },
+          take: 30
+        });
+
+        if (!bookings.length) {
+          lines.push('\nHech narsa topilmadi.');
+        } else {
+          for (const b of bookings) {
+            const st = statusKey === 'CONFIRMED' ? '✅' : '📋';
+            lines.push(`\n${st} *${b.bookingNumber}*`);
+            if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
+            if (b.pax) lines.push(`👥 ${b.pax} kishi`);
+            if (!guideId && b.guide?.name) lines.push(`🧭 ${b.guide.name}`);
+          }
+        }
+      }
+
+      await axios.post(`${GUIDE_API()}/sendMessage`, {
+        chat_id: chatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+        await axios.post(`${GUIDE_API()}/sendMessage`, { chat_id: chatId, text: plain }).catch(() => {});
+      });
+      return;
+    }
+
   } catch (err) {
     console.error('Guide webhook error:', err.response?.data || err.message);
   }
@@ -3494,10 +4485,23 @@ router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
       totalPayment ? `💵 Jami to'lov: *$${Math.round(totalPayment)}*` : null,
     ].filter(Boolean).join('\n');
 
+    // Save/update GuideConfirmation as PENDING
+    await prisma.guideConfirmation.upsert({
+      where: { bookingId_guideId: { bookingId: parseInt(bookingId), guideId: guide.id } },
+      create: { bookingId: parseInt(bookingId), guideId: guide.id, status: 'PENDING', sentAt: new Date() },
+      update: { status: 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null }
+    });
+
     await axios.post(`${GUIDE_API()}/sendMessage`, {
       chat_id: guide.telegramChatId,
       text: msgText,
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
+      reply_markup: JSON.stringify({
+        inline_keyboard: [[
+          { text: '✅ Qabul qilaman', callback_data: `gd_ok:${bookingId}:${guide.id}` },
+          { text: '❌ Rad etaman',    callback_data: `gd_reject:${bookingId}:${guide.id}` }
+        ]]
+      })
     });
 
     res.json({ ok: true });
@@ -3628,6 +4632,68 @@ router.put('/meal-settings', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/telegram/bot-admins — returns {hotel:[...], transport:[...], restaurant:[...], guide:[...]}
+router.get('/bot-admins', authenticate, async (req, res) => {
+  try {
+    const keys = ['HOTEL_ADMIN_CHAT_IDS', 'TRANSPORT_ADMIN_CHAT_IDS', 'RESTAURANT_ADMIN_CHAT_IDS', 'GUIDE_ADMIN_CHAT_IDS'];
+    const rows = await prisma.systemSetting.findMany({ where: { key: { in: keys } } });
+    const result = { hotel: [], transport: [], restaurant: [], guide: [] };
+    for (const r of rows) {
+      try {
+        const arr = JSON.parse(r.value);
+        if (r.key === 'HOTEL_ADMIN_CHAT_IDS')      result.hotel      = arr;
+        if (r.key === 'TRANSPORT_ADMIN_CHAT_IDS')  result.transport  = arr;
+        if (r.key === 'RESTAURANT_ADMIN_CHAT_IDS') result.restaurant = arr;
+        if (r.key === 'GUIDE_ADMIN_CHAT_IDS')      result.guide      = arr;
+      } catch {}
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/telegram/bot-admins/:botType — toggle chatId in admin list
+router.put('/bot-admins/:botType', authenticate, async (req, res) => {
+  try {
+    const { botType } = req.params;
+    const { chatId } = req.body;
+    if (!chatId) return res.status(400).json({ error: 'chatId required' });
+    const arr = await toggleBotAdmin(botType, chatId);
+    res.json({ success: true, botType, admins: arr });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Keep old bot-admin-ids routes for backward compat (GmailSettings)
+router.get('/bot-admin-ids', authenticate, async (req, res) => {
+  try {
+    const keys = ['TRANSPORT_ADMIN_CHAT_ID', 'RESTAURANT_ADMIN_CHAT_ID', 'GUIDE_ADMIN_CHAT_ID'];
+    const rows = await prisma.systemSetting.findMany({ where: { key: { in: keys } } });
+    const result = { transport: '', restaurant: '', guide: '' };
+    for (const r of rows) {
+      if (r.key === 'TRANSPORT_ADMIN_CHAT_ID')  result.transport  = r.value;
+      if (r.key === 'RESTAURANT_ADMIN_CHAT_ID') result.restaurant = r.value;
+      if (r.key === 'GUIDE_ADMIN_CHAT_ID')      result.guide      = r.value;
+    }
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+router.put('/bot-admin-ids', authenticate, async (req, res) => {
+  try {
+    const { transport, restaurant, guide } = req.body;
+    const upsert = async (key, value) => {
+      if (value === undefined) return;
+      await prisma.systemSetting.upsert({ where: { key }, update: { value: value || '' }, create: { key, value: value || '' } });
+    };
+    await upsert('TRANSPORT_ADMIN_CHAT_ID',  transport);
+    await upsert('RESTAURANT_ADMIN_CHAT_ID', restaurant);
+    await upsert('GUIDE_ADMIN_CHAT_ID',      guide);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // POST /api/telegram/send-eintritt/:bookingId — receive PDF blob from frontend and send to Siroj
 router.post('/send-eintritt/:bookingId', authenticate, upload.single('pdf'), async (req, res) => {
   try {
@@ -3750,6 +4816,82 @@ router.post('/send-ausgaben-pdf', authenticate, upload.single('pdf'), async (req
   } catch (err) {
     console.error('send-ausgaben-pdf error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/telegram/send-guide-schedule/:guideId?year=2026
+// Sends all bookings for a guide as one formatted schedule message
+router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
+  try {
+    const guideId = parseInt(req.params.guideId);
+    const year = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
+
+    const guide = await prisma.guide.findUnique({ where: { id: guideId } });
+    if (!guide?.telegramChatId) {
+      return res.status(400).json({ error: `${guide?.name || 'Gid'} uchun Telegram chat ID sozlanmagan` });
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: { guideId, bookingYear: year, status: { not: 'CANCELLED' } },
+      select: {
+        id: true, bookingNumber: true, departureDate: true, endDate: true, pax: true, status: true,
+        tourType: { select: { code: true } }
+      },
+      orderBy: { departureDate: 'asc' }
+    });
+
+    if (!bookings.length) {
+      return res.status(400).json({ error: `${guide.name} uchun ${year} yilda guruhlar topilmadi` });
+    }
+
+    const fmtD  = d => { if (!d) return '—    '; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`; };
+    const fmtDY = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+
+    const SEP = '─'.repeat(36);
+    const rows = bookings.map((b, i) => {
+      const num   = String(i + 1).padStart(2);
+      const grp   = (b.bookingNumber || '').padEnd(8);
+      const start = fmtD(b.departureDate).padEnd(6);
+      const end   = fmtDY(b.endDate);
+      return `<code>${num}. ${grp}  ${start} ── ${end}</code>`;
+    });
+
+    const lines = [
+      `🧭 <b>${guide.name}</b>`,
+      `📅 ${year} yil jadvali — jami <b>${bookings.length}</b> ta guruh`,
+      ``,
+      `<code> #   Guruh     Boshlanish    Tugash</code>`,
+      `<code>${SEP}</code>`,
+      ...rows,
+      ``,
+      `✅ Ushbu jadval bilan tanishdingizmi?`,
+    ];
+
+    await axios.post(`${GUIDE_API()}/sendMessage`, {
+      chat_id: guide.telegramChatId,
+      text: lines.join('\n'),
+      parse_mode: 'HTML',
+      reply_markup: JSON.stringify({
+        inline_keyboard: [[
+          { text: '✅ Ha, qabul qildim', callback_data: `gd_schedule_ok:${guideId}:${year}` },
+          { text: '❌ Rad etaman',        callback_data: `gd_schedule_reject:${guideId}:${year}` }
+        ]]
+      })
+    });
+
+    // Mark all bookings as PENDING in GuideConfirmation
+    for (const b of bookings) {
+      await prisma.guideConfirmation.upsert({
+        where: { bookingId_guideId: { bookingId: b.id, guideId } },
+        create: { bookingId: b.id, guideId, status: 'PENDING', sentAt: new Date() },
+        update: { status: 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null }
+      });
+    }
+
+    res.json({ ok: true, sent: bookings.length });
+  } catch (err) {
+    console.error('send-guide-schedule error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.description || err.message });
   }
 });
 

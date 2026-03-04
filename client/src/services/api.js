@@ -373,7 +373,12 @@ export const telegramApi = {
   getGuideAssignments: (year) => api.get('/telegram/guide-assignments', year ? { params: { year } } : {}),
   getMealSettings: () => api.get('/telegram/meal-settings'),
   saveMealSettings: (chatIds) => api.put('/telegram/meal-settings', { chatIds }),
+  getBotAdminIds: () => api.get('/telegram/bot-admin-ids'),
+  saveBotAdminIds: (ids) => api.put('/telegram/bot-admin-ids', ids),
+  getBotAdmins: () => api.get('/telegram/bot-admins'),
+  setBotAdmin: (botType, chatId) => api.put(`/telegram/bot-admins/${botType}`, { chatId }),
   sendGuide: (bookingId, data) => api.post(`/telegram/send-guide/${bookingId}`, data),
+  sendGuideSchedule: (guideId, year) => api.post(`/telegram/send-guide-schedule/${guideId}`, {}, { params: { year } }),
   getKnownChats: () => api.get('/telegram/updates'),
   updateKnownChat: (chatId, data) => api.put(`/telegram/chats/${chatId}`, data),
   deleteKnownChat: (chatId) => api.delete(`/telegram/chats/${chatId}`),
@@ -496,6 +501,7 @@ export const jahresplanungApi = {
   },
   getTransportConfirmations: () => api.get('/jahresplanung/transport-confirmations'),
   deleteTransportConfirmation: (key) => api.delete(`/jahresplanung/transport-confirmations/${key}`),
+  getGuides: (year) => api.get('/jahresplanung/guides', { params: { year } }),
 };
 
 export const searchApi = {

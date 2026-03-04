@@ -5,15 +5,16 @@ import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import {
   Building2, UtensilsCrossed, Bus, Download, Mail, Send,
-  ChevronDown, ChevronRight, Loader2, MapPin, ArrowRightLeft, Plus, X
+  ChevronDown, ChevronRight, Loader2, MapPin, ArrowRightLeft, Plus, X, Compass
 } from 'lucide-react';
-import { jahresplanungApi } from '../services/api';
+import { jahresplanungApi, telegramApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 const TOUR_TYPES = ['ER', 'CO', 'KAS', 'ZA'];
 const MAIN_TABS = [
   { id: 'hotels',   label: 'Hotels',   icon: Building2,      color: '#7c3aed', bg: '#f5f3ff' },
   { id: 'restoran', label: 'Restoran', icon: UtensilsCrossed, color: '#be185d', bg: '#fdf2f8' },
   { id: 'transport',label: 'Transport',icon: Bus,             color: '#1d4ed8', bg: '#eff6ff' },
+  { id: 'guides',   label: 'Guides',   icon: Compass,         color: '#0f766e', bg: '#f0fdfa' },
 ];
 const TOUR_NAMES  = { ER: 'Erlebnisreisen', CO: 'ComfortPlus', KAS: 'Kasachstan', ZA: 'Zentralasien' };
 const TOUR_COLORS = { ER: '#3B82F6', CO: '#10B981', KAS: '#F59E0B', ZA: '#8B5CF6' };
@@ -2807,6 +2808,211 @@ function HotelsTab({ tourType, tourColor }) {
   );
 }
 
+// ── GuidesTab ────────────────────────────────────────────────────────────────
+const GUIDE_STATUS_STYLES = {
+  IN_PROGRESS: { label: 'Jarayonda',   cls: 'bg-sky-100 text-sky-700' },
+  COMPLETED:   { label: 'Bajarildi',   cls: 'bg-emerald-100 text-emerald-700' },
+  CANCELLED:   { label: 'Bekor',       cls: 'bg-red-100 text-red-600' },
+  CONFIRMED:   { label: 'Tasdiqlangan',cls: 'bg-green-100 text-green-700' },
+};
+const TOUR_TYPE_COLORS_BADGE = {
+  ER:  'bg-blue-100 text-blue-700',
+  CO:  'bg-emerald-100 text-emerald-700',
+  KAS: 'bg-amber-100 text-amber-700',
+  ZA:  'bg-purple-100 text-purple-700',
+};
+
+function GuidesTab({ tourColor }) {
+  const { selectedYear: YEAR } = useYear();
+  const [loading, setLoading]         = useState(true);
+  const [guides, setGuides]           = useState([]);
+  const [activeGuide, setActiveGuide] = useState(null);
+  const [sending, setSending]         = useState({});  // { bookingId: true }
+  const color = tourColor || '#0f766e';
+
+  const fmt = d => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
+  };
+
+  const loadGuides = () => {
+    setLoading(true);
+    jahresplanungApi.getGuides(YEAR)
+      .then(res => {
+        const list = res.data.guides || [];
+        setGuides(list);
+        if (list.length && !activeGuide) setActiveGuide(list[0].guide.id);
+      })
+      .catch(() => setGuides([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setGuides([]);
+    setActiveGuide(null);
+    loadGuides();
+  }, [YEAR]);
+
+  const sendScheduleToGuide = async (guideId, guideName) => {
+    setSending(p => ({ ...p, [guideId]: true }));
+    try {
+      const res = await telegramApi.sendGuideSchedule(guideId, YEAR);
+      toast.success(`✅ ${guideName} ga ${res.data.sent} ta guruh jadvali yuborildi`);
+      loadGuides();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Xatolik yuz berdi');
+    } finally {
+      setSending(p => ({ ...p, [guideId]: false }));
+    }
+  };
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: `${color}18` }}>
+        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: `${color}40`, borderTopColor: color }} />
+      </div>
+      <p className="text-slate-400 font-medium text-sm">Yuklanmoqda...</p>
+    </div>
+  );
+
+  if (!guides.length) return (
+    <div className="flex flex-col items-center justify-center py-24">
+      <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-5" style={{ background: `${color}15` }}>
+        <Compass className="w-10 h-10" style={{ color }} />
+      </div>
+      <p className="text-slate-600 font-semibold">Gidlar topilmadi</p>
+      <p className="text-slate-400 text-sm mt-1">{YEAR} yil uchun tayinlangan gidlar yo'q</p>
+    </div>
+  );
+
+  const current = guides.find(g => g.guide.id === activeGuide);
+  const bookings = current?.bookings || [];
+  const totalPax = bookings.reduce((s, b) => s + (b.pax || 0), 0);
+  const active   = bookings.filter(b => b.status === 'IN_PROGRESS').length;
+  const done     = bookings.filter(b => b.status === 'COMPLETED').length;
+  const cancelled = bookings.filter(b => b.status === 'CANCELLED').length;
+
+  return (
+    <div className="space-y-4">
+      {/* Guide name tabs */}
+      <div className="flex flex-wrap gap-2">
+        {guides.map(({ guide, bookings: bks }) => {
+          const isActive = activeGuide === guide.id;
+          const cnt = bks.length;
+          return (
+            <button
+              key={guide.id}
+              onClick={() => setActiveGuide(guide.id)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+              style={isActive ? {
+                background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                color: 'white',
+                boxShadow: `0 0 20px ${color}50`,
+              } : {
+                background: 'white',
+                color: '#475569',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <Compass className="w-4 h-4 flex-shrink-0" />
+              {guide.name}
+              <span className={`text-xs px-1.5 py-0.5 rounded-md font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                {cnt}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Selected guide info strip */}
+      {current && (
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl"
+          style={{ background: `linear-gradient(135deg, ${color}12, ${color}06)`, border: `1px solid ${color}25` }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}20` }}>
+            <Compass className="w-4 h-4" style={{ color }} />
+          </div>
+          <span className="font-semibold text-slate-700">{current.guide.name}</span>
+          {current.guide.phone && <span className="text-slate-400 text-sm">{current.guide.phone}</span>}
+          <span className="text-slate-300">·</span>
+          <span className="text-sm text-slate-500">{bookings.length} ta guruh</span>
+          <span className="text-slate-300">·</span>
+          <span className="text-sm text-slate-500">PAX: {totalPax}</span>
+          {active > 0    && <span className="px-2 py-0.5 rounded-lg bg-sky-100 text-sky-700 text-xs font-medium">{active} jarayonda</span>}
+          {done > 0      && <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-medium">✅ {done} bajarildi</span>}
+          {cancelled > 0 && <span className="px-2 py-0.5 rounded-lg bg-red-100 text-red-600 text-xs font-medium">❌ {cancelled} bekor</span>}
+          <button
+            onClick={() => sendScheduleToGuide(current.guide.id, current.guide.name)}
+            disabled={sending[current.guide.id]}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: color, color: 'white', opacity: sending[current.guide.id] ? 0.7 : 1 }}
+          >
+            {sending[current.guide.id]
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Send className="w-3.5 h-3.5" />}
+            Telegram yuborish
+          </button>
+        </div>
+      )}
+
+      {/* Bookings table */}
+      {bookings.length > 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-100">
+                <tr>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Guruh</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Tur</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Boshlanish</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Tugash</th>
+                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {bookings.map(b => {
+                  const ttCls = TOUR_TYPE_COLORS_BADGE[b.tourType] || 'bg-gray-100 text-gray-600';
+                  const isCancelled = b.status === 'CANCELLED';
+                  // Guide confirmation status
+                  const confIcon = b.confirmStatus === 'CONFIRMED' ? '✅'
+                    : b.confirmStatus === 'REJECTED'  ? '❌'
+                    : b.confirmStatus === 'PENDING'   ? '⏳'
+                    : '—';
+                  const confCls = b.confirmStatus === 'CONFIRMED' ? 'text-emerald-600 font-bold text-base'
+                    : b.confirmStatus === 'REJECTED'  ? 'text-red-500 font-bold text-base'
+                    : b.confirmStatus === 'PENDING'   ? 'text-amber-500 text-base'
+                    : 'text-slate-300 text-base';
+                  return (
+                    <tr key={b.bookingId} className={isCancelled ? 'opacity-40' : 'hover:bg-slate-50'}>
+                      <td className="px-4 py-3">
+                        <Link to={`/bookings/${b.bookingId}`} className={`font-semibold text-indigo-600 hover:underline ${isCancelled ? 'line-through' : ''}`}>
+                          {b.bookingNumber}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${ttCls}`}>{b.tourType}</span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{fmt(b.departureDate)}</td>
+                      <td className="px-4 py-3 text-slate-600">{fmt(b.endDate)}</td>
+                      <td className="px-4 py-3">
+                        <span className={confCls} title={b.confirmStatus || 'Yuborilmagan'}>{confIcon}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-10 text-slate-400 text-sm">Bu gid uchun guruhlar topilmadi</div>
+      )}
+    </div>
+  );
+}
+// ── End GuidesTab ────────────────────────────────────────────────────────────
+
 export default function Jahresplanung() {
   const { selectedYear: YEAR } = useYear();
   const [mainTab, setMainTab] = useState(() => localStorage.getItem('jp_mainTab') || 'hotels');
@@ -2850,7 +3056,7 @@ export default function Jahresplanung() {
             style={{ textShadow: '0 0 40px rgba(255,255,255,0.3)' }}>
             Jahresplanung
           </h1>
-          <p className="text-indigo-200 text-xs md:text-sm mt-1.5 md:mt-2 opacity-75">Yillik reja — hotellar, restoranlar, transport</p>
+          <p className="text-indigo-200 text-xs md:text-sm mt-1.5 md:mt-2 opacity-75">Yillik reja — hotellar, restoranlar, transport, gidlar</p>
 
           {/* Main Tabs — equal width, no scroll */}
           <div className="flex gap-2 mt-5">
@@ -2880,8 +3086,8 @@ export default function Jahresplanung() {
             })}
           </div>
 
-          {/* Tour Type Pills */}
-          <div className="flex gap-2 mt-3 md:mt-4">
+          {/* Tour Type Pills — hidden on Guides tab */}
+          <div className={`flex gap-2 mt-3 md:mt-4 ${mainTab === 'guides' ? 'invisible pointer-events-none' : ''}`}>
             {TOUR_TYPES.map(t => {
               const isActive = tourTab === t;
               const color = TOUR_COLORS[t];
@@ -2918,6 +3124,7 @@ export default function Jahresplanung() {
           {mainTab==='hotels'    && <HotelsTab   tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='restoran'  && <RestoranTab  tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='transport' && <TransportTab tourType={tourTab} tourColor={activeTourColor} />}
+          {mainTab==='guides'    && <GuidesTab    tourType={tourTab} tourColor={activeTourColor} />}
         </div>
       </div>
     </div>

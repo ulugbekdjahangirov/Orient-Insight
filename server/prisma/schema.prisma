@@ -105,7 +105,8 @@ model Guide {
 
   bookings              Booking[] @relation("MainGuide")
   bookingsAsSecondGuide Booking[] @relation("SecondGuide")
-  guidePayments GuidePayment[]
+  guidePayments         GuidePayment[]
+  guideConfirmations    GuideConfirmation[]
 
   @@unique([name, year])
   @@index([year])
@@ -198,6 +199,7 @@ model Booking {
   telegramConfirmations TelegramConfirmation[]
   transportConfirmations TransportConfirmation[]
   mealConfirmations      MealConfirmation[]
+  guideConfirmations     GuideConfirmation[]
 
   // Tour services (Eintritt, Metro, Shou, Other)
   tourServices    TourService[]
@@ -1013,6 +1015,26 @@ model MealConfirmation {
   respondedAt    DateTime?
   createdAt      DateTime @default(now())
 
+  @@index([bookingId])
+}
+
+// ============================================
+// Module: Guide Confirmations (Guide Telegram)
+// ============================================
+
+model GuideConfirmation {
+  id          Int      @id @default(autoincrement())
+  bookingId   Int
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  guideId     Int
+  guide       Guide    @relation(fields: [guideId], references: [id])
+  status      String   @default("PENDING") // PENDING | CONFIRMED | REJECTED
+  confirmedBy String?
+  sentAt      DateTime @default(now())
+  respondedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([bookingId, guideId])
   @@index([bookingId])
 }
 

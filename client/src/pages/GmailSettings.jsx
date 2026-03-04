@@ -13,6 +13,8 @@ export default function GmailSettings() {
   const [mealChatIds, setMealChatIds] = useState({});
   const [newRestaurant, setNewRestaurant] = useState({ name: '', chatId: '' });
   const [savingMeal, setSavingMeal] = useState(false);
+  const [botAdminIds, setBotAdminIds] = useState({ transport: '', restaurant: '', guide: '' });
+  const [savingBotAdmins, setSavingBotAdmins] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -20,6 +22,7 @@ export default function GmailSettings() {
     checkAuthCallback();
     loadTransportSettings();
     loadMealSettings();
+    loadBotAdminIds();
   }, []);
 
   const checkAuthCallback = () => {
@@ -170,6 +173,25 @@ export default function GmailSettings() {
     }
   };
 
+  const loadBotAdminIds = async () => {
+    try {
+      const res = await telegramApi.getBotAdminIds();
+      setBotAdminIds(res.data || { restaurant: '', guide: '' });
+    } catch (e) {}
+  };
+
+  const handleSaveBotAdmins = async () => {
+    setSavingBotAdmins(true);
+    try {
+      await telegramApi.saveBotAdminIds(botAdminIds);
+      setMessage({ type: 'success', text: 'Bot admin sozlamalari saqlandi' });
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Saqlashda xatolik' });
+    } finally {
+      setSavingBotAdmins(false);
+    }
+  };
+
   const handleSaveTransport = async () => {
     setSavingTransport(true);
     try {
@@ -308,7 +330,7 @@ export default function GmailSettings() {
             { key: 'xayrulla', label: 'Xayrulla',  placeholder: '-123456789' },
             { key: 'sevil',    label: 'Sevil aka',  placeholder: '-123456789' },
             { key: 'nosir',    label: 'Nosir aka',  placeholder: '-123456789' },
-            { key: 'hammasi',  label: 'Siroj',      placeholder: '-123456789' },
+            { key: 'hammasi',  label: 'Tekshiruvchi', placeholder: '-123456789' },
           ].map(({ key, label, placeholder }) => (
             <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
               <label className="sm:w-28 text-sm font-medium text-gray-700 sm:flex-shrink-0">{label}</label>
@@ -393,6 +415,39 @@ export default function GmailSettings() {
           className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
         >
           {savingMeal ? 'Saqlanmoqda...' : 'Saqlash'}
+        </button>
+      </div>
+
+      {/* Bot Admin Chat IDs */}
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-4 sm:mt-6">
+        <h2 className="text-lg font-semibold mb-1">🔔 Bot admin xabarnoma sozlamalari</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Tasdiqlar uchun xabarnoma qaysi chat ga ketishini belgilang. Bo'sh qoldirilsa, asosiy admin (TELEGRAM_ADMIN_CHAT_ID) ishlatiladi.
+        </p>
+        <div className="space-y-3 mb-4">
+          {[
+            { key: 'transport',  label: '🚌 Transport admin',  placeholder: 'Chat ID (bo\'sh = asosiy admin)' },
+            { key: 'restaurant', label: '🍽 Restoran admin',   placeholder: 'Chat ID (bo\'sh = xabarnoma yo\'q)' },
+            { key: 'guide',      label: '🧭 Guide admin',      placeholder: 'Chat ID (bo\'sh = xabarnoma yo\'q)' },
+          ].map(({ key, label, placeholder }) => (
+            <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+              <label className="sm:w-36 text-sm font-medium text-gray-700 sm:flex-shrink-0">{label}</label>
+              <input
+                type="text"
+                value={botAdminIds[key] || ''}
+                onChange={e => setBotAdminIds(prev => ({ ...prev, [key]: e.target.value }))}
+                placeholder={placeholder}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={handleSaveBotAdmins}
+          disabled={savingBotAdmins}
+          className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+        >
+          {savingBotAdmins ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
       </div>
 

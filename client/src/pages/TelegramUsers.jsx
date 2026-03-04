@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { telegramApi } from '../services/api';
-import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Building, Phone, Pencil, X, Send, Bus, UtensilsCrossed, Compass } from 'lucide-react';
+import { RefreshCw, Trash2, Copy, Check, Users, MessageCircle, Building, Phone, Pencil, X, Send, Bus, UtensilsCrossed, Compass, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 
@@ -116,31 +116,55 @@ function PhoneCell({ chatId, value, onSave }) {
   );
 }
 
-function RoleCell({ chatId, value, onSave }) {
+function RoleCell({ chatId, value, isChecker, onSave }) {
   const [saving, setSaving] = useState(false);
+  const [checkerSaving, setCheckerSaving] = useState(false);
 
   const handleChange = async (e) => {
     setSaving(true);
-    await onSave(chatId, { role: e.target.value });
+    const newRole = e.target.value;
+    await onSave(chatId, { role: newRole });
+    if (newRole !== 'admin' && isChecker) {
+      await onSave(chatId, { isChecker: false });
+    }
     setSaving(false);
   };
 
-  const roleLabel = ROLES.find(r => r.value === (value || ''))?.label || '—';
+  const handleCheckerToggle = async () => {
+    setCheckerSaving(true);
+    await onSave(chatId, { isChecker: !isChecker });
+    setCheckerSaving(false);
+  };
+
   const colorClass = roleColors[value] || 'bg-gray-50 text-gray-500 border border-gray-200';
 
   return (
-    <div className="relative">
-      <select
-        value={value || ''}
-        onChange={handleChange}
-        disabled={saving}
-        className={`text-xs font-medium px-2 py-1 rounded-lg cursor-pointer appearance-none pr-5 ${colorClass} disabled:opacity-60 focus:outline-none`}
-        style={{ backgroundImage: 'none' }}
-      >
-        {ROLES.map(r => (
-          <option key={r.value} value={r.value}>{r.label}</option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-1">
+      <div className="relative">
+        <select
+          value={value || ''}
+          onChange={handleChange}
+          disabled={saving}
+          className={`text-xs font-medium px-2 py-1 rounded-lg cursor-pointer appearance-none pr-5 ${colorClass} disabled:opacity-60 focus:outline-none`}
+          style={{ backgroundImage: 'none' }}
+        >
+          {ROLES.map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+      </div>
+      {value === 'admin' && (
+        <label className="flex items-center gap-1 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={!!isChecker}
+            onChange={handleCheckerToggle}
+            disabled={checkerSaving}
+            className="w-3 h-3 accent-orange-500"
+          />
+          <span className="text-xs text-orange-600 font-medium">Tekshiruvchi</span>
+        </label>
+      )}
     </div>
   );
 }
@@ -224,6 +248,40 @@ function GuideCell({ chatId, guides, onLink }) {
         <option key={g.id} value={g.id}>{g.name}</option>
       ))}
     </select>
+  );
+}
+
+const BOT_ADMIN_TYPES = [
+  { key: 'hotel',      label: 'Hotel',      icon: '🏨', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  { key: 'transport',  label: 'Transport',  icon: '🚌', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+  { key: 'restaurant', label: 'Rest.',      icon: '🍽', color: 'bg-green-100 text-green-700 border-green-300' },
+  { key: 'guide',      label: 'Guide',      icon: '🧭', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+];
+
+function BotAdminCell({ chatId, botAdmins, saving, onToggle }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {BOT_ADMIN_TYPES.map(({ key, label, icon, color }) => {
+        const isAdmin = (botAdmins[key] || []).includes(String(chatId));
+        const isSaving = saving[`${key}:${chatId}`];
+        return (
+          <button
+            key={key}
+            onClick={() => onToggle(key, chatId)}
+            disabled={isSaving}
+            title={`${label} Admin ${isAdmin ? '(olib tashlash)' : '(belgilash)'}`}
+            className={`flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-xs font-semibold border transition-all ${
+              isAdmin
+                ? `${color} shadow-sm`
+                : 'bg-gray-50 text-gray-300 border-gray-200 hover:border-gray-400 hover:text-gray-500'
+            } ${isSaving ? 'opacity-50' : ''}`}
+          >
+            <span>{icon}</span>
+            {isAdmin && <span className="ml-0.5">{label}</span>}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -390,6 +448,8 @@ export default function TelegramUsers() {
   const [guides, setGuides] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
   const [countdown, setCountdown] = useState(30);
+  const [botAdmins, setBotAdmins] = useState({ hotel: [], transport: [], restaurant: [], guide: [] });
+  const [savingBotAdmin, setSavingBotAdmin] = useState({}); // { 'hotel:chatId': true }
 
   const LS_KEY = 'tg_chats_cache';
 
@@ -431,6 +491,7 @@ export default function TelegramUsers() {
     telegramApi.getTransportSettings().then(r => setTransportSettings(r.data || {})).catch(() => {});
     telegramApi.getRestaurantList().then(r => setRestaurants(r.data.restaurants || [])).catch(() => {});
     telegramApi.getGuidesList().then(r => setGuides(r.data.guides || [])).catch(() => {});
+    telegramApi.getBotAdmins().then(r => setBotAdmins(r.data || {})).catch(() => {});
   }, []);
 
   const handleLinkRestaurant = async (chatId, restaurantName) => {
@@ -449,6 +510,19 @@ export default function TelegramUsers() {
       setGuides(r.data.guides || []);
       toast.success(guideId ? 'Gid bog\'landi!' : 'Bog\'liq olib tashlandi');
     } catch { toast.error('Saqlashda xatolik'); }
+  };
+
+  const handleSetBotAdmin = async (botType, chatId) => {
+    const key = `${botType}:${chatId}`;
+    setSavingBotAdmin(p => ({ ...p, [key]: true }));
+    try {
+      const res = await telegramApi.setBotAdmin(botType, String(chatId));
+      setBotAdmins(p => ({ ...p, [botType]: res.data.admins || [] }));
+      const labels = { hotel: 'Hotel', transport: 'Transport', restaurant: 'Restaurant', guide: 'Guide' };
+      const isNowAdmin = (res.data.admins || []).includes(String(chatId));
+      toast.success(isNowAdmin ? `${labels[botType]} admin belgilandi!` : `${labels[botType]} admin olib tashlandi`);
+    } catch { toast.error('Saqlashda xatolik'); }
+    finally { setSavingBotAdmin(p => ({ ...p, [key]: false })); }
   };
 
   const handleLinkTransport = async (chatId, provider) => {
@@ -512,6 +586,7 @@ export default function TelegramUsers() {
 
   const counts = {
     all:        chats.length,
+    admin:      chats.filter(c => c.role === 'admin').length,
     hotel:      chats.filter(c => c.role === 'hotel').length,
     transport:  chats.filter(c => c.role === 'transport').length,
     restaurant: chats.filter(c => c.role === 'restaurant').length,
@@ -548,6 +623,7 @@ export default function TelegramUsers() {
       <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mb-5">
         {[
           { key: 'all',        label: 'Hammasi',    icon: Users,            color: 'text-gray-600 bg-gray-100' },
+          { key: 'admin',      label: 'Admin',      icon: ShieldCheck,      color: 'text-red-600 bg-red-100' },
           { key: 'hotel',      label: 'Hotel',      icon: Building,         color: 'text-purple-600 bg-purple-100' },
           { key: 'transport',  label: 'Transport',  icon: Bus,              color: 'text-yellow-600 bg-yellow-100' },
           { key: 'restaurant', label: 'Restaurant', icon: UtensilsCrossed,  color: 'text-green-600 bg-green-100' },
@@ -606,6 +682,7 @@ export default function TelegramUsers() {
                     : tabFilter === 'transport'  ? 'Provider'
                     : tabFilter === 'restaurant' ? 'Restaurant'
                     : tabFilter === 'guide'      ? 'Guide'
+                    : tabFilter === 'admin'      ? 'Bot Admin'
                     : 'Username' }
                   </th>
                   <th className="text-left px-4 py-3 font-semibold text-gray-600">
@@ -634,7 +711,9 @@ export default function TelegramUsers() {
                           ? <RestaurantCell chatId={chat.chatId} restaurants={restaurants} onLink={handleLinkRestaurant} />
                           : tabFilter === 'guide'
                           ? <GuideCell chatId={chat.chatId} guides={guides} onLink={handleLinkGuide} />
-                          : <span className="text-gray-500">{chat.username || '—'}</span>
+                          : tabFilter === 'admin'
+                          ? <BotAdminCell chatId={chat.chatId} botAdmins={botAdmins} saving={savingBotAdmin} onToggle={handleSetBotAdmin} />
+                          : <span className="text-sm text-gray-600">{chat.username || '—'}</span>
                         }
                       </td>
                       <td className="px-4 py-3">
@@ -647,7 +726,7 @@ export default function TelegramUsers() {
                         <CopyButton text={chat.chatId} />
                       </td>
                       <td className="px-4 py-3">
-                        <RoleCell chatId={chat.chatId} value={chat.role} onSave={handleUpdate} />
+                        <RoleCell chatId={chat.chatId} value={chat.role} isChecker={chat.isChecker} onSave={handleUpdate} />
                       </td>
                       <td className="px-4 py-3 text-lg">
                         {chat.lang === 'uz' ? '🇺🇿' : chat.lang === 'ru' ? '🇷🇺' : '—'}
@@ -712,7 +791,7 @@ export default function TelegramUsers() {
                     <PhoneCell chatId={chat.chatId} value={chat.phone} onSave={handleUpdate} />
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <RoleCell chatId={chat.chatId} value={chat.role} onSave={handleUpdate} />
+                    <RoleCell chatId={chat.chatId} value={chat.role} isChecker={chat.isChecker} onSave={handleUpdate} />
                     {chat.lang && <span className="text-base">{chat.lang === 'uz' ? '🇺🇿' : '🇷🇺'}</span>}
                   </div>
                   <div className="text-xs text-gray-400 mt-2">{formatDate(chat.date)}</div>
