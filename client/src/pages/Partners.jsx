@@ -104,12 +104,24 @@ function StatusSummaryBadges({ counts }) {
   );
 }
 
-function HotelsTab({ confirmations, onDelete }) {
+function HotelsTab({ confirmations, onDelete, onDeleteGroup }) {
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingGroupId, setDeletingGroupId] = useState(null);
   const [openHotels, setOpenHotels] = useState({});
 
   const toggleHotel = (hotelId) => {
     setOpenHotels(prev => ({ ...prev, [hotelId]: !prev[hotelId] }));
+  };
+
+  const handleDeleteGroup = async (e, group) => {
+    e.stopPropagation();
+    if (!window.confirm(`"${group.hotelName}" guruhidagi barcha (${group.items.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingGroupId(group.hotelId);
+    try {
+      await Promise.all(group.items.map(item => telegramApi.deleteConfirmation(item.id)));
+      onDeleteGroup(group.items.map(i => i.id));
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingGroupId(null); }
   };
 
   const handleDelete = async (id) => {
@@ -181,13 +193,21 @@ function HotelsTab({ confirmations, onDelete }) {
                 <h3 className="font-semibold text-gray-800">{group.hotelName}</h3>
                 {group.cityName && <p className="text-xs text-gray-500">{group.cityName}</p>}
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {statusSummary && (
                   <span className="text-sm">{statusSummary}</span>
                 )}
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
+                <button
+                  onClick={(e) => handleDeleteGroup(e, group)}
+                  disabled={deletingGroupId === group.hotelId}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  title="Barchasini o'chirish"
+                >
+                  {deletingGroupId === group.hotelId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </button>
 
@@ -284,12 +304,24 @@ function HotelsTab({ confirmations, onDelete }) {
 }
 
 // Booking-grouped view for ER/CO/KAS/ZA sub-tabs
-function BookingsGroupedTab({ confirmations, onDelete }) {
+function BookingsGroupedTab({ confirmations, onDelete, onDeleteGroup }) {
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingGroupId, setDeletingGroupId] = useState(null);
   const [openBookings, setOpenBookings] = useState({});
 
   const toggleBooking = (bookingId) => {
     setOpenBookings(prev => ({ ...prev, [bookingId]: !prev[bookingId] }));
+  };
+
+  const handleDeleteGroup = async (e, group) => {
+    e.stopPropagation();
+    if (!window.confirm(`"${group.bookingNumber}" guruhidagi barcha (${group.items.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingGroupId(group.bookingId);
+    try {
+      await Promise.all(group.items.map(item => telegramApi.deleteConfirmation(item.id)));
+      onDeleteGroup(group.items.map(i => i.id));
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingGroupId(null); }
   };
 
   const handleDelete = async (id) => {
@@ -369,11 +401,19 @@ function BookingsGroupedTab({ confirmations, onDelete }) {
                   <span className="ml-2 text-xs text-gray-500">{formatDate(group.departureDate)}</span>
                 )}
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <StatusSummaryBadges counts={statusCounts} />
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta hotel
                 </span>
+                <button
+                  onClick={(e) => handleDeleteGroup(e, group)}
+                  disabled={deletingGroupId === group.bookingId}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  title="Barchasini o'chirish"
+                >
+                  {deletingGroupId === group.bookingId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </button>
 
@@ -440,12 +480,24 @@ function ProviderBadge({ provider }) {
   );
 }
 
-function TransportTab({ confirmations, onDelete }) {
+function TransportTab({ confirmations, onDelete, onDeleteGroup }) {
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingGroupId, setDeletingGroupId] = useState(null);
   const [openBookings, setOpenBookings] = useState({});
 
   const toggleBooking = (bookingId) => {
     setOpenBookings(prev => ({ ...prev, [bookingId]: !prev[bookingId] }));
+  };
+
+  const handleDeleteGroup = async (e, group) => {
+    e.stopPropagation();
+    if (!window.confirm(`"${group.bookingNumber}" guruhidagi barcha (${group.items.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingGroupId(group.bookingId);
+    try {
+      await Promise.all(group.items.map(item => telegramApi.deleteTransportConfirmation(item.id)));
+      onDeleteGroup(group.items.map(i => i.id));
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingGroupId(null); }
   };
 
   const handleDelete = async (id) => {
@@ -525,11 +577,19 @@ function TransportTab({ confirmations, onDelete }) {
                   <span className="ml-2 text-xs text-gray-500">{formatDate(group.departureDate)}</span>
                 )}
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <StatusSummaryBadges counts={statusCounts} />
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
+                <button
+                  onClick={(e) => handleDeleteGroup(e, group)}
+                  disabled={deletingGroupId === group.bookingId}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  title="Barchasini o'chirish"
+                >
+                  {deletingGroupId === group.bookingId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </button>
 
@@ -599,11 +659,26 @@ function GuideStatusBadge({ status }) {
   );
 }
 
-function GidlarTab({ assignments }) {
+function GidlarTab({ assignments, onDelete }) {
   const [openBookings, setOpenBookings] = useState({});
+  const [deletingId, setDeletingId] = useState(null);
 
   const toggleBooking = (bookingId) => {
     setOpenBookings(prev => ({ ...prev, [bookingId]: !prev[bookingId] }));
+  };
+
+  const handleDelete = async (e, bookingId) => {
+    e.stopPropagation();
+    if (!window.confirm('Bu guruhni ro\'yxatdan o\'chirmoqchimisiz?')) return;
+    setDeletingId(bookingId);
+    try {
+      await telegramApi.deleteGuideConfirmation(bookingId);
+      onDelete(bookingId);
+    } catch (err) {
+      alert(err.message || 'Xatolik yuz berdi');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Group by booking
@@ -660,11 +735,18 @@ function GidlarTab({ assignments }) {
                   <span className="ml-2 text-xs text-gray-500">{formatDate(group.departureDate)}</span>
                 )}
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {assigned > 0 && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border bg-green-100 text-green-700 border-green-200">✅ {assigned}</span>}
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta gid
                 </span>
+                <button
+                  onClick={(e) => handleDelete(e, group.bookingId)}
+                  disabled={deletingId === group.bookingId}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {deletingId === group.bookingId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </button>
             {isOpen && (
@@ -699,12 +781,24 @@ const MEAL_STATUS_CONFIG = {
   REJECTED:  { label: 'Rad qildi',  color: 'bg-red-100 text-red-800',       icon: '❌' },
 };
 
-function RestoranTab({ confirmations, onDelete }) {
+function RestoranTab({ confirmations, onDelete, onDeleteGroup }) {
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingGroupId, setDeletingGroupId] = useState(null);
   const [openBookings, setOpenBookings] = useState({});
 
   const toggleBooking = (bookingId) => {
     setOpenBookings(prev => ({ ...prev, [bookingId]: !prev[bookingId] }));
+  };
+
+  const handleDeleteGroup = async (e, group) => {
+    e.stopPropagation();
+    if (!window.confirm(`"${group.bookingNumber}" guruhidagi barcha (${group.items.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingGroupId(group.bookingId);
+    try {
+      await Promise.all(group.items.map(item => telegramApi.deleteMealConfirmation(item.id)));
+      onDeleteGroup(group.items.map(i => i.id));
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingGroupId(null); }
   };
 
   const handleDelete = async (id) => {
@@ -781,11 +875,19 @@ function RestoranTab({ confirmations, onDelete }) {
                   <span className="ml-2 text-xs text-gray-500">{formatDate(group.departureDate)}</span>
                 )}
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <StatusSummaryBadges counts={statusCounts} />
                 <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
                   {group.items.length} ta
                 </span>
+                <button
+                  onClick={(e) => handleDeleteGroup(e, group)}
+                  disabled={deletingGroupId === group.bookingId}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  title="Barchasini o'chirish"
+                >
+                  {deletingGroupId === group.bookingId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </button>
 
@@ -866,9 +968,10 @@ const MEAL_STATUS_CFG = {
   REJECTED:  { color: 'bg-red-100 text-red-800',       label: 'Rad qildi',  icon: '❌' },
 };
 
-function RestoranPlanTab({ mealConfirmations, subTab, onDelete }) {
+function RestoranPlanTab({ mealConfirmations, subTab, onDelete, onDeleteGroup }) {
   const [openRestaurants, setOpenRestaurants] = useState({});
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingGroupId, setDeletingGroupId] = useState(null);
 
   // Filter by tourType
   const filtered = mealConfirmations.filter(c => c.booking?.tourType?.code === subTab);
@@ -891,6 +994,17 @@ function RestoranPlanTab({ mealConfirmations, subTab, onDelete }) {
       onDelete(id);
     } catch { alert('O\'chirishda xatolik'); }
     finally { setDeletingId(null); }
+  };
+
+  const handleDeleteGroup = async (e, restName, confs) => {
+    e.stopPropagation();
+    if (!window.confirm(`"${restName}" restoran guruhidagi barcha (${confs.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingGroupId(restName);
+    try {
+      await Promise.all(confs.map(c => telegramApi.deleteMealConfirmation(c.id)));
+      onDeleteGroup(confs.map(c => c.id));
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingGroupId(null); }
   };
 
   if (restaurants.length === 0) {
@@ -937,6 +1051,14 @@ function RestoranPlanTab({ mealConfirmations, subTab, onDelete }) {
                   {rejectedCount > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{rejectedCount}❌</span>}
                   <span className="text-gray-400">{confs.length} ta guruh</span>
                 </div>
+                <button
+                  onClick={(e) => handleDeleteGroup(e, restName, confs)}
+                  disabled={deletingGroupId === restName}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  title="Barchasini o'chirish"
+                >
+                  {deletingGroupId === restName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
                 {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
               </div>
             </button>
@@ -1593,6 +1715,7 @@ export default function Partners() {
                 <BookingsGroupedTab
                   confirmations={filtered}
                   onDelete={(id) => setConfirmations(prev => prev.filter(c => c.id !== id))}
+                  onDeleteGroup={(ids) => setConfirmations(prev => prev.filter(c => !ids.includes(c.id)))}
                 />
               </>
             );
@@ -1684,6 +1807,7 @@ export default function Partners() {
                 <RestoranTab
                   confirmations={rFiltered}
                   onDelete={(id) => setMealConfirmations(prev => prev.filter(c => c.id !== id))}
+                  onDeleteGroup={(ids) => setMealConfirmations(prev => prev.filter(c => !ids.includes(c.id)))}
                 />
               </>
             );
@@ -1748,7 +1872,11 @@ export default function Partners() {
                 {(tq || transportStatusFilter !== 'ALL') && (
                   <p className="text-xs text-gray-400 mb-3">{trFiltered.length} ta natija topildi</p>
                 )}
-                <TransportTab confirmations={trFiltered} onDelete={(id) => setTransportConfirmations(prev => prev.filter(c => c.id !== id))} />
+                <TransportTab
+                  confirmations={trFiltered}
+                  onDelete={(id) => setTransportConfirmations(prev => prev.filter(c => c.id !== id))}
+                  onDeleteGroup={(ids) => setTransportConfirmations(prev => prev.filter(c => !ids.includes(c.id)))}
+                />
               </>
             );
           })()}
@@ -1840,7 +1968,10 @@ export default function Partners() {
                   <p className="text-xs text-gray-400 mb-3">{gFiltered.length} ta natija topildi</p>
                 )}
 
-                <GidlarTab assignments={gFiltered} />
+                <GidlarTab
+                  assignments={gFiltered}
+                  onDelete={(bookingId) => setGuideAssignments(prev => prev.filter(a => a.bookingId !== bookingId))}
+                />
               </>
             );
           })()}
@@ -1940,6 +2071,7 @@ export default function Partners() {
                   mealConfirmations={mealConfirmations}
                   subTab={restoranPlanSubTab}
                   onDelete={(id) => setMealConfirmations(prev => prev.filter(c => c.id !== id))}
+                  onDeleteGroup={(ids) => setMealConfirmations(prev => prev.filter(c => !ids.includes(c.id)))}
                 />
               </>
             );

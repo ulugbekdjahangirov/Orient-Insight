@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bus, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Bus, ChevronDown, ChevronRight, Loader2, Trash2 } from 'lucide-react';
 import { jahresplanungApi, telegramApi } from '../../services/api';
 import { useYear } from '../../context/YearContext';
 const PROVIDERS = [
@@ -77,6 +77,7 @@ export default function TransportPlanTab({ tourType }) {
   const [routeMap, setRouteMap] = useState({});
   const [confirmations, setConfirmations] = useState([]);
   const [open, setOpen] = useState({ sevil: true, xayrulla: true, nosir: true });
+  const [deletingGroupId, setDeletingGroupId] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -92,6 +93,18 @@ export default function TransportPlanTab({ tourType }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [tourType, YEAR]);
+
+  const handleDeleteGroup = async (e, provId, provConfs) => {
+    e.stopPropagation();
+    if (!window.confirm(`Bu provayder guruhidagi barcha (${provConfs.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingGroupId(provId);
+    try {
+      await Promise.all(provConfs.map(c => telegramApi.deleteTransportConfirmation(c.id)));
+      const ids = new Set(provConfs.map(c => c.id));
+      setConfirmations(prev => prev.filter(c => !ids.has(c.id)));
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingGroupId(null); }
+  };
 
   if (loading) return (
     <div className="flex justify-center py-20 text-gray-400">
@@ -113,13 +126,29 @@ export default function TransportPlanTab({ tourType }) {
         return (
           <div key={prov.id} className={`rounded-xl border overflow-hidden ${prov.border}`}>
             {/* Accordion header */}
-            <button onClick={() => setOpen(p => ({ ...p, [prov.id]: !p[prov.id] }))}
-              className={`w-full flex items-center gap-3 px-5 py-3 ${prov.bg} hover:brightness-95 transition-all`}>
-              {isOpen ? <ChevronDown className="w-4 h-4 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 flex-shrink-0"/>}
-              <Bus className={`w-4 h-4 flex-shrink-0 ${prov.text}`}/>
-              <span className={`font-semibold ${prov.text}`}>{prov.label}</span>
-              <span className="ml-auto text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">{items.length} ta guruh</span>
-            </button>
+            <div className={`flex items-center ${prov.bg}`}>
+              <button onClick={() => setOpen(p => ({ ...p, [prov.id]: !p[prov.id] }))}
+                className={`flex-1 flex items-center gap-3 px-5 py-3 hover:brightness-95 transition-all`}>
+                {isOpen ? <ChevronDown className="w-4 h-4 flex-shrink-0"/> : <ChevronRight className="w-4 h-4 flex-shrink-0"/>}
+                <Bus className={`w-4 h-4 flex-shrink-0 ${prov.text}`}/>
+                <span className={`font-semibold ${prov.text}`}>{prov.label}</span>
+                <span className="ml-auto text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">{items.length} ta guruh</span>
+              </button>
+              {(() => {
+                const provConfs = confirmations.filter(c => c.provider === prov.id);
+                if (provConfs.length === 0) return null;
+                return (
+                  <button
+                    onClick={(e) => handleDeleteGroup(e, prov.id, provConfs)}
+                    disabled={deletingGroupId === prov.id}
+                    className="mr-3 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    title="Barchasini o'chirish"
+                  >
+                    {deletingGroupId === prov.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  </button>
+                );
+              })()}
+            </div>
 
             {isOpen && (
               <div className="bg-white overflow-x-auto">
