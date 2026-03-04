@@ -215,19 +215,21 @@ async function sendTransportAdminMenu(chatId) {
 }
 
 // Helper: send guide menu keyboard
-async function sendGuideMenu(chatId) {
+async function sendGuideMenu(chatId, isAdmin = false) {
+  const keyboard = isAdmin
+    ? [
+        [{ text: '📋 Gruppalar' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '👤 Gidlar' }, { text: '❌ Anulyatsiya' }]
+      ]
+    : [
+        [{ text: '📋 Gruppalar' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '❌ Anulyatsiya' }]
+      ];
   await axios.post(`${GUIDE_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🧭 *Gid menyu:*',
     parse_mode: 'Markdown',
-    reply_markup: JSON.stringify({
-      keyboard: [
-        [{ text: '📋 Gruppalar' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '❌ Anulyatsiya' }]
-      ],
-      resize_keyboard: true,
-      is_persistent: true
-    })
+    reply_markup: JSON.stringify({ keyboard, resize_keyboard: true, is_persistent: true })
   }).catch(() => {});
 }
 
@@ -3850,7 +3852,8 @@ router.post('/webhook-guide', async (req, res) => {
       // /start — welcome message + send guide menu
       if (msg.text === '/start') {
         await handleStart(chat, msg, GUIDE_API());
-        await sendGuideMenu(chat.id);
+        const startAdminIds = await getBotAdminIds('guide');
+        await sendGuideMenu(chat.id, startAdminIds.map(String).includes(String(chat.id)));
         return;
       }
 
@@ -3900,18 +3903,26 @@ router.post('/webhook-guide', async (req, res) => {
 
       // /menu command
       if (msg.text === '/menu') {
-        await sendGuideMenu(chat.id);
+        const menuAdminIds = await getBotAdminIds('guide');
+        await sendGuideMenu(chat.id, menuAdminIds.map(String).includes(String(chat.id)));
         return;
       }
 
-      // Menu button handlers — directly show bookings for this guide
-      const GUIDE_MENU_BTNS = ['📋 Gruppalar', '✅ Tasdiqlangan', '❌ Anulyatsiya'];
+      // Menu button handlers — directly show bookings for this guide (or all if admin)
+      const GUIDE_MENU_BTNS = ['📋 Gruppalar', '✅ Tasdiqlangan', '❌ Anulyatsiya', '👤 Gidlar'];
       if (msg.text && GUIDE_MENU_BTNS.includes(msg.text)) {
         const year = new Date().getFullYear();
+        const guideAdminIds = await getBotAdminIds('guide');
+        const isAdmin = guideAdminIds.map(String).includes(String(chat.id));
         const guide = await prisma.guide.findFirst({
           where: { telegramChatId: String(chat.id) },
           select: { id: true, name: true }
         });
+
+        if (!isAdmin && !guide) {
+          await axios.post(`${GUIDE_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz tizimda gid sifatida ro\'yxatga olinmagan.' }).catch(() => {});
+          return;
+        }
 
         const fmtD  = d => { if (!d) return '—    '; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`; };
         const fmtDY = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
@@ -3920,46 +3931,147 @@ router.post('/webhook-guide', async (req, res) => {
         let headerText = '';
 
         if (msg.text === '📋 Gruppalar') {
+          const where = isAdmin
+            ? { bookingYear: year, status: { not: 'CANCELLED' } }
+            : { guideId: guide.id, bookingYear: year, status: { not: 'CANCELLED' } };
           bookings = await prisma.booking.findMany({
-            where: { guideId: guide?.id, bookingYear: year, status: { not: 'CANCELLED' } },
-            select: { bookingNumber: true, departureDate: true, endDate: true, tourType: { select: { code: true } } },
-            orderBy: { departureDate: 'asc' }
+            where,
+            select: {
+              bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true,
+              guide: { select: { name: true } }
+            },
+            orderBy: { arrivalDate: 'asc' }
           });
-          headerText = `📋 <b>${guide?.name || 'Gid'}</b>\n📅 ${year} yil jadvali — jami <b>${bookings.length}</b> ta guruh`;
+          headerText = isAdmin
+            ? `📋 <b>Barcha gruppalar</b>\n📅 ${year} yil — jami <b>${bookings.length}</b> ta`
+            : `📋 <b>${guide.name}</b>\n📅 ${year} yil jadvali — jami <b>${bookings.length}</b> ta guruh`;
+
         } else if (msg.text === '✅ Tasdiqlangan') {
+          if (isAdmin) {
+            // Admin: show ALL active guides as inline buttons
+            const allGuides = await prisma.guide.findMany({
+              where: { isActive: true, year },
+              select: { id: true, name: true },
+              orderBy: { name: 'asc' }
+            });
+            const uniqueGuides = allGuides;
+
+            if (!uniqueGuides.length) {
+              await axios.post(`${GUIDE_API()}/sendMessage`, {
+                chat_id: chat.id,
+                text: `✅ <b>Tasdiqlangan gruppalar</b>\n📅 ${year} yil\n\n<i>Hech narsa topilmadi.</i>`,
+                parse_mode: 'HTML'
+              }).catch(() => {});
+            } else {
+              const rows = [];
+              for (let i = 0; i < uniqueGuides.length; i += 2) {
+                rows.push(uniqueGuides.slice(i, i + 2).map(g => ({
+                  text: g.name,
+                  callback_data: `gfc:${g.id}:${year}`
+                })));
+              }
+              await axios.post(`${GUIDE_API()}/sendMessage`, {
+                chat_id: chat.id,
+                text: `✅ <b>Tasdiqlangan gruppalar</b>\n📅 ${year} yil — <b>${uniqueGuides.length}</b> ta gid\n\nGidni tanlang:`,
+                parse_mode: 'HTML',
+                reply_markup: JSON.stringify({ inline_keyboard: rows })
+              }).catch(() => {});
+            }
+            return;
+          }
+          // Guide: show own confirmed bookings
           bookings = await prisma.booking.findMany({
-            where: { guideId: guide?.id, bookingYear: year, status: { in: ['FINAL_CONFIRMED', 'COMPLETED'] } },
-            select: { bookingNumber: true, departureDate: true, endDate: true, tourType: { select: { code: true } } },
-            orderBy: { departureDate: 'asc' }
+            where: { guideId: guide.id, bookingYear: year, status: { in: ['FINAL_CONFIRMED', 'COMPLETED'] } },
+            select: {
+              bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true,
+              guide: { select: { name: true } }
+            },
+            orderBy: { arrivalDate: 'asc' }
           });
           headerText = `✅ <b>Tasdiqlangan gruppalar</b>\n📅 ${year} yil — jami <b>${bookings.length}</b> ta`;
-        } else if (msg.text === '❌ Anulyatsiya') {
-          bookings = await prisma.booking.findMany({
-            where: { guideId: guide?.id, status: 'CANCELLED' },
-            select: { bookingNumber: true, departureDate: true, endDate: true, tourType: { select: { code: true } } },
-            orderBy: { departureDate: 'asc' }
-          });
-          headerText = `❌ <b>Bekor qilingan gruppalar</b>\n📅 Jami <b>${bookings.length}</b> ta`;
-        }
 
-        if (!guide) {
-          await axios.post(`${GUIDE_API()}/sendMessage`, { chat_id: chat.id, text: '⚠️ Siz tizimda gid sifatida ro\'yxatga olinmagan.' }).catch(() => {});
+        } else if (msg.text === '❌ Anulyatsiya') {
+          if (isAdmin) {
+            const allGuides = await prisma.guide.findMany({
+              where: { isActive: true, year },
+              select: { id: true, name: true },
+              orderBy: { name: 'asc' }
+            });
+            const rows = [];
+            for (let i = 0; i < allGuides.length; i += 2) {
+              rows.push(allGuides.slice(i, i + 2).map(g => ({
+                text: g.name,
+                callback_data: `gann:${g.id}:${year}`
+              })));
+            }
+            await axios.post(`${GUIDE_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: `❌ <b>Anulyatsiya qilingan gruppalar</b>\n📅 ${year} yil — <b>${allGuides.length}</b> ta gid\n\nGidni tanlang:`,
+              parse_mode: 'HTML',
+              reply_markup: JSON.stringify({ inline_keyboard: rows })
+            }).catch(() => {});
+            return;
+          }
+          // Guide: show own cancelled bookings
+          bookings = await prisma.booking.findMany({
+            where: { guideId: guide.id, status: 'CANCELLED' },
+            select: {
+              bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true,
+              guide: { select: { name: true } }
+            },
+            orderBy: { arrivalDate: 'asc' }
+          });
+          headerText = `❌ <b>Anulyatsiya qilingan gruppalar</b>\n📅 ${year} yil — jami <b>${bookings.length}</b> ta`;
+
+        } else if (msg.text === '👤 Gidlar') {
+          const allGuides = await prisma.guide.findMany({
+            where: { isActive: true, year },
+            select: { id: true, name: true },
+            orderBy: { name: 'asc' }
+          });
+          if (!allGuides.length) {
+            await axios.post(`${GUIDE_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: `👤 <b>Gidlar</b>\n📅 ${year} yil\n\n<i>Hech narsa topilmadi.</i>`,
+              parse_mode: 'HTML'
+            }).catch(() => {});
+          } else {
+            const rows = [];
+            for (let i = 0; i < allGuides.length; i += 2) {
+              rows.push(allGuides.slice(i, i + 2).map(g => ({
+                text: g.name,
+                callback_data: `gall:${g.id}:${year}`
+              })));
+            }
+            await axios.post(`${GUIDE_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: `👤 <b>Gidlar</b>\n📅 ${year} yil — <b>${allGuides.length}</b> ta gid\n\nGidni tanlang:`,
+              parse_mode: 'HTML',
+              reply_markup: JSON.stringify({ inline_keyboard: rows })
+            }).catch(() => {});
+          }
           return;
         }
 
-        const SEP = '─'.repeat(36);
+        const SEP = '─'.repeat(24);
         const rows = bookings.map((b, i) => {
           const num   = String(i + 1).padStart(2);
-          const grp   = (b.bookingNumber || '').padEnd(8);
-          const start = fmtD(b.departureDate).padEnd(6);
-          const end   = fmtDY(b.endDate);
-          return `<code>${num}. ${grp}  ${start} ── ${end}</code>`;
+          const grp   = (b.bookingNumber || '').padEnd(7);
+          const start = fmtD(b.arrivalDate || b.departureDate).padEnd(6);
+          const end   = fmtD(b.endDate);
+          if (isAdmin) {
+            const gName = (b.guide?.name || '—').substring(0, 9);
+            return `<code>${num}. ${grp}${start}${end}</code> <i>${gName}</i>`;
+          }
+          return `<code>${num}. ${grp}${start}${end}</code>`;
         });
+
+        const header = `<code> #  Guruh   Kelish Tugash</code>`;
 
         const lines = [
           headerText,
           '',
-          `<code> #   Guruh     Boshlanish   Tugash</code>`,
+          header,
           `<code>${SEP}</code>`,
           ...(rows.length ? rows : [`<i>Hech narsa topilmadi.</i>`]),
         ];
@@ -3971,6 +4083,7 @@ router.post('/webhook-guide', async (req, res) => {
         }).catch(() => {});
         return;
       }
+
     }
 
     const cb = update.callback_query;
@@ -4026,6 +4139,142 @@ router.post('/webhook-guide', async (req, res) => {
     }
 
     // ── gd_ok / gd_reject — guide confirms/rejects booking ────────────────
+    // ── gfc:{guideId}:{year} — admin taps guide name → show confirmed bookings ─
+    if (data.startsWith('gfc:')) {
+      const parts = data.split(':');
+      const guideId = parseInt(parts[1]);
+      const year    = parseInt(parts[2]);
+
+      await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, show_alert: false
+      }).catch(() => {});
+
+      const guide = await prisma.guide.findUnique({ where: { id: guideId }, select: { name: true } });
+      const bookings = await prisma.booking.findMany({
+        where: { guideId, bookingYear: year, status: { in: ['FINAL_CONFIRMED', 'COMPLETED'] } },
+        select: { bookingNumber: true, arrivalDate: true, endDate: true },
+        orderBy: { arrivalDate: 'asc' }
+      });
+
+      const fmtD = d => { if (!d) return '——'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`; };
+      const SEP = '─'.repeat(24);
+
+      const rows = bookings.map((b, i) => {
+        const num   = String(i + 1).padStart(2);
+        const grp   = (b.bookingNumber || '').padEnd(7);
+        const start = fmtD(b.arrivalDate).padEnd(6);
+        const end   = fmtD(b.endDate);
+        return `<code>${num}. ${grp}${start}${end}</code>`;
+      });
+
+      const lines = [
+        `✅ <b>${guide?.name || 'Gid'}</b> — tasdiqlangan`,
+        `📅 ${year} yil — jami <b>${bookings.length}</b> ta`,
+        '',
+        `<code> #  Guruh   Kelish Tugash</code>`,
+        `<code>${SEP}</code>`,
+        ...(rows.length ? rows : [`<i>Hech narsa topilmadi.</i>`]),
+      ];
+
+      await axios.post(`${GUIDE_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: lines.join('\n').substring(0, 4096),
+        parse_mode: 'HTML'
+      }).catch(() => {});
+      return;
+    }
+
+    // ── gann:{guideId}:{year} — admin taps guide → show cancelled bookings ──
+    if (data.startsWith('gann:')) {
+      const parts = data.split(':');
+      const guideId = parseInt(parts[1]);
+      const year    = parseInt(parts[2]);
+
+      await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, show_alert: false
+      }).catch(() => {});
+
+      const guide = await prisma.guide.findUnique({ where: { id: guideId }, select: { name: true } });
+      const bookings = await prisma.booking.findMany({
+        where: { guideId, status: 'CANCELLED' },
+        select: { bookingNumber: true, arrivalDate: true, endDate: true },
+        orderBy: { arrivalDate: 'asc' }
+      });
+
+      const fmtD = d => { if (!d) return '——'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`; };
+      const SEP = '─'.repeat(24);
+
+      const rows = bookings.map((b, i) => {
+        const num   = String(i + 1).padStart(2);
+        const grp   = (b.bookingNumber || '').padEnd(7);
+        const start = fmtD(b.arrivalDate).padEnd(6);
+        const end   = fmtD(b.endDate);
+        return `<code>${num}. ${grp}${start}${end}</code>`;
+      });
+
+      const lines = [
+        `❌ <b>${guide?.name || 'Gid'}</b> — anulyatsiya`,
+        `📅 Jami <b>${bookings.length}</b> ta`,
+        '',
+        `<code> #  Guruh   Kelish Tugash</code>`,
+        `<code>${SEP}</code>`,
+        ...(rows.length ? rows : [`<i>Hech narsa topilmadi.</i>`]),
+      ];
+
+      await axios.post(`${GUIDE_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: lines.join('\n').substring(0, 4096),
+        parse_mode: 'HTML'
+      }).catch(() => {});
+      return;
+    }
+
+    // ── gall:{guideId}:{year} — admin taps guide → show all bookings ──
+    if (data.startsWith('gall:')) {
+      const parts = data.split(':');
+      const guideId = parseInt(parts[1]);
+      const year    = parseInt(parts[2]);
+
+      await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, show_alert: false
+      }).catch(() => {});
+
+      const guide = await prisma.guide.findUnique({ where: { id: guideId }, select: { name: true } });
+      const bookings = await prisma.booking.findMany({
+        where: { guideId, bookingYear: year },
+        select: { bookingNumber: true, arrivalDate: true, endDate: true, status: true },
+        orderBy: { arrivalDate: 'asc' }
+      });
+
+      const fmtD = d => { if (!d) return '——'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}`; };
+      const SEP = '─'.repeat(24);
+
+      const rows = bookings.map((b, i) => {
+        const num   = String(i + 1).padStart(2);
+        const grp   = (b.bookingNumber || '').padEnd(7);
+        const start = fmtD(b.arrivalDate).padEnd(6);
+        const end   = fmtD(b.endDate);
+        const tag   = b.status === 'CANCELLED' ? ' ❌' : '';
+        return `<code>${num}. ${grp}${start}${end}</code>${tag}`;
+      });
+
+      const lines = [
+        `👤 <b>${guide?.name || 'Gid'}</b>`,
+        `📅 ${year} yil — jami <b>${bookings.length}</b> ta guruh`,
+        '',
+        `<code> #  Guruh   Kelish Tugash</code>`,
+        `<code>${SEP}</code>`,
+        ...(rows.length ? rows : [`<i>Hech narsa topilmadi.</i>`]),
+      ];
+
+      await axios.post(`${GUIDE_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: lines.join('\n').substring(0, 4096),
+        parse_mode: 'HTML'
+      }).catch(() => {});
+      return;
+    }
+
     if (data.startsWith('gd_ok:') || data.startsWith('gd_reject:')) {
       const parts = data.split(':');
       const newStatus = data.startsWith('gd_ok:') ? 'CONFIRMED' : 'REJECTED';
