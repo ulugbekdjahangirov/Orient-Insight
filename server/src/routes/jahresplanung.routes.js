@@ -1445,18 +1445,22 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
       });
     }
 
-    // Track sent year for dynamic restaurant menu
+    // Track sent year for dynamic restaurant menu (merge with existing MealConfirmation years)
     const mealYearsKey = `JP_MEAL_YEARS_${restaurantName}`;
     const mys = await prisma.systemSetting.findUnique({ where: { key: mealYearsKey } });
-    const myears = mys ? JSON.parse(mys.value) : [];
-    if (!myears.includes(parseInt(year))) {
-      myears.push(parseInt(year));
-      await prisma.systemSetting.upsert({
-        where: { key: mealYearsKey },
-        update: { value: JSON.stringify(myears) },
-        create: { key: mealYearsKey, value: JSON.stringify(myears) }
-      });
-    }
+    const existingMealYears = mys ? JSON.parse(mys.value) : [];
+    // Also collect years from existing MealConfirmation history (handles pre-tracking sends)
+    const histMealConfs = await prisma.mealConfirmation.findMany({
+      where: { restaurantName, source: 'JP' },
+      include: { booking: { select: { arrivalDate: true } } }
+    });
+    const histMealYears = histMealConfs.map(c => { try { return new Date(c.booking.arrivalDate).getFullYear(); } catch { return null; } }).filter(Boolean);
+    const myears = [...new Set([...existingMealYears, ...histMealYears, parseInt(year)])].sort();
+    await prisma.systemSetting.upsert({
+      where: { key: mealYearsKey },
+      update: { value: JSON.stringify(myears) },
+      create: { key: mealYearsKey, value: JSON.stringify(myears) }
+    });
 
     // Refresh restaurant keyboard
     try {

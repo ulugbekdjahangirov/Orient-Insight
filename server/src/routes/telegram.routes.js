@@ -6599,18 +6599,22 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
       });
     }
 
-    // Track sent year for dynamic guide menu
+    // Track sent year for dynamic guide menu (merge with existing GuideConfirmation years)
     const guideYearsKey = `JP_GUIDE_YEARS_${guideId}`;
     const gys = await prisma.systemSetting.findUnique({ where: { key: guideYearsKey } });
-    const gyears = gys ? JSON.parse(gys.value) : [];
-    if (!gyears.includes(year)) {
-      gyears.push(year);
-      await prisma.systemSetting.upsert({
-        where: { key: guideYearsKey },
-        update: { value: JSON.stringify(gyears) },
-        create: { key: guideYearsKey, value: JSON.stringify(gyears) }
-      });
-    }
+    const existingTracked = gys ? JSON.parse(gys.value) : [];
+    // Also collect years from GuideConfirmation history (handles pre-tracking sends)
+    const histConfs = await prisma.guideConfirmation.findMany({
+      where: { guideId },
+      include: { booking: { select: { bookingYear: true } } }
+    });
+    const histYears = histConfs.map(c => c.booking?.bookingYear).filter(Boolean);
+    const gyears = [...new Set([...existingTracked, ...histYears, year])].sort();
+    await prisma.systemSetting.upsert({
+      where: { key: guideYearsKey },
+      update: { value: JSON.stringify(gyears) },
+      create: { key: guideYearsKey, value: JSON.stringify(gyears) }
+    });
 
     res.json({ ok: true, sent: bookings.length });
 
