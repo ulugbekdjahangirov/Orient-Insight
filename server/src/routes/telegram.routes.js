@@ -207,7 +207,8 @@ async function sendTransportAdminMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '📄 Заявка 2026' }, { text: '❌ Ануляция' }]
+        [{ text: '📄 Заявка 2026' },   { text: '🚫 Rad etilgan' }],
+        [{ text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -3284,8 +3285,9 @@ router.post('/webhook-transport', async (req, res) => {
 
       // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
       const STATUS_BTN_MAP = {
-        '✅ Tasdiqlangan': { key: 'CONFIRMED', emoji: '✅' },
-        '📄 Заявка 2026':  { key: 'PENDING',   emoji: '📄' },
+        '✅ Tasdiqlangan': { key: 'CONFIRMED',   emoji: '✅' },
+        '📄 Заявка 2026':  { key: 'PENDING',     emoji: '📄' },
+        '🚫 Rad etilgan':  { key: 'RAD_ETILGAN', emoji: '🚫' },
       };
       // Ануляция — explicit check (multiple text variants for keyboard compatibility)
       const isAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
@@ -3550,7 +3552,7 @@ router.post('/webhook-transport', async (req, res) => {
              [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }, { text: '👤 Nosir',    callback_data: `tr_conf_p:${statusKey}:${tourType}:nosir`    }]]
           : [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${statusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${statusKey}:${tourType}:xayrulla` }],
              [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }]];
-        const confLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
+        const confLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
           chat_id: chatId,
           text: `${confLabel} — *${tourType}*\nProvider tanlang:`,
@@ -3568,29 +3570,33 @@ router.post('/webhook-transport', async (req, res) => {
         providerName = isAdminCb ? null : await getProviderByChatId(chatId);
       }
 
-      // Tasdiqlangan = ONLY MARSHRUT source (CONFIRMED + REJECTED)
-      // Заявка 2026  = ONLY JP_TRANSPORT_CONFIRM_* SystemSetting records
-      // Anulyatsiya  = ONLY STORNO source (all statuses)
+      // Tasdiqlangan  = MARSHRUT CONFIRMED (admin) or CONFIRMED+REJECTED (provider)
+      // Rad etilgan   = MARSHRUT REJECTED (admin only)
+      // Заявка 2026   = JP only
+      // Anulyatsiya   = STORNO source (all statuses)
       const STATUS_FILTERS = {
-        CONFIRMED: ['CONFIRMED', 'REJECTED', 'REJECTED_BY_APPROVER'],
-        PENDING:   [],
-        REJECTED:  ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED', 'REJECTED_BY_APPROVER']
+        CONFIRMED:   isAdminCb ? ['CONFIRMED'] : ['CONFIRMED', 'REJECTED', 'REJECTED_BY_APPROVER'],
+        PENDING:     [],
+        REJECTED:    ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED', 'REJECTED_BY_APPROVER'],
+        RAD_ETILGAN: ['REJECTED', 'REJECTED_BY_APPROVER'],
       };
       const SOURCE_FILTERS = {
-        CONFIRMED: 'MARSHRUT',
-        PENDING:   null,
-        REJECTED:  'STORNO'
+        CONFIRMED:   'MARSHRUT',
+        PENDING:     null,
+        REJECTED:    'STORNO',
+        RAD_ETILGAN: 'MARSHRUT',
       };
       const JP_STATUS_FILTERS = {
-        CONFIRMED: [],
-        PENDING:   ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED'],
-        REJECTED:  []
+        CONFIRMED:   [],
+        PENDING:     ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED'],
+        REJECTED:    [],
+        RAD_ETILGAN: [],
       };
       const STATUS_EMOJI = { PENDING_APPROVAL: '🔄', APPROVED: '⏳', PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌', REJECTED_BY_APPROVER: '❌' };
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
       const sourceFilter = SOURCE_FILTERS[statusKey] || null;
       const jpStatusFilter = JP_STATUS_FILTERS[statusKey] || ['CONFIRMED'];
-      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
+      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
 
       await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
