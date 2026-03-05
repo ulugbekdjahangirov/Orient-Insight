@@ -415,28 +415,33 @@ async function sendAdminRejChgForHotel(chatId, tourType, hotelId) {
 // Helper: Rad etilgan — show JP_SECTIONS rejected visits for a specific hotel+tourType
 async function sendAdminRejJpForHotel(chatId, tourType, hotelId) {
   const year = new Date().getFullYear();
-  const s = await prisma.systemSetting.findFirst({ where: { key: `JP_SECTIONS_${hotelId}_${tourType}` } });
+  // Find all year variants (JP_SECTIONS_{hotelId}_{tourType}_{year}) and merge groups
+  const allS = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotelId}_${tourType}` } } });
+  const s = allS[0] || null; // take first for header info; iterate all for visits
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, include: { city: { select: { name: true } } } });
   const cityName = hotel?.city?.name ? ` (${hotel.city.name})` : '';
   const hotelName = hotel?.name || `Hotel #${hotelId}`;
-  const lines = [`🚫 *Rad etilgan — Заявка ${year} (${tourType})*`, `🏨 *${hotelName}*${cityName}`, ''];
-  if (!s) {
+  const lines = [`🚫 *Rad etilgan — ${tourType}*`, `🏨 *${hotelName}*${cityName}`, ''];
+  if (!allS.length) {
     lines.push('✅ Rad etilgan zaявka yo\'q.');
   } else {
-    try {
-      const d = JSON.parse(s.value);
-      let found = false;
-      for (const grp of (d.groups || [])) {
-        for (const v of (grp.visits || [])) {
-          if (v.status !== 'REJECTED') continue;
-          found = true;
-          const label = v.sectionLabel ? `❌ *ЗАЯВКА ${grp.group} — ${v.sectionLabel}*` : `❌ *ЗАЯВКА ${grp.group}*`;
-          lines.push([label, `  📅 Заезд: ${v.checkIn}`, `  📅 Выезд: ${v.checkOut}`, `  👥 PAX: ${v.pax}`, `  🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}`].join('\n'));
-          lines.push('');
+    let found = false;
+    for (const entry of allS) {
+      try {
+        const d = JSON.parse(entry.value);
+        const entryYear = d.year || year;
+        for (const grp of (d.groups || [])) {
+          for (const v of (grp.visits || [])) {
+            if (v.status !== 'REJECTED') continue;
+            found = true;
+            const label = v.sectionLabel ? `❌ *${entryYear} — ЗАЯВКА ${grp.group} — ${v.sectionLabel}*` : `❌ *${entryYear} — ЗАЯВКА ${grp.group}*`;
+            lines.push([label, `  📅 Заезд: ${v.checkIn}`, `  📅 Выезд: ${v.checkOut}`, `  👥 PAX: ${v.pax}`, `  🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}`].join('\n'));
+            lines.push('');
+          }
         }
-      }
-      if (!found) lines.push('✅ Rad etilgan zaявka yo\'q.');
-    } catch { lines.push('⚠️ Ma\'lumot o\'qishda xato.'); }
+      } catch {}
+    }
+    if (!found) lines.push('✅ Rad etilgan zaявka yo\'q.');
   }
   await axios.post(`${BOT_API()}/sendMessage`, {
     chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown'
@@ -679,13 +684,14 @@ async function sendAdminAnnulmentForHotel(chatId, tourType, hotelId) {
 }
 
 // Helper: hotel WL — JP_SECTIONS WAITING for hotel+tourType (with confirm/reject buttons)
-async function sendHotelWlJp(chatId, hotel, tourType) {
+async function sendHotelWlJp(chatId, hotel, tourType, yearFilter = null) {
   const settings = await findJpSectionsByChatId(chatId);
   let found = false;
   for (const s of settings) {
     try {
       const d = JSON.parse(s.value);
       if (d.tourType !== tourType) continue;
+      if (yearFilter && parseInt(d.year) !== yearFilter) continue;
       for (const grp of (d.groups || [])) {
         for (const v of grp.visits) {
           if (v.status !== 'WAITING') continue;
@@ -1408,12 +1414,21 @@ router.post('/webhook', (req, res, next) => {
         if (msg.text === '⏳ Waiting List') {
           const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chat.id) } });
           if (!hotel) return;
+          // Dynamically find available years from JP_SECTIONS keys for this hotel
+          const curYear = new Date().getFullYear();
+          const jpSettings = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotel.id}_` } } });
+          const availYears = [...new Set(
+            jpSettings.map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } }).filter(y => y && y >= curYear)
+          )].sort();
+          const jpRows = availYears.length
+            ? availYears.map(y => [{ text: `📋 Заявка ${y}`, callback_data: `hwl_jp:${hotel.id}:${y}` }])
+            : [[{ text: `📋 Заявка ${curYear}`, callback_data: `hwl_jp:${hotel.id}:${curYear}` }]];
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: chat.id,
             text: '⏳ *Waiting List*\nQaysi bo\'limni tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: [
-              [{ text: `📋 Заявка ${new Date().getFullYear()}`, callback_data: `hwl_jp:${hotel.id}` }],
+              ...jpRows,
               [{ text: '📝 Изменения к Заявке', callback_data: `hwl_chg:${hotel.id}` }]
             ]})
           }).catch(() => {});
@@ -2083,38 +2098,52 @@ router.post('/webhook', (req, res, next) => {
     }
     // ── End chg_tt ─────────────────────────────────────────────────────────
 
-    // ── hwl_jp: — hotel Waiting List > Заявка 2026 callbacks ───────────────
+    // ── hwl_jp: — hotel Waiting List > Заявка callbacks ───────────────────
     if (data.startsWith('hwl_jp:')) {
       const parts = data.split(':');
       const hotelId = parseInt(parts[1]);
       await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
       const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
       if (!hotel) return;
-      if (parts.length >= 3) {
-        // hwl_jp:{hotelId}:{tourType} — send WL JP for selected tour type
-        await sendHotelWlJp(fromChatId, hotel, parts[2]);
-      } else {
-        // hwl_jp:{hotelId} — show tour type selection (filter by hotel's JP WAITING items)
+
+      if (parts.length >= 4) {
+        // hwl_jp:{hotelId}:{year}:{tourType} — send WL for specific year+tourType
+        await sendHotelWlJp(fromChatId, hotel, parts[3], parseInt(parts[2]));
+
+      } else if (parts.length === 3 && parseInt(parts[2]) > 2000) {
+        // hwl_jp:{hotelId}:{year} — show tourType picker for that year
+        const year = parseInt(parts[2]);
         const settings = await findJpSectionsByChatId(fromChatId);
-        const jpTourTypes = [...new Set(
-          settings.map(s => { try { const d = JSON.parse(s.value); return d.tourType; } catch { return null; } }).filter(Boolean)
-        )];
         const ORDER = ['ER', 'CO', 'KAS', 'ZA'];
+        const jpTourTypes = [...new Set(
+          settings.map(s => {
+            try {
+              const d = JSON.parse(s.value);
+              if (parseInt(d.year) !== year) return null;
+              const hasWaiting = (d.groups || []).some(g => (g.visits || []).some(v => v.status === 'WAITING'));
+              return hasWaiting ? d.tourType : null;
+            } catch { return null; }
+          }).filter(Boolean)
+        )];
         const sorted = ORDER.filter(t => jpTourTypes.includes(t));
-        if (sorted.length === 0) {
-          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: '⏳ Waiting List bo\'sh.' }).catch(() => {});
+        if (!sorted.length) {
+          await axios.post(`${BOT_API()}/sendMessage`, { chat_id: fromChatId, text: `⏳ ${year} yil uchun Waiting List bo'sh.` }).catch(() => {});
           return;
         }
         const rows = [];
         for (let i = 0; i < sorted.length; i += 2) {
-          rows.push(sorted.slice(i, i + 2).map(t => ({ text: t, callback_data: `hwl_jp:${hotel.id}:${t}` })));
+          rows.push(sorted.slice(i, i + 2).map(t => ({ text: t, callback_data: `hwl_jp:${hotel.id}:${year}:${t}` })));
         }
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: fromChatId,
-          text: `📋 *Заявка ${new Date().getFullYear()} — Waiting List*\nQaysi tur turini tanlang:`,
+          text: `📋 *Заявка ${year} — Waiting List*\nQaysi tur turini tanlang:`,
           parse_mode: 'Markdown',
           reply_markup: JSON.stringify({ inline_keyboard: rows })
         }).catch(() => {});
+
+      } else if (parts.length === 3) {
+        // hwl_jp:{hotelId}:{tourType} — backward compat (all years)
+        await sendHotelWlJp(fromChatId, hotel, parts[2]);
       }
       return;
     }
