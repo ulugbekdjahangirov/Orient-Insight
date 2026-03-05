@@ -236,19 +236,21 @@ async function sendGuideMenu(chatId, isAdmin = false) {
 }
 
 // Helper: send restaurant menu keyboard
-async function sendRestaurantMenu(chatId) {
+async function sendRestaurantMenu(chatId, isAdmin = false) {
+  const keyboard = isAdmin
+    ? [
+        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '🚫 Rad etilgan' }, { text: '❌ Anulyatsiya' }]
+      ]
+    : [
+        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: '❌ Anulyatsiya' }]
+      ];
   await axios.post(`${RESTAURANT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🍽 *Restoran menyu:*',
     parse_mode: 'Markdown',
-    reply_markup: JSON.stringify({
-      keyboard: [
-        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '❌ Ануляция' }]
-      ],
-      resize_keyboard: true,
-      is_persistent: true
-    })
+    reply_markup: JSON.stringify({ keyboard, resize_keyboard: true, is_persistent: true })
   }).catch(() => {});
 }
 
@@ -878,7 +880,7 @@ async function handleStart(chat, msg, botApiUrl, defaultRole = 'user') {
     await saveKnownChats(chats);
     const firstName = chat.first_name || chat.title || 'Foydalanuvchi';
     if (existing.role === 'admin') {
-      if (botApiUrl === RESTAURANT_API()) await sendRestaurantMenu(chat.id);
+      if (botApiUrl === RESTAURANT_API()) await sendRestaurantMenu(chat.id, true);
       else if (botApiUrl === TRANSPORT_API()) await sendTransportAdminMenu(chat.id);
       else if (botApiUrl === GUIDE_API()) await sendGuideMenu(chat.id, true);
       else await sendAdminMenu(chat.id);
@@ -4321,7 +4323,7 @@ router.post('/webhook-restaurant', async (req, res) => {
         const chatsForMenu = await loadKnownChats();
         const roleForMenu = chatsForMenu[String(chat.id)]?.role;
         if (roleForMenu === 'restaurant') await sendRestaurantMenu(chat.id);
-        else if (roleForMenu === 'admin') await sendRestaurantMenu(chat.id);
+        else if (roleForMenu === 'admin') await sendRestaurantMenu(chat.id, true);
         else await axios.post(`${RESTAURANT_API()}/sendMessage`, {
           chat_id: chat.id,
           text: `👋 Siz ro'yxatdan o'tdingiz. Admin tez orada sizga rol tayinlaydi.`,
@@ -4335,11 +4337,30 @@ router.post('/webhook-restaurant', async (req, res) => {
       const isRestAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
       const isZayavka2026     = msg.text === '📄 Заявка 2026';
       const isTasdiqlangan    = msg.text === '✅ Tasdiqlangan';
+      const isRadEtilgan      = msg.text === '🚫 Rad etilgan';
 
-      if (isZayavka2026 || isTasdiqlangan || isRestAnulyatsiya) {
+      if (isZayavka2026 || isTasdiqlangan || isRestAnulyatsiya || isRadEtilgan) {
         const isAdminUser  = existing.role === 'admin';
         const restaurantName = isAdminUser ? null : await getRestaurantByChatId(chat.id);
         const lines = [];
+
+        // 🚫 Rad etilgan — admin only: BOOKING source REJECTED records
+        if (isRadEtilgan) {
+          await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+            chat_id: chat.id,
+            text: `🚫 *Rad etilgan* — Tur turini tanlang:`,
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({
+              inline_keyboard: [[
+                { text: 'ER', callback_data: 'rest_rad_tt:ER' },
+                { text: 'CO', callback_data: 'rest_rad_tt:CO' },
+                { text: 'KAS', callback_data: 'rest_rad_tt:KAS' },
+                { text: 'ZA', callback_data: 'rest_rad_tt:ZA' }
+              ]]
+            })
+          }).catch(() => {});
+          return;
+        }
 
         if (isRestAnulyatsiya) {
           if (isAdminUser) {
@@ -4743,6 +4764,83 @@ router.post('/webhook-restaurant', async (req, res) => {
           lines.push(`\n${ST2[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
           if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
           if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+        }
+      }
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
+      }).catch(async () => {
+        const plain = lines.join('\n').replace(/[*_`]/g, '').substring(0, 4000);
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, { chat_id: fromChatId, text: plain }).catch(() => {});
+      });
+      return;
+    }
+
+    // ── rest_rad_tt:{tourType} — Admin: show restaurants for Rad etilgan ──
+    if (data.startsWith('rest_rad_tt:')) {
+      const tourType = data.split(':')[1];
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const rejConfs = await prisma.mealConfirmation.findMany({
+        where: { source: 'BOOKING', status: 'REJECTED', booking: { tourTypeId: tourTypeRecord.id } },
+        select: { restaurantName: true },
+        distinct: ['restaurantName'],
+        orderBy: { restaurantName: 'asc' }
+      });
+
+      if (!rejConfs.length) {
+        await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+          chat_id: fromChatId, text: `🚫 *${tourType}* — Rad etilgan zayavka topilmadi.`, parse_mode: 'Markdown'
+        }).catch(() => {});
+        return;
+      }
+
+      const rows = rejConfs.map(c => [{
+        text: `🍽 ${c.restaurantName}`,
+        callback_data: `rest_rad_rest:${tourType}:${c.restaurantName}`.substring(0, 64)
+      }]);
+
+      await axios.post(`${RESTAURANT_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: `🚫 *Rad etilgan — ${tourType}*\nRestoranni tanlang:`,
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({ inline_keyboard: rows })
+      }).catch(() => {});
+      return;
+    }
+
+    // ── rest_rad_rest:{tourType}:{restaurantName} — show BOOKING REJECTED records ──
+    if (data.startsWith('rest_rad_rest:')) {
+      const idx = data.indexOf(':', data.indexOf(':') + 1) + 1;
+      const tourType = data.split(':')[1];
+      const restName = data.substring(idx);
+      await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId, text: `${restName} yuklanmoqda...`, show_alert: false
+      }).catch(() => {});
+
+      const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
+      if (!tourTypeRecord) return;
+
+      const rejConfs = await prisma.mealConfirmation.findMany({
+        where: { source: 'BOOKING', status: 'REJECTED', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id } },
+        include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
+        orderBy: { sentAt: 'desc' }
+      });
+
+      const lines = [`🚫 *${tourType} — ${restName}*`];
+      if (!rejConfs.length) {
+        lines.push('\nHech narsa topilmadi.');
+      } else {
+        for (const c of rejConfs) {
+          lines.push(`\n❌ *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+          if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+          if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+          if (c.confirmedBy) lines.push(`👤 Rad etdi: ${c.confirmedBy}`);
         }
       }
 
