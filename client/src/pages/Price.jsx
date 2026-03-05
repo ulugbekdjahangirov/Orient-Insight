@@ -4045,38 +4045,37 @@ export default function Price() {
 
       {/* CO - Hotels Tab */}
       {selectedTourType === 'co' && selectedCOSubTab === 'hotels' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white">Hotels</h3>
-            <button
-              onClick={addCoHotelRow}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-green-600 rounded-lg font-semibold hover:bg-green-50 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-2.5 flex justify-between items-center">
+            <h3 className="text-base font-bold text-white md:text-xl">Hotels</h3>
+            <button onClick={addCoHotelRow} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg font-semibold text-sm transition-colors">
+              <Plus className="w-3.5 h-3.5" />Add
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-2 space-y-1.5">
               {coHotelPrices.map((hotel) => (
-                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                  <div className="flex-1 p-3">
+                <div key={hotel.id} className="rounded-xl overflow-hidden border border-green-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(16,185,129,0.08)' }}>
+                  <div className="h-0.5 bg-gradient-to-r from-green-400 to-emerald-500" />
+                  <div className="px-3 py-2">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateCoHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteCoHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      <input type="text" value={hotel.city} onChange={(e) => updateCoHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-green-500 focus:outline-none bg-transparent" placeholder="Shahar" />
+                      <button onClick={() => deleteCoHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateCoHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateCoHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateCoHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
+                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateCoHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-green-400 focus:outline-none bg-white" placeholder="0" />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total / person</div><div className="font-bold text-green-700 text-sm">{(coHotelPrices.reduce((sum, h) => sum + (h.days * h.pricePerDay || 0), 0) / 2).toFixed(2)} $</div></div>
-                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm">{coHotelPrices.reduce((sum, h) => sum + (h.ezZimmer * h.days || 0), 0).toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <div className="bg-green-50 rounded-xl p-2.5 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Total / person</div><div className="font-bold text-green-700 text-sm mt-0.5">{(coHotelPrices.reduce((sum, h) => sum + (h.days * h.pricePerDay || 0), 0) / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{coHotelPrices.reduce((sum, h) => sum + (h.ezZimmer * h.days || 0), 0).toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (
@@ -5048,38 +5047,37 @@ export default function Price() {
 
       {/* KAS - Hotels Tab */}
       {selectedTourType === 'kas' && selectedKASSubTab === 'hotels' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-6 py-3 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white">Hotels</h3>
-            <button
-              onClick={addKasHotelRow}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold hover:bg-orange-50 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-orange-600 to-orange-700 px-4 py-2.5 flex justify-between items-center">
+            <h3 className="text-base font-bold text-white md:text-xl">Hotels</h3>
+            <button onClick={addKasHotelRow} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg font-semibold text-sm transition-colors">
+              <Plus className="w-3.5 h-3.5" />Add
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-2 space-y-1.5">
               {kasHotelPrices.map((hotel) => (
-                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
-                  <div className="flex-1 p-3">
+                <div key={hotel.id} className="rounded-xl overflow-hidden border border-orange-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(234,88,12,0.08)' }}>
+                  <div className="h-0.5 bg-gradient-to-r from-orange-400 to-amber-500" />
+                  <div className="px-3 py-2">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateKasHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteKasHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      <input type="text" value={hotel.city} onChange={(e) => updateKasHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent" placeholder="Shahar" />
+                      <button onClick={() => deleteKasHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateKasHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateKasHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateKasHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
+                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateKasHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-orange-400 focus:outline-none bg-white" placeholder="0" />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total / person</div><div className="font-bold text-orange-700 text-sm">{(calculateKasHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
-                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm">{calculateKasHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <div className="bg-orange-50 rounded-xl p-2.5 text-center border border-orange-100"><div className="text-xs text-orange-500 font-medium">Total / person</div><div className="font-bold text-orange-700 text-sm mt-0.5">{(calculateKasHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{calculateKasHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (
@@ -6092,38 +6090,37 @@ export default function Price() {
 
       {/* ZA - Hotels Tab */}
       {selectedTourType === 'za' && selectedZASubTab === 'hotels' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-3 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white">Hotels</h3>
-            <button
-              onClick={addZaHotelRow}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold hover:bg-purple-50 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 py-2.5 flex justify-between items-center">
+            <h3 className="text-base font-bold text-white md:text-xl">Hotels</h3>
+            <button onClick={addZaHotelRow} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg font-semibold text-sm transition-colors">
+              <Plus className="w-3.5 h-3.5" />Add
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-2 space-y-1.5">
               {zaHotelPrices.map((hotel) => (
-                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
-                  <div className="flex-1 p-3">
+                <div key={hotel.id} className="rounded-xl overflow-hidden border border-purple-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(147,51,234,0.08)' }}>
+                  <div className="h-0.5 bg-gradient-to-r from-purple-400 to-violet-500" />
+                  <div className="px-3 py-2">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateZaHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteZaHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      <input type="text" value={hotel.city} onChange={(e) => updateZaHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent" placeholder="Shahar" />
+                      <button onClick={() => deleteZaHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateZaHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateZaHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateZaHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
+                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateZaHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-purple-400 focus:outline-none bg-white" placeholder="0" />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total / person</div><div className="font-bold text-purple-700 text-sm">{(calculateZaHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
-                <div className="bg-violet-50 rounded-xl p-3 text-center border border-violet-200"><div className="text-xs text-violet-600 font-medium">EZ Zimmer</div><div className="font-bold text-violet-700 text-sm">{calculateZaHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">Total / person</div><div className="font-bold text-purple-700 text-sm mt-0.5">{(calculateZaHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-violet-50 rounded-xl p-2.5 text-center border border-violet-100"><div className="text-xs text-violet-500 font-medium">EZ Zimmer</div><div className="font-bold text-violet-700 text-sm mt-0.5">{calculateZaHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (
