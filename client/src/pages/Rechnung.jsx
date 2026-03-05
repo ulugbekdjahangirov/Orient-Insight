@@ -321,29 +321,35 @@ export default function Rechnung() {
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-600"></div>
                 </div>
               ) : (
-                <div className="sm:hidden divide-y divide-gray-100">
+                <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                   {rechnungItems.map((item, index) => (
-                    <div key={item.id} className="px-4 py-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
-                            <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                    <div key={item.id} className="rounded-xl overflow-hidden border border-amber-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(245,158,11,0.08)' }}>
+                      <div className="h-0.5 bg-gradient-to-r from-amber-400 to-orange-500" />
+                      <div className="px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-amber-200">{index + 1}</span>
+                            <div className="min-w-0">
+                              <div className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</div>
+                              <div className="text-[10px] text-gray-500">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</span>
-                          <button onClick={() => { const docTab = item.name === 'Rechnung' ? 'rechnung' : item.name === 'Neue Rechnung' ? 'neue-rechnung' : 'gutschrift'; navigate(`/bookings/${item.bookingId}?tab=documents&docTab=${docTab}`); }} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="bg-amber-50 rounded-lg px-2 py-1 border border-amber-100 text-right">
+                              <div className="text-[10px] text-amber-600 font-medium">Summe</div>
+                              <div className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</div>
+                            </div>
+                            <button onClick={() => { const docTab = item.name === 'Rechnung' ? 'rechnung' : item.name === 'Neue Rechnung' ? 'neue-rechnung' : 'gutschrift'; navigate(`/bookings/${item.bookingId}?tab=documents&docTab=${docTab}`); }} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
-                  {rechnungItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                  {rechnungItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
                   {rechnungItems.length > 0 && (
-                    <div className="px-4 py-3 flex justify-between font-bold bg-gradient-to-r from-amber-50 to-orange-50">
-                      <span className="text-gray-700 uppercase text-xs tracking-widest">TOTAL</span>
-                      <span className="text-gray-900">{formatNumber(rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0))}</span>
+                    <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100">
+                      <span className="text-gray-600 uppercase text-[10px] tracking-widest self-center">TOTAL</span>
+                      <span className="text-gray-900 text-base">{formatNumber(rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0))}</span>
                     </div>
                   )}
                 </div>
@@ -437,28 +443,34 @@ export default function Rechnung() {
               </div>
 
               {/* Mobile cards — Gutschrift */}
-              <div className="sm:hidden divide-y divide-gray-100">
+              <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                 {gutschriftItems.map((item, index) => (
-                  <div key={item.id} className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
-                          <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                  <div key={item.id} className="rounded-xl overflow-hidden border border-emerald-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(16,185,129,0.08)' }}>
+                    <div className="h-0.5 bg-gradient-to-r from-emerald-400 to-green-500" />
+                    <div className="px-3 py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-emerald-200">{index + 1}</span>
+                          <div className="min-w-0">
+                            <div className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</div>
+                            <div className="text-[10px] text-gray-500">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</span>
-                        <button onClick={() => navigate(`/bookings/${item.bookingId}?tab=documents&docTab=gutschrift`)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="bg-emerald-50 rounded-lg px-2 py-1 border border-emerald-100 text-right">
+                            <div className="text-[10px] text-emerald-600 font-medium">Summe</div>
+                            <div className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</div>
+                          </div>
+                          <button onClick={() => navigate(`/bookings/${item.bookingId}?tab=documents&docTab=gutschrift`)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
-                {gutschriftItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
-                <div className="px-4 py-3 flex justify-between font-bold bg-gradient-to-r from-emerald-50 to-green-50">
-                  <span className="text-gray-700 uppercase text-xs tracking-widest">TOTAL</span>
-                  <span className="text-gray-900">{formatNumber(gutschriftItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0))}</span>
+                {gutschriftItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100">
+                  <span className="text-gray-600 uppercase text-[10px] tracking-widest self-center">TOTAL</span>
+                  <span className="text-gray-900 text-base">{formatNumber(gutschriftItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0))}</span>
                 </div>
               </div>
               {/* Desktop table */}
@@ -527,41 +539,46 @@ export default function Rechnung() {
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
                 </div>
               ) : (
-                <div className="sm:hidden divide-y divide-gray-100">
+                <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                   {orientItems.map((item, index) => {
                     const rAmt = (item.name === 'Rechnung' || item.name === 'Neue Rechnung') ? (parseFloat(item.summe) || 0) : 0;
                     const gAmt = item.name === 'Gutschrift' ? (parseFloat(item.summe) || 0) : 0;
                     const tot = rAmt - gAmt;
                     return (
-                      <div key={item.id} className="px-4 py-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
-                              <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                      <div key={item.id} className="rounded-xl overflow-hidden border border-blue-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(59,130,246,0.08)' }}>
+                        <div className="h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
+                        <div className="px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-blue-200">{index + 1}</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</div>
+                                <div className="text-[10px] text-gray-500">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className="font-bold text-gray-900 text-sm">{formatNumber(tot)}</div>
-                            {rAmt > 0 && <div className="text-xs text-blue-500">R: {formatNumber(rAmt)}</div>}
-                            {gAmt > 0 && <div className="text-xs text-red-400">G: -{formatNumber(gAmt)}</div>}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="text-right">
+                                <div className="font-bold text-gray-900 text-sm">{formatNumber(tot)}</div>
+                                {rAmt > 0 && <div className="text-[10px] text-blue-500 font-medium">R: {formatNumber(rAmt)}</div>}
+                                {gAmt > 0 && <div className="text-[10px] text-red-400 font-medium">G: -{formatNumber(gAmt)}</div>}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  {orientItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                  {orientItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
                   {orientItems.length > 0 && (() => {
                     const tR = orientItems.filter(i => i.name === 'Rechnung' || i.name === 'Neue Rechnung').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
                     const tG = orientItems.filter(i => i.name === 'Gutschrift').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
                     return (
-                      <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50">
-                        <div className="flex justify-between font-bold text-gray-900">
-                          <span className="uppercase text-xs tracking-widest text-gray-600">TOTAL</span>
-                          <span>{formatNumber(tR - tG)}</span>
+                      <div className="rounded-xl px-3 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
+                        <div className="flex justify-between font-bold text-gray-900 mb-1">
+                          <span className="uppercase text-[10px] tracking-widest text-gray-600 self-center">TOTAL</span>
+                          <span className="text-base">{formatNumber(tR - tG)}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <div className="flex justify-between text-[10px] text-gray-500">
                           <span>Rechnung: {formatNumber(tR)}</span>
                           <span>Gutschrift: -{formatNumber(tG)}</span>
                         </div>
@@ -664,41 +681,46 @@ export default function Rechnung() {
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600"></div>
                 </div>
               ) : (
-                <div className="sm:hidden divide-y divide-gray-100">
+                <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                   {infuturestormItems.map((item, index) => {
                     const rAmt = (item.name === 'Rechnung' || item.name === 'Neue Rechnung') ? (parseFloat(item.summe) || 0) : 0;
                     const gAmt = item.name === 'Gutschrift' ? (parseFloat(item.summe) || 0) : 0;
                     const tot = rAmt - gAmt;
                     return (
-                      <div key={item.id} className="px-4 py-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 shrink-0">#{index + 1}</span>
-                              <span className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</span>
+                      <div key={item.id} className="rounded-xl overflow-hidden border border-orange-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(249,115,22,0.08)' }}>
+                        <div className="h-0.5 bg-gradient-to-r from-orange-400 to-red-500" />
+                        <div className="px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-5 h-5 rounded-full bg-orange-50 text-orange-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-orange-200">{index + 1}</span>
+                              <div className="min-w-0">
+                                <div className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</div>
+                                <div className="text-[10px] text-gray-500">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500 mt-0.5">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className="font-bold text-gray-900 text-sm">{formatNumber(tot)}</div>
-                            {rAmt > 0 && <div className="text-xs text-orange-500">R: {formatNumber(rAmt)}</div>}
-                            {gAmt > 0 && <div className="text-xs text-red-400">G: -{formatNumber(gAmt)}</div>}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="text-right">
+                                <div className="font-bold text-gray-900 text-sm">{formatNumber(tot)}</div>
+                                {rAmt > 0 && <div className="text-[10px] text-orange-500 font-medium">R: {formatNumber(rAmt)}</div>}
+                                {gAmt > 0 && <div className="text-[10px] text-red-400 font-medium">G: -{formatNumber(gAmt)}</div>}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  {infuturestormItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                  {infuturestormItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
                   {infuturestormItems.length > 0 && (() => {
                     const tR = infuturestormItems.filter(i => i.name === 'Rechnung' || i.name === 'Neue Rechnung').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
                     const tG = infuturestormItems.filter(i => i.name === 'Gutschrift').reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
                     return (
-                      <div className="px-4 py-3 bg-gradient-to-r from-orange-50 to-red-50">
-                        <div className="flex justify-between font-bold text-gray-900">
-                          <span className="uppercase text-xs tracking-widest text-gray-600">TOTAL</span>
-                          <span>{formatNumber(tR - tG)}</span>
+                      <div className="rounded-xl px-3 py-2.5 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-100">
+                        <div className="flex justify-between font-bold text-gray-900 mb-1">
+                          <span className="uppercase text-[10px] tracking-widest text-gray-600 self-center">TOTAL</span>
+                          <span className="text-base">{formatNumber(tR - tG)}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <div className="flex justify-between text-[10px] text-gray-500">
                           <span>Rechnung: {formatNumber(tR)}</span>
                           <span>Gutschrift: -{formatNumber(tG)}</span>
                         </div>
@@ -807,7 +829,7 @@ export default function Rechnung() {
               </div>
 
               {/* Mobile cards — Shamixon (editable) */}
-              <div className="sm:hidden divide-y divide-gray-100">
+              <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                 {shamixonItems.map((item, index) => {
                   const payAmt = parseFloat(item.gruppe) || 0;
                   const commission = payAmt * 0.01;
@@ -816,49 +838,67 @@ export default function Rechnung() {
                   const serviceFee = parseFloat(item.serviceFee) || 0;
                   const totalAmount = incomingPayment - serviceFee;
                   return (
-                    <div key={item.id} className="px-4 py-3">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-bold text-purple-700 text-sm">#{index + 1} {item.name || '—'}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900 text-sm">{formatNumber(totalAmount)}</span>
-                          <button onClick={() => handleDeleteShamixonItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                    <div key={item.id} className="rounded-xl overflow-hidden border border-purple-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(168,85,247,0.08)' }}>
+                      <div className="h-0.5 bg-gradient-to-r from-purple-400 to-pink-500" />
+                      <div className="px-3 py-2">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-purple-50 text-purple-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-purple-200">{index + 1}</span>
+                            <span className="font-bold text-gray-900 text-sm">{item.name || '—'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="bg-purple-50 rounded-lg px-2 py-1 border border-purple-100 text-right">
+                              <div className="text-[10px] text-purple-600 font-medium">Total</div>
+                              <div className="font-bold text-gray-900 text-sm">{formatNumber(totalAmount)}</div>
+                            </div>
+                            <button onClick={() => handleDeleteShamixonItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                        <div>
-                          <div className="text-gray-400 mb-0.5">Date</div>
-                          <input type="date" value={item.name || ''} onChange={e => handleUpdateShamixonItem(item.id, 'name', e.target.value)} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" />
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Date</div>
+                            <input type="date" value={item.name || ''} onChange={e => handleUpdateShamixonItem(item.id, 'name', e.target.value)} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" />
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Income date</div>
+                            <input type="date" value={item.firma || ''} onChange={e => handleUpdateShamixonItem(item.id, 'firma', e.target.value)} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" />
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Payment</div>
+                            <input type="text" value={item.gruppe ? formatNumber(parseFloat(item.gruppe)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'gruppe', v); }} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" placeholder="0" />
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Service fee</div>
+                            <input type="number" value={item.serviceFee || ''} onChange={e => handleUpdateShamixonItem(item.id, 'serviceFee', parseFloat(e.target.value) || 0)} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" step="0.01" />
+                          </div>
+                          <div className="bg-purple-50 rounded-lg p-1.5 border border-purple-100">
+                            <div className="text-[10px] text-purple-500 font-medium mb-0.5">Commission (1%)</div>
+                            <div className="text-xs font-bold text-gray-900">{formatNumber(commission)}</div>
+                          </div>
+                          <div className="bg-purple-50 rounded-lg p-1.5 border border-purple-100">
+                            <div className="text-[10px] text-purple-500 font-medium mb-0.5">Transfer fee</div>
+                            <div className="text-xs font-bold text-gray-900">{formatNumber(transferFee)}</div>
+                          </div>
+                          <div className="col-span-2 bg-indigo-50 rounded-lg p-1.5 border border-indigo-100">
+                            <div className="text-[10px] text-indigo-500 font-medium mb-0.5">Incoming payment</div>
+                            <div className="text-xs font-bold text-gray-900">{formatNumber(incomingPayment)}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-gray-400 mb-0.5">Income date</div>
-                          <input type="date" value={item.firma || ''} onChange={e => handleUpdateShamixonItem(item.id, 'firma', e.target.value)} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" />
-                        </div>
-                        <div>
-                          <div className="text-gray-400 mb-0.5">Payment</div>
-                          <input type="text" value={item.gruppe ? formatNumber(parseFloat(item.gruppe)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'gruppe', v); }} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" placeholder="0" />
-                        </div>
-                        <div>
-                          <div className="text-gray-400 mb-0.5">Service fee</div>
-                          <input type="number" value={item.serviceFee || ''} onChange={e => handleUpdateShamixonItem(item.id, 'serviceFee', parseFloat(e.target.value) || 0)} className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs" step="0.01" />
-                        </div>
-                        <div className="text-gray-500">Commission (1%): <span className="font-medium text-gray-700">{formatNumber(commission)}</span></div>
-                        <div className="text-gray-500">Transfer fee: <span className="font-medium text-gray-700">{formatNumber(transferFee)}</span></div>
-                        <div className="col-span-2 text-gray-500">Incoming: <span className="font-medium text-gray-700">{formatNumber(incomingPayment)}</span></div>
                       </div>
                     </div>
                   );
                 })}
-                {shamixonItems.length === 0 && <div className="px-4 py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                {shamixonItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
                 {shamixonItems.length > 0 && (() => {
                   let tComm = 0, tFee = 0, tInc = 0, tSvc = 0, tTotal = 0;
                   shamixonItems.forEach(i => { const p = parseFloat(i.gruppe)||0; const c = p*0.01; const f = 50; const inc = p-c-f; const s = parseFloat(i.serviceFee)||0; tComm+=c; tFee+=f; tInc+=inc; tSvc+=s; tTotal+=inc-s; });
                   return (
-                    <div className="px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50">
-                      <div className="flex justify-between font-bold text-gray-900 mb-1">
-                        <span className="uppercase text-xs tracking-widest text-gray-600">TOTAL</span>
-                        <span>{formatNumber(tTotal)}</span>
+                    <div className="rounded-xl px-3 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100">
+                      <div className="flex justify-between font-bold text-gray-900 mb-1.5">
+                        <span className="uppercase text-[10px] tracking-widest text-gray-600 self-center">TOTAL</span>
+                        <span className="text-base">{formatNumber(tTotal)}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-x-4 text-xs text-gray-500">
+                      <div className="grid grid-cols-2 gap-x-4 text-[10px] text-gray-500">
                         <span>Commission: {formatNumber(tComm)}</span>
                         <span>Transfer: {formatNumber(tFee)}</span>
                         <span>Incoming: {formatNumber(tInc)}</span>
