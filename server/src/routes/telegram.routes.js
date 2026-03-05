@@ -2422,10 +2422,10 @@ router.post('/webhook', (req, res, next) => {
         }
       }
 
-      // Remove bulk action keyboard if all visits are now non-PENDING
+      // Remove bulk action keyboard if all visits are now non-PENDING (CONFIRMED, WAITING, or REJECTED)
+      const noPending = groups.every(g => g.visits.every(v => v.status === 'CONFIRMED' || v.status === 'WAITING' || v.status === 'REJECTED'));
       if (isBulk && cb.message?.message_id && editChatId) {
-        const allActioned = groups.every(g => g.visits.every(v => v.status === 'CONFIRMED' || v.status === 'REJECTED'));
-        if (allActioned) {
+        if (noPending) {
           await axios.post(`${BOT_API()}/editMessageReplyMarkup`, {
             chat_id: editChatId,
             message_id: cb.message.message_id,
@@ -2434,8 +2434,7 @@ router.post('/webhook', (req, res, next) => {
         }
       } else if (!isBulk && bulkMsgId && storedChatId) {
         // After individual confirm — check if all done and remove bulk button
-        const allActioned = groups.every(g => g.visits.every(v => v.status === 'CONFIRMED' || v.status === 'REJECTED'));
-        if (allActioned) {
+        if (noPending) {
           await axios.post(`${BOT_API()}/editMessageReplyMarkup`, {
             chat_id: storedChatId,
             message_id: bulkMsgId,
