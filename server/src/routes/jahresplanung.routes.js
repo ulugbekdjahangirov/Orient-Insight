@@ -455,7 +455,10 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
           const curYear = new Date().getFullYear();
           const allJpForHotel = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotelId}_` } } });
           const availYears = [...new Set(
-            allJpForHotel.map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } }).filter(y => y && y >= curYear)
+            allJpForHotel
+              .filter(s => { try { const d = JSON.parse(s.value); return d.bulkMsgId != null || (d.groups || []).some(g => (g.visits || []).some(v => v.msgId != null)); } catch { return false; } })
+              .map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } })
+              .filter(y => y && y >= curYear)
           )].sort();
           const jpRows = availYears.length > 1
             ? availYears.map(y => [{ text: `📋 Заявка ${y}` }])
@@ -589,6 +592,32 @@ router.get('/transport-confirmations', authenticate, async (req, res) => {
     res.json({ confirmations });
   } catch (err) {
     console.error('Get transport confirmations error:', err);
+    res.status(500).json({ error: 'Server xatoligi' });
+  }
+});
+
+// PUT /api/jahresplanung/clear-tg/:hotelId/:tourType/:year
+// Clears all Telegram msgIds from JP_SECTIONS without deleting JP data
+router.put('/clear-tg/:hotelId/:tourType/:year', authenticate, async (req, res) => {
+  try {
+    const { hotelId, tourType, year } = req.params;
+    const jpKey = `JP_SECTIONS_${hotelId}_${tourType}_${year}`;
+    const setting = await prisma.systemSetting.findUnique({ where: { key: jpKey } });
+    if (!setting) return res.status(404).json({ error: 'JP topilmadi' });
+    const data = JSON.parse(setting.value);
+    // Clear all msgIds and bulkMsgId
+    data.bulkMsgId = null;
+    if (Array.isArray(data.groups)) {
+      for (const grp of data.groups) {
+        if (Array.isArray(grp.visits)) {
+          for (const v of grp.visits) { v.msgId = null; }
+        }
+      }
+    }
+    await prisma.systemSetting.update({ where: { key: jpKey }, data: { value: JSON.stringify(data) } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Clear TG error:', err);
     res.status(500).json({ error: 'Server xatoligi' });
   }
 });

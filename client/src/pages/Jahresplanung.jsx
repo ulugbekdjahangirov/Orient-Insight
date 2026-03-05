@@ -5,7 +5,7 @@ import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import {
   Building2, UtensilsCrossed, Bus, Download, Mail, Send,
-  ChevronDown, ChevronRight, Loader2, MapPin, ArrowRightLeft, Plus, X, Compass
+  ChevronDown, ChevronRight, Loader2, MapPin, ArrowRightLeft, Plus, X, Compass, Trash2
 } from 'lucide-react';
 import { jahresplanungApi, telegramApi } from '../services/api';
 import { useYear } from '../context/YearContext';
@@ -824,7 +824,7 @@ function generateHotelPDF(hotelData, tourType, overrides, logoDataUrl, returnBlo
 }
 
 function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides, setOverrideVal, rowStatuses, setRowStatus,
-  onEmail, onTelegram, sendingEmail, sendingTelegram, onPDF,
+  onEmail, onTelegram, onClearTg, sendingEmail, sendingTelegram, clearingTg, onPDF,
   cityName, cityHotels, onMoveBooking, isExtra, onRemoveHotel,
   availableHotelsForSwap, onReplaceHotel, hotelDefault, onSetHotelDefault }) {
   const { hotel, bookings } = hotelData;
@@ -921,6 +921,15 @@ function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides
             title={hotel.telegramChatId ? 'TG' : "Telegram yo'q"}>
             {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}
             <span className="hidden sm:inline">TG</span>
+          </button>
+          <button onClick={() => onClearTg(hotelData)} disabled={!!clearingTg}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+            style={{ background: '#fff7ed', color: '#c2410c' }}
+            onMouseEnter={e => { if (!clearingTg) e.currentTarget.style.background='#ffedd5'; }}
+            onMouseLeave={e => { e.currentTarget.style.background='#fff7ed'; }}
+            title="TG zayavkasini tozalash (JP saqlanib qoladi)">
+            {clearingTg ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Trash2 className="w-3.5 h-3.5"/>}
+            <span className="hidden sm:inline">Tozalash</span>
           </button>
           <button onClick={onRemoveHotel} title={isExtra ? "Olib tashlash" : "Yashirish"}
             className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 transition-colors"
@@ -2377,6 +2386,7 @@ function HotelsTab({ tourType, tourColor }) {
   const [openCities, setOpenCities] = useState({});
   const [sendingEmail, setSendingEmail] = useState({});
   const [sendingTelegram, setSendingTelegram] = useState({});
+  const [clearingTg, setClearingTg] = useState({});
   const [overrides, setOverrides] = useState({});
   const [rowStatuses, setRowStatuses] = useState({});
   // Extra hotels added per city: { cityName: [hotelId, ...] }
@@ -2679,6 +2689,18 @@ function HotelsTab({ tourType, tourColor }) {
     } finally { setSendingTelegram(prev => ({ ...prev, [hotel.id]: false })); }
   };
 
+  const handleClearTg = async (hotelData) => {
+    const { hotel } = hotelData;
+    if (!window.confirm(`${hotel.name} — ${YEAR} yil ${tourType} TG zayavkasini tozalashni tasdiqlaysizmi?\n(JP ma'lumotlari saqlanib qoladi, faqat TG yuborilganlik holati o'chiriladi)`)) return;
+    setClearingTg(prev => ({ ...prev, [hotel.id]: true }));
+    try {
+      await jahresplanungApi.clearHotelTg(hotel.id, tourType, YEAR);
+      toast.success(`${hotel.name} — TG tozalandi`);
+    } catch (err) {
+      toast.error('Xatolik: ' + (err.response?.data?.error || err.message));
+    } finally { setClearingTg(prev => ({ ...prev, [hotel.id]: false })); }
+  };
+
   const color = tourColor || TOUR_COLORS[tourType] || '#3B82F6';
 
   if (loading) return (
@@ -2781,8 +2803,10 @@ function HotelsTab({ tourType, tourColor }) {
                     setRowStatus={setRowStatus}
                     sendingEmail={sendingEmail[hd.hotel.id]}
                     sendingTelegram={sendingTelegram[hd.hotel.id]}
+                    clearingTg={clearingTg[hd.hotel.id]}
                     onEmail={handleEmail}
                     onTelegram={handleTelegram}
+                    onClearTg={handleClearTg}
                     onPDF={handlePDF}
                     cityName={city}
                     cityHotels={displayHotels}

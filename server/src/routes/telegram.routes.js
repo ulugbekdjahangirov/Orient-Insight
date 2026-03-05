@@ -266,7 +266,16 @@ async function sendHotelMenu(chatId) {
   if (hotel) {
     const jpSettings = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotel.id}_` } } });
     const years = [...new Set(
-      jpSettings.map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } }).filter(y => y && y >= curYear)
+      jpSettings
+        .filter(s => {
+          try {
+            const d = JSON.parse(s.value);
+            // Only show if TG was actually sent (has bulkMsgId or any visit msgId)
+            return d.bulkMsgId != null || (d.groups || []).some(g => (g.visits || []).some(v => v.msgId != null));
+          } catch { return false; }
+        })
+        .map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } })
+        .filter(y => y && y >= curYear)
     )].sort();
     if (years.length) availYears = years;
   }
