@@ -299,20 +299,30 @@ async function sendAdminChangesForTourType(chatId, tourType, replyMarkup) {
     },
     orderBy: { sentAt: 'asc' }
   });
-  // Get all annulled booking+hotel pairs — these must be excluded from Izmeneniya
-  const annulments = await prisma.telegramConfirmation.findMany({
-    where: { type: 'ANNULMENT' },
-    select: { bookingId: true, hotelId: true }
+  // For each booking+hotel, find the latest sent record type.
+  // If latest type = ANNULMENT → belongs to Anulyatsiya, exclude from Izmeneniya.
+  // If latest type = CHANGE → belongs to Izmeneniya (even if annulment existed before).
+  const allConfsForType = await prisma.telegramConfirmation.findMany({
+    where: { booking: { tourType: { code: tourType } } },
+    select: { bookingId: true, hotelId: true, type: true, sentAt: true }
   });
-  const annulledKeys = new Set(annulments.map(a => `${a.bookingId}_${a.hotelId}`));
+  // Find latest type per booking+hotel
+  const latestTypeMap = {};
+  for (const c of allConfsForType) {
+    const key = `${c.bookingId}_${c.hotelId}`;
+    if (!latestTypeMap[key] || c.sentAt > latestTypeMap[key].sentAt) {
+      latestTypeMap[key] = { type: c.type, sentAt: c.sentAt };
+    }
+  }
 
   const seen = new Set();
   const filtered = confs.filter(c => {
     if (c.type === 'ANNULMENT') return false;
-    if (annulledKeys.has(`${c.bookingId}_${c.hotelId}`)) return false; // annulled → show only in Anulyatsiya
+    const key = `${c.bookingId}_${c.hotelId}`;
+    if (latestTypeMap[key]?.type === 'ANNULMENT') return false; // latest was annulment → skip
     if (c.booking?.tourType?.code !== tourType) return false;
-    if (seen.has(`${c.bookingId}_${c.hotelId}`)) return false;
-    seen.add(`${c.bookingId}_${c.hotelId}`);
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
   if (!filtered.length) {
@@ -431,12 +441,21 @@ async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
     },
     orderBy: { sentAt: 'desc' }
   });
+  // Find latest type per booking+hotel
+  const latestTypeMap = {};
+  for (const c of confs) {
+    const key = `${c.bookingId}_${c.hotelId}`;
+    if (!latestTypeMap[key] || c.sentAt > latestTypeMap[key].sentAt) {
+      latestTypeMap[key] = { type: c.type, sentAt: c.sentAt };
+    }
+  }
   const seen = new Set();
   const byHotel = {};
   for (const c of confs) {
     if (c.type !== 'ANNULMENT') continue;
     if (c.booking?.tourType?.code !== tourType) continue;
-    const key = `${c.hotelId}_${c.bookingId}`;
+    const key = `${c.bookingId}_${c.hotelId}`;
+    if (latestTypeMap[key]?.type !== 'ANNULMENT') continue; // later CHANGE sent → skip
     if (seen.has(key)) continue;
     seen.add(key);
     if (!byHotel[c.hotelId]) byHotel[c.hotelId] = { hotel: c.hotel, count: 0 };
@@ -584,9 +603,17 @@ async function sendHotelAnnulment(chatId, hotel, tourType) {
     include: { booking: { select: { bookingNumber: true, status: true, pax: true, tourType: { select: { code: true } } } } },
     orderBy: { sentAt: 'asc' }
   });
+  // Find latest type per bookingId for this hotel
+  const latestTypeMap = {};
+  for (const c of confs) {
+    if (!latestTypeMap[c.bookingId] || c.sentAt > latestTypeMap[c.bookingId].sentAt) {
+      latestTypeMap[c.bookingId] = { type: c.type, sentAt: c.sentAt };
+    }
+  }
   const seen = new Set();
   const filtered = confs.filter(c => {
     if (c.type !== 'ANNULMENT') return false;
+    if (latestTypeMap[c.bookingId]?.type !== 'ANNULMENT') return false; // later CHANGE sent → skip
     if (c.booking?.tourType?.code !== tourType) return false;
     if (seen.has(c.bookingId)) return false;
     seen.add(c.bookingId); return true;
@@ -620,18 +647,25 @@ async function sendHotelChangesForTourType(chatId, hotel, tourType) {
     include: { booking: { select: { bookingNumber: true, status: true, pax: true, tourType: { select: { code: true } } } } },
     orderBy: { sentAt: 'desc' }
   });
-  // Get annulled bookingIds for this hotel — exclude from Izmeneniya
-  const annulments = await prisma.telegramConfirmation.findMany({
-    where: { hotelId: hotel.id, type: 'ANNULMENT' },
-    select: { bookingId: true }
+  // For each bookingId, find the latest sent record type for this hotel.
+  // If latest type = ANNULMENT → belongs to Anulyatsiya.
+  // If latest type = CHANGE → belongs to Izmeneniya (even if annulment existed before).
+  const allConfsForHotel = await prisma.telegramConfirmation.findMany({
+    where: { hotelId: hotel.id },
+    select: { bookingId: true, type: true, sentAt: true }
   });
-  const annulledBookingIds = new Set(annulments.map(a => a.bookingId));
+  const latestTypeMap = {};
+  for (const c of allConfsForHotel) {
+    if (!latestTypeMap[c.bookingId] || c.sentAt > latestTypeMap[c.bookingId].sentAt) {
+      latestTypeMap[c.bookingId] = { type: c.type, sentAt: c.sentAt };
+    }
+  }
 
   // Keep only the latest TelegramConfirmation per bookingId, then sort by bookingNumber
   const seen = new Set();
   const latest = confs.filter(c => {
     if (c.type === 'ANNULMENT') return false;
-    if (annulledBookingIds.has(c.bookingId)) return false; // annulled → show only in Anulyatsiya
+    if (latestTypeMap[c.bookingId]?.type === 'ANNULMENT') return false; // latest was annulment → skip
     if (c.booking?.tourType?.code !== tourType) return false;
     if (seen.has(c.bookingId)) return false;
     seen.add(c.bookingId);
