@@ -616,6 +616,37 @@ router.put('/clear-tg/:hotelId/:tourType/:year', authenticate, async (req, res) 
     }
     await prisma.systemSetting.update({ where: { key: jpKey }, data: { value: JSON.stringify(data) } });
     res.json({ success: true });
+
+    // Refresh hotel keyboard so cleared year disappears immediately
+    try {
+      const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
+      if (hotel?.telegramChatId) {
+        const curYear = new Date().getFullYear();
+        const allJpForHotel = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotelId}_` } } });
+        const availYears = [...new Set(
+          allJpForHotel
+            .filter(s => { try { const d = JSON.parse(s.value); return d.bulkMsgId != null || (d.groups || []).some(g => (g.visits || []).some(v => v.msgId != null)); } catch { return false; } })
+            .map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } })
+            .filter(y => y && y >= curYear)
+        )].sort();
+        const jpRows = availYears.length > 1
+          ? availYears.map(y => [{ text: `📋 Заявка ${y}` }])
+          : availYears.length === 1
+            ? [[{ text: `📋 Заявка ${availYears[0]}` }, { text: '📝 Изменения к Заявке' }]]
+            : [[{ text: `📋 Заявка ${curYear}` }, { text: '📝 Изменения к Заявке' }]];
+        const refreshKeyboard = availYears.length > 1
+          ? [...jpRows, [{ text: '📝 Изменения к Заявке' }], [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]]
+          : [...jpRows, [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]];
+        const CLEAR_TG_BASE = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
+        await axios.post(`${CLEAR_TG_BASE}/sendMessage`, {
+          chat_id: hotel.telegramChatId,
+          text: '🔄 Menu yangilandi:',
+          reply_markup: JSON.stringify({ keyboard: refreshKeyboard, resize_keyboard: true, is_persistent: true })
+        }).catch(() => {});
+      }
+    } catch (menuErr) {
+      console.warn('Clear TG menu refresh error:', menuErr.message);
+    }
   } catch (err) {
     console.error('Clear TG error:', err);
     res.status(500).json({ error: 'Server xatoligi' });
