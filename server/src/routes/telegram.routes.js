@@ -1423,19 +1423,13 @@ router.post('/webhook', (req, res, next) => {
     const fromName = [fromDisplayName, fromUser.username ? `@${fromUser.username}` : ''].filter(Boolean).join(' ') || 'Noma\'lum';
     const fromChatId = cb.message?.chat?.id;
 
-    // Also save chat from callback
+    // Update lastMessage for existing chats only — do NOT auto-create deleted users
     if (fromChatId) {
       const chat = cb.message.chat;
       const chats = await loadKnownChats();
-      if (!chats[String(chat.id)]) {
-        chats[String(chat.id)] = {
-          chatId: String(chat.id),
-          name: chat.title || [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' '),
-          username: chat.username ? `@${chat.username}` : null,
-          type: chat.type,
-          lastMessage: '[button click]',
-          date: new Date().toISOString()
-        };
+      if (chats[String(chat.id)]) {
+        chats[String(chat.id)].lastMessage = '[button click]';
+        chats[String(chat.id)].date = new Date().toISOString();
         await saveKnownChats(chats);
       }
     }
