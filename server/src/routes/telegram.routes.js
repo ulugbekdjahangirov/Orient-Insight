@@ -6613,6 +6613,25 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
     }
 
     res.json({ ok: true, sent: bookings.length });
+
+    // Refresh guide keyboard so new year button appears immediately
+    try {
+      const curYear = new Date().getFullYear();
+      const allYears = gyears.filter(y => y >= curYear).sort();
+      const grpRows = allYears.length > 1
+        ? allYears.map(y => [{ text: `📋 Gruppalar ${y}` }])
+        : [[{ text: `📋 Gruppalar ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
+      const refreshKeyboard = allYears.length > 1
+        ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+        : [...grpRows, [{ text: '❌ Anulyatsiya' }]];
+      await axios.post(`${GUIDE_API()}/sendMessage`, {
+        chat_id: guide.telegramChatId,
+        text: `🔄 Menu yangilandi (${allYears.join(', ')} yil uchun jadvallar mavjud):`,
+        reply_markup: JSON.stringify({ keyboard: refreshKeyboard, resize_keyboard: true, is_persistent: true })
+      }).catch(() => {});
+    } catch (menuErr) {
+      console.warn('Guide menu refresh error:', menuErr.message);
+    }
   } catch (err) {
     console.error('send-guide-schedule error:', err.response?.data || err.message);
     res.status(500).json({ error: err.response?.data?.description || err.message });
