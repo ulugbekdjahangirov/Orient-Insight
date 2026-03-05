@@ -3568,15 +3568,17 @@ router.post('/webhook-transport', async (req, res) => {
         providerName = isAdminCb ? null : await getProviderByChatId(chatId);
       }
 
+      // Tasdiqlangan = ONLY individual marshrut TransportConfirmation records
+      // Заявка 2026  = ONLY JP_TRANSPORT_CONFIRM_* SystemSetting records
       const STATUS_FILTERS = {
         CONFIRMED: ['CONFIRMED'],
-        PENDING:   ['PENDING_APPROVAL', 'APPROVED', 'PENDING'],
+        PENDING:   [],  // Заявка 2026: skip individual confs, show JP only
         REJECTED:  ['REJECTED', 'REJECTED_BY_APPROVER']
       };
       const JP_STATUS_FILTERS = {
-        CONFIRMED: ['CONFIRMED'],
-        PENDING:   ['PENDING_APPROVAL', 'APPROVED'],
-        REJECTED:  ['REJECTED']
+        CONFIRMED: [],  // Tasdiqlangan: skip JP entries, show individual confs only
+        PENDING:   ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED'],  // show all JP statuses
+        REJECTED:  []
       };
       const STATUS_EMOJI = { PENDING_APPROVAL: '🔄', APPROVED: '⏳', PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌', REJECTED_BY_APPROVER: '❌' };
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
@@ -3663,7 +3665,7 @@ router.post('/webhook-transport', async (req, res) => {
         }
       }
 
-      // Jahresplanung annual plan confirmations
+      // Jahresplanung annual plan confirmations — only for Заявка 2026 (PENDING)
       if (jpEntries.length) {
         if (confs.length || cancelledBookings.length) lines.push(`\n━━━━━━━━━━━━━━━━━━`);
         lines.push(`📅 *Yillik reja ${year} — ${tourType}*`);
@@ -3671,15 +3673,16 @@ router.post('/webhook-transport', async (req, res) => {
           const st = STATUS_EMOJI[jp.status] || '⏳';
           const pLabel = PROVIDER_LABELS[jp.provider] || jp.provider;
           const statusText = {
-            PENDING_APPROVAL: '⏳ Kutilmoqda (admin yubordi)',
-            APPROVED:         '✅ Tasdiqlandi va yuborildi',
-            CONFIRMED:        '✅ Provider tasdiqladi',
+            PENDING_APPROVAL: '⏳ Kutilmoqda',
+            APPROVED:         '🔄 Admin tasdiqladi, provayder kutmoqda',
+            CONFIRMED:        '✅ Tasdiqlandi',
             REJECTED:         '❌ Rad etildi'
           }[jp.status] || jp.status;
           lines.push(`\n${st} *${pLabel}* — ${statusText}`);
-          if (jp.sentAt) lines.push(`📤 ${fmt(jp.sentAt)}`);
+          if (jp.sentAt) lines.push(`📤 Yuborildi: ${fmt(jp.sentAt)}`);
+          if (jp.confirmedBy) lines.push(`👤 ${jp.confirmedBy}`);
           if (jp.messageText) {
-            lines.push(`\`\`\`\n${jp.messageText.substring(0, 2000)}\n\`\`\``);
+            lines.push(`\`\`\`\n${jp.messageText.substring(0, 2500)}\n\`\`\``);
           }
         }
       }
