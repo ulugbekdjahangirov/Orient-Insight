@@ -5015,11 +5015,15 @@ router.post('/webhook-guide', async (req, res) => {
     if (msg) {
       const chat = msg.chat;
 
-      // /start — welcome message + send guide menu
+      // /start — welcome message + send guide menu (only if already has a role)
       if (msg.text === '/start') {
         await handleStart(chat, msg, GUIDE_API());
-        const startAdminIds = await getBotAdminIds('guide');
-        await sendGuideMenu(chat.id, startAdminIds.map(String).includes(String(chat.id)));
+        const startChats = await loadKnownChats();
+        const startRole = startChats[String(chat.id)]?.role;
+        if (startRole === 'guide' || startRole === 'admin') {
+          const startAdminIds = await getBotAdminIds('guide');
+          await sendGuideMenu(chat.id, startAdminIds.map(String).includes(String(chat.id)));
+        }
         return;
       }
 
