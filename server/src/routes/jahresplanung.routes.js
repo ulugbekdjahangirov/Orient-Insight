@@ -772,7 +772,7 @@ router.put('/clear-guide-tg/:guideId/:year', authenticate, async (req, res) => {
           ? [allYears.map(y => ({ text: `📋 Gruppalar ${y}` }))]
           : [[{ text: `📋 Gruppalar ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
         const refreshKeyboard = allYears.length > 1
-          ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+          ? [...grpRows, [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }]]
           : [...grpRows, [{ text: '❌ Anulyatsiya' }]];
         await axios.post(`https://api.telegram.org/bot${GUIDE_TOKEN}/sendMessage`, {
           chat_id: guide.telegramChatId,

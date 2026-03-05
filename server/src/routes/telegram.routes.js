@@ -252,10 +252,10 @@ async function sendGuideMenu(chatId, isAdmin = false) {
     : [[{ text: `📋 Gruppalar ${availYears[0]}` }, { text: '✅ Tasdiqlangan' }]];
   const keyboard = isAdmin
     ? availYears.length > 1
-      ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '👤 Gidlar' }, { text: '❌ Anulyatsiya' }]]
+      ? [...grpRows, [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }], [{ text: '👤 Gidlar' }]]
       : [...grpRows, [{ text: '👤 Gidlar' }, { text: '❌ Anulyatsiya' }]]
     : availYears.length > 1
-      ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+      ? [...grpRows, [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }]]
       : [...grpRows, [{ text: '❌ Anulyatsiya' }]];
   await axios.post(`${GUIDE_API()}/sendMessage`, {
     chat_id: chatId,
@@ -6626,7 +6626,7 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
         ? [allYears.map(y => ({ text: `📋 Gruppalar ${y}` }))]
         : [[{ text: `📋 Gruppalar ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
       const refreshKeyboard = allYears.length > 1
-        ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+        ? [...grpRows, [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }]]
         : [...grpRows, [{ text: '❌ Anulyatsiya' }]];
       await axios.post(`${GUIDE_API()}/sendMessage`, {
         chat_id: guide.telegramChatId,
