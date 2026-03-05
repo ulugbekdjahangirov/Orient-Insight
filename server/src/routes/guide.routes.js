@@ -84,7 +84,7 @@ router.get('/', authenticate, async (req, res) => {
       where,
       orderBy: { name: 'asc' },
       include: {
-        _count: { select: { bookings: { where: bookingYearFilter }, guidePayments: true } }
+        _count: { select: { bookings: { where: bookingYearFilter }, bookingsAsSecondGuide: { where: bookingYearFilter }, guidePayments: true } }
       }
     });
 
@@ -92,6 +92,11 @@ router.get('/', authenticate, async (req, res) => {
     const processedGuides = guides.map(guide => {
       const processedGuide = { ...guide };
       processedGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
+      // Combine main + second guide booking counts
+      processedGuide._count = {
+        ...guide._count,
+        bookings: (guide._count.bookings || 0) + (guide._count.bookingsAsSecondGuide || 0)
+      };
       return processedGuide;
     });
 
@@ -164,6 +169,19 @@ router.get('/:id', authenticate, async (req, res) => {
       }
     } : {};
 
+    const bookingSelect = {
+      id: true,
+      bookingNumber: true,
+      departureDate: true,
+      arrivalDate: true,
+      endDate: true,
+      pax: true,
+      paxUzbekistan: true,
+      paxTurkmenistan: true,
+      status: true,
+      tourType: { select: { code: true, name: true, color: true } }
+    };
+
     const guide = await prisma.guide.findUnique({
       where: { id: parseInt(id) },
       include: {
@@ -171,24 +189,19 @@ router.get('/:id', authenticate, async (req, res) => {
           where: bYearFilter,
           orderBy: { departureDate: 'asc' },
           take: 20,
-          select: {
-            id: true,
-            bookingNumber: true,
-            departureDate: true,
-            arrivalDate: true,
-            endDate: true,
-            pax: true,
-            paxUzbekistan: true,
-            paxTurkmenistan: true,
-            status: true,
-            tourType: { select: { code: true, name: true, color: true } }
-          }
+          select: bookingSelect
+        },
+        bookingsAsSecondGuide: {
+          where: bYearFilter,
+          orderBy: { departureDate: 'asc' },
+          take: 20,
+          select: bookingSelect
         },
         guidePayments: {
           orderBy: { paymentDate: 'desc' },
           take: 10
         },
-        _count: { select: { bookings: { where: bYearFilter }, guidePayments: true } }
+        _count: { select: { bookings: { where: bYearFilter }, bookingsAsSecondGuide: { where: bYearFilter }, guidePayments: true } }
       }
     });
 
@@ -197,6 +210,20 @@ router.get('/:id', authenticate, async (req, res) => {
     }
 
     const processedGuide = { ...guide };
+
+    // Merge main + second guide bookings, mark role, sort by date
+    const mainBookings = (guide.bookings || []).map(b => ({ ...b, guideRole: 'main' }));
+    const secondBookings = (guide.bookingsAsSecondGuide || []).map(b => ({ ...b, guideRole: 'second' }));
+    processedGuide.bookings = [...mainBookings, ...secondBookings]
+      .sort((a, b) => new Date(a.departureDate) - new Date(b.departureDate));
+    delete processedGuide.bookingsAsSecondGuide;
+
+    // Combined count
+    processedGuide._count = {
+      ...guide._count,
+      bookings: (guide._count.bookings || 0) + (guide._count.bookingsAsSecondGuide || 0)
+    };
+
     if (!isAdmin) {
       processedGuide.guidePayments = [];
       delete processedGuide.passportNumber;

@@ -4,7 +4,7 @@ import { guidesApi, bookingsApi } from '../services/api';
 import { useAuth } from '../store/AuthContext';
 import { useYear } from '../context/YearContext';
 import { useIsMobile } from '../hooks/useMediaQuery';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
   Plus,
@@ -636,7 +636,12 @@ export default function Guides() {
                               <span className="px-2 py-0.5 rounded-md text-white font-bold text-xs shrink-0" style={{ backgroundColor: booking.tourType?.color || '#3B82F6' }}>
                                 {booking.bookingNumber}
                               </span>
-                              <span className="text-gray-600 shrink-0">{format(new Date(booking.departureDate), 'dd.MM.yy')}</span>
+                              {booking.guideRole === 'second' && <span className="text-xs bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full font-medium shrink-0">2-gid</span>}
+                              <span className="text-gray-600 shrink-0">
+                                {booking.guideRole === 'second' && booking.tourType?.code === 'ZA'
+                                  ? format(addDays(new Date(booking.endDate), 4), 'dd.MM.yy')
+                                  : format(new Date(booking.departureDate), 'dd.MM.yy')}
+                              </span>
                               <User className="w-3 h-3 text-gray-400 shrink-0" />
                               <span className="font-bold text-gray-800">{booking.pax || 0}</span>
                               <span className={`ml-auto px-2 py-0.5 rounded-md text-white text-xs font-bold shrink-0 ${
@@ -917,9 +922,21 @@ export default function Guides() {
                                               {booking.bookingNumber || 'N/A'}
                                             </span>
                                           </td>
-                                          <td className="px-4 py-3 text-gray-700 font-medium">{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</td>
-                                          <td className="px-4 py-3 text-gray-700 font-medium">{format(new Date(booking.arrivalDate), 'dd.MM.yyyy')}</td>
-                                          <td className="px-4 py-3 text-gray-700 font-medium">{format(new Date(booking.endDate), 'dd.MM.yyyy')}</td>
+                                          <td className="px-4 py-3 text-gray-700 font-medium">
+                                            {booking.guideRole === 'second' && booking.tourType?.code === 'ZA'
+                                              ? format(addDays(new Date(booking.endDate), 4), 'dd.MM.yyyy')
+                                              : format(new Date(booking.departureDate), 'dd.MM.yyyy')}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-700 font-medium">
+                                            {booking.guideRole === 'second' && booking.tourType?.code === 'ZA'
+                                              ? format(addDays(new Date(booking.endDate), 4), 'dd.MM.yyyy')
+                                              : format(new Date(booking.arrivalDate), 'dd.MM.yyyy')}
+                                          </td>
+                                          <td className="px-4 py-3 text-gray-700 font-medium">
+                                            {booking.guideRole === 'second' && booking.tourType?.code === 'ZA'
+                                              ? format(addDays(new Date(booking.endDate), 5), 'dd.MM.yyyy')
+                                              : format(new Date(booking.endDate), 'dd.MM.yyyy')}
+                                          </td>
                                           <td className="px-4 py-3">
                                             <div className="flex items-center gap-1.5">
                                               <User className="w-4 h-4 text-primary-500" />
@@ -928,7 +945,10 @@ export default function Guides() {
                                           </td>
                                           <td className="px-4 py-3 text-gray-700 font-medium">{booking.paxUzbekistan || 0}</td>
                                           <td className="px-4 py-3 text-gray-700 font-medium">{booking.paxTurkmenistan || 0}</td>
-                                          <td className="px-4 py-3 text-gray-700 font-semibold">{guide.name}</td>
+                                          <td className="px-4 py-3 text-gray-700 font-semibold">
+                                            {guide.name}
+                                            {booking.guideRole === 'second' && <span className="ml-1.5 text-xs bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full font-medium">2-gid</span>}
+                                          </td>
                                           <td className="px-4 py-3">
                                             <span className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
                                               status === 'COMPLETED' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' :
