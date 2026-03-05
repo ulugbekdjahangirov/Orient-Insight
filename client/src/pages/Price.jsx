@@ -2525,15 +2525,15 @@ export default function Price() {
       </div>
 
       {/* Tour Type Tabs */}
-      <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
+      <div className="flex gap-1.5 md:gap-3">
         {tourTypes.map((tour) => (
           <button
             key={tour.id}
             onClick={() => updateParams({ tour: tour.id })}
-            className={`flex items-center justify-center px-2 md:px-6 py-2.5 md:py-3 rounded-xl font-bold transition-all duration-300 text-xs md:text-base ${
+            className={`flex-1 flex items-center justify-center px-2 md:px-6 py-2 md:py-3 rounded-xl font-bold transition-all duration-300 text-xs md:text-base ${
               selectedTourType === tour.id
                 ? `bg-gradient-to-r from-${tour.color}-600 to-${tour.color}-700 text-white shadow-lg`
-                : 'bg-white text-gray-600 hover:bg-gray-50 border-2 border-gray-200'
+                : 'bg-white text-gray-600 border-2 border-gray-200'
             }`}
           >
             {tour.name}
@@ -2541,132 +2541,70 @@ export default function Price() {
         ))}
       </div>
 
-      {/* ER Sub-Tabs */}
-      {selectedTourType === 'er' && (
-        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
-          {erSubTabs.map((subTab) => {
-            const Icon = subTab.icon;
-            return (
-              <button
-                key={subTab.id}
-                onClick={() => updateParams({ er: subTab.id })}
-                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
-                  selectedERSubTab === subTab.id
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="leading-tight text-center">{subTab.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* CO Sub-Tabs */}
-      {selectedTourType === 'co' && (
-        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
-          {erSubTabs.map((subTab) => {
-            const Icon = subTab.icon;
-            return (
-              <button
-                key={subTab.id}
-                onClick={() => updateParams({ co: subTab.id })}
-                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
-                  selectedCOSubTab === subTab.id
-                    ? 'bg-green-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="leading-tight text-center">{subTab.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* KAS Sub-Tabs */}
-      {selectedTourType === 'kas' && (
-        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
-          {erSubTabs.map((subTab) => {
-            const Icon = subTab.icon;
-            return (
-              <button
-                key={subTab.id}
-                onClick={() => updateParams({ kas: subTab.id })}
-                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
-                  selectedKASSubTab === subTab.id
-                    ? 'bg-orange-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="leading-tight text-center">{subTab.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ZA Sub-Tabs */}
-      {selectedTourType === 'za' && (
-        <div className="grid grid-cols-5 gap-1.5 md:flex md:gap-3">
-          {erSubTabs.map((subTab) => {
-            const Icon = subTab.icon;
-            return (
-              <button
-                key={subTab.id}
-                onClick={() => updateParams({ za: subTab.id })}
-                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-5 py-2 md:py-2.5 rounded-lg font-semibold transition-all duration-300 text-xs md:text-sm min-h-[52px] md:min-h-0 ${
-                  selectedZASubTab === subTab.id
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="leading-tight text-center">{subTab.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Sub-Tabs — horizontal scroll on mobile */}
+      {(() => {
+        const subTabCfg = {
+          er:  { tabs: erSubTabs, param: 'er',  active: selectedERSubTab,  activeCls: 'bg-blue-600 text-white shadow-md',   updateKey: 'er' },
+          co:  { tabs: erSubTabs, param: 'co',  active: selectedCOSubTab,  activeCls: 'bg-green-600 text-white shadow-md',  updateKey: 'co' },
+          kas: { tabs: erSubTabs, param: 'kas', active: selectedKASSubTab, activeCls: 'bg-orange-600 text-white shadow-md', updateKey: 'kas' },
+          za:  { tabs: erSubTabs, param: 'za',  active: selectedZASubTab,  activeCls: 'bg-purple-600 text-white shadow-md', updateKey: 'za' },
+        }[selectedTourType];
+        if (!subTabCfg) return null;
+        return (
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 md:flex-wrap md:gap-3 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+            {subTabCfg.tabs.map((subTab) => {
+              const Icon = subTab.icon;
+              const isActive = subTabCfg.active === subTab.id;
+              return (
+                <button
+                  key={subTab.id}
+                  onClick={() => updateParams({ [subTabCfg.updateKey]: subTab.id })}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-xl font-semibold transition-all duration-200 text-xs md:text-sm ${
+                    isActive ? subTabCfg.activeCls : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{subTab.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Content - Hotels Tab for ER */}
       {selectedTourType === 'er' && selectedERSubTab === 'hotels' && (
-        <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-white">Hotels</h3>
-            <button
-              onClick={addHotelRow}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 flex justify-between items-center">
+            <h3 className="text-base font-bold text-white md:text-xl">Hotels</h3>
+            <button onClick={addHotelRow} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg font-semibold text-sm transition-colors">
+              <Plus className="w-3.5 h-3.5" />Add
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-2 space-y-1.5">
               {hotelPrices.map((hotel) => (
-                <div key={hotel.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
-                  <div className="flex-1 p-3">
+                <div key={hotel.id} className="rounded-xl overflow-hidden border border-blue-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(59,130,246,0.08)' }}>
+                  <div className="h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
+                  <div className="px-3 py-2">
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteHotelRow(hotel.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      <input type="text" value={hotel.city} onChange={(e) => updateHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent" placeholder="Shahar" />
+                      <button onClick={() => deleteHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={hotel.days === 0 ? '' : hotel.days} onChange={(e) => updateHotelPrice(hotel.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">DBL</div><input type="number" value={hotel.pricePerDay === 0 ? '' : hotel.pricePerDay} onChange={(e) => updateHotelPrice(hotel.id, 'pricePerDay', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">EZ</div><input type="number" value={hotel.ezZimmer === 0 ? '' : hotel.ezZimmer} onChange={(e) => updateHotelPrice(hotel.id, 'ezZimmer', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
+                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-blue-400 focus:outline-none bg-white" placeholder="0" />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total / person</div><div className="font-bold text-blue-700 text-sm">{(calculateHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
-                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm">{calculateHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <div className="bg-blue-50 rounded-xl p-2.5 text-center border border-blue-100"><div className="text-xs text-blue-500 font-medium">Total / person</div><div className="font-bold text-blue-700 text-sm mt-0.5">{(calculateHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{calculateHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (

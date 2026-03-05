@@ -626,44 +626,59 @@ export default function Guides() {
               </div>
               {/* Expanded tours */}
               {expandedTours === guide.id && (
-                <div className="bg-primary-50 border-t border-primary-100 p-2">
+                <div className="border-t border-gray-100 bg-slate-50 px-2 py-2">
                   {guideBookings[guide.id] ? (
                     guideBookings[guide.id].length > 0 ? (
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {guideBookings[guide.id].map((booking) => {
                           const status = getBookingStatus(booking);
+                          const color = booking.tourType?.color || '#3B82F6';
+                          const statusCfg = {
+                            COMPLETED:       { bg: 'bg-blue-500',    label: 'Done'  },
+                            FINAL_CONFIRMED: { bg: 'bg-emerald-500', label: 'Final' },
+                            CONFIRMED:       { bg: 'bg-green-500',   label: 'OK'    },
+                            IN_PROGRESS:     { bg: 'bg-purple-500',  label: '...'   },
+                            CANCELLED:       { bg: 'bg-red-500',     label: 'X'     },
+                          }[status] || { bg: 'bg-yellow-400', label: '?' };
+                          const depDate = booking.guideRole === 'second' && booking.tourType?.code === 'ZA'
+                            ? format(addDays(new Date(booking.endDate), 4), 'dd.MM.yy')
+                            : format(new Date(booking.departureDate), 'dd.MM.yy');
                           return (
-                            <div key={booking.id} className="bg-white rounded-lg px-2 py-1.5 flex items-center gap-2 text-xs">
-                              <span className="px-2 py-0.5 rounded-md text-white font-bold text-xs shrink-0" style={{ backgroundColor: booking.tourType?.color || '#3B82F6' }}>
+                            <div
+                              key={booking.id}
+                              onClick={() => navigate(`/bookings/${booking.id}`)}
+                              className="bg-white rounded-xl flex items-center gap-2.5 px-3 py-2 cursor-pointer active:bg-gray-50 transition-colors"
+                              style={{ borderLeft: `3px solid ${color}`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+                            >
+                              {/* Booking number badge */}
+                              <span className="px-2 py-0.5 rounded-lg text-white font-black text-xs shrink-0" style={{ backgroundColor: color }}>
                                 {booking.bookingNumber}
                               </span>
-                              {booking.guideRole === 'second' && <span className="text-xs bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full font-medium shrink-0">2-gid</span>}
-                              <span className="text-gray-600 shrink-0">
-                                {booking.guideRole === 'second' && booking.tourType?.code === 'ZA'
-                                  ? format(addDays(new Date(booking.endDate), 4), 'dd.MM.yy')
-                                  : format(new Date(booking.departureDate), 'dd.MM.yy')}
-                              </span>
-                              <User className="w-3 h-3 text-gray-400 shrink-0" />
-                              <span className="font-bold text-gray-800">{booking.pax || 0}</span>
-                              <span className={`ml-auto px-2 py-0.5 rounded-md text-white text-xs font-bold shrink-0 ${
-                                status === 'COMPLETED' ? 'bg-blue-500' :
-                                status === 'FINAL_CONFIRMED' ? 'bg-emerald-500' :
-                                status === 'CONFIRMED' ? 'bg-green-500' :
-                                status === 'IN_PROGRESS' ? 'bg-purple-500' :
-                                status === 'CANCELLED' ? 'bg-red-500' : 'bg-yellow-500'
-                              }`}>
-                                {status === 'COMPLETED' ? 'Done' : status === 'FINAL_CONFIRMED' ? 'Final' : status === 'CONFIRMED' ? 'OK' : status === 'IN_PROGRESS' ? '...' : status === 'CANCELLED' ? 'X' : '?'}
+                              {/* 2-gid badge */}
+                              {booking.guideRole === 'second' && (
+                                <span className="text-xs bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full font-semibold shrink-0">2-gid</span>
+                              )}
+                              {/* Date */}
+                              <span className="text-gray-500 text-xs shrink-0">{depDate}</span>
+                              {/* PAX */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <User className="w-3 h-3 text-gray-400" />
+                                <span className="font-bold text-gray-800 text-xs">{booking.pax || 0}</span>
+                              </div>
+                              {/* Status */}
+                              <span className={`ml-auto px-2.5 py-0.5 rounded-lg text-white text-xs font-black shrink-0 ${statusCfg.bg}`}>
+                                {statusCfg.label}
                               </span>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-500 text-center py-2">Нет туров</p>
+                      <p className="text-xs text-gray-400 text-center py-3">Turlar yo'q</p>
                     )
                   ) : (
-                    <div className="flex justify-center py-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                    <div className="flex justify-center py-3">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-200 border-t-primary-600" />
                     </div>
                   )}
                 </div>
@@ -1190,59 +1205,55 @@ export default function Guides() {
               <div
                 key={guide.id}
                 onClick={() => { if (editingPayment !== guide.id) handleEditPayment(guide); }}
-                className={`flex rounded-2xl overflow-hidden border shadow-sm transition-all ${editingPayment === guide.id ? 'border-green-400 shadow-green-100' : 'border-green-100 cursor-pointer active:opacity-75'}`}
-                style={{ background: editingPayment === guide.id ? 'white' : 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 60%)' }}
+                className={`rounded-2xl overflow-hidden border transition-all ${editingPayment === guide.id ? 'border-green-300' : 'border-green-100 cursor-pointer active:bg-green-50/50'}`}
+                style={{ background: 'white', boxShadow: '0 1px 6px rgba(16,185,129,0.08)' }}
               >
-                <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                <div className="flex-1 px-3 py-3">
-                  {/* Header */}
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md shrink-0">
+                <div className="h-0.5 bg-gradient-to-r from-green-400 to-emerald-500" />
+                <div className="px-3 py-2.5">
+                  {/* Header row */}
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
                       <User className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 text-sm leading-tight">{guide.name}</p>
+                      <p className="font-bold text-gray-900 text-sm leading-tight truncate">{guide.name}</p>
                       {(guide.firstName || guide.lastName) && (
-                        <p className="text-xs text-gray-500">{guide.firstName} {guide.lastName}</p>
+                        <p className="text-xs text-gray-400 truncate">{guide.firstName} {guide.lastName}</p>
                       )}
                     </div>
                     {editingPayment !== guide.id && (
-                      <span className="text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-semibold shrink-0">Tahrirlash</span>
+                      <span className="text-xs text-green-700 bg-green-100 border border-green-200 px-2.5 py-0.5 rounded-full font-semibold shrink-0">Tahrirlash</span>
                     )}
                   </div>
-                  {/* Rates */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 mb-1 font-medium">Half Day</p>
+                  {/* Rates row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-amber-50 rounded-xl p-2 border border-amber-100">
+                      <p className="text-xs text-amber-600 font-semibold mb-1">½ Half Day</p>
                       {editingPayment === guide.id ? (
-                        <input type="number" value={paymentFormData.halfDayRate} onClick={(e) => e.stopPropagation()} onChange={(e) => { const v = e.target.value; setPaymentFormData({ ...paymentFormData, halfDayRate: v === '' ? 0 : parseFloat(v) }); }}
-                          className="w-full px-2 py-1.5 text-sm border-2 border-yellow-300 rounded-xl focus:border-yellow-500 focus:outline-none font-bold" step="0.01" min="0" />
+                        <input type="number" value={paymentFormData.halfDayRate} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value; setPaymentFormData({ ...paymentFormData, halfDayRate: v === '' ? 0 : parseFloat(v) }); }}
+                          className="w-full px-2 py-1 text-sm border border-amber-300 rounded-lg focus:border-amber-500 focus:outline-none font-bold bg-white" step="0.01" min="0" />
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-xl font-bold text-sm shadow-sm">
-                          <CreditCard className="w-3.5 h-3.5" />${guide.halfDayRate ?? 55}
-                        </span>
+                        <p className="font-black text-amber-700 text-base flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />${guide.halfDayRate ?? 55}</p>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 mb-1 font-medium">Day</p>
+                    <div className="bg-emerald-50 rounded-xl p-2 border border-emerald-100">
+                      <p className="text-xs text-emerald-600 font-semibold mb-1">☀ Day</p>
                       {editingPayment === guide.id ? (
-                        <input type="number" value={paymentFormData.dayRate} onClick={(e) => e.stopPropagation()} onChange={(e) => { const v = e.target.value; setPaymentFormData({ ...paymentFormData, dayRate: v === '' ? 0 : parseFloat(v) }); }}
-                          className="w-full px-2 py-1.5 text-sm border-2 border-green-300 rounded-xl focus:border-green-500 focus:outline-none font-bold" step="0.01" min="0" />
+                        <input type="number" value={paymentFormData.dayRate} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value; setPaymentFormData({ ...paymentFormData, dayRate: v === '' ? 0 : parseFloat(v) }); }}
+                          className="w-full px-2 py-1 text-sm border border-emerald-300 rounded-lg focus:border-emerald-500 focus:outline-none font-bold bg-white" step="0.01" min="0" />
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-sm shadow-sm">
-                          <CreditCard className="w-3.5 h-3.5" />${guide.dayRate ?? 110}
-                        </span>
+                        <p className="font-black text-emerald-700 text-base flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />${guide.dayRate ?? 110}</p>
                       )}
                     </div>
                   </div>
                   {/* Save/Cancel */}
                   {editingPayment === guide.id && (
-                    <div className="flex gap-2 mt-3 pt-2.5 border-t border-green-100" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => handleSavePayment(guide.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-500 text-white rounded-xl font-semibold text-sm shadow-sm">
-                        <Save className="w-4 h-4" />Saqlash
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-green-100" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => handleSavePayment(guide.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-500 text-white rounded-xl font-semibold text-sm">
+                        <Save className="w-3.5 h-3.5" />Saqlash
                       </button>
-                      <button onClick={handleCancelPaymentEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm">
-                        <X className="w-4 h-4" />Bekor
+                      <button onClick={handleCancelPaymentEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-600 rounded-xl font-semibold text-sm">
+                        <X className="w-3.5 h-3.5" />Bekor
                       </button>
                     </div>
                   )}
@@ -1250,7 +1261,7 @@ export default function Guides() {
               </div>
             ))}
             {guides.filter(g => g.isActive).length === 0 && (
-              <div className="text-center py-10 text-gray-500 text-sm">Активные гиды не найдены</div>
+              <div className="text-center py-10 text-gray-400 text-sm">Aktivные гиды не найдены</div>
             )}
           </div>
           {/* DESKTOP: table */}
@@ -1381,60 +1392,58 @@ export default function Guides() {
               <div
                 key={guide.id}
                 onClick={() => { if (editingCityPayment !== guide.id) handleEditCityPayment(guide); }}
-                className={`flex rounded-2xl overflow-hidden border shadow-sm transition-all ${editingCityPayment === guide.id ? 'border-purple-400 shadow-purple-100' : 'border-purple-100 cursor-pointer active:opacity-75'}`}
-                style={{ background: editingCityPayment === guide.id ? 'white' : 'linear-gradient(135deg, #faf5ff 0%, #ffffff 60%)' }}
+                className={`rounded-2xl overflow-hidden border transition-all ${editingCityPayment === guide.id ? 'border-purple-300' : 'border-purple-100 cursor-pointer active:bg-purple-50/50'}`}
+                style={{ background: 'white', boxShadow: '0 1px 6px rgba(139,92,246,0.08)' }}
               >
-                <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-violet-600" />
-                <div className="flex-1 px-3 py-3">
-                  {/* Header */}
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="w-6 h-6 flex items-center justify-center bg-purple-100 text-purple-700 rounded-lg font-bold text-xs shrink-0">{index + 1}</span>
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-md shrink-0">
+                <div className="h-0.5 bg-gradient-to-r from-purple-400 to-violet-500" />
+                <div className="px-3 py-2.5">
+                  {/* Header row */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-6 h-6 flex items-center justify-center bg-purple-100 text-purple-700 rounded-lg font-black text-xs shrink-0">{index + 1}</span>
+                    <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
                       <User className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 text-sm leading-tight">{guide.name}</p>
+                      <p className="font-bold text-gray-900 text-sm leading-tight truncate">{guide.name}</p>
                       {(guide.firstName || guide.lastName) && (
-                        <p className="text-xs text-gray-500">{guide.firstName} {guide.lastName}</p>
+                        <p className="text-xs text-gray-400 truncate">{guide.firstName} {guide.lastName}</p>
                       )}
                     </div>
                     {editingCityPayment !== guide.id && (
-                      <span className="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full font-semibold shrink-0">Tahrirlash</span>
+                      <span className="text-xs text-purple-700 bg-purple-100 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold shrink-0">Tahrirlash</span>
                     )}
                   </div>
-                  {/* City + Price */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 mb-1 font-medium">City</p>
+                  {/* City + Price row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-purple-50 rounded-xl p-2 border border-purple-100">
+                      <p className="text-xs text-purple-500 font-semibold mb-1">📍 City</p>
                       {editingCityPayment === guide.id ? (
-                        <input type="text" value={cityPaymentFormData.city} onClick={(e) => e.stopPropagation()} onChange={(e) => setCityPaymentFormData({ ...cityPaymentFormData, city: e.target.value })}
-                          className="w-full px-2 py-1.5 text-sm border-2 border-purple-300 rounded-xl focus:border-purple-500 focus:outline-none font-medium" placeholder="Город" />
+                        <input type="text" value={cityPaymentFormData.city} onClick={e => e.stopPropagation()} onChange={e => setCityPaymentFormData({ ...cityPaymentFormData, city: e.target.value })}
+                          className="w-full px-2 py-1 text-sm border border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium bg-white" placeholder="Shahar" />
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm">
-                          <MapPin className="w-3.5 h-3.5 text-purple-400" />{guide.city || '—'}
-                        </span>
+                        <p className="font-semibold text-gray-700 text-sm flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-purple-400 shrink-0" />{guide.city || '—'}
+                        </p>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 mb-1 font-medium">Price (USD)</p>
+                    <div className="bg-violet-50 rounded-xl p-2 border border-violet-100">
+                      <p className="text-xs text-violet-500 font-semibold mb-1">💳 Price</p>
                       {editingCityPayment === guide.id ? (
-                        <input type="number" value={cityPaymentFormData.cityRate} onClick={(e) => e.stopPropagation()} onChange={(e) => { const v = e.target.value; setCityPaymentFormData({ ...cityPaymentFormData, cityRate: v === '' ? 0 : parseFloat(v) }); }}
-                          className="w-full px-2 py-1.5 text-sm border-2 border-purple-300 rounded-xl focus:border-purple-500 focus:outline-none font-bold" step="0.01" min="0" placeholder="0" />
+                        <input type="number" value={cityPaymentFormData.cityRate} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value; setCityPaymentFormData({ ...cityPaymentFormData, cityRate: v === '' ? 0 : parseFloat(v) }); }}
+                          className="w-full px-2 py-1 text-sm border border-violet-300 rounded-lg focus:border-violet-500 focus:outline-none font-bold bg-white" step="0.01" min="0" placeholder="0" />
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-violet-600 text-white rounded-xl font-bold text-sm shadow-sm">
-                          <CreditCard className="w-3.5 h-3.5" />${guide.cityRate ?? 0}
-                        </span>
+                        <p className="font-black text-violet-700 text-base flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />${guide.cityRate ?? 0}</p>
                       )}
                     </div>
                   </div>
                   {/* Save/Cancel */}
                   {editingCityPayment === guide.id && (
-                    <div className="flex gap-2 mt-3 pt-2.5 border-t border-purple-100" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => handleSaveCityPayment(guide.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-purple-500 text-white rounded-xl font-semibold text-sm shadow-sm">
-                        <Save className="w-4 h-4" />Saqlash
+                    <div className="flex gap-2 mt-2 pt-2 border-t border-purple-100" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => handleSaveCityPayment(guide.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-purple-500 text-white rounded-xl font-semibold text-sm">
+                        <Save className="w-3.5 h-3.5" />Saqlash
                       </button>
-                      <button onClick={handleCancelCityPaymentEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm">
-                        <X className="w-4 h-4" />Bekor
+                      <button onClick={handleCancelCityPaymentEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-600 rounded-xl font-semibold text-sm">
+                        <X className="w-3.5 h-3.5" />Bekor
                       </button>
                     </div>
                   )}
@@ -1442,7 +1451,7 @@ export default function Guides() {
               </div>
             ))}
             {guides.filter(g => g.isActive).length === 0 && (
-              <div className="text-center py-10 text-gray-500 text-sm">Активные гиды не найдены</div>
+              <div className="text-center py-10 text-gray-400 text-sm">Aktiv gidlar topilmadi</div>
             )}
           </div>
           {/* DESKTOP: table */}
