@@ -4358,37 +4358,26 @@ router.post('/webhook-restaurant', async (req, res) => {
             }).catch(() => {});
             return;
           }
-          // Non-admin: show their own rejected confirmations + cancelled bookings
-          const rejWhere = { status: 'REJECTED' };
-          if (restaurantName) rejWhere.restaurantName = restaurantName;
-          const rejConfs = await prisma.mealConfirmation.findMany({
-            where: rejWhere,
+          // Non-admin: show their own storno confirmations (source: STORNO)
+          const stornoWhere = { source: 'STORNO' };
+          if (restaurantName) stornoWhere.restaurantName = restaurantName;
+          const stornoConfs = await prisma.mealConfirmation.findMany({
+            where: stornoWhere,
             include: { booking: { select: { bookingNumber: true, departureDate: true, endDate: true } } },
             orderBy: { sentAt: 'desc' }, take: 30
           });
-          const cancelledBks = await prisma.booking.findMany({
-            where: { status: 'CANCELLED' },
-            select: { bookingNumber: true, departureDate: true, endDate: true },
-            orderBy: { departureDate: 'asc' }
-          });
+          const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
           lines.push(`❌ *Anulyatsiya*`);
-          if (rejConfs.length) {
-            lines.push(`\n🍽 *Rad etilgan ovqatlanishlar*`);
-            for (const c of rejConfs) {
-              lines.push(`\n❌ *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+          if (!stornoConfs.length) {
+            lines.push('\nHech narsa topilmadi.');
+          } else {
+            for (const c of stornoConfs) {
+              lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
               if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
-              if (c.pax) lines.push(`👥 ${c.pax} kishi`);
+              if (c.restaurantName) lines.push(`🍴 ${c.restaurantName}`);
               if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
             }
           }
-          if (cancelledBks.length) {
-            lines.push(`\n🚫 *Bekor qilingan gruppalar*`);
-            for (const b of cancelledBks) {
-              lines.push(`\n❌ *${b.bookingNumber}*`);
-              if (b.departureDate) lines.push(`📅 ${fmtD(b.departureDate)} – ${fmtD(b.endDate)}`);
-            }
-          }
-          if (!rejConfs.length && !cancelledBks.length) lines.push('\nHech narsa topilmadi.');
 
         } else {
           // Zaявka 2026: all statuses | Tasdiqlangan: CONFIRMED only
@@ -4410,7 +4399,7 @@ router.post('/webhook-restaurant', async (req, res) => {
               }).catch(() => {});
               return;
             }
-            // Non-admin: show their own confirmed booking confirmations
+            // Non-admin: show their own confirmed booking confirmations (non-storno only)
             const confWhere = { source: 'BOOKING', status: 'CONFIRMED' };
             if (restaurantName) confWhere.restaurantName = restaurantName;
             const confs = await prisma.mealConfirmation.findMany({
@@ -4526,20 +4515,24 @@ router.post('/webhook-restaurant', async (req, res) => {
       const lines = [`${statusLabel} — *${tourType}${restLabel}*`];
 
       if (statusKey === 'REJECTED') {
-        // Ануляция — show CANCELLED bookings
-        const cancelledBookings = await prisma.booking.findMany({
-          where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
-          select: { bookingNumber: true, departureDate: true, endDate: true },
-          orderBy: { arrivalDate: 'asc' }
+        // Anulyatsiya — show STORNO source MealConfirmations
+        const stornoWhere = { source: 'STORNO', booking: { tourTypeId: tourTypeRecord.id } };
+        if (restaurantName) stornoWhere.restaurantName = restaurantName;
+        const stornoConfs = await prisma.mealConfirmation.findMany({
+          where: stornoWhere,
+          include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
+          orderBy: { sentAt: 'desc' }, take: 30
         });
-        if (cancelledBookings.length) {
-          lines.push(`\n🚫 *Отменённые группы ${new Date().getFullYear()}*`);
-          for (const b of cancelledBookings) {
-            lines.push(`\n❌ *${b.bookingNumber}*`);
-            if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
-          }
-        } else {
+        const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
+        if (!stornoConfs.length) {
           lines.push('\nHech narsa topilmadi.');
+        } else {
+          for (const c of stornoConfs) {
+            lines.push(`\n${ST[c.status] || '⏳'} *${c.booking?.bookingNumber || '#'+c.bookingId}*`);
+            if (!restaurantName && c.restaurantName) lines.push(`🍽 ${c.restaurantName}`);
+            if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
+            if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
+          }
         }
       } else if (statusKey === 'CONFIRMED') {
         // Tasdiqlangan: individual booking confirmations (BOOKING source)
@@ -4694,9 +4687,9 @@ router.post('/webhook-restaurant', async (req, res) => {
       const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
       if (!tourTypeRecord) return;
 
-      // Distinct restaurants from REJECTED meal confirmations for this tour type
+      // Distinct restaurants from STORNO meal confirmations for this tour type
       const rejConfs = await prisma.mealConfirmation.findMany({
-        where: { status: 'REJECTED', booking: { tourTypeId: tourTypeRecord.id } },
+        where: { source: 'STORNO', booking: { tourTypeId: tourTypeRecord.id } },
         select: { restaurantName: true },
         distinct: ['restaurantName'],
         orderBy: { restaurantName: 'asc' }
@@ -4735,36 +4728,23 @@ router.post('/webhook-restaurant', async (req, res) => {
       const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
       if (!tourTypeRecord) return;
 
-      const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
-      const rejConfs = await prisma.mealConfirmation.findMany({
-        where: { status: 'REJECTED', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id } },
-        include: { booking: { select: { bookingNumber: true, departureDate: true, endDate: true } } },
+      const stornoConfs = await prisma.mealConfirmation.findMany({
+        where: { source: 'STORNO', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id } },
+        include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
         orderBy: { sentAt: 'desc' }
       });
-      const cancelledBks = await prisma.booking.findMany({
-        where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
-        select: { bookingNumber: true, departureDate: true, endDate: true },
-        orderBy: { departureDate: 'asc' }
-      });
 
+      const ST2 = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
       const lines = [`❌ *${tourType} — ${restName}*`];
-      if (rejConfs.length) {
-        lines.push(`\n🍽 *Rad etilgan ovqatlanishlar*`);
-        for (const c of rejConfs) {
-          lines.push(`\n❌ *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
+      if (!stornoConfs.length) {
+        lines.push('\nHech narsa topilmadi.');
+      } else {
+        for (const c of stornoConfs) {
+          lines.push(`\n${ST2[c.status] || '⏳'} *${c.booking?.bookingNumber || '#' + c.bookingId}*`);
           if (c.mealDate) lines.push(`📅 ${c.mealDate}`);
-          if (c.pax) lines.push(`👥 ${c.pax} kishi`);
           if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
         }
       }
-      if (cancelledBks.length) {
-        lines.push(`\n🚫 *Bekor qilingan gruppalar*`);
-        for (const b of cancelledBks) {
-          lines.push(`\n❌ *${b.bookingNumber}*`);
-          if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
-        }
-      }
-      if (!rejConfs.length && !cancelledBks.length) lines.push('\nHech narsa topilmadi.');
 
       await axios.post(`${RESTAURANT_API()}/sendMessage`, {
         chat_id: fromChatId, text: lines.join('\n').substring(0, 4000), parse_mode: 'Markdown'
@@ -6005,17 +5985,17 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
     const isCancelled = booking.status === 'CANCELLED';
 
     if (isCancelled) {
-      // Send anulyatsiya notification (no confirm buttons)
-      await prisma.mealConfirmation.create({
+      // Send anulyatsiya with confirm buttons (Orient sends manually, provider confirms)
+      const conf = await prisma.mealConfirmation.create({
         data: {
           bookingId: parseInt(bookingId),
           restaurantName,
           city: city || null,
           mealDate: mealDate || null,
           pax: 0,
-          status: 'REJECTED',
+          status: 'PENDING',
           sentAt: new Date(),
-          source: 'BOOKING',
+          source: 'STORNO',
           pricePerPerson: null
         }
       });
@@ -6033,7 +6013,11 @@ router.post('/send-meal/:bookingId', authenticate, async (req, res) => {
       await axios.post(`${RESTAURANT_API()}/sendMessage`, {
         chat_id: chatId,
         text: anuMsg,
-        parse_mode: 'Markdown'
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({ inline_keyboard: [[
+          { text: '✅ Qabul qildim', callback_data: `meal_confirm:${conf.id}` },
+          { text: '❌ Rad etish',    callback_data: `meal_reject:${conf.id}` }
+        ]] })
       });
 
       return res.json({ success: true, cancelled: true });
