@@ -382,71 +382,70 @@ export default function Guides() {
     <div style={{ minHeight: '100vh', background: '#f1f5f9' }}>
 
       {/* ━━━━━━━━━━━━━━━━━━ DARK HERO HEADER ━━━━━━━━━━━━━━━━━━ */}
-      <div style={{ background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 50%, #0f1729 100%)', position: 'relative', overflow: 'hidden', padding: '32px 24px 28px', margin: '12px 12px 0', borderRadius: '28px' }}>
+      <div style={{ background: 'linear-gradient(160deg, #0f1729 0%, #1a1040 50%, #0f1729 100%)', position: 'relative', overflow: 'hidden', padding: isMobile ? '16px 14px 18px' : '32px 24px 28px', margin: isMobile ? '8px 8px 0' : '12px 12px 0', borderRadius: isMobile ? '20px' : '28px' }}>
         {/* Glow blobs */}
         <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '400px', height: '400px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '-60px', left: '-60px', width: '300px', height: '300px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.45) 0%, transparent 70%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', top: '30%', left: '40%', width: '220px', height: '220px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%)', filter: 'blur(35px)', pointerEvents: 'none' }} />
 
         <div className="relative max-w-7xl mx-auto">
-          {/* Breadcrumb */}
-          <div style={{ color: 'rgba(165,180,252,0.5)', fontSize: '11px', fontWeight: '700', letterSpacing: '2.5px', marginBottom: '20px', textTransform: 'uppercase' }}>
+          {/* Breadcrumb — desktop only */}
+          <div className="hidden md:block" style={{ color: 'rgba(165,180,252,0.5)', fontSize: '11px', fontWeight: '700', letterSpacing: '2.5px', marginBottom: '20px', textTransform: 'uppercase' }}>
             ORIENT INSIGHT &nbsp;›&nbsp; TOUR GUIDES
           </div>
 
           {/* Title row */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="relative">
-                <div style={{ width: '72px', height: '72px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 50px rgba(99,102,241,0.65), 0 20px 40px rgba(0,0,0,0.3)', flexShrink: 0 }}>
-                  <User style={{ width: '38px', height: '38px', color: 'white' }} />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 md:gap-6">
+              <div className="relative shrink-0">
+                <div style={{ width: isMobile ? '52px' : '72px', height: isMobile ? '52px' : '72px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', borderRadius: isMobile ? '14px' : '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 50px rgba(99,102,241,0.65), 0 20px 40px rgba(0,0,0,0.3)' }}>
+                  <User style={{ width: isMobile ? '26px' : '38px', height: isMobile ? '26px' : '38px', color: 'white' }} />
                 </div>
-                <div style={{ position: 'absolute', bottom: '-6px', right: '-6px', width: '28px', height: '28px', background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #0f1729', boxShadow: '0 0 18px rgba(16,185,129,0.7)' }}>
-                  <span style={{ color: 'white', fontSize: '10px', fontWeight: '900' }}>{guides.length}</span>
+                <div style={{ position: 'absolute', bottom: '-5px', right: '-5px', width: isMobile ? '22px' : '28px', height: isMobile ? '22px' : '28px', background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0f1729', boxShadow: '0 0 18px rgba(16,185,129,0.7)' }}>
+                  <span style={{ color: 'white', fontSize: '9px', fontWeight: '900' }}>{guides.length}</span>
                 </div>
               </div>
               <div>
-                <h1 style={{ fontSize: 'clamp(28px, 5vw, 46px)', fontWeight: '900', color: 'white', margin: 0, lineHeight: 1.05, textShadow: '0 0 40px rgba(99,102,241,0.6)' }}>
+                <h1 style={{ fontSize: isMobile ? '24px' : 'clamp(28px, 5vw, 46px)', fontWeight: '900', color: 'white', margin: 0, lineHeight: 1.05, textShadow: '0 0 40px rgba(99,102,241,0.6)' }}>
                   Tour Guides
                 </h1>
-                <p style={{ color: 'rgba(165,180,252,0.6)', fontSize: '14px', fontWeight: '600', margin: '6px 0 0', letterSpacing: '0.5px' }}>Professional Guide Management</p>
+                <p style={{ color: 'rgba(165,180,252,0.6)', fontSize: isMobile ? '12px' : '14px', fontWeight: '600', margin: '4px 0 0', letterSpacing: '0.5px' }}>Professional Guide Management</p>
               </div>
             </div>
 
             {isAdmin && (
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex gap-2 shrink-0">
                 <button
                   onClick={handleCopyFromYear}
                   disabled={copyingYear}
                   title={`${selectedYear - 1} yildan ${selectedYear} yilga nusxalash`}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', backdropFilter: 'blur(10px)', minHeight: '44px', whiteSpace: 'nowrap' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: isMobile ? '8px 10px' : '10px 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', backdropFilter: 'blur(10px)', minHeight: '40px', whiteSpace: 'nowrap' }}
                 >
-                  <Copy style={{ width: '16px', height: '16px' }} />
+                  <Copy style={{ width: '15px', height: '15px' }} />
                   <span className="hidden sm:inline">{copyingYear ? 'Nusxalanmoqda...' : `${selectedYear - 1} → ${selectedYear}`}</span>
                 </button>
                 <button
                   onClick={() => openModal()}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '800', boxShadow: '0 0 30px rgba(99,102,241,0.55), 0 8px 20px rgba(0,0,0,0.3)', minHeight: '44px', whiteSpace: 'nowrap' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: isMobile ? '8px 14px' : '10px 24px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: isMobile ? '13px' : '14px', fontWeight: '800', boxShadow: '0 0 30px rgba(99,102,241,0.55), 0 8px 20px rgba(0,0,0,0.3)', minHeight: '40px', whiteSpace: 'nowrap' }}
                 >
-                  <Plus style={{ width: '18px', height: '18px' }} />
-                  <span className="hidden sm:inline">Добавить гида</span>
-                  <span className="sm:hidden">Добавить</span>
+                  <Plus style={{ width: '16px', height: '16px' }} />
+                  <span>+ Добавить</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* Stat badges */}
-          <div className="flex flex-wrap gap-3 mt-6">
+          {/* Stat badges — all 3 on one row on mobile */}
+          <div className="flex gap-2 mt-3 md:mt-6">
             {[
-              { label: 'Jami gidlar',       value: guides.length,                                         color: '#6366f1', rgb: '99,102,241' },
-              { label: 'Faol gidlar',        value: guides.filter(g => g.isActive).length,                 color: '#10b981', rgb: '16,185,129' },
-              { label: 'Ogohlantirishlar',   value: alerts.expiredCount + alerts.expiringSoonCount,        color: '#f59e0b', rgb: '245,158,11'  },
+              { label: 'Jami',    value: guides.length,                                  color: '#6366f1', rgb: '99,102,241' },
+              { label: 'Faol',    value: guides.filter(g => g.isActive).length,          color: '#10b981', rgb: '16,185,129' },
+              { label: 'Ogohlantirish', value: alerts.expiredCount + alerts.expiringSoonCount, color: '#f59e0b', rgb: '245,158,11' },
             ].map(({ label, value, color, rgb }) => (
-              <div key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: `rgba(${rgb}, 0.12)`, border: `1px solid rgba(${rgb}, 0.3)`, borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, boxShadow: `0 0 10px ${color}`, flexShrink: 0 }} />
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: '600' }}>{label}:</span>
-                <span style={{ color: 'white', fontWeight: '900', fontSize: '15px' }}>{value}</span>
+              <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: isMobile ? '5px 8px' : '6px 16px', background: `rgba(${rgb}, 0.12)`, border: `1px solid rgba(${rgb}, 0.3)`, borderRadius: '20px', backdropFilter: 'blur(10px)' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: color, boxShadow: `0 0 8px ${color}`, flexShrink: 0 }} />
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: isMobile ? '10px' : '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>{label}:</span>
+                <span style={{ color: 'white', fontWeight: '900', fontSize: isMobile ? '13px' : '15px' }}>{value}</span>
               </div>
             ))}
           </div>
@@ -454,11 +453,11 @@ export default function Guides() {
       </div>
 
       {/* ━━━━━━━━━━━━━━━━━━ CONTENT AREA ━━━━━━━━━━━━━━━━━━ */}
-      <div className="px-3 md:px-6 pb-20 md:pb-8" style={{ background: '#f1f5f9', paddingTop: '20px', minHeight: 'calc(100vh - 220px)' }}>
+      <div className="px-2 md:px-6 pb-20 md:pb-8" style={{ background: '#f1f5f9', paddingTop: '14px', minHeight: 'calc(100vh - 220px)' }}>
 
       {/* Tabs */}
-      <div style={{ background: 'white', borderRadius: '16px', padding: '8px', marginBottom: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', border: '1px solid rgba(99,102,241,0.1)' }}>
-        <div className="grid grid-cols-2 gap-2 md:flex md:gap-2">
+      <div style={{ background: 'white', borderRadius: '14px', padding: '6px', marginBottom: '14px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', border: '1px solid rgba(99,102,241,0.1)' }}>
+        <div className="grid grid-cols-2 gap-1.5 md:flex md:gap-2">
           {[
             { key: 'information',  label: 'Information',  icon: Info,       grad: 'linear-gradient(135deg,#6366f1,#4f46e5)', shadow: 'rgba(99,102,241,0.45)'  },
             { key: 'tours',        label: 'Tours',        icon: Calendar,   grad: 'linear-gradient(135deg,#3b82f6,#06b6d4)', shadow: 'rgba(59,130,246,0.45)'  },
@@ -469,19 +468,19 @@ export default function Guides() {
               key={key}
               onClick={() => handleTabChange(key)}
               style={activeTab === key ? {
-                background: grad, color: 'white', borderRadius: '10px', padding: '10px 20px',
-                fontWeight: '800', fontSize: '14px', border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                background: grad, color: 'white', borderRadius: '9px', padding: isMobile ? '9px 8px' : '10px 20px',
+                fontWeight: '800', fontSize: isMobile ? '12px' : '14px', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 boxShadow: `0 0 25px ${shadow}, 0 4px 15px rgba(0,0,0,0.12)`,
                 transform: 'translateY(-1px)', whiteSpace: 'nowrap', transition: 'all 0.3s',
               } : {
-                background: 'transparent', color: '#6b7280', borderRadius: '10px', padding: '10px 20px',
-                fontWeight: '700', fontSize: '14px', border: 'none', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                background: 'transparent', color: '#6b7280', borderRadius: '9px', padding: isMobile ? '9px 8px' : '10px 20px',
+                fontWeight: '700', fontSize: isMobile ? '12px' : '14px', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 whiteSpace: 'nowrap', transition: 'all 0.3s',
               }}
             >
-              <Icon style={{ width: '16px', height: '16px' }} />
+              <Icon style={{ width: '14px', height: '14px' }} />
               <span>{label}</span>
             </button>
           ))}
@@ -534,89 +533,91 @@ export default function Guides() {
         <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-primary-100 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-transparent to-indigo-50/30 pointer-events-none"></div>
         {/* MOBILE: guide cards */}
-        <div className="md:hidden space-y-2">
+        <div className="md:hidden space-y-2 p-2">
           {guides.map((guide, idx) => (
-            <div key={guide.id} className={`rounded-2xl border shadow-sm overflow-hidden ${!guide.isActive ? 'opacity-60 border-gray-200 bg-gray-50' : 'border-indigo-100 bg-white'}`}>
+            <div key={guide.id} className={`rounded-2xl border overflow-hidden ${!guide.isActive ? 'opacity-60 border-gray-200 bg-gray-50' : 'border-indigo-100 bg-white'}`}
+              style={{ boxShadow: guide.isActive ? '0 2px 12px rgba(99,102,241,0.08)' : 'none' }}>
               {/* Top gradient strip */}
               {guide.isActive && <div className="h-0.5 bg-gradient-to-r from-primary-400 via-indigo-400 to-purple-400" />}
-              {/* Clickable body → opens edit modal */}
-              <div onClick={() => openModal(guide)} className="cursor-pointer active:bg-primary-50/60 transition-colors">
-              {/* Card header: avatar + name + status */}
-              <div className="flex items-start gap-3 px-3 pt-3 pb-2.5 bg-gradient-to-br from-primary-50/40 to-indigo-50/20">
-                <div className="w-11 h-11 shrink-0 bg-gradient-to-br from-primary-500 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-200">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-bold text-gray-900 text-sm leading-snug">{guide.name}</p>
-                      {(guide.firstName || guide.lastName) && (
-                        <p className="text-xs text-gray-500 mt-0.5">{guide.firstName} {guide.lastName}</p>
-                      )}
-                    </div>
-                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 mt-0.5 ${guide.isActive ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-gray-200 text-gray-500'}`}>
-                      {guide.isActive ? 'Актив' : 'Нет'}
-                    </span>
+              {/* Card body */}
+              <div onClick={() => openModal(guide)} className="cursor-pointer active:bg-primary-50/60 transition-colors px-3 pt-3 pb-2">
+                {/* Row 1: avatar + name + status */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 shrink-0 bg-gradient-to-br from-primary-500 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md shadow-primary-200">
+                    <User className="w-5 h-5 text-white" />
                   </div>
-                  {/* Info tags */}
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 text-sm leading-tight truncate">{guide.name}</p>
+                        {(guide.firstName || guide.lastName) && (
+                          <p className="text-xs text-gray-500 truncate">{guide.firstName} {guide.lastName}</p>
+                        )}
+                      </div>
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 ${guide.isActive ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-gray-200 text-gray-500'}`}>
+                        {guide.isActive ? 'Актив' : 'Нет'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {/* Row 2: passport tags — tap to copy */}
+                {(guide.dateOfBirth || guide.passportNumber || guide.passportExpiryDate || guide.passportStatus) && (
+                  <div className="flex flex-wrap gap-1 mt-2 ml-13">
                     {guide.dateOfBirth && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 shadow-sm">
+                      <span
+                        onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(format(new Date(guide.dateOfBirth), 'dd.MM.yyyy')); toast.success('Nusxalandi!', { duration: 1200 }); }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 active:bg-gray-200 cursor-pointer select-none"
+                      >
                         <Calendar className="w-3 h-3 text-gray-400" />
                         {format(new Date(guide.dateOfBirth), 'dd.MM.yyyy')}
                       </span>
                     )}
                     {guide.passportNumber && (
-                      <code className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded-lg font-semibold border border-primary-200">
+                      <code
+                        onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(guide.passportNumber); toast.success('Nusxalandi!', { duration: 1200 }); }}
+                        className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded-lg font-semibold border border-primary-200 active:bg-primary-100 cursor-pointer select-none"
+                      >
                         {guide.passportNumber}
                       </code>
                     )}
                     {guide.passportExpiryDate && (
-                      <span className="text-xs text-gray-500 bg-white px-1.5 py-0.5 rounded-lg border border-gray-200 shadow-sm">
+                      <span
+                        onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')); toast.success('Nusxalandi!', { duration: 1200 }); }}
+                        className="text-xs text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded-lg border border-gray-200 active:bg-gray-200 cursor-pointer select-none"
+                      >
                         до {format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')}
                       </span>
                     )}
                     {guide.passportStatus && getPassportStatusBadge(guide.passportStatus)}
                   </div>
-                </div>
+                )}
+                {/* Row 3: phone */}
+                {guide.phone && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-700">
+                    <Phone className="w-3.5 h-3.5 text-primary-400 shrink-0" />
+                    <span className="font-medium">{guide.phone}</span>
+                  </div>
+                )}
               </div>
-              {/* Contact info only */}
-              {(guide.phone || guide.email) && (
-                <div className="px-3 py-2 space-y-1 border-t border-gray-100">
-                  {guide.phone && (
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <Phone className="w-3.5 h-3.5 text-primary-400 shrink-0" />
-                      <span className="font-medium">{guide.phone}</span>
-                    </div>
-                  )}
-                  {guide.email && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span>{guide.email}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              </div>{/* end clickable body */}
               {/* Action bar */}
-              <div className="flex items-center border-t border-gray-100 bg-gray-50/50">
+              <div className="flex items-center border-t border-gray-100 bg-gray-50/70">
                 <button
                   onClick={() => toggleTours(guide.id)}
-                  className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-primary-600 hover:bg-primary-50 transition-all flex-1"
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-primary-600 hover:bg-primary-50 transition-all flex-1"
                 >
                   {expandedTours === guide.id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   <span>Tours ({guide._count?.bookings || 0})</span>
                 </button>
                 <div className="flex items-center border-l border-gray-200">
-                  <button onClick={() => openModal(guide)} className="px-3 py-2.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-all" title="Редактировать">
+                  <button onClick={() => openModal(guide)} className="px-3 py-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-all" title="Редактировать">
                     <Edit className="w-4 h-4" />
                   </button>
                   {isAdmin && (
                     <>
-                      <button onClick={() => toggleActive(guide)} className="px-3 py-2.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-all border-l border-gray-200" title={guide.isActive ? 'Деактивировать' : 'Активировать'}>
+                      <button onClick={() => toggleActive(guide)} className="px-3 py-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-all border-l border-gray-200" title={guide.isActive ? 'Деактивировать' : 'Активировать'}>
                         <Shield className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(guide)} className="px-3 py-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all border-l border-gray-200" title="Удалить">
+                      <button onClick={() => handleDelete(guide)} className="px-3 py-2 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all border-l border-gray-200" title="Удалить">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </>
