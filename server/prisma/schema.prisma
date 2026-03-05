@@ -988,6 +988,7 @@ model TransportConfirmation {
   bookingId   Int
   booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   provider    String   // "sevil" | "xayrulla" | "nosir" | "hammasi"
+  source      String   @default("MARSHRUT") // MARSHRUT | STORNO
   status      String   @default("PENDING_APPROVAL") // PENDING_APPROVAL | APPROVED | REJECTED_BY_APPROVER | PENDING | CONFIRMED | REJECTED
   approvedBy  String?  // Approver (tekshirdi) ismi — 1-bosqich
   confirmedBy String?  // Provider (tasdiqladi) ismi — 2-bosqich

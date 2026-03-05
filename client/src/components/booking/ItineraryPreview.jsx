@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { bookingsApi, touristsApi, hotelsApi, telegramApi } from '../../services/api';
 import { routesApi, railwaysApi, flightsApi } from '../../services/api';
 import toast from 'react-hot-toast';
-import { MapPin, Loader2, Edit, Save, X, Plus, Trash2, FileDown, Send, Clock } from 'lucide-react';
+import { MapPin, Loader2, Edit, Save, X, Plus, Trash2, FileDown, Send, Clock, Ban } from 'lucide-react';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -30,6 +30,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
   });
   const printRef = useRef(null);
   const [sendingTelegram, setSendingTelegram] = useState({});
+  const [sendingStorno, setSendingStorno] = useState({});
   const docWrapperRef = useRef(null);
   const [docScale, setDocScale] = useState(1);
 
@@ -862,6 +863,18 @@ export default function ItineraryPreview({ bookingId, booking }) {
     }
   };
 
+  const sendStornoToProvider = async (provider) => {
+    setSendingStorno(prev => ({ ...prev, [provider]: true }));
+    try {
+      await telegramApi.sendStornoTransport(booking.id, provider);
+      toast.success(`Аннуляция ${provider === 'xayrulla' ? 'Xayrulla' : provider === 'sevil' ? 'Sevil' : 'Nosir'} ga yuborildi!`);
+    } catch (err) {
+      toast.error('Yuborishda xatolik: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSendingStorno(prev => ({ ...prev, [provider]: false }));
+    }
+  };
+
   const handleDownloadPDF = () => {
     // Use browser's print to PDF functionality
     window.print();
@@ -1506,6 +1519,40 @@ export default function ItineraryPreview({ bookingId, booking }) {
 
       {/* Action Buttons */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-end gap-2 md:gap-3 print:hidden">
+
+        {/* STORNO TG buttons — only for CANCELLED bookings */}
+        {booking?.status === 'CANCELLED' && (() => {
+          const tourCode = typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code;
+          const providers = ['xayrulla', 'sevil', ...(['CO','KAS'].includes(tourCode) ? ['nosir'] : [])];
+          const COLORS = { xayrulla: 'from-yellow-600 to-yellow-700 bg-yellow-500', sevil: 'from-red-700 to-red-800 bg-red-600', nosir: 'from-blue-600 to-blue-700 bg-blue-500' };
+          const LABELS = { xayrulla: 'Xayrulla', sevil: 'Sevil', nosir: 'Nosir' };
+          return (
+            <>
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-1.5">
+                <Ban className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <span className="text-red-600 text-xs font-semibold">Storno TG</span>
+              </div>
+              {providers.map(p => {
+                const [from, to, btn] = COLORS[p].split(' ');
+                return (
+                  <button
+                    key={p}
+                    onClick={() => sendStornoToProvider(p)}
+                    disabled={sendingStorno[p]}
+                    title={`Аннуляция ${LABELS[p]} ga yuborish`}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r ${from} ${to} text-white rounded-xl hover:opacity-90 transition-all shadow-lg disabled:opacity-60 w-full md:w-auto`}
+                  >
+                    {sendingStorno[p] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                    {LABELS[p]}
+                  </button>
+                );
+              })}
+            </>
+          );
+        })()}
+
+        {/* Regular buttons — hidden for CANCELLED bookings */}
+        {booking?.status !== 'CANCELLED' && <>
         {/* Vaqt auto-fill button */}
         <button
           onClick={autoFillTimes}
@@ -1593,6 +1640,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
             </button>
           </div>
         )}
+        </>}
       </div>
 
       {/* Itinerary Document */}

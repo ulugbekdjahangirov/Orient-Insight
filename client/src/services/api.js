@@ -363,6 +363,7 @@ export const telegramApi = {
   sendCostPDFs: (bookingId, formData) => api.post(`/telegram/send-cost-pdfs/${bookingId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  sendStornoTransport: (bookingId, provider) => api.post(`/telegram/send-storno-transport/${bookingId}/${provider}`),
   getTransportConfirmations: (year) => api.get('/telegram/transport-confirmations', year ? { params: { year } } : {}),
   deleteTransportConfirmation: (id) => api.delete(`/telegram/transport-confirmations/${id}`),
   getTransportSettings: () => api.get('/telegram/transport-settings'),

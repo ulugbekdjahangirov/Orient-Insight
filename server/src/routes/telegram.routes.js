@@ -3568,20 +3568,27 @@ router.post('/webhook-transport', async (req, res) => {
         providerName = isAdminCb ? null : await getProviderByChatId(chatId);
       }
 
-      // Tasdiqlangan = ONLY individual marshrut TransportConfirmation records
+      // Tasdiqlangan = ONLY MARSHRUT source (CONFIRMED + REJECTED)
       // Заявка 2026  = ONLY JP_TRANSPORT_CONFIRM_* SystemSetting records
+      // Anulyatsiya  = ONLY STORNO source (all statuses)
       const STATUS_FILTERS = {
-        CONFIRMED: ['CONFIRMED'],
-        PENDING:   [],  // Заявка 2026: skip individual confs, show JP only
-        REJECTED:  ['REJECTED', 'REJECTED_BY_APPROVER']
+        CONFIRMED: ['CONFIRMED', 'REJECTED', 'REJECTED_BY_APPROVER'],
+        PENDING:   [],
+        REJECTED:  ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED', 'REJECTED_BY_APPROVER']
+      };
+      const SOURCE_FILTERS = {
+        CONFIRMED: 'MARSHRUT',
+        PENDING:   null,
+        REJECTED:  'STORNO'
       };
       const JP_STATUS_FILTERS = {
-        CONFIRMED: [],  // Tasdiqlangan: skip JP entries, show individual confs only
-        PENDING:   ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED'],  // show all JP statuses
+        CONFIRMED: [],
+        PENDING:   ['PENDING_APPROVAL', 'APPROVED', 'CONFIRMED', 'REJECTED'],
         REJECTED:  []
       };
       const STATUS_EMOJI = { PENDING_APPROVAL: '🔄', APPROVED: '⏳', PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌', REJECTED_BY_APPROVER: '❌' };
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
+      const sourceFilter = SOURCE_FILTERS[statusKey] || null;
       const jpStatusFilter = JP_STATUS_FILTERS[statusKey] || ['CONFIRMED'];
       const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
 
@@ -3589,19 +3596,20 @@ router.post('/webhook-transport', async (req, res) => {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
       }).catch(() => {});
 
-      // Build where clause — filter by status + tourType via booking relation
+      // Build where clause — filter by status + source + tourType via booking relation
       const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
       if (!tourTypeRecord) return;
 
       const where = {
-        status: { in: statusFilter },
         booking: { tourTypeId: tourTypeRecord.id }
       };
+      if (statusFilter.length > 0) where.status = { in: statusFilter };
+      if (sourceFilter) where.source = sourceFilter;
       if (providerName && providerName !== 'hammasi') {
         where.provider = providerName;
       }
 
-      const confs = await prisma.transportConfirmation.findMany({
+      const confs = statusFilter.length === 0 ? [] : await prisma.transportConfirmation.findMany({
         where,
         include: {
           booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true } }
@@ -3619,15 +3627,7 @@ router.post('/webhook-transport', async (req, res) => {
         .filter(e => e && jpStatusFilter.includes(e.status))
         .filter(e => !providerName || providerName === 'hammasi' || e.provider === providerName);
 
-      // For Ануляция — also fetch CANCELLED bookings from Booking table
-      let cancelledBookings = [];
-      if (statusKey === 'REJECTED') {
-        cancelledBookings = await prisma.booking.findMany({
-          where: { status: 'CANCELLED', tourTypeId: tourTypeRecord.id },
-          select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true, departureDate: true },
-          orderBy: { arrivalDate: 'asc' }
-        });
-      }
+      const cancelledBookings = [];
 
       const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
 
@@ -3644,21 +3644,22 @@ router.post('/webhook-transport', async (req, res) => {
         ? ` (${PROVIDER_LABELS[providerName] || providerName})` : '';
       const lines = [`${statusLabel} — *${tourType}${provLabel}*`];
 
-      // Individual booking marshrut confirmations
+      // Individual booking marshrut confirmations (MARSHRUT source) or storno (STORNO source)
       for (const c of confs) {
         const b = c.booking;
         const st = STATUS_EMOJI[c.status] || '❓';
         lines.push(`\n${st} *${b?.bookingNumber || '#'+c.bookingId}*`);
+        if (c.source === 'STORNO') lines.push(`🚫 Аннуляция`);
         if (b?.arrivalDate) lines.push(`📅 ${fmt(b.arrivalDate)} – ${fmt(b.endDate)}`);
         if (b?.pax) lines.push(`👥 ${b.pax} kishi`);
-        if (c.confirmedBy) lines.push(`👤 ${c.confirmedBy}`);
-        else if (c.approvedBy) lines.push(`👤 ${c.approvedBy}`);
+        if (c.confirmedBy) lines.push(`👤 Tasdiqladi: ${c.confirmedBy}`);
+        else if (c.approvedBy) lines.push(`👤 Tekshirdi: ${c.approvedBy}`);
       }
 
-      // Cancelled bookings section
+      // Cancelled bookings section — only for Anulyatsiya (REJECTED key)
       if (cancelledBookings.length) {
         if (confs.length) lines.push(`\n━━━━━━━━━━━━━━━━━━`);
-        lines.push(`\n🚫 *Отменённые группы ${year}*`);
+        lines.push(`\n🚫 *Bekor qilingan gruppalar ${year}*`);
         for (const b of cancelledBookings) {
           lines.push(`\n❌ *${b.bookingNumber}*`);
           if (b.departureDate) lines.push(`📅 ${fmt(b.departureDate)} – ${fmt(b.endDate)}`);
@@ -4083,6 +4084,124 @@ router.post('/webhook-transport', async (req, res) => {
             parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
           }).catch(() => {});
         }
+      }
+      return;
+    }
+
+    // ── st_approve / st_decline (Siroj approving storno for provider) ────
+    if (data.startsWith('st_approve:') || data.startsWith('st_decline:')) {
+      const parts     = data.split(':');
+      const isApprove = data.startsWith('st_approve:');
+      const stBookingId = parseInt(parts[1]);
+      const stProvider  = parts[2];
+      const providerLabel = PROVIDER_LABELS[stProvider] || stProvider;
+
+      const confirmation = await prisma.transportConfirmation.findFirst({
+        where: { bookingId: stBookingId, provider: stProvider, source: 'STORNO', status: 'PENDING_APPROVAL' },
+        include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true, guide: { select: { name: true, phone: true } } } } }
+      });
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isApprove ? `✅ ${providerLabel} ga yuborilmoqda...` : '❌ Rad qilindi.',
+        show_alert: false
+      }).catch(() => {});
+
+      if (!confirmation) return;
+
+      const fmtD = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+
+      if (isApprove) {
+        const providerChatId = await getProviderChatId(stProvider);
+        if (!providerChatId) return;
+
+        const booking = confirmation.booking;
+        const providerText = [
+          `🚫 *АННУЛЯЦИЯ*`,
+          `📋 Gruppa: *${booking.bookingNumber}*`,
+          `🚗 Transport: *${providerLabel}*`,
+          booking.pax         ? `👥 PAX: *${booking.pax}* kishi`                    : null,
+          booking.arrivalDate ? `📅 Boshlanishi: ${fmtD(booking.arrivalDate)}`       : null,
+          booking.endDate     ? `🏁 Tugashi: ${fmtD(booking.endDate)}`               : null,
+        ].filter(v => v !== null).join('\n');
+
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: providerChatId,
+          text: providerText,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [[
+            { text: '✅ Qabul qildim', callback_data: `st_confirm:${stBookingId}:${stProvider}` },
+            { text: '❌ Rad etish',    callback_data: `st_reject:${stBookingId}:${stProvider}`  }
+          ]] })
+        }).catch(err => console.error('st_approve sendMessage error:', err.response?.data || err.message));
+
+        await prisma.transportConfirmation.update({
+          where: { id: confirmation.id },
+          data: { status: 'APPROVED', approvedBy: fromName, respondedAt: new Date() }
+        });
+
+        if (fromChatId && cb.message?.message_id) {
+          await axios.post(`${TRANSPORT_API()}/editMessageText`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            text: (cb.message.text || '') + `\n\n✅ ${fromName} tasdiqladi — ${providerLabel} ga yuborildi`,
+            parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+      } else {
+        await prisma.transportConfirmation.update({
+          where: { id: confirmation.id },
+          data: { status: 'REJECTED_BY_APPROVER', approvedBy: fromName, respondedAt: new Date() }
+        });
+        if (fromChatId && cb.message?.message_id) {
+          await axios.post(`${TRANSPORT_API()}/editMessageText`, {
+            chat_id: fromChatId, message_id: cb.message.message_id,
+            text: (cb.message.text || '') + `\n\n❌ ${fromName} rad qildi`,
+            parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+          }).catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // ── st_confirm / st_reject (provider confirming storno) ──────────────
+    if (data.startsWith('st_confirm:') || data.startsWith('st_reject:')) {
+      const parts    = data.split(':');
+      const isConfirm = data.startsWith('st_confirm:');
+      const stBookingId = parseInt(parts[1]);
+      const stProvider  = parts[2];
+
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: isConfirm ? '✅ Qabul qilindi!' : '❌ Rad etildi.',
+        show_alert: false
+      }).catch(() => {});
+
+      const conf = await prisma.transportConfirmation.findFirst({
+        where: { bookingId: stBookingId, provider: stProvider, source: 'STORNO', status: 'APPROVED' }
+      });
+      if (!conf) return;
+
+      await prisma.transportConfirmation.update({
+        where: { id: conf.id },
+        data: { status: isConfirm ? 'CONFIRMED' : 'REJECTED', confirmedBy: fromName, respondedAt: new Date() }
+      });
+
+      if (fromChatId && cb.message?.message_id) {
+        const resultLine = `\n\n${isConfirm ? '✅ QABUL QILDI' : '❌ RAD ETDI'}: *${fromName}*`;
+        await axios.post(`${TRANSPORT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: (cb.message.text || '') + resultLine,
+          parse_mode: 'Markdown', reply_markup: JSON.stringify({ inline_keyboard: [] })
+        }).catch(() => {});
+      }
+
+      if (adminChatId) {
+        const booking = await prisma.booking.findUnique({ where: { id: stBookingId }, select: { bookingNumber: true } });
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: adminChatId,
+          text: `${isConfirm ? '✅' : '❌'} *АННУЛЯЦИЯ ${isConfirm ? 'tasdiqlandi' : 'rad etildi'}*\n📋 ${booking?.bookingNumber || '#'+stBookingId}\n🚗 ${PROVIDER_LABELS[stProvider] || stProvider}\n👤 ${fromName}`,
+          parse_mode: 'Markdown'
+        }).catch(() => {});
       }
       return;
     }
@@ -5608,6 +5727,62 @@ router.post('/send-marshrut/:bookingId/:provider', authenticate, upload.single('
     res.json({ success: true });
   } catch (err) {
     console.error('Send marshrut telegram error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.response?.data?.description || err.message });
+  }
+});
+
+// POST /api/telegram/send-storno-transport/:bookingId/:provider
+router.post('/send-storno-transport/:bookingId/:provider', authenticate, async (req, res) => {
+  try {
+    const bookingId = parseInt(req.params.bookingId);
+    const provider  = req.params.provider.toLowerCase();
+    if (!['sevil', 'xayrulla', 'nosir'].includes(provider)) {
+      return res.status(400).json({ error: 'Noto\'g\'ri provider' });
+    }
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_TRANSPORT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+    if (!TELEGRAM_BOT_TOKEN) return res.status(500).json({ error: 'TELEGRAM_TRANSPORT_TOKEN sozlanmagan' });
+    const TG_BASE = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { bookingNumber: true, arrivalDate: true, endDate: true, pax: true, status: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking topilmadi' });
+    if (booking.status !== 'CANCELLED') return res.status(400).json({ error: 'Booking bekor qilinmagan' });
+
+    const hammasiChatId = await getProviderChatId('hammasi');
+    if (!hammasiChatId) return res.status(400).json({ error: 'Hammasi chat ID sozlanmagan' });
+
+    const providerLabel = PROVIDER_LABELS[provider] || provider;
+    const fmtD = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+
+    const approvalText = [
+      `🚫 *АННУЛЯЦИЯ — ${booking.bookingNumber}*`,
+      `🚗 Transport: *${providerLabel}*`,
+      booking.pax         ? `👥 PAX: *${booking.pax}* kishi`                    : null,
+      booking.arrivalDate ? `📅 Boshlanishi: ${fmtD(booking.arrivalDate)}`       : null,
+      booking.endDate     ? `🏁 Tugashi: ${fmtD(booking.endDate)}`               : null,
+      ``,
+      `Tasdiqlasangiz, *${providerLabel}* ga avtomatik yuboriladi.`
+    ].filter(v => v !== null).join('\n');
+
+    await axios.post(`${TG_BASE}/sendMessage`, {
+      chat_id: hammasiChatId,
+      text: approvalText,
+      parse_mode: 'Markdown',
+      reply_markup: JSON.stringify({ inline_keyboard: [[
+        { text: `✅ ${providerLabel} ga yuborish`, callback_data: `st_approve:${bookingId}:${provider}` },
+        { text: '❌ Rad etish',                    callback_data: `st_decline:${bookingId}:${provider}` }
+      ]] })
+    });
+
+    await prisma.transportConfirmation.create({
+      data: { bookingId, provider, source: 'STORNO', status: 'PENDING_APPROVAL' }
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Send storno transport error:', err.response?.data || err.message);
     res.status(500).json({ error: err.response?.data?.description || err.message });
   }
 });
