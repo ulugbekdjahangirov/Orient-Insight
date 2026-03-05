@@ -299,9 +299,17 @@ async function sendAdminChangesForTourType(chatId, tourType, replyMarkup) {
     },
     orderBy: { sentAt: 'asc' }
   });
+  // Get all annulled booking+hotel pairs — these must be excluded from Izmeneniya
+  const annulments = await prisma.telegramConfirmation.findMany({
+    where: { type: 'ANNULMENT' },
+    select: { bookingId: true, hotelId: true }
+  });
+  const annulledKeys = new Set(annulments.map(a => `${a.bookingId}_${a.hotelId}`));
+
   const seen = new Set();
   const filtered = confs.filter(c => {
-    if (c.booking?.status === 'CANCELLED') return false;
+    if (c.type === 'ANNULMENT') return false;
+    if (annulledKeys.has(`${c.bookingId}_${c.hotelId}`)) return false; // annulled → show only in Anulyatsiya
     if (c.booking?.tourType?.code !== tourType) return false;
     if (seen.has(`${c.bookingId}_${c.hotelId}`)) return false;
     seen.add(`${c.bookingId}_${c.hotelId}`);
@@ -612,10 +620,18 @@ async function sendHotelChangesForTourType(chatId, hotel, tourType) {
     include: { booking: { select: { bookingNumber: true, status: true, pax: true, tourType: { select: { code: true } } } } },
     orderBy: { sentAt: 'desc' }
   });
+  // Get annulled bookingIds for this hotel — exclude from Izmeneniya
+  const annulments = await prisma.telegramConfirmation.findMany({
+    where: { hotelId: hotel.id, type: 'ANNULMENT' },
+    select: { bookingId: true }
+  });
+  const annulledBookingIds = new Set(annulments.map(a => a.bookingId));
+
   // Keep only the latest TelegramConfirmation per bookingId, then sort by bookingNumber
   const seen = new Set();
   const latest = confs.filter(c => {
     if (c.type === 'ANNULMENT') return false;
+    if (annulledBookingIds.has(c.bookingId)) return false; // annulled → show only in Anulyatsiya
     if (c.booking?.tourType?.code !== tourType) return false;
     if (seen.has(c.bookingId)) return false;
     seen.add(c.bookingId);
