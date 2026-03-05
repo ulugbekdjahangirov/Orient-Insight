@@ -426,7 +426,7 @@ async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
   const seen = new Set();
   const byHotel = {};
   for (const c of confs) {
-    if (c.booking?.status !== 'CANCELLED') continue;
+    if (c.type !== 'ANNULMENT') continue;
     if (c.booking?.tourType?.code !== tourType) continue;
     const key = `${c.hotelId}_${c.bookingId}`;
     if (seen.has(key)) continue;
@@ -538,7 +538,7 @@ async function sendHotelAnnulment(chatId, hotel, tourType) {
   });
   const seen = new Set();
   const filtered = confs.filter(c => {
-    if (c.booking?.status !== 'CANCELLED') return false;
+    if (c.type !== 'ANNULMENT') return false;
     if (c.booking?.tourType?.code !== tourType) return false;
     if (seen.has(c.bookingId)) return false;
     seen.add(c.bookingId); return true;
@@ -575,7 +575,7 @@ async function sendHotelChangesForTourType(chatId, hotel, tourType) {
   // Keep only the latest TelegramConfirmation per bookingId, then sort by bookingNumber
   const seen = new Set();
   const latest = confs.filter(c => {
-    if (c.booking?.status === 'CANCELLED') return false;
+    if (c.type === 'ANNULMENT') return false;
     if (c.booking?.tourType?.code !== tourType) return false;
     if (seen.has(c.bookingId)) return false;
     seen.add(c.bookingId);
@@ -1175,7 +1175,7 @@ router.post('/webhook', (req, res, next) => {
               include: { booking: { select: { status: true, tourType: { select: { code: true } } } } }
             });
             const validTourTypes = [...new Set(
-              confs.filter(c => c.booking?.status !== 'CANCELLED')
+              confs.filter(c => c.type !== 'ANNULMENT')
                    .map(c => c.booking?.tourType?.code).filter(Boolean)
             )];
             if (!validTourTypes.length) {
@@ -1197,15 +1197,14 @@ router.post('/webhook', (req, res, next) => {
             return;
           }
 
-          // ❌ Ануляция — tour type selection filtered by hotel's cancelled bookings
+          // ❌ Ануляция — tour type selection filtered by ANNULMENT type TelegramConfirmations
           const annConfs = await prisma.telegramConfirmation.findMany({
-            where: { hotelId: hotel.id },
+            where: { hotelId: hotel.id, type: 'ANNULMENT' },
             include: { booking: { select: { status: true, tourType: { select: { code: true } } } } }
           });
           const annSeen = new Set();
           const annTourTypes = [];
           for (const c of annConfs) {
-            if (c.booking?.status !== 'CANCELLED') continue;
             const code = c.booking?.tourType?.code;
             if (code && !annSeen.has(code)) { annSeen.add(code); annTourTypes.push(code); }
           }
@@ -5150,7 +5149,7 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
 
     // Create TelegramConfirmation so admin "Anulyatsiya" tab shows it
     await prisma.telegramConfirmation.create({
-      data: { bookingId, hotelId, status: 'PENDING' }
+      data: { bookingId, hotelId, type: 'ANNULMENT', status: 'PENDING' }
     });
 
     res.json({ success: true });

@@ -968,6 +968,7 @@ model TelegramConfirmation {
   booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   hotelId     Int
   hotel       Hotel    @relation(fields: [hotelId], references: [id])
+  type        String   @default("CHANGE") // CHANGE, ANNULMENT
   status      String   @default("PENDING") // PENDING, CONFIRMED, WAITING, REJECTED
   confirmedBy String?  // Kim javob berdi (Telegram da bosganning ismi)
   sentAt      DateTime @default(now())
