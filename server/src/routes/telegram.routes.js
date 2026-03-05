@@ -163,7 +163,8 @@ async function sendAdminMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
-        [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
+        [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
+        [{ text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -285,6 +286,155 @@ async function findJpSectionsByChatId(chatId) {
   return all.filter(s => {
     try { return String(JSON.parse(s.value).chatId) === String(chatId); } catch { return false; }
   });
+}
+
+// Helper: Rad etilgan — show hotel buttons for CHG (TelegramConfirmation) rejected
+async function sendAdminRejChgHotels(chatId, tourType) {
+  const year = new Date().getFullYear();
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { status: 'REJECTED', type: 'CHANGE' },
+    include: {
+      hotel: { select: { id: true, name: true } },
+      booking: { select: { tourType: { select: { code: true } } } }
+    }
+  });
+  const hotels = {};
+  for (const c of confs) {
+    if (c.booking?.tourType?.code !== tourType) continue;
+    if (!hotels[c.hotelId]) hotels[c.hotelId] = c.hotel?.name || `Hotel #${c.hotelId}`;
+  }
+  const entries = Object.entries(hotels);
+  if (!entries.length) {
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: chatId,
+      text: `🚫 *Rad etilgan — Изменения (${tourType} ${year})*\n\n✅ Rad etilgan zaявka yo'q.`,
+      parse_mode: 'Markdown'
+    }).catch(() => {});
+    return;
+  }
+  const rows = [];
+  for (let i = 0; i < entries.length; i += 2) {
+    const row = [{ text: `🏨 ${entries[i][1]}`, callback_data: `admin:rej_chg_h:${tourType}:${entries[i][0]}` }];
+    if (entries[i + 1]) row.push({ text: `🏨 ${entries[i + 1][1]}`, callback_data: `admin:rej_chg_h:${tourType}:${entries[i + 1][0]}` });
+    rows.push(row);
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId,
+    text: `🚫 *Rad etilgan — Изменения (${tourType} ${year})*\nHotelni tanlang:`,
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({ inline_keyboard: rows })
+  }).catch(() => {});
+}
+
+// Helper: Rad etilgan — show hotel buttons for JP (JP_SECTIONS) rejected
+async function sendAdminRejJpHotels(chatId, tourType) {
+  const year = new Date().getFullYear();
+  const allJp = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_SECTIONS_' } } });
+  const hotels = {};
+  for (const s of allJp) {
+    try {
+      const d = JSON.parse(s.value);
+      if (d.tourType !== tourType) continue;
+      const hasRejected = (d.groups || []).some(grp => (grp.visits || []).some(v => v.status === 'REJECTED'));
+      if (!hasRejected) continue;
+      // Extract hotelId from key: JP_SECTIONS_16_KAS → 16
+      const hotelId = parseInt(s.key.replace('JP_SECTIONS_', '').split('_')[0]);
+      if (!hotels[hotelId]) hotels[hotelId] = d.hotelName || `Hotel #${hotelId}`;
+    } catch {}
+  }
+  const entries = Object.entries(hotels);
+  if (!entries.length) {
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: chatId,
+      text: `🚫 *Rad etilgan — Заявка 2026 (${tourType} ${year})*\n\n✅ Rad etilgan zaявka yo'q.`,
+      parse_mode: 'Markdown'
+    }).catch(() => {});
+    return;
+  }
+  const rows = [];
+  for (let i = 0; i < entries.length; i += 2) {
+    const row = [{ text: `🏨 ${entries[i][1]}`, callback_data: `admin:rej_jp_h:${tourType}:${entries[i][0]}` }];
+    if (entries[i + 1]) row.push({ text: `🏨 ${entries[i + 1][1]}`, callback_data: `admin:rej_jp_h:${tourType}:${entries[i + 1][0]}` });
+    rows.push(row);
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId,
+    text: `🚫 *Rad etilgan — Заявка 2026 (${tourType} ${year})*\nHotelni tanlang:`,
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({ inline_keyboard: rows })
+  }).catch(() => {});
+}
+
+// Helper: Rad etilgan — show CHG rejected confirmations for a specific hotel+tourType
+async function sendAdminRejChgForHotel(chatId, tourType, hotelId) {
+  const year = new Date().getFullYear();
+  const fmt = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
+  const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, include: { city: { select: { name: true } } } });
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { status: 'REJECTED', type: 'CHANGE', hotelId },
+    include: { booking: { select: { id: true, bookingNumber: true, pax: true, tourType: { select: { code: true } } } } },
+    orderBy: { sentAt: 'asc' }
+  });
+  const seen = new Set();
+  const filtered = confs.filter(c => {
+    if (c.booking?.tourType?.code !== tourType) return false;
+    const key = `${c.bookingId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const cityName = hotel?.city?.name ? ` (${hotel.city.name})` : '';
+  const lines = [`🚫 *Rad etilgan — Изменения (${tourType} ${year})*`, `🏨 *${hotel?.name || '?'}*${cityName}`, ''];
+  if (!filtered.length) {
+    lines.push('✅ Rad etilgan zaявka yo\'q.');
+  } else {
+    for (const c of filtered) {
+      const accs = await prisma.accommodation.findMany({ where: { bookingId: c.bookingId, hotelId }, orderBy: { checkInDate: 'asc' } });
+      const block = [`❌ *ЗАЯВКА ${c.booking?.bookingNumber || '—'}*`];
+      accs.forEach((acc, i) => {
+        if (accs.length > 1) block.push(`  *${i + 1}-заезд:*`);
+        block.push(`  📅 Заезд: ${fmt(acc.checkInDate)}`);
+        block.push(`  📅 Выезд: ${fmt(acc.checkOutDate)}`);
+        block.push(`  👥 PAX: ${c.booking?.pax || 0}`);
+      });
+      lines.push(block.join('\n'));
+      lines.push('');
+    }
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown'
+  }).catch(() => {});
+}
+
+// Helper: Rad etilgan — show JP_SECTIONS rejected visits for a specific hotel+tourType
+async function sendAdminRejJpForHotel(chatId, tourType, hotelId) {
+  const year = new Date().getFullYear();
+  const s = await prisma.systemSetting.findFirst({ where: { key: `JP_SECTIONS_${hotelId}_${tourType}` } });
+  const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, include: { city: { select: { name: true } } } });
+  const cityName = hotel?.city?.name ? ` (${hotel.city.name})` : '';
+  const hotelName = hotel?.name || `Hotel #${hotelId}`;
+  const lines = [`🚫 *Rad etilgan — Заявка 2026 (${tourType} ${year})*`, `🏨 *${hotelName}*${cityName}`, ''];
+  if (!s) {
+    lines.push('✅ Rad etilgan zaявka yo\'q.');
+  } else {
+    try {
+      const d = JSON.parse(s.value);
+      let found = false;
+      for (const grp of (d.groups || [])) {
+        for (const v of (grp.visits || [])) {
+          if (v.status !== 'REJECTED') continue;
+          found = true;
+          const label = v.sectionLabel ? `❌ *ЗАЯВКА ${grp.group} — ${v.sectionLabel}*` : `❌ *ЗАЯВКА ${grp.group}*`;
+          lines.push([label, `  📅 Заезд: ${v.checkIn}`, `  📅 Выезд: ${v.checkOut}`, `  👥 PAX: ${v.pax}`, `  🛏 DBL:${v.dbl||0}  |  TWN:${v.twn||0}  |  SNGL:${v.sngl||0}`].join('\n'));
+          lines.push('');
+        }
+      }
+      if (!found) lines.push('✅ Rad etilgan zaявka yo\'q.');
+    } catch { lines.push('⚠️ Ma\'lumot o\'qishda xato.'); }
+  }
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown'
+  }).catch(() => {});
 }
 
 // Helper: show Izmeneniye for admin — all hotels, filtered by tourType (CONFIRMED, non-cancelled)
@@ -1153,7 +1303,7 @@ router.post('/webhook', (req, res, next) => {
         // Skip admin notification for menu/keyboard button presses
         // Commands start with '/', menu buttons start with known emoji prefixes
         const MENU_PREFIXES = [
-          '📋 ', '📄 ', '📝 ', '⏳ ', '❌ ', '✅ ', '🏨 ', '🍽 ', '🚌 ', '👤 ', '🍴 ', '⬅️ ', '◀️ ',
+          '📋 ', '📄 ', '📝 ', '⏳ ', '❌ ', '✅ ', '🏨 ', '🍽 ', '🚌 ', '👤 ', '🍴 ', '⬅️ ', '◀️ ', '🚫 ',
         ];
         const isMenuButton = msg.text.startsWith('/') ||
           MENU_PREFIXES.some(prefix => msg.text.startsWith(prefix));
@@ -1378,7 +1528,8 @@ router.post('/webhook', (req, res, next) => {
         const MAIN_REPLY_KEYBOARD = JSON.stringify({
           keyboard: [
             [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
-            [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
+            [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
+            [{ text: '❌ Ануляция' }]
           ],
           resize_keyboard: true,
           is_persistent: true
@@ -1435,6 +1586,20 @@ router.post('/webhook', (req, res, next) => {
             reply_markup: JSON.stringify({ inline_keyboard: [
               [{ text: '📋 Заявка 2026', callback_data: 'admin:wl:jp' }],
               [{ text: '📝 Изменения к Заявке', callback_data: 'admin:wl:chg' }]
+            ]})
+          }).catch(() => {});
+          return;
+        }
+
+        // 🚫 Rad etilgan — bo'lim tanlash (Заявка 2026 yoki Изменения)
+        if (text === '🚫 Rad etilgan') {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: adminSendId,
+            text: '🚫 *Rad etilgan*\nQaysi bo\'limni tanlang:',
+            parse_mode: 'Markdown',
+            reply_markup: JSON.stringify({ inline_keyboard: [
+              [{ text: '📋 Заявка 2026', callback_data: 'admin:rej:jp' }],
+              [{ text: '📝 Изменения к Заявке', callback_data: 'admin:rej:chg' }]
             ]})
           }).catch(() => {});
           return;
@@ -1751,7 +1916,8 @@ router.post('/webhook', (req, res, next) => {
         const ADMIN_KB = JSON.stringify({
           keyboard: [
             [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
-            [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
+            [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
+            [{ text: '❌ Ануляция' }]
           ],
           resize_keyboard: true, is_persistent: true
         });
@@ -1811,7 +1977,8 @@ router.post('/webhook', (req, res, next) => {
         const ADMIN_KB = JSON.stringify({
           keyboard: [
             [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
-            [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
+            [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
+            [{ text: '❌ Ануляция' }]
           ],
           resize_keyboard: true, is_persistent: true
         });
@@ -1825,6 +1992,70 @@ router.post('/webhook', (req, res, next) => {
         const hotelId  = parseInt(parts[3]);
         await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
         await sendAdminAnnulmentForHotel(fromChatId, tourType, hotelId);
+        return;
+      }
+
+      // admin:rej:jp — Rad etilgan > Заявка 2026 → tour type tanlash
+      if (subAction === 'rej' && parts[2] === 'jp') {
+        await axios.post(`${BOT_API()}\answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: '🚫 *Rad etilgan — Заявка 2026*\nQaysi tur turini tanlang:',
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [
+            [{ text: 'ER', callback_data: 'admin:rej_jp_tt:ER' }, { text: 'CO', callback_data: 'admin:rej_jp_tt:CO' }],
+            [{ text: 'KAS', callback_data: 'admin:rej_jp_tt:KAS' }, { text: 'ZA', callback_data: 'admin:rej_jp_tt:ZA' }]
+          ]})
+        }).catch(() => {});
+        return;
+      }
+
+      // admin:rej:chg — Rad etilgan > Изменения → tour type tanlash
+      if (subAction === 'rej' && parts[2] === 'chg') {
+        await axios.post(`${BOT_API()}\answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: '🚫 *Rad etilgan — Изменения к Заявке*\nQaysi tur turini tanlang:',
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [
+            [{ text: 'ER', callback_data: 'admin:rej_chg_tt:ER' }, { text: 'CO', callback_data: 'admin:rej_chg_tt:CO' }],
+            [{ text: 'KAS', callback_data: 'admin:rej_chg_tt:KAS' }, { text: 'ZA', callback_data: 'admin:rej_chg_tt:ZA' }]
+          ]})
+        }).catch(() => {});
+        return;
+      }
+
+      // admin:rej_jp_tt:ER — Заявка 2026 rejected → show hotel buttons
+      if (subAction === 'rej_jp_tt') {
+        const tourType = parts[2];
+        await axios.post(`${BOT_API()}\answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await sendAdminRejJpHotels(fromChatId, tourType);
+        return;
+      }
+
+      // admin:rej_chg_tt:ER — Изменения rejected → show hotel buttons
+      if (subAction === 'rej_chg_tt') {
+        const tourType = parts[2];
+        await axios.post(`${BOT_API()}\answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await sendAdminRejChgHotels(fromChatId, tourType);
+        return;
+      }
+
+      // admin:rej_jp_h:ER:16 — show JP rejected visits for hotel
+      if (subAction === 'rej_jp_h') {
+        const tourType = parts[2];
+        const hotelId = parseInt(parts[3]);
+        await axios.post(`${BOT_API()}\answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await sendAdminRejJpForHotel(fromChatId, tourType, hotelId);
+        return;
+      }
+
+      // admin:rej_chg_h:ER:16 — show CHG rejected confirmations for hotel
+      if (subAction === 'rej_chg_h') {
+        const tourType = parts[2];
+        const hotelId = parseInt(parts[3]);
+        await axios.post(`${BOT_API()}\answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await sendAdminRejChgForHotel(fromChatId, tourType, hotelId);
         return;
       }
 
