@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bus, ChevronDown, ChevronRight, Loader2, Trash2 } from 'lucide-react';
-import { jahresplanungApi, telegramApi } from '../../services/api';
+import { jahresplanungApi } from '../../services/api';
 import { useYear } from '../../context/YearContext';
 const PROVIDERS = [
   { id: 'sevil',    label: 'Sevil',    bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700'   },
@@ -84,7 +84,7 @@ export default function TransportPlanTab({ tourType }) {
     setLoading(true);
     Promise.all([
       jahresplanungApi.getTransport(YEAR, tourType),
-      telegramApi.getTransportConfirmations(YEAR),
+      jahresplanungApi.getTransportConfirmations(),
     ])
       .then(([transportRes, confRes]) => {
         setBookings(transportRes.data.bookings || []);
@@ -95,28 +95,28 @@ export default function TransportPlanTab({ tourType }) {
       .finally(() => setLoading(false));
   }, [tourType, YEAR]);
 
-  const handleDeleteGroup = async (e, provId, provConfs) => {
+  const handleDeleteGroup = async (e, provId, conf) => {
     e.stopPropagation();
-    if (!window.confirm(`Bu provayder guruhidagi barcha (${provConfs.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    if (!conf) return;
+    if (!window.confirm(`Bu provayder yozuvini o'chirmoqchimisiz?`)) return;
     setDeletingGroupId(provId);
     try {
-      await Promise.all(provConfs.map(c => telegramApi.deleteTransportConfirmation(c.id)));
-      const ids = new Set(provConfs.map(c => c.id));
-      setConfirmations(prev => prev.filter(c => !ids.has(c.id)));
+      const keySuffix = `${conf.year}_${conf.tourType}_${conf.provider}`;
+      await jahresplanungApi.deleteTransportConfirmation(keySuffix);
+      setConfirmations(prev => prev.filter(c => c.key !== conf.key));
     } catch { alert('O\'chirishda xatolik'); }
     finally { setDeletingGroupId(null); }
   };
 
   const handleDeleteAll = async () => {
-    const bookingIds = new Set(bookings.map(b => b.id));
-    const toDelete = confirmations.filter(c => bookingIds.has(c.bookingId));
+    const toDelete = confirmations.filter(c => c.tourType === tourType && parseInt(c.year) === YEAR);
     if (toDelete.length === 0) return;
     if (!window.confirm(`Bu sub-tabdagi barcha (${toDelete.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
     setDeletingAll(true);
     try {
-      await Promise.all(toDelete.map(c => telegramApi.deleteTransportConfirmation(c.id)));
-      const ids = new Set(toDelete.map(c => c.id));
-      setConfirmations(prev => prev.filter(c => !ids.has(c.id)));
+      await Promise.all(toDelete.map(c => jahresplanungApi.deleteTransportConfirmation(`${c.year}_${c.tourType}_${c.provider}`)));
+      const keys = new Set(toDelete.map(c => c.key));
+      setConfirmations(prev => prev.filter(c => !keys.has(c.key)));
     } catch { alert('O\'chirishda xatolik'); }
     finally { setDeletingAll(false); }
   };
@@ -129,7 +129,7 @@ export default function TransportPlanTab({ tourType }) {
 
   const order = (PROVIDER_ORDER[tourType] || ['sevil','xayrulla']).map(id => PROVIDERS.find(p => p.id === id)).filter(Boolean);
 
-  const allConfsCount = confirmations.filter(c => bookings.some(b => b.id === c.bookingId)).length;
+  const allConfsCount = confirmations.filter(c => c.tourType === tourType && parseInt(c.year) === YEAR).length;
 
   if (allConfsCount === 0) return (
     <div className="flex flex-col items-center justify-center py-20 text-gray-400">
@@ -152,10 +152,8 @@ export default function TransportPlanTab({ tourType }) {
       </div>
       {order.map(prov => {
         const ids = Object.keys(routeMap[prov.id] || {});
-        const items = bookings.filter(b =>
-          ids.includes(String(b.id)) &&
-          confirmations.some(c => c.bookingId === b.id && c.provider === prov.id)
-        );
+        const conf = confirmations.find(c => c.tourType === tourType && c.provider === prov.id && parseInt(c.year) === YEAR);
+        const items = conf ? bookings.filter(b => ids.includes(String(b.id))) : [];
         if (items.length === 0) return null;
         const isOpen = !!open[prov.id];
         const colDefs = buildColDefs(tourType, prov.id, routeMap, items);
@@ -172,20 +170,16 @@ export default function TransportPlanTab({ tourType }) {
                 <span className={`font-semibold ${prov.text}`}>{prov.label}</span>
                 <span className="ml-auto text-xs bg-white/70 px-2 py-0.5 rounded-full text-gray-600">{items.length} ta guruh</span>
               </button>
-              {(() => {
-                const provConfs = confirmations.filter(c => c.provider === prov.id);
-                if (provConfs.length === 0) return null;
-                return (
-                  <button
-                    onClick={(e) => handleDeleteGroup(e, prov.id, provConfs)}
-                    disabled={deletingGroupId === prov.id}
-                    className="mr-3 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                    title="Barchasini o'chirish"
-                  >
-                    {deletingGroupId === prov.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  </button>
-                );
-              })()}
+              {conf && (
+                <button
+                  onClick={(e) => handleDeleteGroup(e, prov.id, conf)}
+                  disabled={deletingGroupId === prov.id}
+                  className="mr-3 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  title="O'chirish"
+                >
+                  {deletingGroupId === prov.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
+              )}
             </div>
 
             {isOpen && (
@@ -238,7 +232,6 @@ export default function TransportPlanTab({ tourType }) {
                   const visSegs = getVisibleSegs(tourType, prov.id, allSegs);
                   const isCancelled = b.status === 'CANCELLED';
                   const extra = BIS_EXTRA[tourType]?.[prov.id] ?? 0;
-                  const conf = confirmations.find(c => c.bookingId === b.id && c.provider === prov.id);
 
                   return (
                     <div key={bk} className={`flex items-center px-6 py-3 border-b border-gray-100 last:border-0 ${isCancelled ? 'bg-red-50' : ''}`}>
