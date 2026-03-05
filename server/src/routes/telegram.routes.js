@@ -924,8 +924,39 @@ router.delete('/chats/:chatId', authenticate, requireAdmin, async (req, res) => 
     const { chatId } = req.params;
     const chats = await loadKnownChats();
     if (!chats[chatId]) return res.status(404).json({ error: 'Chat topilmadi' });
+    const userRole = chats[chatId].role;
     delete chats[chatId];
     await saveKnownChats(chats);
+
+    // Remove from all 4 bot admin notification lists
+    for (const botType of ['hotel', 'transport', 'restaurant', 'guide']) {
+      const keyMap = { hotel: 'HOTEL_ADMIN_CHAT_IDS', transport: 'TRANSPORT_ADMIN_CHAT_IDS', restaurant: 'RESTAURANT_ADMIN_CHAT_IDS', guide: 'GUIDE_ADMIN_CHAT_IDS' };
+      const key = keyMap[botType];
+      const s = await prisma.systemSetting.findUnique({ where: { key } });
+      if (!s?.value) continue;
+      try {
+        const arr = JSON.parse(s.value).filter(id => String(id) !== String(chatId));
+        await prisma.systemSetting.update({ where: { key }, data: { value: JSON.stringify(arr) } });
+      } catch {}
+    }
+
+    // Notify the removed user and show /start button
+    let botApi = BOT_API();
+    if (userRole === 'restaurant') botApi = RESTAURANT_API();
+    else if (userRole === 'transport') botApi = TRANSPORT_API();
+    else if (userRole === 'guide') botApi = GUIDE_API();
+
+    await axios.post(`${botApi}/sendMessage`, {
+      chat_id: chatId,
+      text: `❌ *Sizning ruxsatingiz bekor qilindi.*\n\nQayta ro'yxatdan o'tish uchun quyidagi tugmani bosing.`,
+      parse_mode: 'Markdown',
+      reply_markup: JSON.stringify({
+        keyboard: [[{ text: '/start' }]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      })
+    }).catch(() => {});
+
     res.json({ success: true });
   } catch (error) {
     console.error('Delete chat error:', error.message);
@@ -5242,37 +5273,43 @@ router.put('/transport-settings', authenticate, async (req, res) => {
 router.get('/guide-assignments', authenticate, async (req, res) => {
   try {
     const year = req.query.year ? parseInt(req.query.year) : null;
-    const where = year ? { bookingYear: year } : {};
-    const bookings = await prisma.booking.findMany({
+    const where = year ? { booking: { bookingYear: year } } : {};
+    const confs = await prisma.guideConfirmation.findMany({
       where,
-      select: {
-        id: true,
-        bookingNumber: true,
-        departureDate: true,
-        pax: true,
-        status: true,
+      include: {
+        booking: { select: { bookingNumber: true, departureDate: true, pax: true, status: true } },
         guide: { select: { id: true, name: true, telegramChatId: true } }
       },
-      orderBy: { bookingNumber: 'asc' }
+      orderBy: { booking: { bookingNumber: 'asc' } }
     });
 
-    const result = bookings.map(b => ({
-      id: b.id,
-      bookingId: b.id,
-      bookingNumber: b.bookingNumber,
-      departureDate: b.departureDate,
-      pax: b.pax,
-      bookingStatus: b.status,
-      guideId: b.guide?.id || null,
-      guideName: b.guide?.name || null,
-      hasTelegram: !!(b.guide?.telegramChatId),
-      status: b.guide ? 'ASSIGNED' : 'NO_GUIDE',
-      booking: { bookingNumber: b.bookingNumber, departureDate: b.departureDate }
+    const result = confs.map(c => ({
+      id: c.id,
+      bookingId: c.bookingId,
+      bookingNumber: c.booking?.bookingNumber || '',
+      departureDate: c.booking?.departureDate || null,
+      pax: c.booking?.pax || 0,
+      bookingStatus: c.booking?.status || null,
+      guideId: c.guideId,
+      guideName: c.guide?.name || null,
+      hasTelegram: !!(c.guide?.telegramChatId),
+      status: c.status,
+      booking: { bookingNumber: c.booking?.bookingNumber, departureDate: c.booking?.departureDate }
     }));
 
     res.json({ assignments: result });
   } catch (err) {
     console.error('guide-assignments error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/telegram/guide-confirmations/:bookingId
+router.delete('/guide-confirmations/:bookingId', authenticate, async (req, res) => {
+  try {
+    await prisma.guideConfirmation.deleteMany({ where: { bookingId: parseInt(req.params.bookingId) } });
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

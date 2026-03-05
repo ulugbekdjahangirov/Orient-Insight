@@ -659,9 +659,10 @@ function GuideStatusBadge({ status }) {
   );
 }
 
-function GidlarTab({ assignments, onDelete }) {
+function GidlarTab({ assignments, onDelete, onDeleteAll }) {
   const [openBookings, setOpenBookings] = useState({});
   const [deletingId, setDeletingId] = useState(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const toggleBooking = (bookingId) => {
     setOpenBookings(prev => ({ ...prev, [bookingId]: !prev[bookingId] }));
@@ -679,6 +680,17 @@ function GidlarTab({ assignments, onDelete }) {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm(`Bu sub-tabdagi barcha (${assignments.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingAll(true);
+    try {
+      const bookingIds = [...new Set(assignments.map(a => a.bookingId))];
+      await Promise.all(bookingIds.map(id => telegramApi.deleteGuideConfirmation(id)));
+      onDeleteAll(bookingIds);
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingAll(false); }
   };
 
   // Group by booking
@@ -710,6 +722,16 @@ function GidlarTab({ assignments, onDelete }) {
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          onClick={handleDeleteAll}
+          disabled={deletingAll}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+        >
+          {deletingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          Barchasini o'chirish
+        </button>
+      </div>
       {groups.map(group => {
         const isOpen = !!openBookings[group.bookingId];
         const assigned = group.items.filter(i => i.status === 'ASSIGNED').length;
@@ -1971,6 +1993,7 @@ export default function Partners() {
                 <GidlarTab
                   assignments={gFiltered}
                   onDelete={(bookingId) => setGuideAssignments(prev => prev.filter(a => a.bookingId !== bookingId))}
+                  onDeleteAll={(bookingIds) => setGuideAssignments(prev => prev.filter(a => !bookingIds.includes(a.bookingId)))}
                 />
               </>
             );
@@ -2088,7 +2111,7 @@ export default function Partners() {
                   </button>
                 ))}
               </div>
-              <TransportPlanTab tourType={transportPlanSubTab} />
+              <TransportPlanTab key={transportPlanSubTab} tourType={transportPlanSubTab} />
             </>
           )}
         </>

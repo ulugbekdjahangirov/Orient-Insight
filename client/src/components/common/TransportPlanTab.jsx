@@ -78,6 +78,7 @@ export default function TransportPlanTab({ tourType }) {
   const [confirmations, setConfirmations] = useState([]);
   const [open, setOpen] = useState({ sevil: true, xayrulla: true, nosir: true });
   const [deletingGroupId, setDeletingGroupId] = useState(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -106,6 +107,20 @@ export default function TransportPlanTab({ tourType }) {
     finally { setDeletingGroupId(null); }
   };
 
+  const handleDeleteAll = async () => {
+    const bookingIds = new Set(bookings.map(b => b.id));
+    const toDelete = confirmations.filter(c => bookingIds.has(c.bookingId));
+    if (toDelete.length === 0) return;
+    if (!window.confirm(`Bu sub-tabdagi barcha (${toDelete.length} ta) yozuvni o'chirmoqchimisiz?`)) return;
+    setDeletingAll(true);
+    try {
+      await Promise.all(toDelete.map(c => telegramApi.deleteTransportConfirmation(c.id)));
+      const ids = new Set(toDelete.map(c => c.id));
+      setConfirmations(prev => prev.filter(c => !ids.has(c.id)));
+    } catch { alert('O\'chirishda xatolik'); }
+    finally { setDeletingAll(false); }
+  };
+
   if (loading) return (
     <div className="flex justify-center py-20 text-gray-400">
       <Loader2 className="w-6 h-6 animate-spin mr-2"/><span className="text-sm">Yuklanmoqda...</span>
@@ -114,11 +129,34 @@ export default function TransportPlanTab({ tourType }) {
 
   const order = (PROVIDER_ORDER[tourType] || ['sevil','xayrulla']).map(id => PROVIDERS.find(p => p.id === id)).filter(Boolean);
 
+  const allConfsCount = confirmations.filter(c => bookings.some(b => b.id === c.bookingId)).length;
+
+  if (allConfsCount === 0) return (
+    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+      <Bus className="w-12 h-12 mb-3 opacity-30" />
+      <p className="text-sm">Bu tur uchun hali transport Telegram yuborilmagan</p>
+    </div>
+  );
+
   return (
     <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          onClick={handleDeleteAll}
+          disabled={deletingAll}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+        >
+          {deletingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          Barchasini o'chirish
+        </button>
+      </div>
       {order.map(prov => {
         const ids = Object.keys(routeMap[prov.id] || {});
-        const items = bookings.filter(b => ids.includes(String(b.id)));
+        const items = bookings.filter(b =>
+          ids.includes(String(b.id)) &&
+          confirmations.some(c => c.bookingId === b.id && c.provider === prov.id)
+        );
+        if (items.length === 0) return null;
         const isOpen = !!open[prov.id];
         const colDefs = buildColDefs(tourType, prov.id, routeMap, items);
         const hasMultiLabel = colDefs.some(c => c.type === 'multi' && c.label);
