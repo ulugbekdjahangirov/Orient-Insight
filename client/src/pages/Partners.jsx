@@ -215,38 +215,41 @@ function HotelsTab({ confirmations, onDelete, onDeleteGroup }) {
             {isOpen && (
               <>
                 {/* Mobile cards */}
-                <div className="sm:hidden divide-y divide-gray-100">
-                  {group.items.map(item => (
-                    <div key={item.id} className="px-4 py-3 flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <Link to={`/bookings/${item.bookingId}`} className="font-medium text-primary-600 hover:underline text-sm">
-                            {item.booking?.bookingNumber || `#${item.bookingId}`}
-                          </Link>
-                          {item.booking?.departureDate && (
-                            <span className="text-xs text-gray-400">{formatDate(item.booking.departureDate)}</span>
+                <div className="sm:hidden px-3 py-2 flex flex-col gap-1.5">
+                  {group.items.map(item => {
+                    const cardCls = item.status === 'CONFIRMED' ? 'border-green-200 bg-green-50'
+                      : item.status === 'REJECTED' ? 'border-red-200 bg-red-50'
+                      : item.status === 'WAITING' ? 'border-blue-200 bg-blue-50'
+                      : 'border-amber-200 bg-amber-50';
+                    return (
+                      <div key={item.id} className={`rounded-xl border px-3 py-2 flex items-center gap-2 ${cardCls}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm">
+                              {item.booking?.bookingNumber || `#${item.bookingId}`}
+                            </Link>
+                            {item.booking?.departureDate && (
+                              <span className="text-[10px] text-gray-400">{formatDate(item.booking.departureDate)}</span>
+                            )}
+                            <StatusBadge status={item.status} />
+                          </div>
+                          {item.confirmedBy && (
+                            <p className="text-[10px] text-gray-500">👤 {item.confirmedBy}</p>
                           )}
-                          <StatusBadge status={item.status} />
                         </div>
-                        {item.confirmedBy && (
-                          <p className="text-xs text-gray-500">👤 {item.confirmedBy}</p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {item.respondedAt ? formatDateTime(item.respondedAt) : formatDateTime(item.sentAt)}
-                        </p>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deletingId === item.id}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 shrink-0"
+                        >
+                          {deletingId === item.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Trash2 className="w-3.5 h-3.5" />
+                          }
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deletingId === item.id}
-                        className="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 flex-shrink-0"
-                      >
-                        {deletingId === item.id
-                          ? <Loader2 className="w-4 h-4 animate-spin" />
-                          : <Trash2 className="w-4 h-4" />
-                        }
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {/* Desktop table */}
                 <div className="hidden sm:block overflow-x-auto">
@@ -1536,30 +1539,70 @@ export default function Partners() {
   return (
     <div className="min-h-screen" style={{ background: '#f1f5f9' }}>
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 pt-3 pb-2 md:px-4 md:pt-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Hamkorlar</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Hotel, restoran, transport va gidlar tasdiqlash</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={openTelegramFinder}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white transition-colors"
-          >
-            <Send size={13} />
-            <span className="hidden sm:inline">Telegram Finder</span>
-            <span className="sm:hidden">Finder</span>
-          </button>
-          <button
-            onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Yangilash</span>
-            <span className="text-gray-400">{countdown}s</span>
-          </button>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden mx-3 mt-3" style={{
+        background: 'linear-gradient(160deg, #1e3a8a 0%, #1e40af 35%, #2563eb 65%, #1e40af 100%)',
+        borderRadius: '28px',
+      }}>
+        <div className="absolute top-0 right-0 rounded-full pointer-events-none"
+          style={{ width: '500px', height: '500px', background: '#60a5fa', opacity: 0.15, filter: 'blur(80px)', transform: 'translate(40%,-40%)' }} />
+        <div className="absolute bottom-0 left-0 rounded-full pointer-events-none"
+          style={{ width: '300px', height: '300px', background: '#818cf8', opacity: 0.2, filter: 'blur(60px)', transform: 'translate(-30%,40%)' }} />
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 70%)' }} />
+
+        <div className="relative px-4 md:px-6 pt-5 md:pt-6 pb-4 md:pb-5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+              <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight" style={{ textShadow: '0 0 40px rgba(255,255,255,0.2)' }}>Hamkorlar</h1>
+              <p className="text-blue-200 text-xs md:text-sm mt-1 opacity-75">Hotel, restoran, transport va gidlar tasdiqlash</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {!loading && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-[10px] text-blue-200 mb-0.5 uppercase tracking-wider opacity-70">Jami</p>
+                      <p className="text-xl font-black text-white">{confirmations.length + transportConfirmations.length + mealConfirmations.length}</p>
+                    </div>
+                    <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                    <div>
+                      <p className="text-[10px] text-blue-200 mb-0.5 uppercase tracking-wider opacity-70">Kutilmoqda</p>
+                      <p className="text-xl font-black text-amber-400">
+                        {[...confirmations, ...transportConfirmations, ...mealConfirmations].filter(c => c.status === 'PENDING' || c.status === 'PENDING_APPROVAL').length}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-px h-8 hidden md:block" style={{ background: 'rgba(255,255,255,0.2)' }} />
+                </>
+              )}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={openTelegramFinder}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{ background: 'rgba(14,165,233,0.35)', color: '#bae6fd', border: '1px solid rgba(56,189,248,0.4)' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(14,165,233,0.55)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='rgba(14,165,233,0.35)'}
+                >
+                  <Send size={12} />
+                  <span className="hidden sm:inline">Telegram Finder</span>
+                  <span className="sm:hidden">Finder</span>
+                </button>
+                <button
+                  onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                  style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
+                  onMouseEnter={e=>{ if(!loading) e.currentTarget.style.background='rgba(255,255,255,0.25)'; }}
+                  onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}
+                >
+                  <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                  <span className="hidden sm:inline">Yangilash</span>
+                  <span className="text-blue-200 opacity-80">{countdown}s</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1567,32 +1610,29 @@ export default function Partners() {
       <div className="mx-3 mb-4 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
 
         {/* ── Tab navigation ── */}
-        {/* Mobile: 2-row grid (4 + 3) */}
-        <div className="sm:hidden p-2 space-y-1.5" style={{ background: '#f0fdf4', borderBottom: '2px solid #bbf7d0' }}>
-          {[TABS.slice(0, 4), TABS.slice(4)].map((row, ri) => (
-            <div key={ri} className={`grid gap-1.5 ${ri === 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-              {row.map(tab => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
-                    className="flex flex-col items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-semibold transition-all"
-                    style={isActive
-                      ? { background: 'linear-gradient(135deg, #16a34a, #15803d)', color: 'white', boxShadow: '0 2px 8px #16a34a44' }
-                      : { background: 'white', color: '#374151', border: '1px solid #d1fae5' }}
-                  >
-                    <span className="w-6 h-6 rounded-lg flex items-center justify-center"
-                      style={isActive ? { background: 'rgba(255,255,255,0.2)' } : { background: '#d1fae5' }}>
-                      <Icon size={13} color={isActive ? 'white' : '#059669'} />
-                    </span>
-                    {tab.shortLabel}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        {/* Mobile: scrollable horizontal card row */}
+        <div className="sm:hidden flex gap-2 overflow-x-auto px-2 py-2" style={{ scrollbarWidth: 'none', background: '#eff6ff', borderBottom: '2px solid #bfdbfe' }}>
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const color = TAB_COLORS[tab.id] || '#3b82f6';
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); localStorage.setItem('partners_activeTab', tab.id); }}
+                className="flex-shrink-0 flex flex-col items-center justify-center gap-1 w-[70px] py-2.5 rounded-xl text-[10px] font-semibold transition-all"
+                style={isActive
+                  ? { background: `linear-gradient(135deg, ${color}, ${color}cc)`, color: 'white', boxShadow: `0 2px 8px ${color}44` }
+                  : { background: 'white', color: '#374151', border: '1px solid #dbeafe' }}
+              >
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center"
+                  style={isActive ? { background: 'rgba(255,255,255,0.25)' } : { background: '#dbeafe' }}>
+                  <Icon size={14} color={isActive ? 'white' : color} />
+                </span>
+                <span className="leading-tight text-center">{tab.shortLabel}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Desktop: horizontal underline tabs */}
