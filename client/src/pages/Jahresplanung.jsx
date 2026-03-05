@@ -935,45 +935,51 @@ function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides
       {isOpen && (
         <div style={{ borderTop: `2px solid ${color}20` }}>
           {/* Shablon (uniform defaults) bar */}
-          <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-b border-slate-100"
+          <div className="px-3 pt-2 pb-2 border-b border-slate-100"
             style={{ background: hotelDefault ? `${color}08` : '#fafafa' }}>
-            <span className="text-xs font-semibold shrink-0" style={{ color: hotelDefault ? color : '#94a3b8' }}>
-              Shablon:
-            </span>
-            {!hotelDefault && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 shrink-0">standart</span>
-            )}
-            {hotelDefault && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full text-white shrink-0"
-                style={{ background: color }}>o'zgartirilgan</span>
-            )}
-            {['pax','dbl','twn','sngl'].map(field => (
-              <label key={field} className="flex items-center gap-1">
-                <span className="text-xs text-slate-400 uppercase w-7">{field}</span>
-                <input
-                  type="number" min="0"
-                  value={effectiveDefault[field] ?? ''}
-                  onFocus={e => e.target.select()}
-                  onChange={e => {
-                    const raw = e.target.value;
-                    const val = raw === '' ? 0 : (parseInt(raw, 10) >= 0 ? parseInt(raw, 10) : 0);
-                    const base = hotelDefault || { ...tourTypeDefault };
-                    onSetHotelDefault({ ...base, [field]: val });
-                  }}
-                  className="w-12 text-center text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1"
-                  style={{ borderColor: hotelDefault?.[field] !== undefined ? color : '#e2e8f0',
-                           background: hotelDefault?.[field] !== undefined ? `${color}10` : 'white',
-                           fontWeight: hotelDefault?.[field] !== undefined ? '600' : '400' }}
-                />
-              </label>
-            ))}
-            {hotelDefault && (
-              <button onClick={() => onSetHotelDefault(null)} title="Standartga qaytarish"
-                className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 px-1.5 py-0.5 rounded transition-colors ml-1">
-                <X className="w-3 h-3" />
-                <span>reset</span>
-              </button>
-            )}
+            {/* Row 1: label + badge + reset */}
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold shrink-0" style={{ color: hotelDefault ? color : '#94a3b8' }}>Shablon:</span>
+                {!hotelDefault && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400">standart</span>
+                )}
+                {hotelDefault && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full text-white"
+                    style={{ background: color }}>o'zgartirilgan</span>
+                )}
+              </div>
+              {hotelDefault && (
+                <button onClick={() => onSetHotelDefault(null)} title="Standartga qaytarish"
+                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 px-1.5 py-0.5 rounded transition-colors">
+                  <X className="w-3 h-3" />
+                  <span>reset</span>
+                </button>
+              )}
+            </div>
+            {/* Row 2: PAX DBL TWN SNGL inputs */}
+            <div className="grid grid-cols-4 gap-2">
+              {['pax','dbl','twn','sngl'].map(field => (
+                <label key={field} className="flex flex-col items-center gap-0.5">
+                  <span className="text-xs text-slate-400 uppercase">{field}</span>
+                  <input
+                    type="number" min="0"
+                    value={effectiveDefault[field] ?? ''}
+                    onFocus={e => e.target.select()}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      const val = raw === '' ? 0 : (parseInt(raw, 10) >= 0 ? parseInt(raw, 10) : 0);
+                      const base = hotelDefault || { ...tourTypeDefault };
+                      onSetHotelDefault({ ...base, [field]: val });
+                    }}
+                    className="w-full text-center text-xs border rounded px-1 py-1 focus:outline-none focus:ring-1"
+                    style={{ borderColor: hotelDefault?.[field] !== undefined ? color : '#e2e8f0',
+                             background: hotelDefault?.[field] !== undefined ? `${color}10` : 'white',
+                             fontWeight: hotelDefault?.[field] !== undefined ? '600' : '400' }}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
           {hasSplit ? (
             <>
@@ -2760,7 +2766,7 @@ function HotelsTab({ tourType, tourColor }) {
             </button>
 
             {isCityOpen && (
-              <div className="p-3 space-y-2" style={{ background: '#f8fafc' }}>
+              <div className="px-1.5 py-2 space-y-2" style={{ background: '#f8fafc' }}>
                 {displayHotels.map(hd => (
                   <HotelCard
                     key={hd.hotel.id}
@@ -3140,7 +3146,7 @@ export default function Jahresplanung() {
 
       {/* ── CONTENT ── */}
       <div className="bg-slate-50 min-h-screen">
-        <div className="px-3 md:px-6 py-4 md:py-5 pb-20 md:pb-6 max-w-7xl mx-auto">
+        <div className="px-1.5 md:px-6 py-4 md:py-5 pb-20 md:pb-6 max-w-7xl mx-auto">
           {mainTab==='hotels'    && <HotelsTab   tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='restoran'  && <RestoranTab  tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='transport' && <TransportTab tourType={tourTab} tourColor={activeTourColor} />}
