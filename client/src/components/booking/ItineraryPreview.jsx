@@ -2081,118 +2081,97 @@ export default function ItineraryPreview({ bookingId, booking }) {
                 <div className="text-center font-bold text-lg py-2 bg-gray-900 text-white">
                   Poyezd bileti
                 </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-yellow-100">
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Sana</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Yo'nalish</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Poyezd</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Vaqti</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold print:hidden w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Mobile cards */}
+              <div className="space-y-2 sm:hidden print:hidden">
                 {railways.map((railway) => {
                   const isEditing = editingRailway?.id === railway.id;
                   const editData = isEditing ? editingRailway : railway;
-
                   return (
-                    <tr key={railway.id} className="bg-yellow-100">
-                      <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={editData.date || ''}
-                            onChange={(e) => setEditingRailway({ ...editingRailway, date: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          formatDateDisplay(railway.date)
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.departure || ''}
-                            onChange={(e) => setEditingRailway({ ...editingRailway, departure: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          (railway.departure && railway.arrival)
-                            ? `${railway.departure} - ${railway.arrival}`
-                            : railway.departure || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.trainNumber || ''}
-                            onChange={(e) => setEditingRailway({ ...editingRailway, trainNumber: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          railway.trainName || railway.trainNumber || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center font-bold">
-                        {isEditing ? (
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={editData.departureTime || ''}
-                              onChange={(e) => setEditingRailway({ ...editingRailway, departureTime: e.target.value })}
-                              className="w-1/2 px-2 py-1 border rounded"
-                              placeholder="07:00"
-                            />
-                            <input
-                              type="text"
-                              value={editData.arrivalTime || ''}
-                              onChange={(e) => setEditingRailway({ ...editingRailway, arrivalTime: e.target.value })}
-                              className="w-1/2 px-2 py-1 border rounded"
-                              placeholder="09:00"
-                            />
+                    <div key={railway.id} className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm">
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="date" value={editData.date || ''} onChange={(e) => setEditingRailway({ ...editingRailway, date: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" />
+                            <input type="text" value={editData.departure || ''} onChange={(e) => setEditingRailway({ ...editingRailway, departure: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Yo'nalish" />
                           </div>
-                        ) : (
-                          railway.departureTime && railway.arrivalTime
-                            ? `${railway.departureTime}-${railway.arrivalTime}`
-                            : '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={saveRailway}
-                              className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded"
-                              title="Save"
-                            >
-                              <Save className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={cancelEditRailway}
-                              className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                          <div className="grid grid-cols-3 gap-2">
+                            <input type="text" value={editData.trainNumber || ''} onChange={(e) => setEditingRailway({ ...editingRailway, trainNumber: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Poyezd" />
+                            <input type="text" value={editData.departureTime || ''} onChange={(e) => setEditingRailway({ ...editingRailway, departureTime: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Ket." />
+                            <input type="text" value={editData.arrivalTime || ''} onChange={(e) => setEditingRailway({ ...editingRailway, arrivalTime: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Kel." />
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => startEditRailway(railway)}
-                            className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                          <div className="flex justify-end gap-2">
+                            <button onClick={saveRailway} className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium"><Save className="w-3.5 h-3.5" /> Saqlash</button>
+                            <button onClick={cancelEditRailway} className="flex items-center gap-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium"><X className="w-3.5 h-3.5" /> Bekor</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-gray-500 mb-0.5">{formatDateDisplay(railway.date)}</div>
+                            <div className="text-sm font-bold text-gray-900">{(railway.departure && railway.arrival) ? `${railway.departure} - ${railway.arrival}` : railway.departure || '-'}</div>
+                            <div className="flex items-center gap-3 mt-1 text-xs">
+                              <span><span className="text-gray-400">Poyezd:</span> <span className="font-semibold">{railway.trainName || railway.trainNumber || '-'}</span></span>
+                              <span><span className="text-gray-400">Vaqt:</span> <span className="font-semibold">{railway.departureTime && railway.arrivalTime ? `${railway.departureTime}-${railway.arrivalTime}` : '-'}</span></span>
+                            </div>
+                          </div>
+                          <button onClick={() => startEditRailway(railway)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded flex-shrink-0"><Edit className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+              {/* Desktop table */}
+              <table className="w-full text-sm hidden sm:table">
+                <thead>
+                  <tr className="bg-yellow-100">
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Sana</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Yo'nalish</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Poyezd</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Vaqti</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold print:hidden w-24">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {railways.map((railway) => {
+                    const isEditing = editingRailway?.id === railway.id;
+                    const editData = isEditing ? editingRailway : railway;
+                    return (
+                      <tr key={railway.id} className="bg-yellow-100">
+                        <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
+                          {isEditing ? (<input type="date" value={editData.date || ''} onChange={(e) => setEditingRailway({ ...editingRailway, date: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (formatDateDisplay(railway.date))}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2">
+                          {isEditing ? (<input type="text" value={editData.departure || ''} onChange={(e) => setEditingRailway({ ...editingRailway, departure: e.target.value })} className="w-full px-2 py-1 border rounded" />) : ((railway.departure && railway.arrival) ? `${railway.departure} - ${railway.arrival}` : railway.departure || '-')}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center">
+                          {isEditing ? (<input type="text" value={editData.trainNumber || ''} onChange={(e) => setEditingRailway({ ...editingRailway, trainNumber: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (railway.trainName || railway.trainNumber || '-')}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center font-bold">
+                          {isEditing ? (
+                            <div className="flex gap-1">
+                              <input type="text" value={editData.departureTime || ''} onChange={(e) => setEditingRailway({ ...editingRailway, departureTime: e.target.value })} className="w-1/2 px-2 py-1 border rounded" placeholder="07:00" />
+                              <input type="text" value={editData.arrivalTime || ''} onChange={(e) => setEditingRailway({ ...editingRailway, arrivalTime: e.target.value })} className="w-1/2 px-2 py-1 border rounded" placeholder="09:00" />
+                            </div>
+                          ) : (railway.departureTime && railway.arrivalTime ? `${railway.departureTime}-${railway.arrivalTime}` : '-')}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
+                          {isEditing ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={saveRailway} className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded" title="Save"><Save className="w-4 h-4" /></button>
+                              <button onClick={cancelEditRailway} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded" title="Cancel"><X className="w-4 h-4" /></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => startEditRailway(railway)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded" title="Edit"><Edit className="w-4 h-4" /></button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
           </div>
               )}
 
@@ -2202,7 +2181,49 @@ export default function ItineraryPreview({ bookingId, booking }) {
                   <div className="text-center font-bold text-lg py-2 bg-gray-900 text-white">
                     Ichki aviareys
                   </div>
-                  <table className="w-full text-sm">
+                <>
+                  {/* Mobile cards */}
+                  <div className="space-y-2 sm:hidden print:hidden">
+                    {domesticFlights.map((flight) => {
+                      const isEditing = editingFlight?.id === flight.id;
+                      const editData = isEditing ? editingFlight : flight;
+                      return (
+                        <div key={flight.id} className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm">
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <input type="date" value={editData.date || ''} onChange={(e) => setEditingFlight({ ...editingFlight, date: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" />
+                                <input type="text" value={editData.route || ''} onChange={(e) => setEditingFlight({ ...editingFlight, route: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Yo'nalish" />
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <input type="text" value={editData.flightNumber || ''} onChange={(e) => setEditingFlight({ ...editingFlight, flightNumber: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Reys" />
+                                <input type="text" value={editData.departureTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, departureTime: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Ket." />
+                                <input type="text" value={editData.arrivalTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, arrivalTime: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Kel." />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button onClick={saveFlight} className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium"><Save className="w-3.5 h-3.5" /> Saqlash</button>
+                                <button onClick={cancelEditFlight} className="flex items-center gap-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium"><X className="w-3.5 h-3.5" /> Bekor</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-gray-500 mb-0.5">{formatDateDisplay(flight.date)}</div>
+                                <div className="text-sm font-bold text-gray-900">{flight.route || flight.departure || '-'}</div>
+                                <div className="flex items-center gap-3 mt-1 text-xs">
+                                  <span><span className="text-gray-400">Reys:</span> <span className="font-semibold">{flight.flightNumber || '-'}</span></span>
+                                  <span><span className="text-gray-400">Vaqt:</span> <span className="font-semibold">{flight.departureTime && flight.arrivalTime ? `${flight.departureTime}-${flight.arrivalTime}` : '-'}</span></span>
+                                </div>
+                              </div>
+                              <button onClick={() => startEditFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded flex-shrink-0"><Edit className="w-3.5 h-3.5" /></button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Desktop table */}
+                  <table className="w-full text-sm hidden sm:table">
                     <thead>
                       <tr className="bg-yellow-100">
                         <th className="border border-gray-900 px-3 py-2 font-bold">Sana</th>
@@ -2216,102 +2237,41 @@ export default function ItineraryPreview({ bookingId, booking }) {
                       {domesticFlights.map((flight) => {
                         const isEditing = editingFlight?.id === flight.id;
                         const editData = isEditing ? editingFlight : flight;
-
                         return (
-                    <tr key={flight.id} className="bg-yellow-100">
-                      <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={editData.date || ''}
-                            onChange={(e) => setEditingFlight({ ...editingFlight, date: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          formatDateDisplay(flight.date)
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.route || ''}
-                            onChange={(e) => setEditingFlight({ ...editingFlight, route: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          flight.route || flight.departure || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.flightNumber || ''}
-                            onChange={(e) => setEditingFlight({ ...editingFlight, flightNumber: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          flight.flightNumber || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center font-bold">
-                        {isEditing ? (
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={editData.departureTime || ''}
-                              onChange={(e) => setEditingFlight({ ...editingFlight, departureTime: e.target.value })}
-                              className="w-1/2 px-2 py-1 border rounded"
-                              placeholder="07:00"
-                            />
-                            <input
-                              type="text"
-                              value={editData.arrivalTime || ''}
-                              onChange={(e) => setEditingFlight({ ...editingFlight, arrivalTime: e.target.value })}
-                              className="w-1/2 px-2 py-1 border rounded"
-                              placeholder="09:00"
-                            />
-                          </div>
-                        ) : (
-                          flight.departureTime && flight.arrivalTime
-                            ? `${flight.departureTime}-${flight.arrivalTime}`
-                            : '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={saveFlight}
-                              className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded"
-                              title="Save"
-                            >
-                              <Save className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={cancelEditFlight}
-                              className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => startEditFlight(flight)}
-                            className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          <tr key={flight.id} className="bg-yellow-100">
+                            <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
+                              {isEditing ? (<input type="date" value={editData.date || ''} onChange={(e) => setEditingFlight({ ...editingFlight, date: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (formatDateDisplay(flight.date))}
+                            </td>
+                            <td className="border border-gray-900 px-3 py-2">
+                              {isEditing ? (<input type="text" value={editData.route || ''} onChange={(e) => setEditingFlight({ ...editingFlight, route: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (flight.route || flight.departure || '-')}
+                            </td>
+                            <td className="border border-gray-900 px-3 py-2 text-center">
+                              {isEditing ? (<input type="text" value={editData.flightNumber || ''} onChange={(e) => setEditingFlight({ ...editingFlight, flightNumber: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (flight.flightNumber || '-')}
+                            </td>
+                            <td className="border border-gray-900 px-3 py-2 text-center font-bold">
+                              {isEditing ? (
+                                <div className="flex gap-1">
+                                  <input type="text" value={editData.departureTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, departureTime: e.target.value })} className="w-1/2 px-2 py-1 border rounded" placeholder="07:00" />
+                                  <input type="text" value={editData.arrivalTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, arrivalTime: e.target.value })} className="w-1/2 px-2 py-1 border rounded" placeholder="09:00" />
+                                </div>
+                              ) : (flight.departureTime && flight.arrivalTime ? `${flight.departureTime}-${flight.arrivalTime}` : '-')}
+                            </td>
+                            <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
+                              {isEditing ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <button onClick={saveFlight} className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded" title="Save"><Save className="w-4 h-4" /></button>
+                                  <button onClick={cancelEditFlight} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded" title="Cancel"><X className="w-4 h-4" /></button>
+                                </div>
+                              ) : (
+                                <button onClick={() => startEditFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded" title="Edit"><Edit className="w-4 h-4" /></button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
                 </div>
               )}
 
@@ -2321,116 +2281,97 @@ export default function ItineraryPreview({ bookingId, booking }) {
             <div className="text-center font-bold text-lg py-2 bg-gray-900 text-white">
               Xalqaro aviareyslar
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-yellow-100">
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Sana</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Yo'nalish</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Reys</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold">Vaqti</th>
-                  <th className="border border-gray-900 px-3 py-2 font-bold print:hidden w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Mobile cards */}
+              <div className="space-y-2 sm:hidden print:hidden">
                 {internationalFlights.map((flight) => {
                   const isEditing = editingFlight?.id === flight.id;
                   const editData = isEditing ? editingFlight : flight;
-
                   return (
-                    <tr key={flight.id} className="bg-yellow-100">
-                      <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={editData.date || ''}
-                            onChange={(e) => setEditingFlight({ ...editingFlight, date: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          formatDateDisplay(flight.date)
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.route || ''}
-                            onChange={(e) => setEditingFlight({ ...editingFlight, route: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          flight.route || flight.departure || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.flightNumber || ''}
-                            onChange={(e) => setEditingFlight({ ...editingFlight, flightNumber: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          flight.flightNumber || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center font-bold">
-                        {isEditing ? (
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={editData.departureTime || ''}
-                              onChange={(e) => setEditingFlight({ ...editingFlight, departureTime: e.target.value })}
-                              className="w-1/2 px-2 py-1 border rounded"
-                              placeholder="07:00"
-                            />
-                            <input
-                              type="text"
-                              value={editData.arrivalTime || ''}
-                              onChange={(e) => setEditingFlight({ ...editingFlight, arrivalTime: e.target.value })}
-                              className="w-1/2 px-2 py-1 border rounded"
-                              placeholder="09:00"
-                            />
+                    <div key={flight.id} className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm">
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="date" value={editData.date || ''} onChange={(e) => setEditingFlight({ ...editingFlight, date: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" />
+                            <input type="text" value={editData.route || ''} onChange={(e) => setEditingFlight({ ...editingFlight, route: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Yo'nalish" />
                           </div>
-                        ) : (
-                          flight.departureTime && flight.arrivalTime
-                            ? `${flight.departureTime}-${flight.arrivalTime}`
-                            : '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={saveFlight}
-                              className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded"
-                              title="Save"
-                            >
-                              <Save className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={cancelEditFlight}
-                              className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                          <div className="grid grid-cols-3 gap-2">
+                            <input type="text" value={editData.flightNumber || ''} onChange={(e) => setEditingFlight({ ...editingFlight, flightNumber: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Reys" />
+                            <input type="text" value={editData.departureTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, departureTime: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Ket." />
+                            <input type="text" value={editData.arrivalTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, arrivalTime: e.target.value })} className="w-full px-2 py-1 border rounded text-sm" placeholder="Kel." />
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => startEditFlight(flight)}
-                            className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                          <div className="flex justify-end gap-2">
+                            <button onClick={saveFlight} className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium"><Save className="w-3.5 h-3.5" /> Saqlash</button>
+                            <button onClick={cancelEditFlight} className="flex items-center gap-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium"><X className="w-3.5 h-3.5" /> Bekor</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-gray-500 mb-0.5">{formatDateDisplay(flight.date)}</div>
+                            <div className="text-sm font-bold text-gray-900">{flight.route || flight.departure || '-'}</div>
+                            <div className="flex items-center gap-3 mt-1 text-xs">
+                              <span><span className="text-gray-400">Reys:</span> <span className="font-semibold">{flight.flightNumber || '-'}</span></span>
+                              <span><span className="text-gray-400">Vaqt:</span> <span className="font-semibold">{flight.departureTime && flight.arrivalTime ? `${flight.departureTime}-${flight.arrivalTime}` : '-'}</span></span>
+                            </div>
+                          </div>
+                          <button onClick={() => startEditFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded flex-shrink-0"><Edit className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-                  </table>
+              </div>
+              {/* Desktop table */}
+              <table className="w-full text-sm hidden sm:table">
+                <thead>
+                  <tr className="bg-yellow-100">
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Sana</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Yo'nalish</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Reys</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold">Vaqti</th>
+                    <th className="border border-gray-900 px-3 py-2 font-bold print:hidden w-24">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {internationalFlights.map((flight) => {
+                    const isEditing = editingFlight?.id === flight.id;
+                    const editData = isEditing ? editingFlight : flight;
+                    return (
+                      <tr key={flight.id} className="bg-yellow-100">
+                        <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
+                          {isEditing ? (<input type="date" value={editData.date || ''} onChange={(e) => setEditingFlight({ ...editingFlight, date: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (formatDateDisplay(flight.date))}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2">
+                          {isEditing ? (<input type="text" value={editData.route || ''} onChange={(e) => setEditingFlight({ ...editingFlight, route: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (flight.route || flight.departure || '-')}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center">
+                          {isEditing ? (<input type="text" value={editData.flightNumber || ''} onChange={(e) => setEditingFlight({ ...editingFlight, flightNumber: e.target.value })} className="w-full px-2 py-1 border rounded" />) : (flight.flightNumber || '-')}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center font-bold">
+                          {isEditing ? (
+                            <div className="flex gap-1">
+                              <input type="text" value={editData.departureTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, departureTime: e.target.value })} className="w-1/2 px-2 py-1 border rounded" placeholder="07:00" />
+                              <input type="text" value={editData.arrivalTime || ''} onChange={(e) => setEditingFlight({ ...editingFlight, arrivalTime: e.target.value })} className="w-1/2 px-2 py-1 border rounded" placeholder="09:00" />
+                            </div>
+                          ) : (flight.departureTime && flight.arrivalTime ? `${flight.departureTime}-${flight.arrivalTime}` : '-')}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
+                          {isEditing ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={saveFlight} className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded" title="Save"><Save className="w-4 h-4" /></button>
+                              <button onClick={cancelEditFlight} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded" title="Cancel"><X className="w-4 h-4" /></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => startEditFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded" title="Edit"><Edit className="w-4 h-4" /></button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
                 </div>
               )}
             </div>
@@ -2441,52 +2382,67 @@ export default function ItineraryPreview({ bookingId, booking }) {
               <div className="text-center font-bold text-lg py-2 bg-gray-900 text-white">
                 Hotels
               </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-yellow-100">
-                    <th className="border border-gray-900 px-3 py-2 font-bold">Shahar</th>
-                    <th className="border border-gray-900 px-3 py-2 font-bold">Hotel</th>
-                    <th className="border border-gray-900 px-3 py-2 font-bold">Telefon</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    // Get unique hotels from bookingRooms
-                    const uniqueHotels = [];
-                    const seenHotelIds = new Set();
-
-                    bookingRooms.forEach(room => {
-                      if (room.hotel && room.hotelId && !seenHotelIds.has(room.hotelId)) {
-                        seenHotelIds.add(room.hotelId);
-                        const hotelDetails = hotels.find(h => h.id === room.hotelId);
-                        uniqueHotels.push({
-                          cityName: room.hotel.city?.name || '-',
-                          hotelName: room.hotel.name || '-',
-                          phone: hotelDetails?.phone || room.hotel.phone || '-'
-                        });
-                      }
+              {(() => {
+                const uniqueHotels = [];
+                const seenHotelIds = new Set();
+                bookingRooms.forEach(room => {
+                  if (room.hotel && room.hotelId && !seenHotelIds.has(room.hotelId)) {
+                    seenHotelIds.add(room.hotelId);
+                    const hotelDetails = hotels.find(h => h.id === room.hotelId);
+                    uniqueHotels.push({
+                      cityName: room.hotel.city?.name || '-',
+                      hotelName: room.hotel.name || '-',
+                      phone: hotelDetails?.phone || room.hotel.phone || '-'
                     });
+                  }
+                });
 
-                    if (uniqueHotels.length === 0) {
-                      return (
-                        <tr>
-                          <td colSpan="3" className="border border-gray-900 px-3 py-6 text-center text-gray-500">
-                            Rooms модулида отель қўшилмаган
-                          </td>
+                return (
+                  <>
+                    {/* Mobile cards */}
+                    <div className="space-y-2 sm:hidden print:hidden">
+                      {uniqueHotels.length === 0 ? (
+                        <div className="text-center py-4 text-sm text-gray-500">Rooms модулида отель қўшилмаган</div>
+                      ) : (
+                        uniqueHotels.map((hotel, idx) => (
+                          <div key={idx} className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm">
+                            <div className="text-xs font-semibold text-gray-500 mb-0.5">{hotel.cityName}</div>
+                            <div className="text-sm font-bold text-gray-900">{hotel.hotelName}</div>
+                            <div className="text-xs text-gray-600 mt-0.5">{hotel.phone}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    {/* Desktop table */}
+                    <table className="w-full text-sm hidden sm:table">
+                      <thead>
+                        <tr className="bg-yellow-100">
+                          <th className="border border-gray-900 px-3 py-2 font-bold">Shahar</th>
+                          <th className="border border-gray-900 px-3 py-2 font-bold">Hotel</th>
+                          <th className="border border-gray-900 px-3 py-2 font-bold">Telefon</th>
                         </tr>
-                      );
-                    }
-
-                    return uniqueHotels.map((hotel, idx) => (
-                      <tr key={idx} className="bg-yellow-100">
-                        <td className="border border-gray-900 px-3 py-2">{hotel.cityName}</td>
-                        <td className="border border-gray-900 px-3 py-2 font-semibold">{hotel.hotelName}</td>
-                        <td className="border border-gray-900 px-3 py-2 text-center">{hotel.phone}</td>
-                      </tr>
-                    ));
-                  })()}
-                </tbody>
-              </table>
+                      </thead>
+                      <tbody>
+                        {uniqueHotels.length === 0 ? (
+                          <tr>
+                            <td colSpan="3" className="border border-gray-900 px-3 py-6 text-center text-gray-500">
+                              Rooms модулида отель қўшилмаган
+                            </td>
+                          </tr>
+                        ) : (
+                          uniqueHotels.map((hotel, idx) => (
+                            <tr key={idx} className="bg-yellow-100">
+                              <td className="border border-gray-900 px-3 py-2">{hotel.cityName}</td>
+                              <td className="border border-gray-900 px-3 py-2 font-semibold">{hotel.hotelName}</td>
+                              <td className="border border-gray-900 px-3 py-2 text-center">{hotel.phone}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </>
+                );
+              })()}
             </div>
             {/* END RIGHT COLUMN */}
           </div>
