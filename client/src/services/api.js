@@ -371,6 +371,7 @@ export const telegramApi = {
   getMealConfirmations: (bookingId, year) => api.get('/telegram/meal-confirmations', { params: { ...(bookingId ? { bookingId } : {}), ...(year ? { year } : {}) } }),
   deleteMealConfirmation: (id) => api.delete(`/telegram/meal-confirmations/${id}`),
   getGuideAssignments: (year) => api.get('/telegram/guide-assignments', year ? { params: { year } } : {}),
+  deleteGuideConfirmation: (bookingId) => api.delete(`/telegram/guide-confirmations/${bookingId}`),
   getMealSettings: () => api.get('/telegram/meal-settings'),
   saveMealSettings: (chatIds) => api.put('/telegram/meal-settings', { chatIds }),
   getBotAdminIds: () => api.get('/telegram/bot-admin-ids'),

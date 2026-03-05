@@ -16234,89 +16234,119 @@ License №T-0084-08 from 2021-04-26`;
                 }).length;
 
                 return (
-                  <div className={`grid grid-cols-2 md:flex md:items-stretch gap-3 md:gap-4 md:flex-wrap mb-6 md:mb-8`}>
-                    {/* Total Guests Card */}
-                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl md:rounded-2xl shadow-md hover:shadow-lg transition-all col-span-2 md:col-span-1">
-                      <div className="flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white shadow-md">
-                        <Users className="w-6 h-6 md:w-8 md:h-8 text-primary-600" />
+                  <>
+                    {/* Mobile: compact pill row */}
+                    <div className="flex flex-wrap items-center gap-2 mb-4 md:hidden">
+                      <div className="flex items-center gap-1.5 px-3 py-2 bg-primary-50 border border-primary-200 rounded-xl shadow-sm">
+                        <Users className="w-3.5 h-3.5 text-primary-600 flex-shrink-0" />
+                        <span className="text-sm font-black text-gray-900">{totalGuests}</span>
+                        <span className="text-xs text-primary-600 font-medium">guests</span>
                       </div>
-                      <div>
-                        <div className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-0.5 md:mb-1">Total</div>
-                        <div className="text-2xl md:text-4xl font-black text-gray-900 mb-0">{ totalGuests}</div>
-                        <div className="text-xs md:text-sm text-gray-600 font-medium">guests</div>
-                      </div>
+                      {roomCounts.DBL > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl shadow-sm">
+                          <span className="text-xs font-bold text-blue-700 bg-blue-500 text-white px-1.5 py-0.5 rounded-full">DBL</span>
+                          <span className="text-sm font-black text-gray-900">{roomCounts.DBL}</span>
+                        </div>
+                      )}
+                      {roomCounts.TWN > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl shadow-sm">
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">TWN</span>
+                          <span className="text-sm font-black text-gray-900">{roomCounts.TWN}</span>
+                        </div>
+                      )}
+                      {roomCounts.SNGL > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 border border-violet-200 rounded-xl shadow-sm">
+                          <span className="text-xs font-bold bg-violet-500 text-white px-1.5 py-0.5 rounded-full">SNGL</span>
+                          <span className="text-sm font-black text-gray-900">{roomCounts.SNGL}</span>
+                        </div>
+                      )}
+                      {uzbekCount > 0 && turkmCount > 0 && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span className="text-xs font-bold text-gray-700">UZB</span>
+                            <span className="text-sm font-black text-gray-900">{uzbekCount}</span>
+                          </div>
+                          <span className="text-gray-300 text-xs">|</span>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-purple-500" />
+                            <span className="text-xs font-bold text-gray-700">TKM</span>
+                            <span className="text-sm font-black text-gray-900">{turkmCount}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* DBL Rooms Card */}
-                    {roomCounts.DBL > 0 && (
-                      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl md:rounded-2xl shadow-md hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white shadow-md">
-                          <Bed className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+                    {/* Desktop: large cards */}
+                    <div className="hidden md:flex md:items-stretch gap-4 flex-wrap mb-8">
+                      <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
+                        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                          <Users className="w-8 h-8 text-primary-600" />
                         </div>
                         <div>
-                          <div className="inline-flex items-center gap-1.5 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5 md:mb-1">
-                            DBL
-                          </div>
-                          <div className="text-2xl md:text-4xl font-black text-gray-900 mb-0">{roomCounts.DBL}</div>
-                          <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
+                          <div className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-1">Total</div>
+                          <div className="text-4xl font-black text-gray-900">{totalGuests}</div>
+                          <div className="text-sm text-gray-600 font-medium">guests</div>
                         </div>
                       </div>
-                    )}
-
-                    {/* TWN Rooms Card */}
-                    {roomCounts.TWN > 0 && (
-                      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl md:rounded-2xl shadow-md hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white shadow-md">
-                          <Bed className="w-6 h-6 md:w-8 md:h-8 text-emerald-600" />
-                        </div>
-                        <div>
-                          <div className="inline-flex items-center gap-1.5 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5 md:mb-1">
-                            TWN
+                      {roomCounts.DBL > 0 && (
+                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
+                          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                            <Bed className="w-8 h-8 text-blue-600" />
                           </div>
-                          <div className="text-2xl md:text-4xl font-black text-gray-900 mb-0">{roomCounts.TWN}</div>
-                          <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* SNGL Rooms Card */}
-                    {roomCounts.SNGL > 0 && (
-                      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-xl md:rounded-2xl shadow-md hover:shadow-lg transition-all">
-                        <div className="flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white shadow-md">
-                          <User className="w-6 h-6 md:w-8 md:h-8 text-violet-600" />
-                        </div>
-                        <div>
-                          <div className="inline-flex items-center gap-1.5 px-2 md:px-3 py-0.5 md:py-1 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5 md:mb-1">
-                            SNGL
+                          <div>
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-1">DBL</div>
+                            <div className="text-4xl font-black text-gray-900">{roomCounts.DBL}</div>
+                            <div className="text-sm text-gray-600 font-medium">rooms</div>
                           </div>
-                          <div className="text-2xl md:text-4xl font-black text-gray-900 mb-0">{roomCounts.SNGL}</div>
-                          <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Uzbekistan/Turkmenistan Split Card */}
-                    {uzbekCount > 0 && turkmCount > 0 && (
-                      <div className="col-span-2 md:col-span-1 flex items-center gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl md:rounded-2xl shadow-md">
-                        <div className="flex flex-col gap-2 w-full">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm flex-shrink-0" />
-                              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">UZB</span>
+                      )}
+                      {roomCounts.TWN > 0 && (
+                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
+                          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                            <Bed className="w-8 h-8 text-emerald-600" />
+                          </div>
+                          <div>
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-1">TWN</div>
+                            <div className="text-4xl font-black text-gray-900">{roomCounts.TWN}</div>
+                            <div className="text-sm text-gray-600 font-medium">rooms</div>
+                          </div>
+                        </div>
+                      )}
+                      {roomCounts.SNGL > 0 && (
+                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-2xl shadow-md hover:shadow-lg transition-all">
+                          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
+                            <User className="w-8 h-8 text-violet-600" />
+                          </div>
+                          <div>
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-1">SNGL</div>
+                            <div className="text-4xl font-black text-gray-900">{roomCounts.SNGL}</div>
+                            <div className="text-sm text-gray-600 font-medium">rooms</div>
+                          </div>
+                        </div>
+                      )}
+                      {uzbekCount > 0 && turkmCount > 0 && (
+                        <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl shadow-md">
+                          <div className="flex flex-col gap-2 w-full">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
+                                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">UZB</span>
+                              </div>
+                              <span className="text-2xl font-black text-gray-900">{uzbekCount}</span>
                             </div>
-                            <span className="text-2xl font-black text-gray-900">{uzbekCount}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm flex-shrink-0" />
-                              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">TKM</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
+                                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">TKM</span>
+                              </div>
+                              <span className="text-2xl font-black text-gray-900">{turkmCount}</span>
                             </div>
-                            <span className="text-2xl font-black text-gray-900">{turkmCount}</span>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </>
                 );
               })()}
 
@@ -16782,24 +16812,24 @@ License №T-0084-08 from 2021-04-26`;
                                       {/* Left side - Stats */}
                                       <div className="flex items-center gap-3 md:gap-5 flex-wrap">
                                         {!isPAX && totalRooms > 0 && (
-                                          <div className="flex items-center gap-2">
-                                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-orange-100 border border-orange-300 flex items-center justify-center">
-                                              <Bed className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
+                                          <div className="flex items-center gap-1.5 md:gap-2">
+                                            <div className="w-7 h-7 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-orange-100 border border-orange-300 flex items-center justify-center">
+                                              <Bed className="w-3.5 h-3.5 md:w-6 md:h-6 text-orange-600" />
                                             </div>
                                             <div>
-                                              <div className="text-xs text-gray-500 uppercase font-medium">Rooms</div>
-                                              <div className="text-xl md:text-2xl font-bold text-gray-800">{totalRooms}</div>
+                                              <div className="text-xs text-gray-500 uppercase font-medium leading-none">Rooms</div>
+                                              <div className="text-base md:text-2xl font-bold text-gray-800">{totalRooms}</div>
                                             </div>
                                           </div>
                                         )}
                                         {totalGuests > 0 && (
-                                          <div className="flex items-center gap-2">
-                                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-green-100 border border-green-300 flex items-center justify-center">
-                                              <Users className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+                                          <div className="flex items-center gap-1.5 md:gap-2">
+                                            <div className="w-7 h-7 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-green-100 border border-green-300 flex items-center justify-center">
+                                              <Users className="w-3.5 h-3.5 md:w-6 md:h-6 text-green-600" />
                                             </div>
                                             <div>
-                                              <div className="text-xs text-gray-500 uppercase font-medium">Guests</div>
-                                              <div className="text-xl md:text-2xl font-bold text-gray-800">{totalGuests}</div>
+                                              <div className="text-xs text-gray-500 uppercase font-medium leading-none">Guests</div>
+                                              <div className="text-base md:text-2xl font-bold text-gray-800">{totalGuests}</div>
                                             </div>
                                           </div>
                                         )}
@@ -16808,16 +16838,16 @@ License №T-0084-08 from 2021-04-26`;
                                       {/* Right side - Total */}
                                       {(totalCost > 0 || booking?.status === 'CANCELLED') && (
                                         <div className="text-left md:text-right w-full md:w-auto">
-                                          <div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-medium">Total (incl. tax)</div>
-                                          <div className="text-2xl md:text-3xl font-black text-blue-700">
+                                          <div className="text-xs text-gray-500 uppercase tracking-wider mb-0.5 font-medium">Total (incl. tax)</div>
+                                          <div className="text-base md:text-3xl font-black text-blue-700">
                                             {currency === 'UZS' ? (
                                               <>
                                                 {displayCost}
-                                                <span className="text-base md:text-lg font-medium text-blue-500 ml-2">{currencySymbol}</span>
+                                                <span className="text-xs md:text-lg font-medium text-blue-500 ml-1 md:ml-2">{currencySymbol}</span>
                                               </>
                                             ) : (
                                               <>
-                                                <span className="text-base md:text-lg font-medium text-blue-500 mr-1">{currencySymbol}</span>
+                                                <span className="text-xs md:text-lg font-medium text-blue-500 mr-1">{currencySymbol}</span>
                                                 {displayCost}
                                               </>
                                             )}
@@ -16964,17 +16994,13 @@ License №T-0084-08 from 2021-04-26`;
                                     const hasTax = matchingRoomType?.touristTaxEnabled || matchingRoomType?.vatIncluded;
 
                                     return (
-                                      <span key={idx} className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-3 bg-gradient-to-br from-green-50 via-green-100 to-emerald-100 text-green-900 border-2 border-green-400 rounded-xl md:rounded-2xl text-sm md:text-lg font-black shadow-lg hover:shadow-xl hover:scale-105 transition-all">
-                                        <span className="text-green-800 text-base md:text-xl">{room.roomTypeCode}:</span>
-                                        <span className="text-gray-800 text-sm md:text-base">{room.roomsCount} × {room.guestsPerRoom} guests</span>
+                                      <span key={idx} className="inline-flex items-center gap-1.5 md:gap-3 px-2.5 md:px-5 py-1.5 md:py-3 bg-gradient-to-br from-green-50 via-green-100 to-emerald-100 text-green-900 border-2 border-green-400 rounded-xl md:rounded-2xl text-xs md:text-lg font-semibold md:font-black shadow-md hover:shadow-xl hover:scale-105 transition-all">
+                                        <span className="text-green-800 text-xs md:text-xl font-bold">{room.roomTypeCode}:</span>
+                                        <span className="text-gray-800 text-xs md:text-base">{room.roomsCount} × {room.guestsPerRoom}</span>
                                         {room.pricePerNight > 0 && (
-                                          <span className="text-green-700 text-xs md:text-base font-semibold">
+                                          <span className="text-green-700 text-xs md:text-base font-medium hidden sm:inline">
                                             ({displayPrice}{currencyLabel}/night)
-                                            {hasTax && (
-                                              <span className="text-green-600 text-xs ml-1">
-                                                (incl. tax)
-                                              </span>
-                                            )}
+                                            {hasTax && <span className="text-green-600 text-xs ml-1">(incl. tax)</span>}
                                           </span>
                                         )}
                                       </span>
@@ -17001,10 +17027,10 @@ License №T-0084-08 from 2021-04-26`;
                                 isCombined
                               );
                             }}
-                            className={`p-3 text-green-600 bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                            className={`text-green-600 bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-400 rounded-xl hover:scale-105 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-medium' : 'p-3 hover:scale-110'}`}
                             title={pdfFolderConfigured ? `PDF yuklab olish va papkaga saqlash (${pdfFolderName})` : "Скачать заявку для отеля (Print to PDF)"}
                           >
-                            <FileDown className="w-5 h-5" />
+                            <FileDown className="w-4 h-4 md:w-5 md:h-5" />
                             {isMobile && <span className="font-medium">Download PDF</span>}
                           </button>
                           <button
@@ -17017,10 +17043,10 @@ License №T-0084-08 from 2021-04-26`;
                               });
                               setEmailInput(acc.hotel?.email || '');
                             }}
-                            className={`p-3 text-blue-600 bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                            className={`text-blue-600 bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400 rounded-xl hover:scale-105 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-medium' : 'p-3 hover:scale-110'}`}
                             title="Hotelga email yuborish (Gmail)"
                           >
-                            <Mail className="w-5 h-5" />
+                            <Mail className="w-4 h-4 md:w-5 md:h-5" />
                             {isMobile && <span className="font-medium">Email yuborish</span>}
                           </button>
                           <button
@@ -17032,10 +17058,10 @@ License №T-0084-08 from 2021-04-26`;
                               });
                               setTelegramChatIdInput(acc.hotel?.telegramChatId || '');
                             }}
-                            className={`p-3 text-sky-600 bg-sky-50 hover:bg-sky-100 border-2 border-sky-200 hover:border-sky-400 rounded-xl hover:scale-110 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2' : ''}`}
+                            className={`text-sky-600 bg-sky-50 hover:bg-sky-100 border-2 border-sky-200 hover:border-sky-400 rounded-xl hover:scale-105 transition-all duration-200 shadow-md ${isMobile ? 'w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-medium' : 'p-3 hover:scale-110'}`}
                             title="Hotelga Telegram yuborish"
                           >
-                            <Send className="w-5 h-5" />
+                            <Send className="w-4 h-4 md:w-5 md:h-5" />
                             {isMobile && <span className="font-medium">Telegram yuborish</span>}
                           </button>
                           {/* Annulyatsiya button — only for CANCELLED + telegramChatId */}
@@ -17275,90 +17301,115 @@ License №T-0084-08 from 2021-04-26`;
                                   }).length;
 
                                   return (
-                                    <div className="flex items-stretch gap-4 flex-wrap mb-6">
-                                      {/* Total Guests Card */}
-                                      <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
-                                        <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
-                                          <Users className="w-7 h-7 text-primary-600" />
-                                        </div>
-                                        <div>
-                                          <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
-                                          <div className="text-3xl font-bold text-gray-900">{totalGuests}</div>
-                                          <div className="text-xs text-gray-600">{totalGuests === 1 ? 'guest' : 'guests'}</div>
-                                        </div>
+                                    <>
+                                      {/* Mobile: compact pill row */}
+                                      <div className="flex flex-wrap items-center gap-1.5 mb-3 sm:hidden">
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary-100 border border-primary-200 rounded-full">
+                                          <Users className="w-3 h-3 text-primary-600" />
+                                          <span className="text-xs font-bold text-primary-800">{totalGuests}</span>
+                                          <span className="text-xs text-primary-500">guests</span>
+                                        </span>
+                                        {roomCounts.DBL > 0 && (
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-100 border border-blue-200 rounded-full">
+                                            <span className="text-xs font-bold text-blue-700">DBL</span>
+                                            <span className="text-xs font-bold text-gray-900">{roomCounts.DBL}</span>
+                                          </span>
+                                        )}
+                                        {roomCounts.TWN > 0 && (
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-100 border border-emerald-200 rounded-full">
+                                            <span className="text-xs font-bold text-emerald-700">TWN</span>
+                                            <span className="text-xs font-bold text-gray-900">{roomCounts.TWN}</span>
+                                          </span>
+                                        )}
+                                        {roomCounts.SNGL > 0 && (
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-violet-100 border border-violet-200 rounded-full">
+                                            <span className="text-xs font-bold text-violet-700">SNGL</span>
+                                            <span className="text-xs font-bold text-gray-900">{roomCounts.SNGL}</span>
+                                          </span>
+                                        )}
+                                        {uzbekCount > 0 && turkmCount > 0 && (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 border border-gray-200 rounded-full">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-xs font-bold text-gray-800">{uzbekCount}</span>
+                                            <span className="text-gray-300 text-xs">|</span>
+                                            <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                            <span className="text-xs font-bold text-gray-800">{turkmCount}</span>
+                                          </span>
+                                        )}
                                       </div>
 
-                                      {/* DBL Rooms Card */}
-                                      {roomCounts.DBL > 0 && (
-                                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                      {/* Desktop: large cards */}
+                                      <div className="hidden sm:flex sm:items-stretch sm:flex-wrap gap-4 mb-6">
+                                        {/* Total Guests Card */}
+                                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm hover:shadow-md transition-all">
                                           <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
-                                            <Bed className="w-7 h-7 text-blue-600" />
+                                            <Users className="w-7 h-7 text-primary-600" />
                                           </div>
                                           <div>
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
-                                              DBL
-                                            </div>
-                                            <div className="text-3xl font-bold text-gray-900">{roomCounts.DBL}</div>
-                                            <div className="text-xs text-gray-600">{roomCounts.DBL === 1 ? 'room' : 'rooms'}</div>
+                                            <div className="text-xs font-medium text-primary-700 uppercase tracking-wide">Total</div>
+                                            <div className="text-3xl font-bold text-gray-900">{totalGuests}</div>
+                                            <div className="text-xs text-gray-600">{totalGuests === 1 ? 'guest' : 'guests'}</div>
                                           </div>
                                         </div>
-                                      )}
-
-                                      {/* TWN Rooms Card */}
-                                      {roomCounts.TWN > 0 && (
-                                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl shadow-sm hover:shadow-md transition-all">
-                                          <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
-                                            <Bed className="w-7 h-7 text-emerald-600" />
-                                          </div>
-                                          <div>
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
-                                              TWN
+                                        {roomCounts.DBL > 0 && (
+                                          <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
+                                              <Bed className="w-7 h-7 text-blue-600" />
                                             </div>
-                                            <div className="text-3xl font-bold text-gray-900">{roomCounts.TWN}</div>
-                                            <div className="text-xs text-gray-600">{roomCounts.TWN === 1 ? 'room' : 'rooms'}</div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {/* SNGL Rooms Card */}
-                                      {roomCounts.SNGL > 0 && (
-                                        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-xl shadow-sm hover:shadow-md transition-all">
-                                          <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
-                                            <User className="w-7 h-7 text-violet-600" />
-                                          </div>
-                                          <div>
-                                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-1">
-                                              SNGL
-                                            </div>
-                                            <div className="text-3xl font-bold text-gray-900">{roomCounts.SNGL}</div>
-                                            <div className="text-xs text-gray-600">{roomCounts.SNGL === 1 ? 'room' : 'rooms'}</div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {/* Uzbekistan/Turkmenistan Split Card */}
-                                      {uzbekCount > 0 && turkmCount > 0 && (
-                                        <div className="flex items-center gap-4 px-5 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-sm">
-                                          <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-2">
-                                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
-                                              <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Uzbekistan</span>
-                                              <span className="text-lg font-bold text-gray-900">{uzbekCount}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
-                                              <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Turkmenistan</span>
-                                              <span className="text-lg font-bold text-gray-900">{turkmCount}</span>
+                                            <div>
+                                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-1">DBL</div>
+                                              <div className="text-3xl font-bold text-gray-900">{roomCounts.DBL}</div>
+                                              <div className="text-xs text-gray-600">{roomCounts.DBL === 1 ? 'room' : 'rooms'}</div>
                                             </div>
                                           </div>
-                                        </div>
-                                      )}
-                                    </div>
+                                        )}
+                                        {roomCounts.TWN > 0 && (
+                                          <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
+                                              <Bed className="w-7 h-7 text-emerald-600" />
+                                            </div>
+                                            <div>
+                                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-1">TWN</div>
+                                              <div className="text-3xl font-bold text-gray-900">{roomCounts.TWN}</div>
+                                              <div className="text-xs text-gray-600">{roomCounts.TWN === 1 ? 'room' : 'rooms'}</div>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {roomCounts.SNGL > 0 && (
+                                          <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-xl shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-white shadow-sm">
+                                              <User className="w-7 h-7 text-violet-600" />
+                                            </div>
+                                            <div>
+                                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-1">SNGL</div>
+                                              <div className="text-3xl font-bold text-gray-900">{roomCounts.SNGL}</div>
+                                              <div className="text-xs text-gray-600">{roomCounts.SNGL === 1 ? 'room' : 'rooms'}</div>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {uzbekCount > 0 && turkmCount > 0 && (
+                                          <div className="flex items-center gap-4 px-5 py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl shadow-sm">
+                                            <div className="flex flex-col gap-2">
+                                              <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
+                                                <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Uzbekistan</span>
+                                                <span className="text-lg font-bold text-gray-900">{uzbekCount}</span>
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
+                                                <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Turkmenistan</span>
+                                                <span className="text-lg font-bold text-gray-900">{turkmCount}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </>
                                   );
                                 })()}
 
-                                {/* Header */}
-                                <div className="bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-2xl border-2 border-gray-300 p-5 shadow-lg">
+                                {/* Header - desktop only */}
+                                <div className="hidden sm:block bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-2xl border-2 border-gray-300 p-5 shadow-lg">
                                   <div className="grid grid-cols-12 gap-4 items-center">
                                     <div className="col-span-1 text-xs font-bold text-gray-700 uppercase tracking-wider">№</div>
                                     <div className="col-span-2 text-xs font-bold text-gray-700 uppercase tracking-wider">Имя</div>
@@ -17469,7 +17520,110 @@ License №T-0084-08 from 2021-04-26`;
                                       const isEditing = editingTouristId === t.id;
 
                                       return (
-                                        <div key={t.id} className={`grid grid-cols-12 gap-4 items-center rounded-xl p-3 ${hasCustomDates ? 'bg-yellow-50 border-2 border-yellow-300' : ''} ${isEditing ? 'bg-primary-50 border-2 border-primary-300' : ''}`}>
+                                        <>
+                                        {/* Mobile card view */}
+                                        <div className={`sm:hidden rounded-xl ${hasCustomDates ? 'bg-yellow-50 border border-yellow-300' : isEditing ? 'bg-primary-50 border border-primary-300' : ''}`}>
+                                          {isEditing ? (
+                                            <div className="p-3 space-y-2">
+                                              <div className="font-semibold text-gray-900 text-sm">{t.fullName || `${t.lastName}, ${t.firstName}`}</div>
+                                              <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                  <div className="text-xs text-gray-500 mb-1">Заезд</div>
+                                                  <input type="date" value={editForm.checkInDate} onChange={(e) => setEditForm({...editForm, checkInDate: e.target.value})} className="w-full px-2 py-1.5 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                                                </div>
+                                                <div>
+                                                  <div className="text-xs text-gray-500 mb-1">Выезд</div>
+                                                  <input type="date" value={editForm.checkOutDate} onChange={(e) => setEditForm({...editForm, checkOutDate: e.target.value})} className="w-full px-2 py-1.5 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                                                </div>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                  <div className="text-xs text-gray-500 mb-1">Тип</div>
+                                                  <select value={editForm.roomPreference} onChange={(e) => setEditForm({...editForm, roomPreference: e.target.value})} className="w-full px-2 py-1.5 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500">
+                                                    <option value="">-</option>
+                                                    <option value="DBL">DBL</option>
+                                                    <option value="TWN">TWN</option>
+                                                    <option value="SNGL">SNGL</option>
+                                                    <option value="TRPL">TRPL</option>
+                                                  </select>
+                                                </div>
+                                                <div>
+                                                  <div className="text-xs text-gray-500 mb-1">Placement</div>
+                                                  <select value={editForm.accommodation} onChange={(e) => setEditForm({...editForm, accommodation: e.target.value})} className="w-full px-2 py-1.5 border border-primary-300 rounded-lg text-xs focus:ring-2 focus:ring-primary-500">
+                                                    <option value="">-</option>
+                                                    <option value="Uzbekistan">UZ</option>
+                                                    <option value="Turkmenistan">TM</option>
+                                                  </select>
+                                                </div>
+                                              </div>
+                                              <div className="flex gap-2 pt-1">
+                                                <button
+                                                  onClick={async () => {
+                                                    try {
+                                                      await bookingsApi.updateAccommodationRoomingList(booking.id, acc.id, t.id, { checkInDate: editForm.checkInDate || null, checkOutDate: editForm.checkOutDate || null, roomPreference: editForm.roomPreference, notes: editForm.remarks });
+                                                      toast.success('Tourist updated for this hotel');
+                                                      setEditingTouristId(null);
+                                                      await loadAccommodationRoomingList(acc.id);
+                                                      await loadData();
+                                                    } catch (error) {
+                                                      console.error('Update error:', error);
+                                                      toast.error('Error updating tourist');
+                                                    }
+                                                  }}
+                                                  className="flex-1 flex items-center justify-center gap-1 py-2 text-white bg-primary-600 hover:bg-primary-700 rounded-lg text-xs font-medium"
+                                                >
+                                                  <Save className="w-3.5 h-3.5" /> Save
+                                                </button>
+                                                <button
+                                                  onClick={() => { setEditingTouristId(null); setEditForm({ checkInDate: '', checkOutDate: '', roomPreference: '', accommodation: '', remarks: '' }); }}
+                                                  className="flex-1 flex items-center justify-center gap-1 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium"
+                                                >
+                                                  <X className="w-3.5 h-3.5" /> Cancel
+                                                </button>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-2 py-2 px-1">
+                                              <div className="w-5 h-5 rounded bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                                <span className="text-xs font-bold text-gray-600">{idx + 1}</span>
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-gray-900 text-xs leading-tight truncate">{t.fullName || `${t.lastName}, ${t.firstName}`}</div>
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                  <span className={`text-xs font-medium ${hasCustomDates ? 'text-yellow-700' : 'text-blue-600'}`}>{format(touristCheckInDate, 'dd.MM')}</span>
+                                                  <span className="text-gray-300 text-xs">→</span>
+                                                  <span className={`text-xs font-medium ${hasCustomDates ? 'text-yellow-700' : 'text-red-600'}`}>{format(touristCheckOutDate, 'dd.MM')}</span>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-1 flex-shrink-0">
+                                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold ${roomBadgeColor}`}>{t.roomPreference || '-'}</span>
+                                                {t.accommodation?.toLowerCase().includes('turkmen') ? (
+                                                  <span className="inline-flex px-1.5 py-0.5 rounded text-xs font-bold bg-purple-500 text-white">TM</span>
+                                                ) : t.accommodation?.toLowerCase().includes('uzbek') ? (
+                                                  <span className="inline-flex px-1.5 py-0.5 rounded text-xs font-bold bg-green-500 text-white">UZ</span>
+                                                ) : null}
+                                              </div>
+                                              <div className="flex gap-0.5 flex-shrink-0">
+                                                <button
+                                                  onClick={() => { setEditingTouristId(t.id); setEditForm({ checkInDate: t.checkInDate ? format(new Date(t.checkInDate), 'yyyy-MM-dd') : '', checkOutDate: t.checkOutDate ? format(new Date(t.checkOutDate), 'yyyy-MM-dd') : '', roomPreference: t.roomPreference || '', accommodation: t.accommodation || '', remarks: t.remarks || '' }); }}
+                                                  className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"
+                                                  title="Edit"
+                                                >
+                                                  <Edit className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                  onClick={async () => { if (window.confirm(`Delete ${t.fullName || t.firstName + ' ' + t.lastName}?`)) { try { await touristsApi.delete(booking.id, t.id); toast.success('Tourist deleted'); loadData(); } catch (error) { console.error('Delete error:', error); toast.error('Error deleting tourist'); } } }}
+                                                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                  title="Delete"
+                                                >
+                                                  <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {/* Desktop grid view */}
+                                        <div className={`hidden sm:grid grid-cols-12 gap-4 items-center rounded-xl p-3 ${hasCustomDates ? 'bg-yellow-50 border-2 border-yellow-300' : ''} ${isEditing ? 'bg-primary-50 border-2 border-primary-300' : ''}`}>
                                           {/* Number */}
                                           <div className="col-span-1">
                                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-300 flex items-center justify-center shadow-sm">
@@ -17719,6 +17873,7 @@ License №T-0084-08 from 2021-04-26`;
                                             </div>
                                           </div>
                                         </div>
+                                        </>
                                       );
                                     };
 
