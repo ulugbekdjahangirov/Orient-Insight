@@ -478,13 +478,18 @@ async function sendAdminAnnulmentForHotel(chatId, tourType, hotelId) {
     bookings.push({ bookingNumber: c.booking?.bookingNumber || `#${c.bookingId}`, status: c.status });
   }
   const cityName = hotel?.city?.name ? ` (${hotel.city.name})` : '';
-  const statusIcon = s => s === 'CONFIRMED' ? '✅' : s === 'REJECTED' ? '❌' : '⏳';
+  const statusLabel = s => {
+    if (s === 'CONFIRMED') return '✅ tasdiqlandi';
+    if (s === 'REJECTED')  return '❌ rad etildi';
+    if (s === 'WAITING')   return '⏳ WL';
+    return '🔲 javob kutilmoqda';
+  };
   const lines = [
     `❌ *Ануляция — ${tourType} ${year}*`,
     `🏨 *${hotel?.name || '?'}*${cityName}`,
     ''
   ];
-  bookings.forEach(b => lines.push(`${statusIcon(b.status)} ${b.bookingNumber}`));
+  bookings.forEach(b => lines.push(`${b.bookingNumber} — ${statusLabel(b.status)}`));
   await axios.post(`${BOT_API()}/sendMessage`, {
     chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown'
   }).catch(() => {});
