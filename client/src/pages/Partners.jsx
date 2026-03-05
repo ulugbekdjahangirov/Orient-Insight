@@ -368,97 +368,123 @@ function BookingsGroupedTab({ confirmations, onDelete, onDeleteGroup }) {
     );
   }
 
+  const TOUR_BADGE_STYLE = {
+    ER:  { grad: 'linear-gradient(135deg,#3b82f6,#6366f1)', border: 'border-blue-100',   topBar: 'from-blue-400 to-indigo-500',   hotelBg: 'bg-blue-50 border-blue-100',   hotelText: 'text-blue-700' },
+    CO:  { grad: 'linear-gradient(135deg,#10b981,#0d9488)', border: 'border-emerald-100', topBar: 'from-emerald-400 to-teal-500',  hotelBg: 'bg-emerald-50 border-emerald-100', hotelText: 'text-emerald-700' },
+    KAS: { grad: 'linear-gradient(135deg,#a855f7,#7c3aed)', border: 'border-purple-100',  topBar: 'from-purple-400 to-violet-500', hotelBg: 'bg-purple-50 border-purple-100',  hotelText: 'text-purple-700' },
+    ZA:  { grad: 'linear-gradient(135deg,#f97316,#f59e0b)', border: 'border-orange-100',  topBar: 'from-orange-400 to-amber-500',  hotelBg: 'bg-orange-50 border-orange-100',  hotelText: 'text-orange-700' },
+  };
+
   return (
     <div className="space-y-3">
       {groups.map(group => {
         const isOpen = !!openBookings[group.bookingId];
         const statusCounts = {};
         group.items.forEach(c => { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; });
-        const statusSummary = [
-          statusCounts.CONFIRMED && `✅ ${statusCounts.CONFIRMED}`,
-          statusCounts.WAITING   && `⏳ ${statusCounts.WAITING}`,
-          statusCounts.PENDING   && `🕐 ${statusCounts.PENDING}`,
-          statusCounts.REJECTED  && `❌ ${statusCounts.REJECTED}`,
-        ].filter(Boolean).join('  ');
+        const parts = group.bookingNumber.split('-');
+        const tourCode = parts[0] || 'ER';
+        const numPart = parts.slice(1).join('-');
+        const style = TOUR_BADGE_STYLE[tourCode] || TOUR_BADGE_STYLE.ER;
+        const allConfirmed = group.items.length > 0 && group.items.every(i => i.status === 'CONFIRMED');
+        const hasRejected = group.items.some(i => i.status === 'REJECTED');
 
         return (
-          <div key={group.bookingId} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-            {/* Booking header — clickable */}
+          <div key={group.bookingId} className={`rounded-2xl overflow-hidden border bg-white ${style.border}`} style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+            {/* Top gradient bar */}
+            <div className={`h-1 bg-gradient-to-r ${style.topBar}`} />
+
+            {/* Card header */}
             <button
               onClick={() => toggleBooking(group.bookingId)}
-              className="w-full bg-gradient-to-r from-slate-50 to-white border-b border-gray-100 px-5 py-3.5 flex items-center gap-3 hover:from-slate-100 hover:to-gray-50 transition-all text-left"
+              className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-gray-50/60 transition-all text-left"
             >
-              {isOpen
-                ? <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              }
-              <div className="flex-1 min-w-0">
-                <Link
-                  to={`/bookings/${group.bookingId}`}
-                  onClick={e => e.stopPropagation()}
-                  className="font-semibold text-primary-600 hover:underline"
-                >
-                  {group.bookingNumber}
-                </Link>
-                {group.departureDate && (
-                  <span className="ml-2 text-xs text-gray-500">{formatDate(group.departureDate)}</span>
-                )}
+              {/* Booking number badge */}
+              <div className="flex-shrink-0 w-14 h-14 rounded-xl flex flex-col items-center justify-center shadow-sm" style={{ background: style.grad }}>
+                <span className="text-white text-[9px] font-bold opacity-75 leading-none tracking-wider">{tourCode}</span>
+                <span className="text-white text-lg font-black leading-tight">{numPart}</span>
               </div>
+
+              {/* Middle info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Link
+                    to={`/bookings/${group.bookingId}`}
+                    onClick={e => e.stopPropagation()}
+                    className="font-bold text-gray-900 hover:underline text-sm"
+                  >
+                    {group.bookingNumber}
+                  </Link>
+                  {group.departureDate && (
+                    <span className="text-[11px] text-gray-400 font-medium">📅 {formatDate(group.departureDate)}</span>
+                  )}
+                </div>
+                {/* Status mini-badges */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  {statusCounts.CONFIRMED > 0 && <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold border border-green-200">✅ {statusCounts.CONFIRMED}</span>}
+                  {statusCounts.PENDING > 0 && <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full font-semibold border border-yellow-200">🕐 {statusCounts.PENDING}</span>}
+                  {statusCounts.WAITING > 0 && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-semibold border border-sky-200">⏳ {statusCounts.WAITING}</span>}
+                  {statusCounts.REJECTED > 0 && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-semibold border border-red-200">❌ {statusCounts.REJECTED}</span>}
+                </div>
+              </div>
+
+              {/* Right side */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <StatusSummaryBadges counts={statusCounts} />
-                <span className="text-xs text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
-                  {group.items.length} ta hotel
-                </span>
-                <button
-                  onClick={(e) => handleDeleteGroup(e, group)}
-                  disabled={deletingGroupId === group.bookingId}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                  title="Barchasini o'chirish"
-                >
-                  {deletingGroupId === group.bookingId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                </button>
+                {/* Hotel count chip */}
+                <div className={`rounded-xl px-2.5 py-1.5 border text-center ${style.hotelBg}`}>
+                  <div className="text-[9px] font-medium opacity-60" style={{ color: 'inherit' }}>Hotel</div>
+                  <div className={`text-sm font-black ${style.hotelText}`}>{group.items.length}</div>
+                </div>
+                <div className="flex flex-col items-center gap-1.5">
+                  {isOpen
+                    ? <ChevronDown className="w-4 h-4 text-gray-400" />
+                    : <ChevronRight className="w-4 h-4 text-gray-400" />
+                  }
+                  <button
+                    onClick={(e) => handleDeleteGroup(e, group)}
+                    disabled={deletingGroupId === group.bookingId}
+                    className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    {deletingGroupId === group.bookingId ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  </button>
+                </div>
               </div>
             </button>
 
             {/* Hotels inside this booking */}
             {isOpen && (
-              <div className="divide-y divide-gray-50">
-                {group.items.map(item => (
-                  <div key={item.id} className={`pl-4 pr-5 py-3 flex items-center gap-4 transition-colors group/row border-l-4 ${
-                    item.status === 'CONFIRMED' ? 'border-l-green-300 hover:bg-green-50/40'
-                    : item.status === 'REJECTED' ? 'border-l-red-300 hover:bg-red-50/30'
-                    : item.status === 'WAITING' ? 'border-l-blue-300 hover:bg-blue-50/30'
-                    : 'border-l-yellow-200 hover:bg-yellow-50/20'
-                  }`}>
-                    <Building2 className="w-4 h-4 text-blue-300 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium text-gray-800 text-sm">
-                        {item.hotel?.name || `Hotel #${item.hotelId}`}
-                      </span>
-                      {item.hotel?.city?.name && (
-                        <span className="ml-1.5 text-xs text-gray-400">{item.hotel.city.name}</span>
-                      )}
+              <div className="px-3 pb-3 flex flex-col gap-1.5 border-t border-gray-100 pt-2">
+                {group.items.map(item => {
+                  const itemBg = item.status === 'CONFIRMED' ? 'bg-green-50 border-green-200'
+                    : item.status === 'REJECTED' ? 'bg-red-50 border-red-200'
+                    : item.status === 'WAITING' ? 'bg-sky-50 border-sky-200'
+                    : 'bg-amber-50 border-amber-200';
+                  return (
+                    <div key={item.id} className={`rounded-xl border px-3 py-2.5 flex items-center gap-3 transition-colors group/row ${itemBg}`}>
+                      <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-gray-800 text-sm truncate">
+                            {item.hotel?.name || `Hotel #${item.hotelId}`}
+                          </span>
+                          {item.hotel?.city?.name && (
+                            <span className="text-[10px] text-gray-400">{item.hotel.city.name}</span>
+                          )}
+                        </div>
+                        {item.confirmedBy && (
+                          <p className="text-[10px] text-gray-500 mt-0.5">👤 {item.confirmedBy}</p>
+                        )}
+                      </div>
+                      <StatusBadge status={item.status} />
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deletingId === item.id}
+                        className="opacity-0 group-hover/row:opacity-100 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 flex-shrink-0"
+                      >
+                        {deletingId === item.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
-                    <StatusBadge status={item.status} />
-                    <span className="text-xs text-gray-400 hidden sm:block">
-                      {item.confirmedBy || '—'}
-                    </span>
-                    <span className="text-xs text-gray-400 hidden md:block">
-                      {item.respondedAt ? formatDateTime(item.respondedAt) : formatDateTime(item.sentAt)}
-                    </span>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      disabled={deletingId === item.id}
-                      className="opacity-0 group-hover/row:opacity-100 p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-50 flex-shrink-0"
-                      title="O'chirish"
-                    >
-                      {deletingId === item.id
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Trash2 className="w-3.5 h-3.5" />
-                      }
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
