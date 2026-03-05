@@ -1060,27 +1060,40 @@ router.post('/webhook', (req, res, next) => {
           }
         }).catch(() => {});
 
-        // Notify all admins about incoming message with reply button
-        const senderInfo = chats[String(chat.id)];
-        const senderName = senderInfo?.name || telegramName;
-        const senderRoleLabel = senderInfo?.role
-          ? (senderInfo.role.charAt(0).toUpperCase() + senderInfo.role.slice(1))
-          : 'User';
-        const adminEnvId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-        const adminRoleIds = Object.values(chats).filter(c => c.role === 'admin').map(c => c.chatId);
-        const allAdmins = [...new Set([...(adminEnvId ? [String(adminEnvId)] : []), ...adminRoleIds])];
-        for (const aId of allAdmins) {
-          if (String(aId) === String(chat.id)) continue;
-          await axios.post(`${BOT_API()}/sendMessage`, {
-            chat_id: aId,
-            text: `💬 *${senderRoleLabel}: ${senderName}*\n\n📩 Yangi xabar:\n"${msg.text}"`,
-            parse_mode: 'Markdown',
-            reply_markup: JSON.stringify({
-              inline_keyboard: [[
-                { text: '✏️ Javob berish', callback_data: `reply_to:${chat.id}:${senderName.substring(0, 30)}` }
-              ]]
-            })
-          }).catch(() => {});
+        // Known menu/keyboard button texts — skip admin notification for these
+        const MENU_BUTTONS = [
+          '/start', '/menu', '/menyu',
+          '🏨 Hotellar', '🍽 Restoran', '🚌 Transport', '👤 Gidlar',
+          '📄 Заявка 2026', '📝 Изменения к Заявке', '📝 O\'zgarishlar',
+          '⏳ Waiting List', '❌ Ануляция', '❌ Аннуляция', '❌ Anulyatsiya', '❌ Bekor qilish',
+          '📋 Gruppalar', '✅ Tasdiqlangan', '⬅️ Orqaga', '◀️ Orqaga',
+          '🍴 Menyu', '📋 Заявка', '🍽 Taomlar',
+        ];
+        const isMenuButton = MENU_BUTTONS.includes(msg.text) || msg.text.startsWith('/');
+
+        // Notify all admins about incoming message with reply button (skip menu navigation)
+        if (!isMenuButton) {
+          const senderInfo = chats[String(chat.id)];
+          const senderName = senderInfo?.name || telegramName;
+          const senderRoleLabel = senderInfo?.role
+            ? (senderInfo.role.charAt(0).toUpperCase() + senderInfo.role.slice(1))
+            : 'User';
+          const adminEnvId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+          const adminRoleIds = Object.values(chats).filter(c => c.role === 'admin').map(c => c.chatId);
+          const allAdmins = [...new Set([...(adminEnvId ? [String(adminEnvId)] : []), ...adminRoleIds])];
+          for (const aId of allAdmins) {
+            if (String(aId) === String(chat.id)) continue;
+            await axios.post(`${BOT_API()}/sendMessage`, {
+              chat_id: aId,
+              text: `💬 *${senderRoleLabel}: ${senderName}*\n\n📩 Yangi xabar:\n"${msg.text}"`,
+              parse_mode: 'Markdown',
+              reply_markup: JSON.stringify({
+                inline_keyboard: [[
+                  { text: '✏️ Javob berish', callback_data: `reply_to:${chat.id}:${senderName.substring(0, 30)}` }
+                ]]
+              })
+            }).catch(() => {});
+          }
         }
       }
 
