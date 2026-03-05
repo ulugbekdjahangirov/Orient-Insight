@@ -9375,60 +9375,80 @@ export default function BookingDetail() {
                         </h3>
 
                         {internationalFlights.length > 0 && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                              <thead>
-                                <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Flight</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {internationalFlights.map((flight, idx) => {
-                                  const pax = flight.pax || 0;
-                                  const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
-                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
-                                  return (
-                                    <tr key={flight.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
-                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
-                                      <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                      <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
-                                      <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                      <td className="px-4 py-3 text-right text-blue-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                      <td className="px-4 py-3">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <button
-                                            onClick={() => editFlight(flight)}
-                                            className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
-                                            title="Edit"
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => deleteFlight(flight.id)}
-                                            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                            title="Delete"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
+                          <>
+                            {/* Mobile cards */}
+                            <div className="space-y-2 sm:hidden">
+                              {internationalFlights.map((flight, idx) => {
+                                const pax = flight.pax || 0;
+                                const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
+                                const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                return (
+                                  <div key={flight.id || idx} className="bg-white rounded-xl border border-blue-200 p-3 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div>
+                                        <span className="font-bold text-blue-900 text-sm">{flight.flightNumber || '-'}</span>
+                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
+                                      </div>
+                                      <div className="flex gap-1 flex-shrink-0">
+                                        <button onClick={() => editFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
+                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{flight.departureTime || '-'}</span></div>
+                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{flight.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-blue-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* Desktop table */}
+                            <div className="overflow-x-auto hidden sm:block">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Flight</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {internationalFlights.map((flight, idx) => {
+                                    const pax = flight.pax || 0;
+                                    const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
+                                    const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                    return (
+                                      <tr key={flight.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                                        <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
+                                        <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
+                                        <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
+                                        <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
+                                        <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3 text-right text-blue-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button onClick={() => editFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                            <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
                         )}
                       </div>
                     );
@@ -9453,60 +9473,80 @@ export default function BookingDetail() {
                         </h3>
 
                         {domesticFlights.length > 0 && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                              <thead>
-                                <tr className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Flight</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {domesticFlights.map((flight, idx) => {
-                                  const pax = flight.pax || 0;
-                                  const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
-                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
-                                  return (
-                                    <tr key={flight.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-emerald-900">{flight.flightNumber || '-'}</td>
-                                      <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
-                                      <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                      <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
-                                      <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                      <td className="px-4 py-3 text-right text-emerald-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                      <td className="px-4 py-3">
-                                        <div className="flex items-center justify-center gap-2">
-                                          <button
-                                            onClick={() => editFlight(flight)}
-                                            className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"
-                                            title="Edit"
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => deleteFlight(flight.id)}
-                                            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                            title="Delete"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
+                          <>
+                            {/* Mobile cards */}
+                            <div className="space-y-2 sm:hidden">
+                              {domesticFlights.map((flight, idx) => {
+                                const pax = flight.pax || 0;
+                                const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
+                                const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                return (
+                                  <div key={flight.id || idx} className="bg-white rounded-xl border border-emerald-200 p-3 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div>
+                                        <span className="font-bold text-emerald-900 text-sm">{flight.flightNumber || '-'}</span>
+                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
+                                      </div>
+                                      <div className="flex gap-1 flex-shrink-0">
+                                        <button onClick={() => editFlight(flight)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
+                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{flight.departureTime || '-'}</span></div>
+                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{flight.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-emerald-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* Desktop table */}
+                            <div className="overflow-x-auto hidden sm:block">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Flight</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {domesticFlights.map((flight, idx) => {
+                                    const pax = flight.pax || 0;
+                                    const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
+                                    const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                    return (
+                                      <tr key={flight.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                        <td className="px-4 py-3 font-bold text-emerald-900">{flight.flightNumber || '-'}</td>
+                                        <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
+                                        <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
+                                        <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
+                                        <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3 text-right text-emerald-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button onClick={() => editFlight(flight)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                            <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
                         )}
                       </div>
                     );
@@ -9583,65 +9623,80 @@ export default function BookingDetail() {
                         </h3>
 
                         {internationalRailways.length > 0 && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                              <thead>
-                                <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Train</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {internationalRailways.map((railway, idx) => {
-                                  const pax = railway.pax || 0;
-                                  const totalPrice = railway.price || 0;
-                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
-
-                                  return (
-                                    <tr key={railway.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-blue-900">{railway.trainName || railway.trainNumber || '-'}</td>
-                                      <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
-                                      <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
-                                      <td className="px-4 py-3 text-right font-medium text-gray-700">
-                                        {perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                                      </td>
-                                      <td className="px-4 py-3 text-right font-bold text-blue-700">
-                                        {totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                                      </td>
-                                      <td className="px-4 py-3">
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          onClick={() => editRailway(railway)}
-                                          className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"
-                                          title="Edit"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() => deleteRailway(railway.id)}
-                                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                          title="Delete"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
+                          <>
+                            {/* Mobile cards */}
+                            <div className="space-y-2 sm:hidden">
+                              {internationalRailways.map((railway, idx) => {
+                                const pax = railway.pax || 0;
+                                const totalPrice = railway.price || 0;
+                                const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                return (
+                                  <div key={railway.id || idx} className="bg-white rounded-xl border border-blue-200 p-3 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div>
+                                        <span className="font-bold text-blue-900 text-sm">{railway.trainName || railway.trainNumber || '-'}</span>
+                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{railway.departure || '-'} → {railway.arrival || '-'}</div>
                                       </div>
-                                    </td>
+                                      <div className="flex gap-1 flex-shrink-0">
+                                        <button onClick={() => editRailway(railway)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => deleteRailway(railway.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
+                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{railway.departureTime || '-'}</span></div>
+                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{railway.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-blue-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* Desktop table */}
+                            <div className="overflow-x-auto hidden sm:block">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Train</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                   </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
+                                </thead>
+                                <tbody>
+                                  {internationalRailways.map((railway, idx) => {
+                                    const pax = railway.pax || 0;
+                                    const totalPrice = railway.price || 0;
+                                    const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                    return (
+                                      <tr key={railway.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                                        <td className="px-4 py-3 font-bold text-blue-900">{railway.trainName || railway.trainNumber || '-'}</td>
+                                        <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
+                                        <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
+                                        <td className="px-4 py-3 text-right font-medium text-gray-700">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3 text-right font-bold text-blue-700">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button onClick={() => editRailway(railway)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                            <button onClick={() => deleteRailway(railway.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
                         )}
                       </div>
                     );
@@ -9666,65 +9721,80 @@ export default function BookingDetail() {
                         </h3>
 
                         {domesticRailways.length > 0 && (
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                              <thead>
-                                <tr className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Train</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
-                                  <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
-                                  <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
-                                  <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {domesticRailways.map((railway, idx) => {
-                                  const pax = railway.pax || 0;
-                                  const totalPrice = railway.price || 0;
-                                  const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
-
-                                  return (
-                                    <tr key={railway.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
-                                      <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainName || railway.trainNumber || '-'}</td>
-                                      <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
-                                      <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
-                                      <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
-                                      <td className="px-4 py-3 text-right font-medium text-gray-700">
-                                        {perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                                      </td>
-                                      <td className="px-4 py-3 text-right font-bold text-emerald-700">
-                                        {totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}
-                                      </td>
-                                      <td className="px-4 py-3">
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          onClick={() => editRailway(railway)}
-                                          className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"
-                                          title="Edit"
-                                        >
-                                          <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() => deleteRailway(railway.id)}
-                                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                                          title="Delete"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
+                          <>
+                            {/* Mobile cards */}
+                            <div className="space-y-2 sm:hidden">
+                              {domesticRailways.map((railway, idx) => {
+                                const pax = railway.pax || 0;
+                                const totalPrice = railway.price || 0;
+                                const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                return (
+                                  <div key={railway.id || idx} className="bg-white rounded-xl border border-emerald-200 p-3 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div>
+                                        <span className="font-bold text-emerald-900 text-sm">{railway.trainName || railway.trainNumber || '-'}</span>
+                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{railway.departure || '-'} → {railway.arrival || '-'}</div>
                                       </div>
-                                    </td>
+                                      <div className="flex gap-1 flex-shrink-0">
+                                        <button onClick={() => editRailway(railway)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => deleteRailway(railway.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
+                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{railway.departureTime || '-'}</span></div>
+                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{railway.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-emerald-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* Desktop table */}
+                            <div className="overflow-x-auto hidden sm:block">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Train</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Route</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Departure</th>
+                                    <th className="px-4 py-3 text-left text-sm font-bold">Arrival</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
+                                    <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                   </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
+                                </thead>
+                                <tbody>
+                                  {domesticRailways.map((railway, idx) => {
+                                    const pax = railway.pax || 0;
+                                    const totalPrice = railway.price || 0;
+                                    const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                    return (
+                                      <tr key={railway.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                        <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainName || railway.trainNumber || '-'}</td>
+                                        <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{railway.departureTime || '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{railway.arrivalTime || '-'}</td>
+                                        <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
+                                        <td className="px-4 py-3 text-right font-medium text-gray-700">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3 text-right font-bold text-emerald-700">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button onClick={() => editRailway(railway)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                            <button onClick={() => deleteRailway(railway.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
                         )}
                       </div>
                     );
