@@ -1639,7 +1639,45 @@ export default function ItineraryPreview({ bookingId, booking }) {
             </div>
           )}
 
-          <table className="w-full">
+          {/* Mobile header cards */}
+          <div className="sm:hidden p-3 space-y-2 print:hidden">
+            <div className="text-center font-bold text-lg border-b border-gray-300 pb-2 mb-3">Marshrut varaqasi</div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center">
+                <div className="text-xs text-gray-500 font-semibold">Gruppa</div>
+                <div className="font-bold text-sm">{booking?.bookingNumber || '-'}</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center">
+                <div className="text-xs text-gray-500 font-semibold">Davlat</div>
+                <div className="font-bold text-sm">{headerData.country || '-'}</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg px-2 py-1.5 text-center">
+                <div className="text-xs text-gray-500 font-semibold">Turistlar</div>
+                <div className="font-bold text-sm">{tourists.length}</div>
+              </div>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+              <div className="text-xs font-bold text-yellow-700 mb-0.5">Xayrulla</div>
+              <div className="text-xs text-gray-700 whitespace-pre-line">{headerData.xayrullaContact || '-'}</div>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              <div className="text-xs font-bold text-blue-700 mb-0.5">Nosir</div>
+              <div className="text-xs text-gray-700 whitespace-pre-line">{headerData.nosirContact || '-'}</div>
+            </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <div className="text-xs font-bold text-green-700 mb-0.5">Sevil</div>
+              <div className="text-xs text-gray-700 whitespace-pre-line">{headerData.sevilContact || '-'}</div>
+            </div>
+            {headerData.guideName && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                <div className="text-xs font-bold text-purple-700">Gid</div>
+                <div className="text-xs text-gray-700 text-right">{headerData.guideName} {headerData.guidePhone}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop table */}
+          <table className="w-full hidden sm:table">
             <thead>
               <tr>
                 <th colSpan="6" className="text-center py-3 text-xl font-bold border-b border-gray-900">
@@ -1773,163 +1811,263 @@ export default function ItineraryPreview({ bookingId, booking }) {
             </button>
           </div>
           {routes.length > 0 && (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-12">№</th>
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-32">Sana</th>
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-56">Yo'nalish</th>
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-16">PAX</th>
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-24">Vaqt</th>
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold w-32">Avtomobil turi</th>
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold">Sayohat dasturi</th>
-                  <th className="border border-gray-900 px-3 py-2 text-center font-bold print:hidden w-24">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Mobile cards */}
+              <div className="space-y-2 sm:hidden print:hidden">
                 {routes.map((route, idx) => {
                   const isEditing = editingRoute?.id === route.id;
                   const editData = isEditing ? editingRoute : route;
 
-                  // Find matching flight for this route date
-                  const routeDate = route.date?.split('T')[0];
-                  const matchingFlight = flights.find(f => {
-                    const flightDate = f.date?.split('T')[0];
-                    return flightDate === routeDate;
-                  });
-
-                  // Check if route is in Tashkent
                   const routeNameLower = (route.routeName || '').toLowerCase();
                   const cityLower = (route.city || '').toLowerCase();
-                  const isTashkent = routeNameLower.includes('tashkent') ||
-                                     routeNameLower.includes('toshkent') ||
-                                     cityLower.includes('tashkent') ||
-                                     cityLower.includes('toshkent');
-
-                  // Check if route is in Fergana (Nosir)
-                  const isFergana = routeNameLower.includes('fergana') ||
-                                    routeNameLower.includes('farg') ||
-                                    routeNameLower.includes('фарг') ||
-                                    cityLower.includes('fergana') ||
-                                    cityLower.includes('farg');
-
-                  // Determine row background color
-                  // Fergana takes priority over Tashkent (e.g. "Fergana - Tashkent" → blue)
-                  const rowClassName = isFergana ? 'bg-blue-50' : isTashkent ? 'bg-yellow-100' : '';
+                  const isTashkent = routeNameLower.includes('tashkent') || routeNameLower.includes('toshkent') || cityLower.includes('tashkent') || cityLower.includes('toshkent');
+                  const isFergana = routeNameLower.includes('fergana') || routeNameLower.includes('farg') || routeNameLower.includes('фарг') || cityLower.includes('fergana') || cityLower.includes('farg');
+                  const cardBg = isFergana ? 'bg-blue-50 border-blue-200' : isTashkent ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200';
 
                   return (
-                    <tr key={route.id} className={rowClassName}>
-                      <td className="border border-gray-900 px-3 py-2 text-center">
-                        {idx + 1}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
-                        {isEditing ? (
-                          <input
-                            type="date"
-                            value={editData.date || ''}
-                            onChange={(e) => setEditingRoute({ ...editingRoute, date: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          formatDateDisplay(route.date)
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.routeName || ''}
-                            onChange={(e) => setEditingRoute({ ...editingRoute, routeName: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
-                          />
-                        ) : (
-                          translateRouteToUzbek(route.routeName) || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center font-semibold">
-                        {route.personCount || tourists.length || '-'}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.departureTime || ''}
-                            onChange={(e) => setEditingRoute({ ...editingRoute, departureTime: e.target.value })}
-                            className="w-full px-2 py-1 border rounded text-center"
-                            placeholder="08:00"
-                          />
-                        ) : (
-                          route.departureTime || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={editData.transportType || ''}
-                            onChange={(e) => setEditingRoute({ ...editingRoute, transportType: e.target.value })}
-                            className="w-full px-2 py-1 border rounded text-center"
-                            placeholder="Karotishka"
-                          />
-                        ) : (
-                          route.transportType || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2">
-                        {isEditing ? (
+                    <div key={route.id} className={`rounded-xl border p-3 shadow-sm ${cardBg}`}>
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="date"
+                              value={editData.date || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, date: e.target.value })}
+                              className="w-full px-2 py-1 border rounded text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={editData.routeName || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, routeName: e.target.value })}
+                              className="w-full px-2 py-1 border rounded text-sm"
+                              placeholder="Yo'nalish"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={editData.departureTime || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, departureTime: e.target.value })}
+                              className="w-full px-2 py-1 border rounded text-sm text-center"
+                              placeholder="Vaqt (08:00)"
+                            />
+                            <input
+                              type="text"
+                              value={editData.transportType || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, transportType: e.target.value })}
+                              className="w-full px-2 py-1 border rounded text-sm text-center"
+                              placeholder="Avtomobil turi"
+                            />
+                          </div>
                           <textarea
                             value={editData.itinerary || ''}
                             onChange={(e) => setEditingRoute({ ...editingRoute, itinerary: e.target.value })}
-                            className="w-full px-2 py-1 border rounded"
+                            className="w-full px-2 py-1 border rounded text-sm"
                             rows="3"
-                            placeholder="Sayohat dasturi (masalan: Toshkentga tashrif. Aeroportda kutib olish...)"
+                            placeholder="Sayohat dasturi..."
                           />
-                        ) : (
-                          route.itinerary || '-'
-                        )}
-                      </td>
-                      <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={saveRoute}
-                              className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded"
-                              title="Save"
-                            >
-                              <Save className="w-4 h-4" />
+                          <div className="flex justify-end gap-2">
+                            <button onClick={saveRoute} className="flex items-center gap-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium">
+                              <Save className="w-3.5 h-3.5" /> Saqlash
                             </button>
-                            <button
-                              onClick={cancelEditRoute}
-                              className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
+                            <button onClick={cancelEditRoute} className="flex items-center gap-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium">
+                              <X className="w-3.5 h-3.5" /> Bekor
                             </button>
                           </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => startEditRoute(route)}
-                              className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => deleteRoute(route.id)}
-                              className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-xs font-bold text-gray-400">#{idx + 1}</span>
+                                <span className="text-xs font-semibold text-gray-700">{formatDateDisplay(route.date)}</span>
+                              </div>
+                              <div className="text-sm font-bold text-gray-900 leading-tight">{translateRouteToUzbek(route.routeName) || '-'}</div>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <button onClick={() => startEditRoute(route)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded">
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => deleteRoute(route.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        )}
-                      </td>
-                    </tr>
+                          <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-xs mb-1.5">
+                            <div><span className="text-gray-400">PAX:</span> <span className="font-semibold">{route.personCount || tourists.length || '-'}</span></div>
+                            <div><span className="text-gray-400">Vaqt:</span> <span className="font-semibold">{route.departureTime || '-'}</span></div>
+                            <div><span className="text-gray-400">Avto:</span> <span className="font-semibold">{route.transportType || '-'}</span></div>
+                          </div>
+                          {route.itinerary && (
+                            <div className="text-xs text-gray-600 border-t border-gray-200 pt-1.5 leading-relaxed">{route.itinerary}</div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+
+              {/* Desktop table */}
+              <table className="w-full text-sm hidden sm:table">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold w-12">№</th>
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold w-32">Sana</th>
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold w-56">Yo'nalish</th>
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold w-16">PAX</th>
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold w-24">Vaqt</th>
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold w-32">Avtomobil turi</th>
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold">Sayohat dasturi</th>
+                    <th className="border border-gray-900 px-3 py-2 text-center font-bold print:hidden w-24">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {routes.map((route, idx) => {
+                    const isEditing = editingRoute?.id === route.id;
+                    const editData = isEditing ? editingRoute : route;
+
+                    // Find matching flight for this route date
+                    const routeDate = route.date?.split('T')[0];
+                    const matchingFlight = flights.find(f => {
+                      const flightDate = f.date?.split('T')[0];
+                      return flightDate === routeDate;
+                    });
+
+                    // Check if route is in Tashkent
+                    const routeNameLower = (route.routeName || '').toLowerCase();
+                    const cityLower = (route.city || '').toLowerCase();
+                    const isTashkent = routeNameLower.includes('tashkent') ||
+                                       routeNameLower.includes('toshkent') ||
+                                       cityLower.includes('tashkent') ||
+                                       cityLower.includes('toshkent');
+
+                    // Check if route is in Fergana (Nosir)
+                    const isFergana = routeNameLower.includes('fergana') ||
+                                      routeNameLower.includes('farg') ||
+                                      routeNameLower.includes('фарг') ||
+                                      cityLower.includes('fergana') ||
+                                      cityLower.includes('farg');
+
+                    // Determine row background color
+                    // Fergana takes priority over Tashkent (e.g. "Fergana - Tashkent" → blue)
+                    const rowClassName = isFergana ? 'bg-blue-50' : isTashkent ? 'bg-yellow-100' : '';
+
+                    return (
+                      <tr key={route.id} className={rowClassName}>
+                        <td className="border border-gray-900 px-3 py-2 text-center">
+                          {idx + 1}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center whitespace-nowrap">
+                          {isEditing ? (
+                            <input
+                              type="date"
+                              value={editData.date || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, date: e.target.value })}
+                              className="w-full px-2 py-1 border rounded"
+                            />
+                          ) : (
+                            formatDateDisplay(route.date)
+                          )}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editData.routeName || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, routeName: e.target.value })}
+                              className="w-full px-2 py-1 border rounded"
+                            />
+                          ) : (
+                            translateRouteToUzbek(route.routeName) || '-'
+                          )}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center font-semibold">
+                          {route.personCount || tourists.length || '-'}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editData.departureTime || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, departureTime: e.target.value })}
+                              className="w-full px-2 py-1 border rounded text-center"
+                              placeholder="08:00"
+                            />
+                          ) : (
+                            route.departureTime || '-'
+                          )}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editData.transportType || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, transportType: e.target.value })}
+                              className="w-full px-2 py-1 border rounded text-center"
+                              placeholder="Karotishka"
+                            />
+                          ) : (
+                            route.transportType || '-'
+                          )}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2">
+                          {isEditing ? (
+                            <textarea
+                              value={editData.itinerary || ''}
+                              onChange={(e) => setEditingRoute({ ...editingRoute, itinerary: e.target.value })}
+                              className="w-full px-2 py-1 border rounded"
+                              rows="3"
+                              placeholder="Sayohat dasturi (masalan: Toshkentga tashrif. Aeroportda kutib olish...)"
+                            />
+                          ) : (
+                            route.itinerary || '-'
+                          )}
+                        </td>
+                        <td className="border border-gray-900 px-3 py-2 text-center print:hidden">
+                          {isEditing ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={saveRoute}
+                                className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded"
+                                title="Save"
+                              >
+                                <Save className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={cancelEditRoute}
+                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => startEditRoute(route)}
+                                className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => deleteRoute(route.id)}
+                                className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
           )}
         </div>
 
