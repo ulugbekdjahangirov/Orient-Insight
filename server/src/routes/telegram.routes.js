@@ -197,7 +197,7 @@ async function sendTransportMenu(chatId) {
     if (years.length) availYears = years;
   }
   const zpRows = availYears.length > 1
-    ? availYears.map(y => [{ text: `📄 Заявка ${y}` }])
+    ? [availYears.map(y => ({ text: `📄 Заявка ${y}` }))]
     : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '❌ Ануляция' }]];
   const keyboard = availYears.length > 1
     ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '❌ Ануляция' }]]
@@ -222,10 +222,10 @@ async function sendTransportAdminMenu(chatId) {
   )].sort();
   const availYears = years.length ? years : [curYear];
   const zpRows = availYears.length > 1
-    ? availYears.map(y => [{ text: `📄 Заявка ${y}` }])
+    ? [availYears.map(y => ({ text: `📄 Заявка ${y}` }))]
     : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '🚫 Rad etilgan' }]];
   const keyboard = availYears.length > 1
-    ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '🚫 Rad etilgan' }], [{ text: '❌ Ануляция' }]]
+    ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '🚫 Rad etilgan' }, { text: '❌ Ануляция' }]]
     : [[{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], ...zpRows, [{ text: '❌ Ануляция' }]];
   await axios.post(`${TRANSPORT_API()}/sendMessage`, {
     chat_id: chatId,
@@ -278,14 +278,14 @@ async function sendRestaurantMenu(chatId, isAdmin = false) {
     }
   }
   const zpRows = availYears.length > 1
-    ? availYears.map(y => [{ text: `📄 Заявка ${y}` }])
+    ? [availYears.map(y => ({ text: `📄 Заявка ${y}` }))]
     : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '✅ Tasdiqlangan' }]];
   const keyboard = isAdmin
     ? availYears.length > 1
-      ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '🚫 Rad etilgan' }, { text: '❌ Anulyatsiya' }]]
+      ? [...zpRows, [{ text: '✅ Tasdiqlangan' }, { text: '🚫 Rad etilgan' }], [{ text: '❌ Anulyatsiya' }]]
       : [...zpRows, [{ text: '🚫 Rad etilgan' }, { text: '❌ Anulyatsiya' }]]
     : availYears.length > 1
-      ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+      ? [...zpRows, [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }]]
       : [...zpRows, [{ text: '❌ Anulyatsiya' }]];
   await axios.post(`${RESTAURANT_API()}/sendMessage`, {
     chat_id: chatId,

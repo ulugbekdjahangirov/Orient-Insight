@@ -677,10 +677,10 @@ router.put('/clear-meal-tg/:year', authenticate, async (req, res) => {
         const curYear = new Date().getFullYear();
         const allYears = myears.filter(y => y >= curYear).sort();
         const zpRows = allYears.length > 1
-          ? allYears.map(y => [{ text: `📄 Заявка ${y}` }])
+          ? [allYears.map(y => ({ text: `📄 Заявка ${y}` }))]
           : [[{ text: `📄 Заявка ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
         const refreshKeyboard = allYears.length > 1
-          ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+          ? [...zpRows, [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }]]
           : [...zpRows, [{ text: '❌ Anulyatsiya' }]];
         await axios.post(`https://api.telegram.org/bot${RESTAURANT_TOKEN}/sendMessage`, {
           chat_id: restChatId,
@@ -729,7 +729,7 @@ router.put('/clear-transport-tg/:provider/:year', authenticate, async (req, res)
           )].sort();
           const finalYears = availYears.length ? availYears : [curYear];
           const zpRows = finalYears.length > 1
-            ? finalYears.map(y => [{ text: `📄 Заявка ${y}` }])
+            ? [finalYears.map(y => ({ text: `📄 Заявка ${y}` }))]
             : [[{ text: `📄 Заявка ${finalYears[0]}` }, { text: '❌ Ануляция' }]];
           const refreshKeyboard = finalYears.length > 1
             ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '❌ Ануляция' }]]
@@ -1471,10 +1471,10 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
         const curYear = new Date().getFullYear();
         const allYears = myears.filter(y => y >= curYear).sort();
         const zpRows = allYears.length > 1
-          ? allYears.map(y => [{ text: `📄 Заявка ${y}` }])
+          ? [allYears.map(y => ({ text: `📄 Заявка ${y}` }))]
           : [[{ text: `📄 Заявка ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
         const refreshKeyboard = allYears.length > 1
-          ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+          ? [...zpRows, [{ text: '✅ Tasdiqlangan' }, { text: '❌ Anulyatsiya' }]]
           : [...zpRows, [{ text: '❌ Anulyatsiya' }]];
         await axios.post(`${MEAL_TG_BASE}/sendMessage`, {
           chat_id: restChatId,
