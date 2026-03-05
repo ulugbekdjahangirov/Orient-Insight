@@ -370,7 +370,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
               /* MOBILE: Vertical stacked layout */
               <div
                 key={p.id}
-                className="bg-gradient-to-br from-white to-gray-50 md:rounded-2xl border-b-2 md:border-2 shadow-sm md:shadow-md p-4 space-y-3"
+                className="bg-white rounded-2xl border-2 border-gray-200 shadow-sm p-4 space-y-3"
               >
                 {/* Header: Number + Name + Leader Icon */}
                 <div className="flex items-center gap-3">
