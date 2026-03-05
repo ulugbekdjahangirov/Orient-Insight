@@ -248,7 +248,7 @@ async function sendGuideMenu(chatId, isAdmin = false) {
     }
   }
   const grpRows = availYears.length > 1
-    ? availYears.map(y => [{ text: `📋 Gruppalar ${y}` }])
+    ? [availYears.map(y => ({ text: `📋 Gruppalar ${y}` }))]
     : [[{ text: `📋 Gruppalar ${availYears[0]}` }, { text: '✅ Tasdiqlangan' }]];
   const keyboard = isAdmin
     ? availYears.length > 1
@@ -6623,7 +6623,7 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
       const curYear = new Date().getFullYear();
       const allYears = gyears.filter(y => y >= curYear).sort();
       const grpRows = allYears.length > 1
-        ? allYears.map(y => [{ text: `📋 Gruppalar ${y}` }])
+        ? [allYears.map(y => ({ text: `📋 Gruppalar ${y}` }))]
         : [[{ text: `📋 Gruppalar ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
       const refreshKeyboard = allYears.length > 1
         ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
