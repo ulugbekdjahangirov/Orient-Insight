@@ -162,7 +162,7 @@ async function sendAdminMenu(chatId) {
     parse_mode: 'Markdown',
     reply_markup: JSON.stringify({
       keyboard: [
-        [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
+        [{ text: `📋 Заявка ${year}` }, { text: "📝 Изменения к Заявке" }],
         [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
         [{ text: '❌ Ануляция' }]
       ],
@@ -183,6 +183,7 @@ async function getProviderByChatId(chatId) {
 
 // Helper: send transport provider menu
 async function sendTransportMenu(chatId) {
+  const year = new Date().getFullYear();
   await axios.post(`${TRANSPORT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🚌 *Transport menyu:*',
@@ -190,7 +191,7 @@ async function sendTransportMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '📄 Заявка 2026' }, { text: '❌ Ануляция' }]
+        [{ text: `📄 Заявка ${year}` }, { text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
       is_persistent: true
@@ -200,6 +201,7 @@ async function sendTransportMenu(chatId) {
 
 // Helper: send transport admin menu
 async function sendTransportAdminMenu(chatId) {
+  const year = new Date().getFullYear();
   await axios.post(`${TRANSPORT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🤖 *Transport Admin Panel*',
@@ -207,7 +209,7 @@ async function sendTransportAdminMenu(chatId) {
     reply_markup: JSON.stringify({
       keyboard: [
         [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '📄 Заявка 2026' },   { text: '🚫 Rad etilgan' }],
+        [{ text: `📄 Заявка ${year}` }, { text: '🚫 Rad etilgan' }],
         [{ text: '❌ Ануляция' }]
       ],
       resize_keyboard: true,
@@ -237,13 +239,14 @@ async function sendGuideMenu(chatId, isAdmin = false) {
 
 // Helper: send restaurant menu keyboard
 async function sendRestaurantMenu(chatId, isAdmin = false) {
+  const year = new Date().getFullYear();
   const keyboard = isAdmin
     ? [
-        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: `📄 Заявка ${year}` }, { text: '✅ Tasdiqlangan' }],
         [{ text: '🚫 Rad etilgan' }, { text: '❌ Anulyatsiya' }]
       ]
     : [
-        [{ text: '📄 Заявка 2026' }, { text: '✅ Tasdiqlangan' }],
+        [{ text: `📄 Заявка ${year}` }, { text: '✅ Tasdiqlangan' }],
         [{ text: '❌ Anulyatsiya' }]
       ];
   await axios.post(`${RESTAURANT_API()}/sendMessage`, {
@@ -349,7 +352,7 @@ async function sendAdminRejJpHotels(chatId, tourType) {
   if (!entries.length) {
     await axios.post(`${BOT_API()}/sendMessage`, {
       chat_id: chatId,
-      text: `🚫 *Rad etilgan — Заявка 2026 (${tourType} ${year})*\n\n✅ Rad etilgan zaявka yo'q.`,
+      text: `🚫 *Rad etilgan — Заявка ${year} (${tourType})*\n\n✅ Rad etilgan zaявka yo'q.`,
       parse_mode: 'Markdown'
     }).catch(() => {});
     return;
@@ -362,7 +365,7 @@ async function sendAdminRejJpHotels(chatId, tourType) {
   }
   await axios.post(`${BOT_API()}/sendMessage`, {
     chat_id: chatId,
-    text: `🚫 *Rad etilgan — Заявка 2026 (${tourType} ${year})*\nHotelni tanlang:`,
+    text: `🚫 *Rad etilgan — Заявка ${year} (${tourType})*\nHotelni tanlang:`,
     parse_mode: 'Markdown',
     reply_markup: JSON.stringify({ inline_keyboard: rows })
   }).catch(() => {});
@@ -416,7 +419,7 @@ async function sendAdminRejJpForHotel(chatId, tourType, hotelId) {
   const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, include: { city: { select: { name: true } } } });
   const cityName = hotel?.city?.name ? ` (${hotel.city.name})` : '';
   const hotelName = hotel?.name || `Hotel #${hotelId}`;
-  const lines = [`🚫 *Rad etilgan — Заявка 2026 (${tourType} ${year})*`, `🏨 *${hotelName}*${cityName}`, ''];
+  const lines = [`🚫 *Rad etilgan — Заявка ${year} (${tourType})*`, `🏨 *${hotelName}*${cityName}`, ''];
   if (!s) {
     lines.push('✅ Rad etilgan zaявka yo\'q.');
   } else {
@@ -1410,7 +1413,7 @@ router.post('/webhook', (req, res, next) => {
             text: '⏳ *Waiting List*\nQaysi bo\'limni tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: [
-              [{ text: '📋 Заявка 2026', callback_data: `hwl_jp:${hotel.id}` }],
+              [{ text: `📋 Заявка ${new Date().getFullYear()}`, callback_data: `hwl_jp:${hotel.id}` }],
               [{ text: '📝 Изменения к Заявке', callback_data: `hwl_chg:${hotel.id}` }]
             ]})
           }).catch(() => {});
@@ -1528,9 +1531,10 @@ router.post('/webhook', (req, res, next) => {
         }
 
         // Admin persistent reply keyboard
+        const _yr = new Date().getFullYear();
         const MAIN_REPLY_KEYBOARD = JSON.stringify({
           keyboard: [
-            [{ text: '📋 Заявка 2026' }, { text: "📝 Изменения к Заявке" }],
+            [{ text: `📋 Заявка ${_yr}` }, { text: "📝 Изменения к Заявке" }],
             [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
             [{ text: '❌ Ануляция' }]
           ],
@@ -1549,9 +1553,9 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
 
-        // 📋 Заявка 2026 — tur turi tanlash
-        if (text === '📋 Заявка 2026') {
-          const year = new Date().getFullYear();
+        // 📋 Заявка — tur turi tanlash
+        if (text === `📋 Заявка ${_yr}`) {
+          const year = _yr;
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: adminSendId,
             text: `📋 *Заявка ${year}*\n\nQaysi tur turini tanlang:`,
@@ -1587,7 +1591,7 @@ router.post('/webhook', (req, res, next) => {
             text: '⏳ *Waiting List*\nQaysi bo\'limni tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: [
-              [{ text: '📋 Заявка 2026', callback_data: 'admin:wl:jp' }],
+              [{ text: `📋 Заявка ${_yr}`, callback_data: 'admin:wl:jp' }],
               [{ text: '📝 Изменения к Заявке', callback_data: 'admin:wl:chg' }]
             ]})
           }).catch(() => {});
@@ -1601,7 +1605,7 @@ router.post('/webhook', (req, res, next) => {
             text: '🚫 *Rad etilgan*\nQaysi bo\'limni tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: [
-              [{ text: '📋 Заявка 2026', callback_data: 'admin:rej:jp' }],
+              [{ text: `📋 Заявка ${_yr}`, callback_data: 'admin:rej:jp' }],
               [{ text: '📝 Изменения к Заявке', callback_data: 'admin:rej:chg' }]
             ]})
           }).catch(() => {});
@@ -1918,7 +1922,7 @@ router.post('/webhook', (req, res, next) => {
         await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
         const ADMIN_KB = JSON.stringify({
           keyboard: [
-            [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
+            [{ text: `📋 Заявка ${new Date().getFullYear()}` }, { text: '📝 Изменения к Заявке' }],
             [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
             [{ text: '❌ Ануляция' }]
           ],
@@ -1979,7 +1983,7 @@ router.post('/webhook', (req, res, next) => {
         await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
         const ADMIN_KB = JSON.stringify({
           keyboard: [
-            [{ text: '📋 Заявка 2026' }, { text: '📝 Изменения к Заявке' }],
+            [{ text: `📋 Заявка ${new Date().getFullYear()}` }, { text: '📝 Изменения к Заявке' }],
             [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
             [{ text: '❌ Ануляция' }]
           ],
@@ -2003,7 +2007,7 @@ router.post('/webhook', (req, res, next) => {
         await axios.post(`${BOT_API()}\answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
         await axios.post(`${BOT_API()}/editMessageText`, {
           chat_id: fromChatId, message_id: cb.message.message_id,
-          text: '🚫 *Rad etilgan — Заявка 2026*\nQaysi tur turini tanlang:',
+          text: `🚫 *Rad etilgan — Заявка ${new Date().getFullYear()}*\nQaysi tur turini tanlang:`,
           parse_mode: 'Markdown',
           reply_markup: JSON.stringify({ inline_keyboard: [
             [{ text: 'ER', callback_data: 'admin:rej_jp_tt:ER' }, { text: 'CO', callback_data: 'admin:rej_jp_tt:CO' }],
@@ -2107,7 +2111,7 @@ router.post('/webhook', (req, res, next) => {
         }
         await axios.post(`${BOT_API()}/sendMessage`, {
           chat_id: fromChatId,
-          text: '📋 *Заявка 2026 — Waiting List*\nQaysi tur turini tanlang:',
+          text: `📋 *Заявка ${new Date().getFullYear()} — Waiting List*\nQaysi tur turini tanlang:`,
           parse_mode: 'Markdown',
           reply_markup: JSON.stringify({ inline_keyboard: rows })
         }).catch(() => {});
@@ -3286,10 +3290,11 @@ router.post('/webhook-transport', async (req, res) => {
       }
 
       // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
+      const year = new Date().getFullYear();
       const STATUS_BTN_MAP = {
-        '✅ Tasdiqlangan': { key: 'CONFIRMED',   emoji: '✅' },
-        '📄 Заявка 2026':  { key: 'PENDING',     emoji: '📄' },
-        '🚫 Rad etilgan':  { key: 'RAD_ETILGAN', emoji: '🚫' },
+        '✅ Tasdiqlangan':          { key: 'CONFIRMED',   emoji: '✅' },
+        [`📄 Заявка ${year}`]:      { key: 'PENDING',     emoji: '📄' },
+        '🚫 Rad etilgan':           { key: 'RAD_ETILGAN', emoji: '🚫' },
       };
       // Ануляция — explicit check (multiple text variants for keyboard compatibility)
       const isAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
@@ -3554,7 +3559,7 @@ router.post('/webhook-transport', async (req, res) => {
              [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }, { text: '👤 Nosir',    callback_data: `tr_conf_p:${statusKey}:${tourType}:nosir`    }]]
           : [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${statusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${statusKey}:${tourType}:xayrulla` }],
              [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }]];
-        const confLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
+        const confLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${new Date().getFullYear()}`, REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
           chat_id: chatId,
           text: `${confLabel} — *${tourType}*\nProvider tanlang:`,
@@ -3598,7 +3603,7 @@ router.post('/webhook-transport', async (req, res) => {
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
       const sourceFilter = SOURCE_FILTERS[statusKey] || null;
       const jpStatusFilter = JP_STATUS_FILTERS[statusKey] || ['CONFIRMED'];
-      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
+      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${new Date().getFullYear()}`, REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
 
       await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
@@ -4335,7 +4340,7 @@ router.post('/webhook-restaurant', async (req, res) => {
       // Menu button handlers — direct data display, no tour type sub-menu
       const fmtD = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
       const isRestAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
-      const isZayavka2026     = msg.text === '📄 Заявка 2026';
+      const isZayavka2026     = msg.text === `📄 Заявка ${new Date().getFullYear()}`;
       const isTasdiqlangan    = msg.text === '✅ Tasdiqlangan';
       const isRadEtilgan      = msg.text === '🚫 Rad etilgan';
 
@@ -4522,7 +4527,7 @@ router.post('/webhook-restaurant', async (req, res) => {
         REJECTED:  ['REJECTED']
       };
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
-      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
+      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${new Date().getFullYear()}`, REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
 
       await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
@@ -5496,7 +5501,7 @@ router.post('/webhook-guide', async (req, res) => {
       const tourType  = parts[2]; // ER | CO | KAS | ZA
       const chatId = fromChatId || cb.from?.id;
       const isAdminCb = (adminChatId && String(chatId) === String(adminChatId));
-      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: '📄 Заявка 2026', REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
+      const statusLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${new Date().getFullYear()}`, REJECTED: '❌ Ануляция' }[statusKey] || statusKey;
 
       await axios.post(`${GUIDE_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
