@@ -413,7 +413,7 @@ async function sendAdminWlChg(chatId, tourType) {
   }
 }
 
-// Helper: admin Ануляция — show cancelled bookings for a specific tourType, grouped by hotel
+// Helper: admin Ануляция — show hotel buttons for a specific tourType
 async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
   const year = new Date().getFullYear();
   const confs = await prisma.telegramConfirmation.findMany({
@@ -431,8 +431,8 @@ async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
     const key = `${c.hotelId}_${c.bookingId}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    if (!byHotel[c.hotelId]) byHotel[c.hotelId] = { hotel: c.hotel, bookings: [] };
-    byHotel[c.hotelId].bookings.push(c.booking?.bookingNumber || `#${c.bookingId}`);
+    if (!byHotel[c.hotelId]) byHotel[c.hotelId] = { hotel: c.hotel, count: 0 };
+    byHotel[c.hotelId].count++;
   }
   if (Object.keys(byHotel).length === 0) {
     await axios.post(`${BOT_API()}/sendMessage`, {
@@ -443,15 +443,50 @@ async function sendAdminAnnulmentForTourType(chatId, tourType, replyMarkup) {
     }).catch(() => {});
     return;
   }
-  const lines = [`❌ *Ануляция — ${tourType} ${year}*\n`];
-  for (const { hotel, bookings } of Object.values(byHotel)) {
-    const city = hotel?.city?.name ? ` (${hotel.city.name})` : '';
-    lines.push(`🏨 *${hotel?.name || '?'}*${city}`);
-    bookings.forEach(b => lines.push(`  ❌ ${b}`));
-    lines.push('');
+  // Show hotel list as inline buttons
+  const hotelList = Object.values(byHotel);
+  const rows = [];
+  for (let i = 0; i < hotelList.length; i += 2) {
+    rows.push(hotelList.slice(i, i + 2).map(({ hotel, count }) => ({
+      text: `🏨 ${hotel?.name || '?'} (${count})`,
+      callback_data: `admin:ann_hotel:${tourType}:${hotel.id}`
+    })));
   }
   await axios.post(`${BOT_API()}/sendMessage`, {
-    chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown', reply_markup: replyMarkup
+    chat_id: chatId,
+    text: `❌ *Ануляция — ${tourType} ${year}*\nHotelni tanlang:`,
+    parse_mode: 'Markdown',
+    reply_markup: JSON.stringify({ inline_keyboard: rows })
+  }).catch(() => {});
+}
+
+// Helper: admin Ануляция — show bookings for specific hotel+tourType
+async function sendAdminAnnulmentForHotel(chatId, tourType, hotelId) {
+  const year = new Date().getFullYear();
+  const hotel = await prisma.hotel.findUnique({ where: { id: hotelId }, include: { city: true } });
+  const confs = await prisma.telegramConfirmation.findMany({
+    where: { hotelId, type: 'ANNULMENT' },
+    include: { booking: { select: { bookingNumber: true, tourType: { select: { code: true } } } } },
+    orderBy: { sentAt: 'desc' }
+  });
+  const seen = new Set();
+  const bookings = [];
+  for (const c of confs) {
+    if (c.booking?.tourType?.code !== tourType) continue;
+    if (seen.has(c.bookingId)) continue;
+    seen.add(c.bookingId);
+    bookings.push({ bookingNumber: c.booking?.bookingNumber || `#${c.bookingId}`, status: c.status });
+  }
+  const cityName = hotel?.city?.name ? ` (${hotel.city.name})` : '';
+  const statusIcon = s => s === 'CONFIRMED' ? '✅' : s === 'REJECTED' ? '❌' : '⏳';
+  const lines = [
+    `❌ *Ануляция — ${tourType} ${year}*`,
+    `🏨 *${hotel?.name || '?'}*${cityName}`,
+    ''
+  ];
+  bookings.forEach(b => lines.push(`${statusIcon(b.status)} ${b.bookingNumber}`));
+  await axios.post(`${BOT_API()}/sendMessage`, {
+    chat_id: chatId, text: lines.join('\n'), parse_mode: 'Markdown'
   }).catch(() => {});
 }
 
@@ -1714,7 +1749,7 @@ router.post('/webhook', (req, res, next) => {
         return;
       }
 
-      // admin:ann_tt:ER — admin Ануляция tur tanlash
+      // admin:ann_tt:ER — admin Ануляция tur tanlash → hotel buttons
       if (subAction === 'ann_tt') {
         const tourType = parts[2];
         await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
@@ -1726,6 +1761,15 @@ router.post('/webhook', (req, res, next) => {
           resize_keyboard: true, is_persistent: true
         });
         await sendAdminAnnulmentForTourType(fromChatId, tourType, ADMIN_KB);
+        return;
+      }
+
+      // admin:ann_hotel:ER:16 — admin Ануляция hotel tanlash → show bookings
+      if (subAction === 'ann_hotel') {
+        const tourType = parts[2];
+        const hotelId  = parseInt(parts[3]);
+        await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
+        await sendAdminAnnulmentForHotel(fromChatId, tourType, hotelId);
         return;
       }
 
