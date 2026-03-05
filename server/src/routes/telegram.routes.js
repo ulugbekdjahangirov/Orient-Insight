@@ -2639,6 +2639,61 @@ router.post('/webhook', (req, res, next) => {
       return;
     }
 
+    // ann_c — Anulyatsiya tasdiqlash
+    if (data.startsWith('ann_c:')) {
+      const parts = data.split(':');
+      const annBookingId = parseInt(parts[1]);
+      const annHotelId   = parseInt(parts[2]);
+
+      await axios.post(`${BOT_API()}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+        text: '✅ Anulyatsiya tasdiqlandi!',
+        show_alert: false
+      }).catch(() => {});
+
+      // Edit message: add confirmed label, remove button
+      if (cb.message?.message_id) {
+        const origText = cb.message.text || '';
+        const newText  = (origText + `\n\n✅ Tasdiqlandi`).slice(0, 4096);
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId,
+          message_id: cb.message.message_id,
+          text: newText,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [] })
+        }).catch(() => {});
+      }
+
+      // Update TelegramConfirmation
+      try {
+        await prisma.telegramConfirmation.updateMany({
+          where: { bookingId: annBookingId, hotelId: annHotelId, status: 'PENDING' },
+          data: { status: 'CONFIRMED', confirmedBy: fromName, respondedAt: new Date() }
+        });
+      } catch (e) { console.warn('ann confirmation update:', e.message); }
+
+      // Notify admin
+      const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+      if (adminChatId) {
+        const annBooking = await prisma.booking.findUnique({ where: { id: annBookingId } });
+        const annHotel   = await prisma.hotel.findUnique({ where: { id: annHotelId } });
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        await axios.post(`${BOT_API()}/sendMessage`, {
+          chat_id: adminChatId,
+          text: [
+            `✅ *Anulyatsiya tasdiqlandi — ЗАЯВКА ${annBooking?.bookingNumber || annBookingId}*`,
+            `🏨 ${annHotel?.name || annHotelId}`,
+            ``,
+            `👤 ${fromName}`,
+            `🕐 ${timeStr}`
+          ].join('\n'),
+          parse_mode: 'Markdown'
+        }).catch(() => {});
+      }
+      return;
+    }
+
     const [action, bookingId, hotelId] = data.split(':');
     if (!action || !bookingId || !hotelId) return;
 
@@ -5079,7 +5134,25 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
       '',
       '⚠️ Bu bron bekor qilindi.'
     ].join('\n');
-    await axios.post(`${BOT_API()}/sendMessage`, { chat_id: hotel.telegramChatId, text, parse_mode: 'Markdown' });
+
+    const annButtons = JSON.stringify({
+      inline_keyboard: [[
+        { text: '✅ Tasdiqlash', callback_data: `ann_c:${bookingId}:${hotelId}` }
+      ]]
+    });
+
+    await axios.post(`${BOT_API()}/sendMessage`, {
+      chat_id: hotel.telegramChatId,
+      text,
+      parse_mode: 'Markdown',
+      reply_markup: annButtons
+    });
+
+    // Create TelegramConfirmation so admin "Anulyatsiya" tab shows it
+    await prisma.telegramConfirmation.create({
+      data: { bookingId, hotelId, status: 'PENDING' }
+    });
+
     res.json({ success: true });
   } catch (e) {
     console.error('send-annulment error:', e.message);
