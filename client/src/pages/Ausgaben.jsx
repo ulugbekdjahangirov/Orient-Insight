@@ -1347,7 +1347,7 @@ export default function Ausgaben() {
                     ) : (
                       <>
                         {/* Mobile cards */}
-                        <div className="sm:hidden divide-y divide-slate-100">
+                        <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                           {bookingsDetailedData
                             .filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; })
                             .map((booking, idx) => {
@@ -1371,33 +1371,38 @@ export default function Ausgaben() {
                               ].filter(Boolean);
                               const isOpen = openMobileCards.has(`gen_${booking.bookingId}`);
                               return (
-                                <div key={booking.bookingId}>
-                                  <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
-                                    style={{background: isOpen ? '#eff6ff' : (idx%2===0 ? '#fff' : '#f8fafc')}}
-                                    onClick={() => toggleMobileCard(`gen_${booking.bookingId}`)}>
-                                    <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{booking.bookingName}</Link>
-                                    <div className="flex items-center gap-2">
-                                      {totalUZS>0 && <span className="text-xs font-bold text-amber-700">{formatNumber(totalUZS)}</span>}
-                                      {totalUSD>0 && <span className="text-xs font-bold text-green-700">${formatNumber(totalUSD)}</span>}
-                                      <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                                <div key={booking.bookingId} className="rounded-xl overflow-hidden border border-green-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(16,185,129,0.08)' }}>
+                                  <div className="h-0.5 bg-gradient-to-r from-green-400 to-emerald-500" />
+                                  <div className="px-3 py-2">
+                                    <div className="flex items-center justify-between gap-2 cursor-pointer"
+                                      onClick={() => toggleMobileCard(`gen_${booking.bookingId}`)}>
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="w-5 h-5 rounded-full bg-green-50 text-green-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-green-200">{idx+1}</span>
+                                        <Link to={`/bookings/${booking.bookingId}`} className="font-bold text-blue-600 text-sm truncate" onClick={ev=>ev.stopPropagation()}>{booking.bookingName}</Link>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        {totalUZS>0 && <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-amber-100">{formatNumber(totalUZS)}</span>}
+                                        {totalUSD>0 && <span className="bg-green-50 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-green-100">${formatNumber(totalUSD)}</span>}
+                                        <span className="text-slate-400 text-[10px]">{isOpen ? '▲' : '▼'}</span>
+                                      </div>
                                     </div>
+                                    {isOpen && (
+                                      <div className="mt-2 grid grid-cols-2 gap-1">
+                                        {rows.map(([label, val]) => (
+                                          <div key={label} className="bg-gray-50 rounded-lg px-2 py-1 border border-gray-100">
+                                            <div className="text-[10px] text-gray-400 font-medium">{label}</div>
+                                            <div className="text-xs font-bold text-gray-900">{val}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                  {isOpen && (
-                                    <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
-                                      {rows.map(([label, val]) => (
-                                        <div key={label} className="flex justify-between px-5 py-2">
-                                          <span className="text-slate-500">{label}</span>
-                                          <span className="font-semibold text-slate-800">{val}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })}
-                          <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
-                            <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
-                            <div className="flex gap-3 text-xs font-black text-white">
+                          <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold" style={{ background: 'linear-gradient(90deg,#14532d,#166534)' }}>
+                            <span className="text-[10px] text-white uppercase tracking-widest self-center">TOTAL</span>
+                            <div className="flex gap-2 text-xs font-black text-white">
                               <span>{formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0))}</span>
                               <span>${formatNumber(filteredBookingsWithHotels.reduce((sum,b)=>{const e=b.expenses||{};return sum+(e.hotelsUSD||0)+(e.guide||0);},0))}</span>
                             </div>
@@ -1585,42 +1590,47 @@ export default function Ausgaben() {
                       const pivotData = getPivotData();
                       return (<>
                         {/* Mobile cards */}
-                        <div className="sm:hidden divide-y divide-slate-100">
+                        <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                           {pivotData.bookingRows.map((bookingRow, idx) => {
                             const isOpen = openMobileCards.has(`htl_${bookingRow.bookingId}`);
                             return (
-                              <div key={bookingRow.bookingId}>
-                                <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
-                                  style={{background: isOpen ? '#eff6ff' : (idx%2===0 ? '#fff' : '#f8fafc')}}
-                                  onClick={() => toggleMobileCard(`htl_${bookingRow.bookingId}`)}>
-                                  <Link to={`/bookings/${bookingRow.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{bookingRow.bookingName}</Link>
-                                  <div className="flex items-center gap-2">
-                                    {bookingRow.totalUZS>0 && <span className="text-xs font-bold text-amber-700">{formatNumber(bookingRow.totalUZS)}</span>}
-                                    {bookingRow.totalUSD>0 && <span className="text-xs font-bold text-green-700">${formatNumber(bookingRow.totalUSD)}</span>}
-                                    <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                              <div key={bookingRow.bookingId} className="rounded-xl overflow-hidden border border-blue-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(59,130,246,0.08)' }}>
+                                <div className="h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
+                                <div className="px-3 py-2">
+                                  <div className="flex items-center justify-between gap-2 cursor-pointer"
+                                    onClick={() => toggleMobileCard(`htl_${bookingRow.bookingId}`)}>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-blue-200">{idx+1}</span>
+                                      <Link to={`/bookings/${bookingRow.bookingId}`} className="font-bold text-blue-600 text-sm truncate" onClick={ev=>ev.stopPropagation()}>{bookingRow.bookingName}</Link>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {bookingRow.totalUZS>0 && <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-amber-100">{formatNumber(bookingRow.totalUZS)}</span>}
+                                      {bookingRow.totalUSD>0 && <span className="bg-green-50 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-green-100">${formatNumber(bookingRow.totalUSD)}</span>}
+                                      <span className="text-slate-400 text-[10px]">{isOpen ? '▲' : '▼'}</span>
+                                    </div>
                                   </div>
+                                  {isOpen && (
+                                    <div className="mt-2 flex flex-col gap-1">
+                                      {pivotData.hotels.map(hotelName => {
+                                        const hc = bookingRow.hotelCosts[hotelName];
+                                        const uzs = hc?.uzs||0; const usd = hc?.usd||0;
+                                        if (!uzs && !usd) return null;
+                                        return (
+                                          <div key={hotelName} className="bg-gray-50 rounded-lg px-2 py-1 border border-gray-100 flex justify-between">
+                                            <span className="text-[10px] text-gray-500 truncate pr-2">🏨 {hotelName}</span>
+                                            <span className="text-xs font-bold text-gray-900 shrink-0">{uzs>0 ? formatNumber(uzs) : `$${formatNumber(usd)}`}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
-                                {isOpen && (
-                                  <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
-                                    {pivotData.hotels.map(hotelName => {
-                                      const hc = bookingRow.hotelCosts[hotelName];
-                                      const uzs = hc?.uzs||0; const usd = hc?.usd||0;
-                                      if (!uzs && !usd) return null;
-                                      return (
-                                        <div key={hotelName} className="flex justify-between px-5 py-2">
-                                          <span className="text-slate-500 truncate pr-2">🏨 {hotelName}</span>
-                                          <span className="font-semibold shrink-0 text-slate-800">{uzs>0 ? formatNumber(uzs) : `$${formatNumber(usd)}`}</span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
                               </div>
                             );
                           })}
-                          <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
-                            <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
-                            <div className="flex gap-3 text-xs font-black text-white">
+                          <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold" style={{ background: 'linear-gradient(90deg,#14532d,#166534)' }}>
+                            <span className="text-[10px] text-white uppercase tracking-widest self-center">TOTAL</span>
+                            <div className="flex gap-2 text-xs font-black text-white">
                               <span>{formatNumber(getGrandTotalUZS())}</span>
                               <span>${formatNumber(getGrandTotalUSD())}</span>
                             </div>
@@ -1889,7 +1899,7 @@ export default function Ausgaben() {
                       <EmptyState icon={Users} label={`${activeModule?.name} uchun gid ma'lumoti yo'q`} />
                     ) : (<>
                       {/* Mobile cards */}
-                      <div className="sm:hidden divide-y divide-slate-100">
+                      <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                         {filteredBookingsWithHotels.filter(item => {
                           if (!selectedGuide) return true;
                           const e = item.expenses || {};
@@ -1899,28 +1909,48 @@ export default function Ausgaben() {
                           const total = (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0);
                           const isOpen = openMobileCards.has(`gd_${item.bookingId}`);
                           return (
-                            <div key={item.bookingId}>
-                              <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
-                                style={{background: isOpen ? '#f0fdf4' : (idx%2===0 ? '#fff' : '#f8fafc')}}
-                                onClick={() => toggleMobileCard(`gd_${item.bookingId}`)}>
-                                <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{item.bookingName}</Link>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-green-700">${formatNumber(total)}</span>
-                                  <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                            <div key={item.bookingId} className="rounded-xl overflow-hidden border border-emerald-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(16,185,129,0.08)' }}>
+                              <div className="h-0.5 bg-gradient-to-r from-emerald-400 to-teal-500" />
+                              <div className="px-3 py-2">
+                                <div className="flex items-center justify-between gap-2 cursor-pointer"
+                                  onClick={() => toggleMobileCard(`gd_${item.bookingId}`)}>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-emerald-200">{idx+1}</span>
+                                    <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm truncate" onClick={ev=>ev.stopPropagation()}>{item.bookingName}</Link>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="bg-green-50 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-green-100">${formatNumber(total)}</span>
+                                    <span className="text-slate-400 text-[10px]">{isOpen ? '▲' : '▼'}</span>
+                                  </div>
                                 </div>
+                                {isOpen && (
+                                  <div className="mt-2 flex flex-col gap-1">
+                                    {e.guideMainName && (
+                                      <div className="bg-gray-50 rounded-lg px-2 py-1 border border-gray-100 flex justify-between">
+                                        <span className="text-[10px] text-gray-500 truncate pr-2">👤 {e.guideMainName}</span>
+                                        {e.guideMainCost>0 && <span className="text-xs font-bold text-gray-900 shrink-0">${formatNumber(e.guideMainCost)}</span>}
+                                      </div>
+                                    )}
+                                    {e.guideSecondName && (
+                                      <div className="bg-gray-50 rounded-lg px-2 py-1 border border-gray-100 flex justify-between">
+                                        <span className="text-[10px] text-gray-500 truncate pr-2">👤 {e.guideSecondName}</span>
+                                        {e.guideSecondCost>0 && <span className="text-xs font-bold text-gray-900 shrink-0">${formatNumber(e.guideSecondCost)}</span>}
+                                      </div>
+                                    )}
+                                    {e.guideBergrName && (
+                                      <div className="bg-gray-50 rounded-lg px-2 py-1 border border-gray-100 flex justify-between">
+                                        <span className="text-[10px] text-gray-500 truncate pr-2">🏔 {e.guideBergrName}</span>
+                                        {e.guideBergrCost>0 && <span className="text-xs font-bold text-gray-900 shrink-0">${formatNumber(e.guideBergrCost)}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              {isOpen && (
-                                <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
-                                  {e.guideMainName && <div className="flex justify-between px-5 py-2"><span className="text-slate-500 truncate pr-2">👤 {e.guideMainName}</span>{e.guideMainCost>0 && <span className="font-semibold text-slate-800 shrink-0">${formatNumber(e.guideMainCost)}</span>}</div>}
-                                  {e.guideSecondName && <div className="flex justify-between px-5 py-2"><span className="text-slate-500 truncate pr-2">👤 {e.guideSecondName}</span>{e.guideSecondCost>0 && <span className="font-semibold text-slate-800 shrink-0">${formatNumber(e.guideSecondCost)}</span>}</div>}
-                                  {e.guideBergrName && <div className="flex justify-between px-5 py-2"><span className="text-slate-500 truncate pr-2">🏔 {e.guideBergrName}</span>{e.guideBergrCost>0 && <span className="font-semibold text-slate-800 shrink-0">${formatNumber(e.guideBergrCost)}</span>}</div>}
-                                </div>
-                              )}
                             </div>
                           );
                         })}
-                        <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
-                          <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
+                        <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold" style={{ background: 'linear-gradient(90deg,#14532d,#166534)' }}>
+                          <span className="text-[10px] text-white uppercase tracking-widest self-center">TOTAL</span>
                           <span className="font-black text-white text-xs">${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0))}</span>
                         </div>
                       </div>
@@ -2030,7 +2060,7 @@ export default function Ausgaben() {
                       <EmptyState icon={Truck} label={`${activeModule?.name} uchun transport ma'lumoti yo'q`} />
                     ) : (<>
                         {/* Mobile cards */}
-                        <div className="sm:hidden divide-y divide-slate-100">
+                        <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                           {filteredBookingsWithHotels.map((item, idx) => {
                             const sevil=item.expenses?.transportSevil||0;
                             const xayrulla=item.expenses?.transportXayrulla||0;
@@ -2038,29 +2068,49 @@ export default function Ausgaben() {
                             const total=sevil+xayrulla+nosir;
                             const isOpen = openMobileCards.has(`tr_${item.bookingId}`);
                             return (
-                              <div key={item.bookingId}>
-                                <div className="flex items-center justify-between px-4 py-3 cursor-pointer"
-                                  style={{background: isOpen ? '#eff6ff' : (idx%2===0 ? '#fff' : '#f8fafc')}}
-                                  onClick={() => toggleMobileCard(`tr_${item.bookingId}`)}>
-                                  <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm" onClick={ev=>ev.stopPropagation()}>{item.bookingName}</Link>
-                                  <div className="flex items-center gap-2">
-                                    {total>0 && <span className="text-xs font-bold text-green-700">${formatNumber(total)}</span>}
-                                    <span className="text-slate-400 text-xs ml-1">{isOpen ? '▲' : '▼'}</span>
+                              <div key={item.bookingId} className="rounded-xl overflow-hidden border border-indigo-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(99,102,241,0.08)' }}>
+                                <div className="h-0.5 bg-gradient-to-r from-indigo-400 to-blue-500" />
+                                <div className="px-3 py-2">
+                                  <div className="flex items-center justify-between gap-2 cursor-pointer"
+                                    onClick={() => toggleMobileCard(`tr_${item.bookingId}`)}>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-indigo-200">{idx+1}</span>
+                                      <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm truncate" onClick={ev=>ev.stopPropagation()}>{item.bookingName}</Link>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {total>0 && <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-1.5 py-0.5 rounded-lg border border-indigo-100">{formatNumber(total)}</span>}
+                                      <span className="text-slate-400 text-[10px]">{isOpen ? '▲' : '▼'}</span>
+                                    </div>
                                   </div>
+                                  {isOpen && (
+                                    <div className="mt-2 grid grid-cols-3 gap-1">
+                                      {sevil>0 && (
+                                        <div className="bg-blue-50 rounded-lg px-2 py-1 border border-blue-100">
+                                          <div className="text-[10px] text-blue-500 font-medium">🚌 Sevil</div>
+                                          <div className="text-xs font-bold text-gray-900">{formatNumber(sevil)}</div>
+                                        </div>
+                                      )}
+                                      {xayrulla>0 && (
+                                        <div className="bg-green-50 rounded-lg px-2 py-1 border border-green-100">
+                                          <div className="text-[10px] text-green-600 font-medium">🚌 Xayrulla</div>
+                                          <div className="text-xs font-bold text-gray-900">{formatNumber(xayrulla)}</div>
+                                        </div>
+                                      )}
+                                      {nosir>0 && (
+                                        <div className="bg-purple-50 rounded-lg px-2 py-1 border border-purple-100">
+                                          <div className="text-[10px] text-purple-500 font-medium">🚌 Nosir</div>
+                                          <div className="text-xs font-bold text-gray-900">{formatNumber(nosir)}</div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
-                                {isOpen && (
-                                  <div className="divide-y divide-slate-50 text-xs" style={{background:'#f8fafc'}}>
-                                    {sevil>0 && <div className="flex justify-between px-5 py-2"><span className="text-slate-500">🚌 Sevil</span><span className="font-semibold text-slate-800">{formatNumber(sevil)}</span></div>}
-                                    {xayrulla>0 && <div className="flex justify-between px-5 py-2"><span className="text-slate-500">🚌 Xayrulla</span><span className="font-semibold text-slate-800">{formatNumber(xayrulla)}</span></div>}
-                                    {nosir>0 && <div className="flex justify-between px-5 py-2"><span className="text-slate-500">🚌 Nosir</span><span className="font-semibold text-slate-800">{formatNumber(nosir)}</span></div>}
-                                  </div>
-                                )}
                               </div>
                             );
                           })}
-                          <div className="px-4 py-3 flex justify-between" style={{background:'linear-gradient(90deg,#14532d,#166534)'}}>
-                            <span className="text-xs font-black text-white uppercase tracking-widest">TOTAL</span>
-                            <span className="font-black text-white text-xs">${formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}</span>
+                          <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold" style={{ background: 'linear-gradient(90deg,#14532d,#166534)' }}>
+                            <span className="text-[10px] text-white uppercase tracking-widest self-center">TOTAL</span>
+                            <span className="font-black text-white text-xs">{formatNumber(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0)+(i.expenses?.transportNosir||0),0))}</span>
                           </div>
                         </div>
                         {/* Desktop table */}
