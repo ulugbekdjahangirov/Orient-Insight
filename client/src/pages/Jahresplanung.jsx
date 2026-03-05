@@ -3000,12 +3000,21 @@ function GuidesTab({ tourColor }) {
                         <Link to={`/bookings/${b.bookingId}`} className={`font-semibold text-indigo-600 hover:underline ${isCancelled ? 'line-through' : ''}`}>
                           {b.bookingNumber}
                         </Link>
+                        {b.guideRole === 'second' && <span className="ml-1.5 text-xs bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full font-medium">2-gid</span>}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${ttCls}`}>{b.tourType}</span>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{fmt(b.departureDate)}</td>
-                      <td className="px-4 py-3 text-slate-600">{fmt(b.endDate)}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {b.guideRole === 'second' && b.tourType === 'ZA'
+                          ? fmt(addDaysLocal(b.endDate, 4))
+                          : fmt(b.departureDate)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {b.guideRole === 'second' && b.tourType === 'ZA'
+                          ? fmt(addDaysLocal(b.endDate, 5))
+                          : fmt(b.endDate)}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={confCls} title={b.confirmStatus || 'Yuborilmagan'}>{confIcon}</span>
                       </td>

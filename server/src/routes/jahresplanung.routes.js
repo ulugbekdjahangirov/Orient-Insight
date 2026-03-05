@@ -1368,43 +1368,72 @@ router.get('/guides', authenticate, async (req, res) => {
   try {
     const year = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
 
-    const bookings = await prisma.booking.findMany({
-      where: {
-        bookingYear: year,
-        guideId: { not: null }
-      },
-      select: {
-        id: true,
-        bookingNumber: true,
-        departureDate: true,
-        endDate: true,
-        pax: true,
-        status: true,
-        guide:    { select: { id: true, name: true, phone: true, telegramChatId: true } },
-        tourType: { select: { code: true } },
-        guideConfirmations: { select: { guideId: true, status: true } }
-      },
-      orderBy: { departureDate: 'asc' }
-    });
+    const bookingSelect = {
+      id: true,
+      bookingNumber: true,
+      departureDate: true,
+      endDate: true,
+      pax: true,
+      status: true,
+      tourType: { select: { code: true } },
+      guideConfirmations: { select: { guideId: true, status: true } }
+    };
+
+    const [mainBookings, secondBookings] = await Promise.all([
+      prisma.booking.findMany({
+        where: { bookingYear: year, guideId: { not: null } },
+        select: { ...bookingSelect, guide: { select: { id: true, name: true, phone: true, telegramChatId: true } } },
+        orderBy: { departureDate: 'asc' }
+      }),
+      prisma.booking.findMany({
+        where: { bookingYear: year, secondGuideId: { not: null } },
+        select: { ...bookingSelect, secondGuide: { select: { id: true, name: true, phone: true, telegramChatId: true } } },
+        orderBy: { departureDate: 'asc' }
+      })
+    ]);
 
     // Group by guide
     const guideMap = {};
-    for (const b of bookings) {
+
+    for (const b of mainBookings) {
       const gid = b.guide?.id;
       if (!gid) continue;
       if (!guideMap[gid]) guideMap[gid] = { guide: b.guide, bookings: [] };
-      // Find this guide's confirmation for this booking
       const conf = b.guideConfirmations?.find(c => c.guideId === gid);
       guideMap[gid].bookings.push({
-        bookingId:       b.id,
-        bookingNumber:   b.bookingNumber,
-        tourType:        b.tourType?.code || '—',
-        departureDate:   b.departureDate,
-        endDate:         b.endDate,
-        pax:             b.pax,
-        status:          b.status,
-        confirmStatus:   conf?.status || null  // PENDING | CONFIRMED | REJECTED | null
+        bookingId:     b.id,
+        bookingNumber: b.bookingNumber,
+        tourType:      b.tourType?.code || '—',
+        departureDate: b.departureDate,
+        endDate:       b.endDate,
+        pax:           b.pax,
+        status:        b.status,
+        guideRole:     'main',
+        confirmStatus: conf?.status || null
       });
+    }
+
+    for (const b of secondBookings) {
+      const gid = b.secondGuide?.id;
+      if (!gid) continue;
+      if (!guideMap[gid]) guideMap[gid] = { guide: b.secondGuide, bookings: [] };
+      const conf = b.guideConfirmations?.find(c => c.guideId === gid);
+      guideMap[gid].bookings.push({
+        bookingId:     b.id,
+        bookingNumber: b.bookingNumber,
+        tourType:      b.tourType?.code || '—',
+        departureDate: b.departureDate,
+        endDate:       b.endDate,
+        pax:           b.pax,
+        status:        b.status,
+        guideRole:     'second',
+        confirmStatus: conf?.status || null
+      });
+    }
+
+    // Sort each guide's bookings by departureDate
+    for (const g of Object.values(guideMap)) {
+      g.bookings.sort((a, b) => new Date(a.departureDate) - new Date(b.departureDate));
     }
 
     res.json({ guides: Object.values(guideMap) });
