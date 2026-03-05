@@ -1060,16 +1060,13 @@ router.post('/webhook', (req, res, next) => {
           }
         }).catch(() => {});
 
-        // Known menu/keyboard button texts — skip admin notification for these
-        const MENU_BUTTONS = [
-          '/start', '/menu', '/menyu',
-          '🏨 Hotellar', '🍽 Restoran', '🚌 Transport', '👤 Gidlar',
-          '📄 Заявка 2026', '📝 Изменения к Заявке', '📝 O\'zgarishlar',
-          '⏳ Waiting List', '❌ Ануляция', '❌ Аннуляция', '❌ Anulyatsiya', '❌ Bekor qilish',
-          '📋 Gruppalar', '✅ Tasdiqlangan', '⬅️ Orqaga', '◀️ Orqaga',
-          '🍴 Menyu', '📋 Заявка', '🍽 Taomlar',
+        // Skip admin notification for menu/keyboard button presses
+        // Commands start with '/', menu buttons start with known emoji prefixes
+        const MENU_PREFIXES = [
+          '📋 ', '📄 ', '📝 ', '⏳ ', '❌ ', '✅ ', '🏨 ', '🍽 ', '🚌 ', '👤 ', '🍴 ', '⬅️ ', '◀️ ',
         ];
-        const isMenuButton = MENU_BUTTONS.includes(msg.text) || msg.text.startsWith('/');
+        const isMenuButton = msg.text.startsWith('/') ||
+          MENU_PREFIXES.some(prefix => msg.text.startsWith(prefix));
 
         // Notify all admins about incoming message with reply button (skip menu navigation)
         if (!isMenuButton) {
