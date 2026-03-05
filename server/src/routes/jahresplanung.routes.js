@@ -450,6 +450,28 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
           data: { value: JSON.stringify({ year, tourType, hotelName: hotel.name, chatId: hotel.telegramChatId, groups, bulkMsgId }) }
         }).catch(e => console.warn('JP DB update error:', e.message));
 
+        // 6. Refresh hotel keyboard so new year button appears immediately
+        try {
+          const curYear = new Date().getFullYear();
+          const allJpForHotel = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotelId}_` } } });
+          const availYears = [...new Set(
+            allJpForHotel.map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } }).filter(y => y && y >= curYear)
+          )].sort();
+          const jpRows = availYears.length > 1
+            ? availYears.map(y => [{ text: `📋 Заявка ${y}` }])
+            : [[{ text: `📋 Заявка ${availYears[0] || curYear}` }, { text: '📝 Изменения к Заявке' }]];
+          const refreshKeyboard = availYears.length > 1
+            ? [...jpRows, [{ text: '📝 Изменения к Заявке' }], [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]]
+            : [...jpRows, [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]];
+          await axios.post(`${TG_BASE}/sendMessage`, {
+            chat_id: hotel.telegramChatId,
+            text: `🔄 Menu yangilandi (${availYears.join(', ')} yil uchun zaявкалар mavjud):`,
+            reply_markup: JSON.stringify({ keyboard: refreshKeyboard, resize_keyboard: true, is_persistent: true })
+          }).catch(() => {});
+        } catch (menuErr) {
+          console.warn('JP menu refresh error:', menuErr.message);
+        }
+
       } catch (bgErr) {
         console.error('JP background send error:', bgErr.message);
       }

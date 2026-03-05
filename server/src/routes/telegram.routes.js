@@ -257,20 +257,30 @@ async function sendRestaurantMenu(chatId, isAdmin = false) {
   }).catch(() => {});
 }
 
-// Helper: send persistent hotel menu keyboard
+// Helper: send persistent hotel menu keyboard (dynamic year buttons from JP_SECTIONS)
 async function sendHotelMenu(chatId) {
-  const year = new Date().getFullYear();
+  const curYear = new Date().getFullYear();
+  // Find available JP years for this hotel (year >= curYear)
+  const hotel = await prisma.hotel.findFirst({ where: { telegramChatId: String(chatId) } });
+  let availYears = [curYear];
+  if (hotel) {
+    const jpSettings = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_SECTIONS_${hotel.id}_` } } });
+    const years = [...new Set(
+      jpSettings.map(s => { try { return parseInt(JSON.parse(s.value).year); } catch { return null; } }).filter(y => y && y >= curYear)
+    )].sort();
+    if (years.length) availYears = years;
+  }
+  // One row per year if multiple, else single row
+  const jpRows = availYears.length > 1
+    ? availYears.map(y => [{ text: `📋 Заявка ${y}` }])
+    : [[{ text: `📋 Заявка ${availYears[0]}` }, { text: '📝 Изменения к Заявке' }]];
+  const keyboard = availYears.length > 1
+    ? [...jpRows, [{ text: '📝 Изменения к Заявке' }], [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]]
+    : [...jpRows, [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]];
   await axios.post(`${BOT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🏨 Asosiy menyu:',
-    reply_markup: JSON.stringify({
-      keyboard: [
-        [{ text: `📋 Заявка ${year}` }, { text: '📝 Изменения к Заявке' }],
-        [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]
-      ],
-      resize_keyboard: true,
-      is_persistent: true
-    })
+    reply_markup: JSON.stringify({ keyboard, resize_keyboard: true, is_persistent: true })
   }).catch(() => {});
 }
 
@@ -1356,12 +1366,14 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
         if (msg.text.startsWith('📋 Заявка')) {
+          // Parse year from button text: "📋 Заявка 2027" → 2027
+          const pressedYear = parseInt(msg.text.replace('📋 Заявка', '').trim()) || year;
           const allZvSettings = await findJpSectionsByChatId(chat.id);
-          // Faqat Telegram ga haqiqatda yuborilganlarni ko'rsatish
-          // (bulkMsgId yoki visit msgId orqali tekshiriladi)
+          // Filter by pressed year AND only show sent sections (bulkMsgId or visit msgId)
           const zvSettings = allZvSettings.filter(s => {
             try {
               const d = JSON.parse(s.value);
+              if (parseInt(d.year) !== pressedYear) return false;
               if (d.bulkMsgId != null) return true;
               return (d.groups || []).some(g => g.visits.some(v => v.msgId != null));
             } catch { return false; }
@@ -1401,11 +1413,11 @@ router.post('/webhook', (req, res, next) => {
           const sorted = ORDER.filter(t => availTypes.includes(t));
           const rows = [];
           for (let i = 0; i < sorted.length; i += 2) {
-            rows.push(sorted.slice(i, i + 2).map(t => ({ text: `${t} ${year}`, callback_data: `zv:${t}:${year}` })));
+            rows.push(sorted.slice(i, i + 2).map(t => ({ text: `${t} ${pressedYear}`, callback_data: `zv:${t}:${pressedYear}` })));
           }
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: chat.id,
-            text: `📋 *${year} yil zayavkalari*\nQaysi tur turini tanlang:`,
+            text: `📋 *${pressedYear} yil zayavkalari*\nQaysi tur turini tanlang:`,
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: rows })
           }).catch(() => {});
