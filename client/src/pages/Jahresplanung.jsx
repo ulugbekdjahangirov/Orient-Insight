@@ -1117,6 +1117,7 @@ function TransportTab({ tourType, tourColor }) {
   });
   const [openProviders, setOpenProviders] = useState({ sevil: true, xayrulla: true, nosir: true });
   const [sendingTransportTg, setSendingTransportTg] = useState({});
+  const [clearingTransportTg, setClearingTransportTg] = useState({});
   const [confirmations, setConfirmations] = useState([]);
   const saveTimerRef = useRef(null);
 
@@ -1538,6 +1539,18 @@ function TransportTab({ tourType, tourColor }) {
     }
   };
 
+  const handleClearTransportTg = async (provId) => {
+    const prov = TRANSPORT_PROVIDERS.find(p => p.id === provId);
+    if (!window.confirm(`${prov?.label || provId} — ${YEAR} yil TG zayavkasini tozalashni tasdiqlaysizmi?`)) return;
+    setClearingTransportTg(p => ({ ...p, [provId]: true }));
+    try {
+      await jahresplanungApi.clearTransportTg(provId, YEAR);
+      toast.success(`${prov?.label || provId} — TG tozalandi`);
+    } catch (err) {
+      toast.error('Xatolik: ' + (err.response?.data?.error || err.message));
+    } finally { setClearingTransportTg(p => ({ ...p, [provId]: false })); }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-gray-400">
@@ -1724,11 +1737,16 @@ function TransportTab({ tourType, tourColor }) {
                   className="flex items-center gap-1 px-2.5 py-1 bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                   title={`Telegram ga yuborish — ${prov.label}`}
                 >
-                  {sendingTransportTg[prov.id]
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin"/>
-                    : <Send className="w-3.5 h-3.5"/>
-                  }
+                  {sendingTransportTg[prov.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}
                   TG
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleClearTransportTg(prov.id); }}
+                  disabled={!!clearingTransportTg[prov.id]}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-orange-50 hover:bg-orange-100 text-orange-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                  title={`TG zayavkasini tozalash — ${prov.label}`}
+                >
+                  {clearingTransportTg[prov.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Trash2 className="w-3.5 h-3.5"/>}
                 </button>
               </div>
             </button>
@@ -1929,7 +1947,7 @@ function fmtDep(dateStr) {
   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
-function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverride, sendingTelegram, onSendTelegram }) {
+function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverride, sendingTelegram, onSendTelegram, clearingTg, onClearTg }) {
   const { selectedYear: YEAR } = useYear();
   const { name, city, hasTelegram, bookings } = restaurant;
   const [editingCell, setEditingCell] = useState(null); // `${bookingId}_pax` or `${bookingId}_date`
@@ -2059,11 +2077,16 @@ function RestoranCard({ restaurant, open, onToggle, tourType, overrides, onOverr
             className="p-1.5 rounded hover:bg-blue-50 text-blue-400 hover:text-blue-600 disabled:opacity-50 transition-colors flex-shrink-0"
             title="Telegram ga yuborish"
           >
-            {sendingTelegram
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : <Send className="w-3.5 h-3.5" />
-            }
+            {sendingTelegram ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
           </button>
+          {onClearTg && <button
+            onClick={e => { e.stopPropagation(); onClearTg(); }}
+            disabled={!!clearingTg}
+            className="p-1.5 rounded hover:bg-orange-50 text-orange-300 hover:text-orange-500 disabled:opacity-50 transition-colors flex-shrink-0"
+            title="TG zayavkasini tozalash"
+          >
+            {clearingTg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          </button>}
           <div className="hidden md:block">
             {open ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
           </div>
@@ -2248,6 +2271,7 @@ function RestoranTab({ tourType, tourColor }) {
   const [restaurants, setRestaurants] = useState([]);
   const [openCards, setOpenCards] = useState({});
   const [sendingTelegram, setSendingTelegram] = useState({});
+  const [clearingTg, setClearingTg] = useState({});
   const [overrides, setOverrides] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`jp_meal_overrides_${YEAR}_${tourType}`) || '{}'); }
     catch { return {}; }
@@ -2306,6 +2330,18 @@ function RestoranTab({ tourType, tourColor }) {
     } finally {
       setSendingTelegram(prev => ({ ...prev, [rKey]: false }));
     }
+  };
+
+  const handleClearTg = async (restaurant) => {
+    const rKey = `${restaurant.name}_${restaurant.city}`;
+    if (!window.confirm(`${restaurant.name} — ${YEAR} yil TG zayavkasini tozalashni tasdiqlaysizmi?`)) return;
+    setClearingTg(prev => ({ ...prev, [rKey]: true }));
+    try {
+      await jahresplanungApi.clearMealTg(restaurant.name, YEAR);
+      toast.success(`${restaurant.name} — TG tozalandi`);
+    } catch (err) {
+      toast.error('Xatolik: ' + (err.response?.data?.error || err.message));
+    } finally { setClearingTg(prev => ({ ...prev, [rKey]: false })); }
   };
 
   const color = tourColor || TOUR_COLORS[tourType] || '#be185d';
@@ -2369,6 +2405,8 @@ function RestoranTab({ tourType, tourColor }) {
             onOverride={handleOverride}
             sendingTelegram={!!sendingTelegram[rKey]}
             onSendTelegram={(blob, bookingsData) => handleSendTelegram(rest, blob, bookingsData)}
+            clearingTg={!!clearingTg[rKey]}
+            onClearTg={() => handleClearTg(rest)}
           />
         );
       })}
@@ -2869,6 +2907,7 @@ function GuidesTab({ tourColor }) {
   const [guides, setGuides]           = useState([]);
   const [activeGuide, setActiveGuide] = useState(null);
   const [sending, setSending]         = useState({});  // { bookingId: true }
+  const [clearingGuide, setClearingGuide] = useState({});
   const color = tourColor || '#0f766e';
 
   const fmt = d => {
@@ -2906,6 +2945,17 @@ function GuidesTab({ tourColor }) {
     } finally {
       setSending(p => ({ ...p, [guideId]: false }));
     }
+  };
+
+  const clearTgForGuide = async (guideId, guideName) => {
+    if (!window.confirm(`${guideName} — ${YEAR} yil TG zayavkasini tozalashni tasdiqlaysizmi?`)) return;
+    setClearingGuide(p => ({ ...p, [guideId]: true }));
+    try {
+      await jahresplanungApi.clearGuideTg(guideId, YEAR);
+      toast.success(`${guideName} — TG tozalandi`);
+    } catch (err) {
+      toast.error('Xatolik: ' + (err.response?.data?.error || err.message));
+    } finally { setClearingGuide(p => ({ ...p, [guideId]: false })); }
   };
 
   if (loading) return (
@@ -2983,17 +3033,26 @@ function GuidesTab({ tourColor }) {
           {active > 0    && <span className="px-2 py-0.5 rounded-lg bg-sky-100 text-sky-700 text-xs font-medium">{active} jarayonda</span>}
           {done > 0      && <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-medium">✅ {done} bajarildi</span>}
           {cancelled > 0 && <span className="px-2 py-0.5 rounded-lg bg-red-100 text-red-600 text-xs font-medium">❌ {cancelled} bekor</span>}
-          <button
-            onClick={() => sendScheduleToGuide(current.guide.id, current.guide.name)}
-            disabled={sending[current.guide.id]}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: color, color: 'white', opacity: sending[current.guide.id] ? 0.7 : 1 }}
-          >
-            {sending[current.guide.id]
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : <Send className="w-3.5 h-3.5" />}
-            Telegram yuborish
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => sendScheduleToGuide(current.guide.id, current.guide.name)}
+              disabled={sending[current.guide.id]}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: color, color: 'white', opacity: sending[current.guide.id] ? 0.7 : 1 }}
+            >
+              {sending[current.guide.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              Telegram yuborish
+            </button>
+            <button
+              onClick={() => clearTgForGuide(current.guide.id, current.guide.name)}
+              disabled={!!clearingGuide[current.guide.id]}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-50 hover:bg-orange-100 text-orange-500 transition-all disabled:opacity-50"
+              title="TG zayavkasini tozalash"
+            >
+              {clearingGuide[current.guide.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+              Tozalash
+            </button>
+          </div>
         </div>
       )}
 

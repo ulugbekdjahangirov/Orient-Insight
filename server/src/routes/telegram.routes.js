@@ -181,54 +181,82 @@ async function getProviderByChatId(chatId) {
   return null;
 }
 
-// Helper: send transport provider menu
+// Helper: send transport provider menu (dynamic year buttons)
 async function sendTransportMenu(chatId) {
-  const year = new Date().getFullYear();
+  const curYear = new Date().getFullYear();
+  const provider = await getProviderByChatId(chatId);
+  let availYears = [curYear];
+  if (provider && provider !== 'hammasi') {
+    const keys = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_TRANSPORT_CONFIRM_' } } });
+    const years = [...new Set(
+      keys
+        .filter(s => { try { const d = JSON.parse(s.value); return d.provider === provider && !d.cleared; } catch { return false; } })
+        .map(s => parseInt(s.key.split('_')[3]))
+        .filter(y => y && y >= curYear)
+    )].sort();
+    if (years.length) availYears = years;
+  }
+  const zpRows = availYears.length > 1
+    ? availYears.map(y => [{ text: `📄 Заявка ${y}` }])
+    : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '❌ Ануляция' }]];
+  const keyboard = availYears.length > 1
+    ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '❌ Ануляция' }]]
+    : [[{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], ...zpRows];
   await axios.post(`${TRANSPORT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🚌 *Transport menyu:*',
     parse_mode: 'Markdown',
-    reply_markup: JSON.stringify({
-      keyboard: [
-        [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: `📄 Заявка ${year}` }, { text: '❌ Ануляция' }]
-      ],
-      resize_keyboard: true,
-      is_persistent: true
-    })
+    reply_markup: JSON.stringify({ keyboard, resize_keyboard: true, is_persistent: true })
   }).catch(() => {});
 }
 
-// Helper: send transport admin menu
+// Helper: send transport admin menu (dynamic year buttons)
 async function sendTransportAdminMenu(chatId) {
-  const year = new Date().getFullYear();
+  const curYear = new Date().getFullYear();
+  const keys = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_TRANSPORT_CONFIRM_' } } });
+  const years = [...new Set(
+    keys
+      .filter(s => { try { return !JSON.parse(s.value).cleared; } catch { return false; } })
+      .map(s => parseInt(s.key.split('_')[3]))
+      .filter(y => y && y >= curYear)
+  )].sort();
+  const availYears = years.length ? years : [curYear];
+  const zpRows = availYears.length > 1
+    ? availYears.map(y => [{ text: `📄 Заявка ${y}` }])
+    : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '🚫 Rad etilgan' }]];
+  const keyboard = availYears.length > 1
+    ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '🚫 Rad etilgan' }], [{ text: '❌ Ануляция' }]]
+    : [[{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], ...zpRows, [{ text: '❌ Ануляция' }]];
   await axios.post(`${TRANSPORT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🤖 *Transport Admin Panel*',
     parse_mode: 'Markdown',
-    reply_markup: JSON.stringify({
-      keyboard: [
-        [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: `📄 Заявка ${year}` }, { text: '🚫 Rad etilgan' }],
-        [{ text: '❌ Ануляция' }]
-      ],
-      resize_keyboard: true,
-      is_persistent: true
-    })
+    reply_markup: JSON.stringify({ keyboard, resize_keyboard: true, is_persistent: true })
   }).catch(() => {});
 }
 
-// Helper: send guide menu keyboard
+// Helper: send guide menu keyboard (dynamic year buttons)
 async function sendGuideMenu(chatId, isAdmin = false) {
+  const curYear = new Date().getFullYear();
+  const guide = await prisma.guide.findFirst({ where: { telegramChatId: String(chatId) } });
+  let availYears = [curYear];
+  if (guide) {
+    const s = await prisma.systemSetting.findUnique({ where: { key: `JP_GUIDE_YEARS_${guide.id}` } });
+    if (s) {
+      const years = JSON.parse(s.value).filter(y => y >= curYear).sort();
+      if (years.length) availYears = years;
+    }
+  }
+  const grpRows = availYears.length > 1
+    ? availYears.map(y => [{ text: `📋 Gruppalar ${y}` }])
+    : [[{ text: `📋 Gruppalar ${availYears[0]}` }, { text: '✅ Tasdiqlangan' }]];
   const keyboard = isAdmin
-    ? [
-        [{ text: '📋 Gruppalar' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '👤 Gidlar' }, { text: '❌ Anulyatsiya' }]
-      ]
-    : [
-        [{ text: '📋 Gruppalar' }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '❌ Anulyatsiya' }]
-      ];
+    ? availYears.length > 1
+      ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '👤 Gidlar' }, { text: '❌ Anulyatsiya' }]]
+      : [...grpRows, [{ text: '👤 Gidlar' }, { text: '❌ Anulyatsiya' }]]
+    : availYears.length > 1
+      ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+      : [...grpRows, [{ text: '❌ Anulyatsiya' }]];
   await axios.post(`${GUIDE_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🧭 *Gid menyu:*',
@@ -237,18 +265,28 @@ async function sendGuideMenu(chatId, isAdmin = false) {
   }).catch(() => {});
 }
 
-// Helper: send restaurant menu keyboard
+// Helper: send restaurant menu keyboard (dynamic year buttons)
 async function sendRestaurantMenu(chatId, isAdmin = false) {
-  const year = new Date().getFullYear();
+  const curYear = new Date().getFullYear();
+  let availYears = [curYear];
+  const restaurantName = await getRestaurantByChatId(chatId);
+  if (restaurantName) {
+    const s = await prisma.systemSetting.findUnique({ where: { key: `JP_MEAL_YEARS_${restaurantName}` } });
+    if (s) {
+      const years = JSON.parse(s.value).filter(y => y >= curYear).sort();
+      if (years.length) availYears = years;
+    }
+  }
+  const zpRows = availYears.length > 1
+    ? availYears.map(y => [{ text: `📄 Заявка ${y}` }])
+    : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '✅ Tasdiqlangan' }]];
   const keyboard = isAdmin
-    ? [
-        [{ text: `📄 Заявка ${year}` }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '🚫 Rad etilgan' }, { text: '❌ Anulyatsiya' }]
-      ]
-    : [
-        [{ text: `📄 Заявка ${year}` }, { text: '✅ Tasdiqlangan' }],
-        [{ text: '❌ Anulyatsiya' }]
-      ];
+    ? availYears.length > 1
+      ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '🚫 Rad etilgan' }, { text: '❌ Anulyatsiya' }]]
+      : [...zpRows, [{ text: '🚫 Rad etilgan' }, { text: '❌ Anulyatsiya' }]]
+    : availYears.length > 1
+      ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+      : [...zpRows, [{ text: '❌ Anulyatsiya' }]];
   await axios.post(`${RESTAURANT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🍽 *Restoran menyu:*',
@@ -3340,11 +3378,11 @@ router.post('/webhook-transport', async (req, res) => {
       }
 
       // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
-      const year = new Date().getFullYear();
-      const STATUS_BTN_MAP = {
-        '✅ Tasdiqlangan':          { key: 'CONFIRMED',   emoji: '✅' },
-        [`📄 Заявка ${year}`]:      { key: 'PENDING',     emoji: '📄' },
-        '🚫 Rad etilgan':           { key: 'RAD_ETILGAN', emoji: '🚫' },
+      const isZayavkaBtn = msg.text?.startsWith('📄 Заявка ');
+      const pressedZayavkaYear = isZayavkaBtn ? (parseInt(msg.text.replace('📄 Заявка', '').trim()) || new Date().getFullYear()) : null;
+      const STATUS_BTN_MAP_STATIC = {
+        '✅ Tasdiqlangan': { key: 'CONFIRMED',   emoji: '✅' },
+        '🚫 Rad etilgan':  { key: 'RAD_ETILGAN', emoji: '🚫' },
       };
       // Ануляция — explicit check (multiple text variants for keyboard compatibility)
       const isAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
@@ -3364,8 +3402,8 @@ router.post('/webhook-transport', async (req, res) => {
         }).catch(() => {});
         return;
       }
-      if (msg.text && STATUS_BTN_MAP[msg.text]) {
-        const { key, emoji } = STATUS_BTN_MAP[msg.text];
+      if (msg.text && STATUS_BTN_MAP_STATIC[msg.text]) {
+        const { key, emoji } = STATUS_BTN_MAP_STATIC[msg.text];
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
           chat_id: chat.id,
           text: `${emoji} *${msg.text}* — Tur turini tanlang:`,
@@ -3376,6 +3414,22 @@ router.post('/webhook-transport', async (req, res) => {
               { text: 'CO',  callback_data: `tr_conf:${key}:CO`  },
               { text: 'KAS', callback_data: `tr_conf:${key}:KAS` },
               { text: 'ZA',  callback_data: `tr_conf:${key}:ZA`  }
+            ]]
+          })
+        }).catch(() => {});
+        return;
+      }
+      if (isZayavkaBtn) {
+        await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+          chat_id: chat.id,
+          text: `📄 *Заявка ${pressedZayavkaYear}* — Tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({
+            inline_keyboard: [[
+              { text: 'ER',  callback_data: `tr_conf:PENDING_${pressedZayavkaYear}:ER`  },
+              { text: 'CO',  callback_data: `tr_conf:PENDING_${pressedZayavkaYear}:CO`  },
+              { text: 'KAS', callback_data: `tr_conf:PENDING_${pressedZayavkaYear}:KAS` },
+              { text: 'ZA',  callback_data: `tr_conf:PENDING_${pressedZayavkaYear}:ZA`  }
             ]]
           })
         }).catch(() => {});
@@ -3592,7 +3646,11 @@ router.post('/webhook-transport', async (req, res) => {
     if (data.startsWith('tr_conf:') || data.startsWith('tr_conf_p:')) {
       const parts = data.split(':');
       const isProviderConf = data.startsWith('tr_conf_p:');
-      const statusKey = parts[1]; // CONFIRMED | PENDING | REJECTED
+      const rawStatusKey = parts[1]; // CONFIRMED | PENDING | PENDING_2027 | REJECTED
+      // Extract year from PENDING_2027 → statusKey=PENDING, yearFilter=2027
+      const pendingYearMatch = rawStatusKey.match(/^PENDING_(\d{4})$/);
+      const statusKey = pendingYearMatch ? 'PENDING' : rawStatusKey;
+      const yearFilter = pendingYearMatch ? parseInt(pendingYearMatch[1]) : null;
       const tourType  = parts[2]; // ER | CO | KAS | ZA
       const selectedProvider = isProviderConf ? parts[3] : null;
       const chatId = fromChatId || cb.from?.id;
@@ -3604,12 +3662,13 @@ router.post('/webhook-transport', async (req, res) => {
           callback_query_id: callbackQueryId, text: `${tourType} — provider tanlang`, show_alert: false
         }).catch(() => {});
         const hasNosir = tourType === 'CO' || tourType === 'KAS';
+        const cbStatusKey = yearFilter ? `PENDING_${yearFilter}` : rawStatusKey;
         const pButtons = hasNosir
-          ? [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${statusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${statusKey}:${tourType}:xayrulla` }],
-             [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }, { text: '👤 Nosir',    callback_data: `tr_conf_p:${statusKey}:${tourType}:nosir`    }]]
-          : [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${statusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${statusKey}:${tourType}:xayrulla` }],
-             [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${statusKey}:${tourType}:sevil`    }]];
-        const confLabel = { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${new Date().getFullYear()}`, REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
+          ? [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${cbStatusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${cbStatusKey}:${tourType}:xayrulla` }],
+             [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${cbStatusKey}:${tourType}:sevil`    }, { text: '👤 Nosir',    callback_data: `tr_conf_p:${cbStatusKey}:${tourType}:nosir`    }]]
+          : [[{ text: '🚌 Hammasi', callback_data: `tr_conf_p:${cbStatusKey}:${tourType}:hammasi` }, { text: '👤 Xayrulla', callback_data: `tr_conf_p:${cbStatusKey}:${tourType}:xayrulla` }],
+             [{ text: '👤 Sevil',   callback_data: `tr_conf_p:${cbStatusKey}:${tourType}:sevil`    }]];
+        const confLabel = yearFilter ? `📄 Заявка ${yearFilter}` : { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${new Date().getFullYear()}`, REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
           chat_id: chatId,
           text: `${confLabel} — *${tourType}*\nProvider tanlang:`,
@@ -3653,7 +3712,8 @@ router.post('/webhook-transport', async (req, res) => {
       const statusFilter = STATUS_FILTERS[statusKey] || ['CONFIRMED'];
       const sourceFilter = SOURCE_FILTERS[statusKey] || null;
       const jpStatusFilter = JP_STATUS_FILTERS[statusKey] || ['CONFIRMED'];
-      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${new Date().getFullYear()}`, REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
+      const displayYear = yearFilter || new Date().getFullYear();
+      const statusLabel  = { CONFIRMED: '✅ Tasdiqlangan', PENDING: `📄 Заявка ${displayYear}`, REJECTED: '❌ Ануляция', RAD_ETILGAN: '🚫 Rad etilgan' }[statusKey] || statusKey;
 
       await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
@@ -3681,10 +3741,9 @@ router.post('/webhook-transport', async (req, res) => {
         take: 25
       });
 
-      // Fetch Jahresplanung annual plan confirmations from SystemSetting
-      const year = new Date().getFullYear();
+      // Fetch Jahresplanung annual plan confirmations from SystemSetting (filter by pressed year)
       const jpRows = await prisma.systemSetting.findMany({
-        where: { key: { startsWith: `JP_TRANSPORT_CONFIRM_${year}_${tourType}_` } }
+        where: { key: { startsWith: `JP_TRANSPORT_CONFIRM_${displayYear}_${tourType}_` } }
       });
       const jpEntries = jpRows.map(r => { try { return JSON.parse(r.value); } catch { return null; } })
         .filter(e => e && jpStatusFilter.includes(e.status))
@@ -4390,11 +4449,12 @@ router.post('/webhook-restaurant', async (req, res) => {
       // Menu button handlers — direct data display, no tour type sub-menu
       const fmtD = d => { if (!d) return '—'; const dt = new Date(d); return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`; };
       const isRestAnulyatsiya = msg.text === '❌ Ануляция' || msg.text === '❌ Аннуляция' || msg.text === '❌ Anulyatsiya';
-      const isZayavka2026     = msg.text === `📄 Заявка ${new Date().getFullYear()}`;
+      const isRestZayavka     = msg.text?.startsWith('📄 Заявка ');
+      const restZayavkaYear   = isRestZayavka ? (parseInt(msg.text.replace('📄 Заявка', '').trim()) || new Date().getFullYear()) : null;
       const isTasdiqlangan    = msg.text === '✅ Tasdiqlangan';
       const isRadEtilgan      = msg.text === '🚫 Rad etilgan';
 
-      if (isZayavka2026 || isTasdiqlangan || isRestAnulyatsiya || isRadEtilgan) {
+      if (isRestZayavka || isTasdiqlangan || isRestAnulyatsiya || isRadEtilgan) {
         const isAdminUser  = existing.role === 'admin';
         const restaurantName = isAdminUser ? null : await getRestaurantByChatId(chat.id);
         const lines = [];
@@ -4501,32 +4561,37 @@ router.post('/webhook-restaurant', async (req, res) => {
               }
             }
           } else {
-            // Zaявка 2026
+            // Zaявка {year}
             if (isAdminUser) {
-              // Admin: show ER/CO/KAS tour type selector
+              // Admin: show ER/CO/KAS tour type selector (pass year in callback)
               await axios.post(`${RESTAURANT_API()}/sendMessage`, {
                 chat_id: chat.id,
-                text: `📄 *Zaявка 2026* — Tur turini tanlang:`,
+                text: `📄 *Zaявка ${restZayavkaYear}* — Tur turini tanlang:`,
                 parse_mode: 'Markdown',
                 reply_markup: JSON.stringify({
                   inline_keyboard: [[
-                    { text: 'ER', callback_data: 'rest_jp_tt:ER' },
-                    { text: 'CO', callback_data: 'rest_jp_tt:CO' },
-                    { text: 'KAS', callback_data: 'rest_jp_tt:KAS' }
+                    { text: 'ER', callback_data: `rest_jp_tt:ER:${restZayavkaYear}` },
+                    { text: 'CO', callback_data: `rest_jp_tt:CO:${restZayavkaYear}` },
+                    { text: 'KAS', callback_data: `rest_jp_tt:KAS:${restZayavkaYear}` }
                   ]]
                 })
               }).catch(() => {});
               return;
             }
-            // Non-admin: show their own JP confirmations directly
+            // Non-admin: show their own JP confirmations for pressed year
             const confWhere = { source: 'JP' };
             if (restaurantName) confWhere.restaurantName = restaurantName;
+            if (restZayavkaYear) {
+              const startOfYear = new Date(`${restZayavkaYear}-01-01`);
+              const endOfYear   = new Date(`${restZayavkaYear}-12-31`);
+              confWhere.booking = { arrivalDate: { gte: startOfYear, lte: endOfYear } };
+            }
             const confs = await prisma.mealConfirmation.findMany({
               where: confWhere,
               include: { booking: { select: { bookingNumber: true, arrivalDate: true, endDate: true } } },
               orderBy: { sentAt: 'desc' }, take: 50
             });
-            lines.push(`📄 *Zaявка 2026*`);
+            lines.push(`📄 *Заявка ${restZayavkaYear}*`);
             if (!confs.length) {
               lines.push('\nHech narsa topilmadi.');
             } else {
@@ -5134,9 +5199,11 @@ router.post('/webhook-guide', async (req, res) => {
       }
 
       // Menu button handlers — directly show bookings for this guide (or all if admin)
-      const GUIDE_MENU_BTNS = ['📋 Gruppalar', '✅ Tasdiqlangan', '❌ Anulyatsiya', '👤 Gidlar'];
-      if (msg.text && GUIDE_MENU_BTNS.includes(msg.text)) {
-        const year = new Date().getFullYear();
+      const GUIDE_MENU_BTNS_STATIC = ['✅ Tasdiqlangan', '❌ Anulyatsiya', '👤 Gidlar'];
+      const isGruppalar = msg.text?.startsWith('📋 Gruppalar');
+      const grpYear = isGruppalar ? (parseInt(msg.text.replace('📋 Gruppalar', '').trim()) || new Date().getFullYear()) : null;
+      if (msg.text && (isGruppalar || GUIDE_MENU_BTNS_STATIC.includes(msg.text))) {
+        const year = grpYear || new Date().getFullYear();
         const guideAdminIds = await getBotAdminIds('guide');
         const isAdmin = guideAdminIds.map(String).includes(String(chat.id));
         const guide = await prisma.guide.findFirst({
@@ -6529,6 +6596,19 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
         where: { bookingId_guideId: { bookingId: b.id, guideId } },
         create: { bookingId: b.id, guideId, status: 'PENDING', sentAt: new Date() },
         update: { status: 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null }
+      });
+    }
+
+    // Track sent year for dynamic guide menu
+    const guideYearsKey = `JP_GUIDE_YEARS_${guideId}`;
+    const gys = await prisma.systemSetting.findUnique({ where: { key: guideYearsKey } });
+    const gyears = gys ? JSON.parse(gys.value) : [];
+    if (!gyears.includes(year)) {
+      gyears.push(year);
+      await prisma.systemSetting.upsert({
+        where: { key: guideYearsKey },
+        update: { value: JSON.stringify(gyears) },
+        create: { key: guideYearsKey, value: JSON.stringify(gyears) }
       });
     }
 

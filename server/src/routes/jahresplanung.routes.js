@@ -653,6 +653,140 @@ router.put('/clear-tg/:hotelId/:tourType/:year', authenticate, async (req, res) 
   }
 });
 
+// PUT /api/jahresplanung/clear-meal-tg/:year — clear restaurant JP year from menu
+router.put('/clear-meal-tg/:year', authenticate, async (req, res) => {
+  try {
+    const { year } = req.params;
+    const { restaurantName } = req.body;
+    if (!restaurantName) return res.status(400).json({ error: 'restaurantName kerak' });
+    const RESTAURANT_TOKEN = process.env.TELEGRAM_RESTAURANT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
+    const mealYearsKey = `JP_MEAL_YEARS_${restaurantName}`;
+    const mys = await prisma.systemSetting.findUnique({ where: { key: mealYearsKey } });
+    const myears = mys ? JSON.parse(mys.value).filter(y => y !== parseInt(year)) : [];
+    await prisma.systemSetting.upsert({
+      where: { key: mealYearsKey },
+      update: { value: JSON.stringify(myears) },
+      create: { key: mealYearsKey, value: JSON.stringify(myears) }
+    });
+    res.json({ success: true });
+    // Refresh keyboard
+    try {
+      const chatIdMap = JSON.parse((await prisma.systemSetting.findUnique({ where: { key: 'MEAL_RESTAURANT_CHAT_IDS' } }))?.value || '{}');
+      const restChatId = chatIdMap[restaurantName];
+      if (restChatId && RESTAURANT_TOKEN) {
+        const curYear = new Date().getFullYear();
+        const allYears = myears.filter(y => y >= curYear).sort();
+        const zpRows = allYears.length > 1
+          ? allYears.map(y => [{ text: `📄 Заявка ${y}` }])
+          : [[{ text: `📄 Заявка ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
+        const refreshKeyboard = allYears.length > 1
+          ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+          : [...zpRows, [{ text: '❌ Anulyatsiya' }]];
+        await axios.post(`https://api.telegram.org/bot${RESTAURANT_TOKEN}/sendMessage`, {
+          chat_id: restChatId,
+          text: '🔄 Menu yangilandi:',
+          reply_markup: JSON.stringify({ keyboard: refreshKeyboard, resize_keyboard: true, is_persistent: true })
+        }).catch(() => {});
+      }
+    } catch (e) { console.warn('clear-meal-tg refresh error:', e.message); }
+  } catch (err) {
+    console.error('Clear meal TG error:', err);
+    res.status(500).json({ error: 'Server xatoligi' });
+  }
+});
+
+// PUT /api/jahresplanung/clear-transport-tg/:provider/:year — clear transport JP year from menu
+router.put('/clear-transport-tg/:provider/:year', authenticate, async (req, res) => {
+  try {
+    const { provider, year } = req.params;
+    const TRANSPORT_TOKEN = process.env.TELEGRAM_TRANSPORT_TOKEN;
+    // Mark all JP_TRANSPORT_CONFIRM_{year}_*_{provider} as cleared
+    const keys = await prisma.systemSetting.findMany({ where: { key: { startsWith: `JP_TRANSPORT_CONFIRM_${year}_` } } });
+    for (const k of keys) {
+      try {
+        const d = JSON.parse(k.value);
+        if (d.provider === provider || provider === 'all') {
+          d.cleared = true;
+          await prisma.systemSetting.update({ where: { key: k.key }, data: { value: JSON.stringify(d) } });
+        }
+      } catch {}
+    }
+    res.json({ success: true });
+    // Refresh keyboard for this provider
+    try {
+      if (TRANSPORT_TOKEN) {
+        const settingKey = `TRANSPORT_${provider.toUpperCase()}_CHAT_ID`;
+        const setting = await prisma.systemSetting.findUnique({ where: { key: settingKey } });
+        const providerChatId = setting?.value;
+        if (providerChatId) {
+          const curYear = new Date().getFullYear();
+          const allKeys = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_TRANSPORT_CONFIRM_' } } });
+          const availYears = [...new Set(
+            allKeys
+              .filter(s => { try { const d = JSON.parse(s.value); return d.provider === provider && !d.cleared; } catch { return false; } })
+              .map(s => parseInt(s.key.split('_')[3]))
+              .filter(y => y && y >= curYear)
+          )].sort();
+          const finalYears = availYears.length ? availYears : [curYear];
+          const zpRows = finalYears.length > 1
+            ? finalYears.map(y => [{ text: `📄 Заявка ${y}` }])
+            : [[{ text: `📄 Заявка ${finalYears[0]}` }, { text: '❌ Ануляция' }]];
+          const refreshKeyboard = finalYears.length > 1
+            ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '❌ Ануляция' }]]
+            : [[{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], ...zpRows];
+          await axios.post(`https://api.telegram.org/bot${TRANSPORT_TOKEN}/sendMessage`, {
+            chat_id: providerChatId,
+            text: '🔄 Menu yangilandi:',
+            reply_markup: JSON.stringify({ keyboard: refreshKeyboard, resize_keyboard: true, is_persistent: true })
+          }).catch(() => {});
+        }
+      }
+    } catch (e) { console.warn('clear-transport-tg refresh error:', e.message); }
+  } catch (err) {
+    console.error('Clear transport TG error:', err);
+    res.status(500).json({ error: 'Server xatoligi' });
+  }
+});
+
+// PUT /api/jahresplanung/clear-guide-tg/:guideId/:year — clear guide JP year from menu
+router.put('/clear-guide-tg/:guideId/:year', authenticate, async (req, res) => {
+  try {
+    const { guideId, year } = req.params;
+    const GUIDE_TOKEN = process.env.TELEGRAM_GUIDE_TOKEN;
+    const guideYearsKey = `JP_GUIDE_YEARS_${guideId}`;
+    const gys = await prisma.systemSetting.findUnique({ where: { key: guideYearsKey } });
+    const gyears = gys ? JSON.parse(gys.value).filter(y => y !== parseInt(year)) : [];
+    await prisma.systemSetting.upsert({
+      where: { key: guideYearsKey },
+      update: { value: JSON.stringify(gyears) },
+      create: { key: guideYearsKey, value: JSON.stringify(gyears) }
+    });
+    res.json({ success: true });
+    // Refresh keyboard
+    try {
+      const guide = await prisma.guide.findUnique({ where: { id: parseInt(guideId) } });
+      if (guide?.telegramChatId && GUIDE_TOKEN) {
+        const curYear = new Date().getFullYear();
+        const allYears = gyears.filter(y => y >= curYear).sort();
+        const grpRows = allYears.length > 1
+          ? allYears.map(y => [{ text: `📋 Gruppalar ${y}` }])
+          : [[{ text: `📋 Gruppalar ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
+        const refreshKeyboard = allYears.length > 1
+          ? [...grpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+          : [...grpRows, [{ text: '❌ Anulyatsiya' }]];
+        await axios.post(`https://api.telegram.org/bot${GUIDE_TOKEN}/sendMessage`, {
+          chat_id: guide.telegramChatId,
+          text: '🔄 Menu yangilandi:',
+          reply_markup: JSON.stringify({ keyboard: refreshKeyboard, resize_keyboard: true, is_persistent: true })
+        }).catch(() => {});
+      }
+    } catch (e) { console.warn('clear-guide-tg refresh error:', e.message); }
+  } catch (err) {
+    console.error('Clear guide TG error:', err);
+    res.status(500).json({ error: 'Server xatoligi' });
+  }
+});
+
 // DELETE /api/jahresplanung/transport-confirmations/:key
 router.delete('/transport-confirmations/:key', authenticate, async (req, res) => {
   try {
@@ -1310,6 +1444,41 @@ router.post('/send-meal-telegram', authenticate, upload.single('pdf'), async (re
         })
       });
     }
+
+    // Track sent year for dynamic restaurant menu
+    const mealYearsKey = `JP_MEAL_YEARS_${restaurantName}`;
+    const mys = await prisma.systemSetting.findUnique({ where: { key: mealYearsKey } });
+    const myears = mys ? JSON.parse(mys.value) : [];
+    if (!myears.includes(parseInt(year))) {
+      myears.push(parseInt(year));
+      await prisma.systemSetting.upsert({
+        where: { key: mealYearsKey },
+        update: { value: JSON.stringify(myears) },
+        create: { key: mealYearsKey, value: JSON.stringify(myears) }
+      });
+    }
+
+    // Refresh restaurant keyboard
+    try {
+      const MEAL_TG_BASE = `https://api.telegram.org/bot${RESTAURANT_TOKEN}`;
+      const chatIdMap = JSON.parse((await prisma.systemSetting.findUnique({ where: { key: 'MEAL_RESTAURANT_CHAT_IDS' } }))?.value || '{}');
+      const restChatId = chatIdMap[restaurantName];
+      if (restChatId) {
+        const curYear = new Date().getFullYear();
+        const allYears = myears.filter(y => y >= curYear).sort();
+        const zpRows = allYears.length > 1
+          ? allYears.map(y => [{ text: `📄 Заявка ${y}` }])
+          : [[{ text: `📄 Заявка ${allYears[0] || curYear}` }, { text: '✅ Tasdiqlangan' }]];
+        const refreshKeyboard = allYears.length > 1
+          ? [...zpRows, [{ text: '✅ Tasdiqlangan' }], [{ text: '❌ Anulyatsiya' }]]
+          : [...zpRows, [{ text: '❌ Anulyatsiya' }]];
+        await axios.post(`${MEAL_TG_BASE}/sendMessage`, {
+          chat_id: restChatId,
+          text: `🔄 Menu yangilandi (${allYears.join(', ')} yil uchun):`,
+          reply_markup: JSON.stringify({ keyboard: refreshKeyboard, resize_keyboard: true, is_persistent: true })
+        }).catch(() => {});
+      }
+    } catch (menuErr) { console.warn('Meal menu refresh error:', menuErr.message); }
 
     res.json({ success: true, count: bookings.length });
   } catch (err) {

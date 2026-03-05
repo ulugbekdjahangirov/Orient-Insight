@@ -481,6 +481,12 @@ export const jahresplanungApi = {
     api.delete(`/jahresplanung/jp-sections/${hotelId}/group/${bookingId}/visit/${visitIdx}`, { params: { tourType } }),
   clearHotelTg: (hotelId, tourType, year) =>
     api.put(`/jahresplanung/clear-tg/${hotelId}/${tourType}/${year}`),
+  clearMealTg: (restaurantName, year) =>
+    api.put(`/jahresplanung/clear-meal-tg/${year}`, { restaurantName }),
+  clearTransportTg: (provider, year) =>
+    api.put(`/jahresplanung/clear-transport-tg/${provider}/${year}`),
+  clearGuideTg: (guideId, year) =>
+    api.put(`/jahresplanung/clear-guide-tg/${guideId}/${year}`),
   getMeals: (year, tourType) => api.get('/jahresplanung/meals', { params: { year, tourType } }),
   sendMealTelegram: (restaurantName, year, tourType, pdfBlob, bookings) => {
     const form = new FormData();
