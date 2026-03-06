@@ -319,10 +319,10 @@ async function sendHotelMenu(chatId) {
   }
   // One row per year if multiple, else single row
   const jpRows = availYears.length > 1
-    ? availYears.map(y => [{ text: `📋 Заявка ${y}` }])
+    ? [availYears.map(y => ({ text: `📋 Заявка ${y}` }))]
     : [[{ text: `📋 Заявка ${availYears[0]}` }, { text: '📝 Изменения к Заявке' }]];
   const keyboard = availYears.length > 1
-    ? [...jpRows, [{ text: '📝 Изменения к Заявке' }], [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]]
+    ? [...jpRows, [{ text: '📝 Изменения к Заявке' }, { text: '⏳ Waiting List' }], [{ text: '❌ Ануляция' }]]
     : [...jpRows, [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]];
   await axios.post(`${BOT_API()}/sendMessage`, {
     chat_id: chatId,
