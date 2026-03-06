@@ -214,10 +214,10 @@ async function runAllReminders(fakeToday) {
 
   for (const days of [1, 3]) {
     await sendHotelReminders(today, days);
-    await sendTransportReminders(today, days);
     await sendGuideReminders(today, days);
     await sendRestaurantReminders(today, days);
   }
+  await sendTransportReminders(today, 1);
 }
 
 function startReminderJob() {
