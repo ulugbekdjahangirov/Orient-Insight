@@ -153,3 +153,7 @@ _prisma.systemSetting.findUnique({ where: { key: 'GMAIL_SENDER_WHITELIST' } }).t
 // Start Gmail polling cron job
 const { startGmailPolling } = require('./jobs/gmailPoller.job');
 startGmailPolling();
+
+// Start hotel check-in reminder cron job
+const { startReminderJob } = require('./jobs/reminderJob');
+startReminderJob();
