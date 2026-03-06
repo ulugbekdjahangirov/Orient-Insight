@@ -630,12 +630,12 @@ router.put('/clear-tg/:hotelId/:tourType/:year', authenticate, async (req, res) 
             .filter(y => y && y >= curYear)
         )].sort();
         const jpRows = availYears.length > 1
-          ? availYears.map(y => [{ text: `📋 Заявка ${y}` }])
+          ? [availYears.map(y => ({ text: `📋 Заявка ${y}` }))]
           : availYears.length === 1
             ? [[{ text: `📋 Заявка ${availYears[0]}` }, { text: '📝 Изменения к Заявке' }]]
             : [[{ text: `📋 Заявка ${curYear}` }, { text: '📝 Изменения к Заявке' }]];
         const refreshKeyboard = availYears.length > 1
-          ? [...jpRows, [{ text: '📝 Изменения к Заявке' }], [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]]
+          ? [...jpRows, [{ text: '📝 Изменения к Заявке' }, { text: '⏳ Waiting List' }], [{ text: '❌ Ануляция' }]]
           : [...jpRows, [{ text: '⏳ Waiting List' }, { text: '❌ Ануляция' }]];
         const CLEAR_TG_BASE = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
         await axios.post(`${CLEAR_TG_BASE}/sendMessage`, {
