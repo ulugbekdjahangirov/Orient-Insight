@@ -136,7 +136,7 @@ async function sendGuideReminders(today, daysAhead) {
   const { target, targetEnd } = targetRange(today, daysAhead);
   const bookings = await prisma.booking.findMany({
     where: { arrivalDate: { gte: target, lte: targetEnd }, status: { not: 'CANCELLED' }, guideId: { not: null } },
-    include: { guide: true, tourType: true }
+    include: { guide: true, tourType: true, accommodations: { select: { checkOutDate: true }, orderBy: { checkOutDate: 'desc' }, take: 1 } }
   });
   if (!bookings.length) return;
   const adminIds = await getAdminIds('guide');
@@ -145,10 +145,11 @@ async function sendGuideReminders(today, daysAhead) {
     const guide = booking.guide;
     if (!guide?.telegramChatId) continue;
 
+    const tourEnd = booking.accommodations[0]?.checkOutDate || null;
     const header = daysAhead === 1 ? '🔔 Напоминание: Tur ertaga boshlanadi!' : `📅 Tur ${daysAhead} kundan keyin`;
     const baseMsg =
       `📋 Group: ${booking.bookingNumber} (${booking.tourType?.code||''})\n` +
-      `📅 Arrival: ${fmtDate(booking.arrivalDate)}\n📅 Departure: ${fmtDate(booking.departureDate)}\n` +
+      `📅 Boshlash: ${fmtDate(booking.arrivalDate)}\n📅 Tugash: ${fmtDate(tourEnd)}\n` +
       `👥 PAX: ${booking.pax||0}`;
 
     await axios.post(`${GUIDE_API()}/sendMessage`, { chat_id: guide.telegramChatId, text: `${header}\n\n${baseMsg}` }).catch(()=>{});
