@@ -9,6 +9,16 @@ const TRANSPORT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_
 const RESTAURANT_API= () => `https://api.telegram.org/bot${process.env.TELEGRAM_RESTAURANT_TOKEN}`;
 const GUIDE_API     = () => `https://api.telegram.org/bot${process.env.TELEGRAM_GUIDE_TOKEN}`;
 
+const ROUTE_NAME_UZ = {
+  'Airport Drop-off':          'Aeroportga olib borish',
+  'Airport Pickup':            'Aeroportdan kutib olish',
+  'Bukhara City Tour':         'Buxoro shahar sayohati',
+  'Samarkand City Tour':       'Samarqand shahar sayohati',
+  'Tashkent City Tour':        'Toshkent shahar sayohati',
+  'Train Station Drop-off':    'Vokzalga olib borish',
+  'Train Station Pickup':      'Vokzaldan kutib olish',
+};
+
 async function getAdminIds(botType) {
   const keyMap = { hotel: 'HOTEL_ADMIN_CHAT_IDS', transport: 'TRANSPORT_ADMIN_CHAT_IDS', restaurant: 'RESTAURANT_ADMIN_CHAT_IDS', guide: 'GUIDE_ADMIN_CHAT_IDS' };
   try {
@@ -93,16 +103,24 @@ async function sendTransportReminders(today, daysAhead) {
     if (!chatId) continue;
 
     const header = daysAhead === 1 ? '🔔 Напоминание: Marshrut ertaga!' : `📅 Marshrut через ${daysAhead} дня`;
-    const routeList = provRoutes.map(r => `• ${r.routeName}${r.departureTime ? ` (${r.departureTime})` : ''}`).join('\n');
+    const routeList = provRoutes.map(r => `• ${ROUTE_NAME_UZ[r.routeName] || r.routeName}${r.departureTime ? ` (${r.departureTime})` : ''}`).join('\n');
 
     const baseMsg =
       `📋 Group: ${booking.bookingNumber} (${booking.tourType?.code||''})\n` +
       `📅 Sana: ${fmtDate(date)}\n👥 PAX: ${provRoutes[0]?.personCount||0}\n\n` +
       `🗺 Marshrutlar:\n${routeList}`;
 
+    const conf = await prisma.transportConfirmation.findFirst({
+      where: { bookingId: booking.id, provider },
+      orderBy: { sentAt: 'desc' }
+    });
+    const confStatus = conf
+      ? conf.status === 'CONFIRMED' ? '✅ Tasdiqlangan: Ha' : conf.status === 'REJECTED' ? "❌ Tasdiqlangan: Yo'q" : '⏳ Kutilmoqda'
+      : '—';
+
     await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: chatId, text: `${header}\n\n${baseMsg}` }).catch(()=>{});
     for (const id of adminIds) {
-      await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: `${header}\n\n${baseMsg}` }).catch(()=>{});
+      await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: `${header}\n\n${baseMsg}\n\n${confStatus}` }).catch(()=>{});
     }
   }
 }
