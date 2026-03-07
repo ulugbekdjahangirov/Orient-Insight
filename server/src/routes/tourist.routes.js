@@ -1954,6 +1954,75 @@ router.get('/:bookingId/tourists/export/pdf', authenticate, async (req, res) => 
 // FLIGHTS CRUD
 // ============================================
 
+// Extract domestic flights from PDF pages using Claude Vision
+async function extractDomesticFlightsWithVision(pdfBuffer) {
+  const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+  const { createCanvas } = require('canvas');
+  const Anthropic = require('@anthropic-ai/sdk');
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const data = new Uint8Array(pdfBuffer);
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+
+  // Find pages containing "domestic" keyword
+  let targetPages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const tc = await page.getTextContent();
+    const txt = tc.items.map(x => x.str).join(' ');
+    if (/domestic/i.test(txt)) targetPages.push(i);
+  }
+  if (targetPages.length === 0) targetPages = [pdf.numPages]; // fallback: last page
+
+  // Render target pages to PNG
+  const imageContents = [];
+  for (const pageNum of targetPages) {
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = createCanvas(Math.round(viewport.width), Math.round(viewport.height));
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const b64 = canvas.toBuffer('image/png').toString('base64');
+    imageContents.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } });
+  }
+
+  const msg = await anthropic.messages.create({
+    model: 'claude-opus-4-6',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: [
+        ...imageContents,
+        {
+          type: 'text',
+          text: `These are pages from a "Final Rooming List" PDF for a tour in Uzbekistan. Find domestic flight information (flights within Uzbekistan). Extract all domestic flights and return a JSON array:
+[{
+  "flightNumber": "HY 700",
+  "departure": "TAS",
+  "arrival": "UGC",
+  "date": "2026-03-30",
+  "departureTime": "07:30",
+  "arrivalTime": "09:00",
+  "pax": 13
+}]
+Airport IATA codes: TAS=Tashkent, UGC=Urgench, SKD=Samarkand, BHK=Bukhara, FEG=Fergana, NVI=Navoi.
+Date format: YYYY-MM-DD. If date not visible, return "".
+If no domestic flight found, return [].
+Return only the JSON array, no markdown.`
+        }
+      ]
+    }],
+    temperature: 0
+  });
+
+  const responseText = msg.content[0].text.trim();
+  const match = responseText.match(/\[[\s\S]*\]/);
+  if (!match) return [];
+
+  const flights = JSON.parse(match[0]);
+  return flights.map(f => ({ ...f, type: 'DOMESTIC', suggested: false }));
+}
+
 // POST /api/bookings/:bookingId/parse-flight-pdf
 // Parse a "Final Rooming List" PDF and extract flights grouped by flight number with PAX counts
 router.post('/:bookingId/parse-flight-pdf', authenticate, upload.single('pdf'), async (req, res) => {
@@ -2082,8 +2151,18 @@ router.post('/:bookingId/parse-flight-pdf', authenticate, upload.single('pdf'), 
       });
     }
 
-    // Suggest domestic (UGC→TAS) if hint found
-    if (domesticPaxHint > 0) {
+    // Try Claude Vision for domestic flight if text-only parsing missed it
+    if (domesticPaxHint > 0 && !result.some(r => r.type === 'DOMESTIC')) {
+      try {
+        const visionFlights = await extractDomesticFlightsWithVision(req.file.buffer);
+        result.push(...visionFlights);
+      } catch (e) {
+        console.error('Claude Vision domestic extraction failed:', e.message);
+      }
+    }
+
+    // Suggest domestic (UGC→TAS) as fallback if Vision also failed
+    if (domesticPaxHint > 0 && !result.some(r => r.type === 'DOMESTIC')) {
       suggestedFlights.push({
         flightNumber: '', departure: 'UGC', arrival: 'TAS',
         date: '', departureTime: '', arrivalTime: '',
