@@ -9531,8 +9531,9 @@ export default function BookingDetail() {
                                     const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
                                     const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                     const rawDetailsDom = flight.paxDetails ? (() => { try { return JSON.parse(flight.paxDetails); } catch { return []; } })() : [];
-                                    const nameListDom = rawDetailsDom.length === 0 ? [] : (typeof rawDetailsDom[0] === 'string' ? rawDetailsDom : rawDetailsDom.flatMap(d => Array.isArray(d.names) ? d.names.flatMap(n => n.split(' | ')) : []));
-                                    const displayPax = nameListDom.length > pax ? nameListDom.length : pax;
+                                    // Check for "N Pax" pattern (domestic flights store count as string, not names)
+                                    const paxStringMatch = rawDetailsDom.length === 1 && typeof rawDetailsDom[0] === 'string' ? rawDetailsDom[0].match(/^(\d+)\s*pax$/i) : null;
+                                    const displayPax = paxStringMatch ? parseInt(paxStringMatch[1]) : (rawDetailsDom.length > pax ? rawDetailsDom.length : pax);
                                     const isExpanded = expandedFlightIds.has(flight.id);
                                     const toggleExpand = () => setExpandedFlightIds(prev => { const s = new Set(prev); s.has(flight.id) ? s.delete(flight.id) : s.add(flight.id); return s; });
                                     return (
@@ -9543,11 +9544,8 @@ export default function BookingDetail() {
                                           <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
                                           <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
                                           <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                          <td className="px-4 py-3 text-center">
-                                            <button onClick={toggleExpand} className="inline-flex items-center gap-1 font-bold text-emerald-700 hover:text-emerald-900 transition-colors" title="Yo'lovchilarni ko'rish">
-                                              <span>{displayPax > 0 ? displayPax : '-'}</span>
-                                              {nameListDom.length > 0 && <span className="text-xs">{isExpanded ? '▲' : '▼'}</span>}
-                                            </button>
+                                          <td className="px-4 py-3 text-center font-bold text-emerald-700">
+                                            {displayPax > 0 ? displayPax : '-'}
                                           </td>
                                           <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
                                           <td className="px-4 py-3 text-right text-emerald-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
@@ -9558,21 +9556,6 @@ export default function BookingDetail() {
                                             </div>
                                           </td>
                                         </tr>
-                                        {isExpanded && nameListDom.length > 0 && (
-                                          <tr className="bg-emerald-50 border-b border-emerald-200">
-                                            <td colSpan={9} className="px-6 py-3">
-                                              <div className="text-xs font-semibold text-emerald-700 mb-2">Yo'lovchilar:</div>
-                                              <div className="space-y-1">
-                                                {nameListDom.map((name, ni) => (
-                                                  <div key={ni} className="flex items-center gap-2 text-xs">
-                                                    <span className="text-gray-400 font-mono w-5 text-right flex-shrink-0">{ni + 1}.</span>
-                                                    <span className="text-gray-800">{name}</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        )}
                                       </React.Fragment>
                                     );
                                   })}
