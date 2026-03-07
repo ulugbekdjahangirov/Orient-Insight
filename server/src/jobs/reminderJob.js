@@ -59,7 +59,7 @@ async function sendHotelReminders(today, daysAhead) {
     const ez  = rooms.filter(r => ['SNGL','EZ'].includes(r.roomTypeCode)).reduce((s,r) => s+r.roomsCount, 0);
     const guide = booking.guide;
     const guideInfo = guide
-      ? `\n\n👤 Guide: ${(guide.firstName||'')} ${(guide.lastName||'')}`.trim() + (guide.phone ? `\n📞 ${guide.phone}` : '')
+      ? `\n\n👤 Guide: ${(guide.firstName||'')} ${(guide.lastName||'')}` + (guide.phone ? `\n📞 ${guide.phone}` : '')
       : '';
 
     const header = daysAhead === 1 ? '🔔 Напоминание: Заезд завтра!' : `📅 Заезд через ${daysAhead} дня`;
