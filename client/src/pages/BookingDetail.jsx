@@ -2518,6 +2518,7 @@ export default function BookingDetail() {
         // Check if it's Tashkent-Istanbul (return flight) - only UZ fly
         const routeLower = route.toLowerCase();
         const isTashkentToIstanbul =
+          routeLower.includes('tashkent - istanbul') ||
           routeLower.includes('tashkent-istanbul') ||
           routeLower.includes('tas-ist') ||
           routeLower.includes('ташкент-стамбул');
@@ -9835,6 +9836,7 @@ export default function BookingDetail() {
                             // Check if it's Tashkent-Istanbul return flight
                             const routeLower = (selectedFlight.route || '').toLowerCase();
                             const isTashkentToIstanbul =
+                              routeLower.includes('tashkent - istanbul') ||
                               routeLower.includes('tashkent-istanbul') ||
                               routeLower.includes('tas-ist') ||
                               routeLower.includes('ташкент-стамбул');
@@ -9989,6 +9991,7 @@ export default function BookingDetail() {
                       {booking?.tourType?.code === 'ER' && (() => {
                         const routeLower = (flightForm.route || '').toLowerCase();
                         const isTashkentToIstanbul =
+                          routeLower.includes('tashkent - istanbul') ||
                           routeLower.includes('tashkent-istanbul') ||
                           routeLower.includes('tas-ist') ||
                           routeLower.includes('ташкент-стамбул');
