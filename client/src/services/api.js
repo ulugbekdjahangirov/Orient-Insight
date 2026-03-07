@@ -138,9 +138,6 @@ export const flightsApi = {
   create: (bookingId, data) => api.post(`/bookings/${bookingId}/flights`, data),
   update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/flights/${id}`, data),
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/flights/${id}`),
-  // Flight sections (raw content from PDF)
-  getSections: (bookingId) => api.get(`/bookings/${bookingId}/flight-sections`),
-  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/flight-sections`),
   // Parse PDF to extract flights with PAX counts
   parsePdf: (bookingId, file) => {
     const formData = new FormData();
@@ -157,9 +154,6 @@ export const railwaysApi = {
   create: (bookingId, data) => api.post(`/bookings/${bookingId}/railways`, data),
   update: (bookingId, id, data) => api.put(`/bookings/${bookingId}/railways/${id}`, data),
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/railways/${id}`),
-  // Railway sections (raw content from PDF)
-  getSections: (bookingId) => api.get(`/bookings/${bookingId}/railway-sections`),
-  deleteSections: (bookingId) => api.delete(`/bookings/${bookingId}/railway-sections`)
 };
 
 // API для гидов
