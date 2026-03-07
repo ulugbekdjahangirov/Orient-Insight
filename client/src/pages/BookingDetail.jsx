@@ -396,7 +396,6 @@ export default function BookingDetail() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile hamburger menu
   const [costsTab, setCostsTabState] = useState(() => getInitialSubTab('costTab', 'rl')); // Sub-tab for Costs module (payment methods)
   const [flights, setFlights] = useState([]);
-  const [flightSections, setFlightSections] = useState([]);
   const [loadingFlights, setLoadingFlights] = useState(false);
   const [flightModalOpen, setFlightModalOpen] = useState(false);
   const [editingFlight, setEditingFlight] = useState(null);
@@ -2488,22 +2487,12 @@ export default function BookingDetail() {
 
     try {
       setLoadingFlights(true);
-      const [flightsRes, sectionsRes] = await Promise.all([
-        flightsApi.getAll(id),
-        flightsApi.getSections(id)
-      ]);
-
-      // Backend returns { flights: [...] } and { flightSections: [...] }
+      const flightsRes = await flightsApi.getAll(id);
       const flightsData = Array.isArray(flightsRes.data?.flights) ? flightsRes.data.flights : [];
-      const sectionsData = Array.isArray(sectionsRes.data?.flightSections) ? sectionsRes.data.flightSections : [];
-
       setFlights(flightsData);
-      setFlightSections(sectionsData);
     } catch (error) {
       console.error('Error loading flights:', error);
-      // Set empty arrays on error
       setFlights([]);
-      setFlightSections([]);
     } finally {
       setLoadingFlights(false);
     }
@@ -9344,7 +9333,7 @@ export default function BookingDetail() {
                     <p className="text-gray-600 font-medium">Loading flights...</p>
                   </div>
                 </div>
-              ) : (!Array.isArray(flights) || flights.length === 0) && (!Array.isArray(flightSections) || flightSections.length === 0) ? (
+              ) : (!Array.isArray(flights) || flights.length === 0) ? (
                 <div className="text-center py-12 bg-gradient-to-b from-sky-50 to-white rounded-2xl border-2 border-dashed border-sky-200">
                   <div className="w-20 h-20 bg-sky-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Plane className="w-10 h-10 text-sky-400" />
@@ -9359,9 +9348,8 @@ export default function BookingDetail() {
                   {/* International Flights Section */}
                   {(() => {
                     const internationalFlights = Array.isArray(flights) ? flights.filter(f => f.type === 'INTERNATIONAL') : [];
-                    const internationalSection = Array.isArray(flightSections) ? flightSections.find(s => s.type === 'INTERNATIONAL') : null;
 
-                    if (internationalFlights.length === 0 && !internationalSection) return null;
+                    if (internationalFlights.length === 0) return null;
 
                     return (
                       <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-6">
@@ -9457,9 +9445,8 @@ export default function BookingDetail() {
                   {/* Domestic Flights Section */}
                   {(() => {
                     const domesticFlights = Array.isArray(flights) ? flights.filter(f => f.type === 'DOMESTIC') : [];
-                    const domesticSection = Array.isArray(flightSections) ? flightSections.find(s => s.type === 'DOMESTIC') : null;
 
-                    if (domesticFlights.length === 0 && !domesticSection) return null;
+                    if (domesticFlights.length === 0) return null;
 
                     return (
                       <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200 p-6">
