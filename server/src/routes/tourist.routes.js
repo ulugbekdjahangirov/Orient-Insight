@@ -1986,16 +1986,7 @@ async function extractDomesticFlightsWithVision(pdfBuffer) {
     imageContents.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: b64 } });
   }
 
-  const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    messages: [{
-      role: 'user',
-      content: [
-        ...imageContents,
-        {
-          type: 'text',
-          text: `These are pages from a "Final Rooming List" PDF for a tour in Uzbekistan. Find domestic flight information (flights within Uzbekistan). Extract all domestic flights and return a JSON array:
+  const prompt = `These are pages from a "Final Rooming List" PDF for a tour in Uzbekistan. Find domestic flight information (flights within Uzbekistan). Extract all domestic flights and return a JSON array:
 [{
   "flightNumber": "HY 700",
   "departure": "TAS",
@@ -2008,18 +1999,33 @@ async function extractDomesticFlightsWithVision(pdfBuffer) {
 Airport IATA codes: TAS=Tashkent, UGC=Urgench, SKD=Samarkand, BHK=Bukhara, FEG=Fergana, NVI=Navoi.
 Date format: YYYY-MM-DD. If date not visible, return "".
 If no domestic flight found, return [].
-Return only the JSON array, no markdown.`
-        }
-      ]
-    }],
-    temperature: 0
-  });
+Return only the JSON array, no markdown.`;
 
-  const responseText = msg.content[0].text.trim();
-  const match = responseText.match(/\[[\s\S]*\]/);
-  if (!match) return [];
+  const callVision = async (model) => {
+    const msg = await anthropic.messages.create({
+      model,
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: [...imageContents, { type: 'text', text: prompt }] }],
+      temperature: 0
+    });
+    const responseText = msg.content[0].text.trim();
+    const match = responseText.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    return JSON.parse(match[0]);
+  };
 
-  const flights = JSON.parse(match[0]);
+  // Try Haiku first, fallback to Sonnet if empty result
+  let flights = [];
+  try {
+    flights = await callVision('claude-haiku-4-5-20251001');
+    if (flights.length === 0) {
+      console.log('Haiku returned empty, retrying with Sonnet...');
+      flights = await callVision('claude-sonnet-4-6');
+    }
+  } catch (e) {
+    console.log('Haiku failed, retrying with Sonnet:', e.message);
+    flights = await callVision('claude-sonnet-4-6');
+  }
   return flights.map(f => ({ ...f, type: 'DOMESTIC', suggested: false }));
 }
 
