@@ -240,6 +240,7 @@ export default function Rechnung() {
       summe: 0.00,
       transferFee: 0.00,
       incomingPayment: 0.00,
+      receivedAmount: 0.00,
       serviceFee: 0.00
     };
     const updatedItems = [...shamixonItems, newItem];
@@ -836,7 +837,8 @@ export default function Rechnung() {
                   const transferFee = 50;
                   const incomingPayment = payAmt - commission - transferFee;
                   const serviceFee = parseFloat(item.serviceFee) || 0;
-                  const totalAmount = incomingPayment - serviceFee;
+                  const receivedAmt = parseFloat(item.receivedAmount) || 0;
+                  const totalAmount = receivedAmt - serviceFee;
                   return (
                     <div key={item.id} className="rounded-xl overflow-hidden border border-purple-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(168,85,247,0.08)' }}>
                       <div className="h-0.5 bg-gradient-to-r from-purple-400 to-pink-500" />
@@ -879,9 +881,13 @@ export default function Rechnung() {
                             <div className="text-[10px] text-purple-500 font-medium mb-0.5">Transfer fee</div>
                             <div className="text-xs font-bold text-gray-900">{formatNumber(transferFee)}</div>
                           </div>
-                          <div className="col-span-2 bg-indigo-50 rounded-lg p-1.5 border border-indigo-100">
+                          <div className="bg-indigo-50 rounded-lg p-1.5 border border-indigo-100">
                             <div className="text-[10px] text-indigo-500 font-medium mb-0.5">Incoming payment</div>
                             <div className="text-xs font-bold text-gray-900">{formatNumber(incomingPayment)}</div>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
+                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Received</div>
+                            <input type="text" value={item.receivedAmount ? formatNumber(parseFloat(item.receivedAmount)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'receivedAmount', v); }} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" placeholder="0" />
                           </div>
                         </div>
                       </div>
@@ -890,8 +896,8 @@ export default function Rechnung() {
                 })}
                 {shamixonItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
                 {shamixonItems.length > 0 && (() => {
-                  let tComm = 0, tFee = 0, tInc = 0, tSvc = 0, tTotal = 0;
-                  shamixonItems.forEach(i => { const p = parseFloat(i.gruppe)||0; const c = p*0.01; const f = 50; const inc = p-c-f; const s = parseFloat(i.serviceFee)||0; tComm+=c; tFee+=f; tInc+=inc; tSvc+=s; tTotal+=inc-s; });
+                  let tComm = 0, tFee = 0, tRem = 0, tSvc = 0, tTotal = 0;
+                  shamixonItems.forEach(i => { const p = parseFloat(i.gruppe)||0; const c = p*0.01; const f = 50; const inc = p-c-f; const s = parseFloat(i.serviceFee)||0; const r = parseFloat(i.receivedAmount)||0; tComm+=c; tFee+=f; tRem+=(inc-r); tSvc+=s; tTotal+=r-s; });
                   return (
                     <div className="rounded-xl px-3 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100">
                       <div className="flex justify-between font-bold text-gray-900 mb-1.5">
@@ -901,7 +907,7 @@ export default function Rechnung() {
                       <div className="grid grid-cols-2 gap-x-4 text-[10px] text-gray-500">
                         <span>Commission: {formatNumber(tComm)}</span>
                         <span>Transfer: {formatNumber(tFee)}</span>
-                        <span>Incoming: {formatNumber(tInc)}</span>
+                        <span>Qoldiq: {formatNumber(tRem)}</span>
                         <span>Service: {formatNumber(tSvc)}</span>
                       </div>
                     </div>
@@ -919,6 +925,7 @@ export default function Rechnung() {
                       <th className="border border-gray-300 px-3 py-4 text-left font-bold text-gray-900 w-28">Commission</th>
                       <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-28">Transfer fee</th>
                       <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-32">Incoming payment</th>
+                      <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-32">Received</th>
                       <th className="border border-gray-300 px-3 py-4 text-left font-bold text-gray-900 w-32">Income date</th>
                       <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-24">Service fee</th>
                       <th className="border border-gray-300 px-3 py-4 text-right font-bold text-gray-900 w-28">Total</th>
@@ -932,7 +939,8 @@ export default function Rechnung() {
                       const transferFee = 50;
                       const incomingPayment = paymentAmount - commission - transferFee;
                       const serviceFee = parseFloat(item.serviceFee) || 0;
-                      const totalAmount = incomingPayment - serviceFee;
+                      const receivedAmt = parseFloat(item.receivedAmount) || 0;
+                      const totalAmount = receivedAmt - serviceFee;
 
                       return (
                         <tr key={item.id} className="hover:bg-gray-50 transition-colors">
@@ -969,6 +977,20 @@ export default function Rechnung() {
                           </td>
                           <td className="border border-gray-300 px-3 py-4 text-right text-gray-900 font-semibold bg-gray-50">
                             {formatNumber(incomingPayment)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
+                            <input
+                              type="text"
+                              value={item.receivedAmount ? formatNumber(parseFloat(item.receivedAmount)) : ''}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/\s/g, '');
+                                if (value === '' || !isNaN(value)) {
+                                  handleUpdateShamixonItem(item.id, 'receivedAmount', value);
+                                }
+                              }}
+                              className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1"
+                              placeholder="0"
+                            />
                           </td>
                           <td className="border border-gray-300 px-3 py-4 text-gray-900">
                             <input
@@ -1015,7 +1037,7 @@ export default function Rechnung() {
                     {shamixonItems.length > 0 && (() => {
                       let totalCommission = 0;
                       let totalTransferFee = 0;
-                      let totalIncomingPayment = 0;
+                      let totalRemaining = 0;
                       let totalServiceFee = 0;
                       let grandTotal = 0;
 
@@ -1025,11 +1047,12 @@ export default function Rechnung() {
                         const transferFee = 50;
                         const incomingPayment = paymentAmount - commission - transferFee;
                         const serviceFee = parseFloat(item.serviceFee) || 0;
-                        const total = incomingPayment - serviceFee;
+                        const receivedAmt = parseFloat(item.receivedAmount) || 0;
+                        const total = receivedAmt - serviceFee;
 
                         totalCommission += commission;
                         totalTransferFee += transferFee;
-                        totalIncomingPayment += incomingPayment;
+                        totalRemaining += (incomingPayment - receivedAmt);
                         totalServiceFee += serviceFee;
                         grandTotal += total;
                       });
@@ -1045,9 +1068,10 @@ export default function Rechnung() {
                           <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
                             {formatNumber(totalTransferFee)}
                           </td>
-                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
-                            {formatNumber(totalIncomingPayment)}
+                          <td className="border border-gray-300 px-3 py-4 text-right text-gray-900 text-orange-700">
+                            {formatNumber(totalRemaining)}
                           </td>
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900"></td>
                           <td className="border border-gray-300 px-3 py-4 text-gray-900"></td>
                           <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
                             {formatNumber(totalServiceFee)}

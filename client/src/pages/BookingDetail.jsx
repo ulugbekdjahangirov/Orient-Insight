@@ -562,7 +562,7 @@ export default function BookingDetail() {
   const [mainGuide, setMainGuide] = useState(null);
   const [secondGuide, setSecondGuide] = useState(null);
   const [bergreiseleiter, setBergreiseleiter] = useState(null);
-  const [rlExchangeRate, setRlExchangeRate] = useState(null); // Load from database, default null
+  // rlExchangeRate removed - Total shows USD and UZS separately
   const [hotels, setHotels] = useState([]);
   const [bookingRooms, setBookingRooms] = useState([]);
   const [accommodations, setAccommodations] = useState([]);
@@ -771,21 +771,6 @@ export default function BookingDetail() {
     return { dbl, twn, sgl, trpl, total };
   }, [tourists]);
 
-  // Save RL exchange rate to database when it changes
-  useEffect(() => {
-    if (id && rlExchangeRate !== null && booking) {
-      // Debounce API call to avoid too many requests
-      const timeoutId = setTimeout(async () => {
-        try {
-          await bookingsApi.update(id, { rlExchangeRate });
-        } catch (error) {
-          console.error('Error saving RL exchange rate:', error);
-        }
-      }, 500); // Wait 500ms after user stops typing
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [id, rlExchangeRate, booking]);
 
   // Calculate Grand Total for all hotels (using Final List individual dates)
   // Re-renders when accommodations or accommodationRoomingLists changes
@@ -1628,9 +1613,6 @@ export default function BookingDetail() {
         setTourists(touristsRes.data.tourists || []);
         setRailways(railwaysRes.data.railways || []);
         // Load RL exchange rate from database
-        if (b.rlExchangeRate) {
-          setRlExchangeRate(b.rlExchangeRate);
-        }
 
         // Load invoices for this booking
         try {
@@ -3686,9 +3668,6 @@ export default function BookingDetail() {
         });
       });
 
-      // Convert UZS to USD and combine
-      const uzsToUsd = rlExchangeRate > 0 ? totalUZS / rlExchangeRate : 0;
-      const combinedTotalUSD = totalUSD + uzsToUsd;
 
       // Filter out empty sections
       const sections = [...cityOrder, 'Reiseleiter', 'Extra Kosten'].filter(section =>
@@ -3716,37 +3695,11 @@ export default function BookingDetail() {
         });
       });
 
-      // Row 1 - Separate USD and UZS (gray, larger)
+      // Total row - Dollar and Som separately
       tableData.push([
-        { content: '', colSpan: 4, styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 } },
-        { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 } },
-        { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 } }
-      ]);
-
-      // Row 2 - Converted UZS to USD (gray, larger)
-      tableData.push([
-        {
-          content: `Kurs: 1 USD = ${Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS`,
-          colSpan: 5,
-          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 }
-        },
-        {
-          content: `$${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
-          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 }
-        }
-      ]);
-
-      // Row 3 - Total sum (gray, larger Total label)
-      tableData.push([
-        {
-          content: `Total:     $${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + $${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}`,
-          colSpan: 5,
-          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 11 }
-        },
-        {
-          content: `= $${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`,
-          styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 9 }
-        }
+        { content: 'Total', colSpan: 4, styles: { fillColor: [220, 220, 220], textColor: [20, 20, 20], fontStyle: 'bold', halign: 'right', fontSize: 11 } },
+        { content: totalUSD > 0 ? `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : '', styles: { fillColor: [220, 220, 220], textColor: [20, 100, 20], fontStyle: 'bold', halign: 'right', fontSize: 11 } },
+        { content: totalUZS > 0 ? Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ') : '', styles: { fillColor: [220, 220, 220], textColor: [20, 20, 100], fontStyle: 'bold', halign: 'right', fontSize: 11 } }
       ]);
 
       // Add title with booking number
@@ -13862,9 +13815,6 @@ License №T-0084-08 from 2021-04-26`;
               });
             });
 
-            // Convert UZS to USD and combine
-            const uzsToUsd = rlExchangeRate > 0 ? totalUZS / rlExchangeRate : 0;
-            const combinedTotalUSD = totalUSD + uzsToUsd;
 
             // Filter out empty sections for display
             const sections = [
@@ -13882,16 +13832,6 @@ License №T-0084-08 from 2021-04-26`;
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Reiseleiter)</h3>
                   <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border-2 border-blue-200">
-                      <label className="text-xs md:text-sm font-semibold text-blue-900 whitespace-nowrap">Kurs:</label>
-                      <input
-                        type="text"
-                        value={rlExchangeRate ? rlExchangeRate.toLocaleString('en-US').replace(/,/g, ' ') : ''}
-                        onChange={(e) => { const value = e.target.value.replace(/\s/g, ''); setRlExchangeRate(parseFloat(value) || null); }}
-                        className="w-24 md:w-28 px-2 py-1 text-right font-bold text-blue-900 bg-white border-2 border-blue-300 rounded focus:outline-none focus:border-blue-500 text-sm"
-                        placeholder="12 800"
-                      />
-                    </div>
                     {hasData && (
                       <button onClick={async () => { const r = exportRLToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg text-sm md:text-base">
                         <Download className="w-4 h-4 md:w-5 md:h-5" />
@@ -13922,20 +13862,12 @@ License №T-0084-08 from 2021-04-26`;
                         </div>
                       ))}
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between px-3 py-2 bg-gray-100 rounded-xl border border-gray-200">
-                          <span className="text-xs font-semibold text-gray-600">USD + So'm (konvertatsiya)</span>
-                          <div className="text-right">
-                            <div className="text-xs font-bold text-green-700">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>
-                            <div className="text-xs font-bold text-blue-700">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between px-3 py-2 bg-gray-100 rounded-xl border border-gray-200">
-                          <span className="text-xs font-semibold text-gray-600">Kurs: 1$ = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} so'm</span>
-                          <span className="text-xs font-bold text-green-700">${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                        </div>
                         <div className="flex items-center justify-between px-3 py-2.5 bg-gray-200 rounded-xl border-2 border-gray-300">
-                          <span className="text-sm font-black text-gray-900">Total: ${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                          <span className="text-sm font-black text-green-700">= ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</span>
+                          <span className="text-sm font-black text-gray-900">Total</span>
+                          <div className="text-right">
+                            {totalUSD > 0 && <div className="text-sm font-black text-green-700">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</div>}
+                            {totalUZS > 0 && <div className="text-sm font-black text-blue-700">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')} so'm</div>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -13974,20 +13906,9 @@ License №T-0084-08 from 2021-04-26`;
                             );
                           })}
                           <tr className="bg-gray-200">
-                            <td colSpan="4" className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base"></td>
-                            <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
-                            <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">{Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ')}</td>
-                          </tr>
-                          <tr className="bg-gray-200">
-                            <td colSpan="5" className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">Kurs: 1 USD = {Math.round(rlExchangeRate).toLocaleString('en-US').replace(/,/g, ' ')} UZS</td>
-                            <td className="border border-gray-300 px-4 py-2 text-right text-gray-900 font-bold text-base">${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</td>
-                          </tr>
-                          <tr className="bg-gray-200">
-                            <td colSpan="5" className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">
-                              <span className="text-2xl font-extrabold mr-4">Total:</span>
-                              <span className="text-base">${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')} + ${Math.round(uzsToUsd).toLocaleString('en-US').replace(/,/g, ' ')}</span>
-                            </td>
-                            <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-bold text-lg">= ${Math.round(combinedTotalUSD).toLocaleString('en-US').replace(/,/g, ' ')}</td>
+                            <td colSpan="4" className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-extrabold text-xl">Total</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-green-700 font-extrabold text-base">{totalUSD > 0 ? `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}` : ''}</td>
+                            <td className="border border-gray-300 px-4 py-3 text-right text-blue-700 font-extrabold text-base">{totalUZS > 0 ? Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' ') : ''}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -14299,6 +14220,7 @@ License №T-0084-08 from 2021-04-26`;
             cityOrder.forEach(city => {
               expensesByCity[city] = [];
             });
+            expensesByCity['Railway'] = [];
 
             // Helper function to map city names
             const mapCityName = (text) => {
@@ -14391,6 +14313,29 @@ License №T-0084-08 from 2021-04-26`;
               }
             });
 
+            // Process Railways
+            if (railways && railways.length > 0) {
+              railways.forEach(railway => {
+                const departure = railway.departure || railway.from || '';
+                const arrival = railway.arrival || railway.to || '';
+                const routeName = railway.route || `${departure}-${arrival}`.trim();
+                const name = routeName ? `Railway: ${routeName}` : 'Railway';
+                const railPax = railway.pax || 1;
+                const total = railway.price || 0;
+                const pricePerTicket = railway.pricePerTicket || (total > 0 && railPax > 0 ? total / railPax : 0);
+
+                if (total > 0) {
+                  expensesByCity['Railway'].push({
+                    name: name,
+                    pricePerPerson: pricePerTicket,
+                    pax: railPax,
+                    usd: 0,
+                    uzs: total
+                  });
+                }
+              });
+            }
+
             // Calculate totals
             let totalUSD = 0;
             let totalUZS = 0;
@@ -14403,7 +14348,7 @@ License №T-0084-08 from 2021-04-26`;
             });
 
             // Filter out empty sections for display
-            const sections = cityOrder.filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+            const sections = [...cityOrder, 'Railway'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
 
             const hasData = sections.length > 0;
 
@@ -14507,37 +14452,11 @@ License №T-0084-08 from 2021-04-26`;
 
           {/* Karta Tab */}
           {costsTab === 'karta' && (() => {
-            // Collect Railway & Flights expenses only
+            // Collect Flights expenses only
             const expensesByCity = {};
-            expensesByCity['Railway & Flights'] = [];
+            expensesByCity['Flights'] = [];
 
-            // 1. Process Railways
-            if (railways && railways.length > 0) {
-              railways.forEach(railway => {
-                const departure = railway.departure || railway.from || '';
-                const arrival = railway.arrival || railway.to || '';
-                const routeName = railway.route || `${departure}-${arrival}`.trim();
-                const name = routeName ? `Railway: ${routeName}` : 'Railway';
-                const pax = railway.pax || 1;
-
-                // railway.price is the TOTAL price, not per ticket
-                // Calculate price per ticket by dividing total by pax
-                const total = railway.price || 0;
-                const pricePerTicket = railway.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
-
-                if (total > 0) {
-                  expensesByCity['Railway & Flights'].push({
-                    name: name,
-                    pricePerPerson: pricePerTicket,
-                    pax: pax,
-                    usd: 0,
-                    uzs: total
-                  });
-                }
-              });
-            }
-
-            // 2. Process Flights
+            // Process Flights only
             if (flights && flights.length > 0) {
               flights.forEach(flight => {
                 const departure = flight.departure || flight.from || '';
@@ -14546,13 +14465,11 @@ License №T-0084-08 from 2021-04-26`;
                 const name = routeName ? `Flight: ${routeName}` : 'Flight';
                 const pax = flight.pax || 1;
 
-                // flight.price is the TOTAL price, not per ticket
-                // Calculate price per ticket by dividing total by pax
                 const total = flight.price || 0;
                 const pricePerTicket = flight.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
 
                 if (total > 0) {
-                  expensesByCity['Railway & Flights'].push({
+                  expensesByCity['Flights'].push({
                     name: name,
                     pricePerPerson: pricePerTicket,
                     pax: pax,
@@ -14575,7 +14492,7 @@ License №T-0084-08 from 2021-04-26`;
             });
 
             // Filter out empty sections for display
-            const sections = ['Railway & Flights'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
+            const sections = ['Flights'].filter(section => expensesByCity[section] && expensesByCity[section].length > 0);
 
             const hasData = sections.length > 0;
 
