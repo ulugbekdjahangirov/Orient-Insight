@@ -399,6 +399,7 @@ export default function BookingDetail() {
   const [loadingFlights, setLoadingFlights] = useState(false);
   const [flightModalOpen, setFlightModalOpen] = useState(false);
   const [editingFlight, setEditingFlight] = useState(null);
+  const [expandedFlightIds, setExpandedFlightIds] = useState(new Set());
   const [stornoModalOpen, setStornoModalOpen] = useState(false);
   const [stornoAcc, setStornoAcc] = useState(null); // accommodation for storno
   const [stornoHotelId, setStornoHotelId] = useState(''); // selected hotel id
@@ -9404,23 +9405,51 @@ export default function BookingDetail() {
                                     const pax = flight.pax || 0;
                                     const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
                                     const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                    const rawDetails = flight.paxDetails ? (() => { try { return JSON.parse(flight.paxDetails); } catch { return []; } })() : [];
+                                    // Support both flat string array (new) and old {pnr,names[]} format
+                                    const nameList = rawDetails.length === 0 ? [] : (typeof rawDetails[0] === 'string' ? rawDetails : rawDetails.flatMap(d => Array.isArray(d.names) ? d.names.flatMap(n => n.split(' | ')) : []));
+                                    const displayPax = nameList.length > pax ? nameList.length : pax;
+                                    const isExpanded = expandedFlightIds.has(flight.id);
+                                    const toggleExpand = () => setExpandedFlightIds(prev => { const s = new Set(prev); s.has(flight.id) ? s.delete(flight.id) : s.add(flight.id); return s; });
                                     return (
-                                      <tr key={flight.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
-                                        <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
-                                        <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
-                                        <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
-                                        <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
-                                        <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                        <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
-                                        <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                        <td className="px-4 py-3 text-right text-blue-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                        <td className="px-4 py-3">
-                                          <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => editFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-                                            <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                                          </div>
-                                        </td>
-                                      </tr>
+                                      <React.Fragment key={flight.id || idx}>
+                                        <tr className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                                          <td className="px-4 py-3 font-bold text-blue-900">{flight.flightNumber || '-'}</td>
+                                          <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
+                                          <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                                          <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
+                                          <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
+                                          <td className="px-4 py-3 text-center">
+                                            <button onClick={toggleExpand} className="inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 transition-colors" title="Yo'lovchilarni ko'rish">
+                                              <span>{displayPax > 0 ? displayPax : '-'}</span>
+                                              {nameList.length > 0 && <span className="text-xs">{isExpanded ? '▲' : '▼'}</span>}
+                                            </button>
+                                          </td>
+                                          <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                          <td className="px-4 py-3 text-right text-blue-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                          <td className="px-4 py-3">
+                                            <div className="flex items-center justify-center gap-2">
+                                              <button onClick={() => editFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                              <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                        {isExpanded && nameList.length > 0 && (
+                                          <tr className="bg-blue-50 border-b border-blue-200">
+                                            <td colSpan={9} className="px-6 py-3">
+                                              <div className="text-xs font-semibold text-blue-700 mb-2">Yo'lovchilar:</div>
+                                              <div className="space-y-1">
+                                                {nameList.map((name, ni) => (
+                                                  <div key={ni} className="flex items-center gap-2 text-xs">
+                                                    <span className="text-gray-400 font-mono w-5 text-right flex-shrink-0">{ni + 1}.</span>
+                                                    <span className="text-gray-800">{name}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </React.Fragment>
                                     );
                                   })}
                                 </tbody>
@@ -9501,23 +9530,50 @@ export default function BookingDetail() {
                                     const pax = flight.pax || 0;
                                     const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
                                     const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
+                                    const rawDetailsDom = flight.paxDetails ? (() => { try { return JSON.parse(flight.paxDetails); } catch { return []; } })() : [];
+                                    const nameListDom = rawDetailsDom.length === 0 ? [] : (typeof rawDetailsDom[0] === 'string' ? rawDetailsDom : rawDetailsDom.flatMap(d => Array.isArray(d.names) ? d.names.flatMap(n => n.split(' | ')) : []));
+                                    const displayPax = nameListDom.length > pax ? nameListDom.length : pax;
+                                    const isExpanded = expandedFlightIds.has(flight.id);
+                                    const toggleExpand = () => setExpandedFlightIds(prev => { const s = new Set(prev); s.has(flight.id) ? s.delete(flight.id) : s.add(flight.id); return s; });
                                     return (
-                                      <tr key={flight.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
-                                        <td className="px-4 py-3 font-bold text-emerald-900">{flight.flightNumber || '-'}</td>
-                                        <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
-                                        <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
-                                        <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
-                                        <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
-                                        <td className="px-4 py-3 text-center text-gray-900 font-semibold">{pax > 0 ? pax : '-'}</td>
-                                        <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                        <td className="px-4 py-3 text-right text-emerald-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
-                                        <td className="px-4 py-3">
-                                          <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => editFlight(flight)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
-                                            <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                                          </div>
-                                        </td>
-                                      </tr>
+                                      <React.Fragment key={flight.id || idx}>
+                                        <tr className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                          <td className="px-4 py-3 font-bold text-emerald-900">{flight.flightNumber || '-'}</td>
+                                          <td className="px-4 py-3 font-medium text-gray-700">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</td>
+                                          <td className="px-4 py-3 text-gray-600">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</td>
+                                          <td className="px-4 py-3 text-gray-600">{flight.departureTime || '-'}</td>
+                                          <td className="px-4 py-3 text-gray-600">{flight.arrivalTime || '-'}</td>
+                                          <td className="px-4 py-3 text-center">
+                                            <button onClick={toggleExpand} className="inline-flex items-center gap-1 font-bold text-emerald-700 hover:text-emerald-900 transition-colors" title="Yo'lovchilarni ko'rish">
+                                              <span>{displayPax > 0 ? displayPax : '-'}</span>
+                                              {nameListDom.length > 0 && <span className="text-xs">{isExpanded ? '▲' : '▼'}</span>}
+                                            </button>
+                                          </td>
+                                          <td className="px-4 py-3 text-right text-gray-900 font-semibold">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                          <td className="px-4 py-3 text-right text-emerald-700 font-bold">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                          <td className="px-4 py-3">
+                                            <div className="flex items-center justify-center gap-2">
+                                              <button onClick={() => editFlight(flight)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
+                                              <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                        {isExpanded && nameListDom.length > 0 && (
+                                          <tr className="bg-emerald-50 border-b border-emerald-200">
+                                            <td colSpan={9} className="px-6 py-3">
+                                              <div className="text-xs font-semibold text-emerald-700 mb-2">Yo'lovchilar:</div>
+                                              <div className="space-y-1">
+                                                {nameListDom.map((name, ni) => (
+                                                  <div key={ni} className="flex items-center gap-2 text-xs">
+                                                    <span className="text-gray-400 font-mono w-5 text-right flex-shrink-0">{ni + 1}.</span>
+                                                    <span className="text-gray-800">{name}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </React.Fragment>
                                     );
                                   })}
                                 </tbody>

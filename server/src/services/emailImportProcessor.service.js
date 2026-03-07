@@ -765,14 +765,94 @@ class EmailImportProcessor {
 
       const summary = { updated: toUpdate.length, created: toCreate.length, deleted: toDeleteIds.length };
 
-      // Auto-import flights: add international (IST↔TAS) if not present, domestic if not present
+      // Auto-import flights: text (GDS/ISO) first, Vision for image-based flights (intl + domestic)
       try {
-        const flightData = this._parseFlightsFromText(text);
-        if (flightData.length > 0) {
+        const { flights: flightData, totalPax: pdfTotalPax, knownPnrCodes } = this._parseFlightsFromText(text);
+
+        const textDetected  = flightData.filter(f => f.flightNumber);
+        const textSuggested = flightData.filter(f => !f.flightNumber);
+
+        const uzbekAirportSet = new Set(['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG', 'URG']);
+
+        // Vision trigger: domestic missing OR international PAX incomplete
+        const hasDomesticText = textDetected.some(f => f.type === 'DOMESTIC');
+        const inboundPax  = textDetected.filter(f => f.type === 'INTERNATIONAL' && uzbekAirportSet.has(f.arrival)   && f.pax > 0).reduce((s, f) => s + f.pax, 0);
+        const outboundPax = textDetected.filter(f => f.type === 'INTERNATIONAL' && uzbekAirportSet.has(f.departure) && f.pax > 0).reduce((s, f) => s + f.pax, 0);
+        const detectedIntlPax = Math.max(inboundPax, outboundPax);
+        const needsVision = (!hasDomesticText && pdfTotalPax > 0) || (pdfTotalPax > 0 && detectedIntlPax < pdfTotalPax);
+
+        let visionFlights = [];
+        if (needsVision) {
+          _debugLog(`✈️ Vision needed: domestic=${hasDomesticText}, intlPax=${detectedIntlPax}/${pdfTotalPax}, knownPNR=[${knownPnrCodes.join(',')}]`);
+          const tourYear = booking.departureDate ? new Date(booking.departureDate).getFullYear() : null;
+          const tourDepartureDate = booking.departureDate ? new Date(booking.departureDate) : null;
+          const allVisionRaw = await this._extractFlightsWithVision(fileBuffer, knownPnrCodes, tourYear, tourDepartureDate);
+          // No date filtering — show all flights exactly as Vision reads them.
+          // Old-year bookings (e.g. 2025) will appear as separate rows with their own date.
+          // User can review and delete any wrong entries manually.
+          const allVision = allVisionRaw;
+          _debugLog(`✈️ Vision raw: ${JSON.stringify(allVision.map(f => `${f.flightNumber} ${f.departure}→${f.arrival} ${f.date||'no-date'} PAX:${f.pax}`))}`);
+          visionFlights = allVision;
+          _debugLog(`✈️ Vision raw: ${JSON.stringify(allVision.map(f => `${f.flightNumber} ${f.departure}→${f.arrival} ${f.date||'no-date'} PAX:${f.pax}`))}`);
+          visionFlights = allVision;
+        }
+
+        // Combine: text-detected + Vision image-only flights.
+        // Vision was instructed to skip known PNR codes (text blocks), so its PAX counts
+        // represent image-only passengers — add them directly.
+        //
+        // Outbound rule:
+        //   - If text already has outbound flights → only UPDATE existing ones (hallucination risk for new routes)
+        //   - If text has NO outbound flights at all → allow Vision to CREATE new outbound flights
+        //     (e.g. ER-01 where all outbound PNRs are image-only)
+        const textHasOutbound = textDetected.some(f => f.type === 'INTERNATIONAL' && uzbekAirportSet.has(f.departure) && !uzbekAirportSet.has(f.arrival));
+        const combined = [...textDetected];
+        for (const vf of visionFlights) {
+          const paxToAdd = vf.pax || 0;
+          if (paxToAdd <= 0) continue;
+          const isOutbound = vf.type === 'INTERNATIONAL' && uzbekAirportSet.has(vf.departure) && !uzbekAirportSet.has(vf.arrival);
+          const vfMin = vf.departureTime ? (() => { const m = vf.departureTime.match(/^(\d{1,2}):(\d{2})$/); return m ? parseInt(m[1])*60+parseInt(m[2]) : null; })() : null;
+          const existing = combined.find(f => {
+            if (f.flightNumber !== vf.flightNumber || f.departure !== vf.departure || f.arrival !== vf.arrival) return false;
+            if ((f.date || '') !== (vf.date || '')) return false;
+            const fMin = f.departureTime ? (() => { const m = f.departureTime.match(/^(\d{1,2}):(\d{2})$/); return m ? parseInt(m[1])*60+parseInt(m[2]) : null; })() : null;
+            if (vfMin === null || fMin === null) return true;
+            return Math.abs(fMin - vfMin) <= 20;
+          });
+          const parseDetails = (d) => !d ? [] : Array.isArray(d) ? d : (() => { try { return JSON.parse(d); } catch { return []; } })();
+          const nKey = n => n.toUpperCase().replace(/\b(MRS?|MS|DR|PROF)\.?\b/g,'').replace(/\//g,' ').replace(/\s+/g,' ').trim().split(' ').filter(Boolean).sort().join(' ');
+          const mergeNamesLocal = (a, b) => { const r=[...a]; for(const n of b){if(!r.some(x=>nKey(x)===nKey(n)))r.push(n);} return r; };
+          if (existing) {
+            // Merge paxDetails: combine existing + vision details, dedup by word-set key
+            const merged = mergeNamesLocal(parseDetails(existing.paxDetails), parseDetails(vf.paxDetails));
+            existing.paxDetails = merged.length > 0 ? JSON.stringify(merged) : null;
+            existing.pax = merged.length > 0 ? merged.length : (existing.pax || 0) + paxToAdd;
+          } else if (!isOutbound || !textHasOutbound) {
+            // Add: inbound/domestic always; outbound only if text had no outbound at all
+            const vd = parseDetails(vf.paxDetails);
+            combined.push({ ...vf, paxDetails: vd.length > 0 ? JSON.stringify(vd) : null });
+          }
+        }
+
+        // Keep blank suggestions only if Vision did NOT run (Vision handles image PNRs).
+        // When Vision ran, trust it — blank placeholders with wrong PAX are misleading.
+        if (!needsVision) {
+          for (const s of textSuggested) {
+            if (s.type === 'INTERNATIONAL') {
+              const sArrIsUzbek = uzbekAirportSet.has(s.arrival);
+              const covered = combined.some(f => f.type === 'INTERNATIONAL' && uzbekAirportSet.has(f.arrival) === sArrIsUzbek);
+              if (!covered) combined.push(s);
+            } else if (s.type === 'DOMESTIC') {
+              if (!combined.some(f => f.type === 'DOMESTIC')) combined.push(s);
+            }
+          }
+        }
+
+        if (combined.length > 0) {
           const existingIntl = await prisma.flight.count({ where: { bookingId: booking.id, type: 'INTERNATIONAL' } });
           const existingDom  = await prisma.flight.count({ where: { bookingId: booking.id, type: 'DOMESTIC' } });
 
-          const toSave = flightData.filter(f => {
+          const toSave = combined.filter(f => {
             if (f.type === 'INTERNATIONAL') return existingIntl === 0;
             if (f.type === 'DOMESTIC')      return existingDom === 0;
             return false;
@@ -790,6 +870,7 @@ class EmailImportProcessor {
                 departureTime: f.departureTime || null,
                 arrivalTime: f.arrivalTime || null,
                 pax: f.pax || 0,
+                paxDetails: f.paxDetails || null,
                 price: 0,
                 sortOrder: i
               }))
@@ -1019,6 +1100,257 @@ class EmailImportProcessor {
    *   "6  LO 191 G 29MAR 7 WAWTAS HK4          2300 0800+1 *1A/E*"
    *   "5  LO 380 G 29MAR 7 FRAWAW HK4       1  2000 2145   *1A/E*"
    */
+
+  /**
+   * Use Claude Vision (Haiku → Sonnet fallback) to extract flights from PDF pages rendered as images.
+   * Used when text parsing misses image-embedded flight tables.
+   */
+  async _extractFlightsWithVision(pdfBuffer, knownPnrCodes = [], tourYear = null, tourDepartureDate = null) {
+    try {
+      const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+      const { createCanvas } = require('canvas');
+      const Anthropic = require('@anthropic-ai/sdk');
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+      const data = new Uint8Array(pdfBuffer);
+      const pdf = await pdfjsLib.getDocument({ data }).promise;
+
+      // Only render pages that contain embedded images (paintImageXObject op=85 or paintInlineImageXObject op=84).
+      // Skipping text-only pages reduces Vision confusion and cost.
+      const imageContents = [];
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const ops = await page.getOperatorList();
+        const imageOpCount = ops.fnArray.filter(op => op === 85 || op === 84).length;
+        // Skip pages with only 1 embedded image — that's the header/logo present on every page.
+        // Flight screenshot pages have 2+ embedded images (logo + PNR screenshot(s)).
+        if (imageOpCount < 2) {
+          _debugLog(`✈️ Vision: page ${pageNum} imageOps=${imageOpCount}, skipping (logo only)`);
+          continue;
+        }
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = createCanvas(Math.round(viewport.width), Math.round(viewport.height));
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const base64 = canvas.toBuffer('image/png').toString('base64');
+        imageContents.push({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: base64 } });
+        _debugLog(`✈️ Vision: page ${pageNum} imageOps=${imageOpCount}, included`);
+      }
+
+      if (imageContents.length === 0) {
+        _debugLog('✈️ Vision: no image pages found in PDF');
+        return [];
+      }
+
+      const prompt = `RESPOND WITH ONLY A JSON ARRAY. NO EXPLANATION. NO MARKDOWN. NO TEXT BEFORE OR AFTER THE ARRAY.
+
+These are pages from a hotel rooming list PDF. The pages show flight booking screenshots (Amadeus booking confirmations). Each screenshot shows: flight number, route (e.g. IST - TAS), date, departure time, arrival time, and passenger names.
+
+Uzbekistan airports: TAS (Tashkent), UGC (Urgench), SKD (Samarkand), BHK (Bukhara), FEG (Fergana), NVI (Navoi), KSQ (Karshi), NCU, TMJ, URG.
+
+TASK: Go through EVERY PNR/booking block visible in the images one by one. For each block, extract the Uzbekistan-related flight segments and the passenger(s) in that block.
+
+RULES:
+1. Process each PNR block INDEPENDENTLY. One JSON entry per PNR block per flight segment. It is OK to have MULTIPLE entries for the same flight number if different PNR blocks show the same flight — do NOT skip a block just because you already have an entry for that flight.
+2. Only include flight segments where departure OR arrival is a Uzbekistan airport.
+3. Do NOT include connecting legs: if a booking shows MUC→IST→TAS, extract ONLY "IST→TAS" (TK 368), not "MUC→IST".
+4. DATE: Read the exact date shown on that specific FLIGHT ROW only. "14/03/2026" = 2026-03-14. "26 MAR 2026" = 2026-03-26. Read month carefully: 03=March, 04=April. IGNORE "Ticket Time Limit", "TKT Ausgestellt", "Issued", "payment deadline" dates — these are billing dates, NOT flight dates.
+5. pax = count of names you list for that flight.
+6. If a passenger name is unclear, write it as best you can read it.
+7. HK1, HK2, SS, NN, FX, HK are booking status codes — NOT airports or passenger counts.
+8. Read flight numbers with EXTRA care — double-check every digit (e.g. "368" not "361", "369" not "360"). The last digit is critical.
+8. Scan ALL PNR blocks — including small ones at bottom of page, ones with codes like TMIF2T, S04R9P2, XG6DHR, etc. Do NOT skip any block.
+
+OUTPUT FORMAT:
+[
+  {
+    "flightNumber": "TK 368",
+    "departure": "IST",
+    "arrival": "TAS",
+    "date": "2026-03-14",
+    "departureTime": "01:45",
+    "arrivalTime": "08:35",
+    "pax": 4,
+    "type": "INTERNATIONAL",
+    "names": ["MUELLER/HANS MR", "MUELLER/ANNA MRS", "SCHMIDT/PETER MR", "BAUER/LISA MRS"]
+  }
+]
+
+If no Uzbekistan-related flights found in the images, respond with exactly: []`;
+
+      const callVision = async (model) => {
+        const response = await anthropic.messages.create({
+          model,
+          max_tokens: 8192,
+          temperature: 0,
+          system: 'You are a flight data extractor. You respond ONLY with a valid JSON array. No markdown, no explanation, no text outside the JSON array.',
+          messages: [{ role: 'user', content: [...imageContents, { type: 'text', text: prompt }] }]
+        });
+        const raw = response.content[0].text.trim();
+        // Write full Vision response to temp file for debugging
+        try { require('fs').writeFileSync('/tmp/vision_response.json', raw); } catch(_) {}
+        _debugLog(`✈️ Vision response length=${raw.length}, TMIF2T=${raw.includes('TMIF2T')?'FOUND':'NOT_FOUND'}, starts: ${raw.slice(0, 200)}`);
+        // Try direct parse first (pure JSON response)
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (_) {}
+        // Fallback: extract JSON array from markdown response
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+          _debugLog(`✈️ Vision returned non-JSON, no array found`);
+          return [];
+        }
+        try {
+          return JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          _debugLog(`✈️ Vision JSON parse error: ${e.message}`);
+          return [];
+        }
+      };
+
+      // Sonnet + temperature=0 = deterministik, har doim bir xil natija
+      let flights = [];
+      try {
+        flights = await callVision('claude-sonnet-4-6');
+      } catch (e) {
+        _debugLog(`Vision Sonnet error: ${e.message}`);
+      }
+
+      // Filter out flights with invalid airport codes (GDS status codes like HK, HK1, HK2, HK4)
+      const validIata = /^[A-Z]{3}$/;
+      const gdsStatusCodes = new Set(['HK1','HK2','HK3','HK4','HK','SS','NN','UN','GK','HL']);
+      const uzbekAirportsV = new Set(['TAS', 'SKD', 'UGC', 'BHK', 'NCU', 'NVI', 'KSQ', 'TMJ', 'FEG', 'URG']);
+      flights = flights.filter(f => {
+        const depOk = validIata.test(f.departure) && !gdsStatusCodes.has(f.departure);
+        const arrOk = validIata.test(f.arrival)   && !gdsStatusCodes.has(f.arrival);
+        if (!depOk || !arrOk) {
+          _debugLog(`⚠️ Vision: skipping invalid airport code: ${f.departure}→${f.arrival}`);
+          return false;
+        }
+        // For INTERNATIONAL: only keep flights where exactly one airport is Uzbek (TAS, UGC, etc.)
+        // This removes pure European connecting legs and pure domestic misclassified flights
+        if (f.type === 'INTERNATIONAL') {
+          const depUzbek = uzbekAirportsV.has(f.departure);
+          const arrUzbek = uzbekAirportsV.has(f.arrival);
+          if (!depUzbek && !arrUzbek) {
+            _debugLog(`⚠️ Vision: skipping non-Uzbek international: ${f.departure}→${f.arrival}`);
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // Convert Vision names array → paxDetails JSON string
+      const parseArr = d => !d ? [] : Array.isArray(d) ? d : (() => { try { return JSON.parse(d); } catch { return []; } })();
+      for (const f of flights) {
+        const names = Array.isArray(f.names) ? f.names : [];
+        f.paxDetails = names.length > 0 ? JSON.stringify(names) : null;
+        if (names.length > 0) f.pax = names.length;
+        delete f.names;
+      }
+
+      // Name normalization: strip titles, replace "/" with space, split into words, sort → dedup key
+      // Handles both "LASTNAME/FIRSTNAME MRS" and "MRS FIRSTNAME LASTNAME" formats
+      const nameKey = n => n.toUpperCase()
+        .replace(/\b(MRS?|MS|DR|PROF)\.?\b/g, '')
+        .replace(/\//g, ' ')
+        .replace(/\s+/g, ' ').trim()
+        .split(' ').filter(Boolean).sort().join(' ');
+
+      const mergeNames = (a, b) => {
+        const result = [...a];
+        for (const name of b) {
+          if (!result.some(r => nameKey(r) === nameKey(name))) result.push(name);
+        }
+        return result;
+      };
+
+      // Helper: convert "HH:MM" to minutes
+      const toMinutes = t => {
+        if (!t) return null;
+        const m = t.match(/^(\d{1,2}):(\d{2})$/);
+        return m ? parseInt(m[1]) * 60 + parseInt(m[2]) : null;
+      };
+
+      // STEP 1: Cross-year cleanup BEFORE merge
+      // If a passenger appears in a non-tourYear flight → Vision misread their date
+      // Remove them from tourYear flights and discard non-tourYear flights entirely
+      if (tourYear) {
+        const paxYears = new Map(); // nameKey → Set of years
+        for (const f of flights) {
+          const yr = f.date ? new Date(f.date).getFullYear() : null;
+          if (!yr) continue;
+          for (const name of parseArr(f.paxDetails)) {
+            const key = nameKey(name);
+            if (!paxYears.has(key)) paxYears.set(key, new Set());
+            paxYears.get(key).add(yr);
+          }
+        }
+        const wrongYearPax = new Set();
+        for (const [key, years] of paxYears) {
+          if ([...years].some(y => y !== tourYear)) wrongYearPax.add(key);
+        }
+        if (wrongYearPax.size > 0) {
+          _debugLog(`✈️ Cross-year passengers removed: ${[...wrongYearPax].join(', ')}`);
+          for (const f of flights) {
+            const yr = f.date ? new Date(f.date).getFullYear() : null;
+            if (yr !== tourYear) continue;
+            const cleaned = parseArr(f.paxDetails).filter(n => !wrongYearPax.has(nameKey(n)));
+            f.paxDetails = cleaned.length > 0 ? JSON.stringify(cleaned) : null;
+            f.pax = cleaned.length;
+          }
+        }
+        // Remove all non-tourYear flights AND flights more than 90 days from tour departure
+        flights = flights.filter(f => {
+          const yr = f.date ? new Date(f.date).getFullYear() : null;
+          if (yr && yr !== tourYear) { _debugLog(`✈️ Skipping non-tourYear: ${f.flightNumber} ${f.date}`); return false; }
+          if (tourDepartureDate && f.date) {
+            const diffDays = Math.abs((new Date(f.date) - tourDepartureDate) / 86400000);
+            if (diffDays > 90) { _debugLog(`✈️ Skipping out-of-window: ${f.flightNumber} ${f.date} (${Math.round(diffDays)}d from tour)`); return false; }
+          }
+          return f.pax > 0 || !yr;
+        });
+      }
+
+      // STEP 2: Merge entries with same flightNumber+route+date, departure time within 30 min
+      // 30 min handles OCR errors (01:40 vs 01:45 = 5 min) AND same-flight different PNR blocks
+      // Cross-year pax already removed, so no risk of merging wrong-year passengers
+      const mergedList = [];
+      for (const f of flights) {
+        const fMin = toMinutes(f.departureTime);
+        // Match if: same route + same date + time within 20 min
+        // AND (same flight number OR same airline prefix — OCR may misread 368→361)
+        const sameAirline = (a, b) => a && b && a.slice(0, 2) === b.slice(0, 2);
+        const existing = mergedList.find(e =>
+          e.departure === f.departure &&
+          e.arrival === f.arrival &&
+          (e.date || '') === (f.date || '') &&
+          (e.flightNumber === f.flightNumber || sameAirline(e.flightNumber, f.flightNumber)) &&
+          (() => {
+            const eMin = toMinutes(e.departureTime);
+            if (fMin === null || eMin === null) return true;
+            return Math.abs(fMin - eMin) <= 20;
+          })()
+        );
+        if (existing) {
+          const combined = mergeNames(parseArr(existing.paxDetails), parseArr(f.paxDetails));
+          existing.paxDetails = combined.length > 0 ? JSON.stringify(combined) : null;
+          existing.pax = combined.length > 0 ? combined.length : (existing.pax || 0) + (f.pax || 0);
+        } else {
+          mergedList.push({ ...f });
+        }
+      }
+      flights = mergedList;
+
+      _debugLog(`✈️ Vision extracted ${flights.length} flights after merge`);
+      return flights;
+    } catch (e) {
+      _debugLog(`⚠️ Vision extraction failed: ${e.message}`);
+      return [];
+    }
+  }
+
   _parseFlightsFromText(text) {
     const intlIdx = text.indexOf('International Flights');
     if (intlIdx !== -1) {
@@ -1089,14 +1421,20 @@ class EmailImportProcessor {
     // GDS: don't care about status code — use \S+ to skip it
     const gdsFlightRe = /^\d+\s+([A-Z]{2})\s+(\d+)\s+[A-Z]\s+(\d{2}[A-Z]{3}(?:\d{2})?)\s+\d\s+([A-Z]{3})([A-Z]{3})\s+\S+\s+(?:\d\s+)*(\d{4})\s+(\d{4})/i;
     // ISO: any status (HK, TK, HL...) — use \S+ to skip it
-    const isoFlightRe = /^([A-Z]{2})\s+(\d+)\s+[A-Z]\s+(\d{4}-\d{2}-\d{2})\s+([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})/i;
+    // NOTE: no ^ anchor — multiple flights can appear on one line, use matchAll
+    const isoFlightRe = /([A-Z]{2})\s+(\d+)\s+[A-Z]\s+(\d{4}-\d{2}-\d{2})\s+([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})/gi;
 
     const flightPaxMap  = new Map();
     const flightInfoMap = new Map();
 
     let inPnrBlock  = false;
-    let blockPax    = 0;   // passengers in the current PNR block (from NM: N)
+    let blockPax    = 0;   // passengers in the current PNR block (from NM: N or counted names)
     let blockFlights = []; // Uzbekistan-relevant flights found in current block
+    let nmFound     = false; // true once NM: header found — don't count names separately
+    let blockPnr    = '';   // current PNR code
+    let blockNames  = [];   // passenger names collected in current block
+    const knownPnrCodes = []; // 6-char PNR codes found in text (for Vision to skip)
+    const flightPaxDetailsMap = new Map(); // key → [name strings]
 
     const flushBlock = () => {
       if (blockFlights.length > 0) {
@@ -1105,10 +1443,19 @@ class EmailImportProcessor {
         for (const { key, info } of blockFlights) {
           flightPaxMap.set(key, (flightPaxMap.get(key) || 0) + pax);
           if (!flightInfoMap.has(key)) flightInfoMap.set(key, info);
+          // Accumulate paxDetails as flat name strings
+          const existing = flightPaxDetailsMap.get(key) || [];
+          for (const name of blockNames) {
+            if (!existing.includes(name)) existing.push(name);
+          }
+          flightPaxDetailsMap.set(key, existing);
         }
       }
       blockPax = 0;
       blockFlights = [];
+      nmFound = false;
+      blockPnr = '';
+      blockNames = [];
     };
 
     for (const line of lines) {
@@ -1119,27 +1466,43 @@ class EmailImportProcessor {
       if (isRpLine || isPnrCode6 || isPnrNameLine) {
         flushBlock();
         inPnrBlock = true;
-        if (isPnrNameLine) blockPax = 1; // name+PNR on same line → 1 passenger
+        // Store PNR code for Vision skip-list.
+        // Filter out common room-type / header words that happen to be 6 chars.
+        const ROOM_WORDS = new Set(['DOUBLE','SINGLE','TRIPLE','FAMILY','STUDIO','JUNIOR','DELUXE','SUITE ','GARDEN','PALACE','RESORT','BUDGET','LUXURY']);
+        const code6 = isPnrCode6 ? line.trim() : line.trim().slice(0, 6).toUpperCase();
+        if (!ROOM_WORDS.has(code6)) knownPnrCodes.push(code6);
+        blockPnr = code6;
+        if (isPnrNameLine) {
+          blockPax = 1; // name+PNR on same line → 1 passenger
+          blockNames.push(line.trim().slice(7).trim()); // name part after PNR code
+        }
         continue;
       }
       if (!inPnrBlock) continue;
 
       // Passenger count from GDS header "NM: 4" — most reliable, use if found
       const nmM = line.match(/\bNM:\s*(\d+)/i);
-      if (nmM) { blockPax = parseInt(nmM[1], 10); continue; }
+      if (nmM) { blockPax = parseInt(nmM[1], 10); nmFound = true; continue; }
 
-      // Count passenger name lines (only when NM: not yet found, i.e. blockPax still 0)
-      if (blockPax === 0) {
-        // Format 1 — GDS numbered:   "1.DRIEFHOLT/DOROTHEE MRS"  or "1.SCHMITT/HANS MR"
-        // Format 2 — GDS unnumbered: "SCHMITT/HANS MR"
-        // Format 3 — ISO title-first: "MRS GIULIA MARIA CZERWENKA"
+      // Collect passenger names — always, regardless of nmFound
+      // NM: only controls PAX count (don't double-count); names are always needed for paxDetails
+      {
         const isGdsName   = /^\d+\.[A-Z]+\/[A-Z]/i.test(line);
         const isSlashName = /^[A-Z]{2,}\/[A-Z]/i.test(line);
         const isTitleName = /^(MR|MRS|DR|MISS|PROF)\s+[A-Z]/i.test(line);
         if (isGdsName || isSlashName || isTitleName) {
-          // Count how many names are on this line (GDS often puts multiple: "1.AAA MRS  2.BBB MR")
-          const gdsCount = (line.match(/\d+\.[A-Z]+\/[A-Z]/gi) || []).length;
-          blockPax += gdsCount > 0 ? gdsCount : 1;
+          // Extract individual names from line (GDS puts multiple: "1.AAA/BBB MRS  2.CCC/DDD MR")
+          const gdsMatches = [...line.matchAll(/\d+\.([A-Z]+\/[A-Z][A-Z\s]*(?:MR|MRS|MS|DR|MISS|PROF)?)/gi)];
+          if (gdsMatches.length > 0) {
+            for (const m of gdsMatches) blockNames.push(m[1].trim());
+          } else {
+            blockNames.push(line.trim());
+          }
+          // PAX count: only increment if NM: not found yet
+          if (!nmFound) {
+            const gdsCount = (line.match(/\d+\.[A-Z]+\/[A-Z]/gi) || []).length;
+            blockPax += gdsCount > 0 ? gdsCount : 1;
+          }
           continue;
         }
       }
@@ -1155,7 +1518,7 @@ class EmailImportProcessor {
         if (isIntl || isDom) {
           const flightNumber = `${airline} ${num}`;
           const date = gdsDateToIso(dateStr);
-          const key  = `${flightNumber}|${dep}|${arr}|${date}`;
+          const key  = `${flightNumber}|${dep}|${arr}`;
           if (!blockFlights.some(f => f.key === key)) {
             blockFlights.push({ key, info: {
               flightNumber, departure: dep, arrival: arr, date,
@@ -1168,9 +1531,9 @@ class EmailImportProcessor {
         continue;
       }
 
-      // Try ISO flight line
-      const im = line.match(isoFlightRe);
-      if (im) {
+      // Try ISO flight line — multiple flights may appear on one line
+      isoFlightRe.lastIndex = 0;
+      for (const im of line.matchAll(isoFlightRe)) {
         const [, airline, num, date, dep, arr, depTime, arrTime] = im;
         const depIsUzbek = uzbekAirports.has(dep);
         const arrIsUzbek = uzbekAirports.has(arr);
@@ -1178,7 +1541,7 @@ class EmailImportProcessor {
         const isDom  = depIsUzbek && arrIsUzbek;
         if (isIntl || isDom) {
           const flightNumber = `${airline} ${num}`;
-          const key = `${flightNumber}|${dep}|${arr}|${date}`;
+          const key = `${flightNumber}|${dep}|${arr}`;
           if (!blockFlights.some(f => f.key === key)) {
             blockFlights.push({ key, info: {
               flightNumber, departure: dep, arrival: arr, date,
@@ -1193,7 +1556,8 @@ class EmailImportProcessor {
 
     const detected = [];
     for (const [key, pax] of flightPaxMap.entries()) {
-      detected.push({ ...flightInfoMap.get(key), pax });
+      const details = flightPaxDetailsMap.get(key) || [];
+      detected.push({ ...flightInfoMap.get(key), pax, paxDetails: details.length > 0 ? JSON.stringify(details) : null });
     }
     _debugLog(`✈️ Detected flights: ${JSON.stringify(detected.map(f => `${f.flightNumber} ${f.departure}→${f.arrival} PAX:${f.pax}`))}, totalPax=${totalPax}`);
 
@@ -1220,7 +1584,7 @@ class EmailImportProcessor {
       }
     }
 
-    return [...detected, ...suggested];
+    return { flights: [...detected, ...suggested], totalPax, knownPnrCodes };
   }
 
   /**
