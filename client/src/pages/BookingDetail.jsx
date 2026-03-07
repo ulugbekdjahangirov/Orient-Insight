@@ -2766,7 +2766,7 @@ export default function BookingDetail() {
       date: railway.date ? format(new Date(railway.date), 'yyyy-MM-dd') : '',
       departureTime: railway.departureTime || '',
       arrivalTime: railway.arrivalTime || '',
-      tariff: 'Economy', // Default to Economy when editing
+      tariff: railway.tariff || 'Economy',
       pricePerPerson: pricePerPerson,
       pax: pax,
       price: totalPrice,
@@ -2795,11 +2795,11 @@ export default function BookingDetail() {
     try {
       if (editingRailway) {
         // Update existing railway
-        const response = await railwaysApi.update(id, editingRailway.id, railwayForm);
+        await railwaysApi.update(id, editingRailway.id, railwayForm);
         toast.success('Poezd yangilandi');
       } else {
         // Create new railway
-        const response = await railwaysApi.create(id, railwayForm);
+        await railwaysApi.create(id, railwayForm);
         toast.success('Poezd qo\'shildi');
         // Auto-set Train Tickets to Issued if not already set
         if (formData.trainTickets !== 'Issued') {
