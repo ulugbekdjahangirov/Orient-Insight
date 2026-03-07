@@ -443,7 +443,6 @@ export default function BookingDetail() {
 
   // Railway state
   const [railways, setRailways] = useState([]);
-  const [railwaySections, setRailwaySections] = useState([]);
   const [loadingRailways, setLoadingRailways] = useState(false);
   const [railwayModalOpen, setRailwayModalOpen] = useState(false);
   const [editingRailway, setEditingRailway] = useState(null);
@@ -2716,22 +2715,12 @@ export default function BookingDetail() {
 
     try {
       setLoadingRailways(true);
-      const [railwaysRes, sectionsRes] = await Promise.all([
-        railwaysApi.getAll(id),
-        railwaysApi.getSections(id)
-      ]);
-
-      // Backend returns { railways: [...] } and { railwaySections: [...] }
+      const railwaysRes = await railwaysApi.getAll(id);
       const railwaysData = Array.isArray(railwaysRes.data?.railways) ? railwaysRes.data.railways : [];
-      const sectionsData = Array.isArray(sectionsRes.data?.railwaySections) ? sectionsRes.data.railwaySections : [];
-
       setRailways(railwaysData);
-      setRailwaySections(sectionsData);
     } catch (error) {
       console.error('Error loading railways:', error);
-      // Set empty arrays on error
       setRailways([]);
-      setRailwaySections([]);
     } finally {
       setLoadingRailways(false);
     }
@@ -9579,7 +9568,7 @@ export default function BookingDetail() {
                     <p className="text-gray-600 font-medium">Loading railways...</p>
                   </div>
                 </div>
-              ) : (!Array.isArray(railways) || railways.length === 0) && (!Array.isArray(railwaySections) || railwaySections.length === 0) ? (
+              ) : (!Array.isArray(railways) || railways.length === 0) ? (
                 <div className="text-center py-12 bg-gradient-to-b from-emerald-50 to-white rounded-2xl border-2 border-dashed border-emerald-200">
                   <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Train className="w-10 h-10 text-emerald-400" />
@@ -9594,9 +9583,8 @@ export default function BookingDetail() {
                   {/* International Railways Section */}
                   {(() => {
                     const internationalRailways = Array.isArray(railways) ? railways.filter(r => r.type === 'INTERNATIONAL') : [];
-                    const internationalSection = Array.isArray(railwaySections) ? railwaySections.find(s => s.type === 'INTERNATIONAL') : null;
 
-                    if (internationalRailways.length === 0 && !internationalSection) return null;
+                    if (internationalRailways.length === 0) return null;
 
                     return (
                       <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-6">
@@ -9692,9 +9680,8 @@ export default function BookingDetail() {
                   {/* Domestic Railways Section */}
                   {(() => {
                     const domesticRailways = Array.isArray(railways) ? railways.filter(r => r.type === 'DOMESTIC') : [];
-                    const domesticSection = Array.isArray(railwaySections) ? railwaySections.find(s => s.type === 'DOMESTIC') : null;
 
-                    if (domesticRailways.length === 0 && !domesticSection) return null;
+                    if (domesticRailways.length === 0) return null;
 
                     return (
                       <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200 p-6">
