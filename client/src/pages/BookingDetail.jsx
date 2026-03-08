@@ -186,8 +186,8 @@ const getFlightsFromOpex = (planesData = []) => {
       flightNumber: plane.trainNumber || plane.flightNumber || plane.number || '',
       airline: plane.name || plane.airline || plane.airlineName || 'Unknown Airline',
       route: plane.route || `${plane.from || ''} - ${plane.to || ''}`,
-      departure: (plane.route || '').split(' - ')[0].trim() || plane.from || '',
-      arrival: ((plane.route || '').split(' - ')[1] || '').trim() || plane.to || '',
+      departure: (() => { const r = plane.route || ''; const parts = r.includes(' - ') ? r.split(' - ') : r.split('-'); return parts[0].trim() || plane.from || ''; })(),
+      arrival: (() => { const r = plane.route || ''; const parts = r.includes(' - ') ? r.split(' - ') : r.split('-'); return (parts[1] || '').trim() || plane.to || ''; })(),
       departureTime: plane.departure || '',
       arrivalTime: plane.arrival || ''
     };
