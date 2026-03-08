@@ -107,6 +107,18 @@ export default function EmailImports() {
     return new Date(dateString).toLocaleString('ru-RU');
   };
 
+  const getFileTypeBadge = (imp) => {
+    const name = (imp.attachmentName || '').toLowerCase();
+    const type = (imp.attachmentType || '').toLowerCase();
+    if (name.endsWith('.pdf') || type.includes('pdf')) {
+      return { label: 'PDF', icon: '📄', cls: 'bg-red-100 text-red-700 border border-red-200' };
+    }
+    if (name.endsWith('.xlsx') || name.endsWith('.xls') || type.includes('excel') || type.includes('spreadsheet')) {
+      return { label: 'Excel', icon: '📊', cls: 'bg-green-100 text-green-700 border border-green-200' };
+    }
+    return { label: 'Email', icon: '📧', cls: 'bg-blue-100 text-blue-700 border border-blue-200' };
+  };
+
   return (
     <div className="max-w-full mx-auto p-3 sm:p-4">
       {/* Header */}
@@ -165,15 +177,20 @@ export default function EmailImports() {
           <div className="sm:hidden space-y-2">
             {imports.map((imp) => (
               <div key={imp.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-                {/* Top row: date + status + tour type */}
+                {/* Top row: date + status + tour type + file type */}
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-400">{formatDate(imp.emailDate)}</span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {imp.tourTypeCodes && (
                       <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
                         {imp.tourTypeCodes}
                       </span>
                     )}
+                    {(() => { const f = getFileTypeBadge(imp); return (
+                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-semibold ${f.cls}`}>
+                        <span>{f.icon}</span>{f.label}
+                      </span>
+                    ); })()}
                     <span className={`px-2 py-0.5 text-xs font-medium rounded ${STATUS_COLORS[imp.status]}`}>
                       {STATUS_LABELS[imp.status]}
                     </span>
@@ -238,8 +255,9 @@ export default function EmailImports() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[8%]">Статус</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Tour Type</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[10%]">Результат</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[22%]">Сообщение</th>
-                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[13%]">Действия</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-[18%]">Сообщение</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[8%]">Fayl turi</th>
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase whitespace-nowrap w-[11%]">Действия</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -289,6 +307,13 @@ export default function EmailImports() {
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      {(() => { const f = getFileTypeBadge(imp); return (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${f.cls}`}>
+                          <span>{f.icon}</span>{f.label}
+                        </span>
+                      ); })()}
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium space-x-1">
                       {imp.status === 'SUCCESS' && (
