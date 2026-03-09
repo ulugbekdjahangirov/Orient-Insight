@@ -77,33 +77,17 @@ class EmailImportProcessor {
       const isPdf = !isExcel && fname.endsWith('.pdf');
       const isDocx = !isExcel && !isPdf && (fname.endsWith('.docx') || fname.endsWith('.doc') || (emailImport.attachmentType || '').includes('word'));
 
-      // PDF: only process if filename contains "rooming list" — skip Laenderinfo, Erlebnisreise, etc.
-      const isRoomingListPdf = isPdf && fname.includes('rooming list');
+      // PDF: only process if filename contains "rooming list" or "final list" — skip Laenderinfo, Erlebnisreise, etc.
+      const isRoomingListPdf = isPdf && (fname.includes('rooming list') || fname.includes('final list'));
       if (isPdf && !isRoomingListPdf) {
-        await prisma.emailImport.update({
-          where: { id: emailImportId },
-          data: {
-            status: 'MANUAL_REVIEW',
-            errorMessage: `PDF skipped (not a Rooming List): ${emailImport.attachmentName}`,
-            retryCount: emailImport.retryCount,
-            processedAt: new Date()
-          }
-        });
+        await prisma.emailImport.delete({ where: { id: emailImportId } });
         return { created: 0, updated: 0, ids: [] };
       }
 
-      // DOCX: only process if filename contains "rooming list"
-      const isRoomingListDocx = isDocx && fname.includes('rooming list');
+      // DOCX: only process if filename contains "rooming list" or "final list"
+      const isRoomingListDocx = isDocx && (fname.includes('rooming list') || fname.includes('final list'));
       if (isDocx && !isRoomingListDocx) {
-        await prisma.emailImport.update({
-          where: { id: emailImportId },
-          data: {
-            status: 'MANUAL_REVIEW',
-            errorMessage: `Word file skipped (not a Rooming List): ${emailImport.attachmentName}`,
-            retryCount: emailImport.retryCount,
-            processedAt: new Date()
-          }
-        });
+        await prisma.emailImport.delete({ where: { id: emailImportId } });
         return { created: 0, updated: 0, ids: [] };
       }
 

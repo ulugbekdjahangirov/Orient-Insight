@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { gmailApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 
@@ -20,6 +21,7 @@ const STATUS_LABELS = {
 
 export default function EmailImports() {
   const { selectedYear } = useYear();
+  const navigate = useNavigate();
   const [imports, setImports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -182,7 +184,10 @@ export default function EmailImports() {
                   <span className="text-xs text-gray-400">{formatDate(imp.emailDate)}</span>
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {imp.tourTypeCodes && (
-                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                      <span
+                        className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs font-semibold cursor-pointer hover:bg-blue-200 transition-colors"
+                        onClick={() => { const id = imp.bookingIds?.split(',')[0]?.trim(); if (id) navigate(`/bookings/${id}`); }}
+                      >
                         {imp.tourTypeCodes}
                       </span>
                     )}
@@ -279,7 +284,11 @@ export default function EmailImports() {
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-xs font-medium text-gray-900 truncate">
                       {imp.tourTypeCodes ? (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                        <span
+                          className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold cursor-pointer hover:bg-blue-200 transition-colors"
+                          onClick={() => { const id = imp.bookingIds?.split(',')[0]?.trim(); if (id) navigate(`/bookings/${id}`); }}
+                          title="Bronni ochish"
+                        >
                           {imp.tourTypeCodes}
                         </span>
                       ) : (
