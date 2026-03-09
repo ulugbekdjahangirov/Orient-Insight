@@ -19,7 +19,7 @@ export default function Hotels() {
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { selectedYear, changeYear } = useYear();
+  const { selectedYear } = useYear();
 
   // Get selected city from URL or default to empty (show all)
   const selectedCity = searchParams.get('city') || '';
@@ -570,23 +570,13 @@ export default function Hotels() {
               </div>
               <div>
                 <h1 className="text-xl md:text-3xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Hotels Management
+                  Hotels Management <span className="text-lg md:text-2xl text-slate-400 font-bold">{selectedYear}</span>
                 </h1>
                 <p className="text-slate-600 text-xs md:text-sm mt-0.5 md:mt-1 font-medium">Luxury hotels and room reservations</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              {/* Year selector */}
-              <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1.5 border border-slate-200">
-                <button onClick={() => changeYear(selectedYear - 1)} className="p-1 rounded-lg hover:bg-white transition-colors text-slate-500 hover:text-slate-700">
-                  <ChevronDown className="w-4 h-4 rotate-90" />
-                </button>
-                <span className="font-bold text-slate-700 min-w-[44px] text-center text-sm">{selectedYear}</span>
-                <button onClick={() => changeYear(selectedYear + 1)} className="p-1 rounded-lg hover:bg-white transition-colors text-slate-500 hover:text-slate-700">
-                  <ChevronDown className="w-4 h-4 -rotate-90" />
-                </button>
-              </div>
               <button
                 onClick={() => openHotelModal()}
                 className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-600 text-white rounded-xl md:rounded-2xl hover:shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
