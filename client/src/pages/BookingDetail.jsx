@@ -3522,12 +3522,20 @@ export default function BookingDetail() {
           const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
           const cityName = acc?.hotel?.city?.name || '';
 
-          // Skip Samarkand hotels in RL PDF (they belong to Später tab)
+          const hotelNameLower = hotelName.toLowerCase();
+
+          // Skip Jahongir (Samarkand) → Später tab
           const cityNameLower = cityName.toLowerCase();
           const isSamarkand = cityNameLower.includes('samarkand') || cityNameLower.includes('самарканд');
-          if (isSamarkand) {
-            return; // Skip Samarkand hotels
-          }
+          if (isSamarkand && hotelNameLower.includes('jahongir')) return;
+
+          // Skip Arien Plaza → Überweisung tab
+          if (hotelNameLower.includes('arien plaza')) return;
+
+          // Skip Dargoh, Malika Khorazm, Yaxshigul → Später tab
+          if (hotelNameLower.includes('dargoh')) return;
+          if (hotelNameLower.includes('malika khorazm') || hotelNameLower.includes('malika xorazm')) return;
+          if (hotelNameLower.includes('yaxshigul')) return;
 
           let targetCity = mapCityName(cityName) || mapCityName(hotelName);
           if (!targetCity) targetCity = 'Extra Kosten';
@@ -3599,6 +3607,9 @@ export default function BookingDetail() {
         const priceStr = (show.price || show.pricePerPerson || '0').toString().replace(/\s/g, '');
         const pricePerPerson = parseFloat(priceStr) || 0;
         const total = pricePerPerson * pax;
+
+        // Skip Folklore Show → goes to Überweisung tab
+        if (name.toLowerCase().includes('folklore show') || name.toLowerCase().includes('nadir divan')) return;
 
         let targetCity = mapCityName(city) || mapCityName(name);
         if (!targetCity) targetCity = 'Extra Kosten';
@@ -4227,29 +4238,41 @@ export default function BookingDetail() {
   // Export Später to PDF
   const exportSpaterToPDF = (returnBlob = false) => {
     try {
-      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const doc = new jsPDF('p', 'mm', 'a4');
 
       // Collect expenses for Später tab (same logic as display)
       const expensesByCity = {};
       expensesByCity['Samarkand'] = [];
+      expensesByCity['Asraf'] = [];
+      expensesByCity['Bukhara'] = [];
+      expensesByCity['Khiva'] = [];
       expensesByCity['Transport'] = [];
       expensesByCity['Reiseleiter'] = [];
 
-      // 1. Process Hotels in Samarkand
+      // 1. Process Hotels (Jahongir→Samarkand, Yaxshigul→Asraf, Dargoh→Bukhara, Malika Khorazm→Khiva)
       if (grandTotalData && grandTotalData.hotelBreakdown) {
         grandTotalData.hotelBreakdown.forEach(hotelData => {
           const acc = accommodations.find(a => a.id === hotelData.accommodationId);
           const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
+          const hotelNameLower = hotelName.toLowerCase();
           const cityName = acc?.hotel?.city?.name?.toLowerCase() || '';
 
-          // Check by CITY, not hotel name
-          const isSamarkand = cityName.includes('samarkand') || cityName.includes('самарканд');
+          const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+          const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
 
-          if (isSamarkand) {
-            const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
-            const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+          let targetSection = null;
+          if ((cityName.includes('samarkand') || cityName.includes('самарканд')) && hotelNameLower.includes('jahongir')) {
+            targetSection = 'Samarkand';
+          } else if (hotelNameLower.includes('yaxshigul')) {
+            targetSection = 'Asraf';
+          } else if (hotelNameLower.includes('dargoh')) {
+            targetSection = 'Bukhara';
+          } else if (hotelNameLower.includes('malika khorazm') || hotelNameLower.includes('malika xorazm')) {
+            targetSection = 'Khiva';
+          }
 
-            expensesByCity['Samarkand'].push({
+          if (targetSection) {
+            expensesByCity[targetSection].push({
               name: hotelName,
               pricePerPerson: null,
               pax: null,
@@ -4339,7 +4362,7 @@ export default function BookingDetail() {
       });
 
       // Filter out empty sections
-      const sections = ['Samarkand', 'Transport', 'Reiseleiter'].filter(section =>
+      const sections = ['Samarkand', 'Asraf', 'Bukhara', 'Khiva', 'Transport', 'Reiseleiter'].filter(section =>
         expensesByCity[section] && expensesByCity[section].length > 0
       );
 
@@ -4374,13 +4397,13 @@ export default function BookingDetail() {
       // Add title
       doc.setFontSize(16);
       doc.setFont(undefined, 'bold');
-      doc.text('Spater (Deferred Payments)', 148.5, 13, { align: 'center' });
+      doc.text('Spater (Deferred Payments)', 105, 13, { align: 'center' });
 
       // Add booking info
       doc.setFontSize(11);
       doc.setFont(undefined, 'normal');
-      const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${tourists?.length || 0}`;
-      doc.text(bookingInfo, 148.5, 20, { align: 'center' });
+      const bookingInfo = `${booking?.bookingNumber || ''} | PAX: ${tourists?.length || 0}`;
+      doc.text(bookingInfo, 105, 20, { align: 'center' });
 
       // Generate table
       autoTable(doc, {
@@ -4402,12 +4425,12 @@ export default function BookingDetail() {
           cellPadding: 2.5
         },
         columnStyles: {
-          0: { cellWidth: 30 }, // Stadte
+          0: { cellWidth: 25 }, // Stadte
           1: { cellWidth: 80 }, // Item
-          2: { halign: 'right', cellWidth: 30 }, // Preis
-          3: { halign: 'center', cellWidth: 20 }, // PAX
-          4: { halign: 'right', cellWidth: 35 }, // Dollar
-          5: { halign: 'right', cellWidth: 35 }  // Som
+          2: { halign: 'right', cellWidth: 25 }, // Preis
+          3: { halign: 'center', cellWidth: 15 }, // PAX
+          4: { halign: 'right', cellWidth: 25 }, // Dollar
+          5: { halign: 'right', cellWidth: 25 }  // Som
         },
         margin: { top: 20, bottom: 7, left: 7, right: 7 }
       });
@@ -4430,156 +4453,137 @@ export default function BookingDetail() {
   // Export Überweisung to PDF
   const exportUberweisungToPDF = (returnBlob = false) => {
     try {
-      const doc = new jsPDF('landscape', 'mm', 'a4');
-      const tourTypeCode = booking?.tourType?.code?.toLowerCase() || 'er';
+      const doc = new jsPDF('p', 'mm', 'a4'); // Portrait
       const pax = tourists?.length || 0;
 
-      // Collect Eintritt expenses and organize by city
-      const expensesByCity = {};
       const cityOrder = ['Tashkent', 'Fergana', 'Samarkand', 'Asraf', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva'];
+      const expensesByCity = {};
+      cityOrder.forEach(city => { expensesByCity[city] = []; });
+      expensesByCity['Railway'] = [];
 
-      // Initialize city sections
-      cityOrder.forEach(city => {
-        expensesByCity[city] = [];
-      });
-
-      // Helper function to map city names
       const mapCityName = (text) => {
         if (!text) return null;
         const str = text.toLowerCase().trim();
         if (str.includes('tashkent') || str.includes('тошкент')) return 'Tashkent';
         if (str.includes('samarkand') || str.includes('samarqand') || str.includes('самарканд')) return 'Samarkand';
         if (str.includes('asraf') || str.includes('асраф')) return 'Asraf';
-        if (str.includes('nurota') || str.includes('нурата')) return 'Nurota';
+        if (str.includes('nurota') || str.includes('nurata') || str.includes('нурата')) return 'Nurota';
         if (str.includes('bukhara') || str.includes('buxoro') || str.includes('бухара')) return 'Bukhara';
         if (str.includes('khiva') || str.includes('xiva') || str.includes('хива')) return 'Khiva';
-        if (str.includes('fergana') || str.includes('farg\'ona') || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
+        if (str.includes('fergana') || str.includes("farg'ona") || str.includes('фергана') || str.includes('margilan') || str.includes('qoqon') || str.includes('kokand')) return 'Fergana';
         if (str.includes('qizilqum') || str.includes('kyzylkum') || str.includes('қизилқум') || str.includes('choyxona') || str.includes('чойхона') || str.includes('chayhana') || str.includes('tea house')) return 'Qizilqum';
         return null;
       };
 
-      // Process Entrance Fees (Eintritt)
-      const sightseeingKey = `${tourTypeCode}Sightseeing`;
-      let sightseeingData = [];
-      try {
-        const saved = localStorage.getItem(sightseeingKey);
-        if (saved) sightseeingData = JSON.parse(saved);
-      } catch (e) {
-        console.error('Error loading sightseeing:', e);
-      }
-
+      // 1. Sightseeing (Eintritt) from DB state
       sightseeingData.forEach(sight => {
         const name = sight.name || 'Unknown Entrance';
         const city = sight.city || '';
-        const priceStr = (sight.price || sight.pricePerPerson || '0').toString().replace(/\s/g, '');
-        const pricePerPerson = parseFloat(priceStr) || 0;
-        const sightPax = pax;
-        const total = pricePerPerson * sightPax;
-
-        let targetCity = mapCityName(city) || mapCityName(name);
-        if (!targetCity) targetCity = cityOrder[0];
-
-        if (total > 0) {
-          expensesByCity[targetCity].push({
-            name: name,
-            pricePerPerson: pricePerPerson,
-            pax: sightPax,
-            usd: 0,
-            uzs: total
-          });
-        }
+        const pricePerPerson = parseFloat((sight.price || sight.pricePerPerson || '0').toString().replace(/\s/g, '')) || 0;
+        const total = pricePerPerson * pax;
+        let targetCity = mapCityName(city) || mapCityName(name) || cityOrder[0];
+        if (total > 0) expensesByCity[targetCity].push({ name, pricePerPerson, pax, usd: 0, uzs: total });
       });
 
-      // Calculate totals
-      let totalUSD = 0;
-      let totalUZS = 0;
-      Object.values(expensesByCity).forEach(cityExpenses => {
-        cityExpenses.forEach(expense => {
-          totalUSD += expense.usd;
-          totalUZS += expense.uzs;
+      // 2. Arien Plaza hotel
+      if (grandTotalData && grandTotalData.hotelBreakdown) {
+        grandTotalData.hotelBreakdown.forEach(hotelData => {
+          const acc = accommodations.find(a => a.id === hotelData.accommodationId);
+          const hotelName = hotelData.hotel || acc?.hotel?.name || '';
+          if (!hotelName.toLowerCase().includes('arien plaza')) return;
+          const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
+          const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
+          if (totalUSD > 0 || totalUZS > 0) {
+            expensesByCity['Tashkent'].push({ name: hotelName, pricePerPerson: null, pax: null, usd: totalUSD, uzs: totalUZS });
+          }
         });
+      }
+
+      // 3. Folklore Show
+      showsData.forEach(show => {
+        const name = show.name || '';
+        if (!name.toLowerCase().includes('folklore show') && !name.toLowerCase().includes('nadir divan')) return;
+        const city = show.city || '';
+        const pricePerPerson = parseFloat((show.price || show.pricePerPerson || '0').toString().replace(/\s/g, '')) || 0;
+        const showPax = show.pax || pax;
+        const total = pricePerPerson * showPax;
+        let targetCity = mapCityName(city) || mapCityName(name) || 'Bukhara';
+        if (total > 0) expensesByCity[targetCity].push({ name, pricePerPerson, pax: showPax, usd: 0, uzs: total });
       });
 
-      // Filter out empty sections
-      const sections = cityOrder.filter(section =>
-        expensesByCity[section] && expensesByCity[section].length > 0
-      );
+      // 4. Railways
+      if (railways && railways.length > 0) {
+        railways.forEach(railway => {
+          const departure = railway.departure || railway.from || '';
+          const arrival = railway.arrival || railway.to || '';
+          const routeName = railway.route || `${departure}-${arrival}`.trim();
+          const name = routeName ? `Railway: ${routeName}` : 'Railway';
+          const railPax = railway.pax || 1;
+          const total = railway.price || 0;
+          const pricePerTicket = railway.pricePerTicket || (total > 0 && railPax > 0 ? total / railPax : 0);
+          if (total > 0) expensesByCity['Railway'].push({ name, pricePerPerson: pricePerTicket, pax: railPax, usd: 0, uzs: total });
+        });
+      }
 
-      // Build table data
+      // Totals
+      let totalUSD = 0, totalUZS = 0;
+      Object.values(expensesByCity).forEach(items => items.forEach(e => { totalUSD += e.usd; totalUZS += e.uzs; }));
+
+      const sections = [...cityOrder, 'Railway'].filter(s => expensesByCity[s] && expensesByCity[s].length > 0);
+
+      // Build table
       const tableData = [];
       sections.forEach(section => {
-        tableData.push([
-          { content: section, colSpan: 6, styles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold' } }
-        ]);
-
-        expensesByCity[section].forEach(expense => {
+        tableData.push([{ content: section, colSpan: 6, styles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold' } }]);
+        expensesByCity[section].forEach(e => {
           tableData.push([
             '',
-            expense.name,
-            expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '',
-            expense.pax || '',
-            expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : '',
-            expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''
+            e.name,
+            e.pricePerPerson ? Math.round(e.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            e.pax || '',
+            e.usd > 0 ? Math.round(e.usd).toLocaleString('en-US').replace(/,/g, ' ') : '',
+            e.uzs > 0 ? Math.round(e.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''
           ]);
         });
       });
-
-      // Total row
       tableData.push([
         { content: 'TOTAL', colSpan: 4, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
         { content: `$${Math.round(totalUSD).toLocaleString('en-US').replace(/,/g, ' ')}`, styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } },
         { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
       ]);
 
-      // Add title
       doc.setFontSize(16);
       doc.setFont(undefined, 'bold');
-      doc.text('Uberweisung (Bank Transfer)', 148.5, 13, { align: 'center' });
-
-      // Add booking info
+      doc.text('Uberweisung (Bank Transfer)', 105, 13, { align: 'center' });
       doc.setFontSize(11);
       doc.setFont(undefined, 'normal');
-      const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${pax}`;
-      doc.text(bookingInfo, 148.5, 20, { align: 'center' });
+      doc.text(`${booking?.bookingNumber || ''} | PAX: ${pax}`, 105, 20, { align: 'center' });
 
-      // Generate table
       autoTable(doc, {
         startY: 25,
         head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
         body: tableData,
         theme: 'grid',
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          lineColor: [200, 200, 200],
-          lineWidth: 0.1
-        },
-        headStyles: {
-          fillColor: [168, 85, 247],
-          textColor: 255,
-          fontStyle: 'bold',
-          fontSize: 10,
-          cellPadding: 2.5
-        },
+        styles: { fontSize: 9, cellPadding: 2, lineColor: [200, 200, 200], lineWidth: 0.1 },
+        headStyles: { fillColor: [168, 85, 247], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 2.5 },
         columnStyles: {
-          0: { cellWidth: 30 },
+          0: { cellWidth: 25 },
           1: { cellWidth: 80 },
-          2: { halign: 'right', cellWidth: 30 },
-          3: { halign: 'center', cellWidth: 20 },
-          4: { halign: 'right', cellWidth: 35 },
-          5: { halign: 'right', cellWidth: 35 }
+          2: { halign: 'right', cellWidth: 25 },
+          3: { halign: 'center', cellWidth: 15 },
+          4: { halign: 'right', cellWidth: 25 },
+          5: { halign: 'right', cellWidth: 25 }
         },
         margin: { top: 20, bottom: 7, left: 7, right: 7 }
       });
 
-      // Save PDF
       const fileName = `Uberweisung_${booking?.bookingNumber || 'BOOKING'}.pdf`;
       if (returnBlob) return { blob: doc.output('blob'), filename: fileName };
-      const uberweisungBlob = doc.output('blob');
-      const uberweisungUrl = URL.createObjectURL(uberweisungBlob);
-      window.open(uberweisungUrl, '_blank');
-      setTimeout(() => URL.revokeObjectURL(uberweisungUrl), 30000);
-      autoSavePdf(uberweisungBlob, fileName, 'ausgaben');
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      autoSavePdf(blob, fileName, 'ausgaben');
     } catch (error) {
       console.error('PDF export error:', error);
       if (returnBlob) return null;
@@ -5078,7 +5082,7 @@ export default function BookingDetail() {
 
   // Reload all Tour Services data when Total tab is accessed
   useEffect(() => {
-    if (activeTab === 'costs' && (costsTab === 'total' || costsTab === 'ausgaben') && !isNew && id) {
+    if (activeTab === 'costs' && (costsTab === 'total' || costsTab === 'ausgaben' || costsTab === 'rl') && !isNew && id) {
       // Reload all data sources for Total and Ausgaben tabs
       loadFlights();
       loadRailways();
@@ -13647,28 +13651,12 @@ License №T-0084-08 from 2021-04-26`;
                 }
 
                 // Skip Arien Plaza (goes to Überweisung tab)
-                const isArienPlaza = hotelName.toLowerCase().includes('arien plaza');
-                if (isArienPlaza) {
-                  return; // Skip Arien Plaza - it belongs to Überweisung tab
-                }
+                if (hotelName.toLowerCase().includes('arien plaza')) return;
 
-                // Skip Dargoh Hotel (goes to Später tab)
-                const isDargohHotel = hotelName.toLowerCase().includes('dargoh');
-                if (isDargohHotel) {
-                  return; // Skip Dargoh Hotel - it belongs to Später tab
-                }
-
-                // Skip Malika Khorazm (goes to Später tab)
-                const isMalikaKhorazm = hotelName.toLowerCase().includes('malika khorazm') || hotelName.toLowerCase().includes('malika xorazm');
-                if (isMalikaKhorazm) {
-                  return; // Skip Malika Khorazm - it belongs to Später tab
-                }
-
-                // Skip Yaxshigul's Guesthouse (goes to Später tab)
-                const isYaxshigul = hotelName.toLowerCase().includes('yaxshigul');
-                if (isYaxshigul) {
-                  return; // Skip Yaxshigul's Guesthouse - it belongs to Später tab
-                }
+                // Skip Dargoh, Malika Khorazm, Yaxshigul (go to Später tab)
+                if (hotelName.toLowerCase().includes('dargoh')) return;
+                if (hotelName.toLowerCase().includes('malika khorazm') || hotelName.toLowerCase().includes('malika xorazm')) return;
+                if (hotelName.toLowerCase().includes('yaxshigul')) return;
 
                 // Map to standard city name
                 let targetCity = mapCityName(cityName) || mapCityName(hotelName);
