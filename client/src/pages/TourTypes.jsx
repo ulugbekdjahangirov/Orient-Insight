@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { tourTypesApi, citiesApi, hotelsApi } from '../services/api';
 import toast from 'react-hot-toast';
 import { Plus, Edit, Trash2, MapPin, X, Save, Calendar, FileText } from 'lucide-react';
+import { useYear } from '../context/YearContext';
 
 export default function TourTypes() {
+  const { selectedYear } = useYear();
   const [tourTypes, setTourTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -114,7 +116,7 @@ export default function TourTypes() {
     setLoadingItinerary(true);
     try {
       const [itineraryRes, citiesRes, hotelsRes] = await Promise.all([
-        tourTypesApi.getItinerary(type.id),
+        tourTypesApi.getItinerary(type.id, selectedYear),
         citiesApi.getAll(),
         hotelsApi.getAll()
       ]);
@@ -237,12 +239,12 @@ export default function TourTypes() {
         await tourTypesApi.updateItineraryItem(selectedTourType.id, editingDay.id, dayFormData);
         toast.success('Program day updated');
       } else {
-        await tourTypesApi.createItineraryItem(selectedTourType.id, dayFormData);
+        await tourTypesApi.createItineraryItem(selectedTourType.id, { ...dayFormData, year: selectedYear });
         toast.success('Program day added');
       }
 
       // Reload itinerary
-      const response = await tourTypesApi.getItinerary(selectedTourType.id);
+      const response = await tourTypesApi.getItinerary(selectedTourType.id, selectedYear);
       setItinerary(response.data.itinerary || []);
 
       // Close form after successful save
@@ -260,7 +262,7 @@ export default function TourTypes() {
       toast.success('Program day deleted');
 
       // Reload itinerary
-      const response = await tourTypesApi.getItinerary(selectedTourType.id);
+      const response = await tourTypesApi.getItinerary(selectedTourType.id, selectedYear);
       setItinerary(response.data.itinerary || []);
     } catch (error) {
       toast.error('Error deleting');

@@ -177,14 +177,35 @@ router.delete('/:bookingId/routes/:id', authenticate, async (req, res) => {
 router.get('/templates/:tourTypeCode', authenticate, async (req, res) => {
   try {
     const { tourTypeCode } = req.params;
+    const requestedYear = req.query.year ? parseInt(req.query.year) : 0;
+    const code = tourTypeCode.toUpperCase();
+    const orderBy = [{ sortOrder: 'asc' }, { dayNumber: 'asc' }];
 
-    const templates = await prisma.routeTemplate.findMany({
-      where: { tourTypeCode: tourTypeCode.toUpperCase() },
-      orderBy: [
-        { sortOrder: 'asc' },
-        { dayNumber: 'asc' }
-      ]
-    });
+    let templates = [];
+
+    if (requestedYear > 0) {
+      // Try year-specific first
+      templates = await prisma.routeTemplate.findMany({
+        where: { tourTypeCode: code, year: requestedYear },
+        orderBy
+      });
+      // Fallback: try previous years down to 0
+      if (templates.length === 0) {
+        for (let y = requestedYear - 1; y >= 0; y--) {
+          templates = await prisma.routeTemplate.findMany({
+            where: { tourTypeCode: code, year: y },
+            orderBy
+          });
+          if (templates.length > 0) break;
+        }
+      }
+    } else {
+      // No year specified — return global (year=0)
+      templates = await prisma.routeTemplate.findMany({
+        where: { tourTypeCode: code, year: 0 },
+        orderBy
+      });
+    }
 
     res.json({ templates });
   } catch (error) {
@@ -197,16 +218,16 @@ router.get('/templates/:tourTypeCode', authenticate, async (req, res) => {
 router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
   try {
     const { tourTypeCode } = req.params;
-    const { routes } = req.body;
-
+    const { routes, year } = req.body;
+    const saveYear = year ? parseInt(year) : 0;
 
     if (!Array.isArray(routes)) {
       return res.status(400).json({ error: 'routes должен быть массивом' });
     }
 
-    // Delete existing templates for this tour type
+    // Delete existing templates for this tour type + year
     await prisma.routeTemplate.deleteMany({
-      where: { tourTypeCode: tourTypeCode.toUpperCase() }
+      where: { tourTypeCode: tourTypeCode.toUpperCase(), year: saveYear }
     });
 
     // Create new templates
@@ -215,6 +236,7 @@ router.put('/templates/:tourTypeCode', authenticate, async (req, res) => {
         prisma.routeTemplate.create({
           data: {
             tourTypeCode: tourTypeCode.toUpperCase(),
+            year: saveYear,
             dayNumber: route.dayNumber || index + 1,
             dayOffset: route.dayOffset || index,
             city: route.city || route.shahar || null,

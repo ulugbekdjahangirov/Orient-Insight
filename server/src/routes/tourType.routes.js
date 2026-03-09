@@ -133,11 +133,31 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 router.get('/:id/itinerary', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
+    const requestedYear = req.query.year ? parseInt(req.query.year) : 0;
+    const orderBy = [{ dayNumber: 'asc' }, { sortOrder: 'asc' }];
+    const tourTypeId = parseInt(id);
 
-    const itinerary = await prisma.tourItinerary.findMany({
-      where: { tourTypeId: parseInt(id) },
-      orderBy: [{ dayNumber: 'asc' }, { sortOrder: 'asc' }]
-    });
+    let itinerary = [];
+
+    if (requestedYear > 0) {
+      // Try year-specific first
+      itinerary = await prisma.tourItinerary.findMany({
+        where: { tourTypeId, year: requestedYear }, orderBy
+      });
+      // Fallback to previous years down to 0
+      if (itinerary.length === 0) {
+        for (let y = requestedYear - 1; y >= 0; y--) {
+          itinerary = await prisma.tourItinerary.findMany({
+            where: { tourTypeId, year: y }, orderBy
+          });
+          if (itinerary.length > 0) break;
+        }
+      }
+    } else {
+      itinerary = await prisma.tourItinerary.findMany({
+        where: { tourTypeId, year: 0 }, orderBy
+      });
+    }
 
     res.json({ itinerary });
   } catch (error) {
@@ -159,9 +179,11 @@ router.post('/:id/itinerary', authenticate, requireAdmin, async (req, res) => {
     // Note: Day number duplicates are allowed for split groups (e.g., Uzbekistan vs Turkmenistan)
     // Use title to distinguish (e.g., "Day 13: Khiva-Tashkent" vs "Day 13: Khiva-Shavat (Turkmenistan)")
 
+    const { year } = req.body;
     const itineraryItem = await prisma.tourItinerary.create({
       data: {
         tourTypeId: parseInt(id),
+        year: year ? parseInt(year) : 0,
         dayNumber: parseInt(dayNumber),
         title,
         description,

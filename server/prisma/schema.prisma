@@ -41,6 +41,7 @@ model TourItinerary {
   id          Int       @id @default(autoincrement())
   tourTypeId  Int
   tourType    TourType  @relation(fields: [tourTypeId], references: [id], onDelete: Cascade)
+  year        Int       @default(0)    // 0 = global (all years), specific year = year-specific
 
   dayNumber   Int                      // Номер дня (1, 2, 3...)
   title       String                   // Заголовок дня (например: "День 1: Прибытие в Ташкент")
@@ -798,6 +799,7 @@ model Route {
 model RouteTemplate {
   id              Int       @id @default(autoincrement())
   tourTypeCode    String                   // ER, CO, KAS, ZA
+  year            Int       @default(0)    // 0 = global (all years), specific year = year-specific
 
   // Основные данные
   dayNumber       Int       @default(1)    // Номер дня
@@ -815,6 +817,7 @@ model RouteTemplate {
   updatedAt       DateTime  @updatedAt
 
   @@index([tourTypeCode])
+  @@index([tourTypeCode, year])
 }
 
 // Accommodation templates for tour types (default hotels for ER, CO, etc.)

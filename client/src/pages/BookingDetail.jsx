@@ -7162,8 +7162,9 @@ export default function BookingDetail() {
         sortOrder: index
       }));
 
-      const response = await routesApi.saveTemplate(tourTypeCode, routesToSave);
-      toast.success(`✅ Шаблон ${tourTypeCode} сохранён в базу данных`);
+      const bookingYear = formData.arrivalDate ? new Date(formData.arrivalDate).getFullYear() : (formData.departureDate ? new Date(formData.departureDate).getFullYear() : new Date().getFullYear());
+      const response = await routesApi.saveTemplate(tourTypeCode, routesToSave, bookingYear);
+      toast.success(`✅ Шаблон ${tourTypeCode} ${bookingYear} сохранён в базу данных`);
     } catch (error) {
       console.error('❌ Error saving route template:', error);
       console.error('Error details:', error.response?.data);
@@ -7190,7 +7191,8 @@ export default function BookingDetail() {
       // Allow template loading for all tour types (ER, CO, KAS, ZA)
       // Each tour type has its own template in the database
 
-      const response = await routesApi.getTemplate(tourTypeCode);
+      const bookingYear = formData.arrivalDate ? new Date(formData.arrivalDate).getFullYear() : (formData.departureDate ? new Date(formData.departureDate).getFullYear() : new Date().getFullYear());
+      const response = await routesApi.getTemplate(tourTypeCode, bookingYear);
       const templates = response.data.templates;
 
 
@@ -7444,7 +7446,8 @@ export default function BookingDetail() {
       // Load RouteTemplate for ER to get correct sayohatDasturi for each route
       let templateItineraryMap = {};
       try {
-        const templateRes = await routesApi.getTemplate('ER');
+        const erYear = formData.arrivalDate ? new Date(formData.arrivalDate).getFullYear() : new Date().getFullYear();
+        const templateRes = await routesApi.getTemplate('ER', erYear);
         const templateRoutes = templateRes.data.templates || templateRes.data.routes || [];
         const nameCounts = {};
         templateRoutes.forEach(t => {

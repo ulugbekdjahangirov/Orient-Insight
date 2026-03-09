@@ -132,8 +132,8 @@ export const routesApi = {
   delete: (bookingId, id) => api.delete(`/bookings/${bookingId}/routes/${id}`),
   bulkUpdate: (bookingId, routes) => api.put(`/bookings/${bookingId}/routes/bulk`, { routes }),
   // Route templates
-  getTemplate: (tourTypeCode) => api.get(`/routes/templates/${tourTypeCode}`),
-  saveTemplate: (tourTypeCode, routes) => api.put(`/routes/templates/${tourTypeCode}`, { routes })
+  getTemplate: (tourTypeCode, year) => api.get(`/routes/templates/${tourTypeCode}`, { params: year ? { year } : {} }),
+  saveTemplate: (tourTypeCode, routes, year) => api.put(`/routes/templates/${tourTypeCode}`, { routes, year: year || 0 })
 };
 
 // API for accommodations (hotel bookings)
@@ -188,7 +188,7 @@ export const tourTypesApi = {
   update: (id, data) => api.put(`/tour-types/${id}`, data),
   delete: (id) => api.delete(`/tour-types/${id}`),
   // Itinerary
-  getItinerary: (id) => api.get(`/tour-types/${id}/itinerary`),
+  getItinerary: (id, year) => api.get(`/tour-types/${id}/itinerary`, { params: year ? { year } : {} }),
   createItineraryItem: (id, data) => api.post(`/tour-types/${id}/itinerary`, data),
   updateItineraryItem: (id, itemId, data) => api.put(`/tour-types/${id}/itinerary/${itemId}`, data),
   deleteItineraryItem: (id, itemId) => api.delete(`/tour-types/${id}/itinerary/${itemId}`)
