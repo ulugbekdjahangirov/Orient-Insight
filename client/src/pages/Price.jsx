@@ -125,7 +125,7 @@ export default function Price() {
     });
     setSearchParams(newParams);
   };
-  const [copyingYear, setCopyingYear] = useState(false);
+
   const [prices, setPrices] = useState([]);
   const [hotelPrices, setHotelPrices] = useState(defaultHotelPrices);
   const [transportRoutes, setTransportRoutes] = useState(defaultTransportRoutes);
@@ -416,7 +416,20 @@ export default function Price() {
         return;
       }
 
-      // 3. If both empty, use defaults
+      // 3. No data for current year - try previous year as fallback
+      try {
+        const prevRes = await pricesApi.get(tourType.toUpperCase(), category, paxTier, year - 1);
+        const hasPrevItems = prevRes.data && prevRes.data.items && (
+          (Array.isArray(prevRes.data.items) && prevRes.data.items.length > 0) ||
+          (typeof prevRes.data.items === 'object' && !Array.isArray(prevRes.data.items) && Object.keys(prevRes.data.items).length > 0)
+        );
+        if (hasPrevItems) {
+          setter(prevRes.data.items);
+          return;
+        }
+      } catch (_) {}
+
+      // 4. No data anywhere - use defaults
       setter(defaultValue);
     } catch (error) {
       console.error(`❌ Database load error (${yearKey}):`, error);
@@ -441,21 +454,6 @@ export default function Price() {
     }
   };
 
-  // Copy all Price configs from previous year to current year
-  const handleCopyFromYear = async () => {
-    const fromYear = year - 1;
-    if (!window.confirm(`${fromYear} yildan ${year} yilga barcha Price ma'lumotlarini nusxalash. Davom etasizmi?`)) return;
-    setCopyingYear(true);
-    try {
-      const res = await pricesApi.copyFromYear(fromYear, year);
-      toast.success(`Nusxalandi: ${res.data.copied} ta Price yozuvi`);
-      window.location.reload();
-    } catch (err) {
-      toast.error('Nusxalashda xatolik: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setCopyingYear(false);
-    }
-  };
 
   const copyTransportFrom4PaxToOthers = () => {
     if (confirm('4 PAX dagi narxlarni 5 PAX, 6-7 PAX, 8-9 PAX larga nusxalaysizmi?')) {
@@ -2324,20 +2322,11 @@ export default function Price() {
             <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg md:text-3xl font-black text-gray-900 leading-tight">Price Management</h1>
+            <h1 className="text-lg md:text-3xl font-black text-gray-900 leading-tight">Price Management <span className="text-base md:text-2xl text-gray-400 font-bold">{year}</span></h1>
             <p className="text-gray-600 text-xs md:text-sm hidden md:block">Управление ценами для туров</p>
           </div>
         </div>
         <div className="flex gap-1.5 md:gap-3 shrink-0">
-          <button
-            onClick={handleCopyFromYear}
-            disabled={copyingYear}
-            title={`${year - 1} yildan ${year} yilga nusxalash`}
-            className="flex items-center gap-1.5 px-2 md:px-4 py-2 md:py-3 bg-white border-2 border-gray-200 text-gray-600 rounded-xl hover:border-green-400 hover:text-green-600 transition-all duration-200 font-semibold text-xs md:text-sm"
-          >
-            <Copy className="w-4 h-4 shrink-0" />
-            <span className="hidden md:inline">{copyingYear ? 'Nusxalanmoqda...' : `${year - 1} → ${year}`}</span>
-          </button>
           <button
             onClick={handleSave}
             className="flex items-center gap-1.5 px-3 md:px-6 py-2 md:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 shadow-lg font-semibold text-xs md:text-base"
