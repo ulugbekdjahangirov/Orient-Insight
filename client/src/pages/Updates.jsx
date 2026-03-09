@@ -758,7 +758,7 @@ export default function Updates() {
             </div>
             <div className="min-w-0">
               <h1 className="text-xl md:text-4xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1 md:mb-2">
-                Updates & Tours
+                Updates & Tours <span className="text-xl md:text-3xl">{selectedYear}</span>
               </h1>
               <p className="text-gray-600 font-semibold flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 md:px-3 md:py-1 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full text-sm">

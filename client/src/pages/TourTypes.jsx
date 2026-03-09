@@ -303,7 +303,7 @@ export default function TourTypes() {
             </div>
             <div>
               <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600 bg-clip-text text-transparent mb-1 md:mb-2">
-                Tour Types
+                Tour Types <span className="text-2xl md:text-3xl">{selectedYear}</span>
               </h1>
               <p className="text-gray-600 font-semibold text-xs md:text-base">Manage Tour Categories & Itineraries</p>
             </div>

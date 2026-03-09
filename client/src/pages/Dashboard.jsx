@@ -166,7 +166,7 @@ export default function Dashboard() {
           </div>
           <div>
             <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-1 md:mb-2">
-              Dashboard
+              Dashboard <span className="text-2xl md:text-3xl">{selectedYear}</span>
             </h1>
             <p className="text-sm md:text-base text-gray-600 font-semibold">Activity Overview & Statistics</p>
           </div>

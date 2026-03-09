@@ -82,39 +82,6 @@ export default function Bookings() {
   const [tourTypes, setTourTypes] = useState([]);
   const [guides, setGuides] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [copyingYear, setCopyingYear] = useState(false);
-  const [copyFromYear, setCopyFromYear] = useState(null);
-  const [deletingYear, setDeletingYear] = useState(false);
-
-  const handleDeleteYear = async () => {
-    if (!window.confirm(`${selectedYear} yildagi BARCHA bookinglarni o'chirish. Bu amalni qaytarib bo'lmaydi! Davom etasizmi?`)) return;
-    if (!window.confirm(`Ishonchingiz komilmi? ${selectedYear} yilgi barcha ma'lumotlar o'chadi!`)) return;
-    setDeletingYear(true);
-    try {
-      const res = await bookingsApi.deleteByYear(selectedYear);
-      toast.success(`O'chirildi: ${res.data.deleted} ta booking`);
-      loadBookings();
-    } catch (err) {
-      toast.error('O\'chirishda xatolik: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setDeletingYear(false);
-    }
-  };
-
-  const handleCopyFromYear = async () => {
-    const fromYear = copyFromYear || (selectedYear - 1);
-    if (!window.confirm(`${fromYear} yildan ${selectedYear} yilga barcha bookinglarni nusxalash. Sanalar ${selectedYear} yilga o'zgartiriladi. Davom etasizmi?`)) return;
-    setCopyingYear(true);
-    try {
-      const res = await bookingsApi.copyFromYear(fromYear, selectedYear);
-      toast.success(`Nusxalandi: ${res.data.copied} ta booking (${res.data.skipped} ta mavjud edi)`);
-      loadBookings();
-    } catch (err) {
-      toast.error('Nusxalashda xatolik: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setCopyingYear(false);
-    }
-  };
 
   // Filters
   const [filters, setFilters] = useState({
@@ -161,6 +128,17 @@ export default function Bookings() {
 
       const response = await bookingsApi.getAll(backendParams);
       let bookingsData = response.data.bookings;
+
+      // Auto-copy from previous year if no bookings exist for this year
+      if (bookingsData.length === 0 && !status && !backendParams.search && !backendParams.tourTypeId && !backendParams.guideId) {
+        const prevYear = selectedYear - 1;
+        const prevRes = await bookingsApi.getAll({ ...backendParams, year: prevYear, limit: 1 });
+        if (prevRes.data.bookings.length > 0) {
+          await bookingsApi.copyFromYear(prevYear, selectedYear);
+          const refetch = await bookingsApi.getAll(backendParams);
+          bookingsData = refetch.data.bookings;
+        }
+      }
 
       // Filter by calculated status on frontend
       if (status) {
@@ -241,7 +219,7 @@ export default function Bookings() {
             </div>
             <div>
               <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-primary-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Bookings Management
+                Bookings Management <span className="text-2xl md:text-3xl">{selectedYear}</span>
               </h1>
               <p className="text-sm md:text-base text-gray-600 font-semibold mt-1 md:mt-2 flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-2 md:px-3 py-1 bg-gradient-to-r from-primary-100 to-purple-100 rounded-full text-xs md:text-sm">
@@ -253,37 +231,6 @@ export default function Bookings() {
             </div>
           </div>
 
-          <button
-            onClick={handleDeleteYear}
-            disabled={deletingYear}
-            className="inline-flex items-center justify-center gap-2 px-4 py-3 md:py-4 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:opacity-60 text-white rounded-xl md:rounded-2xl shadow-lg font-bold text-sm md:text-base transition-all duration-300"
-            title={`${selectedYear} yildagi barcha bookinglarni o'chirish`}
-          >
-            <Trash className="w-5 h-5" />
-            <span className="hidden sm:inline">{deletingYear ? 'O\'chirilmoqda...' : `${selectedYear} ni o'chir`}</span>
-          </button>
-          <div className="inline-flex rounded-xl md:rounded-2xl overflow-hidden shadow-lg">
-            <select
-              value={copyFromYear || (selectedYear - 1)}
-              onChange={e => setCopyFromYear(parseInt(e.target.value))}
-              disabled={copyingYear}
-              className="px-2 py-3 md:py-4 bg-gray-600 text-white text-sm font-bold border-r border-gray-400 focus:outline-none disabled:opacity-60"
-            >
-              {[selectedYear - 1, selectedYear + 1, selectedYear - 2, selectedYear + 2]
-                .filter(y => y !== selectedYear)
-                .map(y => <option key={y} value={y}>{y}</option>)
-              }
-            </select>
-            <button
-              onClick={handleCopyFromYear}
-              disabled={copyingYear}
-              className="inline-flex items-center justify-center gap-2 px-4 py-3 md:py-4 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 disabled:opacity-60 text-white font-bold text-sm md:text-base transition-all duration-300"
-              title={`${copyFromYear || selectedYear - 1} yildan ${selectedYear} yilga nusxalash`}
-            >
-              <Copy className="w-5 h-5" />
-              <span className="hidden sm:inline">{copyingYear ? 'Nusxalanmoqda...' : `→ ${selectedYear}`}</span>
-            </button>
-          </div>
           <Link
             to="/bookings/new"
             className="inline-flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-4 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 hover:from-primary-600 hover:via-purple-600 hover:to-pink-600 text-white rounded-xl md:rounded-2xl shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base"

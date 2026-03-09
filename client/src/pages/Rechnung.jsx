@@ -279,7 +279,7 @@ export default function Rechnung() {
             </div>
             <div>
               <h1 className={`text-xl sm:text-4xl font-bold bg-gradient-to-r ${colorClasses[activeModuleData?.color || 'amber'].text} bg-clip-text text-transparent`}>
-                Invoice - {activeModuleData?.name}
+                Invoice - {activeModuleData?.name} <span className="text-xl sm:text-3xl">{selectedYear}</span>
               </h1>
               <p className="text-gray-500 text-xs sm:text-base mt-0.5 sm:mt-1">
                 Invoice Management and Overview

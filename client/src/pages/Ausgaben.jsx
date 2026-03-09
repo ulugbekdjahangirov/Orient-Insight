@@ -1155,7 +1155,7 @@ export default function Ausgaben() {
           {/* Title + Quick Totals */}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4 mb-4 md:mb-6">
             <div>
-              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none" style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Ausgaben</h1>
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-none" style={{ textShadow: '0 0 40px rgba(255,255,255,0.25)' }}>Ausgaben <span className="text-2xl md:text-4xl">{selectedYear}</span></h1>
               <p className="text-green-200 text-xs md:text-sm mt-1.5 md:mt-2 opacity-75">Barcha xarajatlar va to'lovlar tahlili</p>
             </div>
             {!loading && (
