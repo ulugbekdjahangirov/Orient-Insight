@@ -1500,7 +1500,10 @@ export default function BookingDetail() {
   useEffect(() => {
     if (formData.departureDate) {
       const departureDate = new Date(formData.departureDate);
-      const tourTypeCode = booking?.tourType?.code;
+      // For existing bookings: use booking.tourType.code
+      // For new bookings (booking=null): look up from tourTypes list via formData.tourTypeId
+      const tourTypeCode = booking?.tourType?.code ||
+        tourTypes.find(t => t.id === parseInt(formData.tourTypeId))?.code;
       const daysToAdd = tourTypeCode === 'KAS' ? 14 : (tourTypeCode === 'ZA' ? 4 : 1);
       const expectedArrivalDate = addDays(departureDate, daysToAdd);
       const expectedArrivalDateStr = format(expectedArrivalDate, 'yyyy-MM-dd');
@@ -1521,7 +1524,7 @@ export default function BookingDetail() {
         prevDepartureDateRef.current = formData.departureDate;
       }
     }
-  }, [formData.departureDate, booking?.tourType?.code]);
+  }, [formData.departureDate, formData.tourTypeId, booking?.tourType?.code]);
 
   // Auto-calculate PAX from tourists (Final List)
   // Count tourists by accommodation (Uzbekistan vs Turkmenistan)
@@ -18067,8 +18070,8 @@ License №T-0084-08 from 2021-04-26`;
               value={formData.notes}
               onChange={handleChange}
               disabled={!editing}
-              rows={4}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 disabled:bg-gray-50 transition-all duration-200 font-medium"
+              rows={formData.notes && formData.notes.split('\n').length > 4 ? Math.min(formData.notes.split('\n').length + 2, 20) : 4}
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 disabled:bg-gray-50 transition-all duration-200 font-medium whitespace-pre-wrap"
               placeholder="Additional notes..."
             />
           </div>

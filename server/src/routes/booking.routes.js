@@ -206,6 +206,113 @@ router.get('/accommodation-room-types', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/bookings/wi-contacts — must be BEFORE /:id to avoid route conflict
+// DELETE /api/bookings/by-year/:year — Delete all bookings for a given year
+router.delete('/by-year/:year', authenticate, async (req, res) => {
+  try {
+    const year = parseInt(req.params.year);
+    if (!year) return res.status(400).json({ error: 'year required' });
+
+    const bookings = await prisma.booking.findMany({
+      where: { bookingYear: year },
+      select: { id: true }
+    });
+    const ids = bookings.map(b => b.id);
+
+    if (ids.length === 0) return res.json({ deleted: 0 });
+
+    // Delete related records first
+    await prisma.accommodationRoomingList.deleteMany({ where: { tourist: { bookingId: { in: ids } } } });
+    await prisma.touristRoomAssignment.deleteMany({ where: { tourist: { bookingId: { in: ids } } } });
+    await prisma.tourist.deleteMany({ where: { bookingId: { in: ids } } });
+    await prisma.route.deleteMany({ where: { bookingId: { in: ids } } });
+    await prisma.accommodation.deleteMany({ where: { bookingId: { in: ids } } });
+    await prisma.flight.deleteMany({ where: { bookingId: { in: ids } } });
+    await prisma.railway.deleteMany({ where: { bookingId: { in: ids } } });
+    await prisma.tourService.deleteMany({ where: { bookingId: { in: ids } } });
+    await prisma.booking.deleteMany({ where: { id: { in: ids } } });
+
+    res.json({ deleted: ids.length });
+  } catch (err) {
+    console.error('Error deleting bookings by year:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/bookings/copy — Copy all bookings from one year to another (shift dates by 1 year)
+router.post('/copy', authenticate, async (req, res) => {
+  try {
+    const { fromYear, toYear } = req.body;
+    if (!fromYear || !toYear) return res.status(400).json({ error: 'fromYear and toYear required' });
+
+    const sourceBookings = await prisma.booking.findMany({
+      where: { bookingYear: parseInt(fromYear) },
+      include: { tourType: true, guide: true }
+    });
+
+    let copied = 0;
+    let skipped = 0;
+
+    for (const b of sourceBookings) {
+      // Skip if booking with same number already exists in target year
+      const exists = await prisma.booking.findFirst({
+        where: { bookingNumber: b.bookingNumber, bookingYear: parseInt(toYear) }
+      });
+      if (exists) { skipped++; continue; }
+
+      // Shift dates by (toYear - fromYear) years
+      const yearDiff = parseInt(toYear) - parseInt(fromYear);
+      const shiftDate = (d) => {
+        if (!d) return null;
+        const nd = new Date(d);
+        nd.setFullYear(nd.getFullYear() + yearDiff);
+        return nd;
+      };
+
+      await prisma.booking.create({
+        data: {
+          bookingNumber: b.bookingNumber,
+          bookingYear: parseInt(toYear),
+          tourTypeId: b.tourTypeId,
+          guideId: null,
+          status: 'PENDING',
+          departureDate: shiftDate(b.departureDate),
+          arrivalDate: shiftDate(b.arrivalDate),
+          endDate: shiftDate(b.endDate),
+          pax: 0,
+          paxUzbekistan: 0,
+          paxTurkmenistan: 0,
+          roomsDbl: 0,
+          roomsTwn: 0,
+          roomsSngl: 0,
+          country: b.country || 'Germany',
+        }
+      });
+      copied++;
+    }
+
+    res.json({ copied, skipped });
+  } catch (err) {
+    console.error('Error copying bookings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const WI_CONTACTS_KEY_EARLY = 'WI_EMAIL_CONTACTS';
+const DEFAULT_WI_CONTACTS_EARLY = [
+  { name: 'Celinda', email: 'team.produkt.celinda@world-insight.de' },
+  { name: 'World Insight', email: 'info@world-insight.de' },
+];
+router.get('/wi-contacts', authenticate, async (req, res) => {
+  try {
+    const s = await prisma.systemSetting.findUnique({ where: { key: WI_CONTACTS_KEY_EARLY } });
+    const contacts = s ? JSON.parse(s.value) : DEFAULT_WI_CONTACTS_EARLY;
+    res.json(contacts);
+  } catch (e) {
+    res.json(DEFAULT_WI_CONTACTS_EARLY);
+  }
+});
+
 // GET /api/bookings/:id - Получить бронирование по ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
@@ -1670,25 +1777,30 @@ router.get('/:id/accommodations/:accId/rooming-list', authenticate, async (req, 
         checkInDate = entry.checkInDate;
       } else if (isFirstAccommodation) {
         // Priority 2: For FIRST hotel, use tourist's arrival date
-        //
-        // For ER tours: Tour start date in PDF = departure from Germany
-        //               Arrival in Uzbekistan = tour start + 1 day
-        //
-        // For ZA tours: Tourist checkInDate already represents ARRIVAL in Uzbekistan
-        //               (calculated as booking.departureDate + 4 days during PDF import)
-        //               Do NOT add another +1 day!
-        //
-        // CRITICAL: Use UTC date manipulation to avoid timezone issues
-        const tourStartDate = tourist.checkInDate ? new Date(tourist.checkInDate) : new Date(booking.departureDate);
-        const year = tourStartDate.getUTCFullYear();
-        const month = tourStartDate.getUTCMonth();
-        const day = tourStartDate.getUTCDate();
+        // NEW format (tourStartDate populated): checkInDate = actual arrival, use as-is
+        // OLD format (no tourStartDate): checkInDate = booking.departureDate → add +1 for ER/CO
+        // Extra night tourists (old format): detected via "extra night" in remarks → no +1
+        const hasExtraNight = (tourist.remarks || '').toLowerCase().includes('extra night');
+        // "Mixed state": tourStartDate set but equals checkInDate → import only set tourStartDate, not checkInDate
+        const tStartMs = tourist.tourStartDate ? new Date(tourist.tourStartDate).setUTCHours(0,0,0,0) : null;
+        const tCheckMs = tourist.checkInDate ? new Date(tourist.checkInDate).setUTCHours(0,0,0,0) : null;
+        const isMixedState = !hasExtraNight && tStartMs && tCheckMs && tStartMs === tCheckMs;
+        const hasNewFormat = !!tourist.tourStartDate && !isMixedState;
 
-        // For ZA/KAS tours: tourist.checkInDate is already arrival date (start from Kazakhstan/Kyrgyzstan), don't add +1
-        // For CO/ER tours: fly from Germany, add +1 day to get arrival date in Uzbekistan
-        const daysToAdd = (tourTypeCode === 'ZA' || tourTypeCode === 'KAS') ? 0 : 1;
-        const arrivalDate = new Date(Date.UTC(year, month, day + daysToAdd));
-        checkInDate = arrivalDate.toISOString();
+        if (hasNewFormat) {
+          // New import format: checkInDate is already the actual arrival date
+          const d = tourist.checkInDate ? new Date(tourist.checkInDate) : new Date(booking.departureDate);
+          checkInDate = d.toISOString();
+        } else {
+          // Old format: checkInDate = booking.departureDate, need to add offset for ER/CO
+          const baseDate = tourist.checkInDate ? new Date(tourist.checkInDate) : new Date(booking.departureDate);
+          const year = baseDate.getUTCFullYear();
+          const month = baseDate.getUTCMonth();
+          const day = baseDate.getUTCDate();
+          const daysToAdd = hasExtraNight ? 0 : (tourTypeCode === 'ZA' || tourTypeCode === 'KAS') ? 0 : 1;
+          const arrivalDate = new Date(Date.UTC(year, month, day + daysToAdd));
+          checkInDate = arrivalDate.toISOString();
+        }
       } else {
         // Priority 3: Use accommodation default dates
         checkInDate = accommodation.checkInDate;

@@ -71,6 +71,9 @@ export const bookingsApi = {
   getFlights: (bookingId) => api.get(`/bookings/${bookingId}/flights`),
   // Debug count bookings by type
   debugCountByType: (year) => api.get('/bookings/debug/count-by-type', { params: year ? { year } : {} }),
+  // Copy all bookings from one year to another
+  copyFromYear: (fromYear, toYear) => api.post('/bookings/copy', { fromYear, toYear }),
+  deleteByYear: (year) => api.delete(`/bookings/by-year/${year}`),
 };
 
 // API for tourists (also used by Rooming List module)
@@ -105,6 +108,14 @@ export const touristsApi = {
     const formData = new FormData();
     formData.append('file', file);
     return api.post(`/bookings/${bookingId}/rooming-list/import-pdf`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  // Rooming List Word Import (.docx)
+  importRoomingListWord: (bookingId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/bookings/${bookingId}/rooming-list/import-word`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   }

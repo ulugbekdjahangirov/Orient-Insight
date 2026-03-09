@@ -25,6 +25,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const [editingTourist, setEditingTourist] = useState(null);
   const [form, setForm] = useState({
     checkInDate: '',
+    tourStartDate: '',
     checkOutDate: '',
     roomPreference: '',
     accommodation: '',
@@ -347,6 +348,43 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     }
   };
 
+  const handleWordImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fname = file.name.toLowerCase();
+    if (!fname.endsWith('.docx') && !fname.endsWith('.doc')) {
+      toast.error('Please select a Word (.docx) file');
+      e.target.value = '';
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const response = await touristsApi.importRoomingListWord(bookingId, file);
+
+      if (response.data.success) {
+        const { summary } = response.data;
+        const parts = [];
+        if (summary.touristsUpdated > 0) parts.push(`${summary.touristsUpdated} updated`);
+        if (summary.touristsCreated > 0) parts.push(`${summary.touristsCreated} created`);
+        if (summary.touristsDeleted > 0) parts.push(`${summary.touristsDeleted} deleted`);
+        const msg = `${parts.join(', ')} (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`;
+        toast.success(msg);
+        await loadData();
+        onUpdate?.();
+      } else {
+        toast.error(response.data.error || 'Import failed');
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Error importing Word file';
+      toast.error(errorMsg);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
+
   // ============================================
   // TOURIST HANDLERS
   // ============================================
@@ -363,8 +401,46 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
       return date.toISOString().split('T')[0];
     };
 
+    const hasExtraNight = tourist.remarks?.toLowerCase().includes('extra night');
+    const bookingYear = booking?.departureDate ? new Date(booking.departureDate).getFullYear() : new Date().getFullYear();
+
+    // Parse remarks for "Flight: DD.MM" (departure from home country)
+    let remarksFlightDate = null;
+    const flightMatch = tourist.remarks?.match(/Flight[:\s]*(\d{2})\.(\d{2})/i);
+    if (flightMatch) {
+      remarksFlightDate = `${bookingYear}-${flightMatch[2]}-${flightMatch[1]}`;
+    }
+
+    // Parse remarks for "Arrival: DD.MM" (arrival in UZ)
+    let remarksArrivalDate = null;
+    const arrivalMatch = tourist.remarks?.match(/Arrival[:\s]*(\d{2})\.(\d{2})/i);
+    if (arrivalMatch) {
+      remarksArrivalDate = `${bookingYear}-${arrivalMatch[2]}-${arrivalMatch[1]}`;
+    }
+
+    // Start Tour Date: saved tourStartDate → parsed from remarks Flight → booking.departureDate
+    const tourStartVal = formatDateForInput(tourist.tourStartDate)
+      || remarksFlightDate
+      || formatDateForInput(booking?.departureDate);
+
+    // Arrival: saved checkInDate (new format) → parsed from remarks Arrival → computed from departure
+    let checkInVal = formatDateForInput(tourist.checkInDate);
+    // "Mixed state": tourStartDate is set but equals checkInDate → treat as old format (need +1)
+    const isMixedState = !hasExtraNight && tourist.tourStartDate && tourist.checkInDate &&
+      formatDateForInput(tourist.tourStartDate) === formatDateForInput(tourist.checkInDate);
+    if (remarksArrivalDate && !tourist.tourStartDate) {
+      // Old format tourist with Arrival in remarks — use that
+      checkInVal = remarksArrivalDate;
+    } else if (isMixedState || (!hasExtraNight && !tourist.tourStartDate && booking?.departureDate && checkInVal === formatDateForInput(booking.departureDate))) {
+      // Old format OR mixed state: compute departure + offset to get actual arrival
+      const d = new Date(booking.departureDate);
+      const tc = booking?.tourType?.code;
+      d.setDate(d.getDate() + (tc === 'KAS' ? 14 : tc === 'ZA' ? 4 : 1));
+      checkInVal = d.toISOString().split('T')[0];
+    }
     setForm({
-      checkInDate: formatDateForInput(tourist.checkInDate),
+      checkInDate: checkInVal,
+      tourStartDate: tourStartVal,
       checkOutDate: formatDateForInput(tourist.checkOutDate),
       roomPreference: tourist.roomPreference || '',
       accommodation: tourist.accommodation || 'Uzbekistan',
@@ -377,6 +453,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     try {
       const updateData = {
         checkInDate: form.checkInDate || null,
+        tourStartDate: form.tourStartDate || null,
         checkOutDate: form.checkOutDate || null,
         roomPreference: form.roomPreference || null,
         accommodation: form.accommodation || null,
@@ -1578,6 +1655,10 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 <Upload className="w-4 h-4" />
                 <input type="file" accept=".pdf" onChange={handlePdfImport} className="hidden" disabled={importing} />
               </label>
+              <label className="w-9 h-9 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 cursor-pointer transition-all" title="Import Word">
+                <FileText className="w-4 h-4" />
+                <input type="file" accept=".docx,.doc" onChange={handleWordImport} className="hidden" disabled={importing} />
+              </label>
             </div>
           </div>
 
@@ -1720,6 +1801,10 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
             <label className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl cursor-pointer text-base font-semibold shadow-lg shadow-primary-200 transition-all">
               <Upload className="w-5 h-5" />{importing ? 'Importing...' : 'Import PDF'}
               <input type="file" accept=".pdf" onChange={handlePdfImport} className="hidden" disabled={importing} />
+            </label>
+            <label className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl cursor-pointer text-base font-semibold shadow-lg shadow-blue-200 transition-all">
+              <FileText className="w-5 h-5" />{importing ? 'Importing...' : 'Import Word'}
+              <input type="file" accept=".docx,.doc" onChange={handleWordImport} className="hidden" disabled={importing} />
             </label>
           </div>
         </div>
@@ -1910,7 +1995,9 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
 
                 const displayCheckIn = displayArrivalDate || customCheckIn || arrivalDateFallback;
                 const displayCheckOut = customCheckOut || (booking?.endDate ? formatDisplayDate(booking.endDate) : '-');
-                const displayTourStart = displayFlightDate || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
+                // Tour Start: use saved tourStartDate, or flight date from remarks, or booking.departureDate
+                const customTourStart = t.tourStartDate ? formatDisplayDate(t.tourStartDate) : null;
+                const displayTourStart = customTourStart || displayFlightDate || (booking?.departureDate ? formatDisplayDate(booking.departureDate) : '-');
 
                 // Yellow background if tourist has custom/different dates
                 // CRITICAL: Include hasEarlyLateArrival to highlight tourists arriving before/after group
@@ -2334,7 +2421,22 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Start Tour Date
+                    <span className="ml-1 text-xs text-gray-400 normal-case">(custom)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={form.tourStartDate}
+                    onChange={(e) => setForm({ ...form, tourStartDate: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                    placeholder="Leave empty for default"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Departure date from home country</p>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     Arrival Date
@@ -2343,7 +2445,18 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                   <input
                     type="date"
                     value={form.checkInDate}
-                    onChange={(e) => setForm({ ...form, checkInDate: e.target.value })}
+                    onChange={(e) => {
+                      const newCheckIn = e.target.value;
+                      let autoStartDate = form.tourStartDate;
+                      if (newCheckIn) {
+                        const d = new Date(newCheckIn);
+                        d.setDate(d.getDate() - 1);
+                        autoStartDate = d.toISOString().split('T')[0];
+                      } else {
+                        autoStartDate = '';
+                      }
+                      setForm({ ...form, checkInDate: newCheckIn, tourStartDate: autoStartDate });
+                    }}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                     placeholder="Leave empty for default"
                   />
