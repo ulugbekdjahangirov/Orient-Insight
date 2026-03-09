@@ -7468,29 +7468,35 @@ export default function BookingDetail() {
 
 
       // Check if routes exist and have proper structure
-      if (freshRoutes.length === 0) {
+      if (freshRoutes.length === 0 && erRoutes.length === 0) {
         toast.error('No routes found! Please load template or create routes first.', { id: 'auto-fix' });
         return;
       }
 
       // Map database routes to erRoutes format, preserving city and itinerary fields
-      const freshErRoutes = freshRoutes.map((dbRoute, index) => {
-        const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
-        return {
-          ...existingRoute,
-          id: dbRoute.id,
-          nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
-          sana: dbRoute.date,
-          shahar: dbRoute.city || existingRoute.shahar || '', // city field for Route module
-          sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '', // itinerary field for Marshrut varaqasi
-          route: dbRoute.routeName || existingRoute.route || '',
-          person: dbRoute.personCount?.toString() || existingRoute.person || '0',
-          transportType: dbRoute.transportType || existingRoute.transportType || '',
-          choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
-          choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
-          price: dbRoute.price?.toString() || existingRoute.price || ''
-        };
-      });
+      // If DB is empty but state has routes (template loaded but not saved), use state directly
+      const freshErRoutes = freshRoutes.length > 0
+        ? freshRoutes.map((dbRoute, index) => {
+            const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
+            return {
+              ...existingRoute,
+              id: dbRoute.id,
+              nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
+              sana: dbRoute.date,
+              shahar: dbRoute.city || existingRoute.shahar || '',
+              sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
+              route: dbRoute.routeName || existingRoute.route || '',
+              person: dbRoute.personCount?.toString() || existingRoute.person || '0',
+              transportType: dbRoute.transportType || existingRoute.transportType || '',
+              choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
+              choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
+              price: dbRoute.price?.toString() || existingRoute.price || ''
+            };
+          })
+        : erRoutes.map((route, index) => ({
+            ...route,
+            nomer: route.nomer || (index + 1).toString(),
+          }));
 
 
       // Calculate PAX counts (fallback to booking-level fields if Final List tourists not loaded)
