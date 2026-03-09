@@ -480,7 +480,7 @@ class EmailImportProcessor {
             country: t.nationality || 'Deutschland',
             roomPreference: t.roomType || 'SNGL',
             accommodation: placement,
-            remarks: [t.remarks, t.voyageOption].filter(Boolean).join('; ') || null,
+            remarks: null, // Remarks only from PDF "Additional Information", not from Excel
             notes: t.vegetarian ? 'Vegetarian' : null
           }
         });
@@ -1507,6 +1507,8 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
     // Smart shortener: extracts key info tags from long remark text
     const smartShorten = (combined) => {
       const tags = [];
+      // Individual flights
+      if (/individual.*flight|flight.*individual/i.test(combined)) tags.push('Indiv. flights');
       // Individual / late / early arrival
       if (/individual arrival/i.test(combined)) {
         const meetMatch = combined.match(/meet the group on (?:the\s+)?(\w+)/i);
@@ -1638,9 +1640,19 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
         // Switch section on known headers
         if (/^Remark:/i.test(line)) {
           inBirthdaysSection = false; inVegetariansSection = false; inRemarkSection = true;
-          // Remark text may appear on the same line as "Remark:"
           const remarkVal = line.replace(/^Remark:/i, '').trim();
-          if (remarkVal) remarkLines.push(remarkVal);
+          if (remarkVal) {
+            // "Mr. & Mrs. Auerbach" — couple with same last name → set as remark targets
+            const coupleMatch = remarkVal.match(/^(Mr\.|Mrs\.|Ms\.)\s*&\s*(Mr\.|Mrs\.|Ms\.)\s+([A-Za-zÄÖÜäöüß-]+)$/i);
+            if (coupleMatch) {
+              currentRemarkTargets = [];
+              currentRemarkCollected = [];
+              const lastName = coupleMatch[3];
+              currentRemarkTargets = [`Mr. ${lastName}`, `Mrs. ${lastName}`];
+            } else {
+              remarkLines.push(remarkVal);
+            }
+          }
           continue;
         }
         if (/^(International\s+Flights|Flights)/i.test(line)) {
