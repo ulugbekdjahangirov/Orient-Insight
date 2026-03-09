@@ -58,7 +58,6 @@ export default function Guides() {
   const [guides, setGuides] = useState([]);
   const [alerts, setAlerts] = useState({ alerts: [], expiredCount: 0, expiringSoonCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [copyingYear, setCopyingYear] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingGuide, setEditingGuide] = useState(null);
   const [showSensitive, setShowSensitive] = useState({});
@@ -115,7 +114,14 @@ export default function Guides() {
   const loadGuides = async () => {
     try {
       const response = await guidesApi.getAll(true, selectedYear);
-      setGuides(response.data.guides);
+      const guides = response.data.guides || [];
+      if (guides.length === 0) {
+        // Fallback: show previous year's guides
+        const prevRes = await guidesApi.getAll(true, selectedYear - 1);
+        setGuides(prevRes.data.guides || []);
+      } else {
+        setGuides(guides);
+      }
     } catch (error) {
       toast.error('Ошибка загрузки гидов');
     } finally {
@@ -123,20 +129,6 @@ export default function Guides() {
     }
   };
 
-  const handleCopyFromYear = async () => {
-    const fromYear = selectedYear - 1;
-    if (!window.confirm(`${fromYear} yildan ${selectedYear} yilga barcha gidlarni nusxalash. Davom etasizmi?`)) return;
-    setCopyingYear(true);
-    try {
-      const res = await guidesApi.copyFromYear(fromYear, selectedYear);
-      toast.success(`Nusxalandi: ${res.data.copied} ta gid (${res.data.skipped} ta mavjud edi)`);
-      loadGuides();
-    } catch (err) {
-      toast.error('Nusxalashda xatolik: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setCopyingYear(false);
-    }
-  };
 
   const loadAlerts = async () => {
     try {
@@ -407,7 +399,7 @@ export default function Guides() {
               </div>
               <div>
                 <h1 style={{ fontSize: isMobile ? '24px' : 'clamp(28px, 5vw, 46px)', fontWeight: '900', color: 'white', margin: 0, lineHeight: 1.05, textShadow: '0 0 40px rgba(99,102,241,0.6)' }}>
-                  Tour Guides
+                  Tour Guides <span style={{ fontSize: isMobile ? '18px' : '28px', color: 'rgba(255,255,255,0.45)', fontWeight: '700' }}>{selectedYear}</span>
                 </h1>
                 <p style={{ color: 'rgba(165,180,252,0.6)', fontSize: isMobile ? '12px' : '14px', fontWeight: '600', margin: '4px 0 0', letterSpacing: '0.5px' }}>Professional Guide Management</p>
               </div>
@@ -415,15 +407,6 @@ export default function Guides() {
 
             {isAdmin && (
               <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={handleCopyFromYear}
-                  disabled={copyingYear}
-                  title={`${selectedYear - 1} yildan ${selectedYear} yilga nusxalash`}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: isMobile ? '8px 10px' : '10px 16px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', borderRadius: '12px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', backdropFilter: 'blur(10px)', minHeight: '40px', whiteSpace: 'nowrap' }}
-                >
-                  <Copy style={{ width: '15px', height: '15px' }} />
-                  <span className="hidden sm:inline">{copyingYear ? 'Nusxalanmoqda...' : `${selectedYear - 1} → ${selectedYear}`}</span>
-                </button>
                 <button
                   onClick={() => openModal()}
                   style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: isMobile ? '8px 14px' : '10px 24px', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: isMobile ? '13px' : '14px', fontWeight: '800', boxShadow: '0 0 30px rgba(99,102,241,0.55), 0 8px 20px rgba(0,0,0,0.3)', minHeight: '40px', whiteSpace: 'nowrap' }}
