@@ -98,14 +98,6 @@ export default function HotelAccommodationForm({
       if (baetgen) {
       }
       setRoomingList(roomingData);
-
-      // Auto-fill from rooming list after loading (for existing accommodations)
-      setTimeout(() => {
-        if (formData.hotelId && selectedHotelRoomTypes.length > 0) {
-          autoFillFromRoomingList();
-        } else {
-        }
-      }, 500); // Small delay to ensure selectedHotelRoomTypes is loaded
     } catch (error) {
       console.error('Error loading rooming list for accommodation:', error);
     }
@@ -327,6 +319,9 @@ export default function HotelAccommodationForm({
     const isGuesthouseOrYurta = selectedHotel && (selectedHotel.stars === 'Guesthouse' || selectedHotel.stars === 'Yurta');
     const hotelPaxRoomType = selectedHotelRoomTypes.find(rt => rt.name === 'PAX');
 
+    // Track which room types already consumed from roomNightsFromRoomingList (prevent double-counting)
+    const consumedRoomTypes = {};
+
     rooms.forEach((room, index) => {
       const roomCount = parseFloat(room.roomsCount) || 0; // Changed from parseInt to support decimal room counts (e.g., 1.5 for extra nights)
       const maxGuests = getMaxGuestsForRoomType(room.roomTypeCode);
@@ -348,10 +343,16 @@ export default function HotelAccommodationForm({
       let effectiveGuestNights;
 
       // Check if we have rooming list data for this room type
-      if (hasRoomingData && roomNightsFromRoomingList[normalizedRoomType] !== undefined) {
+      if (hasRoomingData && roomNightsFromRoomingList[normalizedRoomType] !== undefined && !consumedRoomTypes[normalizedRoomType]) {
         // Use actual room-nights from rooming list (includes early arrivals, late checkouts)
+        // Only use once per room type to prevent double-counting when multiple rows have same type
         effectiveRoomNights = roomNightsFromRoomingList[normalizedRoomType];
         effectiveGuestNights = guestNightsFromRoomingList[normalizedRoomType] || (effectiveRoomNights * maxGuests);
+        consumedRoomTypes[normalizedRoomType] = true;
+      } else if (hasRoomingData && roomNightsFromRoomingList[normalizedRoomType] !== undefined && consumedRoomTypes[normalizedRoomType]) {
+        // Already counted this room type from rooming list — skip to avoid double-counting
+        effectiveRoomNights = 0;
+        effectiveGuestNights = 0;
       } else {
         // Fallback: calculate from room count and nights (manual input)
         effectiveRoomNights = roomCount * roomNights;
@@ -665,20 +666,7 @@ export default function HotelAccommodationForm({
     }
   }, [totals.totalCost]);
 
-  // Auto-save totals when modal is about to close (for Total display)
-  const handleClose = async () => {
-    // Auto-save calculated totals before closing
-    if (editingAccommodation && totals.totalCost > 0) {
-      try {
-        await bookingsApi.updateAccommodation(bookingId, editingAccommodation.id, {
-          totalCost: totals.totalCost,
-          totalRooms: totals.totalRooms,
-          totalGuests: totals.totalGuests
-        });
-      } catch (error) {
-        console.error('Auto-save totals error:', error);
-      }
-    }
+  const handleClose = () => {
     onClose();
   };
 

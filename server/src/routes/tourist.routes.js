@@ -36,12 +36,14 @@ const upload = multer({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
       'text/csv',
-      'application/pdf'
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
     ];
-    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls|csv|pdf)$/i)) {
+    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls|csv|pdf|docx|doc)$/i)) {
       cb(null, true);
     } else {
-      cb(new Error('Only Excel/CSV/PDF files allowed'));
+      cb(new Error('Only Excel/CSV/PDF/Word files allowed'));
     }
   }
 });
@@ -224,7 +226,7 @@ router.post('/:bookingId/tourists', authenticate, async (req, res) => {
 router.put('/:bookingId/tourists/:id', authenticate, async (req, res) => {
   try {
     const { bookingId, id } = req.params;
-    const { firstName, lastName, gender, passportNumber, dateOfBirth, passportExpiryDate, roomPreference, roommateId, isGroupLeader, notes, country, accommodation, remarks, checkInDate, checkOutDate } = req.body;
+    const { firstName, lastName, gender, passportNumber, dateOfBirth, passportExpiryDate, roomPreference, roommateId, isGroupLeader, notes, country, accommodation, remarks, checkInDate, tourStartDate, checkOutDate } = req.body;
 
     const tourist = await prisma.tourist.update({
       where: { id: parseInt(id) },
@@ -237,6 +239,7 @@ router.put('/:bookingId/tourists/:id', authenticate, async (req, res) => {
         dateOfBirth: dateOfBirth !== undefined ? (dateOfBirth ? new Date(dateOfBirth) : null) : undefined,
         passportExpiryDate: passportExpiryDate !== undefined ? (passportExpiryDate ? new Date(passportExpiryDate) : null) : undefined,
         checkInDate: checkInDate !== undefined ? (checkInDate ? new Date(checkInDate) : null) : undefined,
+        tourStartDate: tourStartDate !== undefined ? (tourStartDate ? new Date(tourStartDate) : null) : undefined,
         checkOutDate: checkOutDate !== undefined ? (checkOutDate ? new Date(checkOutDate) : null) : undefined,
         roomPreference,
         roommateId,
@@ -2157,17 +2160,7 @@ router.post('/:bookingId/parse-flight-pdf', authenticate, upload.single('pdf'), 
       });
     }
 
-    // Try Claude Vision for domestic flight if text-only parsing missed it
-    if (domesticPaxHint > 0 && !result.some(r => r.type === 'DOMESTIC')) {
-      try {
-        const visionFlights = await extractDomesticFlightsWithVision(req.file.buffer);
-        result.push(...visionFlights);
-      } catch (e) {
-        console.error('Claude Vision domestic extraction failed:', e.message);
-      }
-    }
-
-    // Suggest domestic (UGC→TAS) as fallback if Vision also failed
+    // Suggest domestic (UGC→TAS) as fallback if text parsing missed it
     if (domesticPaxHint > 0 && !result.some(r => r.type === 'DOMESTIC')) {
       suggestedFlights.push({
         flightNumber: '', departure: 'UGC', arrival: 'TAS',
@@ -3780,6 +3773,56 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
   } catch (error) {
     console.error('Error importing rooming list PDF:', error);
     res.status(500).json({ error: 'Error importing PDF: ' + error.message });
+  }
+});
+
+// POST /api/bookings/:bookingId/rooming-list/import-word - Import rooming list from Word (.docx)
+router.post('/:bookingId/rooming-list/import-word', authenticate, upload.single('file'), async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No Word file uploaded' });
+
+    const fname = (req.file.originalname || '').toLowerCase();
+    if (!fname.endsWith('.docx') && !fname.endsWith('.doc')) {
+      return res.status(400).json({ error: 'Please upload a .docx or .doc file' });
+    }
+
+    const bookingIdInt = parseInt(bookingId);
+    const processor = require('../services/emailImportProcessor.service');
+
+    const result = await processor.importRoomingListDocxForEmail(req.file.buffer, { attachmentName: req.file.originalname }, bookingIdInt);
+
+    if (!result) {
+      return res.status(422).json({ error: 'Could not parse rooming list from Word file. Check format.' });
+    }
+
+    // Return in same format as import-pdf
+    const updatedTourists = await prisma.tourist.findMany({
+      where: { bookingId: bookingIdInt },
+      orderBy: [{ accommodation: 'asc' }, { lastName: 'asc' }]
+    });
+    const updatedFlights = await prisma.flight.findMany({
+      where: { bookingId: bookingIdInt },
+      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }]
+    });
+
+    res.json({
+      success: true,
+      message: `✅ Word import: ${result.summary.updated} updated, ${result.summary.created} created, ${result.summary.deleted} deleted`,
+      tourists: updatedTourists,
+      flights: updatedFlights,
+      summary: {
+        touristsImported: result.summary.updated + result.summary.created,
+        touristsUpdated: result.summary.updated,
+        touristsCreated: result.summary.created,
+        touristsDeleted: result.summary.deleted,
+        uzbekistanCount: updatedTourists.filter(t => t.accommodation === 'Uzbekistan').length,
+        turkmenistanCount: updatedTourists.filter(t => t.accommodation === 'Turkmenistan').length
+      }
+    });
+  } catch (error) {
+    console.error('Error importing rooming list Word:', error);
+    res.status(500).json({ error: 'Error importing Word file: ' + error.message });
   }
 });
 

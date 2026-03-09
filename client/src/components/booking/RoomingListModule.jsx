@@ -35,6 +35,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   // Inline edit states
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editingRemarksId, setEditingRemarksId] = useState(null);
+  const [expandedRemarkIds, setExpandedRemarkIds] = useState(new Set());
   const [roomValue, setRoomValue] = useState('');
   const [remarksValue, setRemarksValue] = useState('');
 
@@ -312,19 +313,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   // PDF IMPORT HANDLER
   // ============================================
 
-  const handlePdfImport = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      toast.error('Please select a PDF file');
-      e.target.value = '';
-      return;
-    }
-
+  const _handleFileImport = async (file, apiCall, fileLabel) => {
     setImporting(true);
+    const toastId = toast.loading(`${fileLabel} import qilinmoqda...`);
     try {
-      const response = await touristsApi.importRoomingListPdf(bookingId, file);
+      const response = await apiCall(bookingId, file);
 
       if (response.data.success) {
         const { summary } = response.data;
@@ -332,57 +325,36 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         if (summary.touristsUpdated > 0) parts.push(`${summary.touristsUpdated} updated`);
         if (summary.touristsCreated > 0) parts.push(`${summary.touristsCreated} created`);
         if (summary.touristsDeleted > 0) parts.push(`${summary.touristsDeleted} deleted`);
-        const msg = `${parts.join(', ')} (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`;
-        toast.success(msg);
+        const msg = `✅ ${parts.join(', ')} (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`;
+        toast.success(msg, { id: toastId });
         await loadData();
         onUpdate?.();
       } else {
-        toast.error(response.data.error || 'Import failed');
+        toast.error(response.data.error || 'Import failed', { id: toastId });
       }
     } catch (error) {
-      const errorMsg = error.response?.data?.error || 'Error importing PDF';
-      toast.error(errorMsg);
+      const errorMsg = error.response?.data?.error || `Error importing ${fileLabel}`;
+      toast.error(errorMsg, { id: toastId });
     } finally {
       setImporting(false);
-      e.target.value = '';
     }
+  };
+
+  const handlePdfImport = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) { toast.error('Please select a PDF file'); return; }
+    await _handleFileImport(file, touristsApi.importRoomingListPdf, 'PDF');
   };
 
   const handleWordImport = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-
     const fname = file.name.toLowerCase();
-    if (!fname.endsWith('.docx') && !fname.endsWith('.doc')) {
-      toast.error('Please select a Word (.docx) file');
-      e.target.value = '';
-      return;
-    }
-
-    setImporting(true);
-    try {
-      const response = await touristsApi.importRoomingListWord(bookingId, file);
-
-      if (response.data.success) {
-        const { summary } = response.data;
-        const parts = [];
-        if (summary.touristsUpdated > 0) parts.push(`${summary.touristsUpdated} updated`);
-        if (summary.touristsCreated > 0) parts.push(`${summary.touristsCreated} created`);
-        if (summary.touristsDeleted > 0) parts.push(`${summary.touristsDeleted} deleted`);
-        const msg = `${parts.join(', ')} (${summary.uzbekistanCount} UZ, ${summary.turkmenistanCount} TM)`;
-        toast.success(msg);
-        await loadData();
-        onUpdate?.();
-      } else {
-        toast.error(response.data.error || 'Import failed');
-      }
-    } catch (error) {
-      const errorMsg = error.response?.data?.error || 'Error importing Word file';
-      toast.error(errorMsg);
-    } finally {
-      setImporting(false);
-      e.target.value = '';
-    }
+    if (!fname.endsWith('.docx') && !fname.endsWith('.doc')) { toast.error('Please select a Word (.docx) file'); return; }
+    await _handleFileImport(file, touristsApi.importRoomingListWord, 'Word');
   };
 
   // ============================================
@@ -2200,51 +2172,42 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                           title="Нажмите, чтобы редактировать"
                         >
                           {(() => {
-                            // Show important information from remarks (Vegetarian, Birthday, Flight/Arrival)
-                            const remarksLines = [];
-
-                            // Get remarks from tourist (contains Vegetarian, Birthday, Flight info from PDF import)
-                            const remarks = t.remarks || '';
-                            if (remarks && remarks !== '-') {
-                              // Split by newline and filter important info only
-                              const lines = remarks.split('\n')
-                                .filter(line => {
-                                  const lower = line.toLowerCase();
-                                  return lower.includes('vegetarian') ||
-                                         lower.includes('birthday') ||
-                                         lower.includes('flight') ||
-                                         lower.includes('arrival') ||
-                                         lower.includes('заезд') ||
-                                         lower.includes('выезд') ||
-                                         lower.includes('ранний') ||
-                                         lower.includes('поздний') ||
-                                         lower.includes('book extra nights');
-                                })
-                                .map(line => {
-                                  // Normalize "Vegetarian pax NAME and NAME" → "Vegetarian"
-                                  if (/^vegetarian\s+pax\b/i.test(line.trim())) return 'Vegetarian';
-                                  return line;
-                                });
-                              remarksLines.push(...lines);
+                            const remarks = (t.remarks || '').trim();
+                            if (!remarks || remarks === '-') {
+                              return (
+                                <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                  <span>-</span>
+                                  <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Edit className="w-3 h-3 inline mr-1" />Добавить
+                                  </span>
+                                </div>
+                              );
                             }
-
-                            return remarksLines.length > 0 ? (
+                            const lines = remarks.split('\n').map(l => l.trim()).filter(Boolean)
+                              .filter(l => !/PAX booked half double|no roommate found/i.test(l));
+                            if (lines.length === 0) return (
+                              <div className="flex items-center gap-2 text-gray-400 text-sm"><span>-</span></div>
+                            );
+                            const isExpanded = expandedRemarkIds.has(t.id);
+                            const PREVIEW_LINES = 2;
+                            const showExpand = lines.length > PREVIEW_LINES;
+                            const visibleLines = isExpanded ? lines : lines.slice(0, PREVIEW_LINES);
+                            return (
                               <div className="text-gray-700 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl px-4 py-3 shadow-sm">
-                                {remarksLines.map((line, i) => (
+                                {visibleLines.map((line, i) => (
                                   <div key={i} className="text-xs leading-relaxed font-medium">{line}</div>
                                 ))}
-                                <div className="mt-2 text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Edit className="w-3 h-3 inline mr-1" />
-                                  Нажмите для редактирования
+                                {showExpand && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); setExpandedRemarkIds(prev => { const n = new Set(prev); isExpanded ? n.delete(t.id) : n.add(t.id); return n; }); }}
+                                    className="mt-1.5 text-[10px] text-blue-500 hover:text-blue-700 font-semibold"
+                                  >
+                                    {isExpanded ? '▲ Less' : `▼ +${lines.length - PREVIEW_LINES} more`}
+                                  </button>
+                                )}
+                                <div className="mt-1.5 text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Edit className="w-3 h-3 inline mr-1" />Нажмите для редактирования
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                <span>-</span>
-                                <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Edit className="w-3 h-3 inline mr-1" />
-                                  Добавить
-                                </span>
                               </div>
                             );
                           })()}

@@ -120,10 +120,17 @@ async function processNewEmail(messageId) {
         || (att.filename && att.filename.toLowerCase().endsWith('.pdf'));
     };
 
+    const isDocxAttachment = (att) => {
+      return att.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        || att.mimeType === 'application/msword'
+        || (att.filename && (att.filename.toLowerCase().endsWith('.docx') || att.filename.toLowerCase().endsWith('.doc')));
+    };
+
     const excelAttachments = emailDetails.attachments.filter(isExcelAttachment);
     const pdfAttachments   = emailDetails.attachments.filter(isPdfAttachment);
+    const docxAttachments  = emailDetails.attachments.filter(isDocxAttachment);
     // Inline images (logos, signatures) are intentionally skipped
-    const attachmentsToProcess = [...excelAttachments, ...pdfAttachments];
+    const attachmentsToProcess = [...excelAttachments, ...pdfAttachments, ...docxAttachments];
 
     if (attachmentsToProcess.length === 0 && !bodyTableProcessed) {
       await gmailService.markAsProcessed(messageId);
@@ -133,7 +140,7 @@ async function processNewEmail(messageId) {
 
     // Process each attachment
     for (const attachment of attachmentsToProcess) {
-      const attachmentType = isExcelAttachment(attachment) ? 'excel' : 'image';
+      const attachmentType = isExcelAttachment(attachment) ? 'excel' : isDocxAttachment(attachment) ? 'word' : 'pdf';
 
       // Download attachment
       const attachmentBuffer = await gmailService.downloadAttachment(messageId, attachment.attachmentId);

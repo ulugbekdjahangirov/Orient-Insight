@@ -4886,7 +4886,7 @@ export default function BookingDetail() {
           tableRows += `
             <tr>
               <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 10px;">${counter}</td>
-              <td style="border: 1px solid #000; padding: 4px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${tourist.lastName}, ${tourist.firstName}</td>
+              <td style="border: 1px solid #000; padding: 4px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${(tourist.lastName || tourist.firstName) ? `${tourist.lastName || ''}, ${tourist.firstName || ''}`.replace(/^,\s*|,\s*$/, '').trim() : (tourist.fullName || '')}</td>
               <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourStart}</td>
               <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourEnd}</td>
               <td style="border: 1px solid #000; padding: 4px 5px; font-size: 9px;">${remarks}</td>
@@ -4933,7 +4933,7 @@ export default function BookingDetail() {
         tableRows += `
           <tr>
             <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 10px;">${counter}</td>
-            <td style="border: 1px solid #000; padding: 4px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${tourist.lastName}, ${tourist.firstName}</td>
+            <td style="border: 1px solid #000; padding: 4px 5px; font-size: 10px;">${tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} ${(tourist.lastName || tourist.firstName) ? `${tourist.lastName || ''}, ${tourist.firstName || ''}`.replace(/^,\s*|,\s*$/, '').trim() : (tourist.fullName || '')}</td>
             <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourStart}</td>
             <td style="border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 9px;">${tourEnd}</td>
             <td style="border: 1px solid #000; padding: 4px 5px; font-size: 9px;">${remarks}</td>
@@ -5722,7 +5722,7 @@ export default function BookingDetail() {
               const touristCheckIn = new Date(tourist.checkInDate);
               touristCheckIn.setHours(0, 0, 0, 0);
               const daysDiff = Math.round((accCheckIn - touristCheckIn) / (1000 * 60 * 60 * 24));
-              if (daysDiff >= 2) checkIn = touristCheckIn;
+              if (daysDiff >= 1) checkIn = touristCheckIn;
             }
 
             const nights = Math.max(0, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
@@ -10776,6 +10776,15 @@ export default function BookingDetail() {
                     return rt;
                   };
 
+                  // helper: format tourist name (lastName, firstName or fullName fallback)
+                  const fmtName = (t) => {
+                    const prefix = t.gender === 'M' ? 'Mr.' : t.gender === 'F' ? 'Mrs.' : '';
+                    const name = (t.lastName || t.firstName)
+                      ? `${t.lastName || ''}, ${t.firstName || ''}`.replace(/^,\s*|,\s*$/, '').trim()
+                      : (t.fullName || '');
+                    return `${prefix} ${name}`.trim();
+                  };
+
                   // helper: filter remarks
                   const filterRemarks = (t) => {
                     if (!t.remarks) return '-';
@@ -10831,7 +10840,7 @@ export default function BookingDetail() {
                                         <div className="flex items-center gap-2 min-w-0">
                                           <span className="w-5 h-5 rounded bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{num}</span>
                                           <span className="font-semibold text-gray-900 text-sm truncate">
-                                            {t.gender === 'M' ? 'Mr.' : t.gender === 'F' ? 'Mrs.' : ''} {t.lastName}, {t.firstName}
+                                            {fmtName(t)}
                                           </span>
                                         </div>
                                         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${isUZB ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
@@ -10867,7 +10876,7 @@ export default function BookingDetail() {
                                     <div className="flex items-center gap-2 min-w-0">
                                       <span className="w-5 h-5 rounded bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{num}</span>
                                       <span className="font-semibold text-gray-900 text-sm truncate">
-                                        {t.gender === 'M' ? 'Mr.' : t.gender === 'F' ? 'Mrs.' : ''} {t.lastName}, {t.firstName}
+                                        {fmtName(t)}
                                       </span>
                                     </div>
                                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex-shrink-0 ${isUZB ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
@@ -10920,7 +10929,7 @@ export default function BookingDetail() {
                                       <tr key={tourist.id} className="border-b border-blue-100 hover:bg-blue-50 transition-colors">
                                         <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-blue-100">{c}</td>
                                         <td className="px-4 py-3 text-left font-medium text-gray-800 border-r border-blue-100">
-                                          {tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} {tourist.lastName}, {tourist.firstName}
+                                          {fmtName(tourist)}
                                         </td>
                                         <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
                                           {tourist.checkInDate ? format(new Date(tourist.checkInDate), 'dd.MM.yyyy') : booking?.departureDate ? format(new Date(booking.departureDate), 'dd.MM.yyyy') : '-'}
@@ -10928,7 +10937,7 @@ export default function BookingDetail() {
                                         <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
                                           {tourist.checkOutDate ? format(new Date(tourist.checkOutDate), 'dd.MM.yyyy') : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-'}
                                         </td>
-                                        <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm">{remarks}</td>
+                                        <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm whitespace-pre-line">{remarks}</td>
                                         {isFirstInGroup ? (
                                           <td rowSpan={entry.tourists.length} className="px-4 py-3 text-center font-bold border-r border-blue-100 align-middle">
                                             <span className={`px-3 py-2 rounded text-lg ${roomTableBadge(rt)}`}>{rt}</span>
@@ -10947,7 +10956,7 @@ export default function BookingDetail() {
                                     <tr key={tourist.id} className="border-b border-blue-100 hover:bg-blue-50 transition-colors">
                                       <td className="px-4 py-3 text-center font-medium text-gray-700 border-r border-blue-100">{c}</td>
                                       <td className="px-4 py-3 text-left font-medium text-gray-800 border-r border-blue-100">
-                                        {tourist.gender === 'M' ? 'Mr.' : tourist.gender === 'F' ? 'Mrs.' : ''} {tourist.lastName}, {tourist.firstName}
+                                        {fmtName(tourist)}
                                       </td>
                                       <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
                                         {tourist.checkInDate ? format(new Date(tourist.checkInDate), 'dd.MM.yyyy') : booking?.departureDate ? format(new Date(booking.departureDate), 'dd.MM.yyyy') : '-'}
@@ -10955,7 +10964,7 @@ export default function BookingDetail() {
                                       <td className="px-4 py-3 text-center text-gray-700 border-r border-blue-100 text-sm">
                                         {tourist.checkOutDate ? format(new Date(tourist.checkOutDate), 'dd.MM.yyyy') : booking?.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '-'}
                                       </td>
-                                      <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm">{remarks}</td>
+                                      <td className="px-4 py-3 text-left text-gray-700 border-r border-blue-100 text-sm whitespace-pre-line">{remarks}</td>
                                       <td className="px-4 py-3 text-center font-bold border-r border-blue-100">
                                         <span className={`px-3 py-2 rounded text-lg ${roomTableBadge(rt)}`}>{rt}</span>
                                       </td>
@@ -10987,6 +10996,7 @@ export default function BookingDetail() {
                   </p>
                 </div>
               )}
+
             </div>
           )}
 

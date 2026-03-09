@@ -519,6 +519,7 @@ model Tourist {
   // Размещение в отеле
   hotelName       String?                  // Название отеля (для заявок)
   checkInDate     DateTime?                // Дата заезда (индивидуальная)
+  tourStartDate   DateTime?                // Дата начала тура (если прибыл раньше)
   checkOutDate    DateTime?                // Дата выезда (индивидуальная)
 
   // Предпочтения по размещению
