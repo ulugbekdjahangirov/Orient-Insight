@@ -69,7 +69,7 @@ async function getSentLog() {
   } catch { return []; }
 }
 
-async function addToSentLog(bookingNumber, tab, fileId = null) {
+async function addToSentLog(bookingNumber, tab, fileId = null, messages = []) {
   // Read, deduplicate, upsert atomically
   const raw = await getSentLog();
   const deduped = [];
@@ -82,14 +82,24 @@ async function addToSentLog(bookingNumber, tab, fileId = null) {
   if (existing) {
     existing.sentAt = new Date().toISOString();
     if (fileId) existing.fileId = fileId;
+    if (messages.length > 0) existing.messages = messages;
   } else {
-    deduped.push({ bookingNumber, tab, sentAt: new Date().toISOString(), fileId });
+    deduped.push({ bookingNumber, tab, sentAt: new Date().toISOString(), fileId, messages });
   }
   await prisma.systemSetting.upsert({
     where: { key: SENT_LOG_KEY },
     update: { value: JSON.stringify(deduped) },
     create: { key: SENT_LOG_KEY, value: JSON.stringify(deduped) }
   });
+}
+
+// ── Delete old Telegram messages for a log entry ──────────────────────────────
+async function deleteOldMessages(logEntry) {
+  if (!logEntry?.messages?.length) return;
+  await Promise.all(logEntry.messages.map(async ({ chatId, messageId }) => {
+    await axios.post(`${AUSGABEN_API()}/deleteMessage`, { chat_id: chatId, message_id: messageId })
+      .catch(e => console.log('deleteMessage skip:', e.response?.data?.description || e.message));
+  }));
 }
 
 // ── Get sent bookings for tab + tourType ──────────────────────────────────────
@@ -290,8 +300,16 @@ router.post('/send-telegram', upload.single('pdf'), async (req, res) => {
 
     const { filename, caption, bookingNumber, tab } = req.body;
 
+    // Delete old messages for this booking+tab if they exist
+    if (bookingNumber && tab) {
+      const log = await getSentLog();
+      const oldEntry = log.find(l => l.bookingNumber === bookingNumber && l.tab === tab);
+      if (oldEntry) await deleteOldMessages(oldEntry);
+    }
+
     let successCount = 0;
     let savedFileId = null;
+    const sentMessages = [];
     await Promise.all(chatIds.map(async (chatId) => {
       try {
         const form = new FormData();
@@ -302,9 +320,9 @@ router.post('/send-telegram', upload.single('pdf'), async (req, res) => {
         });
         if (caption) form.append('caption', caption);
         const tgRes = await axios.post(`${AUSGABEN_API()}/sendDocument`, form, { headers: form.getHeaders() });
-        if (!savedFileId && tgRes.data?.result?.document?.file_id) {
-          savedFileId = tgRes.data.result.document.file_id;
-        }
+        const result = tgRes.data?.result;
+        if (result?.document?.file_id && !savedFileId) savedFileId = result.document.file_id;
+        if (result?.message_id) sentMessages.push({ chatId, messageId: result.message_id });
         successCount++;
       } catch (e) {
         console.error('Ausgaben send failed for chatId', chatId, e.response?.data || e.message);
@@ -313,7 +331,7 @@ router.post('/send-telegram', upload.single('pdf'), async (req, res) => {
 
     // Save to sent log if at least one succeeded
     if (successCount > 0 && bookingNumber && tab) {
-      await addToSentLog(bookingNumber, tab, savedFileId);
+      await addToSentLog(bookingNumber, tab, savedFileId, sentMessages);
     }
 
     res.json({ success: true, sent: successCount });

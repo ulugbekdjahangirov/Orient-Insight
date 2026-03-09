@@ -4619,39 +4619,14 @@ export default function BookingDetail() {
     }
   };
 
-  // Export Karta to PDF
+  // Export Karta to PDF (Flights only)
   const exportKartaToPDF = (returnBlob = false) => {
     try {
-      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const doc = new jsPDF('p', 'mm', 'a4'); // Portrait
 
-      // Collect Railway & Flights expenses only
-      const expensesByCity = {};
-      expensesByCity['Railway & Flights'] = [];
+      // Collect Flights only
+      const flightItems = [];
 
-      // Process Railways
-      if (railways && railways.length > 0) {
-        railways.forEach(railway => {
-          const departure = railway.departure || railway.from || '';
-          const arrival = railway.arrival || railway.to || '';
-          const routeName = railway.route || `${departure}-${arrival}`.trim();
-          const name = routeName ? `Railway: ${routeName}` : 'Railway';
-          const pax = railway.pax || 1;
-          const total = railway.price || 0;
-          const pricePerTicket = railway.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
-
-          if (total > 0) {
-            expensesByCity['Railway & Flights'].push({
-              name: name,
-              pricePerPerson: pricePerTicket,
-              pax: pax,
-              usd: 0,
-              uzs: total
-            });
-          }
-        });
-      }
-
-      // Process Flights
       if (flights && flights.length > 0) {
         flights.forEach(flight => {
           const departure = flight.departure || flight.from || '';
@@ -4661,51 +4636,40 @@ export default function BookingDetail() {
           const pax = flight.pax || 1;
           const total = flight.price || 0;
           const pricePerTicket = flight.pricePerTicket || (total > 0 && pax > 0 ? total / pax : 0);
-
           if (total > 0) {
-            expensesByCity['Railway & Flights'].push({
-              name: name,
-              pricePerPerson: pricePerTicket,
-              pax: pax,
-              usd: 0,
-              uzs: total
-            });
+            flightItems.push({ name, pricePerPerson: pricePerTicket, pax, usd: 0, uzs: total });
           }
         });
+      }
+
+      // If no flights → skip PDF
+      if (flightItems.length === 0) {
+        if (returnBlob) return null;
+        toast.info('Karta uchun flight ma\'lumoti yo\'q');
+        return;
       }
 
       // Calculate totals
       let totalUSD = 0;
       let totalUZS = 0;
-      Object.values(expensesByCity).forEach(cityExpenses => {
-        cityExpenses.forEach(expense => {
-          totalUSD += expense.usd;
-          totalUZS += expense.uzs;
-        });
-      });
+      flightItems.forEach(e => { totalUSD += e.usd; totalUZS += e.uzs; });
 
-      // Filter out empty sections
-      const sections = ['Railway & Flights'].filter(section =>
-        expensesByCity[section] && expensesByCity[section].length > 0
-      );
+      const sections = ['Flights'];
 
       // Build table data
       const tableData = [];
-      sections.forEach(section => {
+      tableData.push([
+        { content: 'Flights', colSpan: 6, styles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: 'bold' } }
+      ]);
+      flightItems.forEach(expense => {
         tableData.push([
-          { content: section, colSpan: 6, styles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: 'bold' } }
+          '',
+          expense.name,
+          expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '',
+          expense.pax || '',
+          expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : '',
+          expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''
         ]);
-
-        expensesByCity[section].forEach(expense => {
-          tableData.push([
-            '',
-            expense.name,
-            expense.pricePerPerson ? Math.round(expense.pricePerPerson).toLocaleString('en-US').replace(/,/g, ' ') : '',
-            expense.pax || '',
-            expense.usd > 0 ? Math.round(expense.usd).toLocaleString('en-US').replace(/,/g, ' ') : '',
-            expense.uzs > 0 ? Math.round(expense.uzs).toLocaleString('en-US').replace(/,/g, ' ') : ''
-          ]);
-        });
       });
 
       // Total row
@@ -4715,17 +4679,13 @@ export default function BookingDetail() {
         { content: Math.round(totalUZS).toLocaleString('en-US').replace(/,/g, ' '), styles: { fillColor: [71, 85, 105], textColor: 255, fontStyle: 'bold', halign: 'right' } }
       ]);
 
-      // Add title with booking number
+      // Add title
       doc.setFontSize(16);
       doc.setFont(undefined, 'bold');
-      const kartaTitle = `Ausgaben ${booking?.bookingNumber || ''} (Card Payments)`;
-      doc.text(kartaTitle, 148.5, 13, { align: 'center' });
-
-      // Add booking info
+      doc.text(`Ausgaben ${booking?.bookingNumber || ''} (Card Payments)`, 105, 13, { align: 'center' });
       doc.setFontSize(11);
       doc.setFont(undefined, 'normal');
-      const bookingInfo = `${booking?.tourType?.code || ''}-${booking?.bookingCode || ''} | PAX: ${tourists?.length || 0}`;
-      doc.text(bookingInfo, 148.5, 20, { align: 'center' });
+      doc.text(`${booking?.tourType?.code || ''} | PAX: ${tourists?.length || 0}`, 105, 20, { align: 'center' });
 
       // Generate table
       autoTable(doc, {
@@ -4733,25 +4693,14 @@ export default function BookingDetail() {
         head: [['Stadte', 'Item', 'Preis', 'PAX', 'Dollar', 'Som']],
         body: tableData,
         theme: 'grid',
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          lineColor: [200, 200, 200],
-          lineWidth: 0.1
-        },
-        headStyles: {
-          fillColor: [249, 115, 22],
-          textColor: 255,
-          fontStyle: 'bold',
-          fontSize: 10,
-          cellPadding: 2.5
-        },
+        styles: { fontSize: 9, cellPadding: 2, lineColor: [200, 200, 200], lineWidth: 0.1 },
+        headStyles: { fillColor: [249, 115, 22], textColor: 255, fontStyle: 'bold', fontSize: 10, cellPadding: 2.5 },
         columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 80 },
-          2: { halign: 'right', cellWidth: 30 },
-          3: { halign: 'center', cellWidth: 20 },
-          4: { halign: 'right', cellWidth: 35 },
+          0: { cellWidth: 25 },
+          1: { cellWidth: 90 },
+          2: { halign: 'right', cellWidth: 25 },
+          3: { halign: 'center', cellWidth: 15 },
+          4: { halign: 'right', cellWidth: 20 },
           5: { halign: 'right', cellWidth: 35 }
         },
         margin: { top: 20, bottom: 7, left: 7, right: 7 }
