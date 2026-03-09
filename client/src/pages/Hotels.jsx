@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { hotelsApi, citiesApi } from '../services/api';
 import { UZS_PER_USD, UZS_PER_EUR, DEFAULT_BRV_VALUE } from '../constants/rates';
 import { useIsMobile } from '../hooks/useMediaQuery';
+import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
 import {
   Plus, Edit, Trash2, Building2, MapPin, X, Save,
@@ -18,6 +19,7 @@ export default function Hotels() {
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const { selectedYear, changeYear } = useYear();
 
   // Get selected city from URL or default to empty (show all)
   const selectedCity = searchParams.get('city') || '';
@@ -74,8 +76,8 @@ export default function Hotels() {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(false, selectedYear);
+  }, [selectedYear]);
 
   // Set default city (Tashkent) when cities are loaded
   useEffect(() => {
@@ -98,10 +100,10 @@ export default function Hotels() {
     }
   }, [cities]);
 
-  const loadData = async (keepExpanded = false) => {
+  const loadData = async (keepExpanded = false, year = selectedYear) => {
     try {
       const [hotelsRes, citiesRes] = await Promise.all([
-        hotelsApi.getAll({ includeInactive: false }),
+        hotelsApi.getAll({ includeInactive: false, year }),
         citiesApi.getAll(false)  // Only active cities
       ]);
       setGroupedHotels(hotelsRes.data.groupedByCity || []);
@@ -223,19 +225,19 @@ export default function Hotels() {
     if (room) {
       setEditingRoom(room);
 
-      // Show BASE price (no tax calculation needed)
-
+      // If yearly price exists for selected year, show it; otherwise show base price
+      const yp = room.yearlyPrice;
       setRoomForm({
         name: room.name,
         displayName: room.displayName || '',
         roomCount: room.roomCount,
-        pricePerNight: room.pricePerNight, // Show BASE price directly
+        pricePerNight: yp ? yp.pricePerNight : room.pricePerNight,
         currency: room.currency,
         description: room.description || '',
         maxGuests: room.maxGuests,
-        vatIncluded: room.vatIncluded || false,
-        touristTaxEnabled: room.touristTaxEnabled || false,
-        brvValue: room.brvValue || DEFAULT_BRV_VALUE
+        vatIncluded: yp ? yp.vatIncluded : (room.vatIncluded || false),
+        touristTaxEnabled: yp ? yp.touristTaxEnabled : (room.touristTaxEnabled || false),
+        brvValue: yp ? (yp.brvValue || DEFAULT_BRV_VALUE) : (room.brvValue || DEFAULT_BRV_VALUE)
       });
     } else {
       setEditingRoom(null);
@@ -255,19 +257,30 @@ export default function Hotels() {
     }
 
     try {
-      // User enters BASE price directly - no conversion needed for new or existing rooms
-      const basePrice = roomForm.pricePerNight;
-
-      const dataToSave = {
-        ...roomForm,
-        pricePerNight: basePrice
-      };
-
       if (editingRoom) {
-        await hotelsApi.updateRoomType(currentHotelId, editingRoom.id, dataToSave);
-        toast.success('Room type updated');
+        // Save non-price fields to base room type
+        const baseData = {
+          name: roomForm.name,
+          displayName: roomForm.displayName,
+          roomCount: roomForm.roomCount,
+          currency: roomForm.currency,
+          description: roomForm.description,
+          maxGuests: roomForm.maxGuests
+        };
+        await hotelsApi.updateRoomType(currentHotelId, editingRoom.id, baseData);
+
+        // Save price fields as yearly price for selected year
+        await hotelsApi.updateYearlyPrice(currentHotelId, editingRoom.id, {
+          year: selectedYear,
+          pricePerNight: roomForm.pricePerNight,
+          vatIncluded: roomForm.vatIncluded,
+          touristTaxEnabled: roomForm.touristTaxEnabled,
+          brvValue: roomForm.brvValue
+        });
+        toast.success(`Room type updated (${selectedYear} yil narxi saqlandi)`);
       } else {
-        await hotelsApi.createRoomType(currentHotelId, dataToSave);
+        // New room: save base price directly
+        await hotelsApi.createRoomType(currentHotelId, { ...roomForm });
         toast.success('Room type added');
       }
       setRoomModalOpen(false);
@@ -564,6 +577,16 @@ export default function Hotels() {
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
+              {/* Year selector */}
+              <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1.5 border border-slate-200">
+                <button onClick={() => changeYear(selectedYear - 1)} className="p-1 rounded-lg hover:bg-white transition-colors text-slate-500 hover:text-slate-700">
+                  <ChevronDown className="w-4 h-4 rotate-90" />
+                </button>
+                <span className="font-bold text-slate-700 min-w-[44px] text-center text-sm">{selectedYear}</span>
+                <button onClick={() => changeYear(selectedYear + 1)} className="p-1 rounded-lg hover:bg-white transition-colors text-slate-500 hover:text-slate-700">
+                  <ChevronDown className="w-4 h-4 -rotate-90" />
+                </button>
+              </div>
               <button
                 onClick={() => openHotelModal()}
                 className="inline-flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-600 text-white rounded-xl md:rounded-2xl hover:shadow-2xl hover:shadow-primary-500/40 hover:-translate-y-1 transition-all duration-300 font-bold text-sm md:text-base min-h-[44px] w-full sm:w-auto"
@@ -719,15 +742,19 @@ export default function Hotels() {
                 {expandedCities[group.city.id] && (
                   <div className="space-y-4">
                     {group.hotels.map(hotel => {
-                      // Calculate price for display
+                      // Calculate price for display (yearly override if exists)
                       const getDisplayPrice = (room) => {
-                        let basePrice = room.pricePerNight;
-                        const vatAmount = room.vatIncluded ? basePrice * 0.12 : 0;
+                        const yp = room.yearlyPrice;
+                        let basePrice = yp ? yp.pricePerNight : room.pricePerNight;
+                        const vatIncluded = yp ? yp.vatIncluded : room.vatIncluded;
+                        const touristTaxEnabled = yp ? yp.touristTaxEnabled : room.touristTaxEnabled;
+                        const brvValue = yp ? yp.brvValue : room.brvValue;
+                        const vatAmount = vatIncluded ? basePrice * 0.12 : 0;
                         let price = basePrice + vatAmount;
-                        if (room.touristTaxEnabled && room.brvValue > 0) {
+                        if (touristTaxEnabled && brvValue > 0) {
                           const totalRooms = hotel.totalRooms || 0;
                           let percentage = totalRooms <= 10 ? 0.05 : totalRooms <= 40 ? 0.10 : 0.15;
-                          let tax = room.brvValue * percentage * (room.maxGuests || 1);
+                          let tax = brvValue * percentage * (room.maxGuests || 1);
                           if (room.currency === 'USD') price += tax / UZS_PER_USD;
                           else if (room.currency === 'EUR') price += tax / UZS_PER_EUR;
                           else price += tax;
@@ -1179,7 +1206,7 @@ export default function Hotels() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-slate-800">
-                    {editingRoom ? 'Edit Room Type' : 'New Room Type'}
+                    {editingRoom ? `Edit Room Type — ${selectedYear} yil narxi` : 'New Room Type'}
                   </h2>
                   {currentHotel && (
                     <p className="text-xs text-slate-500">{currentHotel.name}</p>

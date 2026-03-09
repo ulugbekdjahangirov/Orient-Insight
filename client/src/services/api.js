@@ -285,7 +285,9 @@ export const hotelsApi = {
   createSeasonalPrice: (hotelId, roomTypeId, data) => api.post(`/hotels/${hotelId}/room-types/${roomTypeId}/seasonal-prices`, data),
   updateSeasonalPrice: (hotelId, roomTypeId, id, data) => api.put(`/hotels/${hotelId}/room-types/${roomTypeId}/seasonal-prices/${id}`, data),
   deleteSeasonalPrice: (hotelId, roomTypeId, id) => api.delete(`/hotels/${hotelId}/room-types/${roomTypeId}/seasonal-prices/${id}`),
-  getPriceForDate: (hotelId, roomTypeId, date) => api.get(`/hotels/${hotelId}/room-types/${roomTypeId}/price`, { params: { date } })
+  getPriceForDate: (hotelId, roomTypeId, date) => api.get(`/hotels/${hotelId}/room-types/${roomTypeId}/price`, { params: { date } }),
+  // Yearly Pricing
+  updateYearlyPrice: (hotelId, roomTypeId, data) => api.put(`/hotels/${hotelId}/room-types/${roomTypeId}/yearly-price`, data)
 };
 
 // API для Gmail интеграции

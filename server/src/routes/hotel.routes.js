@@ -46,7 +46,8 @@ const upload = multer({
 // GET /api/hotels - Get all hotels (grouped by city)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { cityId, search, includeInactive } = req.query;
+    const { cityId, search, includeInactive, year } = req.query;
+    const selectedYear = year ? parseInt(year) : null;
 
     const where = {};
 
@@ -68,7 +69,12 @@ router.get('/', authenticate, async (req, res) => {
         city: true,
         roomTypes: {
           where: includeInactive === 'true' ? {} : { isActive: true },
-          orderBy: { name: 'asc' }
+          orderBy: { name: 'asc' },
+          include: {
+            yearlyPrices: selectedYear
+              ? { where: { year: selectedYear } }
+              : false
+          }
         },
         _count: { select: { roomTypes: true } }
       },
@@ -78,6 +84,17 @@ router.get('/', authenticate, async (req, res) => {
         { name: 'asc' }
       ]
     });
+
+    // If year requested, merge yearly price into roomType as effectivePrice
+    if (selectedYear) {
+      hotels.forEach(hotel => {
+        hotel.roomTypes.forEach(rt => {
+          const yp = rt.yearlyPrices && rt.yearlyPrices[0];
+          rt.yearlyPrice = yp || null; // null = no override for this year
+          delete rt.yearlyPrices;
+        });
+      });
+    }
 
     // Group hotels by city
     const groupedByCity = hotels.reduce((acc, hotel) => {
@@ -405,6 +422,41 @@ router.put('/:hotelId/room-types/:id', authenticate, requireAdmin, async (req, r
       return res.status(400).json({ error: 'Тип номера с таким названием уже существует' });
     }
     res.status(500).json({ error: 'Ошибка обновления типа номера' });
+  }
+});
+
+// PUT /api/hotels/:hotelId/room-types/:id/yearly-price - Upsert yearly price
+router.put('/:hotelId/room-types/:id/yearly-price', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { year, pricePerNight, vatIncluded, touristTaxEnabled, brvValue } = req.body;
+
+    if (!year || pricePerNight === undefined) {
+      return res.status(400).json({ error: 'year va pricePerNight majburiy' });
+    }
+
+    const yearlyPrice = await prisma.roomYearlyPrice.upsert({
+      where: { roomTypeId_year: { roomTypeId: parseInt(id), year: parseInt(year) } },
+      update: {
+        pricePerNight: parseFloat(pricePerNight),
+        ...(typeof vatIncluded === 'boolean' && { vatIncluded }),
+        ...(typeof touristTaxEnabled === 'boolean' && { touristTaxEnabled }),
+        ...(brvValue !== undefined && { brvValue: parseFloat(brvValue) })
+      },
+      create: {
+        roomTypeId: parseInt(id),
+        year: parseInt(year),
+        pricePerNight: parseFloat(pricePerNight),
+        vatIncluded: typeof vatIncluded === 'boolean' ? vatIncluded : false,
+        touristTaxEnabled: typeof touristTaxEnabled === 'boolean' ? touristTaxEnabled : false,
+        brvValue: brvValue !== undefined ? parseFloat(brvValue) : 0
+      }
+    });
+
+    res.json({ yearlyPrice });
+  } catch (error) {
+    console.error('Upsert yearly price error:', error);
+    res.status(500).json({ error: 'Xato' });
   }
 });
 

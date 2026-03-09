@@ -374,9 +374,28 @@ model RoomType {
   accommodationRooms AccommodationRoom[]
   accommodations     Accommodation[]
   seasonalPrices     RoomSeasonalPrice[]
+  yearlyPrices       RoomYearlyPrice[]
 
   @@index([hotelId])
   @@index([hotelId, name])
+}
+
+// Yillik narxlar (har yil uchun alohida narx)
+model RoomYearlyPrice {
+  id                Int      @id @default(autoincrement())
+  roomTypeId        Int
+  roomType          RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  year              Int
+  pricePerNight     Float    @default(0)
+  vatIncluded       Boolean  @default(false)
+  touristTaxEnabled Boolean  @default(false)
+  brvValue          Float?   @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([roomTypeId, year])
+  @@index([roomTypeId])
+  @@index([year])
 }
 
 // Сезонные цены на номера
