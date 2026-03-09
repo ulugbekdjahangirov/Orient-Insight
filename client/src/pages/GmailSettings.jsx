@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { gmailApi, telegramApi } from '../services/api';
+import { gmailApi, telegramApi, ausgabenApi } from '../services/api';
 
 export default function GmailSettings() {
   const [loading, setLoading] = useState(true);
@@ -13,8 +13,10 @@ export default function GmailSettings() {
   const [mealChatIds, setMealChatIds] = useState({});
   const [newRestaurant, setNewRestaurant] = useState({ name: '', chatId: '' });
   const [savingMeal, setSavingMeal] = useState(false);
-  const [botAdminIds, setBotAdminIds] = useState({ transport: '', restaurant: '', guide: '' });
+  const [botAdminIds, setBotAdminIds] = useState({ hotel: '', transport: '', restaurant: '', guide: '' }); // comma-separated strings
   const [savingBotAdmins, setSavingBotAdmins] = useState(false);
+  const [ausgabenChatIds, setAusgabenChatIds] = useState('');
+  const [savingAusgaben, setSavingAusgaben] = useState(false);
 
   useEffect(() => {
     loadStatus();
@@ -23,6 +25,7 @@ export default function GmailSettings() {
     loadTransportSettings();
     loadMealSettings();
     loadBotAdminIds();
+    loadAusgabenSettings();
   }, []);
 
   const checkAuthCallback = () => {
@@ -175,20 +178,45 @@ export default function GmailSettings() {
 
   const loadBotAdminIds = async () => {
     try {
-      const res = await telegramApi.getBotAdminIds();
-      setBotAdminIds(res.data || { restaurant: '', guide: '' });
+      const res = await telegramApi.getBotAdmins();
+      const data = res.data || {};
+      setBotAdminIds({
+        hotel: (data.hotel || []).join(', '),
+        transport: (data.transport || []).join(', '),
+        restaurant: (data.restaurant || []).join(', '),
+        guide: (data.guide || []).join(', ')
+      });
     } catch (e) {}
   };
 
   const handleSaveBotAdmins = async () => {
     setSavingBotAdmins(true);
     try {
-      await telegramApi.saveBotAdminIds(botAdminIds);
+      await telegramApi.saveBotAdminsBulk(botAdminIds);
       setMessage({ type: 'success', text: 'Bot admin sozlamalari saqlandi' });
     } catch (e) {
       setMessage({ type: 'error', text: 'Saqlashda xatolik' });
     } finally {
       setSavingBotAdmins(false);
+    }
+  };
+
+  const loadAusgabenSettings = async () => {
+    try {
+      const res = await ausgabenApi.getSettings();
+      setAusgabenChatIds(res.data.chatIds || '');
+    } catch (e) {}
+  };
+
+  const handleSaveAusgaben = async () => {
+    setSavingAusgaben(true);
+    try {
+      await ausgabenApi.saveSettings(ausgabenChatIds);
+      setMessage({ type: 'success', text: 'Ausgaben Bot sozlamalari saqlandi' });
+    } catch (e) {
+      setMessage({ type: 'error', text: 'Saqlashda xatolik' });
+    } finally {
+      setSavingAusgaben(false);
     }
   };
 
@@ -422,13 +450,14 @@ export default function GmailSettings() {
       <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-4 sm:mt-6">
         <h2 className="text-lg font-semibold mb-1">🔔 Bot admin xabarnoma sozlamalari</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Tasdiqlar uchun xabarnoma qaysi chat ga ketishini belgilang. Bo'sh qoldirilsa, asosiy admin (TELEGRAM_ADMIN_CHAT_ID) ishlatiladi.
+          Tasdiqlar uchun xabarnoma qaysi chat IDlarga ketishini belgilang. Bir nechta bo'lsa vergul bilan ajrating: <span className="font-mono">59417337, 349138737</span>
         </p>
         <div className="space-y-3 mb-4">
           {[
-            { key: 'transport',  label: '🚌 Transport admin',  placeholder: 'Chat ID (bo\'sh = asosiy admin)' },
-            { key: 'restaurant', label: '🍽 Restoran admin',   placeholder: 'Chat ID (bo\'sh = xabarnoma yo\'q)' },
-            { key: 'guide',      label: '🧭 Guide admin',      placeholder: 'Chat ID (bo\'sh = xabarnoma yo\'q)' },
+            { key: 'hotel',      label: '🏨 Hotel admin',      placeholder: '59417337, 349138737' },
+            { key: 'transport',  label: '🚌 Transport admin',  placeholder: '59417337, 349138737' },
+            { key: 'restaurant', label: '🍽 Restoran admin',   placeholder: '59417337, 349138737' },
+            { key: 'guide',      label: '🧭 Guide admin',      placeholder: '59417337, 349138737' },
           ].map(({ key, label, placeholder }) => (
             <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
               <label className="sm:w-36 text-sm font-medium text-gray-700 sm:flex-shrink-0">{label}</label>
@@ -449,6 +478,28 @@ export default function GmailSettings() {
         >
           {savingBotAdmins ? 'Saqlanmoqda...' : 'Saqlash'}
         </button>
+      </div>
+
+      {/* Ausgaben Bot Settings */}
+      <div className="mt-4 sm:mt-6 bg-white border border-gray-200 rounded-lg p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Ausgaben Bot — Chat IDlar</h2>
+        <p className="text-xs text-gray-500 mb-4">Costs modulidagi PDFlar yuboriladi (RL, Später, Überweisung, Karta, Total). Bir nechta ID bo'lsa vergul bilan ajrating.</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={ausgabenChatIds}
+            onChange={e => setAusgabenChatIds(e.target.value)}
+            placeholder="59417337, 349138737"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <button
+            onClick={handleSaveAusgaben}
+            disabled={savingAusgaben}
+            className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 text-sm whitespace-nowrap"
+          >
+            {savingAusgaben ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
+        </div>
       </div>
 
       {/* Info Box */}

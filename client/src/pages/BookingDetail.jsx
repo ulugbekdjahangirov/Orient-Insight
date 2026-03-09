@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, worldInsightApi, openPreviewUrl } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, ausgabenApi, worldInsightApi, openPreviewUrl } from '../services/api';
 import { format, addDays, parseISO } from 'date-fns';
 import { UZS_PER_USD, UZS_PER_EUR } from '../constants/rates';
 import toast from 'react-hot-toast';
@@ -2943,29 +2943,41 @@ export default function BookingDetail() {
     }
   };
 
-  // Send all Cost PDFs to Siroj via Telegram
+  // Send all Cost PDFs to Ausgaben bot via Telegram
   const sendCostPDFsToTelegram = async () => {
     setSendingCostPDFs(true);
     try {
-      const results = [
-        exportAusgabenToPDF(true),
-        exportRLToPDF(true),
-        exportSpaterToPDF(true),
-        exportUberweisungToPDF(true),
-        exportKartaToPDF(true),
-      ].filter(Boolean);
+      const tabs = [
+        { fn: exportAusgabenToPDF, name: 'Total', key: 'ausgaben' },
+        { fn: exportRLToPDF,       name: 'RL',    key: 'rl' },
+        { fn: exportSpaterToPDF,   name: 'Später', key: 'spater' },
+        { fn: exportUberweisungToPDF, name: 'Überweisung', key: 'bank' },
+        { fn: exportKartaToPDF,    name: 'Karta', key: 'karta' },
+      ];
 
-      if (results.length === 0) {
-        alert('Yuborish uchun PDF topilmadi');
-        return;
+      const bookingNumber = booking?.bookingNumber || '';
+      let sentCount = 0;
+
+      for (const { fn, name, key } of tabs) {
+        try {
+          const result = fn(true);
+          if (!result) continue;
+          const { blob, filename } = result;
+          const caption = `${bookingNumber} — ${name}`;
+          await ausgabenApi.sendTelegram(blob, filename, caption, bookingNumber, key);
+          sentCount++;
+        } catch (tabErr) {
+          console.error(`${name} yuborishda xatolik:`, tabErr.response?.data || tabErr.message);
+        }
       }
 
-      const form = new FormData();
-      results.forEach((r, i) => form.append(`pdf_${i}`, r.blob, r.filename));
-      await telegramApi.sendCostPDFs(booking.id, form);
-      alert(`✅ Cost PDFlari (${results.length} ta) Sirojga yuborildi!`);
+      if (sentCount === 0) {
+        toast.error('Hech qanday PDF yuborilmadi');
+      } else {
+        toast.success(`${sentCount} ta PDF Ausgaben botga yuborildi`);
+      }
     } catch (err) {
-      alert('Xatolik: ' + (err.response?.data?.error || err.message));
+      toast.error('Xatolik: ' + (err.response?.data?.error || err.message));
     } finally {
       setSendingCostPDFs(false);
     }
@@ -3481,6 +3493,22 @@ export default function BookingDetail() {
   };
 
   // ===================== END GUIDE FUNCTIONS =====================
+
+  // Send Ausgaben PDF to Telegram (Siroj + Admin)
+  const sendAusgabenTg = async (exportFn, tabName, tabKey) => {
+    try {
+      const result = exportFn(true);
+      if (!result) { toast.error('PDF yaratishda xatolik'); return; }
+      const { blob, filename } = result;
+      const caption = `${booking?.bookingNumber || ''} — ${tabName}`;
+      const bookingNumber = booking?.bookingNumber || '';
+      await ausgabenApi.sendTelegram(blob, filename, caption, bookingNumber, tabKey);
+      toast.success(`${tabName} Telegramga yuborildi`);
+    } catch (e) {
+      console.error('Ausgaben TG error:', e);
+      toast.error(e.response?.data?.error || 'Telegramga yuborishda xatolik');
+    }
+  };
 
   // Export RL (Reiseleiter) to PDF
   const exportRLToPDF = (returnBlob = false) => {
@@ -13090,7 +13118,7 @@ License №T-0084-08 from 2021-04-26`;
                   ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
                   : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 }
-                {sendingCostPDFs ? 'Yuborilmoqda...' : 'Sirojga yuborish (barcha PDFlar)'}
+                {sendingCostPDFs ? 'Yuborilmoqda...' : 'Botga yuborish (barcha PDFlar)'}
               </button>
             </div>
           </div>
@@ -13512,13 +13540,22 @@ License №T-0084-08 from 2021-04-26`;
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''}</h3>
-                  <button
-                    onClick={async () => { const r = exportAusgabenToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all shadow-lg hover:shadow-xl self-start md:self-auto text-sm md:text-base"
-                  >
-                    <Download className="w-4 h-4 md:w-5 md:h-5" />
-                    PDF saqlab olish
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={async () => { const r = exportAusgabenToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 transition-all shadow-lg text-sm md:text-base"
+                    >
+                      <Download className="w-4 h-4 md:w-5 md:h-5" />
+                      PDF saqlab olish
+                    </button>
+                    <button
+                      onClick={() => sendAusgabenTg(exportAusgabenToPDF, 'Total', 'ausgaben')}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-lg hover:from-sky-600 hover:to-blue-600 transition-all shadow-lg text-sm md:text-base"
+                    >
+                      <Send className="w-4 h-4 md:w-5 md:h-5" />
+                      Botga yuborish
+                    </button>
+                  </div>
                 </div>
 
                 {/* MOBILE: card view */}
@@ -13848,6 +13885,12 @@ License №T-0084-08 from 2021-04-26`;
                         PDF saqlab olish
                       </button>
                     )}
+                    {hasData && (
+                      <button onClick={() => sendAusgabenTg(exportRLToPDF, 'RL', 'rl')} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-lg hover:from-sky-600 hover:to-blue-600 transition-all shadow-lg text-sm md:text-base">
+                        <Send className="w-4 h-4 md:w-5 md:h-5" />
+                        Botga yuborish
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -14124,12 +14167,20 @@ License №T-0084-08 from 2021-04-26`;
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Später)</h3>
-                  {hasData && (
-                    <button onClick={async () => { const r = exportSpaterToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
-                      <Download className="w-4 h-4 md:w-5 md:h-5" />
-                      PDF saqlab olish
-                    </button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {hasData && (
+                      <button onClick={async () => { const r = exportSpaterToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg text-sm md:text-base">
+                        <Download className="w-4 h-4 md:w-5 md:h-5" />
+                        PDF saqlab olish
+                      </button>
+                    )}
+                    {hasData && (
+                      <button onClick={() => sendAusgabenTg(exportSpaterToPDF, 'Später', 'spater')} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-lg hover:from-sky-600 hover:to-blue-600 transition-all shadow-lg text-sm md:text-base">
+                        <Send className="w-4 h-4 md:w-5 md:h-5" />
+                        Botga yuborish
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {hasData ? (
@@ -14368,12 +14419,20 @@ License №T-0084-08 from 2021-04-26`;
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Überweisung)</h3>
-                  {hasData && (
-                    <button onClick={async () => { const r = exportUberweisungToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
-                      <Download className="w-4 h-4 md:w-5 md:h-5" />
-                      PDF saqlab olish
-                    </button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {hasData && (
+                      <button onClick={async () => { const r = exportUberweisungToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white rounded-lg hover:from-purple-700 hover:to-violet-700 transition-all shadow-lg text-sm md:text-base">
+                        <Download className="w-4 h-4 md:w-5 md:h-5" />
+                        PDF saqlab olish
+                      </button>
+                    )}
+                    {hasData && (
+                      <button onClick={() => sendAusgabenTg(exportUberweisungToPDF, 'Überweisung', 'bank')} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-lg hover:from-sky-600 hover:to-blue-600 transition-all shadow-lg text-sm md:text-base">
+                        <Send className="w-4 h-4 md:w-5 md:h-5" />
+                        Botga yuborish
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {hasData ? (
@@ -14512,12 +14571,20 @@ License №T-0084-08 from 2021-04-26`;
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
                   <h3 className="text-lg md:text-2xl font-bold text-gray-900">Ausgaben {booking?.bookingNumber || ''} (Card Payments)</h3>
-                  {hasData && (
-                    <button onClick={async () => { const r = exportKartaToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg self-start md:self-auto text-sm md:text-base">
-                      <Download className="w-4 h-4 md:w-5 md:h-5" />
-                      PDF saqlab olish
-                    </button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {hasData && (
+                      <button onClick={async () => { const r = exportKartaToPDF(true); if (!r) return; const u = URL.createObjectURL(r.blob); window.open(u, '_blank'); setTimeout(() => URL.revokeObjectURL(u), 30000); await autoSavePdf(r.blob, r.filename, 'ausgaben'); toast.success('PDF tayyorlandi'); }} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg text-sm md:text-base">
+                        <Download className="w-4 h-4 md:w-5 md:h-5" />
+                        PDF saqlab olish
+                      </button>
+                    )}
+                    {hasData && (
+                      <button onClick={() => sendAusgabenTg(exportKartaToPDF, 'Karta', 'karta')} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 to-blue-500 text-white rounded-lg hover:from-sky-600 hover:to-blue-600 transition-all shadow-lg text-sm md:text-base">
+                        <Send className="w-4 h-4 md:w-5 md:h-5" />
+                        Botga yuborish
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {hasData ? (

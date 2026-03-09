@@ -386,6 +386,7 @@ export const telegramApi = {
   saveBotAdminIds: (ids) => api.put('/telegram/bot-admin-ids', ids),
   getBotAdmins: () => api.get('/telegram/bot-admins'),
   setBotAdmin: (botType, chatId) => api.put(`/telegram/bot-admins/${botType}`, { chatId }),
+  saveBotAdminsBulk: (ids) => api.put('/telegram/bot-admins-bulk', ids),
   sendGuide: (bookingId, data) => api.post(`/telegram/send-guide/${bookingId}`, data),
   sendGuideSchedule: (guideId, year) => api.post(`/telegram/send-guide-schedule/${guideId}`, {}, { params: { year } }),
   getKnownChats: () => api.get('/telegram/updates'),
@@ -523,6 +524,22 @@ export const jahresplanungApi = {
 
 export const searchApi = {
   search: (q) => api.get('/search', { params: { q } })
+};
+
+export const ausgabenApi = {
+  getSettings: () => api.get('/ausgaben/settings'),
+  saveSettings: (chatIds) => api.post('/ausgaben/settings', { chatIds }),
+  sendTelegram: (pdfBlob, filename, caption, bookingNumber, tab) => {
+    const form = new FormData();
+    form.append('pdf', pdfBlob, filename);
+    form.append('filename', filename);
+    if (caption) form.append('caption', caption);
+    if (bookingNumber) form.append('bookingNumber', bookingNumber);
+    if (tab) form.append('tab', tab);
+    return api.post('/ausgaben/send-telegram', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  }
 };
 
 export default api;

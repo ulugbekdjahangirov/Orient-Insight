@@ -6405,6 +6405,19 @@ router.put('/bot-admin-ids', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// PUT /api/telegram/bot-admins-bulk — save full admin lists for all bot types (comma-separated → JSON array)
+router.put('/bot-admins-bulk', authenticate, async (req, res) => {
+  try {
+    const keyMap = { hotel: 'HOTEL_ADMIN_CHAT_IDS', transport: 'TRANSPORT_ADMIN_CHAT_IDS', restaurant: 'RESTAURANT_ADMIN_CHAT_IDS', guide: 'GUIDE_ADMIN_CHAT_IDS' };
+    for (const [type, key] of Object.entries(keyMap)) {
+      if (req.body[type] === undefined) continue;
+      const ids = req.body[type].split(',').map(s => s.trim()).filter(Boolean);
+      await prisma.systemSetting.upsert({ where: { key }, update: { value: JSON.stringify(ids) }, create: { key, value: JSON.stringify(ids) } });
+    }
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // POST /api/telegram/send-eintritt/:bookingId — receive PDF blob from frontend and send to Siroj
 router.post('/send-eintritt/:bookingId', authenticate, upload.single('pdf'), async (req, res) => {
   try {
