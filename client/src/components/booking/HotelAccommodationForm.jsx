@@ -1185,19 +1185,38 @@ export default function HotelAccommodationForm({
               </div>
             )}
 
-            <select
-              name="hotelId"
-              value={formData.hotelId}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">Select hotel</option>
-              {hotels.map(hotel => (
-                <option key={hotel.id} value={hotel.id}>
-                  {hotel.name} ({hotel.city?.name})
-                </option>
-              ))}
-            </select>
+            {(() => {
+              // Filter hotels by current hotel's city
+              const currentHotel = hotels.find(h => h.id === parseInt(formData.hotelId || editingAccommodation?.hotelId));
+              const currentCity = currentHotel?.city?.name;
+              const filteredHotels = currentCity
+                ? hotels.filter(h => h.city?.name === currentCity)
+                : hotels;
+              return (
+                <select
+                  name="hotelId"
+                  value={formData.hotelId}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Select hotel</option>
+                  {filteredHotels.map(hotel => (
+                    <option key={hotel.id} value={hotel.id}>
+                      {hotel.name} ({hotel.city?.name})
+                    </option>
+                  ))}
+                  {currentCity && filteredHotels.length < hotels.length && (
+                    <optgroup label="── Boshqa shaharlar ──">
+                      {hotels.filter(h => h.city?.name !== currentCity).map(hotel => (
+                        <option key={hotel.id} value={hotel.id}>
+                          {hotel.name} ({hotel.city?.name})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              );
+            })()}
           </div>
 
           {/* Dates Row */}
