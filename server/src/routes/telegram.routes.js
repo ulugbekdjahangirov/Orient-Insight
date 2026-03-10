@@ -6155,8 +6155,8 @@ router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
           `📋 Booking: *${booking.bookingNumber}*`,
           `👤 Gid: *${guideName}*`,
           `🏷 Tur: *${guideTypeLabel}*`,
-          booking.departureDate ? `📅 Jo'nash: *${fmtDate(booking.departureDate)}*` : null,
-          booking.arrivalDate   ? `🏁 Kelish: *${fmtDate(booking.arrivalDate)}*`   : null,
+          booking.arrivalDate ? `📅 Boshlanish: *${fmtDate(booking.arrivalDate)}*` : null,
+          booking.endDate     ? `🏁 Tugash: *${fmtDate(booking.endDate)}*`         : null,
           ``,
           `⚠️ Bu guruh anulyatsiya qilindi.`,
         ].filter(v => v !== null).join('\n')
