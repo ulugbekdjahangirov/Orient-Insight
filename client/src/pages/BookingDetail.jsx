@@ -2905,7 +2905,7 @@ export default function BookingDetail() {
     <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Дата:</span><span style="font-size:7.5pt;">${fmtDate(entry.date)}</span></div>
     <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Ф.И.О. гида:</span><span style="font-size:7.5pt;">${guideName}</span></div>
     <div style="display:flex;"><span style="min-width:46mm;font-size:7.5pt;">Город:</span><span style="font-size:7.5pt;">${cityRu}</span></div>
-    ${stampDataUrl ? `<img src="${stampDataUrl}" style="position:absolute;bottom:0mm;right:1mm;width:38mm;height:38mm;opacity:0.9;pointer-events:none;">` : ''}
+    ${stampDataUrl ? `<img src="${stampDataUrl}" style="position:absolute;bottom:0mm;right:1mm;width:40mm;height:40mm;opacity:0.9;pointer-events:none;">` : ''}
   </div>
 </div>`;
       };
@@ -12387,7 +12387,7 @@ License №T-0084-08 from 2021-04-26`;
     <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Дата:</span><span style="font-size:7.5pt;">${fmtDate(entry.date)}</span></div>
     <div style="display:flex;margin-bottom:1.2mm;"><span style="min-width:46mm;font-size:7.5pt;">Ф.И.О. гида:</span><span style="font-size:7.5pt;">${guideName}</span></div>
     <div style="display:flex;"><span style="min-width:46mm;font-size:7.5pt;">Город:</span><span style="font-size:7.5pt;">${cityRu}</span></div>
-    ${stampDataUrl ? `<img src="${stampDataUrl}" style="position:absolute;bottom:0mm;right:1mm;width:38mm;height:38mm;opacity:0.9;pointer-events:none;">` : ''}
+    ${stampDataUrl ? `<img src="${stampDataUrl}" style="position:absolute;bottom:0mm;right:1mm;width:40mm;height:40mm;opacity:0.9;pointer-events:none;">` : ''}
   </div>
 </div>`;
               };
@@ -19063,17 +19063,19 @@ License №T-0084-08 from 2021-04-26`;
       )}
 
       {/* Send Hotel Request Email Modal */}
-      {sendEmailModal && (
+      {sendEmailModal && (() => {
+        const isStorno = booking?.status === 'CANCELLED';
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-5 rounded-t-2xl flex items-center justify-between">
+            <div className={`bg-gradient-to-r ${isStorno ? 'from-red-500 to-rose-600' : 'from-blue-500 to-indigo-600'} p-5 rounded-t-2xl flex items-center justify-between`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                   <Mail className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">Hotelga zayavka yuborish</h2>
-                  <p className="text-blue-100 text-sm">{sendEmailModal.hotelName}</p>
+                  <h2 className="text-lg font-bold text-white">{isStorno ? 'Hotelga storno yuborish' : 'Hotelga zayavka yuborish'}</h2>
+                  <p className={`${isStorno ? 'text-red-100' : 'text-blue-100'} text-sm`}>{sendEmailModal.hotelName}</p>
                 </div>
               </div>
               <button onClick={() => setSendEmailModal(null)} className="text-white/80 hover:text-white">
@@ -19081,20 +19083,27 @@ License №T-0084-08 from 2021-04-26`;
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Xat turi</label>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'zayavka', label: 'ЗАЯВКА' },
-                    { value: 'izmenenie', label: 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' },
-                  ].map(opt => (
-                    <label key={opt.value} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${emailSubjectType === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                      <input type="radio" name="emailSubjectType" value={opt.value} checked={emailSubjectType === opt.value} onChange={() => setEmailSubjectType(opt.value)} className="accent-blue-600" />
-                      {opt.label}
-                    </label>
-                  ))}
+              {isStorno ? (
+                <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl">
+                  <span className="text-2xl">❌</span>
+                  <span className="font-bold text-red-700 text-sm">АННУЛЯЦИЯ — PDF fayl sifatida yuboriladi</span>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Xat turi</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'zayavka', label: 'ЗАЯВКА' },
+                      { value: 'izmenenie', label: 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' },
+                    ].map(opt => (
+                      <label key={opt.value} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${emailSubjectType === opt.value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                        <input type="radio" name="emailSubjectType" value={opt.value} checked={emailSubjectType === opt.value} onChange={() => setEmailSubjectType(opt.value)} className="accent-blue-600" />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Hotel email manzili</label>
                 <input
@@ -19108,15 +19117,12 @@ License №T-0084-08 from 2021-04-26`;
                   <p className="text-amber-600 text-xs mt-1">Hotel profilida email yo'q. Bu yerga kiriting.</p>
                 )}
               </div>
-              <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
+              <div className={`${isStorno ? 'bg-red-50' : 'bg-blue-50'} rounded-xl p-4 text-sm ${isStorno ? 'text-red-800' : 'text-blue-800'}`}>
                 <p><strong>Gmail:</strong> orientinsightreisen@gmail.com</p>
-                <p className="mt-1">Zayavka PDF fayl sifatida attach qilinib yuboriladi.</p>
+                <p className="mt-1">{isStorno ? 'Аннуляция PDF fayl sifatida attach qilinib yuboriladi.' : 'Zayavka PDF fayl sifatida attach qilinib yuboriladi.'}</p>
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={() => setSendEmailModal(null)}
-                  className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50"
-                >
+                <button onClick={() => setSendEmailModal(null)} className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50">
                   Bekor qilish
                 </button>
                 <button
@@ -19124,8 +19130,13 @@ License №T-0084-08 from 2021-04-26`;
                   onClick={async () => {
                     setSendingEmail(true);
                     try {
-                      await bookingsApi.sendHotelRequest(id, sendEmailModal.hotelId, emailInput, emailSubjectType);
-                      toast.success(`Zayavka ${emailInput} ga yuborildi!`);
+                      if (isStorno) {
+                        await bookingsApi.sendStornoEmail(id, sendEmailModal.hotelId, emailInput);
+                        toast.success(`Аннуляция ${emailInput} ga yuborildi!`);
+                      } else {
+                        await bookingsApi.sendHotelRequest(id, sendEmailModal.hotelId, emailInput, emailSubjectType);
+                        toast.success(`Zayavka ${emailInput} ga yuborildi!`);
+                      }
                       setSendEmailModal(null);
                     } catch (err) {
                       toast.error(err.response?.data?.error || 'Email yuborishda xatolik');
@@ -19133,35 +19144,31 @@ License №T-0084-08 from 2021-04-26`;
                       setSendingEmail(false);
                     }
                   }}
-                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                  className={`flex-1 py-3 ${isStorno ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50`}
                 >
-                  {sendingEmail ? (
-                    <span>Yuborilmoqda...</span>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Yuborish
-                    </>
-                  )}
+                  {sendingEmail ? <span>Yuborilmoqda...</span> : <><Send className="w-4 h-4" />Yuborish</>}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Send Hotel Request Telegram Modal */}
-      {sendTelegramModal && (
+      {sendTelegramModal && (() => {
+        const isStorno = booking?.status === 'CANCELLED';
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-            <div className="bg-gradient-to-r from-sky-500 to-cyan-600 p-5 rounded-t-2xl flex items-center justify-between">
+            <div className={`bg-gradient-to-r ${isStorno ? 'from-red-500 to-rose-600' : 'from-sky-500 to-cyan-600'} p-5 rounded-t-2xl flex items-center justify-between`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                   <Send className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">Telegram orqali yuborish</h2>
-                  <p className="text-sky-100 text-sm">{sendTelegramModal.hotelName}</p>
+                  <h2 className="text-lg font-bold text-white">{isStorno ? 'Storno Telegram orqali yuborish' : 'Telegram orqali yuborish'}</h2>
+                  <p className={`${isStorno ? 'text-red-100' : 'text-sky-100'} text-sm`}>{sendTelegramModal.hotelName}</p>
                 </div>
               </div>
               <button onClick={() => setSendTelegramModal(null)} className="text-white/80 hover:text-white">
@@ -19169,20 +19176,27 @@ License №T-0084-08 from 2021-04-26`;
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Xat turi</label>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'zayavka', label: 'ЗАЯВКА' },
-                    { value: 'izmenenie', label: 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' },
-                  ].map(opt => (
-                    <label key={opt.value} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${telegramSubjectType === opt.value ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                      <input type="radio" name="telegramSubjectType" value={opt.value} checked={telegramSubjectType === opt.value} onChange={() => setTelegramSubjectType(opt.value)} className="accent-sky-600" />
-                      {opt.label}
-                    </label>
-                  ))}
+              {isStorno ? (
+                <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-2 border-red-200 rounded-xl">
+                  <span className="text-2xl">❌</span>
+                  <span className="font-bold text-red-700 text-sm">АННУЛЯЦИЯ — PDF fayl sifatida yuboriladi</span>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Xat turi</label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'zayavka', label: 'ЗАЯВКА' },
+                      { value: 'izmenenie', label: 'ИЗМЕНЕНИЕ К ЗАЯВКЕ' },
+                    ].map(opt => (
+                      <label key={opt.value} className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 cursor-pointer transition-all text-sm font-medium ${telegramSubjectType === opt.value ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                        <input type="radio" name="telegramSubjectType" value={opt.value} checked={telegramSubjectType === opt.value} onChange={() => setTelegramSubjectType(opt.value)} className="accent-sky-600" />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Hotel Telegram Chat ID</label>
                 <input
@@ -19196,15 +19210,14 @@ License №T-0084-08 from 2021-04-26`;
                   <p className="text-amber-600 text-xs mt-1">Hotel profilida Telegram Chat ID yo'q. Bu yerga kiriting yoki Hotels sahifasidan qo'shing.</p>
                 )}
               </div>
-              <div className="bg-sky-50 rounded-xl p-4 text-sm text-sky-800">
-                <p className="font-semibold mb-1">Chat ID qanday topiladi?</p>
-                <p>Hotel menejeri botga xabar yuborgandan so'ng Hotels sahifasida <strong>Telegram Finder</strong> orqali topish mumkin.</p>
-              </div>
+              {!isStorno && (
+                <div className="bg-sky-50 rounded-xl p-4 text-sm text-sky-800">
+                  <p className="font-semibold mb-1">Chat ID qanday topiladi?</p>
+                  <p>Hotel menejeri botga xabar yuborgandan so'ng Hotels sahifasida <strong>Telegram Finder</strong> orqali topish mumkin.</p>
+                </div>
+              )}
               <div className="flex gap-3">
-                <button
-                  onClick={() => setSendTelegramModal(null)}
-                  className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50"
-                >
+                <button onClick={() => setSendTelegramModal(null)} className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50">
                   Bekor qilish
                 </button>
                 <button
@@ -19212,8 +19225,13 @@ License №T-0084-08 from 2021-04-26`;
                   onClick={async () => {
                     setSendingTelegram(true);
                     try {
-                      await bookingsApi.sendHotelRequestTelegram(id, sendTelegramModal.hotelId, telegramChatIdInput, telegramSubjectType);
-                      toast.success(`Zayavka Telegram orqali yuborildi!`);
+                      if (isStorno) {
+                        await bookingsApi.sendStornoTelegram(id, sendTelegramModal.hotelId, telegramChatIdInput);
+                        toast.success('Аннуляция Telegram orqali yuborildi!');
+                      } else {
+                        await bookingsApi.sendHotelRequestTelegram(id, sendTelegramModal.hotelId, telegramChatIdInput, telegramSubjectType);
+                        toast.success('Zayavka Telegram orqali yuborildi!');
+                      }
                       setSendTelegramModal(null);
                     } catch (err) {
                       toast.error(err.response?.data?.error || 'Telegram yuborishda xatolik');
@@ -19221,22 +19239,16 @@ License №T-0084-08 from 2021-04-26`;
                       setSendingTelegram(false);
                     }
                   }}
-                  className="flex-1 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                  className={`flex-1 py-3 ${isStorno ? 'bg-red-600 hover:bg-red-700' : 'bg-sky-600 hover:bg-sky-700'} text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50`}
                 >
-                  {sendingTelegram ? (
-                    <span>Yuborilmoqda...</span>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Yuborish
-                    </>
-                  )}
+                  {sendingTelegram ? <span>Yuborilmoqda...</span> : <><Send className="w-4 h-4" />Yuborish</>}
                 </button>
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Guide Selection Modal */}
       {guideModalOpen && (
