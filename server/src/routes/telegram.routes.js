@@ -277,12 +277,24 @@ async function sendGuideMenu(chatId, isAdmin = false) {
 async function sendRestaurantMenu(chatId, isAdmin = false) {
   const curYear = new Date().getFullYear();
   let availYears = [curYear];
-  const restaurantName = await getRestaurantByChatId(chatId);
-  if (restaurantName) {
-    const s = await prisma.systemSetting.findUnique({ where: { key: `JP_MEAL_YEARS_${restaurantName}` } });
-    if (s) {
-      const years = JSON.parse(s.value).filter(y => y >= curYear).sort();
-      if (years.length) availYears = years;
+  if (isAdmin) {
+    // Admin: collect years from all JP_MEAL_YEARS_ keys
+    const allMealYearKeys = await prisma.systemSetting.findMany({
+      where: { key: { startsWith: 'JP_MEAL_YEARS_' } }, select: { value: true }
+    });
+    const adminYears = [...new Set(
+      allMealYearKeys.flatMap(s => { try { return JSON.parse(s.value); } catch { return []; } })
+        .filter(y => y >= curYear)
+    )].sort();
+    if (adminYears.length) availYears = adminYears;
+  } else {
+    const restaurantName = await getRestaurantByChatId(chatId);
+    if (restaurantName) {
+      const s = await prisma.systemSetting.findUnique({ where: { key: `JP_MEAL_YEARS_${restaurantName}` } });
+      if (s) {
+        const years = JSON.parse(s.value).filter(y => y >= curYear).sort();
+        if (years.length) availYears = years;
+      }
     }
   }
   const zpRows = availYears.length > 1
@@ -2006,6 +2018,29 @@ router.post('/webhook', (req, res, next) => {
             { text: '⬅️ Orqaga', callback_data: `admin:zv:${tourType}:${year}` }
           ]] })
         }).catch(() => {});
+
+        // Visit bloklarini chunk qilib yuborish (har chunk ~3500 belgi)
+        let chunk = [];
+        let chunkLen = 0;
+        for (let i = 0; i < visitBlocks.length; i++) {
+          const block = visitBlocks[i];
+          if (chunkLen + block.length > 3500 && chunk.length > 0) {
+            await axios.post(`${BOT_API()}/sendMessage`, {
+              chat_id: fromChatId, text: chunk.join('\n\n'), parse_mode: 'Markdown'
+            }).catch(() => {});
+            chunk = [];
+            chunkLen = 0;
+          }
+          chunk.push(block);
+          chunkLen += block.length;
+        }
+        if (chunk.length > 0) {
+          await axios.post(`${BOT_API()}/sendMessage`, {
+            chat_id: fromChatId, text: chunk.join('\n\n'), parse_mode: 'Markdown'
+          }).catch(() => {});
+        }
+        return;
+      }
 
       // admin:zvback:{year} — tur turi tanlash sahifasiga qaytish
       if (subAction === 'zvback') {
@@ -4827,9 +4862,11 @@ router.post('/webhook-restaurant', async (req, res) => {
       return;
     }
 
-    // ── rest_jp_tt:{tourType} — Admin: show restaurants for this tour type ──
+    // ── rest_jp_tt:{tourType}:{year} — Admin: show restaurants for this tour type + year ──
     if (data.startsWith('rest_jp_tt:')) {
-      const tourType = data.split(':')[1]; // ER | CO | KAS
+      const jpParts = data.split(':');
+      const tourType = jpParts[1]; // ER | CO | KAS
+      const year = jpParts[2] ? parseInt(jpParts[2]) : new Date().getFullYear();
       await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${tourType} yuklanmoqda...`, show_alert: false
       }).catch(() => {});
@@ -4837,9 +4874,11 @@ router.post('/webhook-restaurant', async (req, res) => {
       const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
       if (!tourTypeRecord) return;
 
-      // Find distinct restaurants that have JP confirmations for this tour type
+      // Find distinct restaurants that have JP confirmations for this tour type + year
+      const startOfYear = new Date(`${year}-01-01`);
+      const endOfYear   = new Date(`${year}-12-31`);
       const confs = await prisma.mealConfirmation.findMany({
-        where: { source: 'JP', booking: { tourTypeId: tourTypeRecord.id } },
+        where: { source: 'JP', booking: { tourTypeId: tourTypeRecord.id, arrivalDate: { gte: startOfYear, lte: endOfYear } } },
         select: { restaurantName: true },
         distinct: ['restaurantName'],
         orderBy: { restaurantName: 'asc' }
@@ -4847,31 +4886,34 @@ router.post('/webhook-restaurant', async (req, res) => {
 
       if (!confs.length) {
         await axios.post(`${RESTAURANT_API()}/sendMessage`, {
-          chat_id: fromChatId, text: `📄 *${tourType}* — Hech qanday restoran topilmadi.`, parse_mode: 'Markdown'
+          chat_id: fromChatId, text: `📄 *${tourType} ${year}* — Hech qanday restoran topilmadi.`, parse_mode: 'Markdown'
         }).catch(() => {});
         return;
       }
 
-      // Build inline keyboard — one button per restaurant
+      // Build inline keyboard — one button per restaurant (year in callback)
       const rows = confs.map(c => [{
         text: `🍽 ${c.restaurantName}`,
-        callback_data: `rest_jp_rest:${tourType}:${c.restaurantName}`.substring(0, 64)
+        callback_data: `rest_jp_rest:${tourType}:${year}:${c.restaurantName}`.substring(0, 64)
       }]);
 
       await axios.post(`${RESTAURANT_API()}/sendMessage`, {
         chat_id: fromChatId,
-        text: `📄 *Zaявка 2026 — ${tourType}*\nRestoranni tanlang:`,
+        text: `📄 *Заявка ${year} — ${tourType}*\nRestoranni tanlang:`,
         parse_mode: 'Markdown',
         reply_markup: JSON.stringify({ inline_keyboard: rows })
       }).catch(() => {});
       return;
     }
 
-    // ── rest_jp_rest:{tourType}:{restaurantName} — show JP confirmations ──
+    // ── rest_jp_rest:{tourType}:{year}:{restaurantName} — show JP confirmations ──
     if (data.startsWith('rest_jp_rest:')) {
-      const idx = data.indexOf(':', data.indexOf(':') + 1) + 1; // after second colon
-      const tourType = data.split(':')[1];
-      const restName = data.substring(idx); // everything after second colon
+      const jpRestParts = data.split(':');
+      const tourType = jpRestParts[1];
+      const year = jpRestParts[2] ? parseInt(jpRestParts[2]) : new Date().getFullYear();
+      // restName starts after third colon: rest_jp_rest:ER:2026:RestName
+      const thirdColon = data.indexOf(':', data.indexOf(':', data.indexOf(':') + 1) + 1);
+      const restName = thirdColon !== -1 ? data.substring(thirdColon + 1) : jpRestParts.slice(2).join(':');
       await axios.post(`${RESTAURANT_API()}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId, text: `${restName} yuklanmoqda...`, show_alert: false
       }).catch(() => {});
@@ -4879,14 +4921,16 @@ router.post('/webhook-restaurant', async (req, res) => {
       const tourTypeRecord = await prisma.tourType.findUnique({ where: { code: tourType } });
       if (!tourTypeRecord) return;
 
+      const startOfYear = new Date(`${year}-01-01`);
+      const endOfYear   = new Date(`${year}-12-31`);
       const confs = await prisma.mealConfirmation.findMany({
-        where: { source: 'JP', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id } },
+        where: { source: 'JP', restaurantName: restName, booking: { tourTypeId: tourTypeRecord.id, arrivalDate: { gte: startOfYear, lte: endOfYear } } },
         include: { booking: { select: { bookingNumber: true } } },
         orderBy: { mealDate: 'asc' }
       });
 
       const ST = { PENDING: '⏳', CONFIRMED: '✅', REJECTED: '❌' };
-      const lines = [`📄 *${tourType} — ${restName}*`];
+      const lines = [`📄 *${tourType} ${year} — ${restName}*`];
       if (!confs.length) {
         lines.push('\nHech narsa topilmadi.');
       } else {
