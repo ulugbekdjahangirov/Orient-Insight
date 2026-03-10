@@ -6112,16 +6112,29 @@ router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
 
     if (!guideName) return res.status(400).json({ error: 'guideName required' });
 
-    const guide = await prisma.guide.findFirst({ where: { name: guideName } });
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      include: {
+        tourType: true,
+        guide: true,
+        secondGuide: true
+      }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Find guide by booking relation first (avoids duplicate name issue), fallback to name search
+    let guide = null;
+    if (guideType === 'main' && booking.guide?.name === guideName) {
+      guide = booking.guide;
+    } else if (guideType === 'second' && booking.secondGuide?.name === guideName) {
+      guide = booking.secondGuide;
+    }
+    if (!guide) {
+      guide = await prisma.guide.findFirst({ where: { name: guideName, telegramChatId: { not: null } } });
+    }
     if (!guide?.telegramChatId) {
       return res.status(400).json({ error: `${guideName} uchun Telegram chat ID sozlanmagan (Guides sahifasida)` });
     }
-
-    const booking = await prisma.booking.findUnique({
-      where: { id: parseInt(bookingId) },
-      include: { tourType: true }
-    });
-    if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
     const guideTypeLabel =
       guideType === 'main'           ? 'Asosiy gid' :
