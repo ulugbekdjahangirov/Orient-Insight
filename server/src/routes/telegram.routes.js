@@ -6555,7 +6555,7 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
     const bookings = await prisma.booking.findMany({
       where: { guideId, bookingYear: year, status: { not: 'CANCELLED' } },
       select: {
-        id: true, bookingNumber: true, departureDate: true, endDate: true, pax: true, status: true,
+        id: true, bookingNumber: true, departureDate: true, arrivalDate: true, endDate: true, pax: true, status: true,
         tourType: { select: { code: true } }
       },
       orderBy: { departureDate: 'asc' }
@@ -6572,7 +6572,7 @@ router.post('/send-guide-schedule/:guideId', authenticate, async (req, res) => {
     const rows = bookings.map((b, i) => {
       const num   = String(i + 1).padStart(2);
       const grp   = (b.bookingNumber || '').padEnd(8);
-      const start = fmtD(b.departureDate).padEnd(6);
+      const start = fmtD(b.arrivalDate).padEnd(6);
       const end   = fmtDY(b.endDate);
       return `<code>${num}. ${grp}  ${start} ── ${end}</code>`;
     });
