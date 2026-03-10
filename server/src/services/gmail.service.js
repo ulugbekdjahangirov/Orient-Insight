@@ -7,14 +7,32 @@ class GmailService {
     this.oauth2Client = new google.auth.OAuth2(
       process.env.GMAIL_CLIENT_ID,
       process.env.GMAIL_CLIENT_SECRET,
-      process.env.GMAIL_REDIRECT_URI
+      process.env.GMAIL_REDIRECT_URI || 'https://booking-calendar.uz/api/gmail/callback'
     );
+  }
+
+  /**
+   * Reinitialize oauth2Client from DB if env vars are missing
+   */
+  async _ensureOAuth2Client() {
+    if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET) return;
+    const settings = await prisma.systemSetting.findMany({
+      where: { key: { in: ['GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET', 'GMAIL_REDIRECT_URI'] } }
+    });
+    const get = (k) => settings.find(s => s.key === k)?.value;
+    const clientId = get('GMAIL_CLIENT_ID');
+    const clientSecret = get('GMAIL_CLIENT_SECRET');
+    const redirectUri = get('GMAIL_REDIRECT_URI') || 'https://booking-calendar.uz/api/gmail/callback';
+    if (clientId && clientSecret) {
+      this.oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+    }
   }
 
   /**
    * Get OAuth URL for user authorization
    */
-  getAuthUrl() {
+  async getAuthUrl() {
+    await this._ensureOAuth2Client();
     const scopes = [
       'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/gmail.modify'
@@ -31,6 +49,7 @@ class GmailService {
    * Handle OAuth callback and save tokens
    */
   async handleOAuthCallback(code) {
+    await this._ensureOAuth2Client();
     const { tokens } = await this.oauth2Client.getToken(code);
     await this.saveTokens(tokens);
     return tokens;
@@ -94,6 +113,7 @@ class GmailService {
    * Authenticate with Gmail API
    */
   async authenticate() {
+    await this._ensureOAuth2Client();
     try {
       const tokens = await this.loadTokens();
       this.oauth2Client.setCredentials(tokens);

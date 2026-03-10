@@ -16,7 +16,7 @@ const emailImportProcessor = require('../services/emailImportProcessor.service')
  */
 router.post('/authorize', authenticate, requireAdmin, async (req, res) => {
   try {
-    const authUrl = gmailService.getAuthUrl();
+    const authUrl = await gmailService.getAuthUrl();
     res.json({ authUrl });
   } catch (error) {
     console.error('❌ Failed to generate auth URL:', error);
