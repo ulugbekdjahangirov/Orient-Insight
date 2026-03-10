@@ -196,12 +196,11 @@ async function sendTransportMenu(chatId) {
     )].sort();
     if (years.length) availYears = years;
   }
-  const zpRows = availYears.length > 1
-    ? [availYears.map(y => ({ text: `📄 Заявка ${y}` }))]
-    : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '❌ Ануляция' }]];
-  const keyboard = availYears.length > 1
-    ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '❌ Ануляция' }]]
-    : [[{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], ...zpRows];
+  const zpBtnText = availYears.length > 1 ? '📄 Заявка' : `📄 Заявка ${availYears[0]}`;
+  const keyboard = [
+    [{ text: zpBtnText }, { text: '❌ Ануляция' }],
+    [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }]
+  ];
   await axios.post(`${TRANSPORT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🚌 *Transport menyu:*',
@@ -221,12 +220,13 @@ async function sendTransportAdminMenu(chatId) {
       .filter(y => y && y >= curYear)
   )].sort();
   const availYears = years.length ? years : [curYear];
-  const zpRows = availYears.length > 1
-    ? [availYears.map(y => ({ text: `📄 Заявка ${y}` }))]
-    : [[{ text: `📄 Заявка ${availYears[0]}` }, { text: '🚫 Rad etilgan' }]];
-  const keyboard = availYears.length > 1
-    ? [...zpRows, [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], [{ text: '🚫 Rad etilgan' }, { text: '❌ Ануляция' }]]
-    : [[{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }], ...zpRows, [{ text: '❌ Ануляция' }]];
+  // Single year: show "📄 Заявка 2026" | multiple years: show "📄 Заявка" (year picker on press)
+  const zpBtnText = availYears.length > 1 ? '📄 Заявка' : `📄 Заявка ${availYears[0]}`;
+  const keyboard = [
+    [{ text: zpBtnText }, { text: '🚫 Rad etilgan' }],
+    [{ text: '📋 Marshrut List' }, { text: '✅ Tasdiqlangan' }],
+    [{ text: '❌ Ануляция' }]
+  ];
   await axios.post(`${TRANSPORT_API()}/sendMessage`, {
     chat_id: chatId,
     text: '🤖 *Transport Admin Panel*',
@@ -1612,11 +1612,23 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
 
-        // Admin persistent reply keyboard
+        // Admin persistent reply keyboard — dynamic year detection from JP_SECTIONS
         const _yr = new Date().getFullYear();
+        const _allJpKeys = await prisma.systemSetting.findMany({
+          where: { key: { startsWith: 'JP_SECTIONS_' } }, select: { key: true, value: true }
+        });
+        const _jpYears = [...new Set(
+          _allJpKeys.map(s => {
+            const km = s.key.match(/JP_SECTIONS_\d+_\w+_(\d{4})$/);
+            if (km) return parseInt(km[1]);
+            try { const y = JSON.parse(s.value).year; return y ? parseInt(y) : null; } catch { return null; }
+          }).filter(y => y && y >= _yr)
+        )].sort();
+        const _adminJpYears = _jpYears.length ? _jpYears : [_yr];
+        const _jpBtnText = _adminJpYears.length > 1 ? '📋 Заявка' : `📋 Заявка ${_adminJpYears[0]}`;
         const MAIN_REPLY_KEYBOARD = JSON.stringify({
           keyboard: [
-            [{ text: `📋 Заявка ${_yr}` }, { text: "📝 Изменения к Заявке" }],
+            [{ text: _jpBtnText }, { text: "📝 Изменения к Заявке" }],
             [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
             [{ text: '❌ Ануляция' }]
           ],
@@ -1635,17 +1647,30 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
 
-        // 📋 Заявка — tur turi tanlash
-        if (text === `📋 Заявка ${_yr}`) {
-          const year = _yr;
+        // 📋 Заявка — tur turi tanlash (with or without year)
+        if (text.startsWith('📋 Заявка')) {
+          const yearMatch = text.match(/📋 Заявка (\d{4})/);
+          const pressedYear = yearMatch ? parseInt(yearMatch[1]) : null;
+          if (!pressedYear) {
+            // Multiple years — show inline year picker
+            const yearButtons = _adminJpYears.map(y => ({ text: String(y), callback_data: `admin:zv_year:${y}` }));
+            await axios.post(`${BOT_API()}/sendMessage`, {
+              chat_id: adminSendId,
+              text: `📋 *Заявка*\n\nQaysi yilni tanlang:`,
+              parse_mode: 'Markdown',
+              reply_markup: JSON.stringify({ inline_keyboard: [yearButtons] })
+            }).catch(() => {});
+            return;
+          }
+          const year = pressedYear;
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: adminSendId,
             text: `📋 *Заявка ${year}*\n\nQaysi tur turini tanlang:`,
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({
               inline_keyboard: [
-                [{ text: `ER ${year}`, callback_data: 'admin:zv:ER' }, { text: `CO ${year}`, callback_data: 'admin:zv:CO' }],
-                [{ text: `KAS ${year}`, callback_data: 'admin:zv:KAS' }, { text: `ZA ${year}`, callback_data: 'admin:zv:ZA' }]
+                [{ text: `ER ${year}`, callback_data: `admin:zv:ER:${year}` }, { text: `CO ${year}`, callback_data: `admin:zv:CO:${year}` }],
+                [{ text: `KAS ${year}`, callback_data: `admin:zv:KAS:${year}` }, { text: `ZA ${year}`, callback_data: `admin:zv:ZA:${year}` }]
               ]
             })
           }).catch(() => {});
@@ -1666,28 +1691,30 @@ router.post('/webhook', (req, res, next) => {
           return;
         }
 
-        // ⏳ Waiting List — avval Заявка 2026 yoki Изменения tanlash
+        // ⏳ Waiting List — avval Заявка yoki Изменения tanlash
         if (text === '⏳ Waiting List') {
+          const _wlJpText = _adminJpYears.length > 1 ? '📋 Заявка' : `📋 Заявка ${_adminJpYears[0]}`;
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: adminSendId,
             text: '⏳ *Waiting List*\nQaysi bo\'limni tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: [
-              [{ text: `📋 Заявка ${_yr}`, callback_data: 'admin:wl:jp' }],
+              [{ text: _wlJpText, callback_data: 'admin:wl:jp' }],
               [{ text: '📝 Изменения к Заявке', callback_data: 'admin:wl:chg' }]
             ]})
           }).catch(() => {});
           return;
         }
 
-        // 🚫 Rad etilgan — bo'lim tanlash (Заявка 2026 yoki Изменения)
+        // 🚫 Rad etilgan — bo'lim tanlash (Заявка yoki Изменения)
         if (text === '🚫 Rad etilgan') {
+          const _rejJpText = _adminJpYears.length > 1 ? '📋 Заявка' : `📋 Заявка ${_adminJpYears[0]}`;
           await axios.post(`${BOT_API()}/sendMessage`, {
             chat_id: adminSendId,
             text: '🚫 *Rad etilgan*\nQaysi bo\'limni tanlang:',
             parse_mode: 'Markdown',
             reply_markup: JSON.stringify({ inline_keyboard: [
-              [{ text: `📋 Заявка ${_yr}`, callback_data: 'admin:rej:jp' }],
+              [{ text: _rejJpText, callback_data: 'admin:rej:jp' }],
               [{ text: '📝 Изменения к Заявке', callback_data: 'admin:rej:chg' }]
             ]})
           }).catch(() => {});
@@ -1869,16 +1896,34 @@ router.post('/webhook', (req, res, next) => {
 
       await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
 
-      // admin:zv:CO — CO hotellarini JP holati bilan ko'rsatish
+      // admin:zv_year:{year} — yil tanlandi, tur turi picker
+      if (subAction === 'zv_year') {
+        const year = parseInt(parts[2]);
+        await axios.post(`${BOT_API()}/editMessageText`, {
+          chat_id: fromChatId, message_id: cb.message.message_id,
+          text: `📋 *Заявка ${year}*\n\nQaysi tur turini tanlang:`,
+          parse_mode: 'Markdown',
+          reply_markup: JSON.stringify({ inline_keyboard: [
+            [{ text: `ER ${year}`, callback_data: `admin:zv:ER:${year}` }, { text: `CO ${year}`, callback_data: `admin:zv:CO:${year}` }],
+            [{ text: `KAS ${year}`, callback_data: `admin:zv:KAS:${year}` }, { text: `ZA ${year}`, callback_data: `admin:zv:ZA:${year}` }]
+          ]})
+        }).catch(() => {});
+        return;
+      }
+
+      // admin:zv:CO:{year} — CO hotellarini JP holati bilan ko'rsatish
       if (subAction === 'zv') {
         const tourType = parts[2];
-        const year = new Date().getFullYear();
+        const year = parts[3] ? parseInt(parts[3]) : new Date().getFullYear();
         const allJp = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_SECTIONS_' } } });
-        // Faqat haqiqatda yuborilgan JP lar (bulkMsgId yoki visit msgId bor bo'lsa)
+        // Faqat haqiqatda yuborilgan JP lar (bulkMsgId yoki visit msgId bor bo'lsa), filtered by tourType + year
         const settings = allJp.filter(s => {
           try {
             const d = JSON.parse(s.value);
             if (d.tourType !== tourType) return false;
+            if (d.year && parseInt(d.year) !== year) return false;
+            const km = s.key.match(/_(\d{4})$/);
+            if (km && parseInt(km[1]) !== year) return false;
             if (d.bulkMsgId != null) return true;
             return (d.groups || []).some(g => g.visits.some(v => v.msgId != null));
           } catch { return false; }
@@ -1889,7 +1934,7 @@ router.post('/webhook', (req, res, next) => {
             chat_id: fromChatId, message_id: cb.message.message_id,
             text: `📋 *${tourType} ${year}*\n\n📭 Bu tur uchun hali zaявka yuborilmagan.`,
             parse_mode: 'Markdown',
-            reply_markup: JSON.stringify({ inline_keyboard: [[{ text: '⬅️ Orqaga', callback_data: 'admin:zvback' }]] })
+            reply_markup: JSON.stringify({ inline_keyboard: [[{ text: '⬅️ Orqaga', callback_data: `admin:zvback:${year}` }]] })
           }).catch(() => {});
           return;
         }
@@ -1902,12 +1947,12 @@ router.post('/webhook', (req, res, next) => {
             const counts = {};
             for (const grp of (d.groups || [])) for (const v of grp.visits) counts[v.status] = (counts[v.status] || 0) + 1;
             const countStr = ['PENDING','CONFIRMED','WAITING','REJECTED'].filter(st => counts[st]).map(st => `${ST[st]}${counts[st]}`).join(' ');
-            const hotelId = parseInt(s.key.replace('JP_SECTIONS_', '').replace(`_${tourType}`, ''));
+            const hotelId = parseInt(s.key.replace('JP_SECTIONS_', '').replace(`_${tourType}`, '').replace(`_${year}`, ''));
             lines.push(`🏨 *${d.hotelName}*  ${countStr}`);
-            keyboard.push([{ text: `🏨 ${d.hotelName}`, callback_data: `admin:zvh:${tourType}:${hotelId}` }]);
+            keyboard.push([{ text: `🏨 ${d.hotelName}`, callback_data: `admin:zvh:${tourType}:${hotelId}:${year}` }]);
           } catch {}
         }
-        keyboard.push([{ text: '🔄 Yangilash', callback_data: `admin:zv:${tourType}` }, { text: '⬅️ Orqaga', callback_data: 'admin:zvback' }]);
+        keyboard.push([{ text: '🔄 Yangilash', callback_data: `admin:zv:${tourType}:${year}` }, { text: '⬅️ Orqaga', callback_data: `admin:zvback:${year}` }]);
 
         await axios.post(`${BOT_API()}/editMessageText`, {
           chat_id: fromChatId, message_id: cb.message.message_id,
@@ -1917,12 +1962,14 @@ router.post('/webhook', (req, res, next) => {
         return;
       }
 
-      // admin:zvh:CO:16 — hotel 16ning CO visit holati (batafsil format, split by chunks)
+      // admin:zvh:CO:16:{year} — hotel 16ning CO visit holati (batafsil format, split by chunks)
       if (subAction === 'zvh') {
         const tourType = parts[2];
         const hotelId = parseInt(parts[3]);
-        const year = new Date().getFullYear();
-        const setting = await prisma.systemSetting.findFirst({ where: { key: `JP_SECTIONS_${hotelId}_${tourType}` } });
+        const year = parts[4] ? parseInt(parts[4]) : new Date().getFullYear();
+        // Try year-specific key first, then old format
+        const setting = await prisma.systemSetting.findFirst({ where: { key: `JP_SECTIONS_${hotelId}_${tourType}_${year}` } })
+          || await prisma.systemSetting.findFirst({ where: { key: `JP_SECTIONS_${hotelId}_${tourType}` } });
 
         if (!setting) {
           await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId, text: "Ma'lumot topilmadi.", show_alert: true }).catch(() => {});
@@ -1955,44 +2002,21 @@ router.post('/webhook', (req, res, next) => {
           chat_id: fromChatId, message_id: cb.message.message_id,
           text: headerText, parse_mode: 'Markdown',
           reply_markup: JSON.stringify({ inline_keyboard: [[
-            { text: '🔄 Yangilash', callback_data: `admin:zvh:${tourType}:${hotelId}` },
-            { text: '⬅️ Orqaga', callback_data: `admin:zv:${tourType}` }
+            { text: '🔄 Yangilash', callback_data: `admin:zvh:${tourType}:${hotelId}:${year}` },
+            { text: '⬅️ Orqaga', callback_data: `admin:zv:${tourType}:${year}` }
           ]] })
         }).catch(() => {});
 
-        // Visit bloklarini chunk qilib yuborish (har chunk ~3500 belgi)
-        let chunk = [];
-        let chunkLen = 0;
-        for (let i = 0; i < visitBlocks.length; i++) {
-          const block = visitBlocks[i];
-          if (chunkLen + block.length > 3500 && chunk.length > 0) {
-            await axios.post(`${BOT_API()}/sendMessage`, {
-              chat_id: fromChatId, text: chunk.join('\n\n'), parse_mode: 'Markdown'
-            }).catch(() => {});
-            chunk = [];
-            chunkLen = 0;
-          }
-          chunk.push(block);
-          chunkLen += block.length;
-        }
-        if (chunk.length > 0) {
-          await axios.post(`${BOT_API()}/sendMessage`, {
-            chat_id: fromChatId, text: chunk.join('\n\n'), parse_mode: 'Markdown'
-          }).catch(() => {});
-        }
-        return;
-      }
-
-      // admin:zvback — tur turi tanlash sahifasiga qaytish
+      // admin:zvback:{year} — tur turi tanlash sahifasiga qaytish
       if (subAction === 'zvback') {
-        const year = new Date().getFullYear();
+        const year = parts[2] ? parseInt(parts[2]) : new Date().getFullYear();
         await axios.post(`${BOT_API()}/editMessageText`, {
           chat_id: fromChatId, message_id: cb.message.message_id,
           text: `📋 *Заявка ${year}*\n\nQaysi tur turini tanlang:`,
           parse_mode: 'Markdown',
           reply_markup: JSON.stringify({ inline_keyboard: [
-            [{ text: `ER ${year}`, callback_data: 'admin:zv:ER' }, { text: `CO ${year}`, callback_data: 'admin:zv:CO' }],
-            [{ text: `KAS ${year}`, callback_data: 'admin:zv:KAS' }, { text: `ZA ${year}`, callback_data: 'admin:zv:ZA' }]
+            [{ text: `ER ${year}`, callback_data: `admin:zv:ER:${year}` }, { text: `CO ${year}`, callback_data: `admin:zv:CO:${year}` }],
+            [{ text: `KAS ${year}`, callback_data: `admin:zv:KAS:${year}` }, { text: `ZA ${year}`, callback_data: `admin:zv:ZA:${year}` }]
           ] })
         }).catch(() => {});
         return;
@@ -2004,7 +2028,7 @@ router.post('/webhook', (req, res, next) => {
         await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
         const ADMIN_KB = JSON.stringify({
           keyboard: [
-            [{ text: `📋 Заявка ${new Date().getFullYear()}` }, { text: '📝 Изменения к Заявке' }],
+            [{ text: '📋 Заявка' }, { text: '📝 Изменения к Заявке' }],
             [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
             [{ text: '❌ Ануляция' }]
           ],
@@ -2065,7 +2089,7 @@ router.post('/webhook', (req, res, next) => {
         await axios.post(`${BOT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId }).catch(() => {});
         const ADMIN_KB = JSON.stringify({
           keyboard: [
-            [{ text: `📋 Заявка ${new Date().getFullYear()}` }, { text: '📝 Изменения к Заявке' }],
+            [{ text: '📋 Заявка' }, { text: '📝 Изменения к Заявке' }],
             [{ text: '⏳ Waiting List' }, { text: '🚫 Rad etilgan' }],
             [{ text: '❌ Ануляция' }]
           ],
@@ -3386,8 +3410,8 @@ router.post('/webhook-transport', async (req, res) => {
       }
 
       // Menu button handlers — show inline ER/CO/KAS/ZA sub-menu
-      const isZayavkaBtn = msg.text?.startsWith('📄 Заявка ');
-      const pressedZayavkaYear = isZayavkaBtn ? (parseInt(msg.text.replace('📄 Заявка', '').trim()) || new Date().getFullYear()) : null;
+      const isZayavkaBtn = msg.text?.startsWith('📄 Заявка');
+      const pressedZayavkaYear = isZayavkaBtn ? (parseInt(msg.text.replace('📄 Заявка', '').trim()) || null) : null;
       const STATUS_BTN_MAP_STATIC = {
         '✅ Tasdiqlangan': { key: 'CONFIRMED',   emoji: '✅' },
         '🚫 Rad etilgan':  { key: 'RAD_ETILGAN', emoji: '🚫' },
@@ -3428,6 +3452,45 @@ router.post('/webhook-transport', async (req, res) => {
         return;
       }
       if (isZayavkaBtn) {
+        if (!pressedZayavkaYear) {
+          // No year in button text → find available years and show picker
+          const curYr = new Date().getFullYear();
+          const jpKeys = await prisma.systemSetting.findMany({ where: { key: { startsWith: 'JP_TRANSPORT_CONFIRM_' } } });
+          const availYrs = [...new Set(
+            jpKeys
+              .filter(s => { try { return !JSON.parse(s.value).cleared; } catch { return false; } })
+              .map(s => parseInt(s.key.split('_')[3]))
+              .filter(y => y && y >= curYr)
+          )].sort();
+          const yrsToShow = availYrs.length ? availYrs : [curYr];
+          if (yrsToShow.length === 1) {
+            // Only one year — proceed directly
+            const y = yrsToShow[0];
+            await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: `📄 *Заявка ${y}* — Tur turini tanlang:`,
+              parse_mode: 'Markdown',
+              reply_markup: JSON.stringify({ inline_keyboard: [[
+                { text: 'ER', callback_data: `tr_conf:PENDING_${y}:ER` },
+                { text: 'CO', callback_data: `tr_conf:PENDING_${y}:CO` },
+                { text: 'KAS', callback_data: `tr_conf:PENDING_${y}:KAS` },
+                { text: 'ZA', callback_data: `tr_conf:PENDING_${y}:ZA` }
+              ]]})
+            }).catch(() => {});
+          } else {
+            // Multiple years — show inline year picker
+            await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+              chat_id: chat.id,
+              text: '📄 *Qaysi yilni tanlang:*',
+              parse_mode: 'Markdown',
+              reply_markup: JSON.stringify({
+                inline_keyboard: [yrsToShow.map(y => ({ text: `${y}`, callback_data: `tr_zayavka_year:${y}` }))]
+              })
+            }).catch(() => {});
+          }
+          return;
+        }
+        // Year specified directly in button text
         await axios.post(`${TRANSPORT_API()}/sendMessage`, {
           chat_id: chat.id,
           text: `📄 *Заявка ${pressedZayavkaYear}* — Tur turini tanlang:`,
@@ -3647,6 +3710,24 @@ router.post('/webhook-transport', async (req, res) => {
           await axios.post(`${TRANSPORT_API()}/sendMessage`, { chat_id: id, text: adminMsg, parse_mode: 'Markdown' }).catch(() => {});
         }
       }
+      return;
+    }
+
+    // ── tr_zayavka_year:{year} — year picker for 📄 Заявка ──────────────────
+    if (data.startsWith('tr_zayavka_year:')) {
+      const year = parseInt(data.split(':')[1]);
+      await axios.post(`${TRANSPORT_API()}/answerCallbackQuery`, { callback_query_id: callbackQueryId, show_alert: false }).catch(() => {});
+      await axios.post(`${TRANSPORT_API()}/sendMessage`, {
+        chat_id: fromChatId,
+        text: `📄 *Заявка ${year}* — Tur turini tanlang:`,
+        parse_mode: 'Markdown',
+        reply_markup: JSON.stringify({ inline_keyboard: [[
+          { text: 'ER',  callback_data: `tr_conf:PENDING_${year}:ER`  },
+          { text: 'CO',  callback_data: `tr_conf:PENDING_${year}:CO`  },
+          { text: 'KAS', callback_data: `tr_conf:PENDING_${year}:KAS` },
+          { text: 'ZA',  callback_data: `tr_conf:PENDING_${year}:ZA`  }
+        ]]})
+      }).catch(() => {});
       return;
     }
 
