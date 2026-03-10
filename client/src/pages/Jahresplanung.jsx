@@ -3097,7 +3097,7 @@ function GuidesTab({ tourColor }) {
                       <td className="px-4 py-3 text-slate-600">
                         {b.guideRole === 'second' && b.tourType === 'ZA'
                           ? fmt(addDaysLocal(b.endDate, 4))
-                          : fmt(b.departureDate)}
+                          : fmt(b.arrivalDate)}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
                         {b.guideRole === 'second' && b.tourType === 'ZA'

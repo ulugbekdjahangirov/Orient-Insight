@@ -5222,7 +5222,7 @@ router.post('/webhook-guide', async (req, res) => {
         let bookings = [];
         let headerText = '';
 
-        if (msg.text === '📋 Gruppalar') {
+        if (isGruppalar) {
           const where = isAdmin
             ? { bookingYear: year, status: { not: 'CANCELLED' } }
             : { guideId: guide.id, bookingYear: year, status: { not: 'CANCELLED' } };
@@ -5783,27 +5783,22 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
     const hotelId   = parseInt(req.params.hotelId);
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: {
-        tourType: true,
-        accommodations: { where: { hotelId } }
-      }
+      include: { tourType: true, accommodations: { where: { hotelId } } }
     });
     const hotel = await prisma.hotel.findUnique({ where: { id: hotelId } });
     if (!hotel?.telegramChatId) return res.status(400).json({ error: 'Hotel Telegram chat ID yo\'q' });
 
-    const acc = booking?.accommodations?.[0];
-    const checkIn  = fmtDateUtil(acc?.checkIn  || booking?.arrivalDate);
-    const checkOut = fmtDateUtil(acc?.checkOut || booking?.endDate);
-    const text = [
-      `❌ *ЗАЯВКА ${booking?.bookingNumber} — Anulyatsiya*`,
-      `🏨 ${hotel.name}`,
-      '',
-      `📅 Заезд: ${checkIn}`,
-      `📅 Выезд: ${checkOut}`,
-      `👥 PAX: ${booking?.pax || 0}`,
-      '',
-      '⚠️ Bu bron bekor qilindi.'
-    ].join('\n');
+    // Generate Storno PDF via Puppeteer
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const page = await browser.newPage();
+    const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/storno-combined/${hotelId}`;
+    await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
+    await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+    const pdfBuffer = Buffer.from(await page.pdf({ format: 'A4', printBackground: true }));
+    await browser.close();
+
+    const caption = `❌ АННУЛЯЦИЯ\n🏨 ${hotel.name}\n📋 ${booking?.bookingNumber}`;
+    const filename = `storno_${booking?.bookingNumber}_${hotel.name.replace(/\s+/g, '_')}.pdf`;
 
     const annButtons = JSON.stringify({
       inline_keyboard: [[
@@ -5811,12 +5806,14 @@ router.post('/send-annulment/:bookingId/:hotelId', authenticate, async (req, res
       ]]
     });
 
-    await axios.post(`${BOT_API()}/sendMessage`, {
-      chat_id: hotel.telegramChatId,
-      text,
-      parse_mode: 'Markdown',
-      reply_markup: annButtons
-    });
+    const formData = new FormData();
+    formData.append('chat_id', hotel.telegramChatId);
+    formData.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
+    formData.append('caption', caption);
+    formData.append('parse_mode', 'Markdown');
+    formData.append('reply_markup', annButtons);
+
+    await axios.post(`${BOT_API()}/sendDocument`, formData, { headers: formData.getHeaders() });
 
     // Create TelegramConfirmation so admin "Anulyatsiya" tab shows it
     await prisma.telegramConfirmation.create({
