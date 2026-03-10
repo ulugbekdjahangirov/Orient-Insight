@@ -6147,37 +6147,53 @@ router.post('/send-guide/:bookingId', authenticate, async (req, res) => {
       return `${String(dt.getDate()).padStart(2,'0')}.${String(dt.getMonth()+1).padStart(2,'0')}.${dt.getFullYear()}`;
     };
 
-    const msgText = [
-      `🧭 *Gid so'rovi*`,
-      `📋 Booking: *${booking.bookingNumber}*`,
-      `👤 Gid: *${guideName}*`,
-      `🏷 Tur: *${guideTypeLabel}*`,
-      booking.departureDate ? `📅 Jo'nash: *${fmtDate(booking.departureDate)}*` : null,
-      booking.arrivalDate   ? `🏁 Kelish: *${fmtDate(booking.arrivalDate)}*`   : null,
-      fullDays  ? `☀️ To'liq kunlar: *${fullDays}*`  : null,
-      halfDays  ? `🌤 Yarim kunlar: *${halfDays}*`   : null,
-      dayRate   ? `💰 Kunlik to'lov: *$${dayRate}*`  : null,
-      totalPayment ? `💵 Jami to'lov: *$${Math.round(totalPayment)}*` : null,
-    ].filter(Boolean).join('\n');
+    const isCancelled = booking.status === 'CANCELLED';
 
-    // Save/update GuideConfirmation as PENDING
+    const msgText = isCancelled
+      ? [
+          `❌ *GRUPPA BEKOR QILINDI*`,
+          `📋 Booking: *${booking.bookingNumber}*`,
+          `👤 Gid: *${guideName}*`,
+          `🏷 Tur: *${guideTypeLabel}*`,
+          booking.departureDate ? `📅 Jo'nash: *${fmtDate(booking.departureDate)}*` : null,
+          booking.arrivalDate   ? `🏁 Kelish: *${fmtDate(booking.arrivalDate)}*`   : null,
+          ``,
+          `⚠️ Bu guruh anulyatsiya qilindi.`,
+        ].filter(v => v !== null).join('\n')
+      : [
+          `🧭 *Gid so'rovi*`,
+          `📋 Booking: *${booking.bookingNumber}*`,
+          `👤 Gid: *${guideName}*`,
+          `🏷 Tur: *${guideTypeLabel}*`,
+          booking.departureDate ? `📅 Jo'nash: *${fmtDate(booking.departureDate)}*` : null,
+          booking.arrivalDate   ? `🏁 Kelish: *${fmtDate(booking.arrivalDate)}*`   : null,
+          fullDays  ? `☀️ To'liq kunlar: *${fullDays}*`  : null,
+          halfDays  ? `🌤 Yarim kunlar: *${halfDays}*`   : null,
+          dayRate   ? `💰 Kunlik to'lov: *$${dayRate}*`  : null,
+          totalPayment ? `💵 Jami to'lov: *$${Math.round(totalPayment)}*` : null,
+        ].filter(Boolean).join('\n');
+
+    // Save/update GuideConfirmation
     await prisma.guideConfirmation.upsert({
       where: { bookingId_guideId: { bookingId: parseInt(bookingId), guideId: guide.id } },
-      create: { bookingId: parseInt(bookingId), guideId: guide.id, status: 'PENDING', sentAt: new Date() },
-      update: { status: 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null }
+      create: { bookingId: parseInt(bookingId), guideId: guide.id, status: isCancelled ? 'REJECTED' : 'PENDING', sentAt: new Date() },
+      update: { status: isCancelled ? 'REJECTED' : 'PENDING', sentAt: new Date(), respondedAt: null, confirmedBy: null }
     });
 
-    await axios.post(`${GUIDE_API()}/sendMessage`, {
+    const messagePayload = {
       chat_id: guide.telegramChatId,
       text: msgText,
       parse_mode: 'Markdown',
-      reply_markup: JSON.stringify({
+    };
+    if (!isCancelled) {
+      messagePayload.reply_markup = JSON.stringify({
         inline_keyboard: [[
           { text: '✅ Qabul qilaman', callback_data: `gd_ok:${bookingId}:${guide.id}` },
           { text: '❌ Rad etaman',    callback_data: `gd_reject:${bookingId}:${guide.id}` }
         ]]
-      })
-    });
+      });
+    }
+    await axios.post(`${GUIDE_API()}/sendMessage`, messagePayload);
 
     res.json({ ok: true });
   } catch (err) {
