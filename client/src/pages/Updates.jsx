@@ -1131,7 +1131,7 @@ export default function Updates() {
                     } else if (calculatedStatus === 'PENDING') {
                       rowClass = 'bg-yellow-100 hover:bg-yellow-200';
                     } else if (calculatedStatus === 'IN_PROGRESS') {
-                      rowClass = 'bg-purple-100 hover:bg-purple-200';
+                      rowClass = 'bg-purple-200 hover:bg-purple-300';
                     } else if (calculatedStatus === 'FINAL_CONFIRMED') {
                       rowClass = 'bg-emerald-200 hover:bg-emerald-300';
                     } else if (calculatedStatus === 'CONFIRMED') {
