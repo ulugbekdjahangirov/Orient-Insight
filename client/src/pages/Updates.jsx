@@ -193,6 +193,7 @@ export default function Updates() {
   const [allBookingsCount, setAllBookingsCount] = useState(0);
   const [bookingCountsByType, setBookingCountsByType] = useState({});
   const [confirmedCount, setConfirmedCount] = useState(0);
+  const [finalConfirmedCount, setFinalConfirmedCount] = useState(0);
   const [inProgressCount, setInProgressCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [cancelledCount, setCancelledCount] = useState(0);
@@ -208,6 +209,7 @@ export default function Updates() {
       setAllBookingsCount(debugData.total);
       setBookingCountsByType(debugData.byType);
       setConfirmedCount(debugData.statusCounts.CONFIRMED);
+      setFinalConfirmedCount(debugData.statusCounts.FINAL_CONFIRMED || 0);
       setInProgressCount(debugData.statusCounts.IN_PROGRESS);
       setPendingCount(debugData.statusCounts.PENDING);
       setCancelledCount(debugData.statusCounts.CANCELLED || 0);
@@ -894,6 +896,12 @@ export default function Updates() {
 
         {/* Statistics Cards */}
         <div className="relative flex flex-wrap items-center gap-2 md:gap-4 mt-4 md:mt-6">
+          {finalConfirmedCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-emerald-500 to-emerald-700 border-2 border-emerald-400 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white animate-pulse shadow-md"></div>
+              <span className="text-white font-bold text-xs md:text-base">Final Confirmed: {finalConfirmedCount}</span>
+            </div>
+          )}
           {confirmedCount > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-green-500 to-emerald-600 border-2 border-green-400 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
               <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white animate-pulse shadow-md"></div>

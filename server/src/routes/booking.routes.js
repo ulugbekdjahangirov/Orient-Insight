@@ -1536,6 +1536,7 @@ router.get('/debug/count-by-type', authenticate, async (req, res) => {
     const details = {};
     const statusCounts = {
       CONFIRMED: 0,
+      FINAL_CONFIRMED: 0,
       IN_PROGRESS: 0,
       PENDING: 0,
       CANCELLED: 0,
@@ -1582,7 +1583,11 @@ router.get('/debug/count-by-type', authenticate, async (req, res) => {
       }
       byType[code]++;
 
-      const calculatedStatus = calculateStatus(booking.pax, booking.departureDate, booking.endDate);
+      const calculatedStatus = booking.status === 'CANCELLED'
+        ? 'CANCELLED'
+        : booking.status === 'FINAL_CONFIRMED'
+        ? 'FINAL_CONFIRMED'
+        : calculateStatus(booking.pax, booking.departureDate, booking.endDate);
       statusCounts[calculatedStatus]++;
 
       details[code].push({

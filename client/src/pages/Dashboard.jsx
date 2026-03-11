@@ -191,7 +191,13 @@ export default function Dashboard() {
           />
         </div>
         {/* Row 2: by status */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatCard
+            icon={BadgeCheck}
+            label="Final Confirmed"
+            value={stats?.overview.finalConfirmed || 0}
+            color="green"
+          />
           <StatCard
             icon={CheckCircle}
             label="Confirmed"

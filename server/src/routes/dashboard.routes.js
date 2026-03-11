@@ -65,6 +65,7 @@ router.get('/stats', authenticate, async (req, res) => {
     // Рассчитываем статусы динамически
     const statusCounts = {
       CONFIRMED: 0,
+      FINAL_CONFIRMED: 0,
       IN_PROGRESS: 0,
       PENDING: 0,
       CANCELLED: 0,
@@ -73,6 +74,7 @@ router.get('/stats', authenticate, async (req, res) => {
 
     const statusPaxSums = {
       CONFIRMED: 0,
+      FINAL_CONFIRMED: 0,
       IN_PROGRESS: 0,
       PENDING: 0,
       CANCELLED: 0,
@@ -82,6 +84,8 @@ router.get('/stats', authenticate, async (req, res) => {
     allBookings.forEach(booking => {
       const calculatedStatus = booking.status === 'CANCELLED'
         ? 'CANCELLED'
+        : booking.status === 'FINAL_CONFIRMED'
+        ? 'FINAL_CONFIRMED'
         : calculateStatus(booking.pax, booking.departureDate, booking.endDate);
       statusCounts[calculatedStatus]++;
       statusPaxSums[calculatedStatus] += booking.pax;
@@ -167,6 +171,7 @@ router.get('/stats', authenticate, async (req, res) => {
         totalBookings: allBookings.length,
         totalPax: totalPaxCalc,
         confirmed: statusCounts.CONFIRMED,
+        finalConfirmed: statusCounts.FINAL_CONFIRMED,
         inProgress: statusCounts.IN_PROGRESS,
         pending: statusCounts.PENDING,
         cancelled: statusCounts.CANCELLED,
