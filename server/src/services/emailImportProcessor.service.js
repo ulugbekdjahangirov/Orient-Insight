@@ -734,14 +734,26 @@ class EmailImportProcessor {
         .replace(/\s+/g, ' ')
         .trim();
 
-      // Helper: find tourist-specific remark by last name match
+      // Helper: find tourist-specific remark by full name match (last + first name)
       const makeNameLookup = (map) => (fullName) => {
         if (!map.size) return null;
-        const normN = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').replace(/\b(dr\.|prof\.|dipl\.|ing\.)\s*/gi, '').trim();
-        const tLast = normN(fullName).split(',')[0].trim();
+        const normN = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|mr\s|mrs\s)\s*/i, '').replace(/\b(dr\.|prof\.|dipl\.|ing\.)\s*/gi, '').replace(/\s+/g, ' ').trim();
+        const tNorm = normN(fullName);
+        const tLast  = tNorm.split(',')[0].trim();
+        const tFirst = tNorm.includes(',') ? tNorm.split(',').slice(1).join(',').trim() : '';
         for (const [keyName, val] of map.entries()) {
-          const kLast = normN(keyName).split(',')[0].trim();
-          if (kLast === tLast && kLast.length > 1) return val;
+          const kNorm = normN(keyName);
+          let kLast, kFirst;
+          if (kNorm.includes(',')) { kLast = kNorm.split(',')[0].trim(); kFirst = kNorm.split(',').slice(1).join(',').trim(); }
+          else { const w = kNorm.split(' ').filter(Boolean); kLast = w.pop() || ''; kFirst = w.join(' '); }
+          if (!kLast || !tLast || kLast !== tLast || tLast.length < 2) continue;
+          if (kFirst && tFirst) {
+            if (!tFirst.startsWith(kFirst) && !kFirst.startsWith(tFirst)) {
+              const ml = Math.min(5, kFirst.length, tFirst.length);
+              if (kFirst.substring(0, ml) !== tFirst.substring(0, ml)) continue;
+            }
+          }
+          return val;
         }
         return null;
       };
@@ -1209,14 +1221,26 @@ class EmailImportProcessor {
         .replace(/\s+/g, ' ')
         .trim();
 
-      // Helper: find tourist-specific remark / extra night by last name match
+      // Helper: find tourist-specific remark / extra night by full name match (last + first name)
       const makeNameLookupD = (map) => (fullName) => {
         if (!map.size) return null;
-        const normN = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').replace(/\b(dr\.|prof\.|dipl\.|ing\.)\s*/gi, '').trim();
-        const tLast = normN(fullName).split(',')[0].trim();
+        const normN = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|mr\s|mrs\s)\s*/i, '').replace(/\b(dr\.|prof\.|dipl\.|ing\.)\s*/gi, '').replace(/\s+/g, ' ').trim();
+        const tNorm = normN(fullName);
+        const tLast  = tNorm.split(',')[0].trim();
+        const tFirst = tNorm.includes(',') ? tNorm.split(',').slice(1).join(',').trim() : '';
         for (const [keyName, val] of map.entries()) {
-          const kLast = normN(keyName).split(',')[0].trim();
-          if (kLast === tLast && kLast.length > 1) return val;
+          const kNorm = normN(keyName);
+          let kLast, kFirst;
+          if (kNorm.includes(',')) { kLast = kNorm.split(',')[0].trim(); kFirst = kNorm.split(',').slice(1).join(',').trim(); }
+          else { const w = kNorm.split(' ').filter(Boolean); kLast = w.pop() || ''; kFirst = w.join(' '); }
+          if (!kLast || !tLast || kLast !== tLast || tLast.length < 2) continue;
+          if (kFirst && tFirst) {
+            if (!tFirst.startsWith(kFirst) && !kFirst.startsWith(tFirst)) {
+              const ml = Math.min(5, kFirst.length, tFirst.length);
+              if (kFirst.substring(0, ml) !== tFirst.substring(0, ml)) continue;
+            }
+          }
+          return val;
         }
         return null;
       };
@@ -1732,8 +1756,8 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
           inVegetariansSection = true; inBirthdaysSection = false;
           const val = line.replace(/^Vegetarians?:/i, '').trim();
           if (val && val !== '//' && val !== '-') {
-            // Support both "//" separator and comma-separated names
-            const parts = val.includes('//') ? val.split('//') : val.split(/,\s*(?=Mr\.|Mrs\.|Ms\.)/i);
+            // Support both "//" separator and comma-separated names (Mr. or Mr without dot)
+            const parts = val.includes('//') ? val.split('//') : val.split(/,\s*(?=Mr\.?|Mrs\.?|Ms\.?)\s/i);
             parts.forEach(part => {
               part = part.trim();
               if (!part) return;
@@ -1936,7 +1960,7 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
         if (inVegetariansSection) {
           if (/^(Remark:|Birthdays:|Allergies:|Glutenfree:|International|Flights)/i.test(line)) {
             inVegetariansSection = false;
-          } else if (/^(Mr\.|Mrs\.|Ms\.)/i.test(line)) {
+          } else if (/^(Mr\.?|Mrs\.?|Ms\.?)\s/i.test(line)) {
             vegetariansList.push({ name: line.trim(), label: 'Vegetarian' });
           }
         }
@@ -2041,23 +2065,6 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
       for (const name of currentRemarkTargets) touristSpecificRemarks.set(name.toLowerCase(), short);
     }
 
-    // Match vegetariansList against tourists and mark them
-    if (vegetariansList.length > 0) {
-      const normVeg = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
-      for (const tourist of tourists) {
-        const tNorm = normVeg(tourist.fullName);
-        const tLast = tNorm.split(',')[0].trim();
-        const matched = vegetariansList.find(veg => {
-          const vNorm = normVeg(veg.name);
-          return vNorm.includes(tLast) && tLast.length > 1;
-        });
-        if (matched) {
-          tourist.isVegetarian = true;
-          tourist.dietLabel = matched.label; // "Vegetarian" or "Vegan"
-        }
-      }
-    }
-
     // Helper: check if PDF name matches tourist — supports "First Last" and "Last, First" formats
     // Tourist fullName is always "Last, First Middle" format in DB
     const nameMatchesTourist = (pdfName, tourist) => {
@@ -2097,6 +2104,17 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
 
       return true;
     };
+
+    // Match vegetariansList against tourists and mark them
+    if (vegetariansList.length > 0) {
+      for (const tourist of tourists) {
+        const matched = vegetariansList.find(veg => nameMatchesTourist(veg.name, tourist));
+        if (matched) {
+          tourist.isVegetarian = true;
+          tourist.dietLabel = matched.label; // "Vegetarian" or "Vegan"
+        }
+      }
+    }
 
     // Match allergiesMap against tourists
     if (allergiesMap.size > 0) {
