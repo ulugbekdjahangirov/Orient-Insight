@@ -783,7 +783,29 @@ class EmailImportProcessor {
         }
 
         const pdfName = normalizeName(pdfT.fullName);
-        const existing = existingTourists.find(t => normalizeName(t.fullName) === pdfName);
+        // Step 1: exact normalized match
+        let existing = existingTourists.find(t => normalizeName(t.fullName) === pdfName);
+        // Step 2: fuzzy match — handles format mismatch between Excel ("First Last") and PDF ("Last, First")
+        // Ensures passport/dateOfBirth from Excel is preserved when PDF is imported after Excel
+        if (!existing) {
+          const _n = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|mr\s|mrs\s)\s*/i, '').replace(/\s+/g, ' ').trim();
+          const _parts = (norm) => {
+            if (norm.includes(',')) return { last: norm.split(',')[0].trim(), first: norm.split(',').slice(1).join(',').trim() };
+            const w = norm.split(' ').filter(Boolean); return { last: w.pop() || '', first: w.join(' ') };
+          };
+          const { last: pLast, first: pFirst } = _parts(_n(pdfT.fullName || ''));
+          existing = existingTourists.find(t => {
+            const { last: tLast, first: tFirst } = _parts(_n(t.fullName || ''));
+            if (!pLast || !tLast || pLast !== tLast || tLast.length < 2) return false;
+            if (pFirst && tFirst) {
+              if (!tFirst.startsWith(pFirst) && !pFirst.startsWith(tFirst)) {
+                const ml = Math.min(5, pFirst.length, tFirst.length);
+                if (pFirst.substring(0, ml) !== tFirst.substring(0, ml)) return false;
+              }
+            }
+            return true;
+          });
+        }
 
         if (existing) {
           matchedIds.add(existing.id);
@@ -1223,7 +1245,29 @@ class EmailImportProcessor {
         }
 
         const pdfName = normalizeName(pdfT.fullName);
-        const existing = existingTourists.find(t => normalizeName(t.fullName) === pdfName);
+        // Step 1: exact normalized match
+        let existing = existingTourists.find(t => normalizeName(t.fullName) === pdfName);
+        // Step 2: fuzzy match — handles format mismatch between Excel ("First Last") and PDF ("Last, First")
+        // Ensures passport/dateOfBirth from Excel is preserved when PDF is imported after Excel
+        if (!existing) {
+          const _n = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|mr\s|mrs\s)\s*/i, '').replace(/\s+/g, ' ').trim();
+          const _parts = (norm) => {
+            if (norm.includes(',')) return { last: norm.split(',')[0].trim(), first: norm.split(',').slice(1).join(',').trim() };
+            const w = norm.split(' ').filter(Boolean); return { last: w.pop() || '', first: w.join(' ') };
+          };
+          const { last: pLast, first: pFirst } = _parts(_n(pdfT.fullName || ''));
+          existing = existingTourists.find(t => {
+            const { last: tLast, first: tFirst } = _parts(_n(t.fullName || ''));
+            if (!pLast || !tLast || pLast !== tLast || tLast.length < 2) return false;
+            if (pFirst && tFirst) {
+              if (!tFirst.startsWith(pFirst) && !pFirst.startsWith(tFirst)) {
+                const ml = Math.min(5, pFirst.length, tFirst.length);
+                if (pFirst.substring(0, ml) !== tFirst.substring(0, ml)) return false;
+              }
+            }
+            return true;
+          });
+        }
 
         if (existing) {
           matchedIds.add(existing.id);
