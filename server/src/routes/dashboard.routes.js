@@ -57,7 +57,8 @@ router.get('/stats', authenticate, async (req, res) => {
         departureDate: true,
         endDate: true,
         tourTypeId: true,
-        status: true
+        status: true,
+        _count: { select: { tourists: true } }
       }
     });
 
@@ -95,9 +96,15 @@ router.get('/stats', authenticate, async (req, res) => {
         _sum: { pax: statusPaxSums[status] }
       }));
 
+    // Всего туристов: priority — tourist count (Final List) > booking.pax, CANCELLED = 0
+    const totalPaxCalc = allBookings.reduce((sum, b) => {
+      if (b.status === 'CANCELLED') return sum;
+      const hasTourists = (b._count?.tourists || 0) > 0;
+      return sum + (hasTourists ? b._count.tourists : (b.pax || 0));
+    }, 0);
+
     // Остальная статистика
     const [
-      totalPax,
       bookingsByTourType,
       thisMonthBookings,
       upcomingBookings,
@@ -106,9 +113,6 @@ router.get('/stats', authenticate, async (req, res) => {
       hotelsCount,
       opexCount
     ] = await Promise.all([
-      // Всего туристов
-      prisma.booking.aggregate({ where: bookingWhere, _sum: { pax: true } }),
-
       // По типам туров
       prisma.booking.groupBy({
         by: ['tourTypeId'],
@@ -161,7 +165,7 @@ router.get('/stats', authenticate, async (req, res) => {
     res.json({
       overview: {
         totalBookings: allBookings.length,
-        totalPax: totalPax._sum.pax || 0,
+        totalPax: totalPaxCalc,
         confirmed: statusCounts.CONFIRMED,
         inProgress: statusCounts.IN_PROGRESS,
         pending: statusCounts.PENDING,
