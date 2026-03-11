@@ -595,7 +595,7 @@ export default function Bookings() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 border-b-4 border-primary-600 shadow-2xl sticky top-0 z-10">
                 <tr>
-                  <th className="hidden md:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-3 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-24">
                     Number
                   </th>
                   <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
@@ -633,6 +633,9 @@ export default function Bookings() {
                   </th>
                   <th className="hidden xl:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     SNGL
+                  </th>
+                  <th className="hidden xl:table-cell px-6 py-5 text-center text-sm font-black text-white uppercase tracking-wider">
+                    Rooms
                   </th>
                   <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
                     Status
@@ -740,6 +743,15 @@ export default function Bookings() {
                     <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
                       {ds.sngl ? (Number(ds.sngl) % 1 === 0 ? ds.sngl : Number(ds.sngl).toFixed(1)) : 0}
                     </td>
+                    {/* TOTAL ROOMS */}
+                    <td className="hidden xl:table-cell px-4 py-4 text-center">
+                      {(() => {
+                        const total = (ds.dbl || 0) + (ds.twn || 0) + (ds.sngl || 0);
+                        return total > 0
+                          ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 font-black text-sm">{Number(total) % 1 === 0 ? total : Number(total).toFixed(1)}</span>
+                          : <span className="text-gray-300">—</span>;
+                      })()}
+                    </td>
                     {/* СТАТУС */}
                     <td className="px-2 md:px-4 py-4">
                       <span className={`inline-flex items-center px-2 md:px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
@@ -813,7 +825,7 @@ export default function Bookings() {
                 <Users className="w-6 h-6 text-white" />
               </div>
               <p className="text-xl font-black text-gray-800">
-                Total PAX: <span className="text-transparent bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text">{displayedBookings.reduce((sum, booking) => sum + (parseInt(booking.pax) || 0), 0)}</span>
+                Total PAX: <span className="text-transparent bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text">{displayedBookings.reduce((sum, booking) => sum + (getDisplayStats(booking).pax || 0), 0)}</span>
               </p>
             </div>
           </div>
