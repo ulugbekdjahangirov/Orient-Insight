@@ -595,52 +595,52 @@ export default function Bookings() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 border-b-4 border-primary-600 shadow-2xl sticky top-0 z-10">
                 <tr>
-                  <th className="hidden md:table-cell px-3 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-24">
+                  <th className="hidden md:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
                     Number
                   </th>
-                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                    Tour Type
+                  <th className="px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    Type
                   </th>
-                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                    Tour Start
+                  <th className="px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    Start
                   </th>
-                  <th className="hidden md:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
                     Arrival
                   </th>
-                  <th className="hidden md:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                    Tour End
+                  <th className="hidden md:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    End
                   </th>
-                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                    Pax
+                  <th className="px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    PAX
                   </th>
-                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                    Uzbekistan
+                  <th className="hidden lg:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    UZB
                   </th>
-                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                    Turkmenistan
+                  <th className="hidden lg:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    TKM
                   </th>
-                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
                     Guide
                   </th>
-                  <th className="hidden lg:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                    Train Tickets
+                  <th className="hidden lg:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    Train
                   </th>
-                  <th className="hidden xl:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden xl:table-cell px-2 py-4 text-center text-xs font-black text-white uppercase tracking-wide">
                     DBL
                   </th>
-                  <th className="hidden xl:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden xl:table-cell px-2 py-4 text-center text-xs font-black text-white uppercase tracking-wide">
                     TWN
                   </th>
-                  <th className="hidden xl:table-cell px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden xl:table-cell px-2 py-4 text-center text-xs font-black text-white uppercase tracking-wide">
                     SNGL
                   </th>
-                  <th className="hidden xl:table-cell px-6 py-5 text-center text-sm font-black text-white uppercase tracking-wider">
+                  <th className="hidden xl:table-cell px-2 py-4 text-center text-xs font-black text-white uppercase tracking-wide">
                     Rooms
                   </th>
-                  <th className="px-3 md:px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
+                  <th className="px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
                     Status
                   </th>
-                  <th className="px-3 md:px-6 py-5 text-right text-sm font-black text-white uppercase tracking-wider">
+                  <th className="px-2 py-4 text-right text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
@@ -669,92 +669,92 @@ export default function Bookings() {
                   return (
                   <tr key={booking.id} className={`${rowClass} transition-all duration-200`}>
                     {/* НОМЕР */}
-                    <td className="hidden md:table-cell px-4 py-4">
-                      <span className="font-bold text-gray-900 text-base">
+                    <td className="hidden md:table-cell px-2 py-3">
+                      <span className="font-bold text-gray-900 text-sm">
                         {(pagination.page - 1) * pagination.limit + index + 1}
                       </span>
                     </td>
                     {/* ТИП ТУРА */}
-                    <td className="px-2 md:px-4 py-4">
-                      <div className="flex flex-col gap-1">
+                    <td className="px-2 py-3">
+                      <div className="flex flex-col gap-0.5">
                         <Link to={`/bookings/${booking.id}?edit=true`}>
                           <span
-                            className="inline-flex items-center px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-white whitespace-nowrap hover:shadow-lg hover:scale-105 transition-all duration-200 shadow-sm"
+                            className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold text-white whitespace-nowrap hover:shadow-md hover:scale-105 transition-all duration-200 shadow-sm"
                             style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
                           >
                             {booking.bookingNumber}
                           </span>
                         </Link>
                         {booking.emailImportedAt && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-600" title={`Email import: ${format(new Date(booking.emailImportedAt), 'dd.MM.yyyy HH:mm')}`}>
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-600" title={`Email import: ${format(new Date(booking.emailImportedAt), 'dd.MM.yyyy HH:mm')}`}>
                             📧 {format(new Date(booking.emailImportedAt), 'dd.MM')}
                           </span>
                         )}
                       </div>
                     </td>
                     {/* TOUR START */}
-                    <td className="px-2 md:px-4 py-4 text-xs md:text-sm text-gray-700 font-medium">
-                      {format(new Date(booking.departureDate), 'dd.MM.yyyy')}
+                    <td className="px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
+                      {format(new Date(booking.departureDate), 'dd.MM.yy')}
                     </td>
                     {/* ARRIVAL */}
-                    <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
+                    <td className="hidden md:table-cell px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
                       {booking.arrivalDate
-                        ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy')
-                        : format(addDays(new Date(booking.departureDate), 1), 'dd.MM.yyyy')}
+                        ? format(new Date(booking.arrivalDate), 'dd.MM.yy')
+                        : format(addDays(new Date(booking.departureDate), 1), 'dd.MM.yy')}
                     </td>
                     {/* TOUR END */}
-                    <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
-                      {format(new Date(booking.endDate), 'dd.MM.yyyy')}
+                    <td className="hidden md:table-cell px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
+                      {format(new Date(booking.endDate), 'dd.MM.yy')}
                     </td>
                     {/* PAX */}
-                    <td className="px-2 md:px-4 py-4">
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                        <Users className="w-4 h-4 text-primary-500" />
+                    <td className="px-2 py-3">
+                      <div className="flex items-center gap-1 text-xs">
+                        <Users className="w-3.5 h-3.5 text-primary-500" />
                         <span className="font-bold text-gray-900">{ds.pax}</span>
                       </div>
                     </td>
                     {/* УЗБЕКИСТАН */}
-                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden lg:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
                       {ds.uzb}
                     </td>
                     {/* ТУРКМЕНИСТАН */}
-                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden lg:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
                       {ds.tkm}
                     </td>
                     {/* ГИД */}
-                    <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
+                    <td className="hidden lg:table-cell px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
                       {booking.guide?.name || '-'}
                     </td>
                     {/* ЖД БИЛЕТЫ */}
-                    <td className="hidden lg:table-cell px-4 py-4 text-sm font-semibold text-center">
+                    <td className="hidden lg:table-cell px-2 py-3 text-xs font-semibold text-center">
                       {booking.trainTickets === 'Issued'
                         ? <span className="text-emerald-600">OK</span>
                         : <span className="text-gray-400">-</span>}
                     </td>
                     {/* DBL */}
-                    <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
                       {ds.dbl ? (Number(ds.dbl) % 1 === 0 ? ds.dbl : Number(ds.dbl).toFixed(1)) : 0}
                     </td>
                     {/* TWN */}
-                    <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
                       {ds.twn ? (Number(ds.twn) % 1 === 0 ? ds.twn : Number(ds.twn).toFixed(1)) : 0}
                     </td>
                     {/* SNGL */}
-                    <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
                       {ds.sngl ? (Number(ds.sngl) % 1 === 0 ? ds.sngl : Number(ds.sngl).toFixed(1)) : 0}
                     </td>
                     {/* TOTAL ROOMS */}
-                    <td className="hidden xl:table-cell px-4 py-4 text-center">
+                    <td className="hidden xl:table-cell px-2 py-3 text-center">
                       {(() => {
                         const total = (ds.dbl || 0) + (ds.twn || 0) + (ds.sngl || 0);
                         return total > 0
-                          ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 font-black text-sm">{Number(total) % 1 === 0 ? total : Number(total).toFixed(1)}</span>
+                          ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 font-black text-xs">{Number(total) % 1 === 0 ? total : Number(total).toFixed(1)}</span>
                           : <span className="text-gray-300">—</span>;
                       })()}
                     </td>
                     {/* СТАТУС */}
-                    <td className="px-2 md:px-4 py-4">
-                      <span className={`inline-flex items-center px-2 md:px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
+                    <td className="px-2 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${statusClasses[calculatedStatus]}`}>
                         {statusLabels[calculatedStatus]}
                       </span>
                     </td>
