@@ -1578,20 +1578,6 @@ export default function Partners() {
                   <div className="w-px h-8 hidden md:block" style={{ background: 'rgba(255,255,255,0.2)' }} />
                 </>
               )}
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                  style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
-                  onMouseEnter={e=>{ if(!loading) e.currentTarget.style.background='rgba(255,255,255,0.25)'; }}
-                  onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}
-                >
-                  <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                  <span className="hidden sm:inline">Yangilash</span>
-                  <span className="text-blue-200 opacity-80">{countdown}s</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
