@@ -20,6 +20,7 @@ const CITY_CONFIGS = {
   ER: [
     { key: 'tashkent1', label: 'Toshkent 1' },
     { key: 'samarkand', label: 'Samarkand' },
+    { key: 'asraf',     label: 'Asraf' },
     { key: 'bukhara',   label: 'Buxoro' },
     { key: 'khiva',     label: 'Xiva' },
     { key: 'tashkent2', label: 'Toshkent 2' },
@@ -63,6 +64,7 @@ function getCityDates(accommodations, tourType, departureDate, arrivalDate) {
       return {
         tashkent1: fmtRange(tashkents[0]),
         samarkand: fmtRange(accommodations.find(a => cityMatch(a, /samarkand|самарканд/))),
+        asraf:     fmtRange(accommodations.find(a => cityMatch(a, /asraf|ashraf|асраф/))),
         bukhara:   fmtRange(accommodations.find(a => cityMatch(a, /bukhara|бухара|bukhoro|бухоро/))),
         khiva:     fmtRange(accommodations.find(a => cityMatch(a, /khiva|хива/))),
         tashkent2: fmtRange(tashkents[1]),
@@ -106,7 +108,7 @@ function getCityDates(accommodations, tourType, departureDate, arrivalDate) {
 
   if (tourType === 'ER') {
     // Tashkentdan boshlanadi
-    return { tashkent1: r(0,2), samarkand: r(2,5), bukhara: r(6,9), khiva: r(9,12), tashkent2: r(11,12) };
+    return { tashkent1: r(0,2), samarkand: r(2,5), asraf: r(5,6), bukhara: r(6,9), khiva: r(9,12), tashkent2: r(11,12) };
   }
   if (tourType === 'CO') {
     // Tashkentdan boshlanadi
