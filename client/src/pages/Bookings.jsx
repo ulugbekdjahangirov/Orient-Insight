@@ -688,11 +688,19 @@ export default function Bookings() {
                     </td>
                     {/* УЗБЕКИСТАН */}
                     <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {calculatedStatus === 'CANCELLED' ? 0 : (booking.paxUzbekistan || 0)}
+                      {calculatedStatus === 'CANCELLED' ? 0 : (
+                        booking.tourType?.code === 'ER'
+                          ? (booking.paxUzbekistan || 0)
+                          : booking.pax
+                      )}
                     </td>
                     {/* ТУРКМЕНИСТАН */}
                     <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {calculatedStatus === 'CANCELLED' ? 0 : (booking.paxTurkmenistan || 0)}
+                      {calculatedStatus === 'CANCELLED' ? 0 : (
+                        booking.tourType?.code === 'ER'
+                          ? (booking.paxTurkmenistan || 0)
+                          : 0
+                      )}
                     </td>
                     {/* ГИД */}
                     <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
