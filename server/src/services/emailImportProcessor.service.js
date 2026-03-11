@@ -517,9 +517,12 @@ class EmailImportProcessor {
       const totalTourists = allTourists.length;
       const uzbekCount = allTourists.filter(t => (t.accommodation || '').toLowerCase().includes('uzbek')).length;
       const turkCount = allTourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length;
+      // PDF has highest priority — don't downgrade paxSource if PDF already imported
+      const currentBooking = await prisma.booking.findUnique({ where: { id: booking.id }, select: { paxSource: true } });
+      const newPaxSource = currentBooking?.paxSource === 'PDF' ? 'PDF' : 'EXCEL';
       await prisma.booking.update({
         where: { id: booking.id },
-        data: { pax: totalTourists, paxUzbekistan: uzbekCount, paxTurkmenistan: turkCount, paxSource: 'EXCEL' }
+        data: { pax: totalTourists, paxUzbekistan: uzbekCount, paxTurkmenistan: turkCount, paxSource: newPaxSource }
       });
 
     }
@@ -2682,13 +2685,17 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
           continue;
         }
 
-        // Always update — last import wins.
-        // Same-email case: EMAIL_TABLE runs sync first, EXCEL runs via setImmediate after → EXCEL naturally overrides.
+        // Priority: PDF > EXCEL > BOOKING_OVERVIEW > EMAIL_TABLE
+        // Never downgrade paxSource to a lower-priority value
+        const PRIORITY = { 'PDF': 3, 'WORD': 3, 'EXCEL': 2, 'BOOKING_OVERVIEW': 1, 'EMAIL_TABLE': 0 };
+        const currentPriority = PRIORITY[booking.paxSource] ?? 0;
+        const newPriority = PRIORITY[paxSource] ?? 0;
+        const effectivePaxSource = newPriority >= currentPriority ? paxSource : booking.paxSource;
 
         // Update paxField, then recalculate pax = paxUzbekistan + paxTurkmenistan
         const updatedBooking = await prisma.booking.update({
           where: { id: booking.id },
-          data: { [paxField]: row.pax, paxSource },
+          data: { [paxField]: row.pax, paxSource: effectivePaxSource },
           select: { paxUzbekistan: true, paxTurkmenistan: true }
         });
         const totalPax = (updatedBooking.paxUzbekistan || 0) + (updatedBooking.paxTurkmenistan || 0);
