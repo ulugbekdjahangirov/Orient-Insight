@@ -33,7 +33,7 @@ const statusClasses = {
   PENDING: 'bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900 border border-yellow-400 shadow-sm',
   CONFIRMED: 'bg-gradient-to-r from-green-200 to-green-300 text-green-900 border border-green-400 shadow-sm',
   FINAL_CONFIRMED: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border border-emerald-700 shadow-sm',
-  IN_PROGRESS: 'bg-gradient-to-r from-sky-200 to-cyan-200 text-sky-900 border border-sky-400 shadow-sm',
+  IN_PROGRESS: 'bg-gradient-to-r from-purple-500 to-violet-600 text-white border border-purple-700 shadow-sm',
   COMPLETED: 'bg-gradient-to-r from-blue-200 to-blue-300 text-blue-900 border border-blue-400 shadow-sm',
   CANCELLED: 'bg-gradient-to-r from-red-500 to-red-600 text-white border border-red-700 shadow-sm'
 };
@@ -641,7 +641,7 @@ export default function Bookings() {
                   } else if (calculatedStatus === 'PENDING') {
                     rowClass = 'bg-yellow-100 hover:bg-yellow-200';
                   } else if (calculatedStatus === 'IN_PROGRESS') {
-                    rowClass = 'bg-sky-200 hover:bg-sky-300';
+                    rowClass = 'bg-purple-100 hover:bg-purple-200';
                   } else if (calculatedStatus === 'FINAL_CONFIRMED') {
                     rowClass = 'bg-emerald-200 hover:bg-emerald-300';
                   } else if (calculatedStatus === 'CONFIRMED') {
