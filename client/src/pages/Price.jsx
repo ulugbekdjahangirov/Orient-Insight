@@ -331,6 +331,20 @@ export default function Price() {
     }
   }, [selectedPaxTier, selectedTourType, selectedERSubTab, selectedCOSubTab, selectedKASSubTab, selectedZASubTab, selectedPreis2026SubTab]);
 
+  // Auto-save total prices when Total sub-tab becomes active
+  useEffect(() => {
+    const isTotal =
+      (selectedTourType === 'er' && selectedERSubTab === 'total') ||
+      (selectedTourType === 'co' && selectedCOSubTab === 'total') ||
+      (selectedTourType === 'kas' && selectedKASSubTab === 'total') ||
+      (selectedTourType === 'za' && selectedZASubTab === 'total');
+    if (!isTotal) return;
+    const timer = setTimeout(() => {
+      saveTotalPrices();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [selectedTourType, selectedERSubTab, selectedCOSubTab, selectedKASSubTab, selectedZASubTab]);
+
   const loadPrices = () => {
     // Load from localStorage
     const storageKey = `prices-${selectedTourType}`;
