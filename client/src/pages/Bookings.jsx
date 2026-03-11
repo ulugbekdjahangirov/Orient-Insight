@@ -82,6 +82,7 @@ export default function Bookings() {
   const [tourTypes, setTourTypes] = useState([]);
   const [guides, setGuides] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [activeBookingTab, setActiveBookingTab] = useState('TOTAL');
 
   // Filters
   const [filters, setFilters] = useState({
@@ -203,6 +204,12 @@ export default function Bookings() {
   };
 
   const hasActiveFilters = Object.values(filters).some(v => v);
+
+  const BOOKING_TABS = ['TOTAL', 'ER', 'CO', 'KAS', 'ZA'];
+  const TAB_COLORS = { ER: '#3B82F6', CO: '#10B981', KAS: '#F59E0B', ZA: '#8B5CF6' };
+  const displayedBookings = activeBookingTab === 'TOTAL'
+    ? bookings
+    : bookings.filter(b => b.tourType?.code === activeBookingTab);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 md:p-6 space-y-3 md:space-y-6">
@@ -385,6 +392,36 @@ export default function Bookings() {
         )}
       </div>
 
+      {/* Tour type tabs */}
+      <div className="bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 p-3 md:p-4">
+        <div className="flex gap-2 overflow-x-auto">
+          {BOOKING_TABS.map(tab => {
+            const count = tab === 'TOTAL' ? bookings.length : bookings.filter(b => b.tourType?.code === tab).length;
+            const isActive = activeBookingTab === tab;
+            const color = TAB_COLORS[tab];
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveBookingTab(tab)}
+                className="flex-1 min-w-[80px] flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all duration-300 whitespace-nowrap"
+                style={isActive
+                  ? { background: color || 'linear-gradient(to right, #6366f1, #8b5cf6)', color: '#fff', boxShadow: `0 4px 15px ${color || '#6366f1'}44` }
+                  : { background: '#f3f4f6', color: '#374151' }
+                }
+              >
+                {tab}
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-black"
+                  style={isActive ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#e5e7eb', color: '#6b7280' }}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Table */}
       <div className="bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 overflow-hidden">
         {/* Pagination Top */}
@@ -420,7 +457,7 @@ export default function Bookings() {
             </div>
             <p className="text-gray-600 font-semibold">Loading bookings...</p>
           </div>
-        ) : bookings.length === 0 ? (
+        ) : displayedBookings.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <div className="w-24 h-24 bg-gradient-to-br from-primary-100 to-purple-200 rounded-full flex items-center justify-center shadow-lg mb-4">
               <CalendarDays className="w-12 h-12 text-primary-500" />
@@ -430,7 +467,7 @@ export default function Bookings() {
           </div>
         ) : isMobile ? (
           <div className="space-y-3 px-3 py-2">
-            {bookings.map((booking, index) => {
+            {displayedBookings.map((booking, index) => {
               const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
               return (
                 <div
@@ -568,7 +605,7 @@ export default function Bookings() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {bookings.map((booking, index) => {
+                {displayedBookings.map((booking, index) => {
                   const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                   // Set row background color based on status
@@ -730,14 +767,14 @@ export default function Bookings() {
         )}
 
         {/* Total PAX */}
-        {!loading && bookings.length > 0 && (
+        {!loading && displayedBookings.length > 0 && (
           <div className="px-8 py-5 border-t-3 border-gray-200 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 flex items-center justify-end shadow-inner">
             <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl shadow-xl">
               <div className="p-2 bg-gradient-to-r from-primary-500 to-purple-500 rounded-xl">
                 <Users className="w-6 h-6 text-white" />
               </div>
               <p className="text-xl font-black text-gray-800">
-                Total PAX: <span className="text-transparent bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text">{bookings.reduce((sum, booking) => sum + (parseInt(booking.pax) || 0), 0)}</span>
+                Total PAX: <span className="text-transparent bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text">{displayedBookings.reduce((sum, booking) => sum + (parseInt(booking.pax) || 0), 0)}</span>
               </p>
             </div>
           </div>
