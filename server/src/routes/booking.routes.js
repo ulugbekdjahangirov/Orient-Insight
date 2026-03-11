@@ -174,13 +174,32 @@ router.get('/', authenticate, async (req, res) => {
       prisma.booking.count({ where })
     ]);
 
-    // Return bookings with room counts (already in database)
+    // Compute live stats from tourists (Final List source of truth)
     const bookingsWithCalculatedRooms = bookings.map(booking => {
       const { tourists, ...bookingData } = booking;
+      const touristCount = tourists ? tourists.length : 0;
+
+      let touristRooms = { roomsDbl: 0, roomsTwn: 0, roomsSngl: 0 };
+      let touristUzb = 0;
+      let touristTkm = 0;
+
+      if (tourists && tourists.length > 0) {
+        touristRooms = calculateRoomCountsFromTourists(tourists);
+        tourists.forEach(t => {
+          const acc = (t.accommodation || '').toLowerCase().trim();
+          if (acc.includes('uzbek') || acc === 'uz') touristUzb++;
+          else if (acc.includes('turkmen') || acc === 'tm' || acc === 'tkm') touristTkm++;
+        });
+      }
 
       return {
         ...bookingData,
-        _touristsCount: tourists ? tourists.length : 0
+        _touristsCount: touristCount,
+        _touristRoomsDbl: touristRooms.roomsDbl,
+        _touristRoomsTwn: touristRooms.roomsTwn,
+        _touristRoomsSngl: touristRooms.roomsSngl,
+        _touristPaxUzb: touristUzb,
+        _touristPaxTkm: touristTkm,
       };
     });
 

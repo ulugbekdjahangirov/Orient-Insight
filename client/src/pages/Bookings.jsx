@@ -40,6 +40,28 @@ const statusClasses = {
   CANCELLED: 'bg-gradient-to-r from-red-500 to-red-600 text-white border border-red-700 shadow-sm'
 };
 
+// Priority-based display stats:
+// PAX: tourists > 0 → tourist count, else → booking.pax (email update)
+// Rooms/UZB/TKM: from tourists (Final List) when available
+const getDisplayStats = (booking) => {
+  const hasTourists = (booking._touristsCount || 0) > 0;
+  const isER = booking.tourType?.code === 'ER';
+  const cancelled = booking.status === 'CANCELLED';
+  if (cancelled) return { pax: 0, dbl: 0, twn: 0, sngl: 0, uzb: 0, tkm: 0 };
+
+  const pax = hasTourists ? booking._touristsCount : (booking.pax || 0);
+  const dbl = hasTourists ? (booking._touristRoomsDbl || 0) : (booking.roomsDbl || 0);
+  const twn = hasTourists ? (booking._touristRoomsTwn || 0) : (booking.roomsTwn || 0);
+  const sngl = hasTourists ? (booking._touristRoomsSngl || 0) : (booking.roomsSngl || 0);
+  const uzb = isER
+    ? (hasTourists ? (booking._touristPaxUzb || 0) : (booking.paxUzbekistan || 0))
+    : pax;
+  const tkm = isER
+    ? (hasTourists ? (booking._touristPaxTkm || 0) : (booking.paxTurkmenistan || 0))
+    : 0;
+  return { pax, dbl, twn, sngl, uzb, tkm };
+};
+
 // Calculate status based on PAX count, departure date, and end date
 const getStatusByPax = (pax, departureDate, endDate) => {
   const paxCount = parseInt(pax) || 0;
@@ -467,6 +489,7 @@ export default function Bookings() {
           <div className="space-y-3 px-3 py-2">
             {displayedBookings.map((booking, index) => {
               const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+              const ds = getDisplayStats(booking);
               return (
                 <div
                   key={booking.id}
@@ -522,7 +545,7 @@ export default function Bookings() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-primary-500" />
-                        <span className="font-bold text-gray-800 text-sm">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
+                        <span className="font-bold text-gray-800 text-sm">{ds.pax}</span>
                         <span className="text-xs text-gray-400">PAX</span>
                       </div>
                       {booking.guide && (
@@ -533,9 +556,9 @@ export default function Bookings() {
                       )}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100 pt-1.5">
-                      <span>DBL <b className="text-gray-700">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? booking.roomsDbl : '—'}</b></span>
-                      <span>TWN <b className="text-gray-700">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? booking.roomsTwn : '—'}</b></span>
-                      <span>EZ <b className="text-gray-700">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? booking.roomsSngl : '—'}</b></span>
+                      <span>DBL <b className="text-gray-700">{ds.dbl > 0 ? ds.dbl : '—'}</b></span>
+                      <span>TWN <b className="text-gray-700">{ds.twn > 0 ? ds.twn : '—'}</b></span>
+                      <span>EZ <b className="text-gray-700">{ds.sngl > 0 ? ds.sngl : '—'}</b></span>
                     </div>
                   </div>
 
@@ -622,6 +645,7 @@ export default function Bookings() {
               <tbody className="divide-y divide-gray-200">
                 {displayedBookings.map((booking, index) => {
                   const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                  const ds = getDisplayStats(booking);
 
                   // Set row background color based on status
                   let rowClass = 'hover:bg-gray-50';
@@ -683,24 +707,16 @@ export default function Bookings() {
                     <td className="px-2 md:px-4 py-4">
                       <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                         <Users className="w-4 h-4 text-primary-500" />
-                        <span className="font-bold text-gray-900">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
+                        <span className="font-bold text-gray-900">{ds.pax}</span>
                       </div>
                     </td>
                     {/* УЗБЕКИСТАН */}
                     <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {calculatedStatus === 'CANCELLED' ? 0 : (
-                        booking.tourType?.code === 'ER'
-                          ? (booking.paxUzbekistan || 0)
-                          : booking.pax
-                      )}
+                      {ds.uzb}
                     </td>
                     {/* ТУРКМЕНИСТАН */}
                     <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {calculatedStatus === 'CANCELLED' ? 0 : (
-                        booking.tourType?.code === 'ER'
-                          ? (booking.paxTurkmenistan || 0)
-                          : 0
-                      )}
+                      {ds.tkm}
                     </td>
                     {/* ГИД */}
                     <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700 font-medium">
@@ -714,15 +730,15 @@ export default function Bookings() {
                     </td>
                     {/* DBL */}
                     <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : Number(booking.roomsDbl).toFixed(1)) : 0}
+                      {ds.dbl ? (Number(ds.dbl) % 1 === 0 ? ds.dbl : Number(ds.dbl).toFixed(1)) : 0}
                     </td>
                     {/* TWN */}
                     <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn ? (Number(booking.roomsTwn) % 1 === 0 ? booking.roomsTwn : Number(booking.roomsTwn).toFixed(1)) : 0}
+                      {ds.twn ? (Number(ds.twn) % 1 === 0 ? ds.twn : Number(ds.twn).toFixed(1)) : 0}
                     </td>
                     {/* SNGL */}
                     <td className="hidden xl:table-cell px-4 py-4 text-sm text-gray-700 font-semibold text-center">
-                      {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl ? (Number(booking.roomsSngl) % 1 === 0 ? booking.roomsSngl : Number(booking.roomsSngl).toFixed(1)) : 0}
+                      {ds.sngl ? (Number(ds.sngl) % 1 === 0 ? ds.sngl : Number(ds.sngl).toFixed(1)) : 0}
                     </td>
                     {/* СТАТУС */}
                     <td className="px-2 md:px-4 py-4">
