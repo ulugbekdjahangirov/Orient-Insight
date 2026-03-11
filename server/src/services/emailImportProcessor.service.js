@@ -77,6 +77,28 @@ class EmailImportProcessor {
       const isPdf = !isExcel && fname.endsWith('.pdf');
       const isDocx = !isExcel && !isPdf && (fname.endsWith('.docx') || fname.endsWith('.doc') || (emailImport.attachmentType || '').includes('word'));
 
+      // "Booking Overview" Excel — PAX-only update, no tourist import
+      const isBookingOverview = isExcel && (fname.includes('booking overview') || fname.includes('buchungsübersicht'));
+      if (isBookingOverview) {
+        const rows = this.parseBookingOverviewExcel(fileBuffer);
+        if (rows.length === 0) {
+          await prisma.emailImport.update({
+            where: { id: emailImportId },
+            data: { status: 'MANUAL_REVIEW', errorMessage: 'No valid PAX rows found in Booking Overview Excel', processedAt: new Date() }
+          });
+          return { created: 0, updated: 0, ids: [] };
+        }
+        const result = await this.updateBookingsFromTableRows(rows, 'BOOKING_OVERVIEW');
+        await prisma.emailImport.update({
+          where: { id: emailImportId },
+          data: { status: 'SUCCESS', bookingsCreated: 0, bookingsUpdated: result.updated, bookingIds: result.ids.join(','), rawParsedData: JSON.stringify(rows, null, 2), processedAt: new Date() }
+        });
+        const realMessageId = emailImport.gmailMessageId.includes('::') ? emailImport.gmailMessageId.split('::')[0] : emailImport.gmailMessageId;
+        await gmailService.markAsProcessed(realMessageId);
+        await this.sendNotification('SUCCESS', { emailFrom: emailImport.emailFrom, emailSubject: emailImport.emailSubject, bookingsCreated: 0, bookingsUpdated: result.updated, bookingIds: result.ids });
+        return { created: 0, updated: result.updated, ids: result.ids };
+      }
+
       // PDF: only process if filename contains "rooming list" or "final list" — skip Laenderinfo, Erlebnisreise, etc.
       const isRoomingListPdf = isPdf && (fname.includes('rooming list') || fname.includes('final list'));
       if (isPdf && !isRoomingListPdf) {
@@ -2440,6 +2462,75 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
   }
 
   /**
+   * Parse "Booking Overview Orient Insight.xlsx" Excel file
+   * Columns: Reisename | Von | Bis | Mindestteilnehmerzahl | Maximalteilnehmerzahl | Gebuchte Pax
+   * Returns rows: [{ reisename, departureDate, returnDate, pax }]
+   */
+  parseBookingOverviewExcel(fileBuffer) {
+    const XLSX = require('xlsx');
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true });
+    const rows = [];
+
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      // Find header row containing "Reisename" and "pax"
+      let headerRowIdx = -1;
+      let reisIdx = -1, vonIdx = -1, bisIdx = -1, paxIdx = -1;
+
+      for (let i = 0; i < Math.min(allRows.length, 5); i++) {
+        const row = allRows[i].map(c => String(c).trim().toLowerCase());
+        const ri = row.findIndex(h => h.includes('reisename') || h === 'reise');
+        const vi = row.findIndex(h => h === 'von' || h.startsWith('von'));
+        const bi = row.findIndex(h => h === 'bis' || h.startsWith('bis'));
+        const pi = row.findIndex(h => h.includes('gebuchte pax') || (h.includes('pax') && !h.includes('mindest') && !h.includes('maximal')));
+        if (ri >= 0 && pi >= 0) {
+          headerRowIdx = i; reisIdx = ri; vonIdx = vi; bisIdx = bi; paxIdx = pi;
+          break;
+        }
+      }
+
+      if (headerRowIdx === -1) continue;
+
+      const fmtDate = (val) => {
+        if (!val && val !== 0) return '';
+        if (val instanceof Date) {
+          const d = val.getDate().toString().padStart(2, '0');
+          const m = (val.getMonth() + 1).toString().padStart(2, '0');
+          return `${d}.${m}.${val.getFullYear()}`;
+        }
+        // Excel serial number
+        if (typeof val === 'number') {
+          const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+          const dd = d.getUTCDate().toString().padStart(2, '0');
+          const mm = (d.getUTCMonth() + 1).toString().padStart(2, '0');
+          return `${dd}.${mm}.${d.getUTCFullYear()}`;
+        }
+        return String(val).trim();
+      };
+
+      for (let i = headerRowIdx + 1; i < allRows.length; i++) {
+        const row = allRows[i];
+        if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+
+        const reisename = String(row[reisIdx] || '').trim();
+        if (!reisename) continue;
+
+        const vonStr = vonIdx >= 0 ? fmtDate(row[vonIdx]) : '';
+        const bisStr = bisIdx >= 0 ? fmtDate(row[bisIdx]) : '';
+        const pax = parseInt(row[paxIdx], 10);
+
+        if (!vonStr || isNaN(pax) || pax < 0) continue;
+
+        rows.push({ reisename, departureDate: vonStr, returnDate: bisStr, pax });
+      }
+    }
+
+    return rows;
+  }
+
+  /**
    * Map German Reisename to { tourCode, paxField }
    * EMAIL_TABLE priorities:
    *   "Turkmenistan, Usbekistan, Tadschikistan..." → ZA, paxUzbekistan
@@ -2554,7 +2645,7 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
    * Update booking pax fields from HTML table rows.
    * Priority: EMAIL_TABLE < EXCEL < PDF — never overrides higher-priority source.
    */
-  async updateBookingsFromTableRows(rows) {
+  async updateBookingsFromTableRows(rows, paxSource = 'EMAIL_TABLE') {
     let updated = 0;
     const ids = [];
 
@@ -2597,7 +2688,7 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
         // Update paxField, then recalculate pax = paxUzbekistan + paxTurkmenistan
         const updatedBooking = await prisma.booking.update({
           where: { id: booking.id },
-          data: { [paxField]: row.pax, paxSource: 'EMAIL_TABLE' },
+          data: { [paxField]: row.pax, paxSource },
           select: { paxUzbekistan: true, paxTurkmenistan: true }
         });
         const totalPax = (updatedBooking.paxUzbekistan || 0) + (updatedBooking.paxTurkmenistan || 0);
