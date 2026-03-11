@@ -393,33 +393,31 @@ export default function Bookings() {
       </div>
 
       {/* Tour type tabs */}
-      <div className="bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 p-3 md:p-4">
-        <div className="flex gap-2 overflow-x-auto">
-          {BOOKING_TABS.map(tab => {
-            const count = tab === 'TOTAL' ? bookings.length : bookings.filter(b => b.tourType?.code === tab).length;
-            const isActive = activeBookingTab === tab;
-            const color = TAB_COLORS[tab];
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveBookingTab(tab)}
-                className="flex-1 min-w-[80px] flex items-center justify-center gap-2 px-4 py-3 rounded-2xl font-bold text-sm transition-all duration-300 whitespace-nowrap"
-                style={isActive
-                  ? { background: color || 'linear-gradient(to right, #6366f1, #8b5cf6)', color: '#fff', boxShadow: `0 4px 15px ${color || '#6366f1'}44` }
-                  : { background: '#f3f4f6', color: '#374151' }
-                }
+      <div className="grid grid-cols-5 gap-2 px-3 md:px-0">
+        {BOOKING_TABS.map(tab => {
+          const count = tab === 'TOTAL' ? bookings.length : bookings.filter(b => b.tourType?.code === tab).length;
+          const isActive = activeBookingTab === tab;
+          const color = TAB_COLORS[tab] || '#6366f1';
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveBookingTab(tab)}
+              className="flex flex-col items-center justify-center gap-0.5 py-3 px-2 rounded-2xl font-bold transition-all duration-300 shadow-sm"
+              style={isActive
+                ? { background: color, color: '#fff', boxShadow: `0 4px 18px ${color}55`, transform: 'translateY(-2px)' }
+                : { background: '#fff', color: '#374151', border: '2px solid #e5e7eb' }
+              }
+            >
+              <span className="text-xs font-black tracking-wide">{tab}</span>
+              <span
+                className="text-xl font-black leading-none"
+                style={isActive ? { color: '#fff' } : { color: color || '#6366f1' }}
               >
-                {tab}
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full font-black"
-                  style={isActive ? { background: 'rgba(255,255,255,0.25)', color: '#fff' } : { background: '#e5e7eb', color: '#6b7280' }}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Table */}
