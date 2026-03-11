@@ -1040,33 +1040,62 @@ export default function Updates() {
                       </span>
                     </div>
 
-                    {/* Tour Start Date */}
-                    <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
-                      <Calendar className="w-4 h-4 text-indigo-500" />
-                      <span className="font-semibold">Start:</span>
-                      <span>{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</span>
+                    {/* Start + PAX row */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Calendar className="w-4 h-4 text-indigo-500" />
+                        <span className="font-semibold">Start:</span>
+                        <span>{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-gray-700">
+                        <Users className="w-4 h-4 text-indigo-500" />
+                        <span className="font-bold">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
+                        <span className="text-gray-500">PAX</span>
+                        {activeTab === 'ER' && booking.pax > 0 && (
+                          <span className="text-xs text-gray-400 ml-1">
+                            (UZ:{booking.paxUzbekistan || 0} TM:{booking.paxTurkmenistan || 0})
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* PAX */}
-                    <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
-                      <Users className="w-4 h-4 text-indigo-500" />
-                      <span className="font-semibold">PAX:</span>
-                      <span className="font-bold">{booking.pax}</span>
-                      {activeTab === 'ER' && (
-                        <span className="text-xs text-gray-500 ml-1">
-                          (UZ: {booking.paxUzbekistan || 0}, TM: {booking.paxTurkmenistan || 0})
+                    {/* Rooms row */}
+                    <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
+                      <span>DBL: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? booking.roomsDbl : '-'}</b></span>
+                      <span>TWN: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? booking.roomsTwn : '-'}</b></span>
+                      <span>SNGL: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? booking.roomsSngl : '-'}</b></span>
+                      {booking.guide?.name && (
+                        <span className="ml-auto flex items-center gap-1 text-gray-600">
+                          <MapPin className="w-3 h-3 text-indigo-400" />
+                          {booking.guide.name}
                         </span>
                       )}
                     </div>
 
-                    {/* Guide */}
-                    {booking.guide?.name && (
-                      <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
-                        <MapPin className="w-4 h-4 text-indigo-500" />
-                        <span className="font-semibold">Guide:</span>
-                        <span>{booking.guide.name}</span>
-                      </div>
-                    )}
+                    {/* City dates grid */}
+                    {(() => {
+                      const cityDates = getCityDates(booking.accommodations, activeTab, booking.departureDate, booking.arrivalDate);
+                      const configs = CITY_CONFIGS[activeTab] || [];
+                      if (configs.length === 0) return null;
+                      return (
+                        <div className="grid grid-cols-2 gap-1 mt-2 pt-2 border-t border-gray-200">
+                          {configs.map(c => {
+                            const val = cityDates[c.key];
+                            const [cin, cout] = val ? val.split('-') : [null, null];
+                            return (
+                              <div key={c.key} className="flex flex-col">
+                                <span className="text-xs text-gray-400 font-medium">{c.label}</span>
+                                {val ? (
+                                  <span className="text-xs font-semibold text-gray-800 whitespace-nowrap">{cin} - {cout}</span>
+                                ) : (
+                                  <span className="text-xs text-gray-300">—</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                   </div>
                 );
