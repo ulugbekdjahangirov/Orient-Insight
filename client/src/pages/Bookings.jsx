@@ -47,15 +47,19 @@ const getDisplayStats = (booking) => {
   const cancelled = booking.status === 'CANCELLED';
   if (cancelled) return { pax: 0, dbl: 0, twn: 0, sngl: 0, uzb: 0, tkm: 0 };
 
-  const pax = hasTourists ? booking._touristsCount : (booking.pax || 0);
+  // BOOKING_OVERVIEW: always use booking.pax/paxUzb/paxTkm for PAX counts
+  // Rooms (DBL/TWN/SNGL) still from tourists if available
+  const isBookingOverview = booking.paxSource === 'BOOKING_OVERVIEW';
+
+  const pax = isBookingOverview ? (booking.pax || 0) : (hasTourists ? booking._touristsCount : (booking.pax || 0));
   const dbl = hasTourists ? (booking._touristRoomsDbl || 0) : (booking.roomsDbl || 0);
   const twn = hasTourists ? (booking._touristRoomsTwn || 0) : (booking.roomsTwn || 0);
   const sngl = hasTourists ? (booking._touristRoomsSngl || 0) : (booking.roomsSngl || 0);
   const uzb = isER
-    ? (hasTourists ? (booking._touristPaxUzb || 0) : (booking.paxUzbekistan || 0))
+    ? (isBookingOverview ? (booking.paxUzbekistan || 0) : (hasTourists ? (booking._touristPaxUzb || 0) : (booking.paxUzbekistan || 0)))
     : pax;
   const tkm = isER
-    ? (hasTourists ? (booking._touristPaxTkm || 0) : (booking.paxTurkmenistan || 0))
+    ? (isBookingOverview ? (booking.paxTurkmenistan || 0) : (hasTourists ? (booking._touristPaxTkm || 0) : (booking.paxTurkmenistan || 0)))
     : 0;
   return { pax, dbl, twn, sngl, uzb, tkm };
 };
