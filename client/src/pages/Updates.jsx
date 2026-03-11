@@ -1065,28 +1065,28 @@ export default function Updates() {
                     })()}
 
                     {/* PAX + Rooms + Guide */}
-                    <div className="flex items-center gap-3 text-xs text-gray-600 pt-2 border-t border-gray-200">
-                      <div className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5 text-indigo-400" />
-                        <span className="font-bold text-gray-800">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
-                        <span className="text-gray-400">PAX</span>
-                        {activeTab === 'ER' && booking.pax > 0 && (
-                          <span className="text-gray-400">(UZ:{booking.paxUzbekistan || 0} TM:{booking.paxTurkmenistan || 0})</span>
+                    <div className="pt-2 border-t border-gray-200 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-indigo-400" />
+                          <span className="font-bold text-gray-800 text-sm">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
+                          <span className="text-gray-500">PAX</span>
+                          {activeTab === 'ER' && booking.pax > 0 && (
+                            <span className="text-gray-400 whitespace-nowrap">· UZ: {booking.paxUzbekistan || 0} · TM: {booking.paxTurkmenistan || 0}</span>
+                          )}
+                        </div>
+                        {booking.guide?.name && (
+                          <div className="flex items-center gap-1 text-gray-600">
+                            <MapPin className="w-3 h-3 text-indigo-400" />
+                            <span className="font-semibold">{booking.guide.name}</span>
+                          </div>
                         )}
                       </div>
-                      <span className="text-gray-300">|</span>
-                      <span>DBL:<b className="ml-0.5">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? booking.roomsDbl : '-'}</b></span>
-                      <span>TWN:<b className="ml-0.5">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? booking.roomsTwn : '-'}</b></span>
-                      <span>EZ:<b className="ml-0.5">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? booking.roomsSngl : '-'}</b></span>
-                      {booking.guide?.name && (
-                        <>
-                          <span className="text-gray-300">|</span>
-                          <span className="flex items-center gap-1 text-gray-600 ml-auto">
-                            <MapPin className="w-3 h-3 text-indigo-400" />
-                            {booking.guide.name}
-                          </span>
-                        </>
-                      )}
+                      <div className="flex items-center gap-4 text-xs text-gray-600">
+                        <span>DBL: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? booking.roomsDbl : '—'}</b></span>
+                        <span>TWN: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? booking.roomsTwn : '—'}</b></span>
+                        <span>EZ: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? booking.roomsSngl : '—'}</b></span>
+                      </div>
                     </div>
 
                   </div>
