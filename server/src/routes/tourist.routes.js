@@ -5768,14 +5768,18 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
         if (entry?.checkInDate) {
           touristCheckInDate = new Date(entry.checkInDate);
         } else if (isFirstAccommodation) {
-          // For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
-          // tourist.checkInDate is the tour start date for THIS tourist (e.g., Baetgen 09.10, others 12.10)
-          const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
-          // CRITICAL: Use UTC date manipulation to avoid timezone issues
-          const year = tourStartDate.getUTCFullYear();
-          const month = tourStartDate.getUTCMonth();
-          const day = tourStartDate.getUTCDate();
-          touristCheckInDate = new Date(Date.UTC(year, month, day + 1));
+          // ER/CO: tourist.checkInDate = Germany departure day → +1 to get arrival day
+          // ZA/KAS: tourist.checkInDate = already the arrival/check-in day → use as-is
+          const tDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+          const accDate = new Date(accommodation.checkInDate);
+          if (tDate < accDate) {
+            // ER/CO logic: tourist departs day before hotel check-in
+            const y = tDate.getUTCFullYear(), m = tDate.getUTCMonth(), d = tDate.getUTCDate();
+            touristCheckInDate = new Date(Date.UTC(y, m, d + 1));
+          } else {
+            // ZA/KAS logic: tourist.checkInDate IS the hotel check-in date
+            touristCheckInDate = tDate;
+          }
         } else {
           // For OTHER hotels (not first), use accommodation default dates
           touristCheckInDate = new Date(accommodation.checkInDate);
@@ -5941,14 +5945,14 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
             if (roomingEntry?.checkInDate) {
               touristCheckInDate = roomingEntry.checkInDate;
             } else if (isFirstAccommodation) {
-              // For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
-              // CRITICAL: Use UTC date manipulation to avoid timezone issues
-              const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
-              const year = tourStartDate.getUTCFullYear();
-              const month = tourStartDate.getUTCMonth();
-              const day = tourStartDate.getUTCDate();
-              const arrivalDate = new Date(Date.UTC(year, month, day + 1));
-              touristCheckInDate = arrivalDate.toISOString();
+              const tDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+              const accDate = new Date(accommodation.checkInDate);
+              if (tDate < accDate) {
+                const y = tDate.getUTCFullYear(), m = tDate.getUTCMonth(), d = tDate.getUTCDate();
+                touristCheckInDate = new Date(Date.UTC(y, m, d + 1)).toISOString();
+              } else {
+                touristCheckInDate = tDate.toISOString();
+              }
             } else {
               // For OTHER hotels (not first), use accommodation default dates
               touristCheckInDate = accommodation.checkInDate;
@@ -6035,19 +6039,14 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
           if (roomingEntry?.checkInDate) {
             touristCheckInDate = roomingEntry.checkInDate;
           } else if (isFirstAccommodation) {
-            // For FIRST hotel, use ARRIVAL date = Tourist's Tour Start + 1 day
-            // CRITICAL: Use UTC date manipulation to avoid timezone issues
-            const tourStartDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
-
-            // Extract UTC date components and add 1 day
-            const year = tourStartDate.getUTCFullYear();
-            const month = tourStartDate.getUTCMonth();
-            const day = tourStartDate.getUTCDate();
-
-            // Create new date with +1 day in UTC
-            const arrivalDate = new Date(Date.UTC(year, month, day + 1));
-            touristCheckInDate = arrivalDate.toISOString();
-
+            const tDate = t.checkInDate ? new Date(t.checkInDate) : new Date(booking.departureDate);
+            const accDate = new Date(accommodation.checkInDate);
+            if (tDate < accDate) {
+              const y = tDate.getUTCFullYear(), m = tDate.getUTCMonth(), d = tDate.getUTCDate();
+              touristCheckInDate = new Date(Date.UTC(y, m, d + 1)).toISOString();
+            } else {
+              touristCheckInDate = tDate.toISOString();
+            }
           } else {
             // For OTHER hotels (not first), use accommodation default dates
             touristCheckInDate = accommodation.checkInDate;
@@ -6580,6 +6579,114 @@ router.post('/:bookingId/send-hotel-request-telegram/:hotelId', authenticate, as
   } catch (error) {
     console.error('Send Telegram hotel request error:', error.response?.data || error.message);
     res.status(500).json({ error: 'Failed to send Telegram message: ' + (error.response?.data?.description || error.message) });
+  }
+});
+
+// POST /api/bookings/:bookingId/send-storno-email/:hotelId — Storno PDF via Gmail
+router.post('/:bookingId/send-storno-email/:hotelId', authenticate, async (req, res) => {
+  try {
+    const { bookingId, hotelId } = req.params;
+    const { email: overrideEmail } = req.body;
+
+    const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
+    const toEmail = overrideEmail || hotel?.email;
+    if (!toEmail) return res.status(400).json({ error: 'Hotel email not found.' });
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      include: { tourType: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Generate Storno PDF via puppeteer
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+    const page = await browser.newPage();
+    await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
+    const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/storno-combined/${hotelId}`;
+    await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+    const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
+    const pdfBuffer = Buffer.from(pdfUint8);
+    await browser.close();
+
+    const gmailService = require('../services/gmail.service');
+    const hotelName = hotel?.name || 'Hotel';
+    const subject = `АННУЛЯЦИЯ ${booking.bookingNumber} - ${hotelName}`;
+    const htmlBody = `
+      <p>Уважаемый отель ${hotelName},</p>
+      <p>Сообщаем об аннуляции бронирования для группы <strong>${booking.bookingNumber}</strong>.</p>
+      <p>Подробности в прикреплённом документе.</p>
+      <p>С уважением,<br>Orient Insight</p>
+    `;
+    const filename = `Аннуляция_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+
+    await gmailService.sendEmail({
+      to: toEmail,
+      subject,
+      html: htmlBody,
+      attachments: [{ filename, mimeType: 'application/pdf', content: pdfBuffer }]
+    });
+
+    res.json({ success: true, sentTo: toEmail });
+  } catch (error) {
+    console.error('Send storno email error:', error);
+    res.status(500).json({ error: 'Failed to send email: ' + error.message });
+  }
+});
+
+// POST /api/bookings/:bookingId/send-storno-telegram/:hotelId — Storno PDF via Telegram
+router.post('/:bookingId/send-storno-telegram/:hotelId', authenticate, async (req, res) => {
+  try {
+    const { bookingId, hotelId } = req.params;
+    const { chatId: overrideChatId } = req.body;
+
+    const hotel = await prisma.hotel.findUnique({ where: { id: parseInt(hotelId) } });
+    const chatId = overrideChatId || hotel?.telegramChatId;
+    if (!chatId) return res.status(400).json({ error: 'Hotel Telegram Chat ID not found.' });
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: parseInt(bookingId) },
+      include: { tourType: true }
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Generate Storno PDF via puppeteer (reuse singleton)
+    const browser = await getPuppeteerBrowser();
+    const page = await browser.newPage();
+    let pdfBuffer;
+    try {
+      await page.setExtraHTTPHeaders({ 'x-internal-secret': process.env.INTERNAL_API_SECRET || '' });
+      const internalUrl = `http://localhost:${process.env.PORT || 3001}/api/bookings/${bookingId}/storno-combined/${hotelId}`;
+      await page.goto(internalUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+      const pdfUint8 = await page.pdf({ format: 'A4', printBackground: true });
+      pdfBuffer = Buffer.from(pdfUint8);
+    } finally {
+      await page.close().catch(() => {});
+    }
+
+    const axios = require('axios');
+    const FormData = require('form-data');
+    const hotelName = hotel?.name || 'Hotel';
+    const filename = `Аннуляция_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
+    const caption = `❌ *АННУЛЯЦИЯ*\n🏨 *${hotelName}*\n📋 Группа: *${booking.bookingNumber}*`;
+
+    const form = new FormData();
+    form.append('chat_id', chatId);
+    form.append('document', pdfBuffer, { filename, contentType: 'application/pdf' });
+    form.append('caption', caption);
+    form.append('parse_mode', 'Markdown');
+
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, form, {
+      headers: form.getHeaders()
+    });
+
+    res.json({ success: true, sentTo: chatId });
+  } catch (error) {
+    console.error('Send storno telegram error:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to send Telegram: ' + (error.response?.data?.description || error.message) });
   }
 });
 

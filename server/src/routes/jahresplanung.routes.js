@@ -825,6 +825,18 @@ async function generatePdfBuffer(hotelName, tourType, year, sections) {
       }
     } catch {}
 
+    // Stamp
+    const stampPath = path.join(__dirname, '../../../client/dist/stamp.png');
+    let stampHtml = '';
+    let hasStamp = false;
+    try {
+      if (fs.existsSync(stampPath)) {
+        const stampDataUrl = `data:image/png;base64,${fs.readFileSync(stampPath).toString('base64')}`;
+        stampHtml = `<img id="stamp-img" src="${stampDataUrl}" alt="stamp" style="position:absolute;right:10mm;bottom:0;width:40mm;height:40mm;" />`;
+        hasStamp = true;
+      }
+    } catch {}
+
     const today = new Date();
     const dateStr = `${String(today.getDate()).padStart(2,'0')}.${String(today.getMonth()+1).padStart(2,'0')}.${today.getFullYear()}`;
 
@@ -889,15 +901,17 @@ async function generatePdfBuffer(hotelName, tourType, year, sections) {
 <head>
   <meta charset="UTF-8">
   <style>
+    @font-face { font-family: 'DejaVu Serif'; src: url('file:///usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf') format('truetype'); font-weight: normal; font-style: normal; }
+    @font-face { font-family: 'DejaVu Serif'; src: url('file:///usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf') format('truetype'); font-weight: bold; font-style: normal; }
     @page { size: A4 portrait; margin: 15mm 12mm 15mm 12mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DejaVu Serif', 'Times New Roman', Times, serif; font-size: 9pt; line-height: 1.3; color: #000; }
+    body { font-family: 'DejaVu Serif', serif; font-size: 9pt; line-height: 1.3; color: #000; }
     .header-table { width: 100%; border: none; border-collapse: collapse; margin-bottom: 10px; }
     .date-hotel-row { width: 100%; border: none; border-collapse: collapse; margin-bottom: 15px; }
     .date-hotel-row td { vertical-align: top; padding: 3px; }
     .zayvka-title { text-align: center; font-size: 14pt; font-weight: bold; margin: 15px 0; text-decoration: underline; }
     .intro-text { margin-bottom: 15px; text-align: justify; }
-    .section-label { margin: 14px 0 5px 0; font-size: 11pt; font-weight: bold; }
+    .section-label { margin: 14px 0 5px 0; font-size: 11pt; font-weight: bold; text-align: center; }
     .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
     .summary-table th, .summary-table td { border: 1px solid #000; padding: 4px 3px; text-align: center; font-size: 8pt; }
     .summary-table th { background-color: #f0f0f0; font-weight: bold; }
@@ -946,13 +960,49 @@ async function generatePdfBuffer(hotelName, tourType, year, sections) {
 
   <p style="font-style:italic;font-size:9pt;margin-top:6px;">Оплату гости производят на месте.</p>
 
-  <table class="signature-table">
-    <tr>
-      <td style="width:45%;font-weight:bold;"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
-      <td style="width:35%;text-align:center;">_________________________</td>
-      <td style="width:20%;text-align:right;font-weight:bold;"><strong>Милиев С.Р.</strong></td>
-    </tr>
-  </table>
+  <div style="position:relative; padding-top:32mm; margin-top:10px;">
+    ${stampHtml}
+    <table class="signature-table">
+      <tr>
+        <td style="width:45%;font-weight:bold;vertical-align:bottom;"><strong>Директор ООО «ORIENT INSIGHT»</strong></td>
+        <td style="width:35%;text-align:center;vertical-align:bottom;">_________________________</td>
+        <td style="width:20%;text-align:right;font-weight:bold;vertical-align:bottom;"><strong>Милиев С.Р.</strong></td>
+      </tr>
+    </table>
+  </div>
+  ${hasStamp ? `<script>
+(function(){
+  function processStamp(){
+    var img=document.getElementById('stamp-img');
+    if(!img||img.naturalWidth===0)return;
+    var canvas=document.createElement('canvas');
+    canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+    var ctx=canvas.getContext('2d');
+    ctx.drawImage(img,0,0);
+    var imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    var px=imageData.data;
+    var ss=Math.min(10,Math.floor(img.naturalWidth/10));
+    var bgR=0,bgG=0,bgB=0,bgC=0;
+    for(var r=0;r<ss;r++){for(var c=0;c<ss;c++){
+      [[r,c],[r,img.naturalWidth-c-1],[img.naturalHeight-r-1,c],[img.naturalHeight-r-1,img.naturalWidth-c-1]]
+      .forEach(function(p){var i=(p[0]*img.naturalWidth+p[1])*4;bgR+=px[i];bgG+=px[i+1];bgB+=px[i+2];bgC++;});
+    }}
+    bgR=Math.round(bgR/bgC);bgG=Math.round(bgG/bgC);bgB=Math.round(bgB/bgC);
+    for(var i=0;i<px.length;i+=4){
+      var dr=px[i]-bgR,dg=px[i+1]-bgG,db=px[i+2]-bgB;
+      var dist=Math.sqrt(dr*dr+dg*dg+db*db);
+      px[i+3]=dist<12?0:Math.min(255,Math.floor((dist-12)/55*255));
+    }
+    ctx.putImageData(imageData,0,0);
+    img.onload=function(){document.body.setAttribute('data-stamp-ready','1');};
+    img.src=canvas.toDataURL('image/png');
+    if(img.complete)document.body.setAttribute('data-stamp-ready','1');
+  }
+  var img=document.getElementById('stamp-img');
+  if(img&&img.complete&&img.naturalWidth>0)processStamp();
+  else if(img)img.onload=processStamp;
+})();
+</script>` : ''}
 </body>
 </html>`;
 
@@ -960,6 +1010,10 @@ async function generatePdfBuffer(hotelName, tourType, year, sections) {
     const page = await browser.newPage();
     try {
       await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      if (hasStamp) {
+        try { await page.waitForSelector('body[data-stamp-ready]', { timeout: 3000 }); } catch(e) {}
+        await new Promise(r => setTimeout(r, 200));
+      }
       const pdfUint8 = await page.pdf({ format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' }, printBackground: true });
       const pdfBuffer = Buffer.isBuffer(pdfUint8) ? pdfUint8 : Buffer.from(pdfUint8);
       return pdfBuffer;
