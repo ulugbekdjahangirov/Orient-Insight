@@ -596,7 +596,7 @@ export default function Bookings() {
               <thead className="bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 border-b-4 border-primary-600 shadow-2xl sticky top-0 z-10">
                 <tr>
                   <th className="hidden md:table-cell px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
-                    Number
+                    №
                   </th>
                   <th className="px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
                     Type
