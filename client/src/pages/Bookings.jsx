@@ -440,6 +440,35 @@ export default function Bookings() {
         })}
       </div>
 
+      {/* Status counters */}
+      {(() => {
+        const counts = { FINAL_CONFIRMED: 0, CONFIRMED: 0, IN_PROGRESS: 0, PENDING: 0, CANCELLED: 0, COMPLETED: 0 };
+        displayedBookings.forEach(b => {
+          const s = b.status === 'CANCELLED' ? 'CANCELLED' : b.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(b.pax, b.departureDate, b.endDate);
+          if (counts[s] !== undefined) counts[s]++;
+        });
+        const statusConfig = [
+          { key: 'FINAL_CONFIRMED', label: 'Final Confirmed', from: 'from-emerald-500', to: 'to-emerald-700', border: 'border-emerald-400' },
+          { key: 'CONFIRMED',       label: 'Confirmed',       from: 'from-green-500',   to: 'to-emerald-600', border: 'border-green-400' },
+          { key: 'IN_PROGRESS',     label: 'In Progress',     from: 'from-purple-500',  to: 'to-indigo-600',  border: 'border-purple-400' },
+          { key: 'PENDING',         label: 'Pending',         from: 'from-yellow-500',  to: 'to-orange-600',  border: 'border-yellow-400' },
+          { key: 'CANCELLED',       label: 'Cancelled',       from: 'from-red-500',     to: 'to-rose-600',    border: 'border-red-400' },
+          { key: 'COMPLETED',       label: 'Completed',       from: 'from-slate-500',   to: 'to-slate-600',   border: 'border-slate-400' },
+        ];
+        const visible = statusConfig.filter(s => counts[s.key] > 0);
+        if (visible.length === 0) return null;
+        return (
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 px-3 md:px-0">
+            {visible.map(({ key, label, from, to, border }) => (
+              <div key={key} className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-gradient-to-r ${from} ${to} border-2 ${border} rounded-xl md:rounded-2xl shadow-lg hover:scale-105 transition-all duration-300`}>
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                <span className="text-white font-bold text-xs md:text-sm">{label}: {counts[key]}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Table */}
       <div className="bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 overflow-hidden">
         {/* Pagination Top */}
