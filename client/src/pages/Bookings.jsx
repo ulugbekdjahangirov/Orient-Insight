@@ -503,29 +503,49 @@ export default function Bookings() {
                     </span>
                   </div>
 
-                  {/* Info Grid */}
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="w-4 h-4 text-primary-600" />
-                      <span className="font-semibold text-gray-700">Start:</span>
-                      <span className="text-gray-900">{format(new Date(booking.departureDate), 'dd.MM.yyyy')}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="w-4 h-4 text-primary-600" />
-                      <span className="font-semibold text-gray-700">PAX:</span>
-                      <span className="text-gray-900 font-bold">{booking.pax}</span>
-                    </div>
-                    {booking.guide && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="w-4 h-4 text-primary-600" />
-                        <span className="font-semibold text-gray-700">Guide:</span>
-                        <span className="text-gray-900">{booking.guide.name}</span>
+                  {/* Dates */}
+                  <div className="space-y-1.5 mb-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-primary-600" />
+                        <span className="font-semibold text-gray-500">Arrival:</span>
+                        <span className="text-gray-900 font-semibold">
+                          {booking.arrivalDate ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy') : '—'}
+                        </span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-500">End:</span>
+                        <span className="text-gray-900 font-semibold">
+                          {booking.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PAX + Rooms + Guide */}
+                  <div className="pt-2 border-t border-gray-200 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-primary-500" />
+                        <span className="font-bold text-gray-800 text-sm">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
+                        <span className="text-gray-500">PAX</span>
+                      </div>
+                      {booking.guide && (
+                        <div className="flex items-center gap-1 text-gray-600">
+                          <MapPin className="w-3 h-3 text-primary-500" />
+                          <span className="font-semibold">{booking.guide.name}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-gray-600">
+                      <span>DBL: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? booking.roomsDbl : '—'}</b></span>
+                      <span>TWN: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? booking.roomsTwn : '—'}</b></span>
+                      <span>EZ: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? booking.roomsSngl : '—'}</b></span>
+                    </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-300">
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 mt-2">
                     <Link
                       to={`/bookings/${booking.id}`}
                       className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all"
