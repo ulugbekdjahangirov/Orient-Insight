@@ -1147,11 +1147,21 @@ export default function Updates() {
                       </td>
                       {(() => {
                         const cityDates = getCityDates(booking.accommodations, activeTab, booking.departureDate, booking.arrivalDate);
-                        return (CITY_CONFIGS[activeTab] || []).map(c => (
-                          <td key={c.key} className="px-2 py-4 text-center text-xs text-gray-700 font-medium whitespace-nowrap">
-                            {cityDates[c.key] || <span className="text-gray-300">—</span>}
-                          </td>
-                        ));
+                        return (CITY_CONFIGS[activeTab] || []).map(c => {
+                          const val = cityDates[c.key];
+                          const [cin, cout] = val ? val.split('-') : [null, null];
+                          return (
+                            <td key={c.key} className="px-2 py-3 text-center">
+                              {val ? (
+                                <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                                  {cin} - {cout}
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </td>
+                          );
+                        });
                       })()}
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-1 text-sm">
