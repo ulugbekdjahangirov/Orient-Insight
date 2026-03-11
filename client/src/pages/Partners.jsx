@@ -1485,30 +1485,6 @@ export default function Partners() {
   const countdownRef = useRef(null);
   const refreshRef = useRef(null);
 
-  // Telegram Finder
-  const [telegramFinderOpen, setTelegramFinderOpen] = useState(false);
-  const [telegramChats, setTelegramChats] = useState([]);
-  const [telegramLoading, setTelegramLoading] = useState(false);
-  const [copiedChatId, setCopiedChatId] = useState(null);
-
-  const openTelegramFinder = async () => {
-    setTelegramFinderOpen(true);
-    setTelegramLoading(true);
-    try {
-      const res = await api.get('/telegram/updates');
-      setTelegramChats(res.data.chats || []);
-    } catch {
-      // silent
-    } finally {
-      setTelegramLoading(false);
-    }
-  };
-
-  const copyChatId = (chatId) => {
-    navigator.clipboard.writeText(chatId);
-    setCopiedChatId(chatId);
-    setTimeout(() => setCopiedChatId(null), 2000);
-  };
 
   const loadConfirmations = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -1603,17 +1579,6 @@ export default function Partners() {
                 </>
               )}
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={openTelegramFinder}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{ background: 'rgba(14,165,233,0.35)', color: '#bae6fd', border: '1px solid rgba(56,189,248,0.4)' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='rgba(14,165,233,0.55)'}
-                  onMouseLeave={e=>e.currentTarget.style.background='rgba(14,165,233,0.35)'}
-                >
-                  <Send size={12} />
-                  <span className="hidden sm:inline">Telegram Finder</span>
-                  <span className="sm:hidden">Finder</span>
-                </button>
                 <button
                   onClick={() => { loadConfirmations(); resetCountdown(); clearInterval(refreshRef.current); refreshRef.current = setInterval(() => { loadConfirmations(true); setCountdown(AUTO_REFRESH_SEC); }, AUTO_REFRESH_SEC * 1000); }}
                   disabled={loading}
@@ -2186,61 +2151,6 @@ export default function Partners() {
         </div>
       </div>
 
-      {/* Telegram Finder Modal */}
-      {telegramFinderOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
-            <div className="bg-gradient-to-r from-sky-500 to-cyan-600 p-5 rounded-t-2xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Send className="w-6 h-6 text-white" />
-                <div>
-                  <h2 className="text-lg font-bold text-white">Telegram Finder</h2>
-                  <p className="text-sky-100 text-xs">Botga xabar yuborgan odamlarning Chat ID lari</p>
-                </div>
-              </div>
-              <button onClick={() => setTelegramFinderOpen(false)} className="text-white/80 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-4 overflow-y-auto flex-1">
-              {telegramLoading ? (
-                <div className="text-center py-8 text-gray-500">Yuklanmoqda...</div>
-              ) : telegramChats.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Send className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Hech kim xabar yubormagan</p>
-                  <p className="text-sm mt-1">Hotel menejeri <strong>@OrientInsight_bot</strong> ga istalgan xabar yuborgandan so'ng bu yerda ko'rinadi.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {telegramChats.map(chat => (
-                    <div key={chat.chatId} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-800 truncate">{chat.name}</p>
-                        <p className="text-xs text-gray-500">{chat.username || chat.type} · {new Date(chat.date).toLocaleString('ru')}</p>
-                        <p className="text-xs text-gray-400 truncate mt-0.5">"{chat.lastMessage}"</p>
-                      </div>
-                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                        <code className="text-sm font-mono bg-sky-100 text-sky-700 px-2 py-1 rounded">{chat.chatId}</code>
-                        <button
-                          onClick={() => copyChatId(chat.chatId)}
-                          className="p-2 text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
-                          title="Nusxalash"
-                        >
-                          {copiedChatId === chat.chatId ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t border-gray-100">
-              <p className="text-xs text-gray-500 text-center">Chat ID ni nusxalab hotel profilida <strong>Telegram Chat ID</strong> maydoniga joylashtiring</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
