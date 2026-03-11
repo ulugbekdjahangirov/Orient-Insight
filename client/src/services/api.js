@@ -51,6 +51,8 @@ export const bookingsApi = {
   getHotelRequestPdf: (bookingId, hotelId) => api.get(`/bookings/${bookingId}/hotel-request-pdf/${hotelId}`, { responseType: 'blob' }),
   sendHotelRequest: (bookingId, hotelId, email, subjectType) => api.post(`/bookings/${bookingId}/send-hotel-request/${hotelId}`, { email, subjectType }),
   sendHotelRequestTelegram: (bookingId, hotelId, chatId, subjectType) => api.post(`/bookings/${bookingId}/send-hotel-request-telegram/${hotelId}`, { chatId, subjectType }),
+  sendStornoEmail: (bookingId, hotelId, email) => api.post(`/bookings/${bookingId}/send-storno-email/${hotelId}`, { email }),
+  sendStornoTelegram: (bookingId, hotelId, chatId) => api.post(`/bookings/${bookingId}/send-storno-telegram/${hotelId}`, { chatId }),
   // Cost Summary
   getCostSummary: (bookingId) => api.get(`/bookings/${bookingId}/cost-summary`),
   // Accommodations (новая структура размещения)

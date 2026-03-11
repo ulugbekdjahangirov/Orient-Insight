@@ -15,6 +15,114 @@ const tourTypeModules = [
   { code: 'ZA', name: 'Zentralasien', color: '#8B5CF6' }
 ];
 
+// Shahar ustunlari konfiguratsiyasi (har tur turi uchun)
+const CITY_CONFIGS = {
+  ER: [
+    { key: 'tashkent1', label: 'Toshkent 1' },
+    { key: 'samarkand', label: 'Samarkand' },
+    { key: 'bukhara',   label: 'Buxoro' },
+    { key: 'khiva',     label: 'Xiva' },
+    { key: 'tashkent2', label: 'Toshkent 2' },
+  ],
+  CO: [
+    { key: 'tashkent1', label: 'Toshkent 1' },
+    { key: 'fergana',   label: 'Fergana' },
+    { key: 'tashkent2', label: 'Toshkent 2' },
+    { key: 'samarkand', label: 'Samarkand' },
+    { key: 'bukhara',   label: 'Buxoro' },
+    { key: 'khiva',     label: 'Xiva' },
+    { key: 'tashkent3', label: 'Toshkent 3' },
+  ],
+  KAS: [
+    { key: 'fergana',   label: 'Fergana' },
+    { key: 'bukhara',   label: 'Buxoro' },
+    { key: 'samarkand', label: 'Samarkand' },
+    { key: 'tashkent',  label: 'Toshkent' },
+  ],
+  ZA: [
+    { key: 'bukhara',   label: 'Buxoro' },
+    { key: 'samarkand', label: 'Samarkand' },
+    { key: 'tashkent',  label: 'Toshkent' },
+  ],
+};
+
+function getCityDates(accommodations, tourType, departureDate, arrivalDate) {
+  const fmt = (d) => format(new Date(d), 'dd.MM');
+  const fmtYear = (d) => format(new Date(d), 'dd.MM.yyyy');
+  const fmtRange = (a) => a ? `${fmt(a.checkInDate)}-${fmtYear(a.checkOutDate)}` : '';
+  const cityMatch = (a, pattern) => (a.hotel?.city?.name || '').toLowerCase().match(pattern);
+
+  const hasAcc = accommodations && accommodations.length > 0;
+
+  if (hasAcc) {
+    const tashkents = accommodations
+      .filter(a => cityMatch(a, /tashkent|ташкент|toshkent/))
+      .sort((a, b) => new Date(a.checkInDate) - new Date(b.checkInDate));
+
+    if (tourType === 'ER') {
+      return {
+        tashkent1: fmtRange(tashkents[0]),
+        samarkand: fmtRange(accommodations.find(a => cityMatch(a, /samarkand|самарканд/))),
+        bukhara:   fmtRange(accommodations.find(a => cityMatch(a, /bukhara|бухара|bukhoro|бухоро/))),
+        khiva:     fmtRange(accommodations.find(a => cityMatch(a, /khiva|хива/))),
+        tashkent2: fmtRange(tashkents[1]),
+      };
+    }
+    if (tourType === 'CO') {
+      return {
+        tashkent1: fmtRange(tashkents[0]),
+        fergana:   fmtRange(accommodations.find(a => cityMatch(a, /fergana|фергана/))),
+        tashkent2: fmtRange(tashkents[1]),
+        samarkand: fmtRange(accommodations.find(a => cityMatch(a, /samarkand|самарканд/))),
+        bukhara:   fmtRange(accommodations.find(a => cityMatch(a, /bukhara|бухара|bukhoro|бухоро/))),
+        khiva:     fmtRange(accommodations.find(a => cityMatch(a, /khiva|хива/))),
+        tashkent3: fmtRange(tashkents[2]),
+      };
+    }
+    if (tourType === 'KAS') {
+      return {
+        fergana:   fmtRange(accommodations.find(a => cityMatch(a, /fergana|фергана/))),
+        bukhara:   fmtRange(accommodations.find(a => cityMatch(a, /bukhara|бухара|bukhoro|бухоро/))),
+        samarkand: fmtRange(accommodations.find(a => cityMatch(a, /samarkand|самарканд/))),
+        tashkent:  fmtRange(tashkents[0]),
+      };
+    }
+    if (tourType === 'ZA') {
+      return {
+        bukhara:   fmtRange(accommodations.find(a => cityMatch(a, /bukhara|бухара|bukhoro|бухоро/))),
+        samarkand: fmtRange(accommodations.find(a => cityMatch(a, /samarkand|самарканд/))),
+        tashkent:  fmtRange(tashkents[0]),
+      };
+    }
+  }
+
+  // Fallback: arrivalDate (yoki departureDate+offset) dan avtomatik hisoblash
+  const arrOffsets = { ER: 1, CO: 1, KAS: 14, ZA: 4 };
+  const baseDate = arrivalDate
+    ? new Date(arrivalDate)
+    : departureDate ? addDays(new Date(departureDate), arrOffsets[tourType] || 1) : null;
+  if (!baseDate) return {};
+  const r = (s, e) => `${fmt(addDays(baseDate, s))}-${fmtYear(addDays(baseDate, e))}`;
+
+  if (tourType === 'ER') {
+    // Tashkentdan boshlanadi
+    return { tashkent1: r(0,2), samarkand: r(2,5), bukhara: r(6,9), khiva: r(9,12), tashkent2: r(11,12) };
+  }
+  if (tourType === 'CO') {
+    // Tashkentdan boshlanadi
+    return { tashkent1: r(0,2), fergana: r(2,3), tashkent2: r(3,4), samarkand: r(4,6), bukhara: r(6,9), khiva: r(9,11), tashkent3: r(11,12) };
+  }
+  if (tourType === 'KAS') {
+    // Ferganadan boshlanadi (Dostlik chegara)
+    return { fergana: r(0,2), bukhara: r(2,5), samarkand: r(5,7), tashkent: r(7,9) };
+  }
+  if (tourType === 'ZA') {
+    // Buxorodan boshlanadi (Olot chegara)
+    return { bukhara: r(0,3), samarkand: r(3,5), tashkent: r(6,7) };
+  }
+  return {};
+}
+
 const statusLabels = {
   PENDING: 'Pending',
   CONFIRMED: 'Confirmed',
@@ -116,7 +224,7 @@ export default function Updates() {
         return;
       }
 
-      const response = await bookingsApi.getAll({ tourTypeId: tourType.id, year: selectedYear });
+      const response = await bookingsApi.getAll({ tourTypeId: tourType.id, year: selectedYear, withCityDates: 'true' });
       setBookings(response.data.bookings || []);
     } catch (error) {
       toast.error('Error loading bookings');
@@ -960,23 +1068,6 @@ export default function Updates() {
                       </div>
                     )}
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-3 pt-3 border-t border-gray-300">
-                      <Link
-                        to={`/bookings/${booking.id}?edit=true`}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-indigo-600 bg-indigo-100 hover:bg-indigo-200 rounded-xl transition-all font-semibold text-sm"
-                      >
-                        <Edit className="w-4 h-4" />
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(booking.id, booking.bookingNumber)}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-red-600 bg-red-100 hover:bg-red-200 rounded-xl transition-all font-semibold text-sm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </button>
-                    </div>
                   </div>
                 );
               })}
@@ -986,67 +1077,24 @@ export default function Updates() {
               <table className="w-full">
                 <thead className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 border-b-4 border-indigo-600 shadow-2xl sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-24">
-                      Number
+                    <th className="px-3 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-10">
+                      #
                     </th>
                     <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                      Tour Type
+                      Number
                     </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                      Tour Start
-                    </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                      Arrival
-                    </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                      {activeTab === 'ZA' ? 'Jartepa' : 'Tour End'}
-                    </th>
-                    <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-20">
+                    {(CITY_CONFIGS[activeTab] || []).map(c => (
+                      <th key={c.key} className="px-3 py-5 text-center text-xs font-black text-white uppercase tracking-wider whitespace-nowrap">
+                        {c.label}
+                      </th>
+                    ))}
+                    <th className="px-4 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
                       Pax
                     </th>
-                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-24">
-                      Uzbekistan
-                    </th>
-                    {activeTab === 'ER' && (
-                      <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-28">
-                        Turkmenistan
-                      </th>
-                    )}
-                    <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-32">
-                      Guide
-                    </th>
-                    {activeTab === 'ZA' ? (
-                      <>
-                        <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                          Oybek
-                        </th>
-                        <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                          End
-                        </th>
-                        <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-36">
-                          Second Guide
-                        </th>
-                      </>
-                    ) : (
-                      <th className="px-4 py-5 text-left text-sm font-black text-white uppercase tracking-wider w-40">
-                        Train Tickets
-                      </th>
-                    )}
-                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
-                      DBL
-                    </th>
-                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
-                      TWN
-                    </th>
-                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-16">
-                      SNGL
-                    </th>
-                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-5 text-right text-sm font-black text-white uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-14">DBL</th>
+                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-14">TWN</th>
+                    <th className="px-3 py-5 text-center text-sm font-black text-white uppercase tracking-wider w-14">SNGL</th>
+                    <th className="px-6 py-5 text-left text-sm font-black text-white uppercase tracking-wider">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1097,53 +1145,20 @@ export default function Updates() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                        {format(new Date(booking.departureDate), 'dd.MM.yyyy')}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                        {booking.arrivalDate
-                          ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy')
-                          : format(addDays(new Date(booking.departureDate), 1), 'dd.MM.yyyy')}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                        {format(new Date(booking.endDate), 'dd.MM.yyyy')}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Users className="w-4 h-4 text-primary-500" />
+                      {(() => {
+                        const cityDates = getCityDates(booking.accommodations, activeTab, booking.departureDate, booking.arrivalDate);
+                        return (CITY_CONFIGS[activeTab] || []).map(c => (
+                          <td key={c.key} className="px-2 py-4 text-center text-xs text-gray-700 font-medium whitespace-nowrap">
+                            {cityDates[c.key] || <span className="text-gray-300">—</span>}
+                          </td>
+                        ));
+                      })()}
+                      <td className="px-4 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1 text-sm">
+                          <Users className="w-3.5 h-3.5 text-primary-500" />
                           <span className="font-bold text-gray-900">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
                         </div>
                       </td>
-                      <td className="px-3 py-4 text-sm text-gray-700 font-semibold text-center">
-                        {calculatedStatus === 'CANCELLED' ? 0 : (booking.paxUzbekistan || 0)}
-                      </td>
-                      {activeTab === 'ER' && (
-                        <td className="px-3 py-4 text-sm text-gray-700 font-semibold text-center">
-                          {calculatedStatus === 'CANCELLED' ? 0 : (booking.paxTurkmenistan || 0)}
-                        </td>
-                      )}
-                      <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                        {booking.guide?.name || '-'}
-                      </td>
-                      {activeTab === 'ZA' ? (
-                        <>
-                          <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                            {booking.endDate ? format(addDays(new Date(booking.endDate), 4), 'dd.MM.yyyy') : '-'}
-                          </td>
-                          <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                            {booking.endDate ? format(addDays(new Date(booking.endDate), 5), 'dd.MM.yyyy') : '-'}
-                          </td>
-                          <td className="px-4 py-4 text-sm text-gray-700 font-medium">
-                            {booking.secondGuide?.name || '-'}
-                          </td>
-                        </>
-                      ) : (
-                        <td className="px-4 py-4 text-sm font-semibold text-center">
-                          {booking.trainTickets === 'Issued'
-                            ? <span className="text-emerald-600">OK</span>
-                            : <span className="text-gray-400">-</span>}
-                        </td>
-                      )}
                       <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
                         {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : booking.roomsDbl.toFixed(1)) : '-'}
                       </td>
@@ -1157,24 +1172,6 @@ export default function Updates() {
                         <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
                           {statusLabels[calculatedStatus]}
                         </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-3">
-                          <Link
-                            to={`/bookings/${booking.id}?edit=true`}
-                            className="p-2.5 text-indigo-600 hover:text-white bg-indigo-50 hover:bg-gradient-to-r hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                            title="Edit"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(booking.id, booking.bookingNumber)}
-                            className="p-2.5 text-red-600 hover:text-white bg-red-50 hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl transform hover:scale-110"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   );

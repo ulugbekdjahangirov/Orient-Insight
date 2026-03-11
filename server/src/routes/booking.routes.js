@@ -101,7 +101,8 @@ router.get('/', authenticate, async (req, res) => {
       search,
       year,
       sortBy = 'arrivalDate',
-      sortOrder = 'asc'
+      sortOrder = 'asc',
+      withCityDates = 'false'
     } = req.query;
 
     const where = {};
@@ -148,16 +149,24 @@ router.get('/', authenticate, async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    const includeBase = {
+      tourType: { select: { id: true, code: true, name: true, color: true } },
+      guide: { select: { id: true, name: true, dayRate: true, halfDayRate: true } },
+      secondGuide: { select: { id: true, name: true } },
+      createdBy: { select: { id: true, name: true } },
+      tourists: { select: { id: true, roomNumber: true, roomPreference: true, accommodation: true } }
+    };
+    if (withCityDates === 'true') {
+      includeBase.accommodations = {
+        select: { checkInDate: true, checkOutDate: true, hotel: { select: { city: { select: { name: true } } } } },
+        orderBy: { checkInDate: 'asc' }
+      };
+    }
+
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({
         where,
-        include: {
-          tourType: { select: { id: true, code: true, name: true, color: true } },
-          guide: { select: { id: true, name: true, dayRate: true, halfDayRate: true } },
-          secondGuide: { select: { id: true, name: true } },
-          createdBy: { select: { id: true, name: true } },
-          tourists: { select: { id: true, roomNumber: true, roomPreference: true, accommodation: true } }
-        },
+        include: includeBase,
         orderBy: { [sortBy]: sortOrder },
         skip,
         take: parseInt(limit)
