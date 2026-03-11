@@ -9,8 +9,6 @@ import {
   Search,
   Filter,
   Plus,
-  Eye,
-  Edit,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -563,24 +561,10 @@ export default function Bookings() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 mt-2">
-                    <Link
-                      to={`/bookings/${booking.id}`}
-                      className="p-2 text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all"
-                      title="View"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </Link>
-                    <Link
-                      to={`/bookings/${booking.id}?edit=true`}
-                      className="p-2 text-primary-600 hover:text-primary-900 hover:bg-white rounded-lg transition-all"
-                      title="Edit"
-                    >
-                      <Edit className="w-5 h-5" />
-                    </Link>
+                  <div className="flex items-center justify-end pt-3 border-t border-gray-200 mt-2">
                     <button
                       onClick={() => handleDelete(booking.id, booking.bookingNumber)}
-                      className="p-2 text-red-600 hover:text-red-900 hover:bg-white rounded-lg transition-all"
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
                       title="Delete"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -640,8 +624,8 @@ export default function Bookings() {
                   <th className="px-2 py-4 text-left text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
                     Status
                   </th>
-                  <th className="px-2 py-4 text-right text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
-                    Actions
+                  <th className="px-2 py-4 text-center text-xs font-black text-white uppercase tracking-wide whitespace-nowrap">
+                    Del
                   </th>
                 </tr>
               </thead>
@@ -669,8 +653,8 @@ export default function Bookings() {
                   return (
                   <tr key={booking.id} className={`${rowClass} transition-all duration-200`}>
                     {/* НОМЕР */}
-                    <td className="hidden md:table-cell px-2 py-3">
-                      <span className="font-bold text-gray-900 text-sm">
+                    <td className="hidden md:table-cell px-1 py-3 text-center">
+                      <span className="font-medium text-gray-500 text-xs">
                         {(pagination.page - 1) * pagination.limit + index + 1}
                       </span>
                     </td>
@@ -679,7 +663,7 @@ export default function Bookings() {
                       <div className="flex flex-col gap-0.5">
                         <Link to={`/bookings/${booking.id}?edit=true`}>
                           <span
-                            className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold text-white whitespace-nowrap hover:shadow-md hover:scale-105 transition-all duration-200 shadow-sm"
+                            className="inline-flex items-center px-2 py-1 rounded-lg text-sm font-bold text-white whitespace-nowrap hover:shadow-md hover:scale-105 transition-all duration-200 shadow-sm"
                             style={{ backgroundColor: booking.tourType?.color || '#6B7280' }}
                           >
                             {booking.bookingNumber}
@@ -693,54 +677,54 @@ export default function Bookings() {
                       </div>
                     </td>
                     {/* TOUR START */}
-                    <td className="px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
+                    <td className="px-2 py-3 text-sm text-gray-700 font-semibold whitespace-nowrap">
                       {format(new Date(booking.departureDate), 'dd.MM.yy')}
                     </td>
                     {/* ARRIVAL */}
-                    <td className="hidden md:table-cell px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
+                    <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-700 font-semibold whitespace-nowrap">
                       {booking.arrivalDate
                         ? format(new Date(booking.arrivalDate), 'dd.MM.yy')
                         : format(addDays(new Date(booking.departureDate), 1), 'dd.MM.yy')}
                     </td>
                     {/* TOUR END */}
-                    <td className="hidden md:table-cell px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
+                    <td className="hidden md:table-cell px-2 py-3 text-sm text-gray-700 font-semibold whitespace-nowrap">
                       {format(new Date(booking.endDate), 'dd.MM.yy')}
                     </td>
                     {/* PAX */}
                     <td className="px-2 py-3">
-                      <div className="flex items-center gap-1 text-xs">
-                        <Users className="w-3.5 h-3.5 text-primary-500" />
-                        <span className="font-bold text-gray-900">{ds.pax}</span>
+                      <div className="flex items-center gap-1">
+                        <Users className="w-4 h-4 text-primary-500" />
+                        <span className="font-black text-gray-900 text-base">{ds.pax}</span>
                       </div>
                     </td>
                     {/* УЗБЕКИСТАН */}
-                    <td className="hidden lg:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
+                    <td className="hidden lg:table-cell px-2 py-3 text-sm text-gray-700 font-bold text-center">
                       {ds.uzb}
                     </td>
                     {/* ТУРКМЕНИСТАН */}
-                    <td className="hidden lg:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
+                    <td className="hidden lg:table-cell px-2 py-3 text-sm text-gray-700 font-bold text-center">
                       {ds.tkm}
                     </td>
                     {/* ГИД */}
-                    <td className="hidden lg:table-cell px-2 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
+                    <td className="hidden lg:table-cell px-2 py-3 text-sm text-gray-800 font-semibold whitespace-nowrap">
                       {booking.guide?.name || '-'}
                     </td>
                     {/* ЖД БИЛЕТЫ */}
-                    <td className="hidden lg:table-cell px-2 py-3 text-xs font-semibold text-center">
+                    <td className="hidden lg:table-cell px-2 py-3 text-sm font-bold text-center">
                       {booking.trainTickets === 'Issued'
                         ? <span className="text-emerald-600">OK</span>
                         : <span className="text-gray-400">-</span>}
                     </td>
                     {/* DBL */}
-                    <td className="hidden xl:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-2 py-3 text-sm text-gray-800 font-bold text-center">
                       {ds.dbl ? (Number(ds.dbl) % 1 === 0 ? ds.dbl : Number(ds.dbl).toFixed(1)) : 0}
                     </td>
                     {/* TWN */}
-                    <td className="hidden xl:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-2 py-3 text-sm text-gray-800 font-bold text-center">
                       {ds.twn ? (Number(ds.twn) % 1 === 0 ? ds.twn : Number(ds.twn).toFixed(1)) : 0}
                     </td>
                     {/* SNGL */}
-                    <td className="hidden xl:table-cell px-2 py-3 text-xs text-gray-700 font-semibold text-center">
+                    <td className="hidden xl:table-cell px-2 py-3 text-sm text-gray-800 font-bold text-center">
                       {ds.sngl ? (Number(ds.sngl) % 1 === 0 ? ds.sngl : Number(ds.sngl).toFixed(1)) : 0}
                     </td>
                     {/* TOTAL ROOMS */}
@@ -748,41 +732,25 @@ export default function Bookings() {
                       {(() => {
                         const total = (ds.dbl || 0) + (ds.twn || 0) + (ds.sngl || 0);
                         return total > 0
-                          ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 font-black text-xs">{Number(total) % 1 === 0 ? total : Number(total).toFixed(1)}</span>
+                          ? <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 font-black text-sm">{Number(total) % 1 === 0 ? total : Number(total).toFixed(1)}</span>
                           : <span className="text-gray-300">—</span>;
                       })()}
                     </td>
                     {/* СТАТУС */}
-                    <td className="px-2 py-3">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold ${statusClasses[calculatedStatus]}`}>
+                    <td className="px-1 py-3">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-lg text-xs font-semibold ${statusClasses[calculatedStatus]}`}>
                         {statusLabels[calculatedStatus]}
                       </span>
                     </td>
                     {/* ДЕЙСТВИЯ */}
-                    <td className="px-2 md:px-4 py-4">
-                      <div className="flex items-center justify-end gap-1 md:gap-2">
-                        <Link
-                          to={`/bookings/${booking.id}`}
-                          className="p-2.5 md:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                          title="View"
-                        >
-                          <Eye className="w-5 h-5 md:w-4 md:h-4" />
-                        </Link>
-                        <Link
-                          to={`/bookings/${booking.id}?edit=true`}
-                          className="p-2.5 md:p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                          title="Edit"
-                        >
-                          <Edit className="w-5 h-5 md:w-4 md:h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(booking.id, booking.bookingNumber)}
-                          className="p-2.5 md:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg hover:scale-110 transition-all duration-200 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5 md:w-4 md:h-4" />
-                        </button>
-                      </div>
+                    <td className="px-1 py-4 text-center">
+                      <button
+                        onClick={() => handleDelete(booking.id, booking.bookingNumber)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 flex items-center justify-center mx-auto"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                   );
