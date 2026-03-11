@@ -114,7 +114,7 @@ function getCityDates(accommodations, tourType, departureDate, arrivalDate) {
   }
   if (tourType === 'KAS') {
     // Ferganadan boshlanadi (Dostlik chegara)
-    return { fergana: r(0,2), bukhara: r(2,4), samarkand: r(4,6), tashkent: r(6,8) };
+    return { fergana: r(0,1), bukhara: r(2,4), samarkand: r(4,6), tashkent: r(6,8) };
   }
   if (tourType === 'ZA') {
     // Buxorodan boshlanadi (Olot chegara)
