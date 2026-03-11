@@ -665,28 +665,42 @@ class EmailImportProcessor {
       const uzStart = uzSectionStart || (booking.departureDate ? new Date(booking.departureDate) : null);
       const uzEnd   = uzSectionEnd   || (booking.endDate ? new Date(booking.endDate) : (booking.arrivalDate ? new Date(booking.arrivalDate) : null));
 
-      // Helper: check if tourist's birthday falls within the Uzbekistan portion of the tour
-      // Does NOT use tourist placement — checks dates only
+      // Helper: write birthday remark only if birthday falls within Uzbekistan portion of the tour
       const getBirthdayRemark = (pdfT) => {
         if (!birthdaysMap.size) return null;
-        const nameNorm = (pdfT.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+        const normN = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|mr\s|mrs\s)\s*/i, '').replace(/\s+/g, ' ').trim();
+        const tNorm = normN(pdfT.fullName || '');
+        const tLast  = tNorm.split(',')[0].trim();
+        const tFirst = tNorm.includes(',') ? tNorm.split(',').slice(1).join(',').trim() : '';
         for (const [bName, bDate] of birthdaysMap.entries()) {
-          const bNameNorm = bName.toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
-          // Match by last name (part before comma)
-          const touristLast = nameNorm.split(',')[0].trim();
-          const bLast = bNameNorm.split(',')[0].trim();
-          if (!touristLast || !bLast || bLast !== touristLast) continue;
-          // Check birthday day+month falls within UZ portion
+          const bNorm = normN(bName);
+          let bLast, bFirst;
+          if (bNorm.includes(',')) {
+            bLast  = bNorm.split(',')[0].trim();
+            bFirst = bNorm.split(',').slice(1).join(',').trim();
+          } else {
+            const words = bNorm.split(' ').filter(Boolean);
+            bLast  = words.pop() || '';
+            bFirst = words.join(' ');
+          }
+          if (!bLast || !tLast || bLast !== tLast || tLast.length < 2) continue;
+          // Verify first name — tourist first names must start with birthday entry first name
+          if (bFirst && tFirst) {
+            if (!tFirst.startsWith(bFirst) && !bFirst.startsWith(tFirst)) {
+              const minLen = Math.min(5, Math.min(bFirst.length, tFirst.length));
+              if (bFirst.substring(0, minLen) !== tFirst.substring(0, minLen)) continue;
+            }
+          }
           const parts = bDate.split('.');
           if (parts.length < 2) continue;
-          const bDay   = parseInt(parts[0], 10);
-          const bMonth = parseInt(parts[1], 10);
-          const bdYear = uzStart ? uzStart.getFullYear() : new Date().getFullYear();
-          const bdInTour = new Date(bdYear, bMonth - 1, bDay);
-          if (uzStart && uzEnd && bdInTour >= uzStart && bdInTour <= uzEnd) {
-            return `Birthday: ${parts[0]}.${parts[1]}`; // DD.MM only
+          // Only show if birthday falls within Uzbekistan portion (uzStart–uzEnd)
+          if (uzStart && uzEnd) {
+            const bDay = parseInt(parts[0], 10);
+            const bMonth = parseInt(parts[1], 10);
+            const bdInTour = new Date(uzStart.getFullYear(), bMonth - 1, bDay);
+            if (bdInTour < uzStart || bdInTour > uzEnd) continue;
           }
-          break;
+          return `Birthday: ${parts[0]}.${parts[1]}`; // DD.MM only
         }
         return null;
       };
@@ -775,8 +789,9 @@ class EmailImportProcessor {
           matchedIds.add(existing.id);
           // Rebuild remarks from scratch on each import to avoid stale lines accumulating
           const isAutoLine = (l) =>
-            /^(vegetarian|vegan)$/i.test(l) ||
+            /^(vegetarian|vegan|glutenfree)$/i.test(l) ||
             l.startsWith('Birthday:') ||
+            l.startsWith('Allergie:') ||
             l.startsWith('Extra night TAS:') ||
             /Indiv\. arrival|Late arrival|Early arrival|Dom\. flight|Last night (in|cancelled)|Use group transfer|Organize transfer himself|Early return flight|Indiv\. departure|Late checkout|Early check-in|Room near /i.test(l) ||
             /earlier.+return flight|later.+return flight|return flight|organiz\w* transfer|transfer him\w*/i.test(l) ||
@@ -788,6 +803,8 @@ class EmailImportProcessor {
           const manualLines = existLines.filter(l => !isAutoLine(l));
           const newRemarkLines = [];
           if (pdfT.isVegetarian) newRemarkLines.push(pdfT.dietLabel || 'Vegetarian');
+          if (pdfT.isGlutenfree) newRemarkLines.push('Glutenfree');
+          if (pdfT.allergyLabel) newRemarkLines.push(pdfT.allergyLabel);
           if (birthdayRemark) newRemarkLines.push(birthdayRemark);
           if (specificRemark) newRemarkLines.push(specificRemark);
           if (extraNightRemark) newRemarkLines.push(extraNightRemark);
@@ -811,6 +828,8 @@ class EmailImportProcessor {
         } else {
           const newRemarks = [];
           if (pdfT.isVegetarian) newRemarks.push(pdfT.dietLabel || 'Vegetarian');
+          if (pdfT.isGlutenfree) newRemarks.push('Glutenfree');
+          if (pdfT.allergyLabel) newRemarks.push(pdfT.allergyLabel);
           if (birthdayRemark) newRemarks.push(birthdayRemark);
           if (specificRemark) newRemarks.push(specificRemark);
           if (extraNightRemark) newRemarks.push(extraNightRemark);
@@ -1120,20 +1139,29 @@ class EmailImportProcessor {
 
       const getBirthdayRemark = (pdfT) => {
         if (!birthdaysMap.size) return null;
-        const nameNorm = (pdfT.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+        const normN = (n) => n.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|mr\s|mrs\s)\s*/i, '').replace(/\s+/g, ' ').trim();
+        const tNorm = normN(pdfT.fullName || '');
+        const tLast  = tNorm.split(',')[0].trim();
+        const tFirst = tNorm.includes(',') ? tNorm.split(',').slice(1).join(',').trim() : '';
         for (const [bName, bDate] of birthdaysMap.entries()) {
-          const bNameNorm = bName.toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
-          const touristLast = nameNorm.split(',')[0].trim();
-          const bLast = bNameNorm.split(',')[0].trim();
-          if (!touristLast || !bLast || bLast !== touristLast) continue;
+          const bNorm = normN(bName);
+          let bLast, bFirst;
+          if (bNorm.includes(',')) { bLast = bNorm.split(',')[0].trim(); bFirst = bNorm.split(',').slice(1).join(',').trim(); }
+          else { const w = bNorm.split(' ').filter(Boolean); bLast = w.pop() || ''; bFirst = w.join(' '); }
+          if (!bLast || !tLast || bLast !== tLast || tLast.length < 2) continue;
+          if (bFirst && tFirst) {
+            if (!tFirst.startsWith(bFirst) && !bFirst.startsWith(tFirst)) {
+              const minLen = Math.min(5, Math.min(bFirst.length, tFirst.length));
+              if (bFirst.substring(0, minLen) !== tFirst.substring(0, minLen)) continue;
+            }
+          }
           const parts = bDate.split('.');
           if (parts.length < 2) continue;
-          const bDay   = parseInt(parts[0], 10);
-          const bMonth = parseInt(parts[1], 10);
-          const bdYear = uzStart ? uzStart.getFullYear() : new Date().getFullYear();
-          const bdInTour = new Date(bdYear, bMonth - 1, bDay);
-          if (uzStart && uzEnd && bdInTour >= uzStart && bdInTour <= uzEnd) return `Birthday: ${parts[0]}.${parts[1]}`;
-          break;
+          if (uzStart && uzEnd) {
+            const bdInTour = new Date(uzStart.getFullYear(), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+            if (bdInTour < uzStart || bdInTour > uzEnd) continue;
+          }
+          return `Birthday: ${parts[0]}.${parts[1]}`;
         }
         return null;
       };
@@ -1201,8 +1229,9 @@ class EmailImportProcessor {
           matchedIds.add(existing.id);
           // Rebuild remarks from scratch on each import to avoid stale lines accumulating
           const isAutoLine = (l) =>
-            /^(vegetarian|vegan)$/i.test(l) ||
+            /^(vegetarian|vegan|glutenfree)$/i.test(l) ||
             l.startsWith('Birthday:') ||
+            l.startsWith('Allergie:') ||
             l.startsWith('Extra night TAS:') ||
             /Indiv\. arrival|Late arrival|Early arrival|Dom\. flight|Last night (in|cancelled)|Use group transfer|Organize transfer himself|Early return flight|Indiv\. departure|Late checkout|Early check-in|Room near /i.test(l) ||
             /earlier.+return flight|later.+return flight|return flight|organiz\w* transfer|transfer him\w*/i.test(l) ||
@@ -1214,6 +1243,8 @@ class EmailImportProcessor {
           const manualLines = existLines.filter(l => !isAutoLine(l));
           const newRemarkLines = [];
           if (pdfT.isVegetarian) newRemarkLines.push(pdfT.dietLabel || 'Vegetarian');
+          if (pdfT.isGlutenfree) newRemarkLines.push('Glutenfree');
+          if (pdfT.allergyLabel) newRemarkLines.push(pdfT.allergyLabel);
           if (birthdayRemark) newRemarkLines.push(birthdayRemark);
           if (specificRemark) newRemarkLines.push(specificRemark);
           if (extraNightRemark) newRemarkLines.push(extraNightRemark);
@@ -1237,6 +1268,8 @@ class EmailImportProcessor {
         } else {
           const newRemarks = [];
           if (pdfT.isVegetarian) newRemarks.push(pdfT.dietLabel || 'Vegetarian');
+          if (pdfT.isGlutenfree) newRemarks.push('Glutenfree');
+          if (pdfT.allergyLabel) newRemarks.push(pdfT.allergyLabel);
           if (birthdayRemark) newRemarks.push(birthdayRemark);
           if (specificRemark) newRemarks.push(specificRemark);
           if (extraNightRemark) newRemarks.push(extraNightRemark);
@@ -1501,6 +1534,8 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
     const tourists = [];
     const birthdaysMap = new Map(); // name → "DD.MM.YYYY"
     const vegetariansList = []; // {name, label} — label is "Vegetarian" or "Vegan"
+    const allergiesMap = new Map(); // name → allergy string (e.g. "Nuts")
+    const glutenfreeList = []; // names of glutenfree tourists
     // Strip bullet/sub-bullet prefixes (•, ●, o, -, *) that Word/PDF may produce
     const stripBullet = (l) => l.trim()
       .replace(/^[•●◦▪▸\-\*]\s+/, '')  // main bullets
@@ -1517,6 +1552,8 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
     let inAdditionalInfo = false;
     let inBirthdaysSection = false;
     let inVegetariansSection = false;
+    let inAllergiesSection = false;
+    let inGlutenfreeSection = false;
     let inRemarkSection = false;
     const remarkLines = []; // group-level remark text
     const touristSpecificRemarks = new Map(); // lowercased name key → short remark string
@@ -1589,8 +1626,13 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
       const lower = line.toLowerCase();
 
       // Detect section (Uzbekistan / Turkmenistan)
+      // Format 1 (old): "Tour: Uzbekistan ..." / "Tour: Turkmenistan ..."
+      // Format 2 (new): "Incl. extension Turkmenistan:" separator line
+      const isTurkmenSection = tourTypeCode === 'ER' && (
+        lower.includes('turkmenistan') || lower.includes('turkmen')
+      );
       if (lower.includes('tour:')) {
-        if ((lower.includes('turkmenistan') || lower.includes('turkmen')) && tourTypeCode === 'ER') {
+        if (isTurkmenSection) {
           currentAccommodation = 'Turkmenistan';
         } else {
           currentAccommodation = 'Uzbekistan';
@@ -1605,6 +1647,16 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
             }
           }
         }
+        roomPersonCount = 0;
+        inAdditionalInfo = false;
+        continue;
+      }
+
+      // Format 2: "Incl. extension Turkmenistan:" → switch to Turkmenistan section
+      // Only match lines with "incl." prefix — NOT "Extension Turkmenistan – 29.04.2026" header
+      if (isTurkmenSection && (lower.includes('incl.') || lower.startsWith('incl '))) {
+        currentAccommodation = 'Turkmenistan';
+        currentRoomType = null;
         roomPersonCount = 0;
         inAdditionalInfo = false;
         continue;
@@ -1652,16 +1704,49 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
         }
         // Parse Birthdays section
         if (/^Birthdays:/i.test(line)) {
-          inBirthdaysSection = true; inVegetariansSection = false;
+          inBirthdaysSection = true; inVegetariansSection = false; inAllergiesSection = false; inGlutenfreeSection = false;
           const val = line.replace(/^Birthdays:/i, '').trim();
           if (val && val !== '//' && val !== '-') {
-            val.split('//').forEach(entry => {
-              const m = entry.trim().match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
-              if (m) birthdaysMap.set(m[2].trim(), m[1]);
+            // Support both "/" and "//" separators
+            val.split(/\s*\/+\s*/).forEach(entry => {
+              entry = entry.trim();
+              if (!entry) return;
+              // Format A (new): "Mr Reiner Schulz, 15.04.1955" or "Mr. Last, First 15.04.1955"
+              const mA = entry.match(/^(.+?)[,\s]+(\d{2}\.\d{2}\.\d{4})$/);
+              // Format B (old): "DD.MM.YYYY Name"
+              const mB = !mA && entry.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
+              if (mA) birthdaysMap.set(mA[1].trim(), mA[2]);
+              else if (mB) birthdaysMap.set(mB[2].trim(), mB[1]);
             });
           }
           continue;
         }
+        // Parse Allergies section
+        if (/^Allergies:/i.test(line)) {
+          inAllergiesSection = true; inVegetariansSection = false; inBirthdaysSection = false; inGlutenfreeSection = false;
+          const val = line.replace(/^Allergies:/i, '').trim();
+          if (val && val !== '//' && val !== '-') {
+            // "Mr. Zimmer, Dietmar Andreas: nuts"
+            const colonIdx = val.lastIndexOf(':');
+            if (colonIdx > 0) {
+              const name = val.substring(0, colonIdx).trim();
+              const allergy = val.substring(colonIdx + 1).trim();
+              if (name && allergy) allergiesMap.set(name, allergy);
+            }
+          }
+          continue;
+        }
+
+        // Parse Glutenfree section
+        if (/^Glutenfree:/i.test(line)) {
+          inGlutenfreeSection = true; inVegetariansSection = false; inBirthdaysSection = false; inAllergiesSection = false;
+          const val = line.replace(/^Glutenfree:/i, '').trim();
+          if (val && val !== '//' && val !== '-') {
+            val.split(/\s*\/+\s*/).forEach(name => { name = name.trim(); if (name) glutenfreeList.push(name); });
+          }
+          continue;
+        }
+
         // Switch section on known headers
         if (/^Remark:/i.test(line)) {
           inBirthdaysSection = false; inVegetariansSection = false; inRemarkSection = true;
@@ -1805,19 +1890,39 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
           continue;
         }
         if (inVegetariansSection) {
-          if (/^(Remark:|Birthdays:|International|Flights)/i.test(line)) {
+          if (/^(Remark:|Birthdays:|Allergies:|Glutenfree:|International|Flights)/i.test(line)) {
             inVegetariansSection = false;
           } else if (/^(Mr\.|Mrs\.|Ms\.)/i.test(line)) {
             vegetariansList.push({ name: line.trim(), label: 'Vegetarian' });
           }
         }
         if (inBirthdaysSection) {
-          if (/^(Remark:|Vegetarians?:|International|Flights)/i.test(line)) {
+          if (/^(Remark:|Vegetarians?:|Allergies:|Glutenfree:|International|Flights)/i.test(line)) {
             inBirthdaysSection = false;
-          } else if (/^(Mr\.|Mrs\.|Ms\.)/i.test(line)) {
-            // "Mrs. Diermeier, Melanie Katrin    18.10.1980"
-            const bm = line.match(/^((?:Mr\.|Mrs\.|Ms\.)\s+.+?)\s+(\d{2}\.\d{2}\.\d{4})$/);
+          } else if (/^(Mr\.?|Mrs\.?|Ms\.?)\s/i.test(line)) {
+            // "Mrs. Diermeier, Melanie Katrin    18.10.1980" or "Mr Reiner Schulz 15.04.1980"
+            const bm = line.match(/^(.+?)[,\s]+(\d{2}\.\d{2}\.\d{4})$/);
             if (bm) birthdaysMap.set(bm[1].trim(), bm[2]);
+          }
+        }
+        if (inAllergiesSection) {
+          if (/^(Remark:|Birthdays:|Vegetarians?:|Glutenfree:|International|Flights)/i.test(line)) {
+            inAllergiesSection = false;
+          } else if (/^(Mr\.?|Mrs\.?|Ms\.?)\s/i.test(line)) {
+            // "Mrs. Zimmer, Veronika Maria: nuts"
+            const colonIdx = line.lastIndexOf(':');
+            if (colonIdx > 0) {
+              const name = line.substring(0, colonIdx).trim();
+              const allergy = line.substring(colonIdx + 1).trim();
+              if (name && allergy) allergiesMap.set(name, allergy);
+            }
+          }
+        }
+        if (inGlutenfreeSection) {
+          if (/^(Remark:|Birthdays:|Vegetarians?:|Allergies:|International|Flights)/i.test(line)) {
+            inGlutenfreeSection = false;
+          } else if (/^(Mr\.?|Mrs\.?|Ms\.?)\s/i.test(line)) {
+            glutenfreeList.push(line.trim());
           }
         }
         continue;
@@ -1905,6 +2010,67 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
         if (matched) {
           tourist.isVegetarian = true;
           tourist.dietLabel = matched.label; // "Vegetarian" or "Vegan"
+        }
+      }
+    }
+
+    // Helper: check if PDF name matches tourist — supports "First Last" and "Last, First" formats
+    // Tourist fullName is always "Last, First Middle" format in DB
+    const nameMatchesTourist = (pdfName, tourist) => {
+      const normN = (n) => n.toLowerCase()
+        .replace(/^(mr\.|mrs\.|ms\.|mr\s|mrs\s)\s*/i, '')
+        .replace(/\s+/g, ' ').trim();
+      const nNorm = normN(pdfName);
+      const tNorm = normN(tourist.fullName || '');
+
+      // Extract last + first from PDF name
+      let nLast, nFirst;
+      if (nNorm.includes(',')) {
+        nLast  = nNorm.split(',')[0].trim();
+        nFirst = nNorm.split(',').slice(1).join(',').trim();
+      } else {
+        const words = nNorm.split(' ').filter(Boolean);
+        nLast  = words.pop() || '';
+        nFirst = words.join(' ');
+      }
+
+      // Extract last + first from tourist name (always "Last, First Middle")
+      const tLast  = tNorm.split(',')[0].trim();
+      const tFirst = tNorm.includes(',') ? tNorm.split(',').slice(1).join(',').trim() : '';
+
+      if (!nLast || !tLast || nLast !== tLast || tLast.length < 2) return false;
+
+      // Verify first name: tourist first names must START WITH pdf first name
+      // e.g. pdf="friedrich", tourist="friedrich josef" → starts with ✅
+      // e.g. pdf="dietmar andreas", tourist="dietmar andreas" → exact match ✅
+      // Allow slight typo (e.g. "dietmer" vs "dietmar"): compare first 5 chars as fallback
+      if (nFirst && tFirst) {
+        if (!tFirst.startsWith(nFirst) && !nFirst.startsWith(tFirst)) {
+          const minLen = Math.min(5, Math.min(nFirst.length, tFirst.length));
+          if (nFirst.substring(0, minLen) !== tFirst.substring(0, minLen)) return false;
+        }
+      }
+
+      return true;
+    };
+
+    // Match allergiesMap against tourists
+    if (allergiesMap.size > 0) {
+      for (const tourist of tourists) {
+        for (const [name, allergy] of allergiesMap.entries()) {
+          if (nameMatchesTourist(name, tourist)) {
+            tourist.allergyLabel = `Allergie: ${allergy.charAt(0).toUpperCase() + allergy.slice(1)}`;
+            break;
+          }
+        }
+      }
+    }
+
+    // Match glutenfreeList against tourists
+    if (glutenfreeList.length > 0) {
+      for (const tourist of tourists) {
+        if (glutenfreeList.some(name => nameMatchesTourist(name, tourist))) {
+          tourist.isGlutenfree = true;
         }
       }
     }
