@@ -504,43 +504,40 @@ export default function Bookings() {
                   </div>
 
                   {/* Dates */}
-                  <div className="space-y-1.5 mb-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-primary-600" />
-                        <span className="font-semibold text-gray-500">Arrival:</span>
-                        <span className="text-gray-900 font-semibold">
-                          {booking.arrivalDate ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy') : '—'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-500">End:</span>
-                        <span className="text-gray-900 font-semibold">
-                          {booking.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '—'}
-                        </span>
-                      </div>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="bg-white/60 rounded-xl px-3 py-2 flex flex-col gap-0.5">
+                      <span className="text-xs text-gray-400 font-medium">Arrival</span>
+                      <span className="text-sm font-bold text-gray-800">
+                        {booking.arrivalDate ? format(new Date(booking.arrivalDate), 'dd.MM.yyyy') : '—'}
+                      </span>
+                    </div>
+                    <div className="bg-white/60 rounded-xl px-3 py-2 flex flex-col gap-0.5">
+                      <span className="text-xs text-gray-400 font-medium">End Tour</span>
+                      <span className="text-sm font-bold text-gray-800">
+                        {booking.endDate ? format(new Date(booking.endDate), 'dd.MM.yyyy') : '—'}
+                      </span>
                     </div>
                   </div>
 
                   {/* PAX + Rooms + Guide */}
-                  <div className="pt-2 border-t border-gray-200 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
+                  <div className="bg-white/60 rounded-xl px-3 py-2 space-y-1.5">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-primary-500" />
                         <span className="font-bold text-gray-800 text-sm">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
-                        <span className="text-gray-500">PAX</span>
+                        <span className="text-xs text-gray-400">PAX</span>
                       </div>
                       {booking.guide && (
                         <div className="flex items-center gap-1 text-gray-600">
                           <MapPin className="w-3 h-3 text-primary-500" />
-                          <span className="font-semibold">{booking.guide.name}</span>
+                          <span className="text-xs font-semibold">{booking.guide.name}</span>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-600">
-                      <span>DBL: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? booking.roomsDbl : '—'}</b></span>
-                      <span>TWN: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? booking.roomsTwn : '—'}</b></span>
-                      <span>EZ: <b>{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? booking.roomsSngl : '—'}</b></span>
+                    <div className="flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100 pt-1.5">
+                      <span>DBL <b className="text-gray-700">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? booking.roomsDbl : '—'}</b></span>
+                      <span>TWN <b className="text-gray-700">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? booking.roomsTwn : '—'}</b></span>
+                      <span>EZ <b className="text-gray-700">{calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? booking.roomsSngl : '—'}</b></span>
                     </div>
                   </div>
 
