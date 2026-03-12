@@ -2774,13 +2774,25 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         // Check if there's content on the same line
         if (value && value !== '//' && value !== '-') {
           // Parse birthdays on same line: "05.10.2025 Mr. Smith, John // 12.10.2025 Mrs. Johnson, Mary"
+          // OR: "Mrs Jutta Melber (23.04.1961)"
           const birthdayEntries = value.split('//').map(entry => entry.trim());
           birthdayEntries.forEach(entry => {
-            // Extract date and name: "05.10.2025 Mr. Smith, John"
-            const match = entry.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
-            if (match) {
-              const [, date, name] = match;
-              birthdaysMap.set(name.trim(), date);
+            // Format 1: date first — "05.10.2025 Mr. Smith, John"
+            const matchDateFirst = entry.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
+            if (matchDateFirst) {
+              birthdaysMap.set(matchDateFirst[2].trim(), matchDateFirst[1]);
+              return;
+            }
+            // Format 2: name first, date in parens — "Mrs Jutta Melber (23.04.1961)"
+            const matchNameFirst = entry.match(/^(.+?)\s*\((\d{2}\.\d{2}\.\d{4})\)$/);
+            if (matchNameFirst) {
+              birthdaysMap.set(matchNameFirst[1].trim(), matchNameFirst[2]);
+              return;
+            }
+            // Format 3: name first, date at end — "Mrs. Smith, John 23.04.1961"
+            const matchNameDate = entry.match(/^(.+?)\s+(\d{2}\.\d{2}\.\d{4})$/);
+            if (matchNameDate) {
+              birthdaysMap.set(matchNameDate[1].trim(), matchNameDate[2]);
             }
           });
         }
@@ -2803,13 +2815,18 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
         if (lowerLine.startsWith('remark:') || lowerLine === 'double' || lowerLine === 'twin' || lowerLine === 'single') {
           inBirthdaysSection = false;
         } else {
-          // Parse birthday line: "Mrs. Diermeier, Melanie Katrin                18.10.1980"
-          // OR: "Mrs. Diermeier, Melanie Katrin 18.10.1980"
-          // Match: name + spaces/tabs + date (DD.MM.YYYY)
-          const birthdayMatch = line.match(/^((?:Mr\.|Mrs\.|Ms\.)\s+.+?)\s+(\d{2}\.\d{2}\.\d{4})$/);
-          if (birthdayMatch) {
-            const [, name, date] = birthdayMatch;
-            birthdaysMap.set(name.trim(), date);
+          // Parse birthday line formats:
+          // "Mrs. Diermeier, Melanie Katrin   18.10.1980"  (date at end)
+          // "Mrs Jutta Melber (23.04.1961)"                (name first, date in parens)
+          // Allow Mr./Mrs./Ms. with or without dot
+          const birthdayMatchParens = line.match(/^((?:Mr\.?|Mrs\.?|Ms\.?)\s+.+?)\s*\((\d{2}\.\d{2}\.\d{4})\)$/);
+          if (birthdayMatchParens) {
+            birthdaysMap.set(birthdayMatchParens[1].trim(), birthdayMatchParens[2]);
+            continue;
+          }
+          const birthdayMatchEnd = line.match(/^((?:Mr\.?|Mrs\.?|Ms\.?)\s+.+?)\s+(\d{2}\.\d{2}\.\d{4})$/);
+          if (birthdayMatchEnd) {
+            birthdaysMap.set(birthdayMatchEnd[1].trim(), birthdayMatchEnd[2]);
             continue; // Don't parse this as a tourist
           }
         }

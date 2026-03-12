@@ -541,16 +541,28 @@ class EmailImportProcessor {
       const pdfData = await pdfParse(fileBuffer);
       const text = pdfData.text;
 
-      // Extract departure date — supports "Date: DD.MM.YYYY", "DD.MM.YYYY – ...", or plain "DD.MM.YYYY"
-      const dateMatch = text.match(/(?:Date:|Datum:)\s*(\d{2})\.(\d{2})\.(\d{4})/i)
-        || text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/)
-        || text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-      if (!dateMatch) {
+      // Detect tour type — 1) from PDF filename, 2) from PDF text content
+      _debugLog('📄 PDF text preview:', text.slice(0, 800).replace(/\n/g, '|'));
+      const fname = (emailImport?.attachmentName || '').toLowerCase();
+
+      // Extract departure date — priority: filename > PDF text "Date:/Datum:" > date range start > first date in text
+      // Filename is most reliable (e.g. "ComfortPlus 12.04.2026.pdf")
+      const fnDateMatch = fname.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+      // Handle "Date: 12.04. – 25.04.2026" format (start date has no year, take year from end date)
+      const partialDateMatch = text.match(/(?:Date:|Datum:)\s*(\d{2})\.(\d{2})\.\s*[–—\-]\s*\d{2}\.\d{2}\.(\d{4})/i);
+      const dateMatch = partialDateMatch
+        ? [null, partialDateMatch[1], partialDateMatch[2], partialDateMatch[3]]
+        : text.match(/(?:Date:|Datum:)\s*(\d{2})\.(\d{2})\.(\d{4})/i)
+          || text.match(/(\d{2})\.(\d{2})\.(\d{4})\s*[–—\-]/)
+          || text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+      if (!dateMatch && !fnDateMatch) {
         _debugLog('📄 PDF date not found, text preview:', text.slice(0, 200).replace(/\n/g, '|'));
         return null;
       }
-      const [, d, m, y] = dateMatch;
+      // Prefer filename date if available (more reliable than first-found text date)
+      const [, d, m, y] = fnDateMatch || dateMatch;
       const departureDate = new Date(`${y}-${m}-${d}`);
+      _debugLog('📄 Departure date:', `${d}.${m}.${y}`, fnDateMatch ? '(from filename)' : '(from text)');
 
       // Try to extract end date from range pattern "DD.MM.YYYY – DD.MM.YYYY"
       let pdfEndDate = null;
@@ -565,10 +577,6 @@ class EmailImportProcessor {
       const to = new Date(departureDate); to.setDate(to.getDate() + 3);
 
       let booking = null;
-
-      // Detect tour type — 1) from PDF filename, 2) from PDF text content
-      _debugLog('📄 PDF text preview:', text.slice(0, 800).replace(/\n/g, '|'));
-      const fname = (emailImport?.attachmentName || '').toLowerCase();
       let tourTypeCode;
 
       // Use same filename rules as Excel import
@@ -630,8 +638,10 @@ class EmailImportProcessor {
         }
       }
 
-      // Try 2: date-only search — only if single candidate
-      if (!booking) {
+      // Try 2: date-only search — ONLY if tour type was NOT detected
+      // If tour type was detected but no booking found, do NOT fall back to type-ignorant search
+      // (prevents importing a CO PDF into an ER booking with the same departure date)
+      if (!booking && !tourTypeCode) {
         const from1 = new Date(departureDate); from1.setDate(from1.getDate() - 1);
         const to1 = new Date(departureDate); to1.setDate(to1.getDate() + 1);
         const candidates = await prisma.booking.findMany({
@@ -645,6 +655,9 @@ class EmailImportProcessor {
           _debugLog(`📄 PDF: ${candidates.length} bookings on ${d}.${m}.${y}, tour type not detected. Candidates: ${candidates.map(b => b.bookingNumber).join(', ')}`);
           return null;
         }
+      } else if (!booking && tourTypeCode) {
+        _debugLog(`📄 PDF: tourTypeCode=${tourTypeCode} detected but no booking found for date ${d}.${m}.${y}. Not falling back to type-ignorant search.`);
+        return null;
       }
 
       if (!booking) {
@@ -1779,11 +1792,14 @@ If no Uzbekistan-related flights found in the images, respond with exactly: []`;
             val.split(/\s*\/+\s*/).forEach(entry => {
               entry = entry.trim();
               if (!entry) return;
+              // Format C: "Mrs Jutta Melber (23.04.1961)" — date in parens
+              const mC = entry.match(/^(.+?)\s*\((\d{2}\.\d{2}\.\d{4})\)$/);
               // Format A (new): "Mr Reiner Schulz, 15.04.1955" or "Mr. Last, First 15.04.1955"
-              const mA = entry.match(/^(.+?)[,\s]+(\d{2}\.\d{2}\.\d{4})$/);
+              const mA = !mC && entry.match(/^(.+?)[,\s]+(\d{2}\.\d{2}\.\d{4})$/);
               // Format B (old): "DD.MM.YYYY Name"
-              const mB = !mA && entry.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
-              if (mA) birthdaysMap.set(mA[1].trim(), mA[2]);
+              const mB = !mC && !mA && entry.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.+)$/);
+              if (mC) birthdaysMap.set(mC[1].trim(), mC[2]);
+              else if (mA) birthdaysMap.set(mA[1].trim(), mA[2]);
               else if (mB) birthdaysMap.set(mB[2].trim(), mB[1]);
             });
           }
