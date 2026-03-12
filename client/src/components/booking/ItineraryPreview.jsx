@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { bookingsApi, touristsApi, hotelsApi, telegramApi } from '../../services/api';
 import { routesApi, railwaysApi, flightsApi } from '../../services/api';
 import toast from 'react-hot-toast';
-import { MapPin, Loader2, Edit, Save, X, Plus, Trash2, FileDown, Send, Clock, Ban } from 'lucide-react';
+import { MapPin, Loader2, Edit, Save, X, Plus, Trash2, FileDown, Send, Clock, Ban, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -300,12 +300,21 @@ export default function ItineraryPreview({ bookingId, booking }) {
         : booking?.tourType?.code;
       const isERTour = tourTypeCode === 'ER';
 
+      // Check if routes have been manually reordered (sortOrder saved in DB)
+      const hasSortOrder = loadedRoutes.some(r => r.sortOrder != null && r.sortOrder !== 0);
+      const allHaveSortOrder = loadedRoutes.every(r => r.sortOrder != null);
+
       const sortedRoutes = [...loadedRoutes].sort((a, b) => {
+        // If sortOrder is saved for all routes, respect it (user manually reordered)
+        if (allHaveSortOrder) {
+          return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+        }
+
         // For non-ER tours (KAS, ZA, CO): sort by date, null dates go last
         if (!isERTour) {
           if (!a.date && !b.date) return a.id - b.id;
-          if (!a.date) return 1;  // a (no date) goes after b
-          if (!b.date) return -1; // b (no date) goes after a
+          if (!a.date) return 1;
+          if (!b.date) return -1;
           const dateA = new Date(a.date);
           const dateB = new Date(b.date);
           const dateDiff = dateA - dateB;
@@ -318,11 +327,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
         const routeB = (b.routeName || '').toLowerCase();
 
         const getCategory = (routeName) => {
-          // Tashkent start routes (City Tour, Chimgan - first days)
           if (routeName.includes('tashkent') || routeName.includes('toshkent')) {
             if (routeName.includes('city tour') || routeName.includes('chimgan')) return 'first';
           }
-          // Airport end routes — but NOT Urgench/Urganch (that's a mid-tour local transfer)
           const hasAirport = routeName.includes('aeroport') || routeName.includes('airport');
           const hasUrgench = routeName.includes('urgench') || routeName.includes('urganch');
           if (hasAirport && !hasUrgench) return 'last';
@@ -1085,6 +1092,25 @@ export default function ItineraryPreview({ bookingId, booking }) {
     }
   };
 
+  const moveRoute = async (idx, direction) => {
+    const newRoutes = [...routes];
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= newRoutes.length) return;
+    [newRoutes[idx], newRoutes[swapIdx]] = [newRoutes[swapIdx], newRoutes[idx]];
+    setRoutes(newRoutes);
+    try {
+      const res = await routesApi.bulkUpdate(bookingId, newRoutes);
+      // Reload with new IDs from DB (bulkUpdate recreates routes)
+      const reloaded = (res.data?.routes || []).sort((a, b) =>
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id
+      );
+      if (reloaded.length > 0) setRoutes(reloaded);
+    } catch (err) {
+      console.error('Error reordering routes:', err);
+      toast.error('Tartibni saqlashda xatolik');
+    }
+  };
+
   const addRoute = async () => {
     try {
       // Find the last date in routes
@@ -1106,7 +1132,8 @@ export default function ItineraryPreview({ bookingId, booking }) {
         city: '',
         itinerary: '',
         transportType: '',
-        provider: ''
+        provider: '',
+        sortOrder: routes.length
       };
 
       await routesApi.create(bookingId, newRoute);
@@ -1116,39 +1143,9 @@ export default function ItineraryPreview({ bookingId, booking }) {
       const routesRes = await bookingsApi.getRoutes(bookingId);
       const loadedRoutes = routesRes.data.routes || [];
 
-      const sortedRoutes = [...loadedRoutes].sort((a, b) => {
-        const routeA = (a.routeName || '').toLowerCase();
-        const routeB = (b.routeName || '').toLowerCase();
-
-        // Same logic: Tashkent start = first, airport routes (not Urgench) = last
-        const getCategory = (routeName) => {
-          if (routeName.includes('tashkent') || routeName.includes('toshkent')) {
-            if (routeName.includes('city tour') || routeName.includes('chimgan')) return 'first';
-          }
-          const hasAirport = routeName.includes('aeroport') || routeName.includes('airport');
-          const hasUrgench = routeName.includes('urgench') || routeName.includes('urganch');
-          if (hasAirport && !hasUrgench) return 'last';
-          return 'middle';
-        };
-
-        const catA = getCategory(routeA);
-        const catB = getCategory(routeB);
-        const catOrder = { first: 1, middle: 2, last: 3 };
-
-        if (catOrder[catA] !== catOrder[catB]) {
-          return catOrder[catA] - catOrder[catB];
-        }
-
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        const dateDiff = dateA - dateB;
-
-        if (dateDiff !== 0) {
-          return dateDiff;
-        }
-
-        return a.id - b.id;
-      });
+      const sortedRoutes = [...loadedRoutes].sort((a, b) =>
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.id - b.id
+      );
 
       setRoutes(sortedRoutes);
 
@@ -2093,6 +2090,24 @@ export default function ItineraryPreview({ bookingId, booking }) {
                             </div>
                           ) : (
                             <div className="flex items-center justify-center gap-1">
+                              <div className="flex flex-col gap-0.5">
+                                <button
+                                  onClick={() => moveRoute(idx, -1)}
+                                  disabled={idx === 0}
+                                  className="p-0.5 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded disabled:opacity-30"
+                                  title="Yuqoriga"
+                                >
+                                  <ChevronUp className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => moveRoute(idx, 1)}
+                                  disabled={idx === routes.length - 1}
+                                  className="p-0.5 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded disabled:opacity-30"
+                                  title="Pastga"
+                                >
+                                  <ChevronDown className="w-3 h-3" />
+                                </button>
+                              </div>
                               <button
                                 onClick={() => startEditRoute(route)}
                                 className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
