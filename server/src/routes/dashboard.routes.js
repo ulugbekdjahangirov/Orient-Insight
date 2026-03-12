@@ -100,11 +100,10 @@ router.get('/stats', authenticate, async (req, res) => {
         _sum: { pax: statusPaxSums[status] }
       }));
 
-    // Всего туристов: priority — tourist count (Final List) > booking.pax, CANCELLED = 0
+    // Всего туристов: sum booking.pax for non-CANCELLED (matches Bookings page Total PAX)
     const totalPaxCalc = allBookings.reduce((sum, b) => {
       if (b.status === 'CANCELLED') return sum;
-      const hasTourists = (b._count?.tourists || 0) > 0;
-      return sum + (hasTourists ? b._count.tourists : (b.pax || 0));
+      return sum + (b.pax || 0);
     }, 0);
 
     // Остальная статистика
