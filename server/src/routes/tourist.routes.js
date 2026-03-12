@@ -4890,7 +4890,10 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePre
       if (entry?.checkOutDate) {
         checkOutDate = entry.checkOutDate;
       } else if (isLastAccommodation && tourist.checkOutDate) {
-        checkOutDate = tourist.checkOutDate;
+        // Only use tourist.checkOutDate if it's after accommodation checkIn (valid)
+        const tOut = new Date(tourist.checkOutDate);
+        const accIn = new Date(accommodation.checkInDate);
+        checkOutDate = tOut > accIn ? tourist.checkOutDate : accommodation.checkOutDate;
       } else {
         checkOutDate = accommodation.checkOutDate;
       }
