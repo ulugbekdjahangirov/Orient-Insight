@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, bookingsApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -99,6 +99,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [upcoming, setUpcoming] = useState([]);
   const [monthly, setMonthly] = useState([]);
+  const [totalPax, setTotalPax] = useState(0);
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
 
@@ -109,15 +110,25 @@ export default function Dashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsRes, upcomingRes, monthlyRes] = await Promise.all([
+      const [statsRes, upcomingRes, monthlyRes, bookingsRes] = await Promise.all([
         dashboardApi.getStats(selectedYear),
         dashboardApi.getUpcoming(5, selectedYear),
-        dashboardApi.getMonthly(selectedYear)
+        dashboardApi.getMonthly(selectedYear),
+        bookingsApi.getAll({ year: selectedYear, limit: 500 })
       ]);
 
       setStats(statsRes.data);
       setUpcoming(upcomingRes.data.bookings);
       setMonthly(monthlyRes.data.monthlyStats);
+
+      // Compute total PAX exactly like Bookings page (same getDisplayStats logic)
+      const bookingsList = bookingsRes.data.bookings || [];
+      const paxSum = bookingsList.reduce((sum, b) => {
+        if (b.status === 'CANCELLED') return sum;
+        const hasTourists = (b._touristsCount || 0) > 0;
+        return sum + (hasTourists ? b._touristsCount : (b.pax || 0));
+      }, 0);
+      setTotalPax(paxSum);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -186,7 +197,7 @@ export default function Dashboard() {
           <StatCard
             icon={Users}
             label="Всего туристов"
-            value={stats?.overview.totalPax || 0}
+            value={totalPax}
             color="green"
           />
         </div>
