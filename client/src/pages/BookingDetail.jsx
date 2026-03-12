@@ -6726,10 +6726,10 @@ export default function BookingDetail() {
       const maxId = Math.max(...erRoutes.map(r => r.id));
       const nextDate = currentDate ? format(addDays(new Date(currentDate), 1), 'yyyy-MM-dd') : '';
 
-      // Check if companion rows already exist (same date ± 1 day)
-      const hasPickup = erRoutes.some(r => r.id !== routeId && r.route === 'Airport Pickup' && r.sana === currentDate);
-      const hasDropoff = erRoutes.some(r => r.id !== routeId && r.route === 'Airport Drop-off' && r.sana === nextDate);
-      const hasShovot = erRoutes.some(r => r.id !== routeId && r.route === 'Khiva - Shovot' && r.sana === nextDate);
+      // Check if companion rows already exist (anywhere in the list)
+      const hasPickup = erRoutes.some(r => r.id !== routeId && r.route === 'Airport Pickup');
+      const hasDropoff = erRoutes.some(r => r.id !== routeId && r.route === 'Airport Drop-off');
+      const hasShovot = erRoutes.some(r => r.id !== routeId && r.route === 'Khiva - Shovot');
 
       const newRoutesToAdd = [];
       if (!hasPickup) {
@@ -6757,8 +6757,9 @@ export default function BookingDetail() {
         });
       }
 
+      const urgenchAutoPrice = getPriceFromOpex('sevil-er', autoVehicleUzb, 'urgenchRate');
       const updatedRoutes = erRoutes.map(r =>
-        r.id === routeId ? { ...r, route: newRouteValue, person: paxUzb.toString(), transportType: autoVehicleUzb, choiceTab: 'sevil-er', choiceRate: '', price: '' } : r
+        r.id === routeId ? { ...r, route: newRouteValue, person: paxUzb.toString(), transportType: autoVehicleUzb, choiceTab: 'sevil-er', choiceRate: 'urgenchRate', price: urgenchAutoPrice || '' } : r
       );
       updatedRoutes.splice(routeIndex + 1, 0, ...newRoutesToAdd);
       setErRoutes(sortRoutesByDate(updatedRoutes));
