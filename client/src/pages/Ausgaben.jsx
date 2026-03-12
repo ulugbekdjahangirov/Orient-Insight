@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi, telegramApi, invoicesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
-import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send } from 'lucide-react';
+import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send, DollarSign } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -23,6 +23,7 @@ const expenseTabs = [
   { id: 'transport',          name: 'Transport',          icon: Truck },
   { id: 'transport-analysis', name: 'Transport Analysis', icon: Truck },
   { id: 'guides',             name: 'Guides',             icon: Users },
+  { id: 'uberweisung',        name: 'Überweisung',        icon: DollarSign },
 ];
 
 export default function Ausgaben() {
@@ -109,7 +110,7 @@ export default function Ausgaben() {
 
   const handleRefresh = () => {
     // Clear localStorage cache for current tour+year
-    const cacheKey = `ausgaben_cache_v5_${activeTourType}_${selectedYear}`;
+    const cacheKey = `ausgaben_cache_v6_${activeTourType}_${selectedYear}`;
     localStorage.removeItem(cacheKey);
     // Clear in-memory cache
     setCache({});
@@ -119,11 +120,11 @@ export default function Ausgaben() {
   const loadBookingsAndExpenses = async () => {
     // Check cache first
     const cacheKey = `${activeTourType}_${selectedYear}`;
-    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis'].includes(activeExpenseTab);
+    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis', 'uberweisung'].includes(activeExpenseTab);
 
     // Try localStorage first (persists across page reloads)
     try {
-      const localStorageKey = `ausgaben_cache_v5_${cacheKey}`;
+      const localStorageKey = `ausgaben_cache_v6_${cacheKey}`;
       const cachedData = localStorage.getItem(localStorageKey);
 
       if (cachedData) {
@@ -213,7 +214,7 @@ export default function Ausgaben() {
 
       // Also save to localStorage for persistence
       try {
-        const localStorageKey = `ausgaben_cache_v5_${cacheKey}`;
+        const localStorageKey = `ausgaben_cache_v6_${cacheKey}`;
         localStorage.setItem(localStorageKey, JSON.stringify({
           ...cacheData,
           timestamp: Date.now()
@@ -532,6 +533,44 @@ export default function Ausgaben() {
     }
 
 
+    // Überweisung total (mirrors BookingDetail exportUberweisungToPDF)
+    // 1. Sightseeing from OPEX
+    const uberSightseeingUZS = (cachedOpex.sightseeing || []).reduce((sum, item) => {
+      const pricePerPerson = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
+      return sum + (pricePerPerson * pax);
+    }, 0);
+
+    // 2. Arien Plaza hotel UZS/USD from grandTotalData
+    let uberArienUZS = 0, uberArienUSD = 0;
+    if (grandTotalData?.hotelBreakdown) {
+      grandTotalData.hotelBreakdown.forEach(h => {
+        if ((h.hotel || '').toLowerCase().includes('arien plaza')) {
+          uberArienUZS += h.UZS || h.totalUZS || 0;
+          uberArienUSD += h.USD || h.totalUSD || 0;
+        }
+      });
+    }
+
+    // 3. Folklore Show from OPEX (only Nadir Divan/Folklore Show)
+    const uberFolkloreUZS = (cachedOpex.shows || []).reduce((sum, show) => {
+      const name = (show.name || '').toLowerCase();
+      if (!name.includes('folklore show') && !name.includes('nadir divan')) return sum;
+      const pricePerPerson = parseFloat((show.price || show.pricePerPerson || '0').toString().replace(/\s/g, '')) || 0;
+      const showPax = show.pax || pax;
+      return sum + (pricePerPerson * showPax);
+    }, 0);
+
+    // 4. Railway UZS
+    const uberRailwayUZS = railways.reduce((sum, r) => sum + (r.price || 0), 0);
+
+    expenses.uberweisungUZS = uberSightseeingUZS + uberArienUZS + uberFolkloreUZS + uberRailwayUZS;
+    expenses.uberweisungUSD = uberArienUSD;
+    expenses.uberweisungEintritt = uberSightseeingUZS;
+    expenses.uberweisungFolklore = uberFolkloreUZS;
+    expenses.uberweisungArienUZS = uberArienUZS;
+    expenses.uberweisungArienUSD = uberArienUSD;
+    expenses.uberweisungRailway = uberRailwayUZS;
+
     return expenses;
   };
 
@@ -789,6 +828,9 @@ export default function Ausgaben() {
         sum + (b.expenses?.transportSevil || 0) + (b.expenses?.transportXayrulla || 0) +
               (b.expenses?.transportNosir || 0) + (b.expenses?.railway || 0), 0);
     }
+    if (activeExpenseTab === 'uberweisung') {
+      return bookingsDetailedData.reduce((sum, b) => sum + (b.expenses?.uberweisungUZS || 0), 0);
+    }
     return 0; // guides is USD only
   };
 
@@ -862,6 +904,16 @@ export default function Ausgaben() {
       footerRow = ['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)];
     }
 
+    else if (activeExpenseTab === 'uberweisung') {
+      headers = ['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Arien Plaza (USD)', 'Arien Plaza (UZS)', 'Railway (UZS)', 'Total UZS', 'Total USD'];
+      rows = bookingsDetailedData.map((b, i) => {
+        const e = b.expenses || {};
+        return [i+1, b.bookingName, e.uberweisungEintritt||0, e.uberweisungFolklore||0, e.uberweisungArienUSD||0, e.uberweisungArienUZS||0, e.uberweisungRailway||0, e.uberweisungUZS||0, e.uberweisungUSD||0];
+      });
+      const totals = rows.reduce((acc, r) => { for(let i=2;i<=8;i++) acc[i-2]=(acc[i-2]||0)+(r[i]||0); return acc; }, []);
+      footerRow = ['', 'TOTAL', ...totals];
+    }
+
     else if (activeExpenseTab === 'transport') {
       headers = ['#', 'Booking', 'Sevil', 'Xayrulla', 'Total'];
       rows = filteredBookingsWithHotels.map((item, i) => {
@@ -931,6 +983,17 @@ export default function Ausgaben() {
         return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||'—', e.guideSecondName||'—', e.guideSecondCost||'—', e.guideBergrName||'—', e.guideBergrCost||'—', (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0)||'—'];
       });
       foot = [['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)]];
+    }
+
+    else if (activeExpenseTab === 'uberweisung') {
+      head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Arien Plaza USD', 'Arien Plaza UZS', 'Railway (UZS)', 'Total UZS', 'Total USD']];
+      body = bookingsDetailedData.map((b, i) => {
+        const e = b.expenses || {};
+        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), e.uberweisungArienUSD>0?`$${formatNumber(e.uberweisungArienUSD)}`:'—', formatNumber(e.uberweisungArienUZS||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0), e.uberweisungUSD>0?`$${formatNumber(e.uberweisungUSD)}`:'—'];
+      });
+      const totUZS = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0);
+      const totUSD = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUSD||0),0);
+      foot = [['', 'TOTAL', '', '', '', '', '', formatNumber(totUZS), totUSD>0?`$${formatNumber(totUSD)}`:'—']];
     }
 
     else if (activeExpenseTab === 'transport') {
@@ -1022,6 +1085,15 @@ export default function Ausgaben() {
         return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||'—', e.guideSecondName||'—', e.guideSecondCost||'—', e.guideBergrName||'—', e.guideBergrCost||'—', (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0)||'—'];
       });
       foot = [['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)]];
+    } else if (activeExpenseTab === 'uberweisung') {
+      head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Arien Plaza USD', 'Arien Plaza UZS', 'Railway (UZS)', 'Total UZS', 'Total USD']];
+      body = bookingsDetailedData.map((b, i) => {
+        const e = b.expenses || {};
+        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), e.uberweisungArienUSD>0?`$${formatNumber(e.uberweisungArienUSD)}`:'—', formatNumber(e.uberweisungArienUZS||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0), e.uberweisungUSD>0?`$${formatNumber(e.uberweisungUSD)}`:'—'];
+      });
+      const totUZS = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0);
+      const totUSD = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUSD||0),0);
+      foot = [['', 'TOTAL', '', '', '', '', '', formatNumber(totUZS), totUSD>0?`$${formatNumber(totUSD)}`:'—']];
     } else if (activeExpenseTab === 'transport') {
       head = [['#', 'Booking', 'Sevil', 'Xayrulla', 'Total']];
       body = filteredBookingsWithHotels.map((item, i) => {
@@ -2050,6 +2122,82 @@ export default function Ausgaben() {
 
                     {/* ── Per-guide earnings summary ── */}
                     <GuideSummary data={filteredBookingsWithHotels} formatNumber={formatNumber} selected={selectedGuide} onSelect={setSelectedGuide} />
+                  </div>
+                )}
+
+                {/* ── ÜBERWEISUNG TAB ── */}
+                {activeExpenseTab === 'uberweisung' && (
+                  <div className="w-full">
+                    {bookingsDetailedData.length === 0 ? (
+                      <EmptyState icon={DollarSign} label="Überweisung ma'lumoti yo'q" />
+                    ) : (
+                      <div className="hidden sm:block overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr>
+                              <th className="px-3 py-3.5 text-center font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>#</th>
+                              <th className="px-3 py-3.5 text-left font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Booking</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Eintritt (UZS)</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Folklore (UZS)</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Arien Plaza (USD)</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Arien Plaza (UZS)</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Railway (UZS)</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-white border-r" style={{ background: 'linear-gradient(180deg,#6d28d9,#7c3aed)' }}>Total UZS</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-white" style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total USD</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bookingsDetailedData.map((item, idx) => {
+                              const e = item.expenses || {};
+                              const rowBg = idx % 2 === 0 ? '#ffffff' : '#faf5ff';
+                              return (
+                                <tr key={item.bookingId} style={{ background: rowBg }}
+                                  onMouseEnter={ev => ev.currentTarget.style.background = '#ede9fe'}
+                                  onMouseLeave={ev => ev.currentTarget.style.background = rowBg}>
+                                  <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                                  <td className="px-3 py-2.5 border-r border-slate-100">
+                                    <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                    {e.uberweisungEintritt > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungEintritt)}</span> : <span className="text-slate-200">—</span>}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                    {e.uberweisungFolklore > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungFolklore)}</span> : <span className="text-slate-200">—</span>}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                    {e.uberweisungArienUSD > 0 ? <span className="font-semibold text-green-700">${formatNumber(e.uberweisungArienUSD)}</span> : <span className="text-slate-200">—</span>}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                    {e.uberweisungArienUZS > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungArienUZS)}</span> : <span className="text-slate-200">—</span>}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                    {e.uberweisungRailway > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungRailway)}</span> : <span className="text-slate-200">—</span>}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                    {e.uberweisungUZS > 0 ? <span className="font-black text-purple-700">{formatNumber(e.uberweisungUZS)}</span> : <span className="text-slate-200">—</span>}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-right">
+                                    {e.uberweisungUSD > 0 ? <span className="font-black text-green-700">${formatNumber(e.uberweisungUSD)}</span> : <span className="text-slate-200">—</span>}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr style={{ background: 'linear-gradient(90deg,#4c1d95,#5b21b6)' }}>
+                              <td className="px-3 py-3.5 text-center text-white font-black text-xs" colSpan={2}>TOTAL</td>
+                              <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungEintritt||0),0))}</td>
+                              <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungFolklore||0),0))}</td>
+                              <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">${formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungArienUSD||0),0))}</td>
+                              <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungArienUZS||0),0))}</td>
+                              <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungRailway||0),0))}</td>
+                              <td className="px-3 py-3.5 text-right text-white font-black text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0))}</td>
+                              <td className="px-3 py-3.5 text-right text-white font-black text-xs">${formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUSD||0),0))}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 
