@@ -54,11 +54,12 @@ router.get('/stats', authenticate, async (req, res) => {
       select: {
         id: true,
         pax: true,
+        paxSource: true,
         departureDate: true,
         endDate: true,
         tourTypeId: true,
         status: true,
-        _count: { select: { tourists: true } }
+        tourists: { select: { id: true } }
       }
     });
 
@@ -100,10 +101,12 @@ router.get('/stats', authenticate, async (req, res) => {
         _sum: { pax: statusPaxSums[status] }
       }));
 
-    // Всего туристов: sum booking.pax for non-CANCELLED (matches Bookings page Total PAX)
+    // Всего туристов: tourists.length if imported, else booking.pax (identical to Bookings page)
     const totalPaxCalc = allBookings.reduce((sum, b) => {
       if (b.status === 'CANCELLED') return sum;
-      return sum + (b.pax || 0);
+      const touristCount = b.tourists ? b.tourists.length : 0;
+      const isBookingOverview = b.paxSource === 'BOOKING_OVERVIEW';
+      return sum + (isBookingOverview ? (b.pax || 0) : (touristCount > 0 ? touristCount : (b.pax || 0)));
     }, 0);
 
     // Остальная статистика
