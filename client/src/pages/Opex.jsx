@@ -26,6 +26,7 @@ const transportSubTabs = [
 ];
 
 const sightseeingSubTabs = [
+  { id: 'all', name: 'ALL', icon: MapPin, color: 'slate' },
   { id: 'er', name: 'ER', icon: MapPin, color: 'blue' },
   { id: 'co', name: 'CO', icon: MapPin, color: 'emerald' },
   { id: 'kas', name: 'KAS', icon: MapPin, color: 'orange' },
@@ -828,7 +829,8 @@ export default function Opex() {
   const [sightseeingForm, setSightseeingForm] = useState({
     name: '',
     city: '',
-    price: ''
+    price: '',
+    tourTypes: ['ER', 'CO', 'KAS', 'ZA']
   });
 
   // Copy all OPEX + Transport data from previous year to current year
@@ -836,7 +838,7 @@ export default function Opex() {
   // Sightseeing handlers
   const handleAddSightseeing = () => {
     setEditingSightseeing(null);
-    setSightseeingForm({ name: '', city: '', price: '' });
+    setSightseeingForm({ name: '', city: '', price: '', tourTypes: activeSightseeingTab === 'all' ? ['ER', 'CO', 'KAS', 'ZA'] : [activeSightseeingTab.toUpperCase()] });
     setShowSightseeingModal(true);
   };
 
@@ -845,7 +847,8 @@ export default function Opex() {
     setSightseeingForm({
       name: item.name,
       city: item.city,
-      price: item.price
+      price: item.price,
+      tourTypes: item.tourTypes || [activeSightseeingTab.toUpperCase()]
     });
     setShowSightseeingModal(true);
   };
@@ -853,6 +856,36 @@ export default function Opex() {
   const handleSaveSightseeing = () => {
     if (!sightseeingForm.name || !sightseeingForm.city) {
       toast.error('Please fill in attraction name and city');
+      return;
+    }
+
+    const matchFn = (i) => i.name.toLowerCase() === sightseeingForm.name.toLowerCase() && i.city.toLowerCase() === sightseeingForm.city.toLowerCase();
+
+    if (activeSightseeingTab === 'all') {
+      // ALL tab: add/update across selected tour types
+      const selectedTypes = sightseeingForm.tourTypes || [];
+      const addOrUpdate = (list, setList) => {
+        const exists = editingSightseeing ? list.some(i => i.id === editingSightseeing.id || matchFn(i)) : list.some(matchFn);
+        if (exists) {
+          setList(list.map(i => (editingSightseeing ? (i.id === editingSightseeing.id || matchFn(i)) : matchFn(i)) ? { ...i, name: sightseeingForm.name, city: sightseeingForm.city, price: sightseeingForm.price } : i));
+        } else {
+          const newId = list.length > 0 ? Math.max(...list.map(x => x.id), 0) + 1 : 1;
+          setList([...list, { id: newId, name: sightseeingForm.name, city: sightseeingForm.city, price: sightseeingForm.price }]);
+        }
+      };
+      const removeFromList = (list, setList) => {
+        setList(editingSightseeing ? list.filter(i => i.id !== editingSightseeing.id && !matchFn(i)) : list.filter(i => !matchFn(i)));
+      };
+      if (selectedTypes.includes('ER')) addOrUpdate(erSightseeing, setErSightseeing);
+      else removeFromList(erSightseeing, setErSightseeing);
+      if (selectedTypes.includes('CO')) addOrUpdate(coSightseeing, setCoSightseeing);
+      else removeFromList(coSightseeing, setCoSightseeing);
+      if (selectedTypes.includes('KAS')) addOrUpdate(kasSightseeing, setKasSightseeing);
+      else removeFromList(kasSightseeing, setKasSightseeing);
+      if (selectedTypes.includes('ZA')) addOrUpdate(zaSightseeing, setZaSightseeing);
+      else removeFromList(zaSightseeing, setZaSightseeing);
+      toast.success(editingSightseeing ? 'Attraction updated' : 'Attraction added');
+      setShowSightseeingModal(false);
       return;
     }
 
@@ -918,7 +951,14 @@ export default function Opex() {
 
   const handleDeleteSightseeing = (item) => {
     if (window.confirm(`Delete "${item.name}"?`)) {
-      if (activeSightseeingTab === 'er') {
+      const matchFn = (i) => i.name.toLowerCase() === item.name.toLowerCase() && i.city.toLowerCase() === item.city.toLowerCase();
+      if (activeSightseeingTab === 'all') {
+        // Delete from ALL tour types
+        setErSightseeing(erSightseeing.filter(i => !matchFn(i)));
+        setCoSightseeing(coSightseeing.filter(i => !matchFn(i)));
+        setKasSightseeing(kasSightseeing.filter(i => !matchFn(i)));
+        setZaSightseeing(zaSightseeing.filter(i => !matchFn(i)));
+      } else if (activeSightseeingTab === 'er') {
         setErSightseeing(erSightseeing.filter(i => i.id !== item.id));
       } else if (activeSightseeingTab === 'co') {
         setCoSightseeing(coSightseeing.filter(i => i.id !== item.id));
@@ -928,6 +968,21 @@ export default function Opex() {
         setZaSightseeing(zaSightseeing.filter(i => i.id !== item.id));
       }
       toast.success('Attraction deleted');
+    }
+  };
+
+  const handleToggleSightseeingTourType = (item, tourType) => {
+    const matchFn = (i) => i.name.toLowerCase() === item.name.toLowerCase() && i.city.toLowerCase() === item.city.toLowerCase();
+    const getList = (tt) => tt === 'ER' ? erSightseeing : tt === 'CO' ? coSightseeing : tt === 'KAS' ? kasSightseeing : zaSightseeing;
+    const setList = (tt) => tt === 'ER' ? setErSightseeing : tt === 'CO' ? setCoSightseeing : tt === 'KAS' ? setKasSightseeing : setZaSightseeing;
+    const list = getList(tourType);
+    const setter = setList(tourType);
+    const exists = list.some(matchFn);
+    if (exists) {
+      setter(list.filter(i => !matchFn(i)));
+    } else {
+      const newId = list.length > 0 ? Math.max(...list.map(x => x.id), 0) + 1 : 1;
+      setter([...list, { id: newId, name: item.name, city: item.city, price: item.price }]);
     }
   };
 
@@ -1631,12 +1686,18 @@ export default function Opex() {
       {/* Sightseeing Sub-Tabs */}
       {activeCategory === 'sightseeing' && (
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl shadow-2xl border-2 border-gray-100 p-4">
-          <div className="grid grid-cols-4 gap-2 md:flex md:gap-3">
+          <div className="grid grid-cols-5 gap-2 md:flex md:gap-3">
             {sightseeingSubTabs.map((subTab) => {
               const Icon = subTab.icon;
               const isActive = activeSightseeingTab === subTab.id;
 
               const colorMap = {
+                slate: {
+                  gradient: 'from-slate-600 to-slate-700',
+                  shadow: 'shadow-slate-500/30',
+                  ring: 'ring-slate-200',
+                  hover: 'hover:from-slate-700 hover:to-slate-800'
+                },
                 blue: {
                   gradient: 'from-blue-500 to-blue-600',
                   shadow: 'shadow-blue-500/30',
@@ -2692,6 +2753,149 @@ export default function Opex() {
               >
                 <Save className="w-5 h-5" />
                 Сохранить
+              </button>
+            </div>
+          </div>
+        ) : activeCategory === 'sightseeing' && activeSightseeingTab === 'all' ? (
+          <div>
+            {(() => {
+              // Build union of all 4 tour type lists, deduplicated by name+city
+              const map = new Map();
+              const addItems = (list, tt) => {
+                list.forEach(item => {
+                  const key = `${(item.name||'').toLowerCase()}__${(item.city||'').toLowerCase()}`;
+                  if (!map.has(key)) map.set(key, { ...item, tourTypes: [] });
+                  const entry = map.get(key);
+                  if (!entry.tourTypes.includes(tt)) entry.tourTypes.push(tt);
+                });
+              };
+              addItems(erSightseeing, 'ER');
+              addItems(coSightseeing, 'CO');
+              addItems(kasSightseeing, 'KAS');
+              addItems(zaSightseeing, 'ZA');
+              const allItems = Array.from(map.values());
+
+              // Group by city
+              const cityOrder = ['Tashkent', 'Kokand', 'Samarkand', 'Nurota', 'Bukhara', 'Qizilqum', 'Khiva', 'Fergana'];
+              const cityMap = {};
+              allItems.forEach(item => {
+                const city = item.city || 'Other';
+                if (!cityMap[city]) cityMap[city] = [];
+                cityMap[city].push(item);
+              });
+              const cities = Object.keys(cityMap).sort((a, b) => {
+                const ia = cityOrder.findIndex(c => c.toLowerCase() === a.toLowerCase());
+                const ib = cityOrder.findIndex(c => c.toLowerCase() === b.toLowerCase());
+                return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+              });
+
+              const tourTypeMeta = {
+                ER:  { color: '#3b82f6', bg: '#eff6ff', label: 'ER' },
+                CO:  { color: '#10b981', bg: '#ecfdf5', label: 'CO' },
+                KAS: { color: '#f97316', bg: '#fff7ed', label: 'KAS' },
+                ZA:  { color: '#a855f7', bg: '#faf5ff', label: 'ZA' },
+              };
+
+              if (allItems.length === 0) return (
+                <div className="p-8 text-center text-gray-400">
+                  <MapPin className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No attractions yet. Add one below.</p>
+                </div>
+              );
+
+              return (
+                <div>
+                  {cities.map(city => (
+                    <div key={city}>
+                      {/* City header */}
+                      <div className="px-4 py-2 flex items-center gap-2 sticky top-0 z-10"
+                        style={{ background: 'linear-gradient(90deg,#475569,#64748b)' }}>
+                        <MapPin className="w-3.5 h-3.5 text-white opacity-80 shrink-0" />
+                        <span className="text-xs font-bold text-white uppercase tracking-widest">{city}</span>
+                        <span className="text-xs text-slate-300 ml-1">({cityMap[city].length})</span>
+                      </div>
+                      {/* Items */}
+                      {cityMap[city].map((item, idx) => {
+                        const rowBg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+                        return (
+                          <div key={`${item.name}_${item.city}`}
+                            className="flex items-center gap-3 px-4 py-3 border-b border-slate-100"
+                            style={{ background: rowBg }}>
+                            {/* Index */}
+                            <span className="text-xs text-slate-400 w-5 shrink-0 text-right">{idx + 1}</span>
+                            {/* Name */}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold text-gray-900 leading-tight">{item.name}</div>
+                              {item.price && (
+                                <div className="text-xs text-green-700 font-bold mt-0.5">{item.price} UZS</div>
+                              )}
+                            </div>
+                            {/* Tour type badges — clickable toggles */}
+                            <div className="flex gap-1 shrink-0">
+                              {['ER', 'CO', 'KAS', 'ZA'].map(tt => {
+                                const meta = tourTypeMeta[tt];
+                                const active = item.tourTypes.includes(tt);
+                                return (
+                                  <button
+                                    key={tt}
+                                    onClick={() => handleToggleSightseeingTourType(item, tt)}
+                                    title={active ? `Remove from ${tt}` : `Add to ${tt}`}
+                                    className="px-2 py-0.5 rounded-full text-xs font-bold border transition-all duration-200"
+                                    style={{
+                                      background: active ? meta.color : meta.bg,
+                                      color: active ? 'white' : meta.color,
+                                      borderColor: meta.color,
+                                      opacity: active ? 1 : 0.5,
+                                    }}
+                                  >
+                                    {meta.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {/* Edit / Delete */}
+                            <div className="flex gap-1 shrink-0">
+                              <button
+                                onClick={() => handleEditSightseeing(item)}
+                                className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+                                title="Edit"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSightseeing(item)}
+                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                title="Delete from all"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  {/* Total count */}
+                  <div className="px-4 py-3 flex items-center justify-between bg-slate-50 border-t border-slate-200">
+                    <span className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Jami: {allItems.length} ta joyi</span>
+                    <div className="flex gap-2">
+                      {['ER','CO','KAS','ZA'].map(tt => {
+                        const meta = tourTypeMeta[tt];
+                        const count = tt === 'ER' ? erSightseeing.length : tt === 'CO' ? coSightseeing.length : tt === 'KAS' ? kasSightseeing.length : zaSightseeing.length;
+                        return <span key={tt} className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: meta.bg, color: meta.color }}>{tt}: {count}</span>;
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="p-4 md:p-6 bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200">
+              <button
+                onClick={handleAddSightseeing}
+                className="w-full flex items-center justify-center gap-3 py-4 text-slate-700 bg-white hover:bg-gradient-to-r hover:from-slate-600 hover:to-slate-700 hover:text-white rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] font-semibold"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add Attraction</span>
               </button>
             </div>
           </div>
@@ -5020,6 +5224,46 @@ export default function Opex() {
                   placeholder="e.g. 100 000"
                 />
               </div>
+
+              {/* Tour Types (only shown in ALL tab) */}
+              {activeSightseeingTab === 'all' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Qaysi gruppalar uchun
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { tt: 'ER', color: '#3b82f6', bg: '#eff6ff' },
+                      { tt: 'CO', color: '#10b981', bg: '#ecfdf5' },
+                      { tt: 'KAS', color: '#f97316', bg: '#fff7ed' },
+                      { tt: 'ZA', color: '#a855f7', bg: '#faf5ff' },
+                    ].map(({ tt, color, bg }) => {
+                      const active = (sightseeingForm.tourTypes || []).includes(tt);
+                      return (
+                        <button
+                          key={tt}
+                          type="button"
+                          onClick={() => {
+                            const current = sightseeingForm.tourTypes || [];
+                            setSightseeingForm({
+                              ...sightseeingForm,
+                              tourTypes: active ? current.filter(t => t !== tt) : [...current, tt]
+                            });
+                          }}
+                          className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all duration-200"
+                          style={{
+                            background: active ? color : bg,
+                            color: active ? 'white' : color,
+                            borderColor: color,
+                          }}
+                        >
+                          {active ? '✓ ' : ''}{tt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
