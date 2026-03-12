@@ -3557,9 +3557,6 @@ export default function BookingDetail() {
           const isSamarkand = cityNameLower.includes('samarkand') || cityNameLower.includes('самарканд');
           if (isSamarkand && hotelNameLower.includes('jahongir')) return;
 
-          // Skip Arien Plaza → Überweisung tab
-          if (hotelNameLower.includes('arien plaza')) return;
-
           // Skip Dargoh, Malika Khorazm, Yaxshigul → Später tab
           if (hotelNameLower.includes('dargoh')) return;
           if (hotelNameLower.includes('malika khorazm') || hotelNameLower.includes('malika xorazm')) return;
@@ -4513,21 +4510,7 @@ export default function BookingDetail() {
         if (total > 0) expensesByCity[targetCity].push({ name, pricePerPerson, pax, usd: 0, uzs: total });
       });
 
-      // 2. Arien Plaza hotel
-      if (grandTotalData && grandTotalData.hotelBreakdown) {
-        grandTotalData.hotelBreakdown.forEach(hotelData => {
-          const acc = accommodations.find(a => a.id === hotelData.accommodationId);
-          const hotelName = hotelData.hotel || acc?.hotel?.name || '';
-          if (!hotelName.toLowerCase().includes('arien plaza')) return;
-          const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
-          const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
-          if (totalUSD > 0 || totalUZS > 0) {
-            expensesByCity['Tashkent'].push({ name: hotelName, pricePerPerson: null, pax: null, usd: totalUSD, uzs: totalUZS });
-          }
-        });
-      }
-
-      // 3. Folklore Show
+      // 2. Folklore Show
       showsData.forEach(show => {
         const name = show.name || '';
         if (!name.toLowerCase().includes('folklore show') && !name.toLowerCase().includes('nadir divan')) return;
@@ -13635,9 +13618,6 @@ License №T-0084-08 from 2021-04-26`;
                   return; // Skip Jahongir - it belongs to Später tab
                 }
 
-                // Skip Arien Plaza (goes to Überweisung tab)
-                if (hotelName.toLowerCase().includes('arien plaza')) return;
-
                 // Skip Dargoh, Malika Khorazm, Yaxshigul (go to Später tab)
                 if (hotelName.toLowerCase().includes('dargoh')) return;
                 if (hotelName.toLowerCase().includes('malika khorazm') || hotelName.toLowerCase().includes('malika xorazm')) return;
@@ -14273,29 +14253,6 @@ License №T-0084-08 from 2021-04-26`;
                 });
               }
             });
-
-            // Process Arien Plaza hotel costs (from grandTotalData.hotelBreakdown)
-            if (grandTotalData && grandTotalData.hotelBreakdown) {
-              grandTotalData.hotelBreakdown.forEach(hotelData => {
-                const acc = accommodations.find(a => a.id === hotelData.accommodationId);
-                const hotelName = hotelData.hotel || acc?.hotel?.name || 'Unknown Hotel';
-                const isArienPlaza = hotelName.toLowerCase().includes('arien plaza');
-                if (!isArienPlaza) return;
-
-                const totalUSD = hotelData.USD || hotelData.totalUSD || 0;
-                const totalUZS = hotelData.UZS || hotelData.totalUZS || 0;
-
-                if (totalUSD > 0 || totalUZS > 0) {
-                  expensesByCity['Tashkent'].push({
-                    name: hotelName,
-                    pricePerPerson: null,
-                    pax: null,
-                    usd: totalUSD,
-                    uzs: totalUZS
-                  });
-                }
-              });
-            }
 
             // Process Folklore Show at Nadir Divan-Begi (from showsData)
             showsData.forEach(show => {

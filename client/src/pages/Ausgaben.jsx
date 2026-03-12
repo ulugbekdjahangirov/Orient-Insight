@@ -540,18 +540,7 @@ export default function Ausgaben() {
       return sum + (pricePerPerson * pax);
     }, 0);
 
-    // 2. Arien Plaza hotel UZS/USD from grandTotalData
-    let uberArienUZS = 0, uberArienUSD = 0;
-    if (grandTotalData?.hotelBreakdown) {
-      grandTotalData.hotelBreakdown.forEach(h => {
-        if ((h.hotel || '').toLowerCase().includes('arien plaza')) {
-          uberArienUZS += h.UZS || h.totalUZS || 0;
-          uberArienUSD += h.USD || h.totalUSD || 0;
-        }
-      });
-    }
-
-    // 3. Folklore Show from OPEX (only Nadir Divan/Folklore Show)
+    // 2. Folklore Show from OPEX (only Nadir Divan/Folklore Show)
     const uberFolkloreUZS = (cachedOpex.shows || []).reduce((sum, show) => {
       const name = (show.name || '').toLowerCase();
       if (!name.includes('folklore show') && !name.includes('nadir divan')) return sum;
@@ -560,15 +549,12 @@ export default function Ausgaben() {
       return sum + (pricePerPerson * showPax);
     }, 0);
 
-    // 4. Railway UZS
+    // 3. Railway UZS
     const uberRailwayUZS = railways.reduce((sum, r) => sum + (r.price || 0), 0);
 
-    expenses.uberweisungUZS = uberSightseeingUZS + uberArienUZS + uberFolkloreUZS + uberRailwayUZS;
-    expenses.uberweisungUSD = uberArienUSD;
+    expenses.uberweisungUZS = uberSightseeingUZS + uberFolkloreUZS + uberRailwayUZS;
     expenses.uberweisungEintritt = uberSightseeingUZS;
     expenses.uberweisungFolklore = uberFolkloreUZS;
-    expenses.uberweisungArienUZS = uberArienUZS;
-    expenses.uberweisungArienUSD = uberArienUSD;
     expenses.uberweisungRailway = uberRailwayUZS;
 
     return expenses;
@@ -905,12 +891,12 @@ export default function Ausgaben() {
     }
 
     else if (activeExpenseTab === 'uberweisung') {
-      headers = ['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Arien Plaza (USD)', 'Arien Plaza (UZS)', 'Railway (UZS)', 'Total UZS', 'Total USD'];
+      headers = ['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS'];
       rows = bookingsDetailedData.map((b, i) => {
         const e = b.expenses || {};
-        return [i+1, b.bookingName, e.uberweisungEintritt||0, e.uberweisungFolklore||0, e.uberweisungArienUSD||0, e.uberweisungArienUZS||0, e.uberweisungRailway||0, e.uberweisungUZS||0, e.uberweisungUSD||0];
+        return [i+1, b.bookingName, e.uberweisungEintritt||0, e.uberweisungFolklore||0, e.uberweisungRailway||0, e.uberweisungUZS||0];
       });
-      const totals = rows.reduce((acc, r) => { for(let i=2;i<=8;i++) acc[i-2]=(acc[i-2]||0)+(r[i]||0); return acc; }, []);
+      const totals = rows.reduce((acc, r) => { for(let i=2;i<=5;i++) acc[i-2]=(acc[i-2]||0)+(r[i]||0); return acc; }, []);
       footerRow = ['', 'TOTAL', ...totals];
     }
 
@@ -986,14 +972,13 @@ export default function Ausgaben() {
     }
 
     else if (activeExpenseTab === 'uberweisung') {
-      head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Arien Plaza USD', 'Arien Plaza UZS', 'Railway (UZS)', 'Total UZS', 'Total USD']];
+      head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS']];
       body = bookingsDetailedData.map((b, i) => {
         const e = b.expenses || {};
-        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), e.uberweisungArienUSD>0?`$${formatNumber(e.uberweisungArienUSD)}`:'—', formatNumber(e.uberweisungArienUZS||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0), e.uberweisungUSD>0?`$${formatNumber(e.uberweisungUSD)}`:'—'];
+        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0)];
       });
       const totUZS = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0);
-      const totUSD = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUSD||0),0);
-      foot = [['', 'TOTAL', '', '', '', '', '', formatNumber(totUZS), totUSD>0?`$${formatNumber(totUSD)}`:'—']];
+      foot = [['', 'TOTAL', '', '', '', formatNumber(totUZS)]];
     }
 
     else if (activeExpenseTab === 'transport') {
@@ -1086,14 +1071,13 @@ export default function Ausgaben() {
       });
       foot = [['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)]];
     } else if (activeExpenseTab === 'uberweisung') {
-      head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Arien Plaza USD', 'Arien Plaza UZS', 'Railway (UZS)', 'Total UZS', 'Total USD']];
+      head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS']];
       body = bookingsDetailedData.map((b, i) => {
         const e = b.expenses || {};
-        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), e.uberweisungArienUSD>0?`$${formatNumber(e.uberweisungArienUSD)}`:'—', formatNumber(e.uberweisungArienUZS||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0), e.uberweisungUSD>0?`$${formatNumber(e.uberweisungUSD)}`:'—'];
+        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0)];
       });
       const totUZS = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0);
-      const totUSD = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUSD||0),0);
-      foot = [['', 'TOTAL', '', '', '', '', '', formatNumber(totUZS), totUSD>0?`$${formatNumber(totUSD)}`:'—']];
+      foot = [['', 'TOTAL', '', '', '', formatNumber(totUZS)]];
     } else if (activeExpenseTab === 'transport') {
       head = [['#', 'Booking', 'Sevil', 'Xayrulla', 'Total']];
       body = filteredBookingsWithHotels.map((item, i) => {
@@ -2139,11 +2123,8 @@ export default function Ausgaben() {
                               <th className="px-3 py-3.5 text-left font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Booking</th>
                               <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Eintritt (UZS)</th>
                               <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Folklore (UZS)</th>
-                              <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Arien Plaza (USD)</th>
-                              <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Arien Plaza (UZS)</th>
                               <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-purple-200" style={{ background: '#f3e8ff' }}>Railway (UZS)</th>
-                              <th className="px-3 py-3.5 text-right font-bold text-white border-r" style={{ background: 'linear-gradient(180deg,#6d28d9,#7c3aed)' }}>Total UZS</th>
-                              <th className="px-3 py-3.5 text-right font-bold text-white" style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Total USD</th>
+                              <th className="px-3 py-3.5 text-right font-bold text-white" style={{ background: 'linear-gradient(180deg,#6d28d9,#7c3aed)' }}>Total UZS</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2165,19 +2146,10 @@ export default function Ausgaben() {
                                     {e.uberweisungFolklore > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungFolklore)}</span> : <span className="text-slate-200">—</span>}
                                   </td>
                                   <td className="px-3 py-2.5 text-right border-r border-slate-100">
-                                    {e.uberweisungArienUSD > 0 ? <span className="font-semibold text-green-700">${formatNumber(e.uberweisungArienUSD)}</span> : <span className="text-slate-200">—</span>}
-                                  </td>
-                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
-                                    {e.uberweisungArienUZS > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungArienUZS)}</span> : <span className="text-slate-200">—</span>}
-                                  </td>
-                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
                                     {e.uberweisungRailway > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungRailway)}</span> : <span className="text-slate-200">—</span>}
                                   </td>
-                                  <td className="px-3 py-2.5 text-right border-r border-slate-100">
-                                    {e.uberweisungUZS > 0 ? <span className="font-black text-purple-700">{formatNumber(e.uberweisungUZS)}</span> : <span className="text-slate-200">—</span>}
-                                  </td>
                                   <td className="px-3 py-2.5 text-right">
-                                    {e.uberweisungUSD > 0 ? <span className="font-black text-green-700">${formatNumber(e.uberweisungUSD)}</span> : <span className="text-slate-200">—</span>}
+                                    {e.uberweisungUZS > 0 ? <span className="font-black text-purple-700">{formatNumber(e.uberweisungUZS)}</span> : <span className="text-slate-200">—</span>}
                                   </td>
                                 </tr>
                               );
@@ -2188,11 +2160,8 @@ export default function Ausgaben() {
                               <td className="px-3 py-3.5 text-center text-white font-black text-xs" colSpan={2}>TOTAL</td>
                               <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungEintritt||0),0))}</td>
                               <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungFolklore||0),0))}</td>
-                              <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">${formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungArienUSD||0),0))}</td>
-                              <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungArienUZS||0),0))}</td>
                               <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungRailway||0),0))}</td>
-                              <td className="px-3 py-3.5 text-right text-white font-black text-xs border-r border-purple-400">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0))}</td>
-                              <td className="px-3 py-3.5 text-right text-white font-black text-xs">${formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUSD||0),0))}</td>
+                              <td className="px-3 py-3.5 text-right text-white font-black text-xs">{formatNumber(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0))}</td>
                             </tr>
                           </tfoot>
                         </table>
