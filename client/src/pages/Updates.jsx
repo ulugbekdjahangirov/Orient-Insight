@@ -1200,15 +1200,24 @@ export default function Updates() {
                           <span className="font-bold text-gray-900">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
                         </div>
                       </td>
-                      <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
-                        {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsDbl > 0 ? (Number(booking.roomsDbl) % 1 === 0 ? booking.roomsDbl : booking.roomsDbl.toFixed(1)) : '-'}
-                      </td>
-                      <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
-                        {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsTwn > 0 ? (Number(booking.roomsTwn) % 1 === 0 ? booking.roomsTwn : booking.roomsTwn.toFixed(1)) : '-'}
-                      </td>
-                      <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
-                        {calculatedStatus === 'CANCELLED' ? 0 : booking.roomsSngl > 0 ? (Number(booking.roomsSngl) % 1 === 0 ? booking.roomsSngl : booking.roomsSngl.toFixed(1)) : '-'}
-                      </td>
+                      {(() => {
+                        const hasTourists = booking._touristsCount > 0;
+                        const dbl = hasTourists ? (booking._touristRoomsDbl || 0) : (booking.roomsDbl || 0);
+                        const twn = hasTourists ? (booking._touristRoomsTwn || 0) : (booking.roomsTwn || 0);
+                        const sngl = hasTourists ? (booking._touristRoomsSngl || 0) : (booking.roomsSngl || 0);
+                        const fmt = (v) => v > 0 ? (Number(v) % 1 === 0 ? v : v.toFixed(1)) : '-';
+                        return (<>
+                          <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
+                            {calculatedStatus === 'CANCELLED' ? 0 : fmt(dbl)}
+                          </td>
+                          <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
+                            {calculatedStatus === 'CANCELLED' ? 0 : fmt(twn)}
+                          </td>
+                          <td className="px-3 py-4 text-center text-sm text-gray-700 font-semibold">
+                            {calculatedStatus === 'CANCELLED' ? 0 : fmt(sngl)}
+                          </td>
+                        </>);
+                      })()}
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold ${statusClasses[calculatedStatus]}`}>
                           {statusLabels[calculatedStatus]}

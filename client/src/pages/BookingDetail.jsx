@@ -2832,7 +2832,19 @@ export default function BookingDetail() {
 
   // ===================== TOUR SERVICES FUNCTIONS =====================
 
-  const sendEintrittToTelegram = async (entries) => {
+  const sendEintrittToTelegram = async (rawEntries) => {
+    // Exclude attractions that are kept for calculation but not for PDF/Telegram
+    const _tourTypeCode = typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code;
+    const _isCO = _tourTypeCode === 'CO';
+    const _SKIP_ALWAYS = ['bibi-khanym mosque', 'ulugbek observatory', 'amir temur mausoleum'];
+    const _SKIP_CO = ['afrosiyob muzey', 'afrosiyob museum'];
+    const entries = (rawEntries || []).filter(e => {
+      if (!e || !e.name || !e.name.trim()) return false;
+      const n = e.name.trim().toLowerCase();
+      if (_SKIP_ALWAYS.some(s => n.includes(s))) return false;
+      if (_isCO && _SKIP_CO.some(s => n.includes(s))) return false;
+      return true;
+    });
     setSendingEintritt(true);
     try {
       // Process stamp (background removal via Canvas)
@@ -12359,7 +12371,18 @@ License №T-0084-08 from 2021-04-26`;
 
               // Group into pages of 8, each page fills full A4 height
               // Only include entries with a real name for PDF
-              const pdfEntries = visibleEntries.filter(e => e && e.name && e.name.trim());
+              // Exclude certain attractions from PDF (kept in Eintritt tab for calculation only)
+              const tourTypeCode = typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code;
+              const isCO = tourTypeCode === 'CO';
+              const PDF_SKIP_ALWAYS = ['bibi-khanym mosque', 'ulugbek observatory', 'amir temur mausoleum'];
+              const PDF_SKIP_CO = ['afrosiyob muzey', 'afrosiyob museum'];
+              const pdfEntries = visibleEntries.filter(e => {
+                if (!e || !e.name || !e.name.trim()) return false;
+                const nameLower = e.name.trim().toLowerCase();
+                if (PDF_SKIP_ALWAYS.some(s => nameLower.includes(s))) return false;
+                if (isCO && PDF_SKIP_CO.some(s => nameLower.includes(s))) return false;
+                return true;
+              });
               let rowsHtml = '';
               for (let p = 0; p < pdfEntries.length; p += 8) {
                 const pageEntries = pdfEntries.slice(p, p + 8);
