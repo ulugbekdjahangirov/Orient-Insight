@@ -1025,18 +1025,18 @@ export default function BookingDetail() {
     { id: 1, shahar: 'Tashkent', route: 'Tashkent City Tour', choiceTab: 'xayrulla', dayOffset: 0, choiceRate: 'cityTour' },
     { id: 2, shahar: 'Tashkent', route: 'Tashkent - Chimgan - Tashkent', choiceTab: 'xayrulla', dayOffset: 1, transportType: 'Sprinter', choiceRate: 'chimgan' },
     { id: 3, shahar: 'Tashkent', route: 'Train Station Drop-off', choiceTab: 'xayrulla', dayOffset: 2, choiceRate: 'vstrecha' },
-    { id: 4, shahar: 'Samarkand', route: 'Samarkand City Tour', choiceTab: 'sevil', dayOffset: 2, choiceRate: 'tagRate' },  // Same day as row 3!
-    { id: 5, shahar: 'Samarkand', route: 'Samarkand City Tour', choiceTab: 'sevil', dayOffset: 3, choiceRate: 'tagRate' },
-    { id: 6, shahar: 'Samarkand', route: 'Samarkand City Tour', choiceTab: 'sevil', dayOffset: 4, choiceRate: 'tagRate' },
-    { id: 7, shahar: 'Asraf', route: 'Samarkand - Asraf', choiceTab: 'sevil', dayOffset: 5, choiceRate: 'tagRate' },
-    { id: 8, shahar: 'Bukhara', route: 'Asraf - Bukhara', choiceTab: 'sevil', dayOffset: 6, choiceRate: 'tagRate' },
-    { id: 9, shahar: 'Bukhara', route: 'Bukhara City Tour', choiceTab: 'sevil', dayOffset: 7, choiceRate: 'tagRate' },
-    { id: 10, shahar: 'Bukhara', route: 'Bukhara City Tour', choiceTab: 'sevil', dayOffset: 8, choiceRate: 'tagRate' },
-    { id: 11, shahar: 'Khiva', route: 'Bukhara - Khiva', choiceTab: 'sevil', dayOffset: 9, choiceRate: 'tagRate' },
-    { id: 12, shahar: 'Khiva', route: 'Khiva - Urgench', choiceTab: 'sevil', dayOffset: 10, choiceRate: 'urgenchRate' },
+    { id: 4, shahar: 'Samarkand', route: 'Samarkand City Tour', choiceTab: 'sevil-er', dayOffset: 2, choiceRate: 'tagRate' },  // Same day as row 3!
+    { id: 5, shahar: 'Samarkand', route: 'Samarkand City Tour', choiceTab: 'sevil-er', dayOffset: 3, choiceRate: 'tagRate' },
+    { id: 6, shahar: 'Samarkand', route: 'Samarkand City Tour', choiceTab: 'sevil-er', dayOffset: 4, choiceRate: 'tagRate' },
+    { id: 7, shahar: 'Asraf', route: 'Samarkand - Asraf', choiceTab: 'sevil-er', dayOffset: 5, choiceRate: 'tagRate' },
+    { id: 8, shahar: 'Bukhara', route: 'Asraf - Bukhara', choiceTab: 'sevil-er', dayOffset: 6, choiceRate: 'tagRate' },
+    { id: 9, shahar: 'Bukhara', route: 'Bukhara City Tour', choiceTab: 'sevil-er', dayOffset: 7, choiceRate: 'tagRate' },
+    { id: 10, shahar: 'Bukhara', route: 'Bukhara City Tour', choiceTab: 'sevil-er', dayOffset: 8, choiceRate: 'tagRate' },
+    { id: 11, shahar: 'Khiva', route: 'Bukhara - Khiva', choiceTab: 'sevil-er', dayOffset: 9, choiceRate: 'tagRate' },
+    { id: 12, shahar: 'Khiva', route: 'Khiva - Urgench', choiceTab: 'sevil-er', dayOffset: 10, choiceRate: 'urgenchRate' },
     { id: 13, shahar: 'Tashkent', route: 'Airport Pickup', choiceTab: 'xayrulla', dayOffset: 10, choiceRate: 'vstrecha' },
     { id: 14, shahar: 'Tashkent', route: 'Airport Drop-off', choiceTab: 'xayrulla', dayOffset: 11, choiceRate: 'vstrecha' },
-    { id: 15, shahar: 'Khiva', route: 'Khiva - Shovot', choiceTab: 'sevil', dayOffset: 12, choiceRate: 'shovotRate' },
+    { id: 15, shahar: 'Khiva', route: 'Khiva - Shovot', choiceTab: 'sevil-er', dayOffset: 12, choiceRate: 'shovotRate' },
   ];
 
   const [erRoutes, setErRoutes] = useState([]);
@@ -6720,107 +6720,21 @@ export default function BookingDetail() {
     const currentRoute = erRoutes.find(r => r.id === routeId);
     const currentDate = currentRoute?.sana || '';
 
-    // Check if this is a split route
-    if (newRouteValue === 'Khiva - Urgench' && paxUzb > 0) {
-      // Uzbekistan group: Khiva -> Urgench -> fly to Tashkent
-      const autoVehicleUzb = getBestVehicleForRoute('sevil', paxUzb);
-
-      // Create routes for split
-      const maxId = Math.max(...erRoutes.map(r => r.id));
-      const nextDate = currentDate ? format(addDays(new Date(currentDate), 1), 'yyyy-MM-dd') : '';
-
-      // Uzbekistan group: Airport Pickup in Tashkent (same day)
-      const tashkentPickup = {
-        id: maxId + 1,
-        nomer: '',
-        sana: currentDate, // Same day - they fly to Tashkent
-        shahar: 'Tashkent',
-        route: 'Airport Pickup',
-        person: paxUzb.toString(),
-        transportType: getBestVehicleForRoute('xayrulla', paxUzb),
-        choiceTab: 'xayrulla',
-        choiceRate: '',
-        price: ''
-      };
-
-      // Uzbekistan group: Airport Drop-off in Tashkent (next day)
-      const tashkentDropoff = {
-        id: maxId + 2,
-        nomer: '',
-        sana: nextDate,
-        shahar: 'Tashkent',
-        route: 'Airport Drop-off',
-        person: paxUzb.toString(),
-        transportType: getBestVehicleForRoute('xayrulla', paxUzb),
-        choiceTab: 'xayrulla',
-        choiceRate: '',
-        price: ''
-      };
-
-      // Turkmenistan group: Khiva -> Shovot (next day) - if there are Turkmenistan tourists
-      const newRoutesToAdd = [tashkentPickup, tashkentDropoff];
-      if (paxTkm > 0) {
-        const autoVehicleTkm = getBestVehicleForRoute('sevil', paxTkm);
-        const khivaShovot = {
-          id: maxId + 3,
-          nomer: '',
-          sana: nextDate, // Next day - Turkmenistan group leaves
-          shahar: 'Khiva',
-          route: 'Khiva - Shovot',
-          person: paxTkm.toString(),
-          transportType: autoVehicleTkm,
-          choiceTab: 'sevil',
-          choiceRate: '',
-          price: ''
-        };
-        newRoutesToAdd.push(khivaShovot);
-      }
-
-      // Update current route and add new routes
+    if (newRouteValue === 'Khiva - Shovot') {
+      const autoVehicle = getBestVehicleForRoute('sevil-er', paxTkm || parseInt(currentRoute?.person) || 0);
       const updatedRoutes = erRoutes.map(r => {
         if (r.id === routeId) {
           return {
             ...r,
             route: newRouteValue,
-            person: paxUzb.toString(),
-            transportType: autoVehicleUzb,
-            choiceTab: 'sevil',
-            choiceRate: '',
-            price: ''
-          };
-        }
-        return r;
-      });
-
-      // Insert new routes after the current route
-      const insertIndex = routeIndex + 1;
-      updatedRoutes.splice(insertIndex, 0, ...newRoutesToAdd);
-
-      // Auto-sort routes by date after adding split routes
-      setErRoutes(sortRoutesByDate(updatedRoutes));
-      return;
-    }
-
-    if (newRouteValue === 'Khiva - Shovot' && paxTkm > 0) {
-      // Turkmenistan group: Khiva -> Shovot
-      const autoVehicle = getBestVehicleForRoute('sevil', paxTkm);
-
-      const updatedRoutes = erRoutes.map(r => {
-        if (r.id === routeId) {
-          return {
-            ...r,
-            route: newRouteValue,
-            person: paxTkm.toString(),
             transportType: autoVehicle,
-            choiceTab: 'sevil',
+            choiceTab: 'sevil-er',
             choiceRate: '',
             price: ''
           };
         }
         return r;
       });
-
-      // Auto-sort routes by date after updating route
       setErRoutes(sortRoutesByDate(updatedRoutes));
       return;
     }
