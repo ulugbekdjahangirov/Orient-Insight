@@ -826,7 +826,7 @@ export default function Bookings() {
                 <Users className="w-6 h-6 text-white" />
               </div>
               <p className="text-xl font-black text-gray-800">
-                Total PAX: <span className="text-transparent bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text">{displayedBookings.reduce((sum, booking) => sum + (booking.status === 'CANCELLED' ? 0 : (booking.pax || 0)), 0)}</span>
+                Total PAX: <span className="text-transparent bg-gradient-to-r from-primary-600 to-purple-600 bg-clip-text">{displayedBookings.reduce((sum, booking) => sum + (getDisplayStats(booking).pax || 0), 0)}</span>
               </p>
             </div>
           </div>
