@@ -2047,8 +2047,8 @@ export default function BookingDetail() {
               price: r.price?.toString() || ''       // DIRECT from database!
             };
           });
-          // Auto-sort routes by date after loading from database
-          setErRoutes(sortRoutesByDate(mappedRoutes));
+          // Use DB order (sortOrder field) — do NOT re-sort by date, preserves manual reorder
+          setErRoutes(mappedRoutes);
         } else if (b.tourType?.code === 'ER') {
           // No saved routes - try loading from database template first
 
@@ -6452,6 +6452,20 @@ export default function BookingDetail() {
     }
   };
 
+  const handleMoveRouteUp = (index) => {
+    if (index === 0) return;
+    const updated = [...erRoutes];
+    [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
+    setErRoutes(updated);
+  };
+
+  const handleMoveRouteDown = (index) => {
+    if (index === erRoutes.length - 1) return;
+    const updated = [...erRoutes];
+    [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
+    setErRoutes(updated);
+  };
+
   // Determine provider based on city
   const getProviderByCity = (city, explicitTourTypeCode = null) => {
     if (!city) return '';
@@ -6596,10 +6610,8 @@ export default function BookingDetail() {
       }
     }
 
-    // Auto-sort routes by date after changing date
-    // This will move the route to its correct chronological position
-    const sortedRoutes = sortRoutesByDate(updatedRoutes);
-    setErRoutes(sortedRoutes);
+    // Do NOT auto-sort by date — preserves manual row order
+    setErRoutes(updatedRoutes);
   };
 
 
@@ -7445,42 +7457,67 @@ export default function BookingDetail() {
         console.warn('⚠️ ER: Could not load RouteTemplate itineraries, will preserve existing');
       }
 
-      // Load existing routes from database (user's manually corrected structure)
-      // We PRESERVE the structure and only update vehicle/provider/price
-      const routesRes = await bookingsApi.getRoutes(id);
-      const freshRoutes = routesRes.data.routes || [];
-
-
-      // Check if routes exist and have proper structure
-      if (freshRoutes.length === 0 && erRoutes.length === 0) {
-        toast.error('No routes found! Please load template or create routes first.', { id: 'auto-fix' });
-        return;
+      // Load routes from TEMPLATE (resets to template structure — ignores any manually added rows)
+      const erYear = formData.arrivalDate ? new Date(formData.arrivalDate).getFullYear() : new Date().getFullYear();
+      let templateRoutesForFix = [];
+      try {
+        const tplRes = await routesApi.getTemplate('ER', erYear);
+        templateRoutesForFix = tplRes.data.templates || tplRes.data.routes || [];
+      } catch (e) {
+        console.warn('⚠️ ER Fix: Could not load template, falling back to DB routes');
       }
 
-      // Map database routes to erRoutes format, preserving city and itinerary fields
-      // If DB is empty but state has routes (template loaded but not saved), use state directly
-      const freshErRoutes = freshRoutes.length > 0
-        ? freshRoutes.map((dbRoute, index) => {
-            const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
-            return {
-              ...existingRoute,
-              id: dbRoute.id,
-              nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
-              sana: dbRoute.date,
-              shahar: dbRoute.city || existingRoute.shahar || '',
-              sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
-              route: dbRoute.routeName || existingRoute.route || '',
-              person: dbRoute.personCount?.toString() || existingRoute.person || '0',
-              transportType: dbRoute.transportType || existingRoute.transportType || '',
-              choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
-              choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
-              price: dbRoute.price?.toString() || existingRoute.price || ''
-            };
-          })
-        : erRoutes.map((route, index) => ({
-            ...route,
-            nomer: route.nomer || (index + 1).toString(),
-          }));
+      // If template loaded → build freshErRoutes from template (dates from booking departure)
+      // If template empty → fall back to DB routes
+      let freshErRoutes;
+      if (templateRoutesForFix.length > 0) {
+        const bookingDepartureDate = formData.departureDate ? new Date(formData.departureDate) : null;
+        freshErRoutes = templateRoutesForFix.map((t, index) => {
+          const arrivalDate = bookingDepartureDate ? addDays(bookingDepartureDate, 1) : null;
+          const routeDate = arrivalDate ? format(addDays(arrivalDate, t.dayOffset || 0), 'yyyy-MM-dd') : '';
+          return {
+            id: index + 1,
+            nomer: t.dayNumber?.toString() || (index + 1).toString(),
+            sana: routeDate,
+            dayOffset: t.dayOffset || 0,
+            shahar: t.city || '',
+            sayohatDasturi: templateItineraryMap[t.routeName?.toLowerCase()] || t.itinerary || '',
+            route: t.routeName || '',
+            person: '0',
+            transportType: '',
+            choiceTab: t.provider || '',
+            choiceRate: t.optionRate || '',
+            price: ''
+          };
+        });
+      } else {
+        // Fallback: load from DB
+        const routesRes = await bookingsApi.getRoutes(id);
+        const freshRoutes = routesRes.data.routes || [];
+        if (freshRoutes.length === 0 && erRoutes.length === 0) {
+          toast.error('No routes found! Please load template or create routes first.', { id: 'auto-fix' });
+          return;
+        }
+        freshErRoutes = freshRoutes.length > 0
+          ? freshRoutes.map((dbRoute, index) => {
+              const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
+              return {
+                ...existingRoute,
+                id: dbRoute.id,
+                nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
+                sana: dbRoute.date,
+                shahar: dbRoute.city || existingRoute.shahar || '',
+                sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
+                route: dbRoute.routeName || existingRoute.route || '',
+                person: dbRoute.personCount?.toString() || existingRoute.person || '0',
+                transportType: dbRoute.transportType || existingRoute.transportType || '',
+                choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
+                choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
+                price: dbRoute.price?.toString() || existingRoute.price || ''
+              };
+            })
+          : erRoutes.map((route, index) => ({ ...route, nomer: route.nomer || (index + 1).toString() }));
+      }
 
 
       // Calculate PAX counts (fallback to booking-level fields if Final List tourists not loaded)
@@ -8428,29 +8465,14 @@ export default function BookingDetail() {
         return largest?.name || '';
       };
 
-      // Reload routes from database
-      const routesRes = await bookingsApi.getRoutes(id);
-      const freshRoutes = routesRes.data.routes || [];
+      // Use current UI state (erRoutes) as base — what user sees on screen
+      // This preserves any edits made before saving to DB
+      let freshErRoutes = erRoutes.map((r, index) => ({ ...r, nomer: r.nomer || (index + 1).toString() }));
 
-      // Map database routes
-      const freshErRoutes = freshRoutes.map((dbRoute, index) => {
-        const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
-        return {
-          ...existingRoute,
-          id: dbRoute.id,
-          nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
-          sana: dbRoute.date,
-          shahar: dbRoute.city || existingRoute.shahar || '',
-          sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
-          route: dbRoute.routeName || existingRoute.route || '',
-          person: dbRoute.personCount?.toString() || existingRoute.person || '0',
-          transportType: dbRoute.transportType || existingRoute.transportType || '',
-          choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
-          choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
-          price: dbRoute.price?.toString() || existingRoute.price || ''
-        };
-      });
-
+      if (freshErRoutes.length === 0) {
+        toast.error('No routes found! Please use Load Template or Add Route first.', { id: 'auto-fix' });
+        return;
+      }
 
       // Calculate PAX (KAS groups: all tourists go together, no split)
       // Fallback to booking.pax if Final List is empty
@@ -8660,36 +8682,13 @@ export default function BookingDetail() {
         return largest?.name || '';
       };
 
-      // Reload routes from database
-      const routesRes = await bookingsApi.getRoutes(id);
-      const freshRoutes = routesRes.data.routes || [];
+      // Use current UI state (erRoutes) as base — what user sees on screen
+      let freshErRoutes = erRoutes.map((r, index) => ({ ...r, nomer: r.nomer || (index + 1).toString() }));
 
-      let freshErRoutes;
-
-      if (freshRoutes.length === 0) {
-        // Database has no routes yet - use current state (from Load Template)
-        freshErRoutes = [...erRoutes];
-      } else {
-        // Map database routes
-        freshErRoutes = freshRoutes.map((dbRoute, index) => {
-          const existingRoute = erRoutes.find(r => r.id === dbRoute.id) || erRoutes[index] || {};
-          return {
-            ...existingRoute,
-            id: dbRoute.id,
-            nomer: dbRoute.dayNumber?.toString() || (index + 1).toString(),
-            sana: dbRoute.date,
-            shahar: dbRoute.city || existingRoute.shahar || '',
-            sayohatDasturi: dbRoute.itinerary || existingRoute.sayohatDasturi || '',
-            route: dbRoute.routeName || existingRoute.route || '',
-            person: dbRoute.personCount?.toString() || existingRoute.person || '0',
-            transportType: dbRoute.transportType || existingRoute.transportType || '',
-            choiceTab: dbRoute.provider || existingRoute.choiceTab || '',
-            choiceRate: dbRoute.optionRate || existingRoute.choiceRate || '',
-            price: dbRoute.price?.toString() || existingRoute.price || ''
-          };
-        });
+      if (freshErRoutes.length === 0) {
+        toast.error('No routes found! Please use Load Template or Add Route first.', { id: 'auto-fix' });
+        return;
       }
-
 
       // Calculate PAX (ZA groups: all tourists go together, no split)
       // Fallback to booking.pax if Final List is empty
@@ -15318,6 +15317,24 @@ License №T-0084-08 from 2021-04-26`;
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center justify-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={() => handleMoveRouteUp(index)}
+                              disabled={index === 0}
+                              className="p-1 text-gray-500 hover:text-white hover:bg-gray-500 rounded transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                              title="Move up"
+                            >
+                              <ChevronUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleMoveRouteDown(index)}
+                              disabled={index === erRoutes.length - 1}
+                              className="p-1 text-gray-500 hover:text-white hover:bg-gray-500 rounded transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                              title="Move down"
+                            >
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                          </div>
                           <button
                             onClick={() => handleDeleteRoute(route.id)}
                             className="p-1.5 text-red-500 hover:text-white hover:bg-red-500 rounded-md transition-all"
@@ -15370,12 +15387,30 @@ License №T-0084-08 from 2021-04-26`;
                         </div>
                         <span className="font-semibold text-gray-900">{route.shahar || 'Select city'}</span>
                       </div>
-                      <button
-                        onClick={() => handleDeleteRoute(route.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleMoveRouteUp(index)}
+                          disabled={index === 0}
+                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                          title="Move up"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleMoveRouteDown(index)}
+                          disabled={index === erRoutes.length - 1}
+                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                          title="Move down"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRoute(route.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Date */}
