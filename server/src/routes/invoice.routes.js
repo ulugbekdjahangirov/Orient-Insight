@@ -31,16 +31,18 @@ router.put('/shamixon', authenticate, async (req, res) => {
   }
 });
 
-// GET /api/invoices/ausgaben-paid - Get hotel & transport paid status
+// GET /api/invoices/ausgaben-paid - Get hotel, transport & railway paid status
 router.get('/ausgaben-paid', authenticate, async (req, res) => {
   try {
-    const [hotel, transport] = await Promise.all([
+    const [hotel, transport, railway] = await Promise.all([
       prisma.systemSetting.findUnique({ where: { key: 'AUSGABEN_HOTEL_PAID' } }),
       prisma.systemSetting.findUnique({ where: { key: 'AUSGABEN_TRANSPORT_PAID' } }),
+      prisma.systemSetting.findUnique({ where: { key: 'AUSGABEN_RAILWAY_PAID' } }),
     ]);
     res.json({
       hotel: hotel ? JSON.parse(hotel.value) : {},
       transport: transport ? JSON.parse(transport.value) : {},
+      railway: railway ? JSON.parse(railway.value) : {},
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load paid status' });
@@ -59,6 +61,21 @@ router.put('/ausgaben-paid/hotel', authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save hotel paid status' });
+  }
+});
+
+// PUT /api/invoices/ausgaben-paid/railway
+router.put('/ausgaben-paid/railway', authenticate, async (req, res) => {
+  try {
+    const { data } = req.body;
+    await prisma.systemSetting.upsert({
+      where: { key: 'AUSGABEN_RAILWAY_PAID' },
+      update: { value: JSON.stringify(data || {}) },
+      create: { key: 'AUSGABEN_RAILWAY_PAID', value: JSON.stringify(data || {}) },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save railway paid status' });
   }
 });
 

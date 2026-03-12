@@ -331,6 +331,7 @@ export const invoicesApi = {
   getAusgabenPaid: () => api.get('/invoices/ausgaben-paid'),
   saveAusgabenHotelPaid: (data) => api.put('/invoices/ausgaben-paid/hotel', { data }),
   saveAusgabenTransportPaid: (data) => api.put('/invoices/ausgaben-paid/transport', { data }),
+  saveAusgabenRailwayPaid: (data) => api.put('/invoices/ausgaben-paid/railway', { data }),
 };
 
 // API for price configurations

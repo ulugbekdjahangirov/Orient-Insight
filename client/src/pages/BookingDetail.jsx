@@ -445,6 +445,7 @@ export default function BookingDetail() {
   // Railway state
   const [railways, setRailways] = useState([]);
   const [loadingRailways, setLoadingRailways] = useState(false);
+  const [railwayPaid, setRailwayPaid] = useState(false);
   const [railwayModalOpen, setRailwayModalOpen] = useState(false);
   const [editingRailway, setEditingRailway] = useState(null);
   const [railwayForm, setRailwayForm] = useState({
@@ -1658,6 +1659,15 @@ export default function BookingDetail() {
           setRechnungSequentialNumber(rechnungSeqNumber);
           setNeueRechnungSequentialNumber(neueRechnungSeqNumber);
           setGutschriftSequentialNumber(gutschriftSeqNumber);
+
+          // Load railway paid status
+          try {
+            const paidRes = await invoicesApi.getAusgabenPaid();
+            const railwayPaidData = paidRes.data.railway || {};
+            setRailwayPaid(!!railwayPaidData[String(id)]);
+          } catch (e) {
+            // ignore
+          }
         } catch (error) {
           console.error('Error loading invoices:', error);
         }
@@ -9514,7 +9524,27 @@ export default function BookingDetail() {
                 </h2>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  {/* To'landi checkbox */}
+                  <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 rounded-xl border-2 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={railwayPaid}
+                      onChange={async (e) => {
+                        const newVal = e.target.checked;
+                        setRailwayPaid(newVal);
+                        try {
+                          const paidRes = await invoicesApi.getAusgabenPaid();
+                          const current = paidRes.data.railway || {};
+                          await invoicesApi.saveAusgabenRailwayPaid({ ...current, [String(id)]: newVal });
+                        } catch (err) {
+                          console.error('Error saving railway paid:', err);
+                        }
+                      }}
+                      className="w-4 h-4 accent-emerald-600 cursor-pointer"
+                    />
+                    <span className="text-sm font-bold text-emerald-700">To'landi</span>
+                  </label>
                   <button
                     onClick={openRailwayModal}
                     className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl text-xs md:text-sm hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg"

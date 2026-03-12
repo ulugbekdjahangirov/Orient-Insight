@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi, telegramApi, invoicesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
-import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send, DollarSign } from 'lucide-react';
+import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send, DollarSign, Train } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -24,6 +24,7 @@ const expenseTabs = [
   { id: 'transport-analysis', name: 'Transport Analysis', icon: Truck },
   { id: 'guides',             name: 'Guides',             icon: Users },
   { id: 'uberweisung',        name: 'Überweisung',        icon: DollarSign },
+  { id: 'railways',           name: 'Railways',           icon: Train },
 ];
 
 export default function Ausgaben() {
@@ -52,12 +53,14 @@ export default function Ausgaben() {
   const toggleMonth = (key) => setOpenMonths(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
   const [paidAccs, setPaidAccs] = useState({});
   const [paidTransport, setPaidTransport] = useState({});
+  const [paidRailways, setPaidRailways] = useState({});
 
   // Load paid status from DB (with one-time localStorage migration)
   useEffect(() => {
     invoicesApi.getAusgabenPaid().then(res => {
       let hotel = res.data.hotel || {};
       let transport = res.data.transport || {};
+      const railway = res.data.railway || {};
       // One-time migration from localStorage
       if (Object.keys(hotel).length === 0) {
         try {
@@ -73,6 +76,7 @@ export default function Ausgaben() {
       }
       setPaidAccs(hotel);
       setPaidTransport(transport);
+      setPaidRailways(railway);
     }).catch(() => {});
   }, []);
 
@@ -100,6 +104,15 @@ export default function Ausgaben() {
     });
   };
 
+  const toggleRailwayPaid = (e, bookingId) => {
+    e.stopPropagation();
+    setPaidRailways(prev => {
+      const next = { ...prev, [String(bookingId)]: !prev[String(bookingId)] };
+      invoicesApi.saveAusgabenRailwayPaid(next).catch(() => {});
+      return next;
+    });
+  };
+
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
   const [cache, setCache] = useState({});
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -120,7 +133,7 @@ export default function Ausgaben() {
   const loadBookingsAndExpenses = async () => {
     // Check cache first
     const cacheKey = `${activeTourType}_${selectedYear}`;
-    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis', 'uberweisung'].includes(activeExpenseTab);
+    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis', 'uberweisung', 'railways'].includes(activeExpenseTab);
 
     // Try localStorage first (persists across page reloads)
     try {
@@ -270,7 +283,8 @@ export default function Ausgaben() {
           bookingId: booking.id,
           bookingName: booking.bookingNumber || `${booking.tourType?.code || 'Tour'}-${booking.id}`,
           grandTotalData,
-          expenses
+          expenses,
+          railways
         };
       } catch (err) {
         console.error(`Error loading data for booking ${booking.id}:`, err);
@@ -2204,6 +2218,135 @@ export default function Ausgaben() {
                     )}
                   </div>
                 )}
+
+                {/* ── RAILWAYS TAB ── */}
+                {activeExpenseTab === 'railways' && (() => {
+                  const railwayBookings = bookingsDetailedData.filter(b => (b.expenses?.railway || 0) > 0 || (b.railways?.length > 0));
+                  const grandTotal = railwayBookings.reduce((s, b) => s + (b.expenses?.railway || 0), 0);
+                  const paidTotal  = railwayBookings.filter(b => paidRailways[String(b.bookingId)]).reduce((s, b) => s + (b.expenses?.railway || 0), 0);
+                  const debtTotal  = grandTotal - paidTotal;
+                  return (
+                    <div className="w-full">
+                      {railwayBookings.length === 0 ? (
+                        <div className="p-10 text-center text-slate-400">
+                          <Train className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p>Railway ma'lumoti yo'q</p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Desktop table */}
+                          <div className="hidden sm:block overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a8a)' }}>
+                                  <th className="px-3 py-3.5 text-center text-white font-bold w-10">#</th>
+                                  <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Booking</th>
+                                  <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Yo'nalishlar</th>
+                                  <th className="px-3 py-3.5 text-right text-white font-bold border-l border-blue-700">Jami (UZS)</th>
+                                  <th className="px-3 py-3.5 text-center text-white font-bold border-l border-blue-700 w-24">To'landi</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {railwayBookings.map((item, idx) => {
+                                  const isPaid = !!paidRailways[String(item.bookingId)];
+                                  const rowBg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
+                                  const segments = item.railways || [];
+                                  return (
+                                    <tr key={item.bookingId} style={{ background: isPaid ? '#f0fdf4' : rowBg }}
+                                      onMouseEnter={ev => ev.currentTarget.style.background = '#eff6ff'}
+                                      onMouseLeave={ev => ev.currentTarget.style.background = isPaid ? '#f0fdf4' : rowBg}>
+                                      <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                                      <td className="px-3 py-2.5 border-r border-slate-100">
+                                        <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:underline">{item.bookingName}</Link>
+                                      </td>
+                                      <td className="px-3 py-2.5 border-r border-slate-100">
+                                        {segments.length > 0 ? (
+                                          <div className="flex flex-col gap-0.5">
+                                            {segments.map((seg, si) => (
+                                              <span key={si} className="text-slate-600">
+                                                {seg.departure && seg.arrival ? `${seg.departure} → ${seg.arrival}` : seg.route || seg.name || '—'}
+                                                {seg.price > 0 && <span className="ml-2 text-slate-400">({formatNumber(seg.price)} UZS)</span>}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        ) : <span className="text-slate-300">—</span>}
+                                      </td>
+                                      <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                        <span className={`font-bold ${isPaid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(item.expenses?.railway || 0)}</span>
+                                      </td>
+                                      <td className="px-3 py-2.5 text-center">
+                                        <button
+                                          onClick={(e) => toggleRailwayPaid(e, item.bookingId)}
+                                          className="w-6 h-6 rounded border-2 flex items-center justify-center mx-auto transition-all"
+                                          style={{ background: isPaid ? '#16a34a' : 'white', borderColor: isPaid ? '#16a34a' : '#cbd5e1' }}
+                                          title={isPaid ? "To'landi — bekor qilish" : "To'landi deb belgilash"}
+                                        >
+                                          {isPaid && <span className="text-white font-bold" style={{ fontSize: 10 }}>✓</span>}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Mobile cards */}
+                          <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
+                            {railwayBookings.map((item, idx) => {
+                              const isPaid = !!paidRailways[String(item.bookingId)];
+                              const segments = item.railways || [];
+                              return (
+                                <div key={item.bookingId} className="rounded-xl overflow-hidden border bg-white" style={{ borderColor: isPaid ? '#86efac' : '#bfdbfe' }}>
+                                  <div className="h-1" style={{ background: isPaid ? 'linear-gradient(90deg,#16a34a,#22c55e)' : 'linear-gradient(90deg,#1e3a8a,#2563eb)' }} />
+                                  <div className="px-3 py-2.5">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm">{item.bookingName}</Link>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`font-bold text-sm ${isPaid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(item.expenses?.railway || 0)} UZS</span>
+                                        <button onClick={(e) => toggleRailwayPaid(e, item.bookingId)}
+                                          className="w-6 h-6 rounded border-2 flex items-center justify-center transition-all"
+                                          style={{ background: isPaid ? '#16a34a' : 'white', borderColor: isPaid ? '#16a34a' : '#cbd5e1' }}>
+                                          {isPaid && <span className="text-white font-bold" style={{ fontSize: 10 }}>✓</span>}
+                                        </button>
+                                      </div>
+                                    </div>
+                                    {segments.length > 0 && (
+                                      <div className="text-xs text-slate-500 flex flex-col gap-0.5">
+                                        {segments.map((seg, si) => (
+                                          <span key={si}>{seg.departure && seg.arrival ? `${seg.departure} → ${seg.arrival}` : seg.route || '—'}</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Total footer */}
+                          <div className="rounded-xl overflow-hidden mt-2 mx-0" style={{ border: '2px solid #1e3a8a' }}>
+                            <div className="grid grid-cols-3 text-xs font-bold text-center"
+                              style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a8a)' }}>
+                              <div className="px-4 py-3 flex flex-col gap-0.5">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px]">JAMI</span>
+                                <span className="text-white text-sm">{formatNumber(grandTotal)} UZS</span>
+                              </div>
+                              <div className="px-4 py-3 flex flex-col gap-0.5 border-x border-blue-700">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px]">TO'LANDI</span>
+                                {paidTotal > 0 ? <span className="text-green-400 text-sm">{formatNumber(paidTotal)} UZS</span> : <span className="text-slate-600 text-sm">—</span>}
+                              </div>
+                              <div className="px-4 py-3 flex flex-col gap-0.5">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px]">QARZ</span>
+                                {debtTotal > 0 ? <span className="text-red-400 text-sm">{formatNumber(debtTotal)} UZS</span> : <span className="text-green-400 text-sm">✓ Hamma to'langan</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* ── TRANSPORT TAB ── */}
                 {activeExpenseTab === 'transport' && (
