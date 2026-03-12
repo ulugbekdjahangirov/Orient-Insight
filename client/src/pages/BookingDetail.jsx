@@ -6720,18 +6720,56 @@ export default function BookingDetail() {
     const currentRoute = erRoutes.find(r => r.id === routeId);
     const currentDate = currentRoute?.sana || '';
 
+    // Khiva - Urgench: auto-create companion rows ONLY if they don't already exist
+    if (newRouteValue === 'Khiva - Urgench' && paxUzb > 0) {
+      const autoVehicleUzb = getBestVehicleForRoute('sevil-er', paxUzb);
+      const maxId = Math.max(...erRoutes.map(r => r.id));
+      const nextDate = currentDate ? format(addDays(new Date(currentDate), 1), 'yyyy-MM-dd') : '';
+
+      // Check if companion rows already exist (same date ± 1 day)
+      const hasPickup = erRoutes.some(r => r.id !== routeId && r.route === 'Airport Pickup' && r.sana === currentDate);
+      const hasDropoff = erRoutes.some(r => r.id !== routeId && r.route === 'Airport Drop-off' && r.sana === nextDate);
+      const hasShovot = erRoutes.some(r => r.id !== routeId && r.route === 'Khiva - Shovot' && r.sana === nextDate);
+
+      const newRoutesToAdd = [];
+      if (!hasPickup) {
+        newRoutesToAdd.push({
+          id: maxId + 1, nomer: '', sana: currentDate, shahar: 'Tashkent',
+          route: 'Airport Pickup', person: paxUzb.toString(),
+          transportType: getBestVehicleForRoute('xayrulla', paxUzb),
+          choiceTab: 'xayrulla', choiceRate: '', price: ''
+        });
+      }
+      if (!hasDropoff) {
+        newRoutesToAdd.push({
+          id: maxId + 2, nomer: '', sana: nextDate, shahar: 'Tashkent',
+          route: 'Airport Drop-off', person: paxUzb.toString(),
+          transportType: getBestVehicleForRoute('xayrulla', paxUzb),
+          choiceTab: 'xayrulla', choiceRate: '', price: ''
+        });
+      }
+      if (!hasShovot && paxTkm > 0) {
+        newRoutesToAdd.push({
+          id: maxId + 3, nomer: '', sana: nextDate, shahar: 'Khiva',
+          route: 'Khiva - Shovot', person: paxTkm.toString(),
+          transportType: getBestVehicleForRoute('sevil-er', paxTkm),
+          choiceTab: 'sevil-er', choiceRate: '', price: ''
+        });
+      }
+
+      const updatedRoutes = erRoutes.map(r =>
+        r.id === routeId ? { ...r, route: newRouteValue, person: paxUzb.toString(), transportType: autoVehicleUzb, choiceTab: 'sevil-er', choiceRate: '', price: '' } : r
+      );
+      updatedRoutes.splice(routeIndex + 1, 0, ...newRoutesToAdd);
+      setErRoutes(sortRoutesByDate(updatedRoutes));
+      return;
+    }
+
     if (newRouteValue === 'Khiva - Shovot') {
       const autoVehicle = getBestVehicleForRoute('sevil-er', paxTkm || parseInt(currentRoute?.person) || 0);
       const updatedRoutes = erRoutes.map(r => {
         if (r.id === routeId) {
-          return {
-            ...r,
-            route: newRouteValue,
-            transportType: autoVehicle,
-            choiceTab: 'sevil-er',
-            choiceRate: '',
-            price: ''
-          };
+          return { ...r, route: newRouteValue, transportType: autoVehicle, choiceTab: 'sevil-er', choiceRate: '', price: '' };
         }
         return r;
       });
