@@ -1792,8 +1792,8 @@ export default function Ausgaben() {
                       if (!h.hotel || (h.USD === 0 && h.UZS === 0)) return;
                       const name = normalizeHotel(h.hotel);
                       if (!hotelMap[name]) hotelMap[name] = { city: h.city, months: {} };
-                      const dateKey = h.checkInDate
-                        ? new Date(h.checkInDate).toISOString().slice(0, 7) // "2026-03"
+                      const dateKey = h.checkOutDate
+                        ? new Date(h.checkOutDate).toISOString().slice(0, 7) // "2026-03"
                         : 'unknown';
                       if (!hotelMap[name].months[dateKey]) hotelMap[name].months[dateKey] = [];
                       hotelMap[name].months[dateKey].push({
@@ -1944,6 +1944,41 @@ export default function Ausgaben() {
                           </div>
                         );
                       })}
+
+                      {/* ── TOTAL FOOTER ── */}
+                      {(() => {
+                        const allHotelRows = Object.values(hotelMap).flatMap(h =>
+                          Object.values(h.months).flat()
+                        );
+                        const grandUZS = allHotelRows.reduce((s, r) => s + r.UZS, 0);
+                        const grandUSD = allHotelRows.reduce((s, r) => s + r.USD, 0);
+                        const paidUZS  = allHotelRows.filter(r => paidAccs[String(r.accommodationId)]).reduce((s, r) => s + r.UZS, 0);
+                        const paidUSD  = allHotelRows.filter(r => paidAccs[String(r.accommodationId)]).reduce((s, r) => s + r.USD, 0);
+                        const debtUZS  = grandUZS - paidUZS;
+                        const debtUSD  = grandUSD - paidUSD;
+                        return (
+                          <div className="rounded-xl overflow-hidden mt-2" style={{ border: '2px solid #1e3a8a' }}>
+                            <div className="grid grid-cols-3 text-xs font-bold text-center"
+                              style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a8a)' }}>
+                              <div className="px-4 py-3 flex flex-col gap-0.5">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px]">JAMI</span>
+                                {grandUZS > 0 && <span className="text-white text-sm">{formatNumber(grandUZS)} UZS</span>}
+                                {grandUSD > 0 && <span className="text-yellow-300 text-sm">${formatNumber(grandUSD)}</span>}
+                              </div>
+                              <div className="px-4 py-3 flex flex-col gap-0.5 border-x border-blue-700">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px]">TO'LANDI</span>
+                                {paidUZS > 0 ? <span className="text-green-400 text-sm">{formatNumber(paidUZS)} UZS</span> : <span className="text-slate-600 text-sm">—</span>}
+                                {paidUSD > 0 ? <span className="text-green-300 text-sm">${formatNumber(paidUSD)}</span> : null}
+                              </div>
+                              <div className="px-4 py-3 flex flex-col gap-0.5">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px]">QARZ</span>
+                                {debtUZS > 0 ? <span className="text-red-400 text-sm">{formatNumber(debtUZS)} UZS</span> : <span className="text-slate-600 text-sm">—</span>}
+                                {debtUSD > 0 ? <span className="text-red-300 text-sm">${formatNumber(debtUSD)}</span> : null}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
