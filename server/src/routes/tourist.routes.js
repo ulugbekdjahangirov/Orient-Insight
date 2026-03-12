@@ -6403,6 +6403,24 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
     });
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
+    // Get accommodations for this hotel to include dates in email
+    const accommodations = await prisma.accommodation.findMany({
+      where: { bookingId: parseInt(bookingId), hotelId: parseInt(hotelId) },
+      orderBy: { checkInDate: 'asc' }
+    });
+    const fmtDate = (ts) => {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    };
+    let datesHtml = '';
+    if (accommodations.length === 1) {
+      datesHtml = `<p><b>Дата заезда:</b> ${fmtDate(accommodations[0].checkInDate)}<br><b>Дата выезда:</b> ${fmtDate(accommodations[0].checkOutDate)}</p>`;
+    } else if (accommodations.length > 1) {
+      const visitLabels = ['Первый','Второй','Третий','Четвёртый'];
+      datesHtml = '<p>' + accommodations.map((a, i) => `<b>${visitLabels[i] || (i+1)+'-й'} заезд:</b> ${fmtDate(a.checkInDate)} — ${fmtDate(a.checkOutDate)}`).join('<br>') + '</p>';
+    }
+
     // Generate HTML by calling the combined route internally via puppeteer
     const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({
@@ -6426,6 +6444,8 @@ router.post('/:bookingId/send-hotel-request/:hotelId', authenticate, async (req,
     const htmlBody = `
       <p>Уважаемый отель ${hotelName},</p>
       <p>Пожалуйста, ознакомьтесь с прикреплённым ${isIzmenenie ? 'изменением к заявке' : 'запросом на бронирование'} для группы <strong>${booking.bookingNumber}</strong>.</p>
+      ${datesHtml}
+      <p>Подробности в прикреплённом документе.</p>
       <p>С уважением,<br>Orient Insight</p>
     `;
     const filename = `${isIzmenenie ? 'Изменение' : 'Заявка'}_${booking.bookingNumber}_${hotelName.replace(/\s+/g, '_')}.pdf`;
@@ -6620,6 +6640,24 @@ router.post('/:bookingId/send-storno-email/:hotelId', authenticate, async (req, 
     });
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
+    // Get accommodations for this hotel to include dates in email
+    const stornoAccommodations = await prisma.accommodation.findMany({
+      where: { bookingId: parseInt(bookingId), hotelId: parseInt(hotelId) },
+      orderBy: { checkInDate: 'asc' }
+    });
+    const fmtDateS = (ts) => {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    };
+    let stornoDatesHtml = '';
+    if (stornoAccommodations.length === 1) {
+      stornoDatesHtml = `<p><b>Дата заезда:</b> ${fmtDateS(stornoAccommodations[0].checkInDate)}<br><b>Дата выезда:</b> ${fmtDateS(stornoAccommodations[0].checkOutDate)}</p>`;
+    } else if (stornoAccommodations.length > 1) {
+      const visitLabels = ['Первый','Второй','Третий','Четвёртый'];
+      stornoDatesHtml = '<p>' + stornoAccommodations.map((a, i) => `<b>${visitLabels[i] || (i+1)+'-й'} заезд:</b> ${fmtDateS(a.checkInDate)} — ${fmtDateS(a.checkOutDate)}`).join('<br>') + '</p>';
+    }
+
     // Generate Storno PDF via puppeteer
     const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({
@@ -6639,6 +6677,7 @@ router.post('/:bookingId/send-storno-email/:hotelId', authenticate, async (req, 
     const htmlBody = `
       <p>Уважаемый отель ${hotelName},</p>
       <p>Сообщаем об аннуляции бронирования для группы <strong>${booking.bookingNumber}</strong>.</p>
+      ${stornoDatesHtml}
       <p>Подробности в прикреплённом документе.</p>
       <p>С уважением,<br>Orient Insight</p>
     `;
