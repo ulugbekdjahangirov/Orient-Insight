@@ -11433,10 +11433,10 @@ export default function BookingDetail() {
                     ))}
                     {/* Mobile totals */}
                     {(() => {
-                      const sevilT = booking?.status === 'CANCELLED' ? 0 : routes.filter(r => r.provider?.toLowerCase().includes('sevil')).reduce((s, r) => s + (r.price || 0), 0);
-                      const xayrT = booking?.status === 'CANCELLED' ? 0 : routes.filter(r => r.provider?.toLowerCase() === 'xayrulla').reduce((s, r) => s + (r.price || 0), 0);
-                      const nosirT = booking?.status === 'CANCELLED' ? 0 : routes.filter(r => r.provider?.toLowerCase() === 'nosir').reduce((s, r) => s + (r.price || 0), 0);
-                      const grandT = booking?.status === 'CANCELLED' ? 0 : routes.reduce((s, r) => s + (r.price || 0), 0);
+                      const sevilT = booking?.status === 'CANCELLED' ? 0 : erRoutes.filter(r => r.choiceTab?.toLowerCase().includes('sevil')).reduce((s, r) => s + (parseFloat(r.price) || 0), 0);
+                      const xayrT = booking?.status === 'CANCELLED' ? 0 : erRoutes.filter(r => r.choiceTab?.toLowerCase() === 'xayrulla').reduce((s, r) => s + (parseFloat(r.price) || 0), 0);
+                      const nosirT = booking?.status === 'CANCELLED' ? 0 : erRoutes.filter(r => r.choiceTab?.toLowerCase() === 'nosir').reduce((s, r) => s + (parseFloat(r.price) || 0), 0);
+                      const grandT = booking?.status === 'CANCELLED' ? 0 : erRoutes.reduce((s, r) => s + (parseFloat(r.price) || 0), 0);
                       return (
                         <div className="space-y-2 pt-1">
                           {sevilT > 0 && <div className="flex justify-between items-center px-3 py-2 bg-purple-50 rounded-xl border border-purple-200"><span className="text-xs font-semibold text-purple-700">Sevil Total</span><span className="text-sm font-bold text-purple-700">${Math.round(sevilT).toLocaleString('en-US').replace(/,/g, ' ')}</span></div>}
@@ -11479,19 +11479,19 @@ export default function BookingDetail() {
                       <tfoot>
                         <tr className="bg-gradient-to-r from-purple-50 to-pink-50 border-t border-gray-300">
                           <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">Sevil Total:</td>
-                          <td className="px-4 py-3 text-right font-bold text-lg text-purple-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = routes.filter(r => r.provider?.toLowerCase().includes('sevil')).reduce((s, r) => s + (r.price || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
+                          <td className="px-4 py-3 text-right font-bold text-lg text-purple-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = erRoutes.filter(r => r.choiceTab?.toLowerCase().includes('sevil')).reduce((s, r) => s + (parseFloat(r.price) || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
                         </tr>
                         <tr className="bg-gradient-to-r from-green-50 to-emerald-50">
                           <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">Xayrulla Total:</td>
-                          <td className="px-4 py-3 text-right font-bold text-lg text-green-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = routes.filter(r => r.provider?.toLowerCase() === 'xayrulla').reduce((s, r) => s + (r.price || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
+                          <td className="px-4 py-3 text-right font-bold text-lg text-green-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = erRoutes.filter(r => r.choiceTab?.toLowerCase() === 'xayrulla').reduce((s, r) => s + (parseFloat(r.price) || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
                         </tr>
                         <tr className="bg-gradient-to-r from-blue-50 to-sky-50">
                           <td colSpan="6" className="px-4 py-3 text-right font-bold text-gray-700 border-r border-gray-300">Nosir Total:</td>
-                          <td className="px-4 py-3 text-right font-bold text-lg text-blue-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = routes.filter(r => r.provider?.toLowerCase() === 'nosir').reduce((s, r) => s + (r.price || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
+                          <td className="px-4 py-3 text-right font-bold text-lg text-blue-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = erRoutes.filter(r => r.choiceTab?.toLowerCase() === 'nosir').reduce((s, r) => s + (parseFloat(r.price) || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
                         </tr>
                         <tr className="bg-gradient-to-r from-blue-100 to-cyan-100 border-t-2 border-blue-300">
                           <td colSpan="6" className="px-4 py-4 text-right font-bold text-gray-900 text-lg border-r border-blue-200">Grand Total:</td>
-                          <td className="px-4 py-4 text-right font-black text-xl text-blue-700">{booking?.status === 'CANCELLED' ? '0' : routes.reduce((s, r) => s + (r.price || 0), 0) > 0 ? Math.round(routes.reduce((s, r) => s + (r.price || 0), 0)).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                          <td className="px-4 py-4 text-right font-black text-xl text-blue-700">{(() => { if (booking?.status === 'CANCELLED') return '0'; const t = erRoutes.reduce((s, r) => s + (parseFloat(r.price) || 0), 0); return t > 0 ? Math.round(t).toLocaleString('en-US').replace(/,/g, ' ') : '-'; })()}</td>
                         </tr>
                       </tfoot>
                     </table>
