@@ -130,22 +130,29 @@ async function createFolderStructure(baseHandle, pathParts) {
  * Save a PDF blob to the correct subfolder
  *
  * @param {Object} params
- * @param {string} params.tourType       - 'ER' | 'CO' | 'KAS' | 'ZA'
- * @param {string} params.bookingNumber  - e.g. 'ER-01'
- * @param {string} params.category       - key from PDF_CATEGORIES, or 'root'
- * @param {string} params.filename       - final file name, e.g. 'Zayavka ER-01 - Arien Plaza.pdf'
- * @param {Blob}   params.pdfBlob        - PDF content
+ * @param {string} params.tourType         - 'ER' | 'CO' | 'KAS' | 'ZA'
+ * @param {string} params.bookingNumber    - e.g. 'ER-01'
+ * @param {string} params.category         - key from PDF_CATEGORIES, or 'root'
+ * @param {string} params.filename         - final file name, e.g. 'Zayavka ER-01 - Arien Plaza.pdf'
+ * @param {Blob}   params.pdfBlob          - PDF content
+ * @param {boolean} params.isCancelled     - if true, saves to Anulyatsiya/bookingNumber/ folder
  */
-export async function savePdfToFolder({ tourType, bookingNumber, category, filename, pdfBlob }) {
+export async function savePdfToFolder({ tourType, bookingNumber, category, filename, pdfBlob, isCancelled }) {
   try {
     const baseHandle = await getTourTypeFolderHandle(tourType);
     if (!baseHandle) {
       return { success: false, error: 'Papka tanlanmagan. Settings → PDF Papkalari' };
     }
 
-    // Build path: [bookingNumber] or [bookingNumber, subfolder]
-    const subfolder = PDF_CATEGORIES[category];
-    const pathParts = subfolder ? [bookingNumber, subfolder] : [bookingNumber];
+    // Cancelled bookings: Anulyatsiya/KAS-03/filename.pdf
+    // Normal bookings:    KAS-03/Zayavka/filename.pdf
+    let pathParts;
+    if (isCancelled) {
+      pathParts = ['Anulyatsiya', bookingNumber];
+    } else {
+      const subfolder = PDF_CATEGORIES[category];
+      pathParts = subfolder ? [bookingNumber, subfolder] : [bookingNumber];
+    }
 
     const targetDir = await createFolderStructure(baseHandle, pathParts);
 

@@ -1083,12 +1083,8 @@ export default function HotelAccommodationForm({
       return;
     }
 
-    // Validate rooms
+    // Validate rooms (allow empty for cancelled bookings - Storno PDF shows 0 rooms)
     const validRooms = rooms.filter(r => r.roomTypeCode);
-    if (validRooms.length === 0) {
-      toast.error('Add at least one room type');
-      return;
-    }
 
     setSaving(true);
     try {

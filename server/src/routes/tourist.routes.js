@@ -5032,6 +5032,7 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePre
 
     // Calculate totalPax and room counts AFTER filtering tourists
     const totalPax = tourists.length;
+    const isCancelledBooking = booking.status === 'CANCELLED';
 
     // Calculate room counts from accommodation.rooms or from tourists
     let dblRooms = 0;
@@ -5321,7 +5322,7 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePre
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>ЗАЯВКА ${booking.bookingNumber} - ${accommodation.hotel.name}</title>
+        <title>${isCancelledBooking ? `АННУЛЯЦИЯ к ЗАЯВКЕ ${booking.bookingNumber}` : `ЗАЯВКА ${booking.bookingNumber}`} - ${accommodation.hotel.name}</title>
         <style>
           @page {
             size: A4 portrait;
@@ -5540,12 +5541,12 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePre
           </tr>
         </table>
 
-        <!-- ЗАЯВКА Title with Booking Number -->
-        <div class="zayvka-title">ЗАЯВКА ${bookingNumber}</div>
+        <!-- ЗАЯВКА / АННУЛЯЦИЯ Title with Booking Number -->
+        <div class="zayvka-title">${isCancelledBooking ? `АННУЛЯЦИЯ к ЗАЯВКЕ ${bookingNumber}` : `ЗАЯВКА ${bookingNumber}`}</div>
 
         <!-- Introduction Text -->
         <div class="intro-text">
-          ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.
+          ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит ${isCancelledBooking ? 'аннулировать бронь группы' : 'забронировать места'} с учетом нижеследующих деталей.
         </div>
 
         <!-- Summary Table -->
@@ -5609,7 +5610,7 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePre
         </table>
 
         <!-- Footer Text -->
-        <div class="footer-text">Оплату гости производят на месте.</div>
+        <div class="footer-text">${isCancelledBooking ? 'Просим подтвердить аннуляцию брони.' : 'Оплату гости производят на месте.'}</div>
 
         <!-- Signature Table -->
         <table class="signature-table">
@@ -5690,6 +5691,7 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
     const bookingNumber = booking.bookingNumber || 'N/A';
     const country = 'Германия';
     const currentDate = formatDisplayDate(new Date().toISOString());
+    const isCancelledBooking = booking.status === 'CANCELLED';
 
     // Load logo as base64
     const logoPath = path.join(__dirname, '../../uploads/logo.png');
@@ -6165,12 +6167,12 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
             </tr>
           </table>
 
-          <!-- ЗАЯВКА Title with Booking Number and Visit Label -->
-          <div class="zayvka-title">ЗАЯВКА ${bookingNumber}${visitLabel}</div>
+          <!-- ЗАЯВКА / АННУЛЯЦИЯ Title with Booking Number and Visit Label -->
+          <div class="zayvka-title">${isCancelledBooking ? `АННУЛЯЦИЯ к ЗАЯВКЕ ${bookingNumber}${visitLabel}` : `ЗАЯВКА ${bookingNumber}${visitLabel}`}</div>
 
           <!-- Introduction Text -->
           <div class="intro-text">
-            ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит забронировать места с учетом нижеследующих деталей.
+            ООО <strong>"ORIENT INSIGHT"</strong> приветствует Вас, и просит ${isCancelledBooking ? 'аннулировать бронь группы' : 'забронировать места'} с учетом нижеследующих деталей.
           </div>
 
           <!-- Summary Table -->
@@ -6204,8 +6206,8 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
               </tr>
             </tbody>
           </table>
-          <!-- Guide Information -->
-          ${booking.guide ? `
+          <!-- Guide Information (hidden for cancelled bookings) -->
+          ${!isCancelledBooking && booking.guide ? `
           <div class="guide-info">
             <strong>Гид группы:</strong> ${booking.guide.name || 'Не указан'}${booking.guide.phone ? ` | <strong>Телефон:</strong> ${booking.guide.phone}` : ''}
           </div>
@@ -6234,7 +6236,7 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
           </table>
 
           <!-- Footer Text -->
-          <div class="footer-text">Оплату гости производят на месте.</div>
+          <div class="footer-text">${isCancelledBooking ? 'Просим подтвердить аннуляцию брони.' : 'Оплату гости производят на месте.'}</div>
 
           <!-- Signature Table -->
           <table class="signature-table">
@@ -6254,7 +6256,7 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>ЗАЯВКА ${bookingNumber} - ${hotelName}</title>
+        <title>${isCancelledBooking ? `АННУЛЯЦИЯ к ЗАЯВКЕ ${bookingNumber}` : `ЗАЯВКА ${bookingNumber}`} - ${hotelName}</title>
         <style>
           @page {
             size: A4 portrait;

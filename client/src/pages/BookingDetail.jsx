@@ -2448,6 +2448,7 @@ export default function BookingDetail() {
           category: 'zayavka',
           filename,
           pdfBlob,
+          isCancelled: booking?.status === 'CANCELLED',
         });
         if (result.success) {
           toast.success(`✓ Saqlandi: ${result.path}`, { id: 'pdf-save', duration: 4000 });
