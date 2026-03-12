@@ -121,12 +121,10 @@ export default function Dashboard() {
       setUpcoming(upcomingRes.data.bookings);
       setMonthly(monthlyRes.data.monthlyStats);
 
-      // Compute total PAX exactly like Bookings page (same getDisplayStats logic)
+      // Compute total PAX: sum booking.pax for non-CANCELLED (same as Bookings page)
       const bookingsList = bookingsRes.data.bookings || [];
       const paxSum = bookingsList.reduce((sum, b) => {
-        if (b.status === 'CANCELLED') return sum;
-        const hasTourists = (b._touristsCount || 0) > 0;
-        return sum + (hasTourists ? b._touristsCount : (b.pax || 0));
+        return sum + (b.status === 'CANCELLED' ? 0 : (b.pax || 0));
       }, 0);
       setTotalPax(paxSum);
     } catch (error) {
