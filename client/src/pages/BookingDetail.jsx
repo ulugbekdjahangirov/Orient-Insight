@@ -16624,8 +16624,11 @@ License №T-0084-08 from 2021-04-26`;
 
 
                                 // Calculate cost ONLY from rooming list data (ignore saved rooms data)
+                                const _accYear = new Date(acc.checkInDate || Date.now()).getFullYear();
                                 acc.rooms.forEach(room => {
-                                  const pricePerNight = parseFloat(room.pricePerNight) || 0;
+                                  const _ht = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
+                                  const _yp = _ht?.yearlyPrices?.find(yp => yp.year === _accYear);
+                                  const pricePerNight = _yp?.pricePerNight || _ht?.pricePerNight || parseFloat(room.pricePerNight) || 0;
 
                                   let normalizedRoomType = room.roomTypeCode?.toUpperCase();
                                   if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
@@ -16750,8 +16753,11 @@ License №T-0084-08 from 2021-04-26`;
                                   });
 
                                   // Populate breakdown from saved rooms data
+                                  const _accYear2 = new Date(acc.checkInDate || Date.now()).getFullYear();
                                   acc.rooms?.forEach(room => {
-                                    const pricePerNight = parseFloat(room.pricePerNight) || 0;
+                                    const _ht2 = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
+                                    const _yp2 = _ht2?.yearlyPrices?.find(yp => yp.year === _accYear2);
+                                    const pricePerNight = _yp2?.pricePerNight || _ht2?.pricePerNight || parseFloat(room.pricePerNight) || 0;
                                     let normalizedRoomType = room.roomTypeCode?.toUpperCase();
                                     if (normalizedRoomType === 'DOUBLE') normalizedRoomType = 'DBL';
                                     if (normalizedRoomType === 'TWIN') normalizedRoomType = 'TWN';
@@ -16790,12 +16796,20 @@ License №T-0084-08 from 2021-04-26`;
 
                                 }
 
+                                // Recalculate totalCost from breakdown if we have breakdown items (uses current prices)
+                                if (calculationBreakdown.length > 0) {
+                                  totalCost = calculationBreakdown.reduce((sum, item) => sum + item.totalCost, 0);
+                                }
+
                                 // If still 0, calculate from rooms
                                 if (totalCost === 0 && acc.rooms?.length > 0) {
+                                  const _accYear3 = new Date(acc.checkInDate || Date.now()).getFullYear();
                                   acc.rooms.forEach(room => {
                                     const roomCount = parseInt(room.roomsCount) || 0;
                                     const guestsPerRoom = parseInt(room.guestsPerRoom) || 2;
-                                    const pricePerNight = parseFloat(room.pricePerNight) || 0;
+                                    const _ht3 = acc.hotel?.roomTypes?.find(rt => rt.name === room.roomTypeCode);
+                                    const _yp3 = _ht3?.yearlyPrices?.find(yp => yp.year === _accYear3);
+                                    const pricePerNight = _yp3?.pricePerNight || _ht3?.pricePerNight || parseFloat(room.pricePerNight) || 0;
                                     const nights = acc.nights || 1;
 
                                     if (!isPAX) totalRooms += roomCount;

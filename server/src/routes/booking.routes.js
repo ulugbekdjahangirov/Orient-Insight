@@ -1175,7 +1175,7 @@ router.get('/:id/accommodations', authenticate, async (req, res) => {
         hotel: {
           include: {
             city: true,
-            roomTypes: true  // Include room types to get currency info
+            roomTypes: { include: { yearlyPrices: true } }  // Include room types + yearly prices
           }
         },
         roomType: true,
