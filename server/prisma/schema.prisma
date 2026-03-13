@@ -266,6 +266,7 @@ model Invoice {
   booking         Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   invoiceNumber   String    // Sequential: "1", "2", "3"...
+  confirmedNumber Int?      // Permanent number assigned via "Raqam berish" button
   invoiceType     String    // "Rechnung", "Neue Rechnung", "Gutschrift"
   firma           String?   // "Orient Insight", "INFUTURESTORM"
 

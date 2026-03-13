@@ -127,6 +127,33 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/invoices/:id/assign-number - Permanently assign next confirmedNumber to an invoice
+router.post('/:id/assign-number', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const invoice = await prisma.invoice.findUnique({ where: { id: parseInt(id) } });
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+    if (invoice.confirmedNumber) return res.json({ invoice, alreadyAssigned: true });
+
+    // Get the max confirmedNumber across all Rechnung/Neue Rechnung/Gutschrift invoices
+    const maxResult = await prisma.invoice.aggregate({
+      _max: { confirmedNumber: true },
+      where: { invoiceType: { in: ['Rechnung', 'Neue Rechnung', 'Gutschrift'] } }
+    });
+    const nextNumber = (maxResult._max.confirmedNumber || 0) + 1;
+
+    const updated = await prisma.invoice.update({
+      where: { id: parseInt(id) },
+      data: { confirmedNumber: nextNumber },
+      include: { booking: { include: { tourType: true } } }
+    });
+    res.json({ invoice: updated });
+  } catch (err) {
+    console.error('Error assigning invoice number:', err);
+    res.status(500).json({ error: 'Failed to assign number' });
+  }
+});
+
 // GET /api/invoices/dalolatnoma-sequence/:bookingId - Get sequential number for Dalolatnoma
 router.get('/dalolatnoma-sequence/:bookingId', authenticate, async (req, res) => {
   try {
@@ -244,7 +271,8 @@ router.put('/:id', authenticate, async (req, res) => {
       totalAmount,
       currency,
       notes,
-      isPaid
+      isPaid,
+      confirmedNumber
     } = req.body;
 
     const updateData = {};
@@ -255,6 +283,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (currency !== undefined) updateData.currency = currency;
     if (notes !== undefined) updateData.notes = notes || null;
     if (isPaid !== undefined) updateData.isPaid = Boolean(isPaid);
+    if (confirmedNumber !== undefined) updateData.confirmedNumber = confirmedNumber || null;
 
     const invoice = await prisma.invoice.update({
       where: { id: parseInt(id) },

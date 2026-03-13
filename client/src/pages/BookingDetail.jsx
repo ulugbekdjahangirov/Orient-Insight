@@ -367,10 +367,7 @@ export default function BookingDetail() {
   const [gutschriftInvoice, setGutschriftInvoice] = useState(null);
   const [dalolatnomInvoice, setDalolatnomInvoice] = useState(null);
 
-  // Sequential numbers for Rechnung module display
-  const [rechnungSequentialNumber, setRechnungSequentialNumber] = useState(0);
-  const [neueRechnungSequentialNumber, setNeueRechnungSequentialNumber] = useState(0);
-  const [gutschriftSequentialNumber, setGutschriftSequentialNumber] = useState(0);
+  // Sequential number for Dalolatnoma (server-side computed)
   const [dalolatnomSequentialNumber, setDalolatnomSequentialNumber] = useState(0);
 
   // Initialize activeTab from localStorage or default to 'info'
@@ -1666,30 +1663,6 @@ export default function BookingDetail() {
           // Fetch ALL invoices globally to calculate sequential numbers (matching Rechnung module display)
           const allInvoicesRes = await invoicesApi.getAll({});
           const allInvoices = allInvoicesRes.data.invoices || [];
-
-          // EXACT logic from Rechnung.jsx:
-          // Filter: Rechnung/Neue Rechnung + firma selected
-          // Sort: by ID ascending (creation order)
-          const rechnungTypeInvoices = allInvoices
-            .filter(inv =>
-              (inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung') &&
-              inv.firma
-            )
-            .sort((a, b) => a.id - b.id); // Sort by ID (creation order)
-
-          const gutschriftTypeInvoices = allInvoices
-            .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
-            .sort((a, b) => a.id - b.id);
-
-          // Find index in sorted list (1-based for display)
-          const rechnungSeqNumber = rechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === rechnung.id) + 1 : 0;
-          const neueRechnungSeqNumber = neueRechnung ? rechnungTypeInvoices.findIndex(inv => inv.id === neueRechnung.id) + 1 : 0;
-          const gutschriftSeqNumber = gutschrift ? gutschriftTypeInvoices.findIndex(inv => inv.id === gutschrift.id) + 1 : 0;
-
-          // Store sequential numbers
-          setRechnungSequentialNumber(rechnungSeqNumber);
-          setNeueRechnungSequentialNumber(neueRechnungSeqNumber);
-          setGutschriftSequentialNumber(gutschriftSeqNumber);
 
           // Dalolatnoma sequential number - computed server-side
           if (dalolatnom) {
@@ -5905,28 +5878,25 @@ export default function BookingDetail() {
       });
       const existingInvoice = invoicesResponse.data.invoices?.[0];
 
-      // If firma is empty, delete the invoice if it exists
+      // If firma is empty, update firma=null (keep invoice so id is preserved)
       if (!firma || firma === '') {
         if (existingInvoice) {
-          await invoicesApi.delete(existingInvoice.id);
+          await invoicesApi.update(existingInvoice.id, { firma: null });
         }
 
         // Clear state based on invoice type
         if (invoiceType === 'Rechnung') {
-          setRechnungInvoice(null);
-          setRechnungSequentialNumber(0);
+          setRechnungInvoice(existingInvoice ? { ...existingInvoice, firma: null } : null);
         } else if (invoiceType === 'Neue Rechnung') {
-          setNeueRechnungInvoice(null);
-          setNeueRechnungSequentialNumber(0);
+          setNeueRechnungInvoice(existingInvoice ? { ...existingInvoice, firma: null } : null);
         } else if (invoiceType === 'Gutschrift') {
-          setGutschriftInvoice(null);
-          setGutschriftSequentialNumber(0);
+          setGutschriftInvoice(existingInvoice ? { ...existingInvoice, firma: null } : null);
         } else if (invoiceType === 'Dalolatnoma') {
-          setDalolatnomInvoice(null);
+          setDalolatnomInvoice(existingInvoice ? { ...existingInvoice, firma: null } : null);
           setDalolatnomSequentialNumber(0);
         }
 
-        toast.success('Invoice o\'chirildi');
+        toast.success('Firma olib tashlandi');
         return;
       }
 
@@ -5958,31 +5928,7 @@ export default function BookingDetail() {
         setDalolatnomInvoice(updatedInvoice);
       }
 
-      // Recalculate sequential numbers based on global list (matching Rechnung module)
-      const allInvoicesRes = await invoicesApi.getAll({});
-      const allInvoices = allInvoicesRes.data.invoices || [];
-
-      const rechnungTypeInvoices = allInvoices
-        .filter(inv =>
-          (inv.invoiceType === 'Rechnung' || inv.invoiceType === 'Neue Rechnung') &&
-          inv.firma
-        )
-        .sort((a, b) => a.id - b.id); // Sort by ID (creation order)
-
-      const gutschriftTypeInvoices = allInvoices
-        .filter(inv => inv.invoiceType === 'Gutschrift' && inv.firma)
-        .sort((a, b) => a.id - b.id);
-
-      if (invoiceType === 'Rechnung' && updatedInvoice) {
-        const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
-        setRechnungSequentialNumber(seqNum);
-      } else if (invoiceType === 'Neue Rechnung' && updatedInvoice) {
-        const seqNum = rechnungTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
-        setNeueRechnungSequentialNumber(seqNum);
-      } else if (invoiceType === 'Gutschrift' && updatedInvoice) {
-        const seqNum = gutschriftTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
-        setGutschriftSequentialNumber(seqNum);
-      } else if (invoiceType === 'Dalolatnoma' && updatedInvoice) {
+      if (invoiceType === 'Dalolatnoma' && updatedInvoice) {
         try {
           const seqRes = await invoicesApi.getDalolatnomSequence(updatedInvoice.bookingId);
           setDalolatnomSequentialNumber(seqRes.data?.sequentialNumber || 0);
@@ -5994,6 +5940,21 @@ export default function BookingDetail() {
       toast.success('Firma saqlandi');
     } catch (error) {
       console.error('Error updating firma:', error);
+      toast.error('Xatolik yuz berdi');
+    }
+  };
+
+  // Permanently assign next confirmedNumber to an invoice
+  const handleAssignInvoiceNumber = async (invoiceId, invoiceType) => {
+    try {
+      const res = await invoicesApi.assignNumber(invoiceId);
+      const updated = res.data.invoice;
+      if (invoiceType === 'Rechnung') setRechnungInvoice(updated);
+      else if (invoiceType === 'Neue Rechnung') setNeueRechnungInvoice(updated);
+      else if (invoiceType === 'Gutschrift') setGutschriftInvoice(updated);
+      toast.success('Raqam berildi: ' + updated.confirmedNumber);
+    } catch (e) {
+      console.error('Error assigning number:', e);
       toast.error('Xatolik yuz berdi');
     }
   };
@@ -11114,6 +11075,22 @@ export default function BookingDetail() {
                   <option value="Orient Insight">Orient Insight</option>
                   <option value="INFUTURESTORM">INFUTURESTORM</option>
                 </select>
+                {rechnungInvoice?.firma && (
+                  <div className="mt-3 flex items-center gap-3">
+                    {rechnungInvoice.confirmedNumber ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-semibold">
+                        ✓ Raqam: {rechnungInvoice.confirmedNumber}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleAssignInvoiceNumber(rechnungInvoice.id, 'Rechnung')}
+                        className="px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Raqam berish
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <RechnungDocument
@@ -11121,7 +11098,7 @@ export default function BookingDetail() {
                 booking={booking}
                 tourists={tourists}
                 invoice={rechnungInvoice}
-                sequentialNumber={rechnungSequentialNumber}
+                sequentialNumber={rechnungInvoice?.confirmedNumber || 0}
                 onWorldInsightSend={() => openWorldInsightModal('rechnung')}
               />
             </div>
@@ -11144,6 +11121,22 @@ export default function BookingDetail() {
                   <option value="Orient Insight">Orient Insight</option>
                   <option value="INFUTURESTORM">INFUTURESTORM</option>
                 </select>
+                {neueRechnungInvoice?.firma && (
+                  <div className="mt-3 flex items-center gap-3">
+                    {neueRechnungInvoice.confirmedNumber ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-semibold">
+                        ✓ Raqam: {neueRechnungInvoice.confirmedNumber}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleAssignInvoiceNumber(neueRechnungInvoice.id, 'Neue Rechnung')}
+                        className="px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Raqam berish
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <RechnungDocument
@@ -11153,9 +11146,9 @@ export default function BookingDetail() {
                 showThreeRows={true}
                 invoice={neueRechnungInvoice}
                 invoiceType="Neue Rechnung"
-                previousInvoiceNumber={rechnungSequentialNumber > 0 ? rechnungSequentialNumber.toString() : ''}
+                previousInvoiceNumber={rechnungInvoice?.confirmedNumber ? rechnungInvoice.confirmedNumber.toString() : ''}
                 previousInvoiceAmount={rechnungInvoice?.totalAmount || 0}
-                sequentialNumber={neueRechnungSequentialNumber}
+                sequentialNumber={neueRechnungInvoice?.confirmedNumber || 0}
                 onWorldInsightSend={() => openWorldInsightModal('neue-rechnung')}
               />
             </div>
@@ -11178,6 +11171,22 @@ export default function BookingDetail() {
                   <option value="Orient Insight">Orient Insight</option>
                   <option value="INFUTURESTORM">INFUTURESTORM</option>
                 </select>
+                {gutschriftInvoice?.firma && (
+                  <div className="mt-3 flex items-center gap-3">
+                    {gutschriftInvoice.confirmedNumber ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-semibold">
+                        ✓ Raqam: {gutschriftInvoice.confirmedNumber}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleAssignInvoiceNumber(gutschriftInvoice.id, 'Gutschrift')}
+                        className="px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Raqam berish
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <RechnungDocument
@@ -11187,9 +11196,9 @@ export default function BookingDetail() {
                 showThreeRows={true}
                 invoice={gutschriftInvoice}
                 invoiceType="Gutschrift"
-                previousInvoiceNumber={rechnungSequentialNumber > 0 ? rechnungSequentialNumber.toString() : ''}
+                previousInvoiceNumber={rechnungInvoice?.confirmedNumber ? rechnungInvoice.confirmedNumber.toString() : ''}
                 previousInvoiceAmount={rechnungInvoice?.totalAmount || 0}
-                sequentialNumber={gutschriftSequentialNumber}
+                sequentialNumber={gutschriftInvoice?.confirmedNumber || 0}
                 onWorldInsightSend={() => openWorldInsightModal('gutschrift')}
               />
             </div>
