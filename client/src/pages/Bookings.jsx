@@ -168,7 +168,7 @@ export default function Bookings() {
       // Filter by calculated status on frontend
       if (status) {
         bookingsData = bookingsData.filter(booking => {
-          const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+          const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(getDisplayStats(booking).pax, booking.departureDate, booking.endDate);
           return calculatedStatus === status;
         });
       }
@@ -519,7 +519,7 @@ export default function Bookings() {
         ) : isMobile ? (
           <div className="space-y-3 px-3 py-2">
             {displayedBookings.map((booking, index) => {
-              const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+              const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(getDisplayStats(booking).pax, booking.departureDate, booking.endDate);
               const ds = getDisplayStats(booking);
               return (
                 <div
@@ -664,7 +664,7 @@ export default function Bookings() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {displayedBookings.map((booking, index) => {
-                  const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                  const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(getDisplayStats(booking).pax, booking.departureDate, booking.endDate);
                   const ds = getDisplayStats(booking);
 
                   // Set row background color based on status
