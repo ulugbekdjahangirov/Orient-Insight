@@ -184,6 +184,54 @@ export async function downloadAndSavePdf({ url, tourType, bookingNumber, categor
   }
 }
 
+// ── Dalolatnoma folder (separate from tour-type folders) ─────────────────────
+
+export async function selectDalolatnomFolder() {
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    await saveFolderHandle('pdfFolder_Dalolatnoma', dirHandle);
+    return { success: true, folderName: dirHandle.name };
+  } catch (error) {
+    if (error.name === 'AbortError') return { success: false, cancelled: true };
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getDalolatnomFolderHandle() {
+  const handle = await getFolderHandle('pdfFolder_Dalolatnoma');
+  if (!handle) return null;
+  const perm = await handle.queryPermission({ mode: 'readwrite' });
+  if (perm === 'granted') return handle;
+  if (perm === 'prompt') {
+    const newPerm = await handle.requestPermission({ mode: 'readwrite' });
+    if (newPerm === 'granted') return handle;
+  }
+  return null;
+}
+
+export async function getDalolatnomFolderName() {
+  try {
+    const handle = await getFolderHandle('pdfFolder_Dalolatnoma');
+    return handle ? handle.name : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveDalolatnomPdf({ filename, pdfBlob }) {
+  try {
+    const handle = await getDalolatnomFolderHandle();
+    if (!handle) return { success: false, error: 'Papka tanlanmagan' };
+    const fileHandle = await handle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(pdfBlob);
+    await writable.close();
+    return { success: true, filename };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
 // ── Legacy compatibility (used by older BookingDetail code) ──────────────────
 
 export async function selectBaseFolder() {

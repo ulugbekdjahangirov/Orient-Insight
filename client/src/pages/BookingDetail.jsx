@@ -365,11 +365,13 @@ export default function BookingDetail() {
   const [rechnungInvoice, setRechnungInvoice] = useState(null);
   const [neueRechnungInvoice, setNeueRechnungInvoice] = useState(null);
   const [gutschriftInvoice, setGutschriftInvoice] = useState(null);
+  const [dalolatnomInvoice, setDalolatnomInvoice] = useState(null);
 
   // Sequential numbers for Rechnung module display
   const [rechnungSequentialNumber, setRechnungSequentialNumber] = useState(0);
   const [neueRechnungSequentialNumber, setNeueRechnungSequentialNumber] = useState(0);
   const [gutschriftSequentialNumber, setGutschriftSequentialNumber] = useState(0);
+  const [dalolatnomSequentialNumber, setDalolatnomSequentialNumber] = useState(0);
 
   // Initialize activeTab from localStorage or default to 'info'
   const getInitialTab = () => {
@@ -521,13 +523,37 @@ export default function BookingDetail() {
     }
   };
 
-  const setDocumentsTab = (tab) => {
+  const setDocumentsTab = async (tab) => {
     setDocumentsTabState(tab);
     if (!isNew && activeTab === 'documents') {
       const params = new URLSearchParams(window.location.search);
       params.set('tab', 'documents');
       params.set('docTab', tab);
       navigate(`?${params.toString()}`, { replace: true });
+    }
+    // Auto-create Dalolatnoma invoice if it doesn't exist
+    if (tab === 'dalolatnoma' && !dalolatnomInvoice && booking?.id) {
+      try {
+        const res = await invoicesApi.create({
+          bookingId: booking.id,
+          invoiceType: 'Dalolatnoma',
+          totalAmount: 0,
+          currency: 'USD'
+        });
+        const newInvoice = res.data?.invoice || res.invoice;
+        if (newInvoice) {
+          setDalolatnomInvoice(newInvoice);
+          // Get sequential number from server
+          try {
+            const seqRes = await invoicesApi.getDalolatnomSequence(newInvoice.bookingId);
+            setDalolatnomSequentialNumber(seqRes.data?.sequentialNumber || 0);
+          } catch (e) {
+            setDalolatnomSequentialNumber(0);
+          }
+        }
+      } catch (e) {
+        console.error('Dalolatnoma invoice auto-create error:', e);
+      }
     }
   };
 
@@ -596,6 +622,7 @@ export default function BookingDetail() {
   const rechnungRef = useRef(null);
   const neueRechnungRef = useRef(null);
   const gutschriftRef = useRef(null);
+  const dalolatnomRef = useRef(null);
 
   // World Insight email send state
   const [worldInsightModal, setWorldInsightModal] = useState(false);
@@ -1629,10 +1656,12 @@ export default function BookingDetail() {
           const rechnung = invoices.find(inv => inv.invoiceType === 'Rechnung');
           const neueRechnung = invoices.find(inv => inv.invoiceType === 'Neue Rechnung');
           const gutschrift = invoices.find(inv => inv.invoiceType === 'Gutschrift');
+          const dalolatnom = invoices.find(inv => inv.invoiceType === 'Dalolatnoma');
 
           setRechnungInvoice(rechnung || null);
           setNeueRechnungInvoice(neueRechnung || null);
           setGutschriftInvoice(gutschrift || null);
+          setDalolatnomInvoice(dalolatnom || null);
 
           // Fetch ALL invoices globally to calculate sequential numbers (matching Rechnung module display)
           const allInvoicesRes = await invoicesApi.getAll({});
@@ -1661,6 +1690,16 @@ export default function BookingDetail() {
           setRechnungSequentialNumber(rechnungSeqNumber);
           setNeueRechnungSequentialNumber(neueRechnungSeqNumber);
           setGutschriftSequentialNumber(gutschriftSeqNumber);
+
+          // Dalolatnoma sequential number - computed server-side
+          if (dalolatnom) {
+            try {
+              const seqRes = await invoicesApi.getDalolatnomSequence(dalolatnom.bookingId);
+              setDalolatnomSequentialNumber(seqRes.data?.sequentialNumber || 0);
+            } catch (e) {
+              setDalolatnomSequentialNumber(0);
+            }
+          }
 
           // Load railway paid status
           try {
@@ -5882,6 +5921,9 @@ export default function BookingDetail() {
         } else if (invoiceType === 'Gutschrift') {
           setGutschriftInvoice(null);
           setGutschriftSequentialNumber(0);
+        } else if (invoiceType === 'Dalolatnoma') {
+          setDalolatnomInvoice(null);
+          setDalolatnomSequentialNumber(0);
         }
 
         toast.success('Invoice o\'chirildi');
@@ -5912,6 +5954,8 @@ export default function BookingDetail() {
         setNeueRechnungInvoice(updatedInvoice);
       } else if (invoiceType === 'Gutschrift') {
         setGutschriftInvoice(updatedInvoice);
+      } else if (invoiceType === 'Dalolatnoma') {
+        setDalolatnomInvoice(updatedInvoice);
       }
 
       // Recalculate sequential numbers based on global list (matching Rechnung module)
@@ -5938,6 +5982,13 @@ export default function BookingDetail() {
       } else if (invoiceType === 'Gutschrift' && updatedInvoice) {
         const seqNum = gutschriftTypeInvoices.findIndex(inv => inv.id === updatedInvoice.id) + 1;
         setGutschriftSequentialNumber(seqNum);
+      } else if (invoiceType === 'Dalolatnoma' && updatedInvoice) {
+        try {
+          const seqRes = await invoicesApi.getDalolatnomSequence(updatedInvoice.bookingId);
+          setDalolatnomSequentialNumber(seqRes.data?.sequentialNumber || 0);
+        } catch (e) {
+          // ignore
+        }
       }
 
       toast.success('Firma saqlandi');
@@ -8939,6 +8990,33 @@ export default function BookingDetail() {
   };
 
 
+  // Compute Überweisung total in USD for Dalolatnoma auto-fill (must be before any early returns)
+  const uberweisungTotalUSD = useMemo(() => {
+    const pax = tourists?.length || 0;
+    let totalUZS = 0;
+    sightseeingData.forEach(sight => {
+      const pricePerPerson = parseFloat((sight.price || sight.pricePerPerson || '0').toString().replace(/\s/g, '')) || 0;
+      const total = pricePerPerson * pax;
+      if (total > 0) totalUZS += total;
+    });
+    showsData.forEach(show => {
+      const name = show.name || '';
+      if (!name.toLowerCase().includes('folklore show') && !name.toLowerCase().includes('nadir divan')) return;
+      const pricePerPerson = parseFloat((show.price || show.pricePerPerson || '0').toString().replace(/\s/g, '')) || 0;
+      const showPax = show.pax || pax;
+      const total = pricePerPerson * showPax;
+      if (total > 0) totalUZS += total;
+    });
+    if (railways) {
+      railways.forEach(railway => {
+        const total = railway.price || 0;
+        if (total > 0) totalUZS += total;
+      });
+    }
+    const rawUSD = UZS_PER_USD > 0 ? totalUZS / UZS_PER_USD : 0;
+    return Math.ceil(rawUSD / 100) * 100;
+  }, [sightseeingData, showsData, railways, tourists]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
@@ -10482,6 +10560,7 @@ export default function BookingDetail() {
               <button onClick={() => setDocumentsTab('rechnung')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'rechnung' ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><DollarSign className="w-4 h-4" /><span>Rechnung</span></button>
               <button onClick={() => setDocumentsTab('neue-rechnung')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'neue-rechnung' ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><FileText className="w-4 h-4" /><span>Neue</span></button>
               <button onClick={() => setDocumentsTab('gutschrift')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'gutschrift' ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><FileText className="w-4 h-4" /><span>Gutschrift</span></button>
+              <button onClick={() => setDocumentsTab('dalolatnoma')} className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs font-bold rounded-xl transition-all ${documentsTab === 'dalolatnoma' ? 'bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><FileText className="w-4 h-4" /><span>Dalolat</span></button>
             </div>
             {/* Desktop nav */}
             <nav className="hidden sm:flex space-x-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
@@ -10552,6 +10631,17 @@ export default function BookingDetail() {
               >
                 <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                 <span>Gutschrift</span>
+              </button>
+              <button
+                onClick={() => setDocumentsTab('dalolatnoma')}
+                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                  documentsTab === 'dalolatnoma'
+                    ? 'bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 text-white'
+                    : 'bg-white text-gray-700 border border-gray-200'
+                }`}
+              >
+                <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <span>Dalolatnoma</span>
               </button>
             </nav>
           </div>
@@ -11101,6 +11191,21 @@ export default function BookingDetail() {
                 previousInvoiceAmount={rechnungInvoice?.totalAmount || 0}
                 sequentialNumber={gutschriftSequentialNumber}
                 onWorldInsightSend={() => openWorldInsightModal('gutschrift')}
+              />
+            </div>
+          </div>
+
+          {/* Dalolatnoma Tab Content */}
+          <div style={{ display: documentsTab === 'dalolatnoma' ? 'block' : 'none' }}>
+            <div className="space-y-4">
+              <RechnungDocument
+                ref={dalolatnomRef}
+                booking={booking}
+                tourists={tourists}
+                invoice={dalolatnomInvoice}
+                invoiceType="Dalolatnoma"
+                sequentialNumber={dalolatnomSequentialNumber}
+                uberweisungTotalUSD={uberweisungTotalUSD}
               />
             </div>
           </div>

@@ -127,6 +127,22 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/invoices/dalolatnoma-sequence/:bookingId - Get sequential number for Dalolatnoma
+router.get('/dalolatnoma-sequence/:bookingId', authenticate, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const allDalolatnoma = await prisma.invoice.findMany({
+      where: { invoiceType: 'Dalolatnoma' },
+      include: { booking: { select: { id: true, endDate: true } } },
+    });
+    allDalolatnoma.sort((a, b) => new Date(a.booking?.endDate || 0) - new Date(b.booking?.endDate || 0));
+    const idx = allDalolatnoma.findIndex(inv => inv.bookingId === parseInt(bookingId));
+    res.json({ sequentialNumber: idx >= 0 ? idx + 1 : 0 });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get sequential number' });
+  }
+});
+
 // GET /api/invoices/:id - Get invoice by ID
 router.get('/:id', authenticate, async (req, res) => {
   try {

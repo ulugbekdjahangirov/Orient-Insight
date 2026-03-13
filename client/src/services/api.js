@@ -332,6 +332,7 @@ export const invoicesApi = {
   saveAusgabenHotelPaid: (data) => api.put('/invoices/ausgaben-paid/hotel', { data }),
   saveAusgabenTransportPaid: (data) => api.put('/invoices/ausgaben-paid/transport', { data }),
   saveAusgabenRailwayPaid: (data) => api.put('/invoices/ausgaben-paid/railway', { data }),
+  getDalolatnomSequence: (bookingId) => api.get(`/invoices/dalolatnoma-sequence/${bookingId}`),
 };
 
 // API for price configurations

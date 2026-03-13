@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useImperativeHandle } from 'react';
 import { format } from 'date-fns';
-import { Download, Printer, Plus, Trash2, Edit2, Mail } from 'lucide-react';
+import { Download, Printer, Plus, Trash2, Edit2, Mail, Folder } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import api, { invoicesApi, pricesApi } from '../../services/api';
-import { getTourTypeFolderHandle, savePdfToFolder } from '../../utils/fileSystemUtils';
+import { getTourTypeFolderHandle, savePdfToFolder, selectDalolatnomFolder, getDalolatnomFolderHandle, getDalolatnomFolderName, saveDalolatnomPdf, isFileSystemAccessSupported } from '../../utils/fileSystemUtils';
 
-const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0, onWorldInsightSend }, ref) {
+const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, tourists, showThreeRows = false, invoice = null, invoiceType = 'Rechnung', previousInvoiceNumber = '', sequentialNumber = 0, previousInvoiceAmount = 0, onWorldInsightSend, uberweisungTotalUSD = 0 }, ref) {
   // Format number with space as thousands separator (1234 → 1 234)
   const formatNumber = (num) => {
     if (num === null || num === undefined || num === '') return '';
@@ -31,9 +31,17 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   const [roomingListData, setRoomingListData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [totalPrices, setTotalPrices] = useState(null); // Total prices from database/localStorage
+  const [dalolatnomFolderName, setDalolatnomFolderName] = useState(null);
   const lockedInvoiceIdRef = React.useRef(null); // Track which invoice ID is locked
   const lockedItemsRef = React.useRef(null); // Store locked items
   const invoiceItemsRef = React.useRef([]); // Always tracks latest invoiceItems state
+
+  // Load Dalolatnoma folder name on mount
+  useEffect(() => {
+    if (invoiceType === 'Dalolatnoma') {
+      getDalolatnomFolderName().then(name => setDalolatnomFolderName(name));
+    }
+  }, [invoiceType]);
 
   // Load Total Prices from database (with localStorage fallback)
   useEffect(() => {
@@ -377,6 +385,17 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
   // Initialize invoice items with calculated prices for ER
   const initializeInvoiceItems = () => {
+    // For Dalolatnoma: fixed 3-row structure with auto-calculated total from Überweisung
+    if (invoiceType === 'Dalolatnoma') {
+      const pax = tourists?.length || booking?.pax || 0;
+      const totalPrice = uberweisungTotalUSD || 0;
+      return [
+        { id: 1, description: booking?.bookingNumber || '', pax: pax, einzelpreis: totalPrice, anzahl: 1, currency: 'USD' },
+        { id: 2, description: '', pax: '', einzelpreis: '', anzahl: 1, currency: 'USD' },
+        { id: 3, description: '', pax: '', einzelpreis: '', anzahl: 1, currency: 'USD' }
+      ];
+    }
+
     // tourType can be either a string 'ER' or an object { code: 'ER', ... }
     const tourTypeCode = typeof booking?.tourType === 'string'
       ? booking?.tourType
@@ -584,6 +603,14 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   // CRITICAL: If firma is selected, invoice is LOCKED - use saved items, don't recalculate
   useEffect(() => {
     if (booking && !loading) {
+      // Dalolatnoma always recalculates (no locking, different item structure)
+      if (invoiceType === 'Dalolatnoma') {
+        if (totalPrices !== null) {
+          setInvoiceItems(initializeInvoiceItems());
+        }
+        return;
+      }
+
       const invoiceId = invoice?.id;
       const hasFirma = invoice?.firma ? true : false;
 
@@ -703,7 +730,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         setInvoiceItems(items);
       }
     }
-  }, [booking, tourists, roomingListData, loading, invoice?.id, invoice?.firma, invoice?.items, totalPrices]);
+  }, [booking, tourists, roomingListData, loading, invoice?.id, invoice?.firma, invoice?.items, totalPrices, uberweisungTotalUSD]);
 
   // Calculate total
   const calculateTotal = () => {
@@ -749,6 +776,11 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
   // Get invoice date: locked to creation date when firma is selected, today otherwise
   const getInvoiceDate = () => {
+    if (invoiceType === 'Dalolatnoma' && booking?.endDate) {
+      try {
+        return format(new Date(booking.endDate), 'dd.MM.yyyy');
+      } catch { /* fall through */ }
+    }
     if (invoice?.firma && invoice?.createdAt) {
       try {
         return format(new Date(invoice.createdAt), 'dd.MM.yyyy');
@@ -849,127 +881,98 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
       yPos += 35;
 
-      // Title "Rechnung", "Neue Rechnung", or "Gutschrift"
+      // Title
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung');
+      const pdfTitle = invoiceType === 'Dalolatnoma' ? "Bajarilgan ishlar to'g'risida dalolatnoma" : invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung');
       doc.text(pdfTitle, 105, yPos, { align: 'center' });
       yPos += 8;
 
-      // Tour description
+      // Description
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      const tourDesc = getTourDescription();
+      let tourDesc;
+      if (invoiceType === 'Dalolatnoma') {
+        const bn = booking?.bookingNumber || '';
+        if (booking?.departureDate && booking?.endDate) {
+          const sd = format(new Date(booking.departureDate), 'dd.MM');
+          const ed = format(new Date(booking.endDate), 'dd.MM.yyyy');
+          tourDesc = `${bn} gruppasi ${sd}-${ed} yil`;
+        } else { tourDesc = `${bn} gruppasi`; }
+      } else { tourDesc = getTourDescription(); }
       doc.text(tourDesc, 105, yPos, { align: 'center', maxWidth: 180 });
       yPos += 10;
 
-      // Rechnung Nr and Datum on same line
+      // Nr and Datum
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      // Only show invoice number if firma is selected and sequential number exists
-      const displayNumber = (invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '';
+      const displayNumber = invoiceType === 'Dalolatnoma'
+        ? (sequentialNumber > 0 ? sequentialNumber : '')
+        : ((invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '');
       if (displayNumber) {
-        doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
+        doc.text(`${invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : 'Rechnung Nr:'} ${displayNumber}`, 15, yPos);
       }
-      doc.text(`Datum:`, 155, yPos);
+      doc.text(invoiceType === 'Dalolatnoma' ? 'Sana:' : 'Datum:', 155, yPos);
       doc.text(`${getInvoiceDate()}`, 195, yPos, { align: 'right' });
       yPos += 10;
 
-      // Invoice table (more compact)
-      const tableData = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
-        (index + 1).toString(),
-        item.description,
-        item.einzelpreis.toString(),
-        item.anzahl.toString(),
-        (item.einzelpreis * item.anzahl).toString(),
-        item.currency
-      ]);
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['№', 'Beschreibung', 'Einzelpreis', 'Anzahl', 'Gesamtpreis', 'Währung']],
-        body: tableData,
-        theme: 'grid',
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        headStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
-          fontStyle: 'bold',
-          halign: 'center',
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        bodyStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        columnStyles: {
-          0: { halign: 'center', cellWidth: 12 },
-          1: { halign: 'left', cellWidth: 75 },
-          2: { halign: 'right', cellWidth: 28 },
-          3: { halign: 'center', cellWidth: 20 },
-          4: { halign: 'right', cellWidth: 30 },
-          5: { halign: 'center', cellWidth: 25 }
-        }
-      });
-
-      yPos = doc.lastAutoTable.finalY;
-
-      // Total rows - conditional based on showThreeRows (Neue Rechnung vs regular Rechnung)
-      if (showThreeRows) {
-        // For Neue Rechnung: show 3 rows (TOTAL, Already Paid, Final Amount)
+      // Invoice table
+      if (invoiceType === 'Dalolatnoma') {
+        const dalTableData = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
+          (index + 1).toString(),
+          item.description || '',
+          item.pax !== undefined && item.pax !== '' ? item.pax.toString() : '',
+          item.einzelpreis !== undefined && item.einzelpreis !== '' && item.einzelpreis !== 0 ? formatNumber(item.einzelpreis) : '',
+          item.currency || 'USD'
+        ]);
         autoTable(doc, {
           startY: yPos,
-          body: [
-            ['', 'TOTAL:', '', '', calculateTotal().toString(), 'USD'],
-            ['', `Bereits bezahlte Rechnung Nr. ${bezahlteRechnungNr || ''}`, '', '', bezahlteRechnung.toString(), 'USD'],
-            ['', 'Gesamtbetrag:', '', '', calculateGesamtbetrag().toString(), 'USD']
-          ],
+          head: [['№', 'Gruppa nomi', 'odamlar soni', 'Yetkazib berish qiymati', 'Valyuta']],
+          body: dalTableData,
           theme: 'grid',
-          styles: {
-            fontSize: 10,
-            cellPadding: 2,
-            lineWidth: 0.5,
-            lineColor: [0, 0, 0]
-          },
-          bodyStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0],
-            fontStyle: 'bold'
-          },
+          styles: { fontSize: 9, cellPadding: 2, lineWidth: 0.5, lineColor: [0, 0, 0] },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.5, lineColor: [0, 0, 0] },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0] },
           columnStyles: {
             0: { halign: 'center', cellWidth: 12 },
             1: { halign: 'left', cellWidth: 75 },
-            2: { halign: 'right', cellWidth: 28 },
-            3: { halign: 'center', cellWidth: 20 },
-            4: { halign: 'right', cellWidth: 30 },
-            5: { halign: 'center', cellWidth: 25 }
+            2: { halign: 'center', cellWidth: 25 },
+            3: { halign: 'right', cellWidth: 48 },
+            4: { halign: 'center', cellWidth: 20 }
+          }
+        });
+        yPos = doc.lastAutoTable.finalY;
+        autoTable(doc, {
+          startY: yPos,
+          body: [['', 'Jami:', '', formatNumber(calculateTotal()), 'USD']],
+          theme: 'grid',
+          styles: { fontSize: 10, cellPadding: 2, fontStyle: 'bold', lineWidth: 0.5, lineColor: [0, 0, 0] },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 12 },
+            1: { halign: 'left', cellWidth: 75 },
+            2: { halign: 'center', cellWidth: 25 },
+            3: { halign: 'right', cellWidth: 48 },
+            4: { halign: 'center', cellWidth: 20 }
           }
         });
       } else {
-        // For regular Rechnung: show single Gesamtbetrag row
+        const tableData = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
+          (index + 1).toString(),
+          item.description,
+          item.einzelpreis.toString(),
+          item.anzahl.toString(),
+          (item.einzelpreis * item.anzahl).toString(),
+          item.currency
+        ]);
         autoTable(doc, {
           startY: yPos,
-          body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+          head: [['№', 'Beschreibung', 'Einzelpreis', 'Anzahl', 'Gesamtpreis', 'Währung']],
+          body: tableData,
           theme: 'grid',
-          styles: {
-            fontSize: 10,
-            cellPadding: 2,
-            fontStyle: 'bold',
-            lineWidth: 0.5,
-            lineColor: [0, 0, 0]
-          },
-          bodyStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0]
-          },
+          styles: { fontSize: 9, cellPadding: 2, lineWidth: 0.5, lineColor: [0, 0, 0] },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.5, lineColor: [0, 0, 0] },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0] },
           columnStyles: {
             0: { halign: 'center', cellWidth: 12 },
             1: { halign: 'left', cellWidth: 75 },
@@ -979,6 +982,44 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             5: { halign: 'center', cellWidth: 25 }
           }
         });
+        yPos = doc.lastAutoTable.finalY;
+        if (showThreeRows) {
+          autoTable(doc, {
+            startY: yPos,
+            body: [
+              ['', 'TOTAL:', '', '', calculateTotal().toString(), 'USD'],
+              ['', `Bereits bezahlte Rechnung Nr. ${bezahlteRechnungNr || ''}`, '', '', bezahlteRechnung.toString(), 'USD'],
+              ['', 'Gesamtbetrag:', '', '', calculateGesamtbetrag().toString(), 'USD']
+            ],
+            theme: 'grid',
+            styles: { fontSize: 10, cellPadding: 2, lineWidth: 0.5, lineColor: [0, 0, 0] },
+            bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold' },
+            columnStyles: {
+              0: { halign: 'center', cellWidth: 12 },
+              1: { halign: 'left', cellWidth: 75 },
+              2: { halign: 'right', cellWidth: 28 },
+              3: { halign: 'center', cellWidth: 20 },
+              4: { halign: 'right', cellWidth: 30 },
+              5: { halign: 'center', cellWidth: 25 }
+            }
+          });
+        } else {
+          autoTable(doc, {
+            startY: yPos,
+            body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+            theme: 'grid',
+            styles: { fontSize: 10, cellPadding: 2, fontStyle: 'bold', lineWidth: 0.5, lineColor: [0, 0, 0] },
+            bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            columnStyles: {
+              0: { halign: 'center', cellWidth: 12 },
+              1: { halign: 'left', cellWidth: 75 },
+              2: { halign: 'right', cellWidth: 28 },
+              3: { halign: 'center', cellWidth: 20 },
+              4: { halign: 'right', cellWidth: 30 },
+              5: { halign: 'center', cellWidth: 25 }
+            }
+          });
+        }
       }
 
       yPos = doc.lastAutoTable.finalY + 10;
@@ -1041,19 +1082,36 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
       // Save or return blob
       const docType = invoiceType === 'Gutschrift' ? 'Gutschrift' : 'Rechnung';
-      const filename = `${docType}_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
+      const isDalolatnoma = invoiceType === 'Dalolatnoma';
+      const filename = isDalolatnoma
+        ? `Dalolatnoma ${sequentialNumber > 0 ? sequentialNumber : booking?.bookingNumber || ''}.pdf`
+        : `${docType}_OrientInsight_${booking?.bookingNumber || 'invoice'}.pdf`;
       if (returnBlob) return doc.output('blob');
       const blob = doc.output('blob');
-      const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-      toast.success('Orient Insight PDF сақланди!');
-      const tourType = booking?.tourType?.code;
-      const bookingNumber = booking?.bookingNumber;
-      if (tourType && bookingNumber) {
-        getTourTypeFolderHandle(tourType).then(handle => {
-          if (handle) savePdfToFolder({ tourType, bookingNumber, category: 'worldInsight', filename, pdfBlob: blob });
+      if (isDalolatnoma) {
+        // Try to save to Dalolatnoma folder; open in browser as fallback
+        saveDalolatnomPdf({ filename, pdfBlob: blob }).then(result => {
+          if (result.success) {
+            toast.success(`✓ ${filename} saqlandi`);
+          } else {
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+            toast.success('PDF ochildi (papka tanlanmagan)');
+          }
         });
+      } else {
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+        toast.success('Orient Insight PDF сақланди!');
+        const tourType = booking?.tourType?.code;
+        const bookingNumber = booking?.bookingNumber;
+        if (tourType && bookingNumber) {
+          getTourTypeFolderHandle(tourType).then(handle => {
+            if (handle) savePdfToFolder({ tourType, bookingNumber, category: 'worldInsight', filename, pdfBlob: blob });
+          });
+        }
       }
     } catch (error) {
       console.error('PDF export error:', error);
@@ -1117,127 +1175,98 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
       yPos += 50;
 
-      // Title "Rechnung", "Neue Rechnung", or "Gutschrift"
+      // Title
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      const pdfTitle = invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung');
-      doc.text(pdfTitle, 105, yPos, { align: 'center' });
+      const pdfTitle2 = invoiceType === 'Dalolatnoma' ? "Bajarilgan ishlar to'g'risida dalolatnoma" : invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung');
+      doc.text(pdfTitle2, 105, yPos, { align: 'center' });
       yPos += 10;
 
-      // Tour description
+      // Description
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      const tourDesc = getTourDescription();
-      doc.text(tourDesc, 105, yPos, { align: 'center', maxWidth: 180 });
+      let tourDesc2;
+      if (invoiceType === 'Dalolatnoma') {
+        const bn2 = booking?.bookingNumber || '';
+        if (booking?.departureDate && booking?.endDate) {
+          const sd2 = format(new Date(booking.departureDate), 'dd.MM');
+          const ed2 = format(new Date(booking.endDate), 'dd.MM.yyyy');
+          tourDesc2 = `${bn2} gruppasi ${sd2}-${ed2} yil`;
+        } else { tourDesc2 = `${bn2} gruppasi`; }
+      } else { tourDesc2 = getTourDescription(); }
+      doc.text(tourDesc2, 105, yPos, { align: 'center', maxWidth: 180 });
       yPos += 15;
 
-      // Rechnung Nr and Datum on same line
+      // Nr and Datum
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      // Only show invoice number if firma is selected and sequential number exists
-      const displayNumber = (invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '';
-      if (displayNumber) {
-        doc.text(`Rechnung Nr: ${displayNumber}`, 15, yPos);
+      const displayNumber2 = invoiceType === 'Dalolatnoma'
+        ? (sequentialNumber > 0 ? sequentialNumber : '')
+        : ((invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '');
+      if (displayNumber2) {
+        doc.text(`${invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : 'Rechnung Nr:'} ${displayNumber2}`, 15, yPos);
       }
-      doc.text(`Datum:`, 155, yPos);
+      doc.text(invoiceType === 'Dalolatnoma' ? 'Sana:' : 'Datum:', 155, yPos);
       doc.text(`${getInvoiceDate()}`, 195, yPos, { align: 'right' });
       yPos += 15;
 
       // Invoice table
-      const tableData = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
-        (index + 1).toString(),
-        item.description,
-        item.einzelpreis.toString(),
-        item.anzahl.toString(),
-        (item.einzelpreis * item.anzahl).toString(),
-        item.currency
-      ]);
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['№', 'Beschreibung', 'Einzelpreis', 'Anzahl', 'Gesamtpreis', 'Währung']],
-        body: tableData,
-        theme: 'grid',
-        styles: {
-          fontSize: 10,
-          cellPadding: 3,
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        headStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
-          fontStyle: 'bold',
-          halign: 'center',
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        bodyStyles: {
-          fillColor: [255, 255, 255],
-          textColor: [0, 0, 0],
-          lineWidth: 0.5,
-          lineColor: [0, 0, 0]
-        },
-        columnStyles: {
-          0: { halign: 'center', cellWidth: 12 },
-          1: { halign: 'left', cellWidth: 75 },
-          2: { halign: 'right', cellWidth: 28 },
-          3: { halign: 'center', cellWidth: 20 },
-          4: { halign: 'right', cellWidth: 30 },
-          5: { halign: 'center', cellWidth: 25 }
-        }
-      });
-
-      yPos = doc.lastAutoTable.finalY;
-
-      // Total rows - conditional based on showThreeRows (Neue Rechnung vs regular Rechnung)
-      if (showThreeRows) {
-        // For Neue Rechnung: show 3 rows (TOTAL, Already Paid, Final Amount)
+      if (invoiceType === 'Dalolatnoma') {
+        const dalTableData2 = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
+          (index + 1).toString(),
+          item.description || '',
+          item.pax !== undefined && item.pax !== '' ? item.pax.toString() : '',
+          item.einzelpreis !== undefined && item.einzelpreis !== '' && item.einzelpreis !== 0 ? formatNumber(item.einzelpreis) : '',
+          item.currency || 'USD'
+        ]);
         autoTable(doc, {
           startY: yPos,
-          body: [
-            ['', 'TOTAL:', '', '', calculateTotal().toString(), 'USD'],
-            ['', `Bereits bezahlte Rechnung Nr. ${bezahlteRechnungNr || ''}`, '', '', bezahlteRechnung.toString(), 'USD'],
-            ['', 'Gesamtbetrag:', '', '', calculateGesamtbetrag().toString(), 'USD']
-          ],
+          head: [['№', 'Gruppa nomi', 'odamlar soni', 'Yetkazib berish qiymati', 'Valyuta']],
+          body: dalTableData2,
           theme: 'grid',
-          styles: {
-            fontSize: 11,
-            cellPadding: 3,
-            lineWidth: 0.5,
-            lineColor: [0, 0, 0]
-          },
-          bodyStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0],
-            fontStyle: 'bold'
-          },
+          styles: { fontSize: 10, cellPadding: 3, lineWidth: 0.5, lineColor: [0, 0, 0] },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.5, lineColor: [0, 0, 0] },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0] },
           columnStyles: {
             0: { halign: 'center', cellWidth: 12 },
             1: { halign: 'left', cellWidth: 75 },
-            2: { halign: 'right', cellWidth: 28 },
-            3: { halign: 'center', cellWidth: 20 },
-            4: { halign: 'right', cellWidth: 30 },
-            5: { halign: 'center', cellWidth: 25 }
+            2: { halign: 'center', cellWidth: 25 },
+            3: { halign: 'right', cellWidth: 48 },
+            4: { halign: 'center', cellWidth: 20 }
+          }
+        });
+        yPos = doc.lastAutoTable.finalY;
+        autoTable(doc, {
+          startY: yPos,
+          body: [['', 'Jami:', '', formatNumber(calculateTotal()), 'USD']],
+          theme: 'grid',
+          styles: { fontSize: 11, cellPadding: 3, fontStyle: 'bold', lineWidth: 0.5, lineColor: [0, 0, 0] },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 12 },
+            1: { halign: 'left', cellWidth: 75 },
+            2: { halign: 'center', cellWidth: 25 },
+            3: { halign: 'right', cellWidth: 48 },
+            4: { halign: 'center', cellWidth: 20 }
           }
         });
       } else {
-        // For regular Rechnung: show single Gesamtbetrag row
+        const tableData = (Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => [
+          (index + 1).toString(),
+          item.description,
+          item.einzelpreis.toString(),
+          item.anzahl.toString(),
+          (item.einzelpreis * item.anzahl).toString(),
+          item.currency
+        ]);
         autoTable(doc, {
           startY: yPos,
-          body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+          head: [['№', 'Beschreibung', 'Einzelpreis', 'Anzahl', 'Gesamtpreis', 'Währung']],
+          body: tableData,
           theme: 'grid',
-          styles: {
-            fontSize: 11,
-            cellPadding: 3,
-            fontStyle: 'bold',
-            lineWidth: 0.5,
-            lineColor: [0, 0, 0]
-          },
-          bodyStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0]
-          },
+          styles: { fontSize: 10, cellPadding: 3, lineWidth: 0.5, lineColor: [0, 0, 0] },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center', lineWidth: 0.5, lineColor: [0, 0, 0] },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.5, lineColor: [0, 0, 0] },
           columnStyles: {
             0: { halign: 'center', cellWidth: 12 },
             1: { halign: 'left', cellWidth: 75 },
@@ -1247,6 +1276,44 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             5: { halign: 'center', cellWidth: 25 }
           }
         });
+        yPos = doc.lastAutoTable.finalY;
+        if (showThreeRows) {
+          autoTable(doc, {
+            startY: yPos,
+            body: [
+              ['', 'TOTAL:', '', '', calculateTotal().toString(), 'USD'],
+              ['', `Bereits bezahlte Rechnung Nr. ${bezahlteRechnungNr || ''}`, '', '', bezahlteRechnung.toString(), 'USD'],
+              ['', 'Gesamtbetrag:', '', '', calculateGesamtbetrag().toString(), 'USD']
+            ],
+            theme: 'grid',
+            styles: { fontSize: 11, cellPadding: 3, lineWidth: 0.5, lineColor: [0, 0, 0] },
+            bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold' },
+            columnStyles: {
+              0: { halign: 'center', cellWidth: 12 },
+              1: { halign: 'left', cellWidth: 75 },
+              2: { halign: 'right', cellWidth: 28 },
+              3: { halign: 'center', cellWidth: 20 },
+              4: { halign: 'right', cellWidth: 30 },
+              5: { halign: 'center', cellWidth: 25 }
+            }
+          });
+        } else {
+          autoTable(doc, {
+            startY: yPos,
+            body: [['', 'Gesamtbetrag:', '', '', calculateTotal().toString(), 'USD']],
+            theme: 'grid',
+            styles: { fontSize: 11, cellPadding: 3, fontStyle: 'bold', lineWidth: 0.5, lineColor: [0, 0, 0] },
+            bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+            columnStyles: {
+              0: { halign: 'center', cellWidth: 12 },
+              1: { halign: 'left', cellWidth: 75 },
+              2: { halign: 'right', cellWidth: 28 },
+              3: { halign: 'center', cellWidth: 20 },
+              4: { halign: 'right', cellWidth: 30 },
+              5: { halign: 'center', cellWidth: 25 }
+            }
+          });
+        }
       }
 
       yPos = doc.lastAutoTable.finalY + 10;
@@ -1351,14 +1418,16 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       <div className="max-w-7xl mx-auto space-y-4 md:space-y-6">
         {/* Action buttons */}
         <div className="flex flex-col md:flex-row gap-2 md:gap-3 md:justify-end print:hidden">
-          <button
-            onClick={addItem}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg font-semibold"
-          >
-            <Plus className="w-5 h-5" />
-            Add Item
-          </button>
-          {zusatzkostenOptions.length > 0 && (
+          {invoiceType !== 'Dalolatnoma' && (
+            <button
+              onClick={addItem}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-lg font-semibold"
+            >
+              <Plus className="w-5 h-5" />
+              Add Item
+            </button>
+          )}
+          {invoiceType !== 'Dalolatnoma' && zusatzkostenOptions.length > 0 && (
             <select
               defaultValue=""
               onChange={(e) => {
@@ -1393,7 +1462,23 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             <Download className="w-5 h-5" />
             PDF (Orient Insight)
           </button>
-          {onWorldInsightSend && (
+          {invoiceType === 'Dalolatnoma' && isFileSystemAccessSupported() && (
+            <button
+              onClick={async () => {
+                const result = await selectDalolatnomFolder();
+                if (result.success) {
+                  setDalolatnomFolderName(result.folderName);
+                  toast.success(`Papka: ${result.folderName}`);
+                }
+              }}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all shadow-lg font-semibold text-sm"
+              title={dalolatnomFolderName ? `Papka: ${dalolatnomFolderName}` : 'Saqlash papkasini tanlang'}
+            >
+              <Folder className="w-4 h-4" />
+              {dalolatnomFolderName || 'Papka tanlash'}
+            </button>
+          )}
+          {invoiceType !== 'Dalolatnoma' && onWorldInsightSend && (
             <button
               onClick={onWorldInsightSend}
               className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl hover:from-emerald-700 hover:to-teal-800 transition-all shadow-lg font-semibold"
@@ -1403,20 +1488,15 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
               An World Insight senden
             </button>
           )}
-          <button
-            onClick={() => generateInfuturestormPDF()}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg font-semibold"
-          >
-            <Download className="w-5 h-5" />
-            PDF (INFUTURESTORM)
-          </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl hover:from-gray-800 hover:to-gray-900 transition-all shadow-lg font-semibold"
-          >
-            <Printer className="w-5 h-5" />
-            Печать
-          </button>
+          {invoiceType !== 'Dalolatnoma' && (
+            <button
+              onClick={() => generateInfuturestormPDF()}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg font-semibold"
+            >
+              <Download className="w-5 h-5" />
+              PDF (INFUTURESTORM)
+            </button>
+          )}
         </div>
 
         {/* Document preview */}
@@ -1427,11 +1507,20 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
 
             {/* Title */}
             <h1 className="text-2xl md:text-5xl font-bold text-center mb-4 md:mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 bg-clip-text text-transparent">
-              {invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung')}
+              {invoiceType === 'Dalolatnoma' ? "Bajarilgan ishlar to'g'risida dalolatnoma" : invoiceType === 'Gutschrift' ? 'Gutschrift' : (showThreeRows ? 'Neue Rechnung' : 'Rechnung')}
             </h1>
 
             {/* Tour description */}
-            {invoiceType === 'Gutschrift' ? (
+            {invoiceType === 'Dalolatnoma' ? (
+              <p className="text-center text-base text-gray-700 mb-8 leading-relaxed px-8">
+                {booking?.bookingNumber ? `${booking.bookingNumber} gruppasi` : ''}
+                {booking?.departureDate && booking?.endDate ? (() => {
+                  const startDate = format(new Date(booking.departureDate), 'dd.MM');
+                  const endDate = format(new Date(booking.endDate), 'dd.MM.yyyy');
+                  return ` ${startDate}-${endDate} yil`;
+                })() : ''}
+              </p>
+            ) : invoiceType === 'Gutschrift' ? (
               <p className="text-center text-base text-gray-700 mb-8 leading-relaxed px-8">
                 Hiermit ist eine Gutschrift zu unserer Rechnung Nr:{' '}
                 <input
@@ -1451,13 +1540,15 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             {/* Rechnung Nr and Datum with styled boxes */}
             <div className="flex justify-between mb-6 md:mb-12 text-base gap-3 md:gap-4">
               <div className="flex-1 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-3 md:p-4 border-2 border-amber-200 shadow-md">
-                <div className="text-xs md:text-sm text-gray-600 mb-1">Rechnung Nr:</div>
+                <div className="text-xs md:text-sm text-gray-600 mb-1">{invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : 'Rechnung Nr:'}</div>
                 <div className="font-bold text-base md:text-xl text-gray-900">
-                  {invoice?.firma && sequentialNumber > 0 ? sequentialNumber : ''}
+                  {invoiceType === 'Dalolatnoma'
+                    ? (sequentialNumber > 0 ? sequentialNumber : '')
+                    : (invoice?.firma && sequentialNumber > 0 ? sequentialNumber : '')}
                 </div>
               </div>
               <div className="flex-1 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 md:p-4 border-2 border-blue-200 shadow-md text-right">
-                <div className="text-xs md:text-sm text-gray-600 mb-1">Datum:</div>
+                <div className="text-xs md:text-sm text-gray-600 mb-1">{invoiceType === 'Dalolatnoma' ? 'Sana:' : 'Datum:'}</div>
                 <div className="font-bold text-base md:text-xl text-gray-900">{getInvoiceDate()}</div>
               </div>
             </div>
@@ -1472,25 +1563,50 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                     <div className="flex items-center justify-between px-3 py-2 bg-amber-100 border-b border-amber-200">
                       <span className="w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">{index + 1}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900">{formatNumber(item.einzelpreis * item.anzahl)}</span>
+                        <span className="text-sm font-bold text-gray-900">{formatNumber(invoiceType === 'Dalolatnoma' ? item.einzelpreis : item.einzelpreis * item.anzahl)}</span>
                         <span className="text-xs text-gray-600">{item.currency}</span>
-                        <button onClick={() => deleteItem(item.id)} className="p-1 text-red-500 hover:bg-red-50 rounded print:hidden">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {invoiceType !== 'Dalolatnoma' && (
+                          <button onClick={() => deleteItem(item.id)} className="p-1 text-red-500 hover:bg-red-50 rounded print:hidden">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
-                    {/* description */}
+                    {/* Gruppa nomi / description */}
                     <div className="px-3 py-2">
+                      <label className="text-xs text-gray-500">{invoiceType === 'Dalolatnoma' ? 'Gruppa nomi' : 'Beschreibung'}</label>
                       <input
                         id={`desc-${item.id}`}
                         type="text"
                         value={item.description}
                         onChange={(e) => updateItem(item.id, 'description', e.target.value)}
                         className="w-full text-sm text-gray-900 bg-transparent border-b border-gray-200 focus:border-amber-400 focus:outline-none py-1"
-                        placeholder="Beschreibung..."
+                        placeholder={invoiceType === 'Dalolatnoma' ? 'Gruppa nomi...' : 'Beschreibung...'}
                       />
                     </div>
-                    {/* price × qty */}
+                    {/* price fields */}
+                    {invoiceType === 'Dalolatnoma' ? (
+                      <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+                        <div>
+                          <label className="text-xs text-gray-500">odamlar soni</label>
+                          <input
+                            type="number"
+                            value={item.pax ?? ''}
+                            onChange={(e) => updateItem(item.id, 'pax', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                            className="w-full text-sm font-semibold text-gray-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 focus:outline-none focus:border-amber-400 mt-0.5"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Yetkazib berish qiymati</label>
+                          <input
+                            type="number"
+                            value={item.einzelpreis}
+                            onChange={(e) => updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
+                            className="w-full text-sm font-semibold text-gray-900 bg-amber-50 border border-amber-200 rounded px-2 py-1 focus:outline-none focus:border-amber-400 mt-0.5"
+                          />
+                        </div>
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-2 gap-2 px-3 pb-3">
                       <div>
                         <label className="text-xs text-gray-500">Einzelpreis</label>
@@ -1511,10 +1627,16 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                         />
                       </div>
                     </div>
+                    )}
                   </div>
                 ))}
                 {/* Mobile summary rows */}
-                {showThreeRows ? (
+                {invoiceType === 'Dalolatnoma' ? (
+                  <div className="flex items-center justify-between px-4 py-3 bg-emerald-100 rounded-xl border-2 border-emerald-200">
+                    <span className="font-bold text-gray-900">Jami:</span>
+                    <div className="flex items-center gap-2"><span className="font-bold text-lg text-gray-900">{formatNumber(calculateTotal())}</span><span className="text-xs text-gray-600">USD</span></div>
+                  </div>
+                ) : showThreeRows ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-4 py-3 bg-blue-100 rounded-xl border-2 border-blue-200">
                       <span className="font-bold text-gray-900">TOTAL</span>
@@ -1544,6 +1666,61 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
               </div>
 
               {/* DESKTOP: table */}
+              {invoiceType === 'Dalolatnoma' ? (
+                <table className="hidden md:table w-full border-collapse">
+                  <thead>
+                    <tr className="bg-amber-100">
+                      <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm w-12">№</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm">Gruppa nomi</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm w-32">odamlar soni</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm w-48">Yetkazib berish qiymati</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center font-bold text-gray-900 text-sm w-24">Valyuta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(Array.isArray(invoiceItems) ? invoiceItems : []).map((item, index) => (
+                      <tr key={item.id} className="bg-white hover:bg-gray-50 transition-colors duration-150">
+                        <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-medium">{index + 1}</td>
+                        <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                          <input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                            className="w-full bg-transparent border-none focus:outline-none focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-semibold">
+                          <input
+                            type="number"
+                            value={item.pax ?? ''}
+                            onChange={(e) => updateItem(item.id, 'pax', e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
+                            className="w-full bg-transparent border-none focus:outline-none text-center focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-right text-gray-900 font-semibold">
+                          <input
+                            type="number"
+                            value={item.einzelpreis}
+                            onChange={(e) => updateItem(item.id, 'einzelpreis', parseFloat(e.target.value) || 0)}
+                            className="w-full bg-transparent border-none focus:outline-none text-right focus:bg-gray-100 rounded px-2 py-1 print:bg-transparent transition-all font-semibold"
+                          />
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-center text-gray-900 font-semibold">{item.currency || 'USD'}</td>
+                      </tr>
+                    ))}
+                    {/* Jami row */}
+                    <tr className="bg-emerald-100">
+                      <td className="border border-gray-300 px-4 py-3"></td>
+                      <td className="border border-gray-300 px-4 py-3 font-bold text-gray-900 text-base">Jami:</td>
+                      <td className="border border-gray-300 px-4 py-3"></td>
+                      <td className="border border-gray-300 px-4 py-3 text-right font-bold text-gray-900 text-lg">
+                        {formatNumber(calculateTotal())}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-center font-semibold text-gray-900">USD</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
               <table className="hidden md:table w-full border-collapse">
                 <thead>
                   <tr className="bg-amber-100">
@@ -1726,6 +1903,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
                   )}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
         </div>
