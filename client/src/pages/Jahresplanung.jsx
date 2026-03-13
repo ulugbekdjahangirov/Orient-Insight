@@ -44,7 +44,7 @@ function cityAssignKey(cityName, b) {
 }
 
 // Compute effective hotel list for a city (original + extras) with bookings distributed by assignments
-function computeCityHotels(cityName, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels) {
+function computeCityHotels(cityName, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels, rowStatuses) {
   const extraIds = cityExtraHotels[cityName] || [];
   const extraObjs = extraIds
     .map(id => allHotels.find(h => h.id === id))
@@ -95,6 +95,28 @@ function computeCityHotels(cityName, originalHotels, cityExtraHotels, bookingHot
     const targetId = bookingHotelAssign[ck] ?? b.originalHotelId;
     if (map[targetId] !== undefined) map[targetId].push(b);
     else map[b.originalHotelId]?.push(b);
+  }
+
+  // Overflow logic: WL/X bookings from original hotels also appear in extra hotels
+  const extraHotelsDisplay = allDisplay.filter(hd => hd.isExtra);
+  if (extraHotelsDisplay.length > 0 && rowStatuses) {
+    for (const origHd of originalHotels) {
+      for (const b of (map[origHd.hotel.id] || [])) {
+        const k = rowKey(origHd.hotel.id, b);
+        const status = rowStatuses[k];
+        if (status === 'waiting' || status === 'cancelled') {
+          const bKey = `${b.bookingId}_${b.checkInDate}`;
+          for (const extraHd of extraHotelsDisplay) {
+            const alreadyIn = (map[extraHd.hotel.id] || []).some(
+              eb => `${eb.bookingId}_${eb.checkInDate}` === bKey
+            );
+            if (!alreadyIn) {
+              map[extraHd.hotel.id].push({ ...b, isOverflow: true });
+            }
+          }
+        }
+      }
+    }
   }
 
   return allDisplay.map(hd => ({ ...hd, bookings: map[hd.hotel.id] || [] }));
@@ -214,6 +236,14 @@ function StatusCell({ k, rowStatuses, setRowStatus }) {
               {opt.label}
             </button>
           ))}
+          {status && (
+            <button
+              onClick={() => { setRowStatus(k, null); setOpen(false); }}
+              className="px-2.5 py-1 rounded text-xs font-bold transition-colors bg-gray-100 text-gray-500 hover:bg-gray-200"
+            >
+              —
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -449,19 +479,19 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
       </div>
       {/* DESKTOP: table */}
       <div className="hidden md:block">
-      <table className="w-full text-sm">
+      <table className="w-full text-base">
         <thead>
-          <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
-            <th className="px-4 py-2 text-left font-medium">Группа</th>
-            <th className="px-4 py-2 text-left font-medium">Заезд</th>
-            <th className="px-4 py-2 text-left font-medium">Выезд</th>
-            <th className="px-4 py-2 text-center font-medium">Ночей</th>
-            <th className="px-4 py-2 text-center font-medium">PAX</th>
-            <th className="px-4 py-2 text-center font-medium">DBL</th>
-            <th className="px-4 py-2 text-center font-medium">TWN</th>
-            <th className="px-4 py-2 text-center font-medium">SNGL</th>
-            <th className="px-4 py-2 text-center font-medium">Итого</th>
-            <th className="px-3 py-2 text-center font-medium text-gray-500">Статус</th>
+          <tr className="bg-gray-50 border-b border-gray-100 text-sm text-gray-500 uppercase tracking-wider">
+            <th className="px-5 py-3 text-left font-medium">Группа</th>
+            <th className="px-5 py-3 text-left font-medium">Заезд</th>
+            <th className="px-5 py-3 text-left font-medium">Выезд</th>
+            <th className="px-5 py-3 text-center font-medium">Ночей</th>
+            <th className="px-5 py-3 text-center font-medium">PAX</th>
+            <th className="px-5 py-3 text-center font-medium">DBL</th>
+            <th className="px-5 py-3 text-center font-medium">TWN</th>
+            <th className="px-5 py-3 text-center font-medium">SNGL</th>
+            <th className="px-5 py-3 text-center font-medium">Итого</th>
+            <th className="px-4 py-3 text-center font-medium text-gray-500">Статус</th>
           </tr>
         </thead>
         <tbody>
@@ -482,11 +512,11 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
 
             return (
               <tr key={k} className={`border-b transition-colors ${rowBg}`}>
-                <td className="px-4 py-1.5">
+                <td className="px-5 py-2.5">
                   <div className="flex items-center">
                     <Link
                       to={`/bookings/${b.bookingId}`}
-                      className={`font-medium text-sm ${cancelled ? 'text-red-400 line-through' : 'text-primary-600 hover:underline'}`}
+                      className={`font-medium text-base ${cancelled ? 'text-red-400 line-through' : 'text-primary-600 hover:underline'}`}
                     >
                       {b.bookingNumber}
                     </Link>
@@ -503,25 +533,25 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-1.5 text-gray-600 text-sm">{formatDate(b.checkInDate)}</td>
-                <td className="px-4 py-1.5 text-gray-600 text-sm">{formatDate(b.checkOutDate)}</td>
-                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">{b.nights || '—'}</td>
-                <td className={`px-4 py-1.5 text-center font-medium text-sm ${cancelled ? 'text-red-400' : ''}`}>
+                <td className="px-5 py-2.5 text-gray-600 text-base">{formatDate(b.checkInDate)}</td>
+                <td className="px-5 py-2.5 text-gray-600 text-base">{formatDate(b.checkOutDate)}</td>
+                <td className="px-5 py-2.5 text-center text-gray-600 text-base">{b.nights || '—'}</td>
+                <td className={`px-5 py-2.5 text-center font-medium text-base ${cancelled ? 'text-red-400' : ''}`}>
                   {cancelled ? pax : <EditCell value={pax} onChange={v => setVal(b, 'pax', v)} />}
                 </td>
-                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">
+                <td className="px-5 py-2.5 text-center text-gray-600 text-base">
                   {cancelled ? dbl : <EditCell value={dbl} onChange={v => setVal(b, 'dbl', v)} />}
                 </td>
-                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">
+                <td className="px-5 py-2.5 text-center text-gray-600 text-base">
                   {cancelled ? twn : <EditCell value={twn} onChange={v => setVal(b, 'twn', v)} />}
                 </td>
-                <td className="px-4 py-1.5 text-center text-gray-600 text-sm">
+                <td className="px-5 py-2.5 text-center text-gray-600 text-base">
                   {cancelled ? sngl : <EditCell value={sngl} onChange={v => setVal(b, 'sngl', v)} />}
                 </td>
-                <td className="px-4 py-1.5 text-center font-medium text-gray-700 text-sm">
+                <td className="px-5 py-2.5 text-center font-medium text-gray-700 text-base">
                   {cancelled ? 0 : (dbl + twn + sngl) || '—'}
                 </td>
-                <td className="px-3 py-1.5 text-center">
+                <td className="px-4 py-2.5 text-center">
                   <StatusCell k={k} rowStatuses={rowStatuses} setRowStatus={setRowStatus} />
                 </td>
               </tr>
@@ -529,15 +559,15 @@ function BookingsTable({ bookings, hotelId, overrides, setOverrideVal, rowStatus
           })}
         </tbody>
         <tfoot>
-          <tr className="bg-blue-50 font-semibold text-sm border-t-2 border-blue-100">
-            <td className="px-4 py-2 text-gray-500 text-xs" colSpan={4}>
+          <tr className="bg-blue-50 font-semibold text-base border-t-2 border-blue-100">
+            <td className="px-5 py-2.5 text-gray-500 text-sm" colSpan={4}>
               Итого ({active.length} группы, аннуляции не считаются)
             </td>
-            <td className="px-4 py-2 text-center text-blue-700">{totalPax || '—'}</td>
-            <td className="px-4 py-2 text-center text-blue-700">{totalDbl || '—'}</td>
-            <td className="px-4 py-2 text-center text-blue-700">{totalTwn || '—'}</td>
-            <td className="px-4 py-2 text-center text-blue-700">{totalSngl || '—'}</td>
-            <td className="px-4 py-2 text-center text-blue-700">{totalRooms || '—'}</td>
+            <td className="px-5 py-2.5 text-center text-blue-700">{totalPax || '—'}</td>
+            <td className="px-5 py-2.5 text-center text-blue-700">{totalDbl || '—'}</td>
+            <td className="px-5 py-2.5 text-center text-blue-700">{totalTwn || '—'}</td>
+            <td className="px-5 py-2.5 text-center text-blue-700">{totalSngl || '—'}</td>
+            <td className="px-5 py-2.5 text-center text-blue-700">{totalRooms || '—'}</td>
             <td />
           </tr>
         </tfoot>
@@ -895,13 +925,13 @@ function HotelCard({ hotelData, tourType, tourColor, isOpen, onToggle, overrides
 
         {/* Right: action buttons */}
         <div className="flex items-center gap-1.5 ml-9 md:ml-0 flex-shrink-0">
-          <button onClick={() => onPDF(hotelData)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          <button onClick={() => onPDF(hotelData)} disabled={!!sendingEmail}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
             style={{ background: '#f1f5f9', color: '#475569' }}
-            onMouseEnter={e => { e.currentTarget.style.background='#e2e8f0'; }}
+            onMouseEnter={e => { if (!sendingEmail) e.currentTarget.style.background='#e2e8f0'; }}
             onMouseLeave={e => { e.currentTarget.style.background='#f1f5f9'; }}
             title="PDF">
-            <Download className="w-3.5 h-3.5" />
+            {sendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Download className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">PDF</span>
           </button>
           <button onClick={() => onEmail(hotelData)} disabled={!!sendingEmail}
@@ -2590,23 +2620,6 @@ function HotelsTab({ tourType, tourColor }) {
     }
     setCityExtraHotels(newExtras);
     try { localStorage.setItem(`jp_cityExtras_${YEAR}_${tourType}`, JSON.stringify(newExtras)); } catch {}
-
-    // 2. Auto-assign non-confirmed bookings to the new hotel
-    if (currentCityHotels && currentCityHotels.length > 0) {
-      setBookingHotelAssign(prev => {
-        const next = { ...prev };
-        for (const hd of currentCityHotels) {
-          for (const b of hd.bookings) {
-            const status = rowStatuses[rowKey(hd.hotel.id, b)];
-            if (status !== 'confirmed') {
-              next[cityAssignKey(cityName, b)] = hotel.id;
-            }
-          }
-        }
-        try { localStorage.setItem(`jp_hotelAssign_${YEAR}_${tourType}`, JSON.stringify(next)); } catch {}
-        return next;
-      });
-    }
   };
 
   const handleReplaceHotel = (cityName, oldHotelId, currentBookings, newHotel) => {
@@ -2683,7 +2696,7 @@ function HotelsTab({ tourType, tourColor }) {
   };
 
   const handlePDF = async (hotelData) => {
-    setSendingEmail(prev => ({ ...prev, [`pdf_${hotelData.hotel.id}`]: true }));
+    setSendingEmail(prev => ({ ...prev, [hotelData.hotel.id]: true }));
     try {
       const blob = await fetchHotelPdfBlob(hotelData, tourType, overrides, YEAR, hotelDefaults[hotelData.hotel.id] || TOUR_TYPE_DEFAULTS[tourType]);
       const url = URL.createObjectURL(blob);
@@ -2694,7 +2707,7 @@ function HotelsTab({ tourType, tourColor }) {
       URL.revokeObjectURL(url);
     } catch (err) {
       toast.error('PDF xatolik: ' + (err.response?.data?.error || err.message));
-    } finally { setSendingEmail(prev => ({ ...prev, [`pdf_${hotelData.hotel.id}`]: false })); }
+    } finally { setSendingEmail(prev => ({ ...prev, [hotelData.hotel.id]: false })); }
   };
 
   const handleEmail = async (hotelData) => {
@@ -2731,8 +2744,12 @@ function HotelsTab({ tourType, tourColor }) {
     if (!window.confirm(`${hotel.name} — ${YEAR} yil ${tourType} TG zayavkasini tozalashni tasdiqlaysizmi?\n(JP ma'lumotlari saqlanib qoladi, faqat TG yuborilganlik holati o'chiriladi)`)) return;
     setClearingTg(prev => ({ ...prev, [hotel.id]: true }));
     try {
-      await jahresplanungApi.clearHotelTg(hotel.id, tourType, YEAR);
-      toast.success(`${hotel.name} — TG tozalandi`);
+      const res = await jahresplanungApi.clearHotelTg(hotel.id, tourType, YEAR);
+      if (res.data?.skipped) {
+        toast(`${hotel.name} — TG yuborilmagan (tozalash shart emas)`, { icon: 'ℹ️' });
+      } else {
+        toast.success(`${hotel.name} — TG tozalandi`);
+      }
     } catch (err) {
       toast.error('Xatolik: ' + (err.response?.data?.error || err.message));
     } finally { setClearingTg(prev => ({ ...prev, [hotel.id]: false })); }
@@ -2777,7 +2794,7 @@ function HotelsTab({ tourType, tourColor }) {
         const allCityHotels = cityMap[city];
         const excludedInCity = allCityHotels.filter(hd => excludedHotelIds.includes(hd.hotel.id));
         const originalHotels = allCityHotels.filter(hd => !excludedHotelIds.includes(hd.hotel.id));
-        const displayHotels = computeCityHotels(city, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels);
+        const displayHotels = computeCityHotels(city, originalHotels, cityExtraHotels, bookingHotelAssign, allHotels, rowStatuses);
         const isCityOpen = openCities[city] !== false;
         const totalGroups = displayHotels.reduce((s,hd) => s + hd.bookings.filter(b=>b.status!=='CANCELLED').length, 0);
         const totalPax = displayHotels.reduce((s,hd) => {
@@ -2825,7 +2842,7 @@ function HotelsTab({ tourType, tourColor }) {
             </button>
 
             {isCityOpen && (
-              <div className="px-1.5 py-2 space-y-2" style={{ background: '#f8fafc' }}>
+              <div className="py-2 space-y-2 px-0" style={{ background: '#f8fafc' }}>
                 {displayHotels.map(hd => (
                   <HotelCard
                     key={hd.hotel.id}
@@ -3228,7 +3245,7 @@ export default function Jahresplanung() {
 
       {/* ── CONTENT ── */}
       <div className="bg-slate-50 min-h-screen">
-        <div className="px-1.5 md:px-6 py-4 md:py-5 pb-20 md:pb-6 max-w-7xl mx-auto">
+        <div className="px-3 py-4 md:py-5 pb-20 md:pb-6">
           {mainTab==='hotels'    && <HotelsTab   tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='restoran'  && <RestoranTab  tourType={tourTab} tourColor={activeTourColor} />}
           {mainTab==='transport' && <TransportTab tourType={tourTab} tourColor={activeTourColor} />}

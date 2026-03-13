@@ -322,7 +322,8 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, upload.single('pdf'),
   try {
     const hotelId = parseInt(req.params.hotelId);
     const { year, tourType } = req.body;
-    const sections = JSON.parse(req.body.sections || '[]');
+    let sections = [];
+    try { sections = JSON.parse(req.body.sections || '[]'); } catch { sections = []; }
     const pdfBuffer = req.file?.buffer;
 
     const hotel = await prisma.hotel.findUnique({
@@ -603,7 +604,7 @@ router.put('/clear-tg/:hotelId/:tourType/:year', authenticate, async (req, res) 
     const { hotelId, tourType, year } = req.params;
     const jpKey = `JP_SECTIONS_${hotelId}_${tourType}_${year}`;
     const setting = await prisma.systemSetting.findUnique({ where: { key: jpKey } });
-    if (!setting) return res.status(404).json({ error: 'JP topilmadi' });
+    if (!setting) return res.json({ success: true, skipped: true }); // Nothing to clear
     const data = JSON.parse(setting.value);
     // Clear all msgIds and bulkMsgId
     data.bulkMsgId = null;
