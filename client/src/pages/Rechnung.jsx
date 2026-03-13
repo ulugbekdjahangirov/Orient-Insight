@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, Receipt, Building, Globe, Plus, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { FileText, Receipt, Building, Globe, Plus, Edit, Trash2, ExternalLink, CheckCircle2, Circle } from 'lucide-react';
 import { invoicesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import { toast } from 'react-hot-toast';
@@ -167,6 +167,19 @@ export default function Rechnung() {
       toast.error('Ma\'lumotlarni yuklashda xatolik');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Toggle paid status for an invoice
+  const handleTogglePaid = async (item) => {
+    const newPaid = !item.isPaid;
+    setRechnungItems(prev => prev.map(i => i.id === item.id ? { ...i, isPaid: newPaid } : i));
+    try {
+      await invoicesApi.update(item.id, { isPaid: newPaid });
+    } catch {
+      // revert on error
+      setRechnungItems(prev => prev.map(i => i.id === item.id ? { ...i, isPaid: !newPaid } : i));
+      toast.error('Xatolik yuz berdi');
     }
   };
 
@@ -370,12 +383,13 @@ export default function Rechnung() {
                         <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppe</th>
                         <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Firma</th>
                         <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summe</th>
+                        <th className="border border-gray-300 px-4 py-4 text-center font-bold text-gray-900">Bezahlt</th>
                         <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rechnungItems.map((item, index) => (
-                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={item.id} className={`transition-colors ${item.isPaid ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}`}>
                           <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">
                             {index + 1}
                           </td>
@@ -390,6 +404,17 @@ export default function Rechnung() {
                           </td>
                           <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-semibold">
                             {formatNumber(item.summe)}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-4 text-center">
+                            <button
+                              onClick={() => handleTogglePaid(item)}
+                              title={item.isPaid ? 'Bekor qilish' : 'Tolandi deb belgilash'}
+                              className="inline-flex items-center justify-center transition-colors"
+                            >
+                              {item.isPaid
+                                ? <CheckCircle2 className="w-6 h-6 text-green-500" />
+                                : <Circle className="w-6 h-6 text-gray-300 hover:text-green-400" />}
+                            </button>
                           </td>
                           <td className="border border-gray-300 px-6 py-4 text-center">
                             <button
@@ -407,23 +432,52 @@ export default function Rechnung() {
                       ))}
                       {rechnungItems.length === 0 && (
                         <tr>
-                          <td colSpan="6" className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                          <td colSpan="7" className="border border-gray-300 px-6 py-8 text-center text-gray-500">
                             Ma'lumot topilmadi
                           </td>
                         </tr>
                       )}
                       {/* Total row */}
-                      {rechnungItems.length > 0 && (
-                        <tr className="bg-gradient-to-r from-amber-100 to-orange-100 font-bold">
-                          <td className="border border-gray-300 px-6 py-4 text-gray-900" colSpan="4">
-                            TOTAL
-                          </td>
-                          <td className="border border-gray-300 px-6 py-4 text-right text-gray-900">
-                            {formatNumber(rechnungItems.reduce((sum, item) => sum + (parseFloat(item.summe) || 0), 0))}
-                          </td>
-                          <td className="border border-gray-300 px-6 py-4"></td>
-                        </tr>
-                      )}
+                      {rechnungItems.length > 0 && (() => {
+                        const paidItems = rechnungItems.filter(i => i.isPaid);
+                        const paidSum = paidItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                        const totalSum = rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                        const remaining = totalSum - paidSum;
+                        return (
+                          <>
+                            <tr className="bg-gradient-to-r from-amber-100 to-orange-100 font-bold">
+                              <td className="border border-gray-300 px-6 py-3 text-gray-900" colSpan="4">TOTAL</td>
+                              <td className="border border-gray-300 px-6 py-3 text-right text-gray-900">{formatNumber(totalSum)}</td>
+                              <td className="border border-gray-300 px-4 py-3 text-center text-xs text-gray-500">{paidItems.length}/{rechnungItems.length}</td>
+                              <td className="border border-gray-300 px-6 py-3"></td>
+                            </tr>
+                            <tr className="bg-green-50 font-semibold">
+                              <td className="border border-gray-300 px-6 py-3 text-green-700" colSpan="4">
+                                <span className="flex items-center gap-2">
+                                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                  Bezahlt ({paidItems.length})
+                                </span>
+                              </td>
+                              <td className="border border-gray-300 px-6 py-3 text-right text-green-700">{formatNumber(paidSum)}</td>
+                              <td className="border border-gray-300 px-4 py-3"></td>
+                              <td className="border border-gray-300 px-6 py-3"></td>
+                            </tr>
+                            {remaining > 0 && (
+                              <tr className="bg-orange-50 font-semibold">
+                                <td className="border border-gray-300 px-6 py-3 text-orange-700" colSpan="4">
+                                  <span className="flex items-center gap-2">
+                                    <Circle className="w-4 h-4 text-orange-400" />
+                                    Ausstehend ({rechnungItems.length - paidItems.length})
+                                  </span>
+                                </td>
+                                <td className="border border-gray-300 px-6 py-3 text-right text-orange-700">{formatNumber(remaining)}</td>
+                                <td className="border border-gray-300 px-4 py-3"></td>
+                                <td className="border border-gray-300 px-6 py-3"></td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 )}

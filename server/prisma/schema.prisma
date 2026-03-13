@@ -276,6 +276,8 @@ model Invoice {
   currency        String    @default("USD")
 
   notes           String?
+  isPaid          Boolean   @default(false)
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

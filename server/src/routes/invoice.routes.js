@@ -227,7 +227,8 @@ router.put('/:id', authenticate, async (req, res) => {
       items,
       totalAmount,
       currency,
-      notes
+      notes,
+      isPaid
     } = req.body;
 
     const updateData = {};
@@ -237,6 +238,7 @@ router.put('/:id', authenticate, async (req, res) => {
     if (totalAmount !== undefined) updateData.totalAmount = totalAmount;
     if (currency !== undefined) updateData.currency = currency;
     if (notes !== undefined) updateData.notes = notes || null;
+    if (isPaid !== undefined) updateData.isPaid = Boolean(isPaid);
 
     const invoice = await prisma.invoice.update({
       where: { id: parseInt(id) },
