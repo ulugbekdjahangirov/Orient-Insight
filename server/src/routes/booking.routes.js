@@ -725,6 +725,14 @@ router.patch('/:id/status', authenticate, async (req, res) => {
       include: { tourType: true, guide: true }
     });
 
+    // Clear confirmedNumber on all invoices when booking is cancelled (STORNO)
+    if (status === 'CANCELLED' && prevBooking?.status !== 'CANCELLED') {
+      await prisma.invoice.updateMany({
+        where: { bookingId: parseInt(id), confirmedNumber: { not: null } },
+        data: { confirmedNumber: null }
+      });
+    }
+
     if (status === 'CANCELLED' && prevBooking?.status !== 'CANCELLED' && booking.guide?.telegramChatId) {
       const fmtDate = d => {
         if (!d) return '—';
