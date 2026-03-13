@@ -147,7 +147,8 @@ export default function Rechnung() {
           name: invoice.invoiceType, // "Rechnung", "Neue Rechnung", "Gutschrift"
           gruppe: invoice.booking?.bookingNumber || '', // Booking code: ER-07, CO-01, etc.
           firma: invoice.firma || '',
-          summe: invoice.totalAmount || 0
+          summe: invoice.totalAmount || 0,
+          isPaid: invoice.isPaid || false
         }))
         .sort((a, b) => parseInt(a.nummer) - parseInt(b.nummer)); // Sort by invoice number ascending
 
