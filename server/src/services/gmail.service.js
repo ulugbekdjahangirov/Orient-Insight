@@ -38,10 +38,21 @@ class GmailService {
       'https://www.googleapis.com/auth/gmail.modify'
     ];
 
+    // Generate a random state token to prevent CSRF on OAuth callback
+    const crypto = require('crypto');
+    const state = crypto.randomBytes(16).toString('hex');
+    // Store state in DB temporarily (expires in 10 minutes)
+    await prisma.systemSetting.upsert({
+      where: { key: 'GMAIL_OAUTH_STATE' },
+      update: { value: `${state}:${Date.now() + 10 * 60 * 1000}` },
+      create: { key: 'GMAIL_OAUTH_STATE', value: `${state}:${Date.now() + 10 * 60 * 1000}` }
+    });
+
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      prompt: 'consent'
+      prompt: 'consent',
+      state
     });
   }
 

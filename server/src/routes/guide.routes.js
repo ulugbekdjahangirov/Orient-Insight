@@ -1,7 +1,7 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
-const { checkPassportExpiry } = require('../utils/crypto');
+const { checkPassportExpiry, encrypt, decrypt } = require('../utils/crypto');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -232,6 +232,12 @@ router.get('/:id', authenticate, async (req, res) => {
       delete processedGuide.bankAccountNumber;
       delete processedGuide.bankCardNumber;
       delete processedGuide.mfo;
+    } else {
+      // Decrypt sensitive fields for admin
+      if (processedGuide.passportNumber) processedGuide.passportNumber = decrypt(processedGuide.passportNumber);
+      if (processedGuide.passportIssuedBy) processedGuide.passportIssuedBy = decrypt(processedGuide.passportIssuedBy);
+      if (processedGuide.bankAccountNumber) processedGuide.bankAccountNumber = decrypt(processedGuide.bankAccountNumber);
+      if (processedGuide.bankCardNumber) processedGuide.bankCardNumber = decrypt(processedGuide.bankCardNumber);
     }
     processedGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
 
@@ -289,12 +295,12 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
         phone,
         email,
-        passportNumber: passportNumber || null,
+        passportNumber: passportNumber ? encrypt(passportNumber) : null,
         passportIssueDate: passportIssueDate ? new Date(passportIssueDate) : null,
         passportExpiryDate: passportExpiryDate ? new Date(passportExpiryDate) : null,
-        passportIssuedBy,
-        bankAccountNumber: bankAccountNumber || null,
-        bankCardNumber: bankCardNumber || null,
+        passportIssuedBy: passportIssuedBy ? encrypt(passportIssuedBy) : null,
+        bankAccountNumber: bankAccountNumber ? encrypt(bankAccountNumber) : null,
+        bankCardNumber: bankCardNumber ? encrypt(bankCardNumber) : null,
         bankName,
         mfo,
         address,
@@ -305,6 +311,12 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         cityRate: cityRate ? parseFloat(cityRate) : 0
       }
     });
+
+    // Decrypt for response
+    if (guide.passportNumber) guide.passportNumber = decrypt(guide.passportNumber);
+    if (guide.passportIssuedBy) guide.passportIssuedBy = decrypt(guide.passportIssuedBy);
+    if (guide.bankAccountNumber) guide.bankAccountNumber = decrypt(guide.bankAccountNumber);
+    if (guide.bankCardNumber) guide.bankCardNumber = decrypt(guide.bankCardNumber);
 
     guide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
     res.status(201).json({ guide });
@@ -365,14 +377,14 @@ router.put('/:id', authenticate, async (req, res) => {
     if (telegramChatId !== undefined) updateData.telegramChatId = telegramChatId || null;
 
 
-    // Конфиденциальные поля - только для админа
+    // Конфиденциальные поля - только для админа (encrypt before saving)
     if (isAdmin) {
-      if (passportNumber !== undefined) updateData.passportNumber = passportNumber || null;
+      if (passportNumber !== undefined) updateData.passportNumber = passportNumber ? encrypt(passportNumber) : null;
       if (passportIssueDate !== undefined) updateData.passportIssueDate = passportIssueDate ? new Date(passportIssueDate) : null;
       if (passportExpiryDate !== undefined) updateData.passportExpiryDate = passportExpiryDate ? new Date(passportExpiryDate) : null;
-      if (passportIssuedBy !== undefined) updateData.passportIssuedBy = passportIssuedBy;
-      if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber || null;
-      if (bankCardNumber !== undefined) updateData.bankCardNumber = bankCardNumber || null;
+      if (passportIssuedBy !== undefined) updateData.passportIssuedBy = passportIssuedBy ? encrypt(passportIssuedBy) : null;
+      if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber ? encrypt(bankAccountNumber) : null;
+      if (bankCardNumber !== undefined) updateData.bankCardNumber = bankCardNumber ? encrypt(bankCardNumber) : null;
       if (bankName !== undefined) updateData.bankName = bankName;
       if (mfo !== undefined) updateData.mfo = mfo;
     }
@@ -386,6 +398,10 @@ router.put('/:id', authenticate, async (req, res) => {
     });
 
     const responseGuide = { ...guide };
+    if (responseGuide.passportNumber) responseGuide.passportNumber = decrypt(responseGuide.passportNumber);
+    if (responseGuide.passportIssuedBy) responseGuide.passportIssuedBy = decrypt(responseGuide.passportIssuedBy);
+    if (responseGuide.bankAccountNumber) responseGuide.bankAccountNumber = decrypt(responseGuide.bankAccountNumber);
+    if (responseGuide.bankCardNumber) responseGuide.bankCardNumber = decrypt(responseGuide.bankCardNumber);
     responseGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
     res.json({ guide: responseGuide });
   } catch (error) {

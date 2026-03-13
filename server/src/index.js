@@ -39,11 +39,9 @@ app.use(helmet({
 }));
 
 // ── CORS ──
-const allowedOrigins = [
-  'https://booking-calendar.uz',
-  'http://localhost:3000',
-  'http://localhost:5173'
-];
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? ['https://booking-calendar.uz']
+  : ['https://booking-calendar.uz', 'http://localhost:3000', 'http://localhost:5173'];
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (server-to-server, Puppeteer, mobile)
@@ -98,8 +96,8 @@ app.use('/api/telegram/webhook', webhookLimiter);
 app.use('/api/', apiLimiter);
 
 // ── Body Parsers ──
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes

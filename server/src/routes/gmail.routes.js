@@ -29,11 +29,23 @@ router.post('/authorize', authenticate, requireAdmin, async (req, res) => {
  */
 router.get('/callback', async (req, res) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
 
     if (!code) {
       return res.redirect('/gmail-settings?auth=error&message=No code provided');
     }
+
+    // Verify CSRF state token
+    const stored = await prisma.systemSetting.findUnique({ where: { key: 'GMAIL_OAUTH_STATE' } });
+    if (!stored) {
+      return res.redirect('/gmail-settings?auth=error&message=Invalid state');
+    }
+    const [storedState, expiresAt] = stored.value.split(':');
+    if (!state || state !== storedState || Date.now() > parseInt(expiresAt)) {
+      return res.redirect('/gmail-settings?auth=error&message=Invalid or expired state');
+    }
+    // Delete used state
+    await prisma.systemSetting.delete({ where: { key: 'GMAIL_OAUTH_STATE' } });
 
     await gmailService.handleOAuthCallback(code);
     res.redirect('/gmail-settings?auth=success');
