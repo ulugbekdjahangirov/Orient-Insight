@@ -2727,6 +2727,7 @@ export default function BookingDetail() {
   // Open railway modal for adding new railway
   const openRailwayModal = () => {
     setEditingRailway(null);
+
     setRailwayForm({
       trainNumber: '',
       trainName: '',
@@ -10220,8 +10221,22 @@ export default function BookingDetail() {
                                 d.setDate(d.getDate() + 3);
                                 autoDate = format(d, 'yyyy-MM-dd');
                               }
+                            } else if (tourTypeCode === 'CO') {
+                              // CO: route-based dates (arrival = departureDate + 1)
+                              // Tashkent→Qoqon: arrival + 2 = departureDate + 3
+                              // Tashkent→Samarkand: arrival + 4 = departureDate + 5
+                              const isToQoqon =
+                                arrLower.includes('qoqon') || arrLower.includes('kokand') ||
+                                routeLower.includes('qoqon') || routeLower.includes('kokand');
+                              const isToSamarkand =
+                                arrLower.includes('samarkand') || arrLower.includes('samarqand') ||
+                                routeLower.includes('samarkand');
+                              const offset = isToSamarkand ? 5 : isToQoqon ? 3 : 3;
+                              const d = new Date(booking.departureDate);
+                              d.setDate(d.getDate() + offset);
+                              autoDate = format(d, 'yyyy-MM-dd');
                             } else {
-                              // ER/CO/ZA: departureDate + 3 days
+                              // ER/ZA: departureDate + 3 days
                               const departureDate = new Date(booking.departureDate);
                               departureDate.setDate(departureDate.getDate() + 3);
                               autoDate = format(departureDate, 'yyyy-MM-dd');
