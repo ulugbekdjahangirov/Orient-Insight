@@ -910,7 +910,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         ? (sequentialNumber > 0 ? sequentialNumber : '')
         : ((invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '');
       if (displayNumber) {
-        doc.text(`${invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : 'Rechnung Nr:'} ${displayNumber}`, 15, yPos);
+        doc.text(`${invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : invoiceType === 'Gutschrift' ? 'Gutschrift Nr:' : 'Rechnung Nr:'} ${displayNumber}`, 15, yPos);
       }
       doc.text(invoiceType === 'Dalolatnoma' ? 'Sana:' : 'Datum:', 155, yPos);
       doc.text(`${getInvoiceDate()}`, 195, yPos, { align: 'right' });
@@ -1204,7 +1204,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         ? (sequentialNumber > 0 ? sequentialNumber : '')
         : ((invoice?.firma && sequentialNumber > 0) ? sequentialNumber : '');
       if (displayNumber2) {
-        doc.text(`${invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : 'Rechnung Nr:'} ${displayNumber2}`, 15, yPos);
+        doc.text(`${invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : invoiceType === 'Gutschrift' ? 'Gutschrift Nr:' : 'Rechnung Nr:'} ${displayNumber2}`, 15, yPos);
       }
       doc.text(invoiceType === 'Dalolatnoma' ? 'Sana:' : 'Datum:', 155, yPos);
       doc.text(`${getInvoiceDate()}`, 195, yPos, { align: 'right' });
@@ -1540,7 +1540,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             {/* Rechnung Nr and Datum with styled boxes */}
             <div className="flex justify-between mb-6 md:mb-12 text-base gap-3 md:gap-4">
               <div className="flex-1 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-3 md:p-4 border-2 border-amber-200 shadow-md">
-                <div className="text-xs md:text-sm text-gray-600 mb-1">{invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : 'Rechnung Nr:'}</div>
+                <div className="text-xs md:text-sm text-gray-600 mb-1">{invoiceType === 'Dalolatnoma' ? 'Dalolatnoma raqami:' : invoiceType === 'Gutschrift' ? 'Gutschrift Nr:' : 'Rechnung Nr:'}</div>
                 <div className="font-bold text-base md:text-xl text-gray-900">
                   {invoiceType === 'Dalolatnoma'
                     ? (sequentialNumber > 0 ? sequentialNumber : '')
