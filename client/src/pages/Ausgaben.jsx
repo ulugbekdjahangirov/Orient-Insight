@@ -1711,20 +1711,20 @@ export default function Ausgaben() {
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr>
-                              <th className="px-4 py-3.5 text-center font-bold text-slate-700 w-10 border-r border-blue-200"
+                              <th className="px-2 py-3.5 text-center font-bold text-slate-700 w-8 border-r border-blue-200"
                                 style={{ background: '#dbeafe' }}>#</th>
-                              <th className="px-4 py-3.5 text-left font-bold text-slate-700 sticky left-0 z-10 border-r border-blue-200"
-                                style={{ background: '#dbeafe', minWidth: '130px' }}>Booking</th>
+                              <th className="px-3 py-3.5 text-left font-bold text-slate-700 sticky left-0 z-10 border-r border-blue-200"
+                                style={{ background: '#dbeafe', minWidth: '110px' }}>Booking</th>
                               {pivotData.hotels.map((hotelName, idx) => (
-                                <th key={idx} className="px-4 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
-                                  style={{ minWidth: '120px', background: '#dbeafe' }}>
+                                <th key={idx} className="px-2 py-3.5 text-center font-bold text-slate-700 uppercase tracking-wider border-r border-blue-200"
+                                  style={{ minWidth: '90px', background: '#dbeafe' }}>
                                   {hotelName}
                                 </th>
                               ))}
-                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700"
-                                style={{ background: 'linear-gradient(180deg,#b45309,#d97706)' }}>Σ UZS</th>
-                              <th className="px-4 py-3.5 text-center font-bold text-white uppercase tracking-wider"
-                                style={{ background: 'linear-gradient(180deg,#065f46,#059669)' }}>Σ USD</th>
+                              <th className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider border-r border-amber-700"
+                                style={{ background: 'linear-gradient(180deg,#b45309,#d97706)', minWidth: '130px' }}>Σ UZS</th>
+                              <th className="px-3 py-3.5 text-center font-bold text-white uppercase tracking-wider"
+                                style={{ background: 'linear-gradient(180deg,#065f46,#059669)', minWidth: '100px' }}>Σ USD</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1734,8 +1734,8 @@ export default function Ausgaben() {
                                 <tr key={bookingIdx} style={{ background: rowBg }}
                                   onMouseEnter={e => e.currentTarget.style.background='#eff6ff'}
                                   onMouseLeave={e => e.currentTarget.style.background=rowBg}>
-                                  <td className="px-4 py-2.5 text-center text-slate-400 border-r border-slate-100">{bookingIdx+1}</td>
-                                  <td className="px-4 py-2.5 sticky left-0 z-10 border-r border-slate-100" style={{ background: rowBg }}>
+                                  <td className="px-2 py-2.5 text-center text-slate-400 border-r border-slate-100">{bookingIdx+1}</td>
+                                  <td className="px-3 py-2.5 sticky left-0 z-10 border-r border-slate-100" style={{ background: rowBg }}>
                                     <Link to={`/bookings/${bookingRow.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">
                                       {bookingRow.bookingName}
                                     </Link>
@@ -1746,25 +1746,25 @@ export default function Ausgaben() {
                                     const val = uzs>0 ? uzs : usd;
                                     const isUZS = uzs>0;
                                     return (
-                                      <td key={hotelIdx} className="px-4 py-2.5 text-center border-r border-slate-100">
+                                      <td key={hotelIdx} className="px-2 py-2.5 text-center border-r border-slate-100 whitespace-nowrap">
                                         {val>0
                                           ? <span className="font-semibold text-gray-800">{isUZS ? formatNumber(val) : `$${formatNumber(val)}`}</span>
                                           : <span className="text-slate-300">—</span>}
                                       </td>
                                     );
                                   })}
-                                  <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                  <td className="px-3 py-2.5 text-center border-r border-slate-100 whitespace-nowrap">
                                     <span className="font-black text-gray-800">{formatNumber(bookingRow.totalUZS)}</span>
                                   </td>
-                                  <td className="px-4 py-2.5 text-center">
+                                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
                                     <span className="font-black text-gray-800">${formatNumber(bookingRow.totalUSD)}</span>
                                   </td>
                                 </tr>
                               );
                             })}
                             <tr style={{ background: '#dcfce7', borderTop: '2px solid #86efac' }}>
-                              <td className="px-4 py-3.5 border-r border-green-200"></td>
-                              <td className="px-4 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest sticky left-0 z-10 border-r border-green-200"
+                              <td className="px-2 py-3.5 border-r border-green-200"></td>
+                              <td className="px-3 py-3.5 text-xs font-black text-green-800 uppercase tracking-widest sticky left-0 z-10 border-r border-green-200"
                                 style={{ background: '#dcfce7' }}>TOTAL</td>
                               {pivotData.hotels.map((hotelName, hotelIdx) => {
                                 const usd = getHotelGrandTotal(hotelName,'usd');
@@ -1772,18 +1772,18 @@ export default function Ausgaben() {
                                 const val = uzs>0 ? uzs : usd;
                                 const isUZS = uzs>0;
                                 return (
-                                  <td key={hotelIdx} className="px-4 py-3.5 text-center border-r border-green-200">
+                                  <td key={hotelIdx} className="px-2 py-3.5 text-center border-r border-green-200 whitespace-nowrap">
                                     <span className="font-black text-xs text-green-900">
                                       {isUZS ? formatNumber(val) : `$${formatNumber(val)}`}
                                     </span>
                                   </td>
                                 );
                               })}
-                              <td className="px-4 py-3.5 text-center text-xs font-black text-sky-900 border-r border-sky-300"
+                              <td className="px-3 py-3.5 text-center text-sm font-black text-sky-900 border-r border-sky-300 whitespace-nowrap"
                                 style={{ background: '#bae6fd' }}>
                                 {formatNumber(getGrandTotalUZS())}
                               </td>
-                              <td className="px-4 py-3.5 text-center text-xs font-black text-sky-900"
+                              <td className="px-3 py-3.5 text-center text-sm font-black text-sky-900 whitespace-nowrap"
                                 style={{ background: '#bae6fd' }}>
                                 ${formatNumber(getGrandTotalUSD())}
                               </td>
