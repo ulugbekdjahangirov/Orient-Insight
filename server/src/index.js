@@ -69,13 +69,32 @@ const loginLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 1000, // Ausgaben loads ~50 bookings × 6 parallel calls each
+  max: 500, // Ausgaben loads ~50 bookings × 6 parallel calls each (reduced from 1000)
   message: { error: 'Juda ko\'p so\'rov. Biroz kuting.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
+// Stricter limiter for file upload / import endpoints
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { error: 'Juda ko\'p fayl yuklash. Biroz kuting.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Webhook endpoints — higher limit (Telegram sends bursts)
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/import', uploadLimiter);
+app.use('/api/telegram/webhook', webhookLimiter);
 app.use('/api/', apiLimiter);
 
 // ── Body Parsers ──

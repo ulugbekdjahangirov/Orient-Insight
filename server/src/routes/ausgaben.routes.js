@@ -9,6 +9,20 @@ const prisma = new PrismaClient();
 const upload = multer({ storage: multer.memoryStorage() });
 const AUSGABEN_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_AUSGABEN_TOKEN}`;
 
+// Webhook secret validator
+const verifyWebhookSecret = (req, res, next) => {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!secret) return res.sendStatus(403);
+  const received = req.headers['x-telegram-bot-api-secret-token'] || '';
+  try {
+    const crypto = require('crypto');
+    const a = Buffer.from(received);
+    const b = Buffer.from(secret);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.sendStatus(401);
+  } catch { return res.sendStatus(401); }
+  next();
+};
+
 // ── Tab config ────────────────────────────────────────────────────────────────
 const TABS = {
   'ausgaben': '💰 Ausgaben',
@@ -136,7 +150,7 @@ function bookingsKeyboard(bookings, tab, tourTypeCode) {
 }
 
 // ── POST /api/ausgaben/webhook ────────────────────────────────────────────────
-router.post('/webhook', async (req, res) => {
+router.post('/webhook', verifyWebhookSecret, async (req, res) => {
   res.sendStatus(200);
   try {
     const { message, callback_query } = req.body;

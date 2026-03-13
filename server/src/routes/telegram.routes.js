@@ -10,6 +10,28 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 
 const prisma = new PrismaClient();
+
+// Shared webhook secret validator middleware (timing-safe)
+const verifyWebhookSecret = (req, res, next) => {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error('TELEGRAM_WEBHOOK_SECRET is not set — webhook rejected');
+    return res.sendStatus(403);
+  }
+  const received = req.headers['x-telegram-bot-api-secret-token'] || '';
+  try {
+    const crypto = require('crypto');
+    const a = Buffer.from(received);
+    const b = Buffer.from(secret);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return res.sendStatus(401);
+    }
+  } catch {
+    return res.sendStatus(401);
+  }
+  next();
+};
+
 const BOT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 const TRANSPORT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_TRANSPORT_TOKEN}`;
 const RESTAURANT_API = () => `https://api.telegram.org/bot${process.env.TELEGRAM_RESTAURANT_TOKEN}`;
@@ -1296,11 +1318,20 @@ router.delete('/chats/:chatId', authenticate, requireAdmin, async (req, res) => 
 // POST /api/telegram/webhook - Receive updates from Telegram
 router.post('/webhook', (req, res, next) => {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (secret) {
-    const received = req.headers['x-telegram-bot-api-secret-token'];
-    if (received !== secret) {
+  if (!secret) {
+    console.error('TELEGRAM_WEBHOOK_SECRET is not set — webhook rejected');
+    return res.sendStatus(403);
+  }
+  const received = req.headers['x-telegram-bot-api-secret-token'] || '';
+  try {
+    const crypto = require('crypto');
+    const a = Buffer.from(received);
+    const b = Buffer.from(secret);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
       return res.sendStatus(401);
     }
+  } catch {
+    return res.sendStatus(401);
   }
   next();
 }, async (req, res) => {
@@ -3344,7 +3375,7 @@ router.get('/confirmations', authenticate, async (req, res) => {
 // ============================================================
 
 // POST /api/telegram/webhook-transport - Receive updates from Transport Bot
-router.post('/webhook-transport', async (req, res) => {
+router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
   res.sendStatus(200);
   try {
     const update = req.body;
@@ -4496,7 +4527,7 @@ router.post('/webhook-transport', async (req, res) => {
 // ============================================================
 
 // POST /api/telegram/webhook-restaurant - Receive updates from Restaurant Bot
-router.post('/webhook-restaurant', async (req, res) => {
+router.post('/webhook-restaurant', verifyWebhookSecret, async (req, res) => {
   res.sendStatus(200);
   try {
     const update = req.body;
@@ -5258,7 +5289,7 @@ router.post('/webhook-restaurant', async (req, res) => {
 // ============================================================
 
 // POST /api/telegram/webhook-guide - Receive updates from Guide Bot
-router.post('/webhook-guide', async (req, res) => {
+router.post('/webhook-guide', verifyWebhookSecret, async (req, res) => {
   res.sendStatus(200);
   try {
     const update = req.body;
