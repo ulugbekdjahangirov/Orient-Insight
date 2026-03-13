@@ -234,7 +234,7 @@ export default function Price() {
       loadGuideItems();
       loadShouItems();
       loadCommissionValues();
-      // Zusatzkosten is loaded in state initialization, no need to load again
+      loadZusatzkostenItems();
     } else if (selectedTourType === 'co') {
       loadCoHotelPrices();
       loadCoTransportRoutes();
@@ -245,7 +245,7 @@ export default function Price() {
       loadCoGuideItems();
       loadCoShouItems();
       loadCoCommissionValues();
-      // CO Zusatzkosten is loaded in state initialization
+      loadCoZusatzkostenItems();
     } else if (selectedTourType === 'kas') {
       loadKasHotelPrices();
       loadKasTransportRoutes();
@@ -256,7 +256,7 @@ export default function Price() {
       loadKasGuideItems();
       loadKasShouItems();
       loadKasCommissionValues();
-      // KAS Zusatzkosten is loaded in state initialization
+      loadKasZusatzkostenItems();
     } else if (selectedTourType === 'za') {
       loadZaHotelPrices();
       loadZaTransportRoutes();
@@ -267,7 +267,7 @@ export default function Price() {
       loadZaGuideItems();
       loadZaShouItems();
       loadZaCommissionValues();
-      // ZA Zusatzkosten is loaded in state initialization
+      loadZaZusatzkostenItems();
     } else if (selectedTourType === preisId) {
       // Load ALL modules' data for Preis 2026 summary
       // ER
@@ -384,6 +384,8 @@ export default function Price() {
       const yearKey = `${localStorageKey}_${year}`;
       // 1. Save to localStorage (for immediate use & cache)
       localStorage.setItem(yearKey, JSON.stringify(items));
+      // Also save without year suffix (used by RechnungDocument dropdown and state-init fallback)
+      localStorage.setItem(localStorageKey, JSON.stringify(items));
 
       // 2. Save to DATABASE (for persistence)
       await pricesApi.save({

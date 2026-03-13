@@ -341,6 +341,22 @@ router.get('/wi-contacts', authenticate, async (req, res) => {
   }
 });
 
+// PUT /api/bookings/wi-contacts — MUST be before /:id to avoid route conflict
+router.put('/wi-contacts', authenticate, async (req, res) => {
+  try {
+    const { contacts } = req.body;
+    if (!Array.isArray(contacts)) return res.status(400).json({ error: 'contacts must be array' });
+    await prisma.systemSetting.upsert({
+      where: { key: WI_CONTACTS_KEY_EARLY },
+      update: { value: JSON.stringify(contacts) },
+      create: { key: WI_CONTACTS_KEY_EARLY, value: JSON.stringify(contacts) }
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Saqlashda xatolik' });
+  }
+});
+
 // GET /api/bookings/:id - Получить бронирование по ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
@@ -2746,7 +2762,7 @@ router.get('/wi-contacts', authenticate, async (req, res) => {
   }
 });
 
-router.put('/wi-contacts', authenticate, requireAdmin, async (req, res) => {
+router.put('/wi-contacts', authenticate, async (req, res) => {
   try {
     const { contacts } = req.body;
     if (!Array.isArray(contacts)) return res.status(400).json({ error: 'contacts must be array' });

@@ -633,7 +633,9 @@ export default function BookingDetail() {
   const saveWiContacts = (updated) => {
     setWiContacts(updated);
     localStorage.setItem(WI_CONTACTS_KEY, JSON.stringify(updated));
-    worldInsightApi.saveContacts(updated).catch(() => {});
+    worldInsightApi.saveContacts(updated)
+      .then(() => toast.success('Email kontaktlar saqlandi'))
+      .catch((err) => toast.error('Saqlashda xatolik: ' + (err?.response?.data?.error || err.message)));
   };
 
   const addWiContact = () => {
@@ -3358,6 +3360,8 @@ export default function BookingDetail() {
       } else {
         // For second guide in ZA/KAS tours, default to 1 full day
         if (type === 'second' && (booking?.tourType?.code === 'ZA' || booking?.tourType?.code === 'KAS')) {
+          setGuideDays({ fullDays: 1, halfDays: 0 });
+        } else if (type === 'bergreiseleiter') {
           setGuideDays({ fullDays: 1, halfDays: 0 });
         } else {
           setGuideDays({ fullDays: 0, halfDays: 0 });

@@ -33,6 +33,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   const [totalPrices, setTotalPrices] = useState(null); // Total prices from database/localStorage
   const lockedInvoiceIdRef = React.useRef(null); // Track which invoice ID is locked
   const lockedItemsRef = React.useRef(null); // Store locked items
+  const invoiceItemsRef = React.useRef([]); // Always tracks latest invoiceItems state
 
   // Load Total Prices from database (with localStorage fallback)
   useEffect(() => {
@@ -528,6 +529,21 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
   };
 
   const [invoiceItems, setInvoiceItems] = useState([]);
+  // Keep ref always in sync so lock logic can read latest items without stale closure
+  React.useEffect(() => { invoiceItemsRef.current = invoiceItems; }, [invoiceItems]);
+  const [zusatzkostenOptions, setZusatzkostenOptions] = useState([]);
+
+  // Load Zusatzkosten items from localStorage for quick-add dropdown
+  useEffect(() => {
+    const tourTypeCode = (typeof booking?.tourType === 'string' ? booking?.tourType : booking?.tourType?.code || '').toLowerCase();
+    if (!tourTypeCode) return;
+    try {
+      const raw = localStorage.getItem(`${tourTypeCode}_zusatzkosten`);
+      const items = raw ? JSON.parse(raw) : [];
+      setZusatzkostenOptions(items);
+    } catch { setZusatzkostenOptions([]); }
+  }, [booking]);
+
   const [rechnungNr, setRechnungNr] = useState(invoice?.invoiceNumber || '11/25');
   const [bezahlteRechnungNr, setBezahlteRechnungNr] = useState(previousInvoiceNumber); // Bereits bezahlte Rechnung Nr.
   const [bezahlteRechnung, setBezahlteRechnung] = useState(previousInvoiceAmount); // Use prop value initially
@@ -609,7 +625,21 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
           return;
         }
 
-        // Try to load from database first
+        // Prefer current state (has any manually added items) over stale DB snapshot
+        const currentStateItems = invoiceItemsRef.current;
+        if (Array.isArray(currentStateItems) && currentStateItems.length > 0) {
+          const mainItem = currentStateItems.find(item => item.description === 'Usbekistan Teil' || item.description === 'Usbekistan ComfortPlus');
+          const hasValidPrice = !mainItem || mainItem.einzelpreis > 0;
+          if (hasValidPrice) {
+            setInvoiceItems(currentStateItems);
+            localStorage.setItem(lockKey, JSON.stringify({ items: currentStateItems, firma: invoice.firma }));
+            lockedInvoiceIdRef.current = invoiceId;
+            lockedItemsRef.current = currentStateItems;
+            return;
+          }
+        }
+
+        // Try to load from database as fallback
         if (invoice?.items) {
           try {
             let savedItems;
@@ -1328,6 +1358,34 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             <Plus className="w-5 h-5" />
             Add Item
           </button>
+          {zusatzkostenOptions.length > 0 && (
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                const idx = parseInt(e.target.value);
+                if (isNaN(idx)) return;
+                const zk = zusatzkostenOptions[idx];
+                const items = Array.isArray(invoiceItems) ? invoiceItems : [];
+                const newItem = {
+                  id: Math.max(...items.map(i => i.id), 0) + 1,
+                  description: zk.name,
+                  einzelpreis: zk.price || 0,
+                  anzahl: 1,
+                  currency: zk.currency || 'USD'
+                };
+                setInvoiceItems([...items, newItem]);
+                e.target.value = '';
+              }}
+              className="px-4 py-3 bg-white border-2 border-pink-300 text-gray-700 rounded-xl shadow-lg font-semibold focus:outline-none focus:border-pink-500 cursor-pointer"
+            >
+              <option value="">+ Zusatzkosten</option>
+              {zusatzkostenOptions.map((zk, idx) => (
+                <option key={idx} value={idx}>
+                  {zk.name} — {zk.price} {zk.currency}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             onClick={() => generateOrientInsightPDF()}
             className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg font-semibold"
