@@ -2242,6 +2242,7 @@ export default function Ausgaben() {
                   const grandTotal = allRows.reduce((s, r) => s + (r.price || 0), 0);
                   const paidTotal  = allRows.filter(r => r.paid).reduce((s, r) => s + (r.price || 0), 0);
                   const debtTotal  = grandTotal - paidTotal;
+                  const totalPax   = allRows.reduce((s, r) => s + (r.pax || 0), 0);
                   return (
                     <div className="w-full">
                       {allRows.length === 0 ? (
@@ -2253,14 +2254,27 @@ export default function Ausgaben() {
                         <>
                           {/* Desktop table */}
                           <div className="hidden sm:block overflow-x-auto">
-                            <table className="w-full text-xs">
+                            <table className="w-full text-xs table-fixed">
+                              <colgroup>
+                                <col style={{ width: '3%' }} />
+                                <col style={{ width: '9%' }} />
+                                <col style={{ width: '20%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '6%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '14%' }} />
+                                <col style={{ width: '12%' }} />
+                              </colgroup>
                               <thead>
                                 <tr style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a8a)' }}>
-                                  <th className="px-3 py-3.5 text-center text-white font-bold w-10">#</th>
+                                  <th className="px-3 py-3.5 text-center text-white font-bold">#</th>
                                   <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Booking</th>
                                   <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Yo'nalish</th>
+                                  <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Poyezd</th>
+                                  <th className="px-3 py-3.5 text-center text-white font-bold border-l border-blue-700">PAX</th>
+                                  <th className="px-3 py-3.5 text-right text-white font-bold border-l border-blue-700">Bilet narxi</th>
                                   <th className="px-3 py-3.5 text-right text-white font-bold border-l border-blue-700">Summa (UZS)</th>
-                                  <th className="px-3 py-3.5 text-center text-white font-bold border-l border-blue-700 w-24">To'landi</th>
+                                  <th className="px-3 py-3.5 text-center text-white font-bold border-l border-blue-700">To'landi</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2273,10 +2287,19 @@ export default function Ausgaben() {
                                       onMouseLeave={ev => ev.currentTarget.style.background = row.paid ? '#f0fdf4' : rowBg}>
                                       <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx + 1}</td>
                                       <td className="px-3 py-2.5 border-r border-slate-100">
-                                        <Link to={`/bookings/${row.bookingId}?tab=rooming`} className="font-bold text-blue-600 hover:underline">{row.bookingName}</Link>
+                                        <Link to={`/bookings/${row.bookingId}?tab=rooming&subTab=railway`} className="font-bold text-blue-600 hover:underline">{row.bookingName}</Link>
                                       </td>
                                       <td className="px-3 py-2.5 border-r border-slate-100 text-slate-600">
                                         {row.departure && row.arrival ? `${row.departure} → ${row.arrival}` : row.route || row.name || '—'}
+                                      </td>
+                                      <td className="px-3 py-2.5 border-r border-slate-100">
+                                        <span className="text-slate-700 font-medium">{row.trainName || row.trainNumber || '—'}</span>
+                                      </td>
+                                      <td className="px-3 py-2.5 text-center border-r border-slate-100">
+                                        <span className="font-bold text-slate-700">{row.pax || '—'}</span>
+                                      </td>
+                                      <td className="px-3 py-2.5 text-right border-r border-slate-100 text-slate-600">
+                                        {row.pax > 0 && row.price > 0 ? formatNumber(Math.round(row.price / row.pax)) : '—'}
                                       </td>
                                       <td className="px-3 py-2.5 text-right border-r border-slate-100">
                                         <span className={`font-bold ${row.paid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(row.price || 0)}</span>
@@ -2311,6 +2334,9 @@ export default function Ausgaben() {
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                      {(row.trainName || row.trainNumber) && <span className="text-xs font-medium text-slate-500">{row.trainName || row.trainNumber}</span>}
+                                      {row.pax > 0 && row.price > 0 && <span className="text-xs text-slate-500">{formatNumber(Math.round(row.price / row.pax))}/bilet</span>}
+                                      {row.pax > 0 && <span className="text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">{row.pax} pax</span>}
                                       <span className={`font-bold text-sm ${row.paid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(row.price || 0)} UZS</span>
                                       <button onClick={(e) => handleRailwayPaidToggle(e, row.bookingId, row.id, row.paid)}
                                         className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border-2 transition-all ${row.paid ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-gray-400 border-gray-200'}`}>
@@ -2325,13 +2351,17 @@ export default function Ausgaben() {
 
                           {/* Total footer */}
                           <div className="rounded-xl overflow-hidden mt-2 mx-0" style={{ border: '2px solid #1e3a8a' }}>
-                            <div className="grid grid-cols-3 text-xs font-bold text-center"
+                            <div className="grid grid-cols-4 text-xs font-bold text-center"
                               style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a8a)' }}>
-                              <div className="px-4 py-3 flex flex-col gap-0.5">
+                              <div className="px-4 py-3 flex flex-col gap-0.5 border-r border-blue-700">
+                                <span className="text-slate-400 uppercase tracking-widest text-[10px]">JAMI PAX</span>
+                                <span className="text-sky-300 text-sm">{totalPax > 0 ? totalPax : '—'}</span>
+                              </div>
+                              <div className="px-4 py-3 flex flex-col gap-0.5 border-r border-blue-700">
                                 <span className="text-slate-400 uppercase tracking-widest text-[10px]">JAMI</span>
                                 <span className="text-white text-sm">{formatNumber(grandTotal)} UZS</span>
                               </div>
-                              <div className="px-4 py-3 flex flex-col gap-0.5 border-x border-blue-700">
+                              <div className="px-4 py-3 flex flex-col gap-0.5 border-r border-blue-700">
                                 <span className="text-slate-400 uppercase tracking-widest text-[10px]">TO'LANDI</span>
                                 {paidTotal > 0 ? <span className="text-green-400 text-sm">{formatNumber(paidTotal)} UZS</span> : <span className="text-slate-600 text-sm">—</span>}
                               </div>
