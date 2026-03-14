@@ -2556,7 +2556,7 @@ export default function Price() {
         }[selectedTourType];
         if (!subTabCfg) return null;
         return (
-          <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:gap-3" style={{ scrollbarWidth: 'none' }}>
+          <div className="grid grid-cols-5 gap-1.5 md:flex md:flex-wrap md:gap-3">
             {subTabCfg.tabs.map((subTab) => {
               const Icon = subTab.icon;
               const isActive = subTabCfg.active === subTab.id;
@@ -2564,7 +2564,7 @@ export default function Price() {
                 <button
                   key={subTab.id}
                   onClick={() => updateParams({ [subTabCfg.updateKey]: subTab.id })}
-                  className={`flex-shrink-0 flex flex-col items-center justify-center gap-1 w-[64px] py-2.5 md:w-auto md:flex-row md:gap-2 md:px-5 md:py-2.5 rounded-2xl font-semibold transition-all duration-200 text-[10px] md:text-sm ${
+                  className={`flex flex-col items-center justify-center gap-1 py-2.5 md:w-auto md:flex-row md:gap-2 md:px-5 md:py-2.5 rounded-2xl font-semibold transition-all duration-200 text-[10px] md:text-sm ${
                     isActive ? subTabCfg.activeCls : 'bg-white text-gray-500 border border-gray-100 shadow-sm'
                   }`}
                   style={!isActive ? { boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } : {}}
@@ -2588,29 +2588,27 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-2 space-y-1.5">
-              {hotelPrices.map((hotel) => (
-                <div key={hotel.id} className="rounded-xl overflow-hidden border border-blue-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(59,130,246,0.08)' }}>
-                  <div className="h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
-                  <div className="px-3 py-2">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent" placeholder="Shahar" />
-                      <button onClick={() => deleteHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
-                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
-                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-blue-400 focus:outline-none bg-white" placeholder="0" />
-                        </div>
-                      ))}
-                    </div>
+            <div className="p-3 space-y-3">
+              {hotelPrices.map((hotel, index) => (
+                <div key={hotel.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                    <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                    <input type="text" value={hotel.city} onChange={(e) => updateHotelPrice(hotel.id, 'city', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" placeholder="Shahar" />
+                    <button onClick={() => deleteHotelRow(hotel.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 p-3">
+                    {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                      <div key={field}>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{label}</label>
+                        <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" />
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
-                <div className="bg-blue-50 rounded-xl p-2.5 text-center border border-blue-100"><div className="text-xs text-blue-500 font-medium">Total / person</div><div className="font-bold text-blue-700 text-sm mt-0.5">{(calculateHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
-                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{calculateHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><div className="text-xs text-blue-500 font-medium">Total / person</div><div className="font-bold text-blue-700 text-sm mt-0.5">{(calculateHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{calculateHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (
@@ -2748,30 +2746,27 @@ export default function Price() {
               <h3 className="text-base font-bold text-white md:text-xl">Transport ER — {paxTiers.find(t => t.id === selectedPaxTier)?.name}</h3>
             </div>
             {isMobile ? (
-              <div className="p-2 space-y-1.5">
+              <div className="p-3 space-y-3">
                 {transportRoutes.map((route, index) => {
                   const routeTotal = route.days * route.price;
                   return (
-                    <div key={route.id} className="rounded-xl overflow-hidden border border-blue-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(59,130,246,0.08)' }}>
-                      <div className="h-0.5 bg-gradient-to-r from-blue-400 to-indigo-500" />
-                      <div className="px-3 py-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="w-5 h-5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
-                          <input type="text" value={route.name} onChange={(e) => updateTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent" />
-                          <button onClick={() => deleteTransportRoute(route.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-blue-400 focus:outline-none bg-white" placeholder="0" /></div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Preise</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-blue-400 focus:outline-none bg-white" placeholder="0" /></div>
-                          <div className="bg-green-50 rounded-lg p-1.5 border border-green-100"><div className="text-xs text-green-500 font-medium mb-1">Total</div><div className={`text-center font-bold py-1 text-sm ${routeTotal > 0 ? 'text-green-600' : 'text-gray-300'}`}>{routeTotal || '—'}</div></div>
-                        </div>
+                    <div key={route.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                        <input type="text" value={route.name} onChange={(e) => updateTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                        <button onClick={() => deleteTransportRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 p-3">
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Preise</label><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${routeTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{routeTotal || '—'}</div></div>
                       </div>
                     </div>
                   );
                 })}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <div className="bg-blue-50 rounded-xl p-2.5 text-center border border-blue-100"><div className="text-xs text-blue-500 font-medium">Grand Total</div><div className="font-bold text-blue-700 text-sm mt-0.5">{calculateTransportTotals().grandTotal}</div></div>
-                  <div className="bg-green-50 rounded-xl p-2.5 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Per Person</div><div className="font-bold text-green-700 text-sm mt-0.5">{calculateTransportTotals().pricePerPerson.toFixed(0)}</div></div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-100"><div className="text-xs text-blue-500 font-medium">Grand Total</div><div className="font-bold text-blue-700 text-sm mt-0.5">{calculateTransportTotals().grandTotal}</div></div>
+                  <div className="bg-green-50 rounded-xl p-3 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Per Person</div><div className="font-bold text-green-700 text-sm mt-0.5">{calculateTransportTotals().pricePerPerson.toFixed(0)}</div></div>
                 </div>
               </div>
             ) : (
@@ -2903,23 +2898,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Railway Routes</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {railwayRoutes.map((route, index) => (
-                <div key={route.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={route.name} onChange={(e) => updateRailwayRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteRailwayRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {railwayRoutes.map((route, index) => {
+                const routeTotal = (parseFloat(route.days) || 1) * (parseFloat(route.price) || 0);
+                return (
+                  <div key={route.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateRailwayRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteRailwayRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateRailwayRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateRailwayRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateRailwayRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateRailwayRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${routeTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{routeTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{railwayRoutes.reduce((sum, r) => { const days = parseFloat(r.days) || 1; const price = parseFloat(r.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -3040,23 +3036,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Flight Routes</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {flyRoutes.map((route, index) => (
-                <div key={route.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={route.name} onChange={(e) => updateFlyRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteFlyRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {flyRoutes.map((route, index) => {
+                const routeTotal = (parseFloat(route.days) || 1) * (parseFloat(route.price) || 0);
+                return (
+                  <div key={route.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateFlyRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteFlyRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateFlyRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateFlyRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateFlyRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateFlyRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${routeTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{routeTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{flyRoutes.reduce((sum, r) => { const days = parseFloat(r.days) || 1; const price = parseFloat(r.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
               <div className="grid grid-cols-4 gap-2">
                 {paxTiers.map(tier => { const totalPrice = flyRoutes.reduce((sum, r) => { const days = parseFloat(r.days) || 1; const price = parseFloat(r.price) || 0; return sum + (days * price); }, 0); const pricePerPerson = totalPrice / tier.count; return (<div key={tier.id} className="bg-white rounded-lg p-2 border-2 border-gray-200 text-center"><div className="text-xs font-semibold text-gray-600">{tier.name}</div><div className="text-sm font-bold text-green-600">{pricePerPerson.toFixed(2)} $</div></div>); })}
@@ -3200,23 +3197,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Meal Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {mealItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {mealItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteMealItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateMealItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateMealItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{mealItems.reduce((sum, m) => { const days = parseFloat(m.days) || 1; const price = parseFloat(m.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -3313,23 +3311,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Sightseing Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {sightseingItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {sightseingItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteSightseingItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{sightseingItems.reduce((sum, s) => { const days = parseFloat(s.days) || 1; const price = parseFloat(s.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -3442,28 +3441,25 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
               {zusatzkostenItems.length === 0 ? (
                 <div className="py-8 text-center text-gray-500">
                   <DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" />
                   <p className="text-sm">No additional costs added yet</p>
                 </div>
               ) : zusatzkostenItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-pink-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-pink-400 to-rose-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i); setZusatzkostenItems(updated); }} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => { setZusatzkostenItems(zusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i); setZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" min="1" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i); setZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i); setZusatzkostenItems(updated); }} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-pink-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
-                    </div>
-                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-pink-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                <div key={item.id} className="bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                    <span className="w-6 h-6 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                    <input type="text" value={item.name} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i); setZusatzkostenItems(updated); }} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                    <button onClick={() => { setZusatzkostenItems(zusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
+                  <div className="grid grid-cols-3 gap-2 p-3">
+                    <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">PAX</label><input type="number" value={item.pax || 1} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i); setZusatzkostenItems(updated); }} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-pink-400 focus:outline-none" min="1" /></div>
+                    <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i); setZusatzkostenItems(updated); }} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-pink-400 focus:outline-none" /></div>
+                    <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Currency</label><select value={item.currency} onChange={(e) => { const updated = zusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i); setZusatzkostenItems(updated); }} className="w-full border border-gray-200 rounded-lg py-2 text-xs focus:border-pink-400 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                  </div>
+                  <div className="px-3 pb-3"><div className="text-center border border-green-100 bg-green-50 rounded-lg py-2 text-sm font-bold text-green-700">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</div></div>
                 </div>
               ))}
               {zusatzkostenItems.length > 0 && (
@@ -3804,23 +3800,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Shou Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {shouItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {shouItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteShouItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateShouItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateShouItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{shouItems.reduce((sum, s) => { const days = parseFloat(s.days) || 1; const price = parseFloat(s.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -3917,23 +3914,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Guide Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {guideItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-blue-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-blue-400 to-indigo-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-blue-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {guideItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-blue-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteGuideItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-blue-500 focus:outline-none" placeholder="0" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days === 0 ? '' : item.days} onChange={(e) => updateGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price === 0 ? '' : item.price} onChange={(e) => updateGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-blue-400 focus:outline-none" placeholder="0" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-blue-50 rounded-xl p-3 text-center border border-blue-200"><div className="text-xs text-blue-600 font-medium">Total</div><div className="font-bold text-blue-700 text-sm">{guideItems.reduce((sum, g) => { const days = parseFloat(g.days) || 1; const price = parseFloat(g.price) || 0; return sum + (days * price); }, 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -4057,29 +4055,27 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-2 space-y-1.5">
-              {coHotelPrices.map((hotel) => (
-                <div key={hotel.id} className="rounded-xl overflow-hidden border border-green-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(16,185,129,0.08)' }}>
-                  <div className="h-0.5 bg-gradient-to-r from-green-400 to-emerald-500" />
-                  <div className="px-3 py-2">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateCoHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-green-500 focus:outline-none bg-transparent" placeholder="Shahar" />
-                      <button onClick={() => deleteCoHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
-                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
-                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateCoHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-green-400 focus:outline-none bg-white" placeholder="0" />
-                        </div>
-                      ))}
-                    </div>
+            <div className="p-3 space-y-3">
+              {coHotelPrices.map((hotel, index) => (
+                <div key={hotel.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                    <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                    <input type="text" value={hotel.city} onChange={(e) => updateCoHotelPrice(hotel.id, 'city', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" placeholder="Shahar" />
+                    <button onClick={() => deleteCoHotelRow(hotel.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 p-3">
+                    {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                      <div key={field}>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{label}</label>
+                        <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateCoHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" placeholder="0" />
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
-                <div className="bg-green-50 rounded-xl p-2.5 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Total / person</div><div className="font-bold text-green-700 text-sm mt-0.5">{(coHotelPrices.reduce((sum, h) => sum + (h.days * h.pricePerDay || 0), 0) / 2).toFixed(2)} $</div></div>
-                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{coHotelPrices.reduce((sum, h) => sum + (h.ezZimmer * h.days || 0), 0).toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-green-50 rounded-xl p-3 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Total / person</div><div className="font-bold text-green-700 text-sm mt-0.5">{(coHotelPrices.reduce((sum, h) => sum + (h.days * h.pricePerDay || 0), 0) / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{coHotelPrices.reduce((sum, h) => sum + (h.ezZimmer * h.days || 0), 0).toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (
@@ -4211,30 +4207,27 @@ export default function Price() {
               <h3 className="text-base font-bold text-white md:text-xl">Transport CO — {paxTiers.find(t => t.id === selectedPaxTier)?.name}</h3>
             </div>
             {isMobile ? (
-              <div className="p-2 space-y-1.5">
+              <div className="p-3 space-y-3">
                 {coTransportRoutes.map((route, index) => {
                   const routeTotal = (parseFloat(route.days) || 0) * (parseFloat(route.price) || 0);
                   return (
-                    <div key={route.id} className="rounded-xl overflow-hidden border border-green-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(16,185,129,0.08)' }}>
-                      <div className="h-0.5 bg-gradient-to-r from-green-400 to-emerald-500" />
-                      <div className="px-3 py-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="w-5 h-5 rounded-full bg-green-50 text-green-600 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
-                          <input type="text" value={route.name} onChange={(e) => updateCoTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-green-500 focus:outline-none bg-transparent" />
-                          <button onClick={() => deleteCoTransportRoute(route.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateCoTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-green-400 focus:outline-none bg-white" /></div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Preise</div><input type="number" value={route.price} onChange={(e) => updateCoTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-green-400 focus:outline-none bg-white" /></div>
-                          <div className="bg-green-50 rounded-lg p-1.5 border border-green-100"><div className="text-xs text-green-500 font-medium mb-1">Total</div><div className={`text-center font-bold py-1 text-sm ${routeTotal > 0 ? 'text-green-600' : 'text-gray-300'}`}>{routeTotal || '—'}</div></div>
-                        </div>
+                    <div key={route.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                        <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                        <input type="text" value={route.name} onChange={(e) => updateCoTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                        <button onClick={() => deleteCoTransportRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 p-3">
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={route.days} onChange={(e) => updateCoTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Preise</label><input type="number" value={route.price} onChange={(e) => updateCoTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${routeTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{routeTotal || '—'}</div></div>
                       </div>
                     </div>
                   );
                 })}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <div className="bg-green-50 rounded-xl p-2.5 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Grand Total</div><div className="font-bold text-green-700 text-sm mt-0.5">{coTransportRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
-                  <div className="bg-emerald-50 rounded-xl p-2.5 text-center border border-emerald-100"><div className="text-xs text-emerald-500 font-medium">Per Person</div><div className="font-bold text-emerald-700 text-sm mt-0.5">{calculateCoTransportTotals().pricePerPerson.toFixed(0)}</div></div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-green-50 rounded-xl p-3 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Grand Total</div><div className="font-bold text-green-700 text-sm mt-0.5">{coTransportRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
+                  <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100"><div className="text-xs text-emerald-500 font-medium">Per Person</div><div className="font-bold text-emerald-700 text-sm mt-0.5">{calculateCoTransportTotals().pricePerPerson.toFixed(0)}</div></div>
                 </div>
               </div>
             ) : (
@@ -4301,23 +4294,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Railway Routes</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {coRailwayRoutes.map((route, index) => (
-                <div key={route.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={route.name} onChange={(e) => updateCoRailwayRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteCoRailwayRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {coRailwayRoutes.map((route, index) => {
+                const routeTotal = (parseFloat(route.days) || 1) * (parseFloat(route.price) || 0);
+                return (
+                  <div key={route.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateCoRailwayRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteCoRailwayRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateCoRailwayRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price} onChange={(e) => updateCoRailwayRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={route.days} onChange={(e) => updateCoRailwayRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={route.price} onChange={(e) => updateCoRailwayRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${routeTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{routeTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -4371,23 +4365,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Fly Routes</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {coFlyRoutes.map((route, index) => (
-                <div key={route.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={route.name} onChange={(e) => updateCoFlyRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteCoFlyRoute(route.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {coFlyRoutes.map((route, index) => {
+                const routeTotal = (parseFloat(route.days) || 1) * (parseFloat(route.price) || 0);
+                return (
+                  <div key={route.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={route.name} onChange={(e) => updateCoFlyRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteCoFlyRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateCoFlyRoute(route.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={route.price} onChange={(e) => updateCoFlyRoute(route.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={route.days} onChange={(e) => updateCoFlyRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={route.price} onChange={(e) => updateCoFlyRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${routeTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{routeTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -4456,23 +4451,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Meal Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {coMealItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateCoMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteCoMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {coMealItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteCoMealItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateCoMealItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateCoMealItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -4526,23 +4522,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Sightseing Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {coSightseingItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateCoSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteCoSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {coSightseingItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteCoSightseingItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateCoSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateCoSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -4596,23 +4593,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Guide Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {coGuideItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateCoGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteCoGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {coGuideItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteCoGuideItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateCoGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateCoGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -4681,23 +4679,24 @@ export default function Price() {
             <h3 className="text-xl font-bold text-white text-center">Shou Items</h3>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {coShouItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-green-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-green-400 to-emerald-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateCoShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-green-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteCoShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {coShouItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-green-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateCoShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteCoShouItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateCoShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateCoShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-green-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateCoShouItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateCoShouItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-green-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-green-50 rounded-xl p-3 text-center border border-green-200"><div className="text-xs text-green-600 font-medium">Total</div><div className="font-bold text-green-700 text-sm">{coShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -4767,25 +4766,22 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
               {coZusatzkostenItems.length === 0 ? (
                 <div className="py-8 text-center text-gray-500"><DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" /><p className="text-sm">No additional costs added yet</p></div>
               ) : coZusatzkostenItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-pink-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-pink-400 to-rose-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i); setCoZusatzkostenItems(updated); }} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => { setCoZusatzkostenItems(coZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i); setCoZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" min="1" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i); setCoZusatzkostenItems(updated); }} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i); setCoZusatzkostenItems(updated); }} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-pink-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
-                    </div>
-                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-pink-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                <div key={item.id} className="bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                    <span className="w-6 h-6 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                    <input type="text" value={item.name} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i); setCoZusatzkostenItems(updated); }} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                    <button onClick={() => { setCoZusatzkostenItems(coZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
+                  <div className="grid grid-cols-3 gap-2 p-3">
+                    <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">PAX</label><input type="number" value={item.pax || 1} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i); setCoZusatzkostenItems(updated); }} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-pink-400 focus:outline-none" min="1" /></div>
+                    <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i); setCoZusatzkostenItems(updated); }} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-pink-400 focus:outline-none" /></div>
+                    <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Currency</label><select value={item.currency} onChange={(e) => { const updated = coZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i); setCoZusatzkostenItems(updated); }} className="w-full border border-gray-200 rounded-lg py-2 text-xs focus:border-pink-400 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                  </div>
+                  <div className="px-3 pb-3"><div className="text-center border border-green-100 bg-green-50 rounded-lg py-2 text-sm font-bold text-green-700">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</div></div>
                 </div>
               ))}
               {coZusatzkostenItems.length > 0 && (
@@ -5063,29 +5059,27 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-2 space-y-1.5">
-              {kasHotelPrices.map((hotel) => (
-                <div key={hotel.id} className="rounded-xl overflow-hidden border border-orange-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(234,88,12,0.08)' }}>
-                  <div className="h-0.5 bg-gradient-to-r from-orange-400 to-amber-500" />
-                  <div className="px-3 py-2">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateKasHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent" placeholder="Shahar" />
-                      <button onClick={() => deleteKasHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
-                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
-                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateKasHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-orange-400 focus:outline-none bg-white" placeholder="0" />
-                        </div>
-                      ))}
-                    </div>
+            <div className="p-3 space-y-3">
+              {kasHotelPrices.map((hotel, index) => (
+                <div key={hotel.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                    <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                    <input type="text" value={hotel.city} onChange={(e) => updateKasHotelPrice(hotel.id, 'city', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" placeholder="Shahar" />
+                    <button onClick={() => deleteKasHotelRow(hotel.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 p-3">
+                    {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                      <div key={field}>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{label}</label>
+                        <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateKasHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" placeholder="0" />
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
-                <div className="bg-orange-50 rounded-xl p-2.5 text-center border border-orange-100"><div className="text-xs text-orange-500 font-medium">Total / person</div><div className="font-bold text-orange-700 text-sm mt-0.5">{(calculateKasHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
-                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{calculateKasHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-100"><div className="text-xs text-orange-500 font-medium">Total / person</div><div className="font-bold text-orange-700 text-sm mt-0.5">{(calculateKasHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">EZ Zimmer</div><div className="font-bold text-purple-700 text-sm mt-0.5">{calculateKasHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (
@@ -5221,30 +5215,27 @@ export default function Price() {
               </button>
             </div>
             {isMobile ? (
-              <div className="p-2 space-y-1.5">
+              <div className="p-3 space-y-3">
                 {kasTransportRoutes.map((route, index) => {
                   const routeTotal = route.days * route.price;
                   return (
-                    <div key={route.id} className="rounded-xl overflow-hidden border border-orange-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(234,88,12,0.08)' }}>
-                      <div className="h-0.5 bg-gradient-to-r from-orange-400 to-amber-500" />
-                      <div className="px-3 py-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="w-5 h-5 rounded-full bg-orange-50 text-orange-600 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
-                          <input type="text" value={route.name} onChange={(e) => updateKasTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent" />
-                          <button onClick={() => deleteKasTransportRoute(route.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Tage</div><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateKasTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-orange-400 focus:outline-none bg-white" placeholder="0" /></div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Preise</div><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateKasTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-orange-400 focus:outline-none bg-white" placeholder="0" /></div>
-                          <div className="bg-orange-50 rounded-lg p-1.5 border border-orange-100"><div className="text-xs text-orange-500 font-medium mb-1">Total</div><div className={`text-center font-bold py-1 text-sm ${routeTotal > 0 ? 'text-orange-600' : 'text-gray-300'}`}>{routeTotal || '—'}</div></div>
-                        </div>
+                    <div key={route.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                        <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                        <input type="text" value={route.name} onChange={(e) => updateKasTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                        <button onClick={() => deleteKasTransportRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 p-3">
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={route.days === 0 ? '' : route.days} onChange={(e) => updateKasTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" placeholder="0" /></div>
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Preise</label><input type="number" value={route.price === 0 ? '' : route.price} onChange={(e) => updateKasTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" placeholder="0" /></div>
+                        <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${routeTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{routeTotal || '—'}</div></div>
                       </div>
                     </div>
                   );
                 })}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <div className="bg-orange-50 rounded-xl p-2.5 text-center border border-orange-100"><div className="text-xs text-orange-500 font-medium">Grand Total</div><div className="font-bold text-orange-700 text-sm mt-0.5">{calculateKasTransportTotals().grandTotal.toFixed(2)} $</div></div>
-                  <div className="bg-green-50 rounded-xl p-2.5 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Per Person</div><div className="font-bold text-green-700 text-sm mt-0.5">{calculateKasTransportTotals().pricePerPerson.toFixed(0)}</div></div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-100"><div className="text-xs text-orange-500 font-medium">Grand Total</div><div className="font-bold text-orange-700 text-sm mt-0.5">{calculateKasTransportTotals().grandTotal.toFixed(2)} $</div></div>
+                  <div className="bg-green-50 rounded-xl p-3 text-center border border-green-100"><div className="text-xs text-green-500 font-medium">Per Person</div><div className="font-bold text-green-700 text-sm mt-0.5">{calculateKasTransportTotals().pricePerPerson.toFixed(0)}</div></div>
                 </div>
               </div>
             ) : (
@@ -5327,23 +5318,24 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {kasRailwayRoutes.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateKasRailwayRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteKasRailwayRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {kasRailwayRoutes.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasRailwayRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteKasRailwayRoute(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasRailwayRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasRailwayRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateKasRailwayRoute(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateKasRailwayRoute(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -5404,23 +5396,24 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {kasFlyRoutes.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateKasFlyRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteKasFlyRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {kasFlyRoutes.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasFlyRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteKasFlyRoute(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasFlyRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasFlyRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateKasFlyRoute(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateKasFlyRoute(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasFlyRoutes.reduce((sum, f) => sum + ((parseFloat(f.days) || 1) * (parseFloat(f.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -5496,23 +5489,24 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {kasMealItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateKasMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteKasMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {kasMealItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteKasMealItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateKasMealItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateKasMealItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -5573,23 +5567,24 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {kasSightseingItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateKasSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteKasSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {kasSightseingItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteKasSightseingItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateKasSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateKasSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -5650,23 +5645,24 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {kasGuideItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateKasGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteKasGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {kasGuideItems.map((item, index) => {
+                const itemTotal = (parseFloat(item.days) || 1) * (parseFloat(item.price) || 0);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteKasGuideItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label><input type="number" value={item.days} onChange={(e) => updateKasGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label><input type="number" value={item.price} onChange={(e) => updateKasGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" /></div>
+                      <div><label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label><div className={`text-center border rounded-lg py-2 text-sm font-bold ${itemTotal > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{itemTotal || '—'}</div></div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -5742,23 +5738,33 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {kasShouItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-orange-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-orange-400 to-orange-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateKasShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-orange-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteKasShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {kasShouItems.map((item, index) => {
+                const itemTotal = ((parseFloat(item.days) || 1) * (parseFloat(item.price) || 0)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-orange-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateKasShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" placeholder="Shou nomi" />
+                      <button onClick={() => deleteKasShouItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateKasShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateKasShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-orange-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                        <input type="number" value={item.days} onChange={(e) => updateKasShouItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => updateKasShouItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-orange-400 focus:outline-none" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                        <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? itemTotal : '—'}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-orange-50 rounded-xl p-3 text-center border border-orange-200"><div className="text-xs text-orange-600 font-medium">Total</div><div className="font-bold text-orange-700 text-sm">{kasShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -5822,27 +5828,38 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
               {kasZusatzkostenItems.length === 0 ? (
                 <div className="py-8 text-center text-gray-500"><DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" /><p className="text-sm">No additional costs added yet</p></div>
-              ) : kasZusatzkostenItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-pink-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-pink-400 to-rose-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i))} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => { setKasZusatzkostenItems(kasZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+              ) : kasZusatzkostenItems.map((item, index) => {
+                const itemTotal = ((item.price || 0) * (item.pax || 1)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i))} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" placeholder="Cost nomi" />
+                      <button onClick={() => { setKasZusatzkostenItems(kasZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" min="1" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-pink-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i))} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-pink-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">PAX</label>
+                        <input type="number" value={item.pax || 1} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i))} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-pink-400 focus:outline-none" min="1" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i))} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-pink-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Currency</label>
+                        <select value={item.currency} onChange={(e) => setKasZusatzkostenItems(kasZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i))} className="w-full border border-gray-200 rounded-lg py-2 text-xs focus:border-pink-400 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select>
+                      </div>
                     </div>
-                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-pink-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                    <div className="px-3 pb-3">
+                      <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? `${itemTotal} ${item.currency}` : '—'}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {kasZusatzkostenItems.length > 0 && (
                 <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 space-y-1">
                   <div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total USD:</span><span className="font-bold text-emerald-700">{kasZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)} USD</span></div>
@@ -6102,29 +6119,27 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-2 space-y-1.5">
-              {zaHotelPrices.map((hotel) => (
-                <div key={hotel.id} className="rounded-xl overflow-hidden border border-purple-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(147,51,234,0.08)' }}>
-                  <div className="h-0.5 bg-gradient-to-r from-purple-400 to-violet-500" />
-                  <div className="px-3 py-2">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <input type="text" value={hotel.city} onChange={(e) => updateZaHotelPrice(hotel.id, 'city', e.target.value)} className="font-bold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent" placeholder="Shahar" />
-                      <button onClick={() => deleteZaHotelRow(hotel.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
-                        <div key={field} className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                          <div className="text-xs text-gray-400 font-medium mb-1">{label}</div>
-                          <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateZaHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-purple-400 focus:outline-none bg-white" placeholder="0" />
-                        </div>
-                      ))}
-                    </div>
+            <div className="p-3 space-y-3">
+              {zaHotelPrices.map((hotel, index) => (
+                <div key={hotel.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                    <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                    <input type="text" value={hotel.city} onChange={(e) => updateZaHotelPrice(hotel.id, 'city', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" placeholder="Shahar" />
+                    <button onClick={() => deleteZaHotelRow(hotel.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 p-3">
+                    {[{label:'Tage',field:'days',val:hotel.days},{label:'DBL',field:'pricePerDay',val:hotel.pricePerDay},{label:'EZ',field:'ezZimmer',val:hotel.ezZimmer}].map(({label,field,val})=>(
+                      <div key={field}>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{label}</label>
+                        <input type="number" value={val === 0 ? '' : val} onChange={(e) => updateZaHotelPrice(hotel.id, field, e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" placeholder="0" />
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
-                <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">Total / person</div><div className="font-bold text-purple-700 text-sm mt-0.5">{(calculateZaHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
-                <div className="bg-violet-50 rounded-xl p-2.5 text-center border border-violet-100"><div className="text-xs text-violet-500 font-medium">EZ Zimmer</div><div className="font-bold text-violet-700 text-sm mt-0.5">{calculateZaHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">Total / person</div><div className="font-bold text-purple-700 text-sm mt-0.5">{(calculateZaHotelTotals().totalPerTraveler / 2).toFixed(2)} $</div></div>
+                <div className="bg-violet-50 rounded-xl p-3 text-center border border-violet-100"><div className="text-xs text-violet-500 font-medium">EZ Zimmer</div><div className="font-bold text-violet-700 text-sm mt-0.5">{calculateZaHotelTotals().totalEZZimmer.toFixed(2)} $</div></div>
               </div>
             </div>
           ) : (
@@ -6260,30 +6275,36 @@ export default function Price() {
               </button>
             </div>
             {isMobile ? (
-              <div className="p-2 space-y-1.5">
+              <div className="p-3 space-y-3">
                 {zaTransportRoutes.map((route, index) => {
-                  const routeTotal = route.days * route.price;
+                  const routeTotal = ((parseFloat(route.days) || 1) * (parseFloat(route.price) || 0)).toFixed(2);
                   return (
-                    <div key={route.id} className="rounded-xl overflow-hidden border border-purple-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(147,51,234,0.08)' }}>
-                      <div className="h-0.5 bg-gradient-to-r from-purple-400 to-violet-500" />
-                      <div className="px-3 py-2">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="w-5 h-5 rounded-full bg-purple-50 text-purple-600 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
-                          <input type="text" value={route.name} onChange={(e) => updateZaTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent" />
-                          <button onClick={() => deleteZaTransportRoute(route.id)} className="p-1 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div key={route.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                        <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                        <input type="text" value={route.name} onChange={(e) => updateZaTransportRoute(route.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                        <button onClick={() => deleteZaTransportRoute(route.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 p-3">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                          <input type="number" value={route.days} onChange={(e) => updateZaTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
                         </div>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Tage</div><input type="number" value={route.days} onChange={(e) => updateZaTransportRoute(route.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-purple-400 focus:outline-none bg-white" /></div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100"><div className="text-xs text-gray-400 font-medium mb-1">Preise</div><input type="number" value={route.price} onChange={(e) => updateZaTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-md py-1 text-sm font-bold focus:border-purple-400 focus:outline-none bg-white" /></div>
-                          <div className="bg-purple-50 rounded-lg p-1.5 border border-purple-100"><div className="text-xs text-purple-500 font-medium mb-1">Total</div><div className={`text-center font-bold py-1 text-sm ${routeTotal > 0 ? 'text-purple-600' : 'text-gray-300'}`}>{routeTotal || '—'}</div></div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Preise</label>
+                          <input type="number" value={route.price} onChange={(e) => updateZaTransportRoute(route.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                          <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(routeTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(routeTotal) > 0 ? routeTotal : '—'}</div>
                         </div>
                       </div>
                     </div>
                   );
                 })}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <div className="bg-purple-50 rounded-xl p-2.5 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">Grand Total</div><div className="font-bold text-purple-700 text-sm mt-0.5">{zaTransportRoutes.reduce((s,r)=>s+((parseFloat(r.days)||1)*(parseFloat(r.price)||0)),0).toFixed(2)} $</div></div>
-                  <div className="bg-violet-50 rounded-xl p-2.5 text-center border border-violet-100"><div className="text-xs text-violet-500 font-medium">Per Person</div><div className="font-bold text-violet-700 text-sm mt-0.5">{calculateZaTransportTotals().pricePerPerson.toFixed(0)}</div></div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-100"><div className="text-xs text-purple-500 font-medium">Grand Total</div><div className="font-bold text-purple-700 text-sm mt-0.5">{zaTransportRoutes.reduce((s,r)=>s+((parseFloat(r.days)||1)*(parseFloat(r.price)||0)),0).toFixed(2)} $</div></div>
+                  <div className="bg-violet-50 rounded-xl p-3 text-center border border-violet-100"><div className="text-xs text-violet-500 font-medium">Per Person</div><div className="font-bold text-violet-700 text-sm mt-0.5">{calculateZaTransportTotals().pricePerPerson.toFixed(0)}</div></div>
                 </div>
               </div>
             ) : (
@@ -6366,23 +6387,33 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {zaRailwayRoutes.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateZaRailwayRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteZaRailwayRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {zaRailwayRoutes.map((item, index) => {
+                const itemTotal = ((parseFloat(item.days) || 1) * (parseFloat(item.price) || 0)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaRailwayRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteZaRailwayRoute(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaRailwayRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaRailwayRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                        <input type="number" value={item.days} onChange={(e) => updateZaRailwayRoute(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => updateZaRailwayRoute(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                        <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? itemTotal : '—'}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaRailwayRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -6443,23 +6474,33 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {zaFlyRoutes.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateZaFlyRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteZaFlyRoute(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {zaFlyRoutes.map((item, index) => {
+                const itemTotal = ((parseFloat(item.days) || 1) * (parseFloat(item.price) || 0)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaFlyRoute(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteZaFlyRoute(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaFlyRoute(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaFlyRoute(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                        <input type="number" value={item.days} onChange={(e) => updateZaFlyRoute(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => updateZaFlyRoute(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                        <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? itemTotal : '—'}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaFlyRoutes.reduce((sum, r) => sum + ((parseFloat(r.days) || 1) * (parseFloat(r.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -6535,23 +6576,33 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {zaMealItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateZaMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteZaMealItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {zaMealItems.map((item, index) => {
+                const itemTotal = ((parseFloat(item.days) || 1) * (parseFloat(item.price) || 0)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaMealItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteZaMealItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaMealItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaMealItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                        <input type="number" value={item.days} onChange={(e) => updateZaMealItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => updateZaMealItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                        <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? itemTotal : '—'}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaMealItems.reduce((sum, m) => sum + ((parseFloat(m.days) || 1) * (parseFloat(m.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -6612,23 +6663,33 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {zaSightseingItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateZaSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteZaSightseingItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {zaSightseingItems.map((item, index) => {
+                const itemTotal = ((parseFloat(item.days) || 1) * (parseFloat(item.price) || 0)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaSightseingItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteZaSightseingItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                        <input type="number" value={item.days} onChange={(e) => updateZaSightseingItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => updateZaSightseingItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                        <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? itemTotal : '—'}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaSightseingItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -6689,23 +6750,33 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {zaGuideItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateZaGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteZaGuideItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {zaGuideItems.map((item, index) => {
+                const itemTotal = ((parseFloat(item.days) || 1) * (parseFloat(item.price) || 0)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaGuideItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteZaGuideItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                        <input type="number" value={item.days} onChange={(e) => updateZaGuideItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => updateZaGuideItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                        <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? itemTotal : '—'}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaGuideItems.reduce((sum, g) => sum + ((parseFloat(g.days) || 1) * (parseFloat(g.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -6781,23 +6852,33 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
-              {zaShouItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-purple-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => updateZaShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => deleteZaShouItem(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+            <div className="p-3 space-y-3">
+              {zaShouItems.map((item, index) => {
+                const itemTotal = ((parseFloat(item.days) || 1) * (parseFloat(item.price) || 0)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => updateZaShouItem(item.id, 'name', e.target.value)} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" />
+                      <button onClick={() => deleteZaShouItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">Tage</div><input type="number" value={item.days} onChange={(e) => updateZaShouItem(item.id, 'days', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price ($)</div><input type="number" value={item.price} onChange={(e) => updateZaShouItem(item.id, 'price', e.target.value)} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tage</label>
+                        <input type="number" value={item.days} onChange={(e) => updateZaShouItem(item.id, 'days', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => updateZaShouItem(item.id, 'price', e.target.value)} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Total</label>
+                        <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? itemTotal : '—'}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="bg-purple-50 rounded-xl p-3 text-center border border-purple-200"><div className="text-xs text-purple-600 font-medium">Total</div><div className="font-bold text-purple-700 text-sm">{zaShouItems.reduce((sum, s) => sum + ((parseFloat(s.days) || 1) * (parseFloat(s.price) || 0)), 0).toFixed(2)} $</div></div>
             </div>
           ) : (
@@ -6861,27 +6942,38 @@ export default function Price() {
             </button>
           </div>
           {isMobile ? (
-            <div className="p-3 space-y-2">
+            <div className="p-3 space-y-3">
               {zaZusatzkostenItems.length === 0 ? (
                 <div className="py-8 text-center text-gray-500"><DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-300" /><p className="text-sm">No additional costs added yet</p></div>
-              ) : zaZusatzkostenItems.map((item, index) => (
-                <div key={item.id} className="flex rounded-xl overflow-hidden border border-purple-100 shadow-sm bg-white">
-                  <div className="w-1.5 shrink-0 bg-gradient-to-b from-purple-400 to-violet-600" />
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-bold text-gray-400 w-5">{index+1}</span>
-                      <input type="text" value={item.name} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i))} className="font-semibold text-gray-900 text-sm flex-1 border-0 border-b-2 border-gray-200 focus:border-purple-500 focus:outline-none bg-transparent pb-0.5" />
-                      <button onClick={() => { setZaZusatzkostenItems(zaZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
+              ) : zaZusatzkostenItems.map((item, index) => {
+                const itemTotal = ((item.price || 0) * (item.pax || 1)).toFixed(2);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-purple-100 overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border-b border-gray-100">
+                      <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center shrink-0">{index+1}</span>
+                      <input type="text" value={item.name} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, name: e.target.value} : i))} className="font-semibold text-gray-900 text-sm flex-1 border-0 focus:outline-none bg-transparent" placeholder="Cost nomi" />
+                      <button onClick={() => { setZaZusatzkostenItems(zaZusatzkostenItems.filter(i => i.id !== item.id)); toast.success('Item deleted'); }} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg shrink-0"><Trash2 className="w-4 h-4" /></button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><div className="text-xs text-gray-500 mb-1">PAX</div><input type="number" value={item.pax || 1} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" min="1" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Price</div><input type="number" value={item.price} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i))} className="w-full text-center border-2 border-gray-200 rounded-lg p-1.5 text-sm focus:border-purple-500 focus:outline-none" /></div>
-                      <div><div className="text-xs text-gray-500 mb-1">Currency</div><select value={item.currency} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i))} className="w-full border-2 border-gray-200 rounded-lg p-1.5 text-xs focus:border-purple-500 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select></div>
+                    <div className="grid grid-cols-3 gap-2 p-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">PAX</label>
+                        <input type="number" value={item.pax || 1} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, pax: parseInt(e.target.value) || 1} : i))} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" min="1" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Price</label>
+                        <input type="number" value={item.price} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, price: parseFloat(e.target.value) || 0} : i))} className="w-full text-center border border-gray-200 rounded-lg py-2 text-sm font-bold focus:border-purple-400 focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Currency</label>
+                        <select value={item.currency} onChange={(e) => setZaZusatzkostenItems(zaZusatzkostenItems.map(i => i.id === item.id ? {...i, currency: e.target.value} : i))} className="w-full border border-gray-200 rounded-lg py-2 text-xs focus:border-purple-400 focus:outline-none font-semibold"><option value="USD">USD</option><option value="UZS">UZS</option><option value="EUR">EUR</option></select>
+                      </div>
                     </div>
-                    <div className="mt-2 text-right"><span className="text-xs text-gray-500">Total: </span><span className="text-sm font-bold text-purple-600">{((item.price || 0) * (item.pax || 1)).toFixed(2)} {item.currency}</span></div>
+                    <div className="px-3 pb-3">
+                      <div className={`text-center border rounded-lg py-2 text-sm font-bold ${parseFloat(itemTotal) > 0 ? 'border-green-100 bg-green-50 text-green-700' : 'border-gray-100 bg-gray-50 text-gray-300'}`}>{parseFloat(itemTotal) > 0 ? `${itemTotal} ${item.currency}` : '—'}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {zaZusatzkostenItems.length > 0 && (
                 <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200 space-y-1">
                   <div className="flex justify-between"><span className="text-sm font-medium text-emerald-700">Total USD:</span><span className="font-bold text-emerald-700">{zaZusatzkostenItems.filter(i => i.currency === 'USD').reduce((sum, i) => sum + ((i.price || 0) * (i.pax || 1)), 0).toFixed(2)} USD</span></div>

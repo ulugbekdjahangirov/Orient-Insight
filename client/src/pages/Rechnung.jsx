@@ -64,6 +64,9 @@ export default function Rechnung() {
   const [orientItems, setOrientItems] = useState([]);
   const [infuturestormItems, setInfuturestormItems] = useState([]);
   const [shamixonItems, setShamixonItems] = useState([]);
+  const [expandedShamixonIds, setExpandedShamixonIds] = useState(new Set());
+  const toggleShamixonCard = (id) => setExpandedShamixonIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const [shamixonTotalExpanded, setShamixonTotalExpanded] = useState(false);
 
   const activeModuleData = modules.find(m => m.id === activeModule);
   const Icon = activeModuleData?.icon || FileText;
@@ -338,35 +341,58 @@ export default function Rechnung() {
               ) : (
                 <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
                   {rechnungItems.map((item, index) => (
-                    <div key={item.id} className="rounded-xl overflow-hidden border border-amber-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(245,158,11,0.08)' }}>
-                      <div className="h-0.5 bg-gradient-to-r from-amber-400 to-orange-500" />
-                      <div className="px-3 py-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-5 h-5 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-amber-200">{index + 1}</span>
-                            <div className="min-w-0">
-                              <div className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</div>
-                              <div className="text-[10px] text-gray-500">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
-                            </div>
+                    <div key={item.id} className={`rounded-xl overflow-hidden border bg-white ${item.isPaid ? 'border-green-200' : 'border-amber-100'}`} style={{ boxShadow: item.isPaid ? '0 1px 4px rgba(34,197,94,0.10)' : '0 1px 4px rgba(245,158,11,0.08)' }}>
+                      <div className={`h-0.5 ${item.isPaid ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-amber-400 to-orange-500'}`} />
+                      <div className="px-3 py-2.5 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-amber-50 text-amber-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-amber-200">{index + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-gray-900 text-sm truncate">{item.gruppe}</div>
+                          <div className="text-[10px] text-gray-500">{item.name}{item.firma ? ` · ${item.firma}` : ''}</div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Bezahlt toggle */}
+                          <button
+                            onClick={() => handleTogglePaid(item)}
+                            title={item.isPaid ? 'Bekor qilish' : 'To\'landi'}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors ${item.isPaid ? 'bg-green-50 border-green-200 text-green-600' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-500'}`}
+                          >
+                            {item.isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                            {item.isPaid ? 'Bezahlt' : 'Bezahlt'}
+                          </button>
+                          <div className={`rounded-lg px-2 py-1 border text-right ${item.isPaid ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-100'}`}>
+                            <div className={`text-[10px] font-medium ${item.isPaid ? 'text-green-600' : 'text-amber-600'}`}>Summe</div>
+                            <div className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</div>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <div className="bg-amber-50 rounded-lg px-2 py-1 border border-amber-100 text-right">
-                              <div className="text-[10px] text-amber-600 font-medium">Summe</div>
-                              <div className="font-bold text-gray-900 text-sm">{formatNumber(item.summe)}</div>
-                            </div>
-                            <button onClick={() => { const docTab = item.name === 'Rechnung' ? 'rechnung' : item.name === 'Neue Rechnung' ? 'neue-rechnung' : 'gutschrift'; navigate(`/bookings/${item.bookingId}?tab=documents&docTab=${docTab}`); }} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
-                          </div>
+                          <button onClick={() => { const docTab = item.name === 'Rechnung' ? 'rechnung' : item.name === 'Neue Rechnung' ? 'neue-rechnung' : 'gutschrift'; navigate(`/bookings/${item.bookingId}?tab=documents&docTab=${docTab}`); }} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
                         </div>
                       </div>
                     </div>
                   ))}
                   {rechnungItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
-                  {rechnungItems.length > 0 && (
-                    <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100">
-                      <span className="text-gray-600 uppercase text-[10px] tracking-widest self-center">TOTAL</span>
-                      <span className="text-gray-900 text-base">{formatNumber(rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0))}</span>
-                    </div>
-                  )}
+                  {rechnungItems.length > 0 && (() => {
+                    const paidItems = rechnungItems.filter(i => i.isPaid);
+                    const paidSum = paidItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    const totalSum = rechnungItems.reduce((s, i) => s + (parseFloat(i.summe) || 0), 0);
+                    const remaining = totalSum - paidSum;
+                    return (
+                      <div className="rounded-xl overflow-hidden border border-amber-100">
+                        <div className="px-3 py-2.5 flex justify-between font-bold bg-gradient-to-r from-amber-50 to-orange-50">
+                          <span className="text-gray-600 uppercase text-[10px] tracking-widest self-center">TOTAL</span>
+                          <span className="text-gray-900 text-base">{formatNumber(totalSum)}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-px bg-gray-100">
+                          <div className="bg-green-50 px-3 py-2">
+                            <div className="text-[9px] text-green-600 font-bold uppercase tracking-wide flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Bezahlt ({paidItems.length})</div>
+                            <div className="text-sm font-black text-green-700">{formatNumber(paidSum)}</div>
+                          </div>
+                          <div className="bg-orange-50 px-3 py-2">
+                            <div className="text-[9px] text-orange-500 font-bold uppercase tracking-wide flex items-center gap-1"><Circle className="w-3 h-3" />Ausstehend ({rechnungItems.length - paidItems.length})</div>
+                            <div className="text-sm font-black text-orange-600">{formatNumber(remaining)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
               {/* Desktop table */}
@@ -884,8 +910,8 @@ export default function Rechnung() {
                 </button>
               </div>
 
-              {/* Mobile cards — Shamixon (editable) */}
-              <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
+              {/* Mobile cards — Shamixon (collapsible) */}
+              <div className="md:hidden px-3 py-2 flex flex-col gap-2">
                 {shamixonItems.map((item, index) => {
                   const payAmt = parseFloat(item.gruppe) || 0;
                   const commission = payAmt * 0.01;
@@ -894,83 +920,145 @@ export default function Rechnung() {
                   const serviceFee = parseFloat(item.serviceFee) || 0;
                   const receivedAmt = parseFloat(item.receivedAmount) || 0;
                   const totalAmount = receivedAmt - serviceFee;
+                  const remaining = incomingPayment - receivedAmt;
+                  const isExpanded = expandedShamixonIds.has(item.id);
                   return (
-                    <div key={item.id} className="rounded-xl overflow-hidden border border-purple-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(168,85,247,0.08)' }}>
-                      <div className="h-0.5 bg-gradient-to-r from-purple-400 to-pink-500" />
-                      <div className="px-3 py-2">
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-purple-50 text-purple-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-purple-200">{index + 1}</span>
-                            <span className="font-bold text-gray-900 text-sm">{item.name || '—'}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <div className="bg-purple-50 rounded-lg px-2 py-1 border border-purple-100 text-right">
-                              <div className="text-[10px] text-purple-600 font-medium">Total</div>
-                              <div className="font-bold text-gray-900 text-sm">{formatNumber(totalAmount)}</div>
-                            </div>
-                            <button onClick={() => handleDeleteShamixonItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                          </div>
+                    <div key={item.id} className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm">
+                      {/* Clickable header */}
+                      <div
+                        className="flex items-center gap-2 px-3 py-3 cursor-pointer select-none"
+                        style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)' }}
+                        onClick={() => toggleShamixonCard(item.id)}
+                      >
+                        <span className="w-7 h-7 rounded-full bg-white/25 text-white text-xs font-black flex items-center justify-center shrink-0">{index + 1}</span>
+                        <span className="font-bold text-white text-base flex-1">{item.name ? new Date(item.name).toLocaleDateString('de-DE') : '—'}</span>
+                        <svg className={`w-4 h-4 text-white/80 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDeleteShamixonItem(item.id); }}
+                          className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors ml-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Summary — always visible */}
+                      <div className="grid grid-cols-3">
+                        <div className="px-3 py-2.5 border-r border-gray-100">
+                          <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">Incoming</div>
+                          <div className="text-sm font-black text-violet-600">{formatNumber(incomingPayment)}</div>
                         </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Date</div>
-                            <input type="date" value={item.name || ''} onChange={e => handleUpdateShamixonItem(item.id, 'name', e.target.value)} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" />
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Income date</div>
-                            <input type="date" value={item.firma || ''} onChange={e => handleUpdateShamixonItem(item.id, 'firma', e.target.value)} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" />
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Payment</div>
-                            <input type="text" value={item.gruppe ? formatNumber(parseFloat(item.gruppe)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'gruppe', v); }} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" placeholder="0" />
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Service fee</div>
-                            <input type="number" value={item.serviceFee || ''} onChange={e => handleUpdateShamixonItem(item.id, 'serviceFee', parseFloat(e.target.value) || 0)} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" step="0.01" />
-                          </div>
-                          <div className="bg-purple-50 rounded-lg p-1.5 border border-purple-100">
-                            <div className="text-[10px] text-purple-500 font-medium mb-0.5">Commission (1%)</div>
-                            <div className="text-xs font-bold text-gray-900">{formatNumber(commission)}</div>
-                          </div>
-                          <div className="bg-purple-50 rounded-lg p-1.5 border border-purple-100">
-                            <div className="text-[10px] text-purple-500 font-medium mb-0.5">Transfer fee</div>
-                            <div className="text-xs font-bold text-gray-900">{formatNumber(transferFee)}</div>
-                          </div>
-                          <div className="bg-indigo-50 rounded-lg p-1.5 border border-indigo-100">
-                            <div className="text-[10px] text-indigo-500 font-medium mb-0.5">Incoming payment</div>
-                            <div className="text-xs font-bold text-gray-900">{formatNumber(incomingPayment)}</div>
-                          </div>
-                          <div className="bg-gray-50 rounded-lg p-1.5 border border-gray-100">
-                            <div className="text-[10px] text-gray-400 font-medium mb-0.5">Received</div>
-                            <input type="text" value={item.receivedAmount ? formatNumber(parseFloat(item.receivedAmount)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'receivedAmount', v); }} className="w-full bg-transparent text-xs font-semibold text-gray-900 outline-none" placeholder="0" />
-                          </div>
+                        <div className="px-3 py-2.5 border-r border-gray-100">
+                          <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">Received</div>
+                          <div className="text-sm font-black text-gray-800">{receivedAmt ? formatNumber(receivedAmt) : '0'}</div>
+                        </div>
+                        <div className="px-3 py-2.5">
+                          <div className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: remaining > 0 ? '#d97706' : '#16a34a' }}>Qoldiq</div>
+                          <div className="text-sm font-black" style={{ color: remaining > 0 ? '#d97706' : '#16a34a' }}>{formatNumber(remaining)}</div>
                         </div>
                       </div>
+
+                      {/* Expanded details */}
+                      {isExpanded && (
+                        <div className="p-3 space-y-2 border-t border-gray-100 bg-gray-50/50">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm">
+                              <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">Date</div>
+                              <input type="date" value={item.name || ''} onChange={e => handleUpdateShamixonItem(item.id, 'name', e.target.value)} className="w-full bg-transparent text-sm font-bold text-gray-900 outline-none" />
+                            </div>
+                            <div className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm">
+                              <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">Income date</div>
+                              <input type="date" value={item.firma || ''} onChange={e => handleUpdateShamixonItem(item.id, 'firma', e.target.value)} className="w-full bg-transparent text-sm font-bold text-gray-900 outline-none" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm">
+                              <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">Payment</div>
+                              <input type="text" value={item.gruppe ? formatNumber(parseFloat(item.gruppe)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'gruppe', v); }} className="w-full bg-transparent text-sm font-bold text-gray-900 outline-none" placeholder="0" />
+                            </div>
+                            <div className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm">
+                              <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">Service fee</div>
+                              <input type="number" value={item.serviceFee || ''} onChange={e => handleUpdateShamixonItem(item.id, 'serviceFee', parseFloat(e.target.value) || 0)} className="w-full bg-transparent text-sm font-bold text-gray-900 outline-none" step="0.01" placeholder="0" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-xl p-2.5 border border-violet-100 shadow-sm" style={{ background: '#f5f3ff' }}>
+                              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#7c3aed' }}>Commission (1%)</div>
+                              <div className="text-sm font-black" style={{ color: '#6d28d9' }}>{formatNumber(commission)}</div>
+                            </div>
+                            <div className="rounded-xl p-2.5 border border-violet-100 shadow-sm" style={{ background: '#f5f3ff' }}>
+                              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#7c3aed' }}>Transfer fee</div>
+                              <div className="text-sm font-black" style={{ color: '#6d28d9' }}>{formatNumber(transferFee)}</div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-xl p-2.5 border border-indigo-100 shadow-sm" style={{ background: '#eef2ff' }}>
+                              <div className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#4338ca' }}>Incoming payment</div>
+                              <div className="text-sm font-black" style={{ color: '#3730a3' }}>{formatNumber(incomingPayment)}</div>
+                            </div>
+                            <div className="bg-white rounded-xl p-2.5 border border-gray-100 shadow-sm">
+                              <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">Received</div>
+                              <input type="text" value={item.receivedAmount ? formatNumber(parseFloat(item.receivedAmount)) : ''} onChange={e => { const v = e.target.value.replace(/\s/g, ''); if (v === '' || !isNaN(v)) handleUpdateShamixonItem(item.id, 'receivedAmount', v); }} className="w-full bg-transparent text-sm font-bold text-gray-900 outline-none" placeholder="0" />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between rounded-xl px-3 py-2.5 border border-violet-100" style={{ background: 'linear-gradient(135deg, #f5f3ff, #fdf4ff)' }}>
+                            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#7c3aed' }}>Total</span>
+                            <span className="text-base font-black text-gray-900">{formatNumber(totalAmount)}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
                 {shamixonItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
                 {shamixonItems.length > 0 && (() => {
-                  let tComm = 0, tFee = 0, tRem = 0, tSvc = 0, tTotal = 0;
-                  shamixonItems.forEach(i => { const p = parseFloat(i.gruppe)||0; const c = p*0.01; const f = 50; const inc = p-c-f; const s = parseFloat(i.serviceFee)||0; const r = parseFloat(i.receivedAmount)||0; tComm+=c; tFee+=f; tRem+=(inc-r); tSvc+=s; tTotal+=r-s; });
+                  let tComm = 0, tFee = 0, tIncoming = 0, tSvc = 0, tTotal = 0, tRemaining = 0;
+                  shamixonItems.forEach(i => { const p = parseFloat(i.gruppe)||0; const c = p*0.01; const f = 50; const inc = p-c-f; const s = parseFloat(i.serviceFee)||0; const r = parseFloat(i.receivedAmount)||0; tComm+=c; tFee+=f; tIncoming+=inc; tSvc+=s; tTotal+=r-s; tRemaining+=inc-r; });
                   return (
-                    <div className="rounded-xl px-3 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100">
-                      <div className="flex justify-between font-bold text-gray-900 mb-1.5">
-                        <span className="uppercase text-[10px] tracking-widest text-gray-600 self-center">TOTAL</span>
-                        <span className="text-base">{formatNumber(tTotal)}</span>
+                    <div className="rounded-2xl overflow-hidden border border-violet-200 shadow-sm">
+                      {/* JAMI header — clickable */}
+                      <div
+                        className="flex items-center justify-between px-4 py-3.5 cursor-pointer select-none"
+                        style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)' }}
+                        onClick={() => setShamixonTotalExpanded(v => !v)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-white/80 text-xs font-bold uppercase tracking-widest">JAMI</span>
+                          <svg className={`w-4 h-4 text-white/70 transition-transform duration-200 ${shamixonTotalExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                        <span className="text-white text-xl font-black">{formatNumber(tTotal)}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-x-4 text-[10px] text-gray-500">
-                        <span>Commission: {formatNumber(tComm)}</span>
-                        <span>Transfer: {formatNumber(tFee)}</span>
-                        <span>Qoldiq: {formatNumber(tRem)}</span>
-                        <span>Service: {formatNumber(tSvc)}</span>
+                      {/* Kutilayotgan — always visible */}
+                      <div className="flex items-center justify-between px-4 py-3" style={{ background: 'rgba(124,58,237,0.08)' }}>
+                        <span className="text-xs font-black uppercase tracking-wide" style={{ color: '#7c3aed' }}>Kutilayotgan (Qoldiq)</span>
+                        <span className="text-base font-black" style={{ color: tRemaining > 0 ? '#d97706' : '#16a34a' }}>{formatNumber(tRemaining)}</span>
                       </div>
+                      {/* Expanded detail */}
+                      {shamixonTotalExpanded && (
+                        <div className="grid grid-cols-2 gap-px bg-gray-100 border-t border-gray-100">
+                          <div className="bg-white px-3 py-2.5">
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Incoming</div>
+                            <div className="text-sm font-black text-violet-600">{formatNumber(tIncoming)}</div>
+                          </div>
+                          <div className="bg-white px-3 py-2.5">
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Commission</div>
+                            <div className="text-sm font-black text-gray-800">{formatNumber(tComm)}</div>
+                          </div>
+                          <div className="bg-white px-3 py-2.5">
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Transfer fee</div>
+                            <div className="text-sm font-black text-gray-800">{formatNumber(tFee)}</div>
+                          </div>
+                          <div className="bg-white px-3 py-2.5">
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Service fee</div>
+                            <div className="text-sm font-black text-gray-800">{formatNumber(tSvc)}</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
               </div>
               {/* Desktop table - Editable */}
-              <div className="hidden sm:block overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gradient-to-r from-purple-100 to-pink-100">
