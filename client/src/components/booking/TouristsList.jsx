@@ -75,6 +75,50 @@ export default function TouristsList({ bookingId, onUpdate }) {
     return `${day}.${month}.${year}`;
   };
 
+  const copyToClipboard = (value, label) => {
+    if (!value || value === '-') return;
+    navigator.clipboard.writeText(value).then(() => {
+      toast.success(`${label} copied!`, { duration: 1500, icon: '📋' });
+    }).catch(() => {
+      toast.error('Copy failed');
+    });
+  };
+
+  const CopyField = ({ value, label, className = '', children }) => (
+    <span
+      onClick={() => copyToClipboard(value, label)}
+      title={`Click to copy ${label}`}
+      className={`cursor-pointer hover:text-primary-600 hover:underline active:opacity-60 transition-colors select-none ${className}`}
+    >
+      {children}
+    </span>
+  );
+
+  // Renders name with title (non-copyable), lastName and each firstName word separately copyable
+  const TouristName = ({ tourist, className = '' }) => {
+    const TITLES = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'];
+    const fullName = tourist.fullName || '';
+    // Extract title from fullName
+    const titleMatch = TITLES.find(t => fullName.startsWith(t));
+    const title = titleMatch || '';
+    const lastName = tourist.lastName || '';
+    const firstNames = (tourist.firstName || '').trim().split(/\s+/).filter(Boolean);
+
+    return (
+      <span className={className}>
+        {title && <span className="text-gray-500 mr-1">{title}</span>}
+        <CopyField value={lastName} label="Last name" className="font-semibold text-gray-900">{lastName}</CopyField>
+        {firstNames.length > 0 && <span className="text-gray-400">, </span>}
+        {firstNames.map((name, i) => (
+          <span key={i}>
+            <CopyField value={name} label="First name" className="font-semibold text-gray-900">{name}</CopyField>
+            {i < firstNames.length - 1 && <span> </span>}
+          </span>
+        ))}
+      </span>
+    );
+  };
+
   const isPassportExpired = (dateStr) => {
     if (!dateStr) return false;
     const date = new Date(dateStr);
@@ -383,9 +427,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
                     </div>
                   )}
                   <div className="flex-1">
-                    <div className="font-semibold text-gray-900 text-sm">
-                      {p.fullName || `${p.lastName}, ${p.firstName}`}
-                    </div>
+                    <TouristName tourist={p} className="text-sm" />
                   </div>
                 </div>
 
@@ -401,15 +443,19 @@ export default function TouristsList({ bookingId, onUpdate }) {
                   </div>
                   <div>
                     <span className="text-gray-500">Passport:</span>
-                    <span className="ml-1 text-gray-900">{p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}</span>
+                    <CopyField value={p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : null} label="Passport" className="ml-1 text-gray-900 font-medium">
+                      {p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}
+                    </CopyField>
                   </div>
                   <div>
                     <span className="text-gray-500">Birth:</span>
-                    <span className="ml-1 text-gray-900">{formatDisplayDate(p.dateOfBirth)}</span>
+                    <CopyField value={formatDisplayDate(p.dateOfBirth)} label="Birth date" className="ml-1 text-gray-900">
+                      {formatDisplayDate(p.dateOfBirth)}
+                    </CopyField>
                   </div>
                   <div className="col-span-2">
                     <span className="text-gray-500">Pass. Exp:</span>
-                    <span className={`ml-1 ${
+                    <CopyField value={formatDisplayDate(p.passportExpiryDate)} label="Passport expiry" className={`ml-1 ${
                       isPassportExpired(p.passportExpiryDate)
                         ? 'text-red-600 font-semibold'
                         : isPassportExpiringSoon(p.passportExpiryDate)
@@ -417,7 +463,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
                         : 'text-gray-900'
                     }`}>
                       {formatDisplayDate(p.passportExpiryDate)}
-                    </span>
+                    </CopyField>
                   </div>
                 </div>
 
@@ -465,9 +511,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
                           <User className="w-5 h-5 text-blue-700" />
                         </div>
                       )}
-                      <span className="font-semibold text-gray-900 text-sm">
-                        {p.fullName || `${p.lastName}, ${p.firstName}`}
-                      </span>
+                      <TouristName tourist={p} className="text-sm" />
                     </div>
                   </div>
 
@@ -482,18 +526,22 @@ export default function TouristsList({ bookingId, onUpdate }) {
                   </div>
 
                   {/* Passport */}
-                  <div className="col-span-2 text-gray-600 text-sm">
-                    {p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}
+                  <div className="col-span-2 text-sm">
+                    <CopyField value={p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : null} label="Passport" className="text-gray-600 font-medium">
+                      {p.passportNumber && p.passportNumber !== 'Not provided' ? p.passportNumber : '-'}
+                    </CopyField>
                   </div>
 
                   {/* Birth */}
-                  <div className="col-span-1 text-gray-600 text-xs">
-                    {formatDisplayDate(p.dateOfBirth)}
+                  <div className="col-span-1 text-xs">
+                    <CopyField value={formatDisplayDate(p.dateOfBirth)} label="Birth date" className="text-gray-600">
+                      {formatDisplayDate(p.dateOfBirth)}
+                    </CopyField>
                   </div>
 
                   {/* Passport Expiry */}
                   <div className="col-span-1 text-xs">
-                    <span className={
+                    <CopyField value={formatDisplayDate(p.passportExpiryDate)} label="Passport expiry" className={
                       isPassportExpired(p.passportExpiryDate)
                         ? 'text-red-600 font-semibold'
                         : isPassportExpiringSoon(p.passportExpiryDate)
@@ -501,7 +549,7 @@ export default function TouristsList({ bookingId, onUpdate }) {
                         : 'text-gray-600'
                     }>
                       {formatDisplayDate(p.passportExpiryDate)}
-                    </span>
+                    </CopyField>
                   </div>
 
                   {/* Actions */}

@@ -1355,8 +1355,8 @@ export default function HotelAccommodationForm({
               </div>
             </div>
 
-            {/* Room Type Headers */}
-            <div className="grid grid-cols-12 gap-2 mb-2 text-xs font-medium text-gray-500 px-1">
+            {/* Room Type Headers — desktop only */}
+            <div className="hidden md:grid grid-cols-12 gap-2 mb-2 text-xs font-medium text-gray-500 px-1">
               <div className="col-span-3">Type</div>
               <div className="col-span-2 text-center">Qty</div>
               <div className="col-span-2 text-center">Nights</div>
@@ -1368,78 +1368,105 @@ export default function HotelAccommodationForm({
             {/* Room Rows */}
             <div className="space-y-2">
               {rooms.map((room, index) => {
-                const roomCount = parseFloat(room.roomsCount) || 0; // Changed from parseInt to support decimal room counts (e.g., 1.5 for extra nights)
+                const roomCount = parseFloat(room.roomsCount) || 0;
                 const maxGuests = getMaxGuestsForRoomType(room.roomTypeCode);
-                const roomNights = parseFloat(room.nights) || nights; // Use room's nights field (editable) or fallback to accommodation nights
-                const totalNights = roomCount * roomNights; // Total room-nights for this row
-                const roomCost = totalNights * (parseFloat(room.pricePerNight) || 0); // Cost = total room-nights × price per night
+                const roomNights = parseFloat(room.nights) || nights;
+                const totalNights = roomCount * roomNights;
+                const roomCost = totalNights * (parseFloat(room.pricePerNight) || 0);
 
-                // Get currency for this room type
                 const hotelRoomType = selectedHotelRoomTypes.find(rt => rt.name === room.roomTypeCode);
                 const currency = hotelRoomType?.currency || 'USD';
                 const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : ' UZS';
 
                 return (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                    <div className="col-span-3">
-                      <select
-                        value={room.roomTypeCode}
-                        onChange={(e) => handleRoomChange(index, 'roomTypeCode', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="">Select</option>
-                        {accommodationRoomTypes.map(rt => (
-                          <option key={rt.code} value={rt.code}>
-                            {rt.code}
-                          </option>
-                        ))}
-                      </select>
+                  <div key={index}>
+                    {/* Desktop: table row */}
+                    <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-3">
+                        <select
+                          value={room.roomTypeCode}
+                          onChange={(e) => handleRoomChange(index, 'roomTypeCode', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="">Select</option>
+                          {accommodationRoomTypes.map(rt => (
+                            <option key={rt.code} value={rt.code}>{rt.code}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <input type="number" min="1" value={room.roomsCount}
+                          onChange={(e) => handleRoomChange(index, 'roomsCount', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <input type="number" min="1" step="0.5" value={room.nights || nights}
+                          onChange={(e) => handleRoomChange(index, 'nights', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <input type="number" min="0" step="0.01" value={room.pricePerNight}
+                          onChange={(e) => handleRoomChange(index, 'pricePerNight', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+                      <div className="col-span-2 text-center text-sm font-medium text-gray-700">
+                        {currency === 'UZS' ? roomCost.toLocaleString() : roomCost.toFixed(2)}{currencySymbol}
+                      </div>
+                      <div className="col-span-1 text-center">
+                        <button type="button" onClick={() => removeRoom(index)} disabled={rooms.length === 1}
+                          className="p-1 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={room.roomsCount}
-                        onChange={(e) => handleRoomChange(index, 'roomsCount', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      {/* Editable nights field - auto-filled but manually adjustable */}
-                      <input
-                        type="number"
-                        min="1"
-                        step="0.5"
-                        value={room.nights || nights}
-                        onChange={(e) => handleRoomChange(index, 'nights', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={room.pricePerNight}
-                        onChange={(e) => handleRoomChange(index, 'pricePerNight', e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div className="col-span-2 text-center text-sm font-medium text-gray-700">
-                      {currency === 'UZS'
-                        ? roomCost.toLocaleString()
-                        : roomCost.toFixed(2)
-                      }{currencySymbol}
-                    </div>
-                    <div className="col-span-1 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeRoom(index)}
-                        disabled={rooms.length === 1}
-                        className="p-1 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+
+                    {/* Mobile: card */}
+                    <div className="md:hidden bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <select
+                          value={room.roomTypeCode}
+                          onChange={(e) => handleRoomChange(index, 'roomTypeCode', e.target.value)}
+                          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="">Select type</option>
+                          {accommodationRoomTypes.map(rt => (
+                            <option key={rt.code} value={rt.code}>{rt.code}</option>
+                          ))}
+                        </select>
+                        <button type="button" onClick={() => removeRoom(index)} disabled={rooms.length === 1}
+                          className="p-2 text-gray-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Qty</div>
+                          <input type="number" min="1" value={room.roomsCount}
+                            onChange={(e) => handleRoomChange(index, 'roomsCount', e.target.value)}
+                            className="w-full px-2 py-2 text-sm text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Nights</div>
+                          <input type="number" min="1" step="0.5" value={room.nights || nights}
+                            onChange={(e) => handleRoomChange(index, 'nights', e.target.value)}
+                            className="w-full px-2 py-2 text-sm text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Price/Night</div>
+                          <input type="number" min="0" step="0.01" value={room.pricePerNight}
+                            onChange={(e) => handleRoomChange(index, 'pricePerNight', e.target.value)}
+                            className="w-full px-2 py-2 text-sm text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-right text-sm font-bold text-gray-800">
+                        Total: {currency === 'UZS' ? roomCost.toLocaleString() : roomCost.toFixed(2)}{currencySymbol}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1450,9 +1477,9 @@ export default function HotelAccommodationForm({
           {/* Totals */}
           {/* Summary Footer - Light Design */}
           <div className="mt-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-5 shadow-lg border-2 border-blue-200">
-            <div className="flex items-center justify-between">
-              {/* Left side - Stats */}
-              <div className="flex items-center gap-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              {/* Top/Left side - Stats */}
+              <div className="flex items-center gap-4">
                 {!totals.isPAX && (
                   <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-300 flex items-center justify-center">
@@ -1475,10 +1502,10 @@ export default function HotelAccommodationForm({
                 </div>
               </div>
 
-              {/* Right side - Total */}
-              <div className="text-right">
+              {/* Bottom/Right side - Total */}
+              <div className="text-left md:text-right">
                 <div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-medium">Total (incl. tax)</div>
-                <div className="text-3xl font-black text-blue-700">
+                <div className="text-2xl md:text-3xl font-black text-blue-700">
                   {totals.currency === 'UZS'
                     ? totals.totalCost.toLocaleString()
                     : totals.totalCost.toFixed(2)}
@@ -1506,9 +1533,9 @@ export default function HotelAccommodationForm({
                 </div>
               </summary>
 
-              <div className="mt-3 bg-white rounded-xl border border-gray-200 shadow-inner overflow-hidden">
+              <div className="mt-3 bg-white rounded-xl border border-gray-200 shadow-inner overflow-hidden overflow-x-auto">
                 {/* Table Header */}
-                <div className="grid grid-cols-[20px_minmax(120px,1fr)_50px_75px_75px_45px_55px] gap-2 text-xs font-semibold text-gray-500 py-3 px-3 bg-gray-50 border-b border-gray-200">
+                <div className="grid grid-cols-[20px_minmax(100px,1fr)_45px_65px_65px_40px_55px] gap-1.5 text-xs font-semibold text-gray-500 py-3 px-3 bg-gray-50 border-b border-gray-200 min-w-[480px]">
                   <span>#</span>
                   <span>Guest</span>
                   <span className="text-center">Room</span>
@@ -1541,7 +1568,7 @@ export default function HotelAccommodationForm({
                     return (
                       <div
                         key={detail.touristId || idx}
-                        className={`grid grid-cols-[20px_minmax(120px,1fr)_50px_75px_75px_45px_55px] gap-2 py-2.5 px-3 text-sm items-center border-b border-gray-100 last:border-0 ${
+                        className={`grid grid-cols-[20px_minmax(100px,1fr)_45px_65px_65px_40px_55px] gap-1.5 py-2.5 px-3 text-sm items-center border-b border-gray-100 last:border-0 min-w-[480px] ${
                           hasExtra ? 'bg-gradient-to-r from-amber-50 to-yellow-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
