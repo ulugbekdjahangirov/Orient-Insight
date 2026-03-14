@@ -47,12 +47,13 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   const [newTouristForm, setNewTouristForm] = useState({
     firstName: '',
     lastName: '',
-    fullName: '',
     gender: 'M',
     roomPreference: 'DBL',
     accommodation: 'Uzbekistan',
     country: 'Germany',
-    passportNumber: '',
+    tourStartDate: '',
+    checkInDate: '',
+    checkOutDate: '',
     remarks: ''
   });
 
@@ -475,16 +476,26 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   };
 
   // Open Add Tourist modal
+  const toInputDate = (ms) => {
+    if (!ms) return '';
+    const d = new Date(ms);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  };
+
   const openAddTouristModal = () => {
+    const defaultStart = toInputDate(booking?.departureDate);
+    const defaultArrival = booking?.departureDate ? toInputDate(new Date(booking.departureDate).getTime() + 86400000) : '';
+    const defaultEnd = toInputDate(booking?.endDate);
     setNewTouristForm({
       firstName: '',
       lastName: '',
-      fullName: '',
       gender: 'M',
       roomPreference: 'DBL',
       accommodation: 'Uzbekistan',
       country: 'Germany',
-      passportNumber: '',
+      tourStartDate: defaultStart,
+      checkInDate: defaultArrival,
+      checkOutDate: defaultEnd,
       remarks: ''
     });
     setAddTouristModalOpen(true);
@@ -499,8 +510,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
         return;
       }
 
-      // Build full name
-      const fullName = newTouristForm.fullName || `${newTouristForm.lastName}, ${newTouristForm.firstName}`;
+      const fullName = `${newTouristForm.lastName}, ${newTouristForm.firstName}`;
 
       const touristData = {
         ...newTouristForm,
@@ -1659,32 +1669,34 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
               rc.SNGL > 0 && { key: 'SNGL', label: 'SNGL', count: rc.SNGL, bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', num: 'text-gray-900' },
             ].filter(Boolean);
 
+            const placementCards = [
+              uzbekCount > 0 && { key: 'uz', label: 'UZ', count: uzbekCount, bg: 'bg-green-50', border: 'border-green-200', dot: 'bg-green-500', text: 'text-green-700' },
+              turkmCount > 0 && { key: 'tm', label: 'TM', count: turkmCount, bg: 'bg-purple-50', border: 'border-purple-200', dot: 'bg-purple-500', text: 'text-purple-700' },
+            ].filter(Boolean);
+
             return (
               <div className="flex flex-col gap-2">
-                <div className="grid grid-cols-4 gap-2">
+                {/* Room stats */}
+                <div className={`grid gap-2 ${statCards.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
                   {statCards.map(s => (
                     <div key={s.key} className={`flex flex-col items-center justify-center py-3 px-1 ${s.bg} border-2 ${s.border} rounded-2xl`}>
                       <span className={`text-xs font-bold ${s.text} uppercase tracking-wide mb-1`}>{s.label}</span>
-                      <span className={`text-2xl font-black ${s.num}`}>{s.count}</span>
+                      <span className="text-2xl font-black text-gray-900">{s.count}</span>
                     </div>
                   ))}
                 </div>
-                {uzbekCount > 0 && turkmCount > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-green-50 border-2 border-green-200 rounded-2xl">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                        <span className="text-xs font-bold text-green-700 uppercase">UZB</span>
+                {/* Placement stats */}
+                {placementCards.length > 0 && (
+                  <div className={`grid gap-2 ${placementCards.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                    {placementCards.map(p => (
+                      <div key={p.key} className={`flex items-center justify-between px-4 py-3 ${p.bg} border-2 ${p.border} rounded-2xl`}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2.5 h-2.5 rounded-full ${p.dot}`} />
+                          <span className={`text-sm font-bold ${p.text} uppercase tracking-wider`}>{p.label}</span>
+                        </div>
+                        <span className="text-2xl font-black text-gray-900">{p.count}</span>
                       </div>
-                      <span className="text-2xl font-black text-gray-900">{uzbekCount}</span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50 border-2 border-purple-200 rounded-2xl">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                        <span className="text-xs font-bold text-purple-700 uppercase">TKM</span>
-                      </div>
-                      <span className="text-2xl font-black text-gray-900">{turkmCount}</span>
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1984,29 +1996,42 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                   // --- MOBILE compact card ---
                   const isTKM = tPlacement.toLowerCase().includes('turkmen') || tPlacement.toLowerCase().includes('туркмен');
                   const isUZB = tPlacement.toLowerCase().includes('uzbek') || tPlacement.toLowerCase().includes('узбек');
+                  const placementLabel = isTKM ? 'TM' : isUZB ? 'UZ' : null;
+                  const placementColor = isTKM ? 'bg-purple-500' : 'bg-green-500';
+                  const hasRemarks = t.remarks && t.remarks.trim();
                   return (
-                    <div key={t.id} className={`flex flex-col gap-2 p-0 ${rowBgClass ? 'bg-yellow-50' : ''}`}>
+                    <div key={t.id} className={`flex flex-col gap-2.5 p-0 ${rowBgClass ? 'bg-yellow-50' : ''}`}>
                       {/* Row 1: number + name + badges */}
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-6 h-6 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-700 flex-shrink-0">{idx + 1}</span>
-                        <span className="font-semibold text-gray-900 text-sm flex-1 min-w-0 truncate">{t.fullName || `${t.lastName}, ${t.firstName}`}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-7 h-7 rounded-lg bg-gray-100 border border-gray-300 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">{idx + 1}</span>
+                        <span className="font-semibold text-gray-900 text-sm flex-1 min-w-0 leading-tight">{t.fullName || `${t.lastName}, ${t.firstName}`}</span>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold ${roomBadgeColor}`}>{t.roomPreference || '-'}</span>
-                          {(isTKM || isUZB) && (
-                            <span className={`px-1.5 py-0.5 rounded text-xs font-bold text-white ${isTKM ? 'bg-purple-500' : 'bg-green-500'}`}>{isTKM ? 'TKM' : 'UZB'}</span>
+                          {placementLabel && (
+                            <span className={`px-2 py-0.5 rounded-lg text-xs font-bold text-white ${placementColor}`}>{placementLabel}</span>
                           )}
                         </div>
                       </div>
-                      {/* Row 2: dates */}
+
+                      {/* Row 2: dates + room number */}
                       <div className="flex items-center gap-1 flex-wrap text-xs">
-                        <span className={`px-1.5 py-0.5 rounded ${flightDate ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-50 text-blue-700'}`}>{displayTourStart}</span>
-                        <span className="text-gray-400">→</span>
-                        <span className={`px-1.5 py-0.5 rounded ${displayArrivalDate || customCheckIn ? 'bg-yellow-100 text-yellow-800' : 'bg-green-50 text-green-700'}`}>{displayCheckIn}</span>
-                        <span className="text-gray-400">→</span>
-                        <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-600">{displayCheckOut}</span>
-                        {t.roomNumber && <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">#{t.roomNumber}</span>}
+                        <span className={`px-2 py-1 rounded-lg font-medium ${flightDate ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-50 text-blue-700'}`}>{displayTourStart}</span>
+                        <span className="text-gray-300">→</span>
+                        <span className={`px-2 py-1 rounded-lg font-medium ${displayArrivalDate || customCheckIn ? 'bg-yellow-100 text-yellow-800' : 'bg-green-50 text-green-700'}`}>{displayCheckIn}</span>
+                        <span className="text-gray-300">→</span>
+                        <span className="px-2 py-1 rounded-lg font-medium bg-red-50 text-red-600">{displayCheckOut}</span>
+                        {t.roomNumber && <span className="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 font-medium">#{t.roomNumber}</span>}
                       </div>
-                      {/* Row 3: actions */}
+
+                      {/* Row 3: Additional info (remarks) */}
+                      {hasRemarks && (
+                        <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                          <span className="text-amber-500 text-xs mt-0.5">📝</span>
+                          <span className="text-xs text-amber-800 leading-snug">{t.remarks}</span>
+                        </div>
+                      )}
+
+                      {/* Row 4: actions */}
                       <div className="flex gap-2 pt-1 border-t border-gray-100">
                         <button onClick={() => openModal(t)} className="flex-1 flex items-center justify-center gap-1 py-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg text-xs font-medium transition-colors">
                           <Edit className="w-3.5 h-3.5" /> Edit
@@ -2080,11 +2105,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                     <div className="col-span-1">
                       {tPlacement.toLowerCase().includes('turkmen') || tPlacement.toLowerCase().includes('туркмен') ? (
                         <span className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-200 w-full">
-                          Turkmenistan
+                          TM
                         </span>
                       ) : tPlacement.toLowerCase().includes('uzbek') || tPlacement.toLowerCase().includes('узбек') ? (
                         <span className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md shadow-green-200 w-full">
-                          Uzbekistan
+                          UZ
                         </span>
                       ) : (
                         <span className="text-gray-400 text-center">-</span>
@@ -2384,90 +2409,85 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    Start Tour Date
-                    <span className="ml-1 text-xs text-gray-400 normal-case">(custom)</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.tourStartDate}
-                    onChange={(e) => setForm({ ...form, tourStartDate: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                    placeholder="Leave empty for default"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Departure date from home country</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    Arrival Date
-                    <span className="ml-1 text-xs text-gray-400 normal-case">(custom)</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.checkInDate}
-                    onChange={(e) => {
-                      const newCheckIn = e.target.value;
-                      let autoStartDate = form.tourStartDate;
-                      if (newCheckIn) {
-                        const d = new Date(newCheckIn);
-                        d.setDate(d.getDate() - 1);
-                        autoStartDate = d.toISOString().split('T')[0];
-                      } else {
-                        autoStartDate = '';
-                      }
-                      setForm({ ...form, checkInDate: newCheckIn, tourStartDate: autoStartDate });
-                    }}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                    placeholder="Leave empty for default"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Leave empty to use booking arrival date</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    Tour End Date
-                    <span className="ml-1 text-xs text-gray-400 normal-case">(custom)</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.checkOutDate}
-                    onChange={(e) => setForm({ ...form, checkOutDate: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                    placeholder="Leave empty for default"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Leave empty to use booking end date</p>
+              {/* Dates block */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-3">
+                <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-3">📅 Dates</div>
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs text-blue-600 font-medium mb-1">Start</label>
+                    <input
+                      type="date"
+                      value={form.tourStartDate}
+                      onChange={(e) => setForm({ ...form, tourStartDate: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-sm font-medium"
+                    />
+                  </div>
+                  <div className="hidden sm:flex items-center pt-7 text-blue-300 font-bold text-lg">→</div>
+                  <div className="flex sm:hidden items-center gap-2 text-blue-300 text-xs">
+                    <div className="flex-1 h-px bg-blue-200" /><span>↓</span><div className="flex-1 h-px bg-blue-200" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-blue-600 font-medium mb-1">Arrival</label>
+                    <input
+                      type="date"
+                      value={form.checkInDate}
+                      onChange={(e) => {
+                        const newCheckIn = e.target.value;
+                        let autoStartDate = form.tourStartDate;
+                        if (newCheckIn) {
+                          const d = new Date(newCheckIn);
+                          d.setDate(d.getDate() - 1);
+                          autoStartDate = d.toISOString().split('T')[0];
+                        } else {
+                          autoStartDate = '';
+                        }
+                        setForm({ ...form, checkInDate: newCheckIn, tourStartDate: autoStartDate });
+                      }}
+                      className="w-full px-3 py-2.5 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-sm font-medium"
+                    />
+                  </div>
+                  <div className="hidden sm:flex items-center pt-7 text-blue-300 font-bold text-lg">→</div>
+                  <div className="flex sm:hidden items-center gap-2 text-blue-300 text-xs">
+                    <div className="flex-1 h-px bg-blue-200" /><span>↓</span><div className="flex-1 h-px bg-blue-200" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-blue-600 font-medium mb-1">End</label>
+                    <input
+                      type="date"
+                      value={form.checkOutDate}
+                      onChange={(e) => setForm({ ...form, checkOutDate: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-sm font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Placement</label>
-                <select
-                  value={form.accommodation}
-                  onChange={(e) => setForm({ ...form, accommodation: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                >
-                  <option value="Uzbekistan">Uzbekistan</option>
-                  <option value="Turkmenistan">Turkmenistan</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Room Type</label>
-                <select
-                  value={form.roomPreference}
-                  onChange={(e) => {
-                    setForm({ ...form, roomPreference: e.target.value });
-                  }}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                >
-                  <option value="">Not specified</option>
-                  {roomOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
+              {/* Placement + Room Type */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Placement</label>
+                  <select
+                    value={form.accommodation}
+                    onChange={(e) => setForm({ ...form, accommodation: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 bg-white"
+                  >
+                    <option value="Uzbekistan">Uzbekistan</option>
+                    <option value="Turkmenistan">Turkmenistan</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Room Type</label>
+                  <select
+                    value={form.roomPreference}
+                    onChange={(e) => setForm({ ...form, roomPreference: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 bg-white"
+                  >
+                    <option value="">Not specified</option>
+                    {roomOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -2553,18 +2573,56 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 </div>
               </div>
 
-              {/* Full Name (optional) */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Full Name (optional)
-                </label>
-                <input
-                  type="text"
-                  value={newTouristForm.fullName}
-                  onChange={(e) => setNewTouristForm({ ...newTouristForm, fullName: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="Leave empty to auto-generate: Last, First"
-                />
+              {/* Dates: Start, Arrival, End */}
+              <div className="bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-100 rounded-2xl p-3">
+                <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-3">📅 Dates</div>
+                {/* Mobile: vertical stacked, Desktop: horizontal */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs text-emerald-600 font-medium mb-1">Start</label>
+                    <input
+                      type="date"
+                      value={newTouristForm.tourStartDate}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        if (newStart && newTouristForm.tourStartDate) {
+                          const diffMs = new Date(newStart).getTime() - new Date(newTouristForm.tourStartDate).getTime();
+                          const shiftDate = (d) => d ? toInputDate(new Date(d).getTime() + diffMs) : '';
+                          setNewTouristForm({ ...newTouristForm, tourStartDate: newStart, checkInDate: shiftDate(newTouristForm.checkInDate) });
+                        } else {
+                          setNewTouristForm({ ...newTouristForm, tourStartDate: newStart });
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 bg-white border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium"
+                    />
+                  </div>
+                  <div className="hidden sm:flex items-end pb-1 text-emerald-400 font-bold text-lg">→</div>
+                  <div className="flex sm:hidden items-center gap-2 text-emerald-400 text-xs font-medium">
+                    <div className="flex-1 h-px bg-emerald-200" /><span>↓</span><div className="flex-1 h-px bg-emerald-200" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-emerald-600 font-medium mb-1">Arrival</label>
+                    <input
+                      type="date"
+                      value={newTouristForm.checkInDate}
+                      onChange={(e) => setNewTouristForm({ ...newTouristForm, checkInDate: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-white border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium"
+                    />
+                  </div>
+                  <div className="hidden sm:flex items-end pb-1 text-emerald-400 font-bold text-lg">→</div>
+                  <div className="flex sm:hidden items-center gap-2 text-emerald-400 text-xs font-medium">
+                    <div className="flex-1 h-px bg-emerald-200" /><span>↓</span><div className="flex-1 h-px bg-emerald-200" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-emerald-600 font-medium mb-1">End</label>
+                    <input
+                      type="date"
+                      value={newTouristForm.checkOutDate}
+                      onChange={(e) => setNewTouristForm({ ...newTouristForm, checkOutDate: e.target.value })}
+                      className="w-full px-3 py-2.5 bg-white border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-medium"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Gender and Room Type */}
@@ -2619,17 +2677,6 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 </div>
               </div>
 
-              {/* Passport Number */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Passport Number</label>
-                <input
-                  type="text"
-                  value={newTouristForm.passportNumber}
-                  onChange={(e) => setNewTouristForm({ ...newTouristForm, passportNumber: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="e.g., C01X00T47"
-                />
-              </div>
 
               {/* Remarks */}
               <div>

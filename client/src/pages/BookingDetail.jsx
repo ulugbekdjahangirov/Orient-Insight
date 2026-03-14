@@ -6682,55 +6682,70 @@ export default function BookingDetail() {
   };
 
   const handleAddRoute = () => {
-    // FIX: Find route with LATEST date, not just last array element
-    const routesWithDates = erRoutes.filter(r => r.sana && r.sana !== 'Invalid Date');
-    let lastRoute = null;
+    try {
+      // FIX: Find route with LATEST date, not just last array element
+      const routesWithDates = erRoutes.filter(r => r.sana && r.sana !== 'Invalid Date');
+      let lastRoute = null;
 
-    if (routesWithDates.length > 0) {
-      // Sort by date and get the latest one
-      const sortedByDate = [...routesWithDates].sort((a, b) => {
-        const dateA = new Date(a.sana);
-        const dateB = new Date(b.sana);
-        return dateB - dateA; // Descending order (latest first)
-      });
-      lastRoute = sortedByDate[0];
-    } else {
-      lastRoute = erRoutes[erRoutes.length - 1];
+      if (routesWithDates.length > 0) {
+        // Sort by date and get the latest one
+        const sortedByDate = [...routesWithDates].sort((a, b) => {
+          const dateA = new Date(a.sana);
+          const dateB = new Date(b.sana);
+          return dateB - dateA; // Descending order (latest first)
+        });
+        lastRoute = sortedByDate[0];
+      } else {
+        lastRoute = erRoutes[erRoutes.length - 1];
+      }
+
+      // Use numeric IDs only - filter out NaN
+      const numericIds = erRoutes.map(r => Number(r.id)).filter(id => !isNaN(id));
+      const newId = numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1;
+
+      // Calculate next dayOffset and date
+      const newDayOffset = lastRoute?.dayOffset != null ? lastRoute.dayOffset + 1 : erRoutes.length;
+      let nextDate = '';
+
+      // Calculate date: latest route date + 1 day
+      if (lastRoute?.sana) {
+        try {
+          const lastDate = new Date(lastRoute.sana);
+          if (!isNaN(lastDate.getTime())) {
+            nextDate = format(addDays(lastDate, 1), 'yyyy-MM-dd');
+          }
+        } catch (e) { /* ignore invalid date */ }
+      }
+      if (!nextDate && formData.departureDate) {
+        try {
+          const arrivalDate = addDays(new Date(formData.departureDate), 1);
+          nextDate = format(addDays(arrivalDate, newDayOffset), 'yyyy-MM-dd');
+        } catch (e) { /* ignore */ }
+      }
+
+      const newRoute = {
+        id: newId,
+        nomer: '',
+        sana: nextDate,
+        dayOffset: newDayOffset,
+        shahar: '',
+        route: '',
+        person: lastRoute?.person || '',
+        transportType: lastRoute?.transportType || '',
+        choiceTab: '',
+        choiceRate: '',
+        price: ''
+      };
+
+      // Auto-sort routes by date after adding new route
+      const updatedRoutes = sortRoutesByDate([...erRoutes, newRoute]);
+      setErRoutes(updatedRoutes);
+      toast.success('Route qo\'shildi', { duration: 1500 });
+      // Scroll to bottom to show new card
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
+    } catch (err) {
+      toast.error('Xato: ' + err.message);
     }
-
-    // Use Math.max to find highest ID
-    const newId = erRoutes.length > 0 ? Math.max(...erRoutes.map(r => r.id)) + 1 : 1;
-
-    // Calculate next dayOffset and date
-    const newDayOffset = lastRoute?.dayOffset != null ? lastRoute.dayOffset + 1 : erRoutes.length;
-    let nextDate = '';
-
-    // Calculate date: latest route date + 1 day
-    if (lastRoute?.sana) {
-      const lastDate = new Date(lastRoute.sana);
-      nextDate = format(addDays(lastDate, 1), 'yyyy-MM-dd');
-    } else if (formData.departureDate) {
-      const arrivalDate = addDays(new Date(formData.departureDate), 1);
-      nextDate = format(addDays(arrivalDate, newDayOffset), 'yyyy-MM-dd');
-    }
-
-    const newRoute = {
-      id: newId,
-      nomer: '',
-      sana: nextDate,
-      dayOffset: newDayOffset,
-      shahar: '',
-      route: '',
-      person: lastRoute?.person || '',
-      transportType: lastRoute?.transportType || '',
-      choiceTab: '',
-      choiceRate: '',
-      price: ''
-    };
-
-    // Auto-sort routes by date after adding new route
-    const updatedRoutes = sortRoutesByDate([...erRoutes, newRoute]);
-    setErRoutes(updatedRoutes);
   };
 
   // Handle route selection with auto-split for Uzbekistan/Turkmenistan groups
@@ -9291,10 +9306,10 @@ export default function BookingDetail() {
                     if (internationalFlights.length === 0) return null;
 
                     return (
-                      <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-6">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-indigo-300/20 rounded-full blur-2xl"></div>
+                      <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-3 md:p-6">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-indigo-300/20 rounded-full blur-2xl pointer-events-none"></div>
 
-                        <h3 className="text-xl font-black text-blue-900 mb-4 flex items-center gap-2">
+                        <h3 className="text-lg md:text-xl font-black text-blue-900 mb-3 md:mb-4 flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                             <Plane className="w-4 h-4 text-white" />
                           </div>
@@ -9304,36 +9319,36 @@ export default function BookingDetail() {
                         {internationalFlights.length > 0 && (
                           <>
                             {/* Mobile cards */}
-                            <div className="space-y-2 sm:hidden">
+                            <div className="space-y-3 md:hidden">
                               {internationalFlights.map((flight, idx) => {
                                 const pax = flight.pax || 0;
                                 const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
                                 const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                 return (
-                                  <div key={flight.id || idx} className="bg-white rounded-xl border border-blue-200 p-3 shadow-sm">
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                      <div>
-                                        <span className="font-bold text-blue-900 text-sm">{flight.flightNumber || '-'}</span>
-                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
+                                  <div key={flight.id || idx} className="bg-white rounded-2xl border border-blue-200 p-4 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-black text-blue-900 text-base">{flight.flightNumber || '-'}</div>
+                                        <div className="text-sm text-gray-700 font-semibold mt-0.5 truncate">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
                                       </div>
-                                      <div className="flex gap-1 flex-shrink-0">
-                                        <button onClick={() => editFlight(flight)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      <div className="flex gap-2 flex-shrink-0">
+                                        <button onClick={() => editFlight(flight)} className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
+                                        <button onClick={() => deleteFlight(flight.id)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
-                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
-                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{flight.departureTime || '-'}</span></div>
-                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{flight.arrivalTime || '-'}</span></div>
-                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-blue-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Date</span><span className="font-semibold text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">PAX</span><span className="font-bold text-blue-700 text-base">{pax > 0 ? pax : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Dep</span><span className="font-semibold text-gray-700">{flight.departureTime || '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Arr</span><span className="font-semibold text-gray-700">{flight.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-blue-100"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total</span><span className="font-black text-blue-700 text-base">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
                                     </div>
                                   </div>
                                 );
                               })}
                             </div>
                             {/* Desktop table */}
-                            <div className="overflow-x-auto hidden sm:block">
+                            <div className="overflow-x-auto hidden md:block">
                               <table className="w-full border-collapse">
                                 <thead>
                                   <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
@@ -9416,10 +9431,10 @@ export default function BookingDetail() {
                     if (domesticFlights.length === 0) return null;
 
                     return (
-                      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200 p-6">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-300/20 to-teal-300/20 rounded-full blur-2xl"></div>
+                      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200 p-3 md:p-6">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-300/20 to-teal-300/20 rounded-full blur-2xl pointer-events-none"></div>
 
-                        <h3 className="text-xl font-black text-emerald-900 mb-4 flex items-center gap-2">
+                        <h3 className="text-lg md:text-xl font-black text-emerald-900 mb-3 md:mb-4 flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
                             <Plane className="w-4 h-4 text-white" />
                           </div>
@@ -9429,36 +9444,36 @@ export default function BookingDetail() {
                         {domesticFlights.length > 0 && (
                           <>
                             {/* Mobile cards */}
-                            <div className="space-y-2 sm:hidden">
+                            <div className="space-y-3 md:hidden">
                               {domesticFlights.map((flight, idx) => {
                                 const pax = flight.pax || 0;
                                 const totalPrice = booking?.status === 'CANCELLED' ? 0 : (flight.price || 0);
                                 const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                 return (
-                                  <div key={flight.id || idx} className="bg-white rounded-xl border border-emerald-200 p-3 shadow-sm">
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                      <div>
-                                        <span className="font-bold text-emerald-900 text-sm">{flight.flightNumber || '-'}</span>
-                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
+                                  <div key={flight.id || idx} className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-black text-emerald-900 text-base">{flight.flightNumber || '-'}</div>
+                                        <div className="text-sm text-gray-700 font-semibold mt-0.5 truncate">{flight.route || `${flight.departure || '-'} → ${flight.arrival || '-'}`}</div>
                                       </div>
-                                      <div className="flex gap-1 flex-shrink-0">
-                                        <button onClick={() => editFlight(flight)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => deleteFlight(flight.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      <div className="flex gap-2 flex-shrink-0">
+                                        <button onClick={() => editFlight(flight)} className="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
+                                        <button onClick={() => deleteFlight(flight.id)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
-                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
-                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{flight.departureTime || '-'}</span></div>
-                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{flight.arrivalTime || '-'}</span></div>
-                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-emerald-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Date</span><span className="font-semibold text-gray-900">{flight.date ? format(new Date(flight.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">PAX</span><span className="font-bold text-emerald-700 text-base">{pax > 0 ? pax : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Dep</span><span className="font-semibold text-gray-700">{flight.departureTime || '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Arr</span><span className="font-semibold text-gray-700">{flight.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-emerald-100"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total</span><span className="font-black text-emerald-700 text-base">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
                                     </div>
                                   </div>
                                 );
                               })}
                             </div>
                             {/* Desktop table */}
-                            <div className="overflow-x-auto hidden sm:block">
+                            <div className="overflow-x-auto hidden md:block">
                               <table className="w-full border-collapse">
                                 <thead>
                                   <tr className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
@@ -9595,10 +9610,10 @@ export default function BookingDetail() {
                     if (internationalRailways.length === 0) return null;
 
                     return (
-                      <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-6">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-indigo-300/20 rounded-full blur-2xl"></div>
+                      <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 p-3 md:p-6">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-300/20 to-indigo-300/20 rounded-full blur-2xl pointer-events-none"></div>
 
-                        <h3 className="text-xl font-black text-blue-900 mb-4 flex items-center gap-2">
+                        <h3 className="text-lg md:text-xl font-black text-blue-900 mb-3 md:mb-4 flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                             <Train className="w-4 h-4 text-white" />
                           </div>
@@ -9608,36 +9623,36 @@ export default function BookingDetail() {
                         {internationalRailways.length > 0 && (
                           <>
                             {/* Mobile cards */}
-                            <div className="space-y-2 sm:hidden">
+                            <div className="space-y-3 md:hidden">
                               {internationalRailways.map((railway, idx) => {
                                 const pax = railway.pax || 0;
                                 const totalPrice = railway.price || 0;
                                 const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                 return (
-                                  <div key={railway.id || idx} className="bg-white rounded-xl border border-blue-200 p-3 shadow-sm">
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                      <div>
-                                        <span className="font-bold text-blue-900 text-sm">{railway.trainName || railway.trainNumber || '-'}</span>
-                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{railway.departure || '-'} → {railway.arrival || '-'}</div>
+                                  <div key={railway.id || idx} className="bg-white rounded-2xl border border-blue-200 p-4 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-black text-blue-900 text-base">{railway.trainName || railway.trainNumber || '-'}</div>
+                                        <div className="text-sm text-gray-700 font-semibold mt-0.5">{railway.departure || '-'} → {railway.arrival || '-'}</div>
                                       </div>
-                                      <div className="flex gap-1 flex-shrink-0">
-                                        <button onClick={() => editRailway(railway)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => deleteRailway(railway.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      <div className="flex gap-2 flex-shrink-0">
+                                        <button onClick={() => editRailway(railway)} className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
+                                        <button onClick={() => deleteRailway(railway.id)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</span></div>
-                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
-                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{railway.departureTime || '-'}</span></div>
-                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{railway.arrivalTime || '-'}</span></div>
-                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-blue-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Date</span><span className="font-semibold text-gray-900">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">PAX</span><span className="font-bold text-blue-700 text-base">{pax > 0 ? pax : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Dep</span><span className="font-semibold text-gray-700">{railway.departureTime || '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Arr</span><span className="font-semibold text-gray-700">{railway.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-blue-100"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total</span><span className="font-black text-blue-700 text-base">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
                                     </div>
                                   </div>
                                 );
                               })}
                             </div>
                             {/* Desktop table */}
-                            <div className="overflow-x-auto hidden sm:block">
+                            <div className="overflow-x-auto hidden md:block">
                               <table className="w-full border-collapse">
                                 <thead>
                                   <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
@@ -9692,10 +9707,10 @@ export default function BookingDetail() {
                     if (domesticRailways.length === 0) return null;
 
                     return (
-                      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200 p-6">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-300/20 to-teal-300/20 rounded-full blur-2xl"></div>
+                      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border-2 border-emerald-200 p-3 md:p-6">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-300/20 to-teal-300/20 rounded-full blur-2xl pointer-events-none"></div>
 
-                        <h3 className="text-xl font-black text-emerald-900 mb-4 flex items-center gap-2">
+                        <h3 className="text-lg md:text-xl font-black text-emerald-900 mb-3 md:mb-4 flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
                             <Train className="w-4 h-4 text-white" />
                           </div>
@@ -9705,36 +9720,36 @@ export default function BookingDetail() {
                         {domesticRailways.length > 0 && (
                           <>
                             {/* Mobile cards */}
-                            <div className="space-y-2 sm:hidden">
+                            <div className="space-y-3 md:hidden">
                               {domesticRailways.map((railway, idx) => {
                                 const pax = railway.pax || 0;
                                 const totalPrice = railway.price || 0;
                                 const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                 return (
-                                  <div key={railway.id || idx} className="bg-white rounded-xl border border-emerald-200 p-3 shadow-sm">
-                                    <div className="flex items-start justify-between gap-2 mb-2">
-                                      <div>
-                                        <span className="font-bold text-emerald-900 text-sm">{railway.trainName || railway.trainNumber || '-'}</span>
-                                        <div className="text-xs text-gray-600 font-medium mt-0.5">{railway.departure || '-'} → {railway.arrival || '-'}</div>
+                                  <div key={railway.id || idx} className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-sm">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-black text-emerald-900 text-base">{railway.trainName || railway.trainNumber || '-'}</div>
+                                        <div className="text-sm text-gray-700 font-semibold mt-0.5">{railway.departure || '-'} → {railway.arrival || '-'}</div>
                                       </div>
-                                      <div className="flex gap-1 flex-shrink-0">
-                                        <button onClick={() => editRailway(railway)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                                        <button onClick={() => deleteRailway(railway.id)} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                      <div className="flex gap-2 flex-shrink-0">
+                                        <button onClick={() => editRailway(railway)} className="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
+                                        <button onClick={() => deleteRailway(railway.id)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                      <div><span className="text-gray-500">Date: </span><span className="font-medium text-gray-900">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</span></div>
-                                      <div><span className="text-gray-500">PAX: </span><span className="font-bold text-gray-900">{pax > 0 ? pax : '-'}</span></div>
-                                      <div><span className="text-gray-500">Dep: </span><span className="font-medium text-gray-700">{railway.departureTime || '-'}</span></div>
-                                      <div><span className="text-gray-500">Arr: </span><span className="font-medium text-gray-700">{railway.arrivalTime || '-'}</span></div>
-                                      {totalPrice > 0 && <div className="col-span-2"><span className="text-gray-500">Total: </span><span className="font-bold text-emerald-700">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Date</span><span className="font-semibold text-gray-900">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">PAX</span><span className="font-bold text-emerald-700 text-base">{pax > 0 ? pax : '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Dep</span><span className="font-semibold text-gray-700">{railway.departureTime || '-'}</span></div>
+                                      <div className="flex flex-col"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Arr</span><span className="font-semibold text-gray-700">{railway.arrivalTime || '-'}</span></div>
+                                      {totalPrice > 0 && <div className="col-span-2 flex flex-col mt-1 pt-2 border-t border-emerald-100"><span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Total</span><span className="font-black text-emerald-700 text-base">{Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ')} UZS</span></div>}
                                     </div>
                                   </div>
                                 );
                               })}
                             </div>
                             {/* Desktop table */}
-                            <div className="overflow-x-auto hidden sm:block">
+                            <div className="overflow-x-auto hidden md:block">
                               <table className="w-full border-collapse">
                                 <thead>
                                   <tr className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
@@ -15006,26 +15021,75 @@ License №T-0084-08 from 2021-04-26`;
       {!isNew && activeTab === 'route' && (
         <div className="space-y-3 md:space-y-6">
           {/* Compact Header */}
-          <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-cyan-100 p-3 md:p-6">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500"></div>
+          <div className="relative bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-cyan-100 p-3 md:p-6">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 rounded-t-3xl"></div>
 
-            {/* Row 1: Badge + PAX + Fix button */}
-            <div className="flex flex-wrap items-center gap-2 mb-2 md:mb-0">
+            {/* Mobile: Row 1 — Badge + PAX */}
+            <div className="flex items-center gap-2 mb-2 md:hidden">
               <span
                 className="px-3 py-1.5 rounded-lg text-sm font-bold text-white flex-shrink-0"
                 style={{ backgroundColor: booking?.tourType?.color || '#3B82F6' }}
               >
                 {booking?.bookingNumber || '-'}
               </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg">
+                  <span className="text-xs text-blue-600">PAX</span>
+                  <span className="text-xs font-bold text-blue-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.length || formData.pax || 0)}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                  <span className="text-xs text-emerald-600">UZB</span>
+                  <span className="text-xs font-bold text-emerald-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0)}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-lg">
+                  <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                  <span className="text-xs text-purple-600">TKM</span>
+                  <span className="text-xs font-bold text-purple-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0)}</span>
+                </div>
+              </div>
+            </div>
 
-              {/* Dates - hidden on mobile */}
-              <div className="hidden md:flex items-center gap-1 text-sm">
+            {/* Mobile: Row 2 — Action buttons */}
+            <div className="flex items-center gap-2 md:hidden">
+              <button
+                onClick={autoFixAllRoutes}
+                disabled={saving || erRoutes.length === 0}
+                className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl font-bold text-xs shadow-lg transition-all disabled:opacity-50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Fix
+              </button>
+              <button onClick={handleSaveAllRoutes} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all">
+                <Save className="w-3.5 h-3.5" />
+              </button>
+              <button type="button" onClick={handleAddRoute} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all">
+                <Plus className="w-3.5 h-3.5" />
+                Add
+              </button>
+              <button type="button" onClick={handleSaveAsTemplate} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all" title="Save template">
+                <Database className="w-3.5 h-3.5" />
+              </button>
+              <button type="button" onClick={handleLoadFromTemplate} className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-xs rounded-xl font-bold shadow-lg transition-all" title="Load template">
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Desktop: single row */}
+            <div className="hidden md:flex flex-wrap items-center gap-2">
+              <span
+                className="px-3 py-1.5 rounded-lg text-sm font-bold text-white flex-shrink-0"
+                style={{ backgroundColor: booking?.tourType?.color || '#3B82F6' }}
+              >
+                {booking?.bookingNumber || '-'}
+              </span>
+              <div className="flex items-center gap-1 text-sm">
                 <span className="text-gray-500">Departure:</span>
                 <span className="font-semibold text-gray-800">
                   {formData.departureDate ? format(new Date(formData.departureDate), 'dd.MM.yyyy') : '-'}
                 </span>
               </div>
-              <div className="hidden md:flex items-center gap-1 text-sm">
+              <div className="flex items-center gap-1 text-sm">
                 <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Arrival</span>
                 <span className="font-semibold text-green-700">
                   {formData.departureDate ? (() => {
@@ -15035,65 +15099,53 @@ License №T-0084-08 from 2021-04-26`;
                   })() : '-'}
                 </span>
               </div>
-              <div className="hidden md:flex items-center gap-1 text-sm">
+              <div className="flex items-center gap-1 text-sm">
                 <span className="text-gray-500">End:</span>
                 <span className="font-semibold text-gray-800">
                   {formData.endDate ? format(new Date(formData.endDate), 'dd.MM.yyyy') : '-'}
                 </span>
               </div>
-
-              <div className="hidden md:block h-6 w-px bg-gray-200"></div>
-
-              {/* PAX Info */}
-              <div className="flex items-center gap-1.5 md:gap-3 flex-wrap">
+              <div className="h-6 w-px bg-gray-200"></div>
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg">
                   <span className="text-xs text-blue-600">PAX</span>
-                  <span className="text-xs md:text-sm font-bold text-blue-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.length || formData.pax || 0)}</span>
+                  <span className="text-sm font-bold text-blue-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.length || formData.pax || 0)}</span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1 bg-emerald-50 rounded-lg">
                   <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                   <span className="text-xs text-emerald-600">UZB</span>
-                  <span className="text-xs md:text-sm font-bold text-emerald-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0)}</span>
+                  <span className="text-sm font-bold text-emerald-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => !(t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxUzbekistan || 0)}</span>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1 bg-purple-50 rounded-lg">
                   <div className="w-2 h-2 rounded-full bg-purple-500"></div>
                   <span className="text-xs text-purple-600">TKM</span>
-                  <span className="text-xs md:text-sm font-bold text-purple-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0)}</span>
+                  <span className="text-sm font-bold text-purple-700">{booking?.status === 'CANCELLED' ? 0 : (tourists.filter(t => (t.accommodation || '').toLowerCase().includes('turkmen')).length || formData.paxTurkmenistan || 0)}</span>
                 </div>
               </div>
-
-              <div className="hidden md:block h-6 w-px bg-gray-200"></div>
-
-              {/* Fix Vehicles button */}
+              <div className="h-6 w-px bg-gray-200"></div>
               <button
                 onClick={autoFixAllRoutes}
                 disabled={saving || erRoutes.length === 0}
                 className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg transition-all disabled:opacity-50"
                 title="Fix all vehicles and prices"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span className="hidden md:inline">Fix Vehicles</span>
-                <span className="md:hidden">Fix</span>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Fix Vehicles
               </button>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-1.5 md:gap-3 ml-auto">
+              <div className="flex items-center gap-3 ml-auto">
                 <button onClick={handleSaveAllRoutes} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all">
                   <Save className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Save</span>
+                  Save
                 </button>
                 <button onClick={handleAddRoute} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all">
                   <Plus className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Add Route</span>
-                  <span className="md:hidden">Add</span>
+                  Add Route
                 </button>
-                <button onClick={handleSaveAsTemplate} className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all" title="Save template">
+                <button onClick={handleSaveAsTemplate} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs rounded-xl font-bold shadow-lg transition-all" title="Save template">
                   <Database className="w-3.5 h-3.5" />
                   Save as Template
                 </button>
-                <button onClick={handleLoadFromTemplate} className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-xs rounded-lg font-medium transition-colors" title="Load template">
+                <button onClick={handleLoadFromTemplate} className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white text-xs rounded-lg font-medium transition-colors" title="Load template">
                   <Download className="w-3.5 h-3.5" />
                   Load Template
                 </button>
@@ -15527,80 +15579,187 @@ License №T-0084-08 from 2021-04-26`;
 
             {/* MOBILE: Card view */}
             {isMobile && (
-              <div className="p-4 space-y-3">
+              <div className="p-3 space-y-3">
                 {erRoutes.map((route, index) => (
                   <div
                     key={route.id}
-                    className={`rounded-2xl border-2 shadow-md p-4 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
+                    className="rounded-2xl border border-gray-200 shadow-sm bg-white overflow-hidden"
                   >
-                    {/* Header: Number + City */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-700 text-white rounded-md flex items-center justify-center text-sm font-bold">
-                          {index + 1}
-                        </div>
-                        <span className="font-semibold text-gray-900">{route.shahar || 'Select city'}</span>
+                    {/* Card header: colored stripe + number + city + actions */}
+                    <div className={`flex items-center gap-2 px-3 py-2.5 ${index % 2 === 0 ? 'bg-slate-700' : 'bg-slate-600'}`}>
+                      <div className="w-7 h-7 bg-white/20 text-white rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0">
+                        {index + 1}
                       </div>
+                      <span className="font-bold text-white flex-1 text-sm truncate">{route.shahar || 'Select city'}</span>
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleMoveRouteUp(index)}
-                          disabled={index === 0}
-                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-                          title="Move up"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleMoveRouteDown(index)}
-                          disabled={index === erRoutes.length - 1}
-                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-                          title="Move down"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRoute(route.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <button onClick={() => handleMoveRouteUp(index)} disabled={index === 0} className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-all disabled:opacity-20"><ChevronUp className="w-4 h-4" /></button>
+                        <button onClick={() => handleMoveRouteDown(index)} disabled={index === erRoutes.length - 1} className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-all disabled:opacity-20"><ChevronDown className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteRoute(route.id)} className="p-1.5 text-red-300 hover:text-white hover:bg-red-500/40 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
 
-                    {/* Date */}
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        {index === 0 ? '📅 Arrival Date' : '📅 Date'}
-                      </label>
-                      <input
-                        type="date"
-                        value={route.sana || ''}
-                        onChange={(e) => handleRouteDateChange(index, e.target.value)}
-                        className="w-full px-3 py-2 bg-amber-50 text-amber-800 rounded-lg text-sm font-medium border border-amber-200 focus:ring-2 focus:ring-amber-400"
-                      />
-                    </div>
-
-                    {/* Route */}
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">🚗 Route</label>
-                      <div className="text-sm text-gray-900 font-medium bg-violet-50 px-3 py-2 rounded-lg border border-violet-200">
-                        {route.route || 'Not selected'}
-                      </div>
-                    </div>
-
-                    {/* PAX + Price */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">👥 PAX</label>
-                        <div className="text-sm font-bold text-gray-900 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 text-center">
-                          {route.person || booking?.pax || 0}
+                    <div className="p-3 space-y-2.5">
+                      {/* Date + City */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{index === 0 ? 'Arrival Date' : 'Date'}</label>
+                          <input
+                            type="date"
+                            value={route.sana || ''}
+                            onChange={(e) => handleRouteDateChange(index, e.target.value)}
+                            className="w-full px-2 py-2 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-200 focus:ring-2 focus:ring-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">City</label>
+                          <select
+                            value={route.shahar || ''}
+                            onChange={(e) => handleCityChange(route.id, e.target.value)}
+                            className="w-full px-2 py-2 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 focus:ring-2 focus:ring-emerald-400"
+                          >
+                            <option value="">Select</option>
+                            {booking?.tourType?.code === 'ZA' ? (
+                              <>
+                                <optgroup label="Tashkent"><option value="Tashkent">Tashkent</option></optgroup>
+                                <optgroup label="Samarkand & Bukhara"><option value="Samarkand">Samarkand</option><option value="Bukhara">Bukhara</option></optgroup>
+                              </>
+                            ) : (
+                              <>
+                                <optgroup label="Tashkent"><option value="Tashkent">Tashkent</option></optgroup>
+                                <optgroup label="Fergana"><option value="Fergana">Fergana</option></optgroup>
+                                <optgroup label="Other"><option value="Samarkand">Samarkand</option><option value="Bukhara">Bukhara</option><option value="Khiva">Khiva</option><option value="Urgench">Urgench</option><option value="Asraf">Asraf</option></optgroup>
+                              </>
+                            )}
+                          </select>
                         </div>
                       </div>
+
+                      {/* Route */}
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">💵 Price</label>
-                        <div className="text-sm font-bold text-gray-900 bg-green-50 px-3 py-2 rounded-lg border border-green-200 text-center">
-                          ${parseFloat(route.price || 0).toFixed(0)}
+                        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Route</label>
+                        <select
+                          value={route.route || ''}
+                          onChange={(e) => handleRouteSelectionChange(route.id, e.target.value, index)}
+                          className="w-full px-2 py-2 bg-violet-50 text-violet-800 rounded-lg text-xs font-medium border border-violet-200 focus:ring-2 focus:ring-violet-400"
+                        >
+                          <option value="">Select Route</option>
+                          {booking?.tourType?.code === 'ZA' ? (
+                            <>
+                              <optgroup label="Pickup / Drop-off"><option value="Airport Pickup">Airport Pickup</option><option value="Airport Drop-off">Airport Drop-off</option><option value="Train Station Pickup">Train Station Pickup</option><option value="Train Station Drop-off">Train Station Drop-off</option></optgroup>
+                              <optgroup label="City Tour"><option value="Samarkand City Tour">Samarkand City Tour</option><option value="Bukhara City Tour">Bukhara City Tour</option></optgroup>
+                              <optgroup label="Transfer"><option value="Olot - Bukhara">Olot - Bukhara</option><option value="Bukhara - Samarkand">Bukhara - Samarkand</option><option value="Samarkand - Jartepa">Samarkand - Jartepa</option><option value="Oybek - Tashkent">Oybek - Tashkent</option><option value="Tashkent - Chernyayevka">Tashkent - Chernyayevka</option></optgroup>
+                            </>
+                          ) : (
+                            <>
+                              <optgroup label="Pickup / Drop-off"><option value="Airport Pickup">Airport Pickup</option><option value="Airport Drop-off">Airport Drop-off</option><option value="Train Station Pickup">Train Station Pickup</option><option value="Train Station Drop-off">Train Station Drop-off</option></optgroup>
+                              <optgroup label="City Tour"><option value="Tashkent City Tour">Tashkent City Tour</option><option value="Samarkand City Tour">Samarkand City Tour</option><option value="Bukhara City Tour">Bukhara City Tour</option></optgroup>
+                              <optgroup label="Transfer"><option value="Tashkent - Samarkand">Tashkent - Samarkand</option><option value="Samarkand - Asraf">Samarkand - Asraf</option><option value="Asraf - Bukhara">Asraf - Bukhara</option><option value="Samarkand - Bukhara">Samarkand - Bukhara</option><option value="Bukhara - Samarkand">Bukhara - Samarkand</option><option value="Bukhara - Khiva">Bukhara - Khiva</option><option value="Olot - Bukhara">Olot - Bukhara</option><option value="Khiva - Urgench">Khiva - Urgench</option><option value="Khiva - Shovot">Khiva - Shovot</option><option value="Tashkent - Fergana">Tashkent - Fergana</option><option value="Fergana - Tashkent">Fergana - Tashkent</option><option value="Qoqon - Fergana">Qoqon - Fergana</option><option value="Fergana - Qoqon">Fergana - Qoqon</option><option value="Fergana - Margilan">Fergana - Margilan</option><option value="Dostlik - Fergana">Dostlik - Fergana</option><option value="Tashkent - Chimgan - Tashkent">Tashkent - Chimgan - Tashkent</option></optgroup>
+                            </>
+                          )}
+                        </select>
+                      </div>
+
+                      {/* PAX + Provider */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">PAX</label>
+                          <input
+                            type="number"
+                            value={route.person || ''}
+                            onChange={(e) => {
+                              const newPersonCount = parseInt(e.target.value) || 0;
+                              const isChimganRoute = route.route === 'Tashkent - Chimgan' || route.route === 'Tashkent - Chimgan - Tashkent' || route.route === 'Chimgan Excursion';
+                              if (isChimganRoute && newPersonCount > 0) {
+                                const chimganVehicle = newPersonCount >= 9 ? 'Sprinter' : (getBestVehicleForRoute('xayrulla', newPersonCount) || 'Toyota Hiace');
+                                const autoPrice = getPriceFromOpex('xayrulla', chimganVehicle, 'chimgan');
+                                setErRoutes(erRoutes.map(r => r.id === route.id ? { ...r, person: newPersonCount.toString(), choiceTab: 'xayrulla', transportType: chimganVehicle, choiceRate: 'chimgan', price: autoPrice || '' } : r));
+                                return;
+                              }
+                              const effectiveProvider = route.choiceTab || getProviderByCity(route.shahar);
+                              const autoVehicle = effectiveProvider ? getBestVehicleForRoute(effectiveProvider, newPersonCount) : '';
+                              const effectiveVehicle = autoVehicle || route.transportType;
+                              const autoRate = route.choiceRate || getAutoRateByRoute(route.route, effectiveProvider);
+                              const autoPrice = (effectiveVehicle && autoRate && effectiveProvider) ? getPriceFromOpex(effectiveProvider, effectiveVehicle, autoRate) : '';
+                              setErRoutes(erRoutes.map(r => r.id === route.id ? { ...r, person: newPersonCount.toString(), choiceTab: effectiveProvider || r.choiceTab, transportType: effectiveVehicle, choiceRate: autoRate || r.choiceRate, price: autoPrice ? autoPrice : r.price } : r));
+                            }}
+                            className="w-full px-2 py-2 bg-blue-50 text-blue-800 rounded-lg text-sm font-bold text-center border border-blue-200 focus:ring-2 focus:ring-blue-400"
+                            placeholder="0" min="1"
+                          />
                         </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Provider</label>
+                          <button
+                            onClick={() => handleOpenProviderModal(route)}
+                            className={`w-full px-2 py-2 rounded-lg text-xs font-semibold border flex items-center justify-between gap-1 transition-all ${
+                              route.choiceTab === 'xayrulla' ? 'bg-cyan-50 text-cyan-800 border-cyan-200' :
+                              route.choiceTab?.includes('sevil') ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                              route.choiceTab === 'nosir' ? 'bg-teal-50 text-teal-800 border-teal-200' :
+                              'bg-gray-50 text-gray-500 border-gray-200 border-dashed'
+                            }`}
+                          >
+                            <span className="capitalize truncate">{route.choiceTab || 'Select'}</span>
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Vehicle + Rate */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Vehicle</label>
+                          <select
+                            value={route.transportType || ''}
+                            onChange={(e) => {
+                              const newTransportType = e.target.value;
+                              const autoRate = route.choiceRate || getAutoRateByRoute(route.route, route.choiceTab);
+                              const autoPrice = autoRate ? getPriceFromOpex(route.choiceTab, newTransportType, autoRate) : '';
+                              setErRoutes(erRoutes.map(r => r.id === route.id ? { ...r, transportType: newTransportType, choiceRate: autoRate, price: autoPrice || '' } : r));
+                            }}
+                            disabled={!route.choiceTab}
+                            className="w-full px-2 py-2 bg-indigo-50 text-indigo-800 rounded-lg text-xs font-medium border border-indigo-200 focus:ring-2 focus:ring-indigo-400 disabled:bg-gray-100 disabled:text-gray-400"
+                          >
+                            <option value="">{route.choiceTab ? 'Select' : '-'}</option>
+                            {route.choiceTab === 'sevil' && sevilVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                            {route.choiceTab === 'sevil-er' && sevilErVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                            {route.choiceTab === 'sevil-co' && sevilCoVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                            {route.choiceTab === 'sevil-kas' && sevilKasVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                            {route.choiceTab === 'sevil-za' && sevilZaVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                            {route.choiceTab === 'xayrulla' && (<>{xayrullaVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}{!xayrullaVehicles.some(v => v.name?.includes('Sprinter')) && <option value="Sprinter">Sprinter</option>}</>)}
+                            {route.choiceTab === 'nosir' && nosirVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Rate</label>
+                          <select
+                            value={route.choiceRate || ''}
+                            onChange={(e) => {
+                              const selectedRate = e.target.value;
+                              const autoPrice = getPriceFromOpex(route.choiceTab, route.transportType, selectedRate);
+                              setErRoutes(erRoutes.map(r => r.id === route.id ? { ...r, choiceRate: selectedRate, price: autoPrice || r.price } : r));
+                            }}
+                            disabled={!route.choiceTab || !route.transportType}
+                            className="w-full px-2 py-2 bg-rose-50 text-rose-800 rounded-lg text-xs font-medium border border-rose-200 focus:ring-2 focus:ring-rose-400 disabled:bg-gray-100 disabled:text-gray-400"
+                          >
+                            <option value="">{!route.choiceTab || !route.transportType ? '-' : 'Select'}</option>
+                            {route.choiceTab === 'sevil' && (<><option value="pickupDropoff">Pickup/Drop-off</option><option value="tagRate">TAG Rate</option><option value="urgenchRate">Urgench</option><option value="shovotRate">Shovot</option></>)}
+                            {route.choiceTab === 'sevil-er' && (<><option value="pickupDropoff">Pickup/Drop-off</option><option value="tagRate">TAG Rate</option><option value="urgenchRate">Urgench</option><option value="shovotRate">Shovot</option></>)}
+                            {route.choiceTab === 'sevil-co' && (<><option value="pickupDropoff">Pickup/Drop-off</option><option value="tagRate">TAG Rate</option><option value="urgenchRate">Urgench</option><option value="shovotRate">Shovot</option></>)}
+                            {route.choiceTab === 'sevil-kas' && (<><option value="pickupDropoff">Pickup/Drop-off</option><option value="tagRate">TAG Rate</option><option value="urgenchRate">Urgench</option><option value="shovotRate">Shovot</option></>)}
+                            {route.choiceTab === 'sevil-za' && (<><option value="pickupDropoff">Pickup/Drop-off</option><option value="tagRate">TAG Rate</option><option value="jartepaRate">Jartepa Rate</option></>)}
+                            {route.choiceTab === 'xayrulla' && (<><option value="vstrecha">Pickup/Drop-off</option><option value="chimgan">Chimgan</option><option value="tag">Tag</option><option value="oybek">Oybek</option><option value="chernyayevka">Chernyayevka</option><option value="cityTour">City Tour</option></>)}
+                            {route.choiceTab === 'nosir' && (<><option value="margilan">Margilan</option><option value="qoqon">Qoqon</option><option value="dostlik">Dostlik</option><option value="toshkent">Toshkent</option></>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                        <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Price</span>
+                        {route.price ? (
+                          <span className="px-4 py-1.5 bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-sm">${parseFloat(route.price).toFixed(0)}</span>
+                        ) : (
+                          <span className="text-gray-300 text-sm">-</span>
+                        )}
                       </div>
                     </div>
                   </div>
