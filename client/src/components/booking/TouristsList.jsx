@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
-export default function TouristsList({ bookingId, onUpdate }) {
+export default function TouristsList({ bookingId, onUpdate, guide }) {
   const [tourists, setTourists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,20 +94,52 @@ export default function TouristsList({ bookingId, onUpdate }) {
     </span>
   );
 
-  // Renders name with title (non-copyable), lastName and each firstName word separately copyable
+  // Strips leading prefixes (Mr., Mrs., Dr., Prof., etc.) from a string, returns { prefixes, rest }
+  const stripPrefixes = (str) => {
+    const PREFIXES = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'];
+    let rest = (str || '').trimStart();
+    const prefixes = [];
+    let found = true;
+    while (found) {
+      found = false;
+      for (const p of PREFIXES) {
+        if (rest.startsWith(p)) {
+          prefixes.push(p);
+          rest = rest.slice(p.length).trimStart();
+          found = true;
+          break;
+        }
+      }
+    }
+    return { prefixes, rest };
+  };
+
+  // Renders name: prefixes non-copyable (gray), lastName parts and firstName words each copyable
+  // Hyphenated last names (e.g. "Friedrich-Müller") → each part separately copyable
   const TouristName = ({ tourist, className = '' }) => {
-    const TITLES = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'];
-    const fullName = tourist.fullName || '';
-    // Extract title from fullName
-    const titleMatch = TITLES.find(t => fullName.startsWith(t));
-    const title = titleMatch || '';
-    const lastName = tourist.lastName || '';
+    // Gender prefix from fullName (Mr./Mrs.)
+    const { prefixes: genderPrefixes } = stripPrefixes(tourist.fullName || '');
+
+    // Academic prefix from lastName field (Dr./Prof.)
+    const { prefixes: lnPrefixes, rest: cleanLn } = stripPrefixes(tourist.lastName || '');
+
+    // All display prefixes combined (deduplicated)
+    const allPrefixes = [...new Set([...genderPrefixes, ...lnPrefixes])];
+
+    // Split clean lastName by "-" for compound surnames
+    const lnParts = cleanLn ? cleanLn.split('-').filter(Boolean) : [];
+
     const firstNames = (tourist.firstName || '').trim().split(/\s+/).filter(Boolean);
 
     return (
       <span className={className}>
-        {title && <span className="text-gray-500 mr-1">{title}</span>}
-        <CopyField value={lastName} label="Last name" className="font-semibold text-gray-900">{lastName}</CopyField>
+        {allPrefixes.length > 0 && <span className="text-gray-500 mr-1">{allPrefixes.join(' ')}</span>}
+        {lnParts.map((part, i) => (
+          <span key={i}>
+            <CopyField value={part} label="Last name" className="font-semibold text-gray-900">{part}</CopyField>
+            {i < lnParts.length - 1 && <span className="font-semibold text-gray-900">-</span>}
+          </span>
+        ))}
         {firstNames.length > 0 && <span className="text-gray-400">, </span>}
         {firstNames.map((name, i) => (
           <span key={i}>
@@ -304,6 +336,18 @@ export default function TouristsList({ bookingId, onUpdate }) {
     );
   }
 
+  // Guide display helpers
+  const guideFirstName = guide?.firstName || '';
+  const guideLastName = guide?.lastName || (guide?.name || '');
+  const hasGuide = !!(guideFirstName || guideLastName);
+  const guideBirthDate = guide?.dateOfBirth
+    ? (() => {
+        const d = new Date(guide.dateOfBirth);
+        return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+      })()
+    : null;
+  const guidePassport = guide?.passportNumber || '';
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -376,6 +420,50 @@ export default function TouristsList({ bookingId, onUpdate }) {
           </button>
         </div>
       </div>
+
+      {/* Guide info block */}
+      {hasGuide && (
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+          <User className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+          <span className="text-xs text-indigo-400 font-medium uppercase tracking-wide">Gid:</span>
+          {guideLastName && (
+            <span
+              className="text-sm font-bold text-indigo-800 cursor-pointer hover:text-indigo-600 hover:underline active:opacity-60 transition-colors select-none"
+              onClick={() => copyToClipboard(guideLastName, 'Last name')}
+              title="Click to copy last name"
+            >
+              {guideLastName}
+            </span>
+          )}
+          {guideFirstName && (
+            <span
+              className="text-sm font-bold text-indigo-800 cursor-pointer hover:text-indigo-600 hover:underline active:opacity-60 transition-colors select-none"
+              onClick={() => copyToClipboard(guideFirstName, 'First name')}
+              title="Click to copy first name"
+            >
+              {guideFirstName}
+            </span>
+          )}
+          {guideBirthDate && (
+            <span
+              className="text-sm font-semibold text-violet-700 bg-violet-100 px-2 py-0.5 rounded-lg cursor-pointer hover:bg-violet-200 transition-colors select-none"
+              onClick={() => copyToClipboard(guideBirthDate, 'Birth date')}
+              title="Click to copy birth date"
+            >
+              {guideBirthDate}
+            </span>
+          )}
+          {guidePassport && (
+            <span
+              className="text-sm font-mono font-semibold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-lg cursor-pointer hover:bg-indigo-200 transition-colors select-none"
+              onClick={() => copyToClipboard(guidePassport, 'Passport')}
+              title="Click to copy passport"
+            >
+              {guidePassport}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Search */}
       {tourists.length > 5 && (

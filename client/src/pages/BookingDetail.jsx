@@ -497,7 +497,7 @@ export default function BookingDetail() {
       params.set('tab', tab);
 
       // Add appropriate sub-tab parameter based on main tab
-      if (tab === 'fly-railway') {
+      if (tab === 'rooming') {
         params.set('subTab', flyRailwayTab);
       } else if (tab === 'documents') {
         params.set('docTab', documentsTab);
@@ -514,9 +514,9 @@ export default function BookingDetail() {
   // Wrapper functions for sub-tabs with URL parameter persistence
   const setFlyRailwayTab = (tab) => {
     setFlyRailwayTabState(tab);
-    if (!isNew && activeTab === 'fly-railway') {
+    if (!isNew && activeTab === 'rooming') {
       const params = new URLSearchParams(window.location.search);
-      params.set('tab', 'fly-railway');
+      params.set('tab', 'rooming');
       params.set('subTab', tab);
       navigate(`?${params.toString()}`, { replace: true });
     }
@@ -9203,7 +9203,7 @@ export default function BookingDetail() {
       {!isNew && activeTab === 'tourists' && (
         <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-b-2 md:border-2 border-blue-100 p-4 md:p-8">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
-          <TouristsList bookingId={parseInt(id)} onUpdate={handleTouristsUpdate} />
+          <TouristsList bookingId={parseInt(id)} onUpdate={handleTouristsUpdate} guide={booking?.guide || (mainGuide?.guide && typeof mainGuide.guide === 'object' ? mainGuide.guide : null)} />
         </div>
       )}
 
