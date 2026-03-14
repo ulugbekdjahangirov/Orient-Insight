@@ -1,14 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Hotel, CalendarDays, Truck, RefreshCw, X } from 'lucide-react';
+import { Bell, Hotel, CalendarDays, Truck, RefreshCw, X, CheckCheck } from 'lucide-react';
 import { dashboardApi } from '../../services/api';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 const TYPE_CONFIG = {
-  hotel:     { icon: Hotel,       color: 'text-blue-500',   bg: 'bg-blue-50'   },
-  departure: { icon: CalendarDays, color: 'text-amber-500', bg: 'bg-amber-50'  },
-  transport: { icon: Truck,       color: 'text-green-500',  bg: 'bg-green-50'  },
+  hotel:     { icon: Hotel,        color: 'text-blue-500',  bg: 'bg-blue-50'  },
+  departure: { icon: CalendarDays, color: 'text-amber-500', bg: 'bg-amber-50' },
+  transport: { icon: Truck,        color: 'text-green-500', bg: 'bg-green-50' },
+};
+
+const DISMISSED_KEY = 'dismissed_notifications';
+
+const getDismissed = () => {
+  try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')); }
+  catch { return new Set(); }
+};
+
+const saveDismissed = (set) => {
+  // Keep max 200 to avoid localStorage bloat
+  const arr = [...set].slice(-200);
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(arr));
 };
 
 export default function NotificationsPanel() {
@@ -18,13 +31,22 @@ export default function NotificationsPanel() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [dismissed, setDismissed] = useState(getDismissed);
+
+  const unreadItems = items.filter(it => !dismissed.has(it.id));
+  const readItems   = items.filter(it =>  dismissed.has(it.id));
+
+  const calcTotal = (allItems, dis) =>
+    allItems.filter(it => it.id && !dis.has(it.id)).length;
 
   const load = async () => {
     setLoading(true);
     try {
       const res = await dashboardApi.getNotifications();
-      setItems(res.data.items || []);
-      setTotal(res.data.total || 0);
+      const allItems = res.data.items || [];
+      setItems(allItems);
+      const d = getDismissed();
+      setTotal(calcTotal(allItems, d));
     } catch {
       // silent
     } finally {
@@ -33,14 +55,15 @@ export default function NotificationsPanel() {
   };
 
   // Load on open
-  useEffect(() => {
-    if (open) load();
-  }, [open]);
+  useEffect(() => { if (open) load(); }, [open]);
 
-  // Initial count (badge only, no full load)
+  // Initial badge count
   useEffect(() => {
     dashboardApi.getNotifications()
-      .then(res => setTotal(res.data.total || 0))
+      .then(res => {
+        const allItems = res.data.items || [];
+        setTotal(calcTotal(allItems, getDismissed()));
+      })
       .catch(() => {});
   }, []);
 
@@ -48,17 +71,87 @@ export default function NotificationsPanel() {
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const dismiss = (e, id) => {
+    e.stopPropagation();
+    const next = new Set(dismissed);
+    next.add(id);
+    setDismissed(next);
+    saveDismissed(next);
+    setTotal(prev => Math.max(0, prev - 1));
+  };
+
+  const dismissAll = () => {
+    const next = new Set(dismissed);
+    unreadItems.forEach(it => it.id && next.add(it.id));
+    setDismissed(next);
+    saveDismissed(next);
+    setTotal(0);
+  };
+
   const handleClick = (item) => {
+    if (item.id && !dismissed.has(item.id)) {
+      const next = new Set(dismissed);
+      next.add(item.id);
+      setDismissed(next);
+      saveDismissed(next);
+      setTotal(prev => Math.max(0, prev - 1));
+    }
     setOpen(false);
     navigate(item.url);
+  };
+
+  const renderItem = (item, isRead) => {
+    const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
+    const Icon = cfg.icon;
+    return (
+      <div
+        key={item.id || item.message}
+        className={`relative flex items-start gap-3 px-4 py-3 border-b border-gray-50 last:border-0 group ${isRead ? '' : 'hover:bg-gray-50'} transition-colors`}
+      >
+        {/* Unread dot */}
+        {!isRead && (
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+        )}
+
+        <button onClick={() => handleClick(item)} className="flex items-start gap-3 flex-1 text-left min-w-0">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bg} ${isRead ? 'opacity-50' : ''}`}>
+            <Icon className={`w-4 h-4 ${cfg.color}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm leading-snug ${isRead ? 'text-gray-400' : 'text-gray-800'}`}>
+              {item.message}
+            </p>
+            {item.subtitle && (
+              <p className={`text-xs mt-0.5 ${isRead ? 'text-gray-400' : 'text-gray-500'}`}>
+                {item.subtitle}
+              </p>
+            )}
+            {item.time && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                {formatDistanceToNow(new Date(item.time), { addSuffix: true, locale: ru })}
+              </p>
+            )}
+          </div>
+        </button>
+
+        {/* Dismiss X button */}
+        {!isRead && item.id && (
+          <button
+            onClick={(e) => dismiss(e, item.id)}
+            className="p-1 rounded hover:bg-gray-200 transition-colors flex-shrink-0 mt-0.5 opacity-0 group-hover:opacity-100"
+            title="Yopish"
+          >
+            <X className="w-3 h-3 text-gray-400" />
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -90,6 +183,15 @@ export default function NotificationsPanel() {
               )}
             </span>
             <div className="flex items-center gap-1">
+              {unreadItems.length > 0 && (
+                <button
+                  onClick={dismissAll}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="Hammasini o'qilgan deb belgilash"
+                >
+                  <CheckCheck className="w-3.5 h-3.5 text-gray-400" />
+                </button>
+              )}
               <button
                 onClick={load}
                 className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
@@ -115,29 +217,18 @@ export default function NotificationsPanel() {
               </div>
             )}
 
-            {items.map((item, i) => {
-              const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.hotel;
-              const Icon = cfg.icon;
-              return (
-                <button
-                  key={i}
-                  onClick={() => handleClick(item)}
-                  className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-50 last:border-0"
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.bg}`}>
-                    <Icon className={`w-4 h-4 ${cfg.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 leading-snug">{item.message}</p>
-                    {item.time && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {formatDistanceToNow(new Date(item.time), { addSuffix: true, locale: ru })}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            {/* Unread */}
+            {unreadItems.map(item => renderItem(item, false))}
+
+            {/* Divider between read/unread */}
+            {readItems.length > 0 && unreadItems.length > 0 && (
+              <div className="px-4 py-1.5 bg-gray-50 text-xs text-gray-400 border-t border-gray-100">
+                O'qilganlar
+              </div>
+            )}
+
+            {/* Read (dimmed) */}
+            {readItems.map(item => renderItem(item, true))}
           </div>
         </div>
       )}

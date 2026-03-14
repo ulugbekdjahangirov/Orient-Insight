@@ -356,9 +356,12 @@ router.get('/notifications', authenticate, async (req, res) => {
 
     // Hotel confirmations
     for (const c of pendingHotels) {
+      const sentDate = c.sentAt ? new Date(c.sentAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '';
       items.push({
+        id: `hotel_${c.id}`,
         type: 'hotel',
-        message: `${c.booking.bookingNumber}: ${c.hotel.name} tasdiqlashni kutmoqda`,
+        message: `${c.booking.bookingNumber}: ${c.hotel.name}`,
+        subtitle: `Tasdiqlash kutilmoqda${sentDate ? ' • ' + sentDate : ''}`,
         url: '/partners',
         time: c.sentAt
       });
@@ -368,9 +371,12 @@ router.get('/notifications', authenticate, async (req, res) => {
     for (const b of upcomingBookings) {
       const diff = Math.ceil((new Date(b.departureDate) - now) / (1000 * 60 * 60 * 24));
       const label = diff === 0 ? 'bugun' : diff === 1 ? 'ertaga' : `${diff} kundan keyin`;
+      const dateStr = new Date(b.departureDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
       items.push({
+        id: `departure_${b.id}`,
         type: 'departure',
-        message: `${b.bookingNumber} — ${label} jo'naydi (${b.pax} kishi)`,
+        message: `${b.bookingNumber} — ${label} jo'naydi`,
+        subtitle: `${dateStr} • ${b.pax} kishi`,
         url: `/bookings/${b.id}`,
         time: b.departureDate
       });
@@ -378,9 +384,12 @@ router.get('/notifications', authenticate, async (req, res) => {
 
     // Transport confirmations
     for (const c of pendingTransport) {
+      const sentDate = c.sentAt ? new Date(c.sentAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '';
       items.push({
+        id: `transport_${c.id}`,
         type: 'transport',
-        message: `${c.booking.bookingNumber}: ${c.provider} tasdiqlashni kutmoqda`,
+        message: `${c.booking.bookingNumber}: ${c.provider}`,
+        subtitle: `Marshrut tasdiqlash kutilmoqda${sentDate ? ' • ' + sentDate : ''}`,
         url: '/partners',
         time: c.sentAt
       });
