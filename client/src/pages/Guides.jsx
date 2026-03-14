@@ -75,9 +75,9 @@ export default function Guides() {
   };
   const [allBookings, setAllBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
-  const [editingPayment, setEditingPayment] = useState(null); // ID of guide being edited in Payment tab
-  const [paymentFormData, setPaymentFormData] = useState({ dayRate: 0, halfDayRate: 0 });
   const [editingCityPayment, setEditingCityPayment] = useState(null); // ID of guide being edited in City Payment tab
+  const [guideDropdown, setGuideDropdown] = useState(null); // booking ID for which guide dropdown is open
+  const [guideDropdownPos, setGuideDropdownPos] = useState({ top: 0, left: 0 }); // position for fixed dropdown
   const [cityPaymentFormData, setCityPaymentFormData] = useState({ city: '', cityRate: 0 });
 
   function getEmptyFormData() {
@@ -254,7 +254,7 @@ export default function Guides() {
   const loadAllBookings = async () => {
     setBookingsLoading(true);
     try {
-      const response = await bookingsApi.getAll({ limit: 200 });
+      const response = await bookingsApi.getAll({ limit: 500, year: selectedYear });
       setAllBookings(response.data.bookings);
     } catch (error) {
       console.error('Error loading all bookings:', error);
@@ -264,12 +264,20 @@ export default function Guides() {
     }
   };
 
-  // Load bookings when Tours tab is opened
+  // Load bookings when Tours tab is opened or year changes
   useEffect(() => {
-    if (activeTab === 'tours' && allBookings.length === 0) {
+    if (activeTab === 'tours') {
       loadAllBookings();
     }
-  }, [activeTab]);
+  }, [activeTab, selectedYear]);
+
+  // Close guide dropdown on outside click
+  useEffect(() => {
+    if (!guideDropdown) return;
+    const handler = () => setGuideDropdown(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [guideDropdown]);
 
   const handleEditBooking = (bookingId) => {
     navigate(`/bookings/${bookingId}`, { state: { editing: true } });
@@ -287,29 +295,21 @@ export default function Guides() {
     }
   };
 
-  const handleEditPayment = (guide) => {
-    setEditingPayment(guide.id);
-    setPaymentFormData({
-      dayRate: guide.dayRate ?? 110,
-      halfDayRate: guide.halfDayRate ?? 55
-    });
-  };
-
-  const handleSavePayment = async (guideId) => {
+  const handleGuideAssign = async (bookingId, guideId) => {
     try {
-      await guidesApi.update(guideId, paymentFormData);
-      toast.success('Ставки оплаты обновлены');
-      setEditingPayment(null);
-      await loadGuides();
+      await bookingsApi.update(bookingId, { guideId: guideId || null });
+      setAllBookings(prev => prev.map(b => {
+        if (b.id !== bookingId) return b;
+        const guide = guideId ? guides.find(g => g.id === guideId) : null;
+        return { ...b, guide: guide ? { id: guide.id, name: guide.name } : null };
+      }));
+      setGuideDropdown(null);
+      toast.success('Гид обновлён');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Ошибка обновления ставок оплаты');
+      toast.error('Ошибка обновления гида');
     }
   };
 
-  const handleCancelPaymentEdit = () => {
-    setEditingPayment(null);
-    setPaymentFormData({ dayRate: 0, halfDayRate: 0 });
-  };
 
   const handleEditCityPayment = (guide) => {
     setEditingCityPayment(guide.id);
@@ -444,8 +444,6 @@ export default function Guides() {
           {[
             { key: 'information',  label: 'Information',  icon: Info,       grad: 'linear-gradient(135deg,#6366f1,#4f46e5)', shadow: 'rgba(99,102,241,0.45)'  },
             { key: 'tours',        label: 'Tours',        icon: Calendar,   grad: 'linear-gradient(135deg,#3b82f6,#06b6d4)', shadow: 'rgba(59,130,246,0.45)'  },
-            { key: 'payment',      label: 'Payment',      icon: DollarSign, grad: 'linear-gradient(135deg,#10b981,#059669)', shadow: 'rgba(16,185,129,0.45)'  },
-            { key: 'city-payment', label: 'City Payment', icon: MapPin,     grad: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', shadow: 'rgba(139,92,246,0.45)' },
           ].map(({ key, label, icon: Icon, grad, shadow }) => (
             <button
               key={key}
@@ -671,207 +669,148 @@ export default function Guides() {
         </div>
         {/* DESKTOP: table */}
         <div className="hidden md:block overflow-x-auto">
-        <table className="w-full table-fixed">
-          <thead className="bg-gradient-to-r from-primary-600 via-primary-500 to-indigo-600 relative">
-            <tr>
-              <th className="w-8 px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30"></th>
-              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Гид</th>
-              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Тугилган</th>
-              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Контакты</th>
-              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Telegram</th>
-              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Паспорт</th>
-              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Срок</th>
-              {isAdmin && (
-                <>
-                  <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Счет</th>
-                  <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Банк</th>
-                </>
-              )}
-              <th className="w-16 px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Туры</th>
-              <th className="px-2 py-3 text-left text-xs font-black text-white uppercase tracking-wider border-r border-primary-400/30">Статус</th>
-              <th className="px-2 py-3 text-right text-xs font-black text-white uppercase tracking-wider">Действия</th>
+        <table className="w-full">
+          <thead>
+            <tr style={{ background: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 50%, #6366f1 100%)' }}>
+              <th className="w-9 px-3 py-4 text-left"></th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">ГИД</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">ТУГИЛГАН</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">TELEGRAM</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">ПАСПОРТ №</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">BERILGAN</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">AMAL QILADI</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">½ DAY</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">DAY</th>
+              <th className="px-3 py-4 text-center text-xs font-black text-white uppercase tracking-wider">ТУРЫ</th>
+              <th className="px-3 py-4 text-left text-xs font-black text-white uppercase tracking-wider">СТАТУС</th>
+              <th className="px-3 py-4 text-right text-xs font-black text-white uppercase tracking-wider">ДЕЙСТВИЯ</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-slate-100">
             {guides.map((guide, idx) => (
               <>
-                <tr key={guide.id} className={!guide.isActive ? 'bg-gray-50/70 opacity-70' : `hover:bg-gradient-to-r hover:from-primary-50/80 hover:via-indigo-50/50 hover:to-purple-50/30 transition-all duration-300 hover:shadow-md ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                  <td className="px-2 py-3">
+                <tr key={guide.id} className={`group transition-all duration-200 border-b border-slate-100 last:border-0 ${!guide.isActive ? 'opacity-50' : ''} ${idx % 2 === 0 ? 'bg-white hover:bg-indigo-50/30' : 'bg-slate-50/50 hover:bg-indigo-50/30'}`}>
+                  {/* Expand */}
+                  <td className="px-3 py-4">
                     <button
                       onClick={() => toggleTours(guide.id)}
-                      className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-100 rounded-lg transition-all duration-200"
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${expandedTours === guide.id ? 'bg-indigo-100 text-indigo-600' : 'text-gray-300 hover:text-indigo-500 hover:bg-indigo-50'}`}
                     >
-                      {expandedTours === guide.id ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
+                      {expandedTours === guide.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 shrink-0 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow">
-                        <User className="w-4 h-4 text-white" />
+                  {/* ГИД */}
+                  <td className="px-3 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-white text-base font-black shadow-lg" style={{ background: `linear-gradient(135deg, #4f46e5, #7c3aed)` }}>
+                        {guide.name ? guide.name.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-xs text-gray-900 truncate">{guide.name}</p>
+                        <p className="font-bold text-sm text-gray-900 leading-tight truncate">{guide.name}</p>
                         {(guide.firstName || guide.lastName) && (
-                          <p className="text-xs text-gray-500 truncate">
-                            {guide.firstName} {guide.lastName}
-                          </p>
+                          <p className="text-xs text-gray-400 truncate mt-0.5">{guide.firstName} {guide.lastName}</p>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="text-xs font-medium text-gray-700">
-                      {guide.dateOfBirth ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-lg whitespace-nowrap">
-                          <Calendar className="w-3 h-3 text-gray-500 shrink-0" />
-                          {format(new Date(guide.dateOfBirth), 'dd.MM.yyyy')}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </div>
+                  {/* ТУГИЛГАН */}
+                  <td className="px-3 py-4">
+                    {guide.dateOfBirth ? (
+                      <span onClick={() => { navigator.clipboard.writeText(format(new Date(guide.dateOfBirth), 'dd.MM.yyyy')); toast.success('Nusxalandi'); }} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-50 text-violet-700 border border-violet-100 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer hover:bg-violet-100 hover:border-violet-300 transition-colors select-none">
+                        <Calendar className="w-3.5 h-3.5 shrink-0" />
+                        {format(new Date(guide.dateOfBirth), 'dd.MM.yyyy')}
+                        <Copy className="w-3 h-3 opacity-40" />
+                      </span>
+                    ) : <span className="text-gray-300 text-sm">—</span>}
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="space-y-1 text-xs">
-                      {guide.phone && (
-                        <div className="flex items-center gap-1 text-gray-700">
-                          <Phone className="w-3 h-3 text-primary-500 shrink-0" />
-                          <span className="font-medium">{guide.phone}</span>
-                        </div>
-                      )}
-                      {guide.email && (
-                        <div className="flex items-center gap-1 text-gray-700">
-                          <Mail className="w-3 h-3 text-primary-500 shrink-0" />
-                          <span className="font-medium truncate">{guide.email}</span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-2 py-3">
+                  {/* TELEGRAM */}
+                  <td className="px-3 py-4">
                     {guide.telegramChatId ? (
-                      <code className="text-xs bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-mono border border-sky-200 break-all">
+                      <span onClick={() => { navigator.clipboard.writeText(guide.telegramChatId); toast.success('Nusxalandi'); }} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-lg text-xs font-mono font-bold whitespace-nowrap cursor-pointer hover:bg-sky-100 hover:border-sky-300 transition-colors select-none">
+                        <span className="w-2 h-2 rounded-full bg-sky-400 shrink-0"></span>
                         {guide.telegramChatId}
-                      </code>
-                    ) : (
-                      <span className="text-gray-400 text-xs">—</span>
-                    )}
+                        <Copy className="w-3 h-3 opacity-40" />
+                      </span>
+                    ) : <span className="text-gray-300 text-sm">—</span>}
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="space-y-1">
-                      {guide.passportNumber && (
-                        <div className="flex items-center gap-1">
-                          <code className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded font-semibold border border-primary-200 whitespace-nowrap">
-                            {guide.passportNumber}
-                          </code>
-                          {isAdmin && (
-                            <button
-                              onClick={() => toggleSensitive(guide.id)}
-                              className="p-1 text-gray-400 hover:text-primary-600 rounded transition-all"
-                            >
-                              {showSensitive[guide.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {guide.passportIssueDate && (
-                        <div className="text-xs text-gray-500">
-                          berilgan: {format(new Date(guide.passportIssueDate), 'dd.MM.yy')}
-                        </div>
-                      )}
-                      {!guide.passportNumber && <span className="text-xs text-gray-400">—</span>}
-                    </div>
+                  {/* ПАСПОРТ № */}
+                  <td className="px-3 py-4">
+                    {guide.passportNumber ? (
+                      <div className="flex items-center gap-1.5">
+                        <span onClick={() => { navigator.clipboard.writeText(guide.passportNumber); toast.success('Nusxalandi'); }} className="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-black font-mono tracking-wider whitespace-nowrap cursor-pointer hover:bg-indigo-100 hover:border-indigo-400 transition-colors select-none gap-1.5">
+                          {guide.passportNumber}
+                          <Copy className="w-3 h-3 opacity-40" />
+                        </span>
+                        {isAdmin && (
+                          <button onClick={() => toggleSensitive(guide.id)} className="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all">
+                            {showSensitive[guide.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    ) : <span className="text-gray-300 text-sm">—</span>}
                   </td>
-                  <td className="px-2 py-3">
-                    <div className="space-y-1">
-                      {guide.passportExpiryDate ? (
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs text-gray-700 font-semibold whitespace-nowrap">
-                            {format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')}
-                          </span>
-                          {getPassportStatusBadge(guide.passportStatus)}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </div>
+                  {/* BERILGAN */}
+                  <td className="px-3 py-4">
+                    {guide.passportIssueDate ? (
+                      <span onClick={() => { navigator.clipboard.writeText(format(new Date(guide.passportIssueDate), 'dd.MM.yyyy')); toast.success('Nusxalandi'); }} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg text-xs font-semibold whitespace-nowrap cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors select-none">
+                        {format(new Date(guide.passportIssueDate), 'dd.MM.yyyy')}
+                        <Copy className="w-3 h-3 opacity-40" />
+                      </span>
+                    ) : <span className="text-gray-300 text-sm">—</span>}
                   </td>
-                  {isAdmin && (
-                    <>
-                      <td className="px-2 py-3">
-                        <div className="space-y-1 text-xs">
-                          {guide.bankAccountNumber && (
-                            <div className="text-gray-700">
-                              <span className="font-medium break-all">{guide.bankAccountNumber}</span>
-                            </div>
-                          )}
-                          {guide.mfo && (
-                            <div className="text-gray-500">МФО: {guide.mfo}</div>
-                          )}
-                          {!guide.bankAccountNumber && !guide.mfo && (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="space-y-1 text-xs">
-                          {guide.bankCardNumber && (
-                            <div className="text-gray-700">
-                              <span className="font-medium break-all">{guide.bankCardNumber}</span>
-                            </div>
-                          )}
-                          {guide.bankName && (
-                            <div className="text-gray-500">{guide.bankName}</div>
-                          )}
-                          {!guide.bankCardNumber && !guide.bankName && (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </div>
-                      </td>
-                    </>
-                  )}
-                  <td className="px-2 py-3">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-xs font-bold shadow-sm whitespace-nowrap">
-                      <FileText className="w-3 h-3" />
+                  {/* AMAL QILADI */}
+                  <td className="px-3 py-4">
+                    {guide.passportExpiryDate ? (
+                      <div className="space-y-1.5">
+                        <span onClick={() => { navigator.clipboard.writeText(format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')); toast.success('Nusxalandi'); }} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-colors select-none">
+                          {format(new Date(guide.passportExpiryDate), 'dd.MM.yyyy')}
+                          <Copy className="w-3 h-3 opacity-40" />
+                        </span>
+                        {getPassportStatusBadge(guide.passportStatus)}
+                      </div>
+                    ) : <span className="text-gray-300 text-sm">—</span>}
+                  </td>
+                  {/* HALF DAY */}
+                  <td className="px-3 py-4">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-black whitespace-nowrap text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                      <DollarSign className="w-3.5 h-3.5" />
+                      {guide.halfDayRate ?? 55}
+                    </span>
+                  </td>
+                  {/* DAY */}
+                  <td className="px-3 py-4">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-black whitespace-nowrap text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                      <DollarSign className="w-3.5 h-3.5" />
+                      {guide.dayRate ?? 110}
+                    </span>
+                  </td>
+                  {/* ТУРЫ */}
+                  <td className="px-3 py-4 text-center">
+                    <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-black text-white shadow-sm whitespace-nowrap" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)' }}>
+                      <FileText className="w-3.5 h-3.5" />
                       {guide._count?.bookings || 0}
                     </span>
                   </td>
-                  <td className="px-2 py-3">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap ${
-                      guide.isActive
-                        ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
+                  {/* СТАТУС */}
+                  <td className="px-3 py-4">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap ${guide.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                      <span className={`w-2 h-2 rounded-full ${guide.isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
                       {guide.isActive ? 'Актив' : 'Нет'}
                     </span>
                   </td>
-                  <td className="px-2 py-3">
+                  {/* ДЕЙСТВИЯ */}
+                  <td className="px-3 py-4">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openModal(guide)}
-                        className="p-1.5 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 flex items-center justify-center"
-                        title="Редактировать"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
+                      <button onClick={() => openModal(guide)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white hover:bg-indigo-500 rounded-lg transition-all shadow-sm hover:shadow-md" title="Редактировать">
+                        <Edit className="w-4 h-4" />
                       </button>
                       {isAdmin && (
                         <>
-                          <button
-                            onClick={() => toggleActive(guide)}
-                            className="p-1.5 text-gray-400 hover:text-white hover:bg-yellow-500 rounded-lg transition-all duration-200 flex items-center justify-center"
-                            title={guide.isActive ? 'Деактивировать' : 'Активировать'}
-                          >
-                            <Shield className="w-3.5 h-3.5" />
+                          <button onClick={() => toggleActive(guide)} className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all shadow-sm hover:shadow-md ${guide.isActive ? 'text-gray-400 hover:text-white hover:bg-amber-500' : 'text-white bg-emerald-500'}`} title={guide.isActive ? 'Деактивировать' : 'Активировать'}>
+                            <Shield className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(guide)}
-                            className="p-1.5 text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all duration-200 flex items-center justify-center"
-                            title="Удалить"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
+                          <button onClick={() => handleDelete(guide)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white hover:bg-red-500 rounded-lg transition-all shadow-sm hover:shadow-md" title="Удалить">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </>
                       )}
@@ -881,7 +820,7 @@ export default function Guides() {
                 {/* Expanded Tours Table */}
                 {expandedTours === guide.id && (
                   <tr key={`${guide.id}-tours`}>
-                    <td colSpan={isAdmin ? 11 : 9} className="p-0 bg-gradient-to-br from-primary-50 via-indigo-50 to-purple-50">
+                    <td colSpan={13} className="p-0 bg-gradient-to-br from-primary-50 via-indigo-50 to-purple-50">
                       <div className="p-4 md:p-6">
                         <div className="relative bg-white rounded-xl md:rounded-2xl border-2 border-primary-200 overflow-hidden shadow-2xl">
                           <div className="absolute inset-0 bg-gradient-to-br from-primary-50/20 via-transparent to-indigo-50/20 pointer-events-none"></div>
@@ -1120,7 +1059,32 @@ export default function Guides() {
                         </td>
                         <td className="hidden lg:table-cell px-4 py-4 text-gray-700 font-medium">{booking.paxUzbekistan || 0}</td>
                         <td className="hidden lg:table-cell px-4 py-4 text-gray-700 font-medium">{booking.paxTurkmenistan || 0}</td>
-                        <td className="hidden md:table-cell px-4 py-4 text-gray-700 font-semibold">{booking.guide?.name || '—'}</td>
+                        <td className="hidden md:table-cell px-4 py-4">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (guideDropdown === booking.id) { setGuideDropdown(null); return; }
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setGuideDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                              setGuideDropdown(booking.id);
+                            }}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition-all whitespace-nowrap ${
+                              booking.guide
+                                ? 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400 shadow-sm'
+                                : 'bg-white border-dashed border-gray-300 text-gray-400 hover:border-indigo-300 hover:text-indigo-500'
+                            }`}
+                          >
+                            {booking.guide ? (
+                              <span className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xs shrink-0">
+                                {booking.guide.name.charAt(0).toUpperCase()}
+                              </span>
+                            ) : (
+                              <User className="w-3.5 h-3.5" />
+                            )}
+                            <span>{booking.guide?.name || 'Tanlash...'}</span>
+                            <ChevronDown className={`w-3 h-3 opacity-50 transition-transform ${guideDropdown === booking.id ? 'rotate-180' : ''}`} />
+                          </button>
+                        </td>
                         <td className="px-3 md:px-4 py-3 md:py-4">
                           <span className={`px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap ${
                             status === 'COMPLETED' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' :
@@ -1178,387 +1142,60 @@ export default function Guides() {
         </div>
       )}
 
-      {/* Payment Tab */}
-      {activeTab === 'payment' && (
-        <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-green-100 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-green-50/30 via-transparent to-emerald-50/30 pointer-events-none"></div>
-          {/* MOBILE: payment cards */}
-          <div className="md:hidden relative p-2 space-y-2">
-            {guides.filter(g => g.isActive).map((guide) => (
-              <div
-                key={guide.id}
-                onClick={() => { if (editingPayment !== guide.id) handleEditPayment(guide); }}
-                className={`rounded-2xl overflow-hidden border transition-all ${editingPayment === guide.id ? 'border-green-300' : 'border-green-100 cursor-pointer active:bg-green-50/50'}`}
-                style={{ background: 'white', boxShadow: '0 1px 6px rgba(16,185,129,0.08)' }}
+      {/* Guide dropdown portal — fixed position, always on top */}
+      {guideDropdown && (
+        <div
+          className="fixed z-[9999]"
+          style={{ top: guideDropdownPos.top, left: guideDropdownPos.left }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="w-52 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+               style={{ boxShadow: '0 8px 30px rgba(0,0,0,0.15), 0 2px 8px rgba(79,70,229,0.12)' }}>
+            {/* Header */}
+            <div className="px-4 py-2.5 flex items-center gap-2" style={{ background: 'linear-gradient(135deg,#4f46e5,#6366f1)' }}>
+              <User className="w-3.5 h-3.5 text-white/80" />
+              <p className="text-xs font-black text-white uppercase tracking-wider">Gid tanlash</p>
+            </div>
+            {/* List */}
+            <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
+              {/* No guide */}
+              <button
+                onClick={() => handleGuideAssign(guideDropdown, null)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-red-50 group transition-colors border-b border-gray-100"
               >
-                <div className="h-0.5 bg-gradient-to-r from-green-400 to-emerald-500" />
-                <div className="px-3 py-2.5">
-                  {/* Header row */}
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 text-sm leading-tight truncate">{guide.name}</p>
-                      {(guide.firstName || guide.lastName) && (
-                        <p className="text-xs text-gray-400 truncate">{guide.firstName} {guide.lastName}</p>
-                      )}
-                    </div>
-                    {editingPayment !== guide.id && (
-                      <span className="text-xs text-green-700 bg-green-100 border border-green-200 px-2.5 py-0.5 rounded-full font-semibold shrink-0">Tahrirlash</span>
+                <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-xs shrink-0 group-hover:bg-red-100 group-hover:text-red-500">✕</span>
+                <span className="text-gray-500 group-hover:text-red-500 font-medium">Gidsiz</span>
+              </button>
+              {guides.filter(g => g.isActive).map((guide, i) => {
+                const isSelected = allBookings.find(b => b.id === guideDropdown)?.guide?.id === guide.id;
+                const colors = [
+                  ['#4f46e5','#e0e7ff'], ['#0891b2','#cffafe'], ['#059669','#d1fae5'],
+                  ['#d97706','#fef3c7'], ['#dc2626','#fee2e2'], ['#7c3aed','#ede9fe'],
+                ];
+                const [bg, light] = colors[i % colors.length];
+                return (
+                  <button
+                    key={guide.id}
+                    onClick={() => handleGuideAssign(guideDropdown, guide.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${isSelected ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}
+                  >
+                    <span className="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0"
+                          style={{ backgroundColor: isSelected ? bg : light, color: isSelected ? 'white' : bg }}>
+                      {guide.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className={`flex-1 text-left font-semibold ${isSelected ? 'text-indigo-700' : 'text-gray-700'}`}>{guide.name}</span>
+                    {isSelected && (
+                      <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0" style={{ backgroundColor: bg }}>✓</span>
                     )}
-                  </div>
-                  {/* Rates row */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-amber-50 rounded-xl p-2 border border-amber-100">
-                      <p className="text-xs text-amber-600 font-semibold mb-1">½ Half Day</p>
-                      {editingPayment === guide.id ? (
-                        <input type="number" value={paymentFormData.halfDayRate} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value; setPaymentFormData({ ...paymentFormData, halfDayRate: v === '' ? 0 : parseFloat(v) }); }}
-                          className="w-full px-2 py-1 text-sm border border-amber-300 rounded-lg focus:border-amber-500 focus:outline-none font-bold bg-white" step="0.01" min="0" />
-                      ) : (
-                        <p className="font-black text-amber-700 text-base flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />${guide.halfDayRate ?? 55}</p>
-                      )}
-                    </div>
-                    <div className="bg-emerald-50 rounded-xl p-2 border border-emerald-100">
-                      <p className="text-xs text-emerald-600 font-semibold mb-1">☀ Day</p>
-                      {editingPayment === guide.id ? (
-                        <input type="number" value={paymentFormData.dayRate} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value; setPaymentFormData({ ...paymentFormData, dayRate: v === '' ? 0 : parseFloat(v) }); }}
-                          className="w-full px-2 py-1 text-sm border border-emerald-300 rounded-lg focus:border-emerald-500 focus:outline-none font-bold bg-white" step="0.01" min="0" />
-                      ) : (
-                        <p className="font-black text-emerald-700 text-base flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />${guide.dayRate ?? 110}</p>
-                      )}
-                    </div>
-                  </div>
-                  {/* Save/Cancel */}
-                  {editingPayment === guide.id && (
-                    <div className="flex gap-2 mt-2 pt-2 border-t border-green-100" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => handleSavePayment(guide.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-500 text-white rounded-xl font-semibold text-sm">
-                        <Save className="w-3.5 h-3.5" />Saqlash
-                      </button>
-                      <button onClick={handleCancelPaymentEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-600 rounded-xl font-semibold text-sm">
-                        <X className="w-3.5 h-3.5" />Bekor
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {guides.filter(g => g.isActive).length === 0 && (
-              <div className="text-center py-10 text-gray-400 text-sm">Aktivные гиды не найдены</div>
-            )}
-          </div>
-          {/* DESKTOP: table */}
-          <div className="hidden md:block relative overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-green-600 via-green-500 to-emerald-600 relative">
-                <tr>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-green-400/30">Name</th>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-green-400/30">Half Day</th>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-green-400/30">Day</th>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-right text-xs font-black text-white uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {guides.filter(g => g.isActive).map((guide, idx) => (
-                  <tr key={guide.id} className={`hover:bg-gradient-to-r hover:from-green-50/80 hover:via-emerald-50/50 hover:to-teal-50/30 transition-all duration-300 hover:shadow-md ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
-                          <User className="w-5 h-5 md:w-6 md:h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm md:text-base text-gray-900">{guide.name}</p>
-                          {(guide.firstName || guide.lastName) && (
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {guide.firstName} {guide.lastName}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      {editingPayment === guide.id ? (
-                        <input
-                          type="number"
-                          value={paymentFormData.halfDayRate}
-                          onChange={(e) => {
-                            const rawValue = e.target.value;
-                            const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
-                            setPaymentFormData({ ...paymentFormData, halfDayRate: newValue });
-                          }}
-                          className="w-20 md:w-28 px-2 md:px-3 py-2 md:py-2 text-sm border-2 border-yellow-300 rounded-lg focus:border-yellow-500 focus:outline-none font-bold"
-                          step="0.01"
-                          min="0"
-                        />
-                      ) : (
-                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-yellow-100 text-yellow-800 rounded-lg font-bold text-xs md:text-sm shadow-sm">
-                          <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
-                          ${guide.halfDayRate ?? 55}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      {editingPayment === guide.id ? (
-                        <input
-                          type="number"
-                          value={paymentFormData.dayRate}
-                          onChange={(e) => {
-                            const rawValue = e.target.value;
-                            const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
-                            setPaymentFormData({ ...paymentFormData, dayRate: newValue });
-                          }}
-                          className="w-20 md:w-28 px-2 md:px-3 py-2 md:py-2 text-sm border-2 border-green-300 rounded-lg focus:border-green-500 focus:outline-none font-bold"
-                          step="0.01"
-                          min="0"
-                        />
-                      ) : (
-                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-bold text-xs md:text-sm shadow-md">
-                          <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
-                          ${guide.dayRate ?? 110}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <div className="flex items-center justify-end gap-1 md:gap-2">
-                        {editingPayment === guide.id ? (
-                          <>
-                            <button
-                              onClick={() => handleSavePayment(guide.id)}
-                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                              title="Save"
-                            >
-                              <Save className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={handleCancelPaymentEdit}
-                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => handleEditPayment(guide)}
-                            className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {guides.filter(g => g.isActive).length === 0 && (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                  <User className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 font-medium">Активные гиды не найдены</p>
-              </div>
-            )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* City Payment Tab */}
-      {activeTab === 'city-payment' && (
-        <div className="relative bg-white rounded-2xl md:rounded-3xl shadow-2xl border-2 border-purple-100 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 via-transparent to-violet-50/30 pointer-events-none"></div>
-          {/* MOBILE: city payment cards */}
-          <div className="md:hidden relative p-2 space-y-2">
-            {guides.filter(g => g.isActive).map((guide, index) => (
-              <div
-                key={guide.id}
-                onClick={() => { if (editingCityPayment !== guide.id) handleEditCityPayment(guide); }}
-                className={`rounded-2xl overflow-hidden border transition-all ${editingCityPayment === guide.id ? 'border-purple-300' : 'border-purple-100 cursor-pointer active:bg-purple-50/50'}`}
-                style={{ background: 'white', boxShadow: '0 1px 6px rgba(139,92,246,0.08)' }}
-              >
-                <div className="h-0.5 bg-gradient-to-r from-purple-400 to-violet-500" />
-                <div className="px-3 py-2.5">
-                  {/* Header row */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 flex items-center justify-center bg-purple-100 text-purple-700 rounded-lg font-black text-xs shrink-0">{index + 1}</span>
-                    <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 text-sm leading-tight truncate">{guide.name}</p>
-                      {(guide.firstName || guide.lastName) && (
-                        <p className="text-xs text-gray-400 truncate">{guide.firstName} {guide.lastName}</p>
-                      )}
-                    </div>
-                    {editingCityPayment !== guide.id && (
-                      <span className="text-xs text-purple-700 bg-purple-100 border border-purple-200 px-2.5 py-0.5 rounded-full font-semibold shrink-0">Tahrirlash</span>
-                    )}
-                  </div>
-                  {/* City + Price row */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-purple-50 rounded-xl p-2 border border-purple-100">
-                      <p className="text-xs text-purple-500 font-semibold mb-1">📍 City</p>
-                      {editingCityPayment === guide.id ? (
-                        <input type="text" value={cityPaymentFormData.city} onClick={e => e.stopPropagation()} onChange={e => setCityPaymentFormData({ ...cityPaymentFormData, city: e.target.value })}
-                          className="w-full px-2 py-1 text-sm border border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium bg-white" placeholder="Shahar" />
-                      ) : (
-                        <p className="font-semibold text-gray-700 text-sm flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-purple-400 shrink-0" />{guide.city || '—'}
-                        </p>
-                      )}
-                    </div>
-                    <div className="bg-violet-50 rounded-xl p-2 border border-violet-100">
-                      <p className="text-xs text-violet-500 font-semibold mb-1">💳 Price</p>
-                      {editingCityPayment === guide.id ? (
-                        <input type="number" value={cityPaymentFormData.cityRate} onClick={e => e.stopPropagation()} onChange={e => { const v = e.target.value; setCityPaymentFormData({ ...cityPaymentFormData, cityRate: v === '' ? 0 : parseFloat(v) }); }}
-                          className="w-full px-2 py-1 text-sm border border-violet-300 rounded-lg focus:border-violet-500 focus:outline-none font-bold bg-white" step="0.01" min="0" placeholder="0" />
-                      ) : (
-                        <p className="font-black text-violet-700 text-base flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />${guide.cityRate ?? 0}</p>
-                      )}
-                    </div>
-                  </div>
-                  {/* Save/Cancel */}
-                  {editingCityPayment === guide.id && (
-                    <div className="flex gap-2 mt-2 pt-2 border-t border-purple-100" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => handleSaveCityPayment(guide.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-purple-500 text-white rounded-xl font-semibold text-sm">
-                        <Save className="w-3.5 h-3.5" />Saqlash
-                      </button>
-                      <button onClick={handleCancelCityPaymentEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-100 text-gray-600 rounded-xl font-semibold text-sm">
-                        <X className="w-3.5 h-3.5" />Bekor
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            {guides.filter(g => g.isActive).length === 0 && (
-              <div className="text-center py-10 text-gray-400 text-sm">Aktiv gidlar topilmadi</div>
-            )}
-          </div>
-          {/* DESKTOP: table */}
-          <div className="hidden md:block relative overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-purple-600 via-purple-500 to-violet-600 relative">
-                <tr>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">Nomer</th>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">Name</th>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">City</th>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-left text-xs font-black text-white uppercase tracking-wider border-r border-purple-400/30">Price (USD)</th>
-                  <th className="px-3 md:px-6 py-4 md:py-5 text-right text-xs font-black text-white uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {guides.filter(g => g.isActive).map((guide, index) => (
-                  <tr key={guide.id} className={`hover:bg-gradient-to-r hover:from-purple-50/80 hover:via-violet-50/50 hover:to-fuchsia-50/30 transition-all duration-300 hover:shadow-md ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <span className="inline-flex items-center justify-center w-7 h-7 md:w-8 md:h-8 bg-purple-100 text-purple-700 rounded-lg font-bold text-xs md:text-sm">
-                        {index + 1}
-                      </span>
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg">
-                          <User className="w-5 h-5 md:w-6 md:h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm md:text-base text-gray-900">{guide.name}</p>
-                          {(guide.firstName || guide.lastName) && (
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {guide.firstName} {guide.lastName}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      {editingCityPayment === guide.id ? (
-                        <input
-                          type="text"
-                          value={cityPaymentFormData.city}
-                          onChange={(e) => {
-                            const newValue = e.target.value;
-                            setCityPaymentFormData({ ...cityPaymentFormData, city: newValue });
-                          }}
-                          className="w-32 md:w-40 px-2 md:px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-medium"
-                          placeholder="Город"
-                        />
-                      ) : (
-                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 bg-gray-100 text-gray-600 rounded-lg font-medium text-xs md:text-sm">
-                          <MapPin className="w-3 h-3 md:w-4 md:h-4" />
-                          {guide.city || '—'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      {editingCityPayment === guide.id ? (
-                        <input
-                          type="number"
-                          value={cityPaymentFormData.cityRate}
-                          onChange={(e) => {
-                            const rawValue = e.target.value;
-                            const newValue = rawValue === '' ? 0 : parseFloat(rawValue);
-                            setCityPaymentFormData({ ...cityPaymentFormData, cityRate: newValue });
-                          }}
-                          className="w-20 md:w-28 px-2 md:px-3 py-2 text-sm border-2 border-purple-300 rounded-lg focus:border-purple-500 focus:outline-none font-bold"
-                          step="0.01"
-                          min="0"
-                          placeholder="0"
-                        />
-                      ) : (
-                        <span className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-bold text-xs md:text-sm shadow-md">
-                          <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
-                          ${guide.cityRate ?? 0}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
-                      <div className="flex items-center justify-end gap-1 md:gap-2">
-                        {editingCityPayment === guide.id ? (
-                          <>
-                            <button
-                              onClick={() => handleSaveCityPayment(guide.id)}
-                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-green-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                              title="Save"
-                            >
-                              <Save className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={handleCancelCityPaymentEdit}
-                              className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-gray-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => handleEditCityPayment(guide)}
-                            className="p-2.5 md:p-2 text-gray-400 hover:text-white hover:bg-primary-500 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0 flex items-center justify-center"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
 
-            {guides.filter(g => g.isActive).length === 0 && (
-              <div className="text-center py-16">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                  <User className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 font-medium">Активные гиды не найдены</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Modal */}
       {modalOpen && (
