@@ -107,6 +107,7 @@ export default function Bookings() {
   const [guides, setGuides] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [activeBookingTab, setActiveBookingTab] = useState('TOTAL');
+  const [statusFilter, setStatusFilter] = useState(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -231,9 +232,14 @@ export default function Bookings() {
 
   const BOOKING_TABS = ['TOTAL', 'ER', 'CO', 'KAS', 'ZA'];
   const TAB_COLORS = { ER: '#3B82F6', CO: '#10B981', KAS: '#F59E0B', ZA: '#8B5CF6' };
-  const displayedBookings = activeBookingTab === 'TOTAL'
+  const tabFilteredBookings = activeBookingTab === 'TOTAL'
     ? bookings
     : bookings.filter(b => b.tourType?.code === activeBookingTab);
+  const displayedBookings = tabFilteredBookings.filter(b => {
+    if (!statusFilter) return true;
+    const s = b.status === 'CANCELLED' ? 'CANCELLED' : b.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(getDisplayStats(b).pax, b.departureDate, b.endDate);
+    return s === statusFilter;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 md:p-6 space-y-3 md:space-y-6">
@@ -447,7 +453,7 @@ export default function Bookings() {
       {/* Status counters */}
       {(() => {
         const counts = { FINAL_CONFIRMED: 0, CONFIRMED: 0, IN_PROGRESS: 0, PENDING: 0, CANCELLED: 0, COMPLETED: 0 };
-        displayedBookings.forEach(b => {
+        tabFilteredBookings.forEach(b => {
           const s = b.status === 'CANCELLED' ? 'CANCELLED' : b.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(b.pax, b.departureDate, b.endDate);
           if (counts[s] !== undefined) counts[s]++;
         });
@@ -464,10 +470,14 @@ export default function Bookings() {
         return (
           <div className="flex flex-wrap items-center gap-2 md:gap-3 px-3 md:px-0">
             {visible.map(({ key, label, from, to, border }) => (
-              <div key={key} className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-gradient-to-r ${from} ${to} border-2 ${border} rounded-xl md:rounded-2xl shadow-lg hover:scale-105 transition-all duration-300`}>
+              <button
+                key={key}
+                onClick={() => setStatusFilter(prev => prev === key ? null : key)}
+                className={`flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-gradient-to-r ${from} ${to} border-2 ${border} rounded-xl md:rounded-2xl shadow-lg hover:scale-105 transition-all duration-300 ${statusFilter === key ? 'ring-4 ring-white ring-offset-2 scale-105' : 'opacity-90'}`}
+              >
                 <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
                 <span className="text-white font-bold text-xs md:text-sm">{label}: {counts[key]}</span>
-              </div>
+              </button>
             ))}
           </div>
         );
