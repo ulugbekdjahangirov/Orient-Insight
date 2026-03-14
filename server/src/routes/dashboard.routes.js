@@ -318,7 +318,11 @@ router.get('/notifications', authenticate, async (req, res) => {
     const in7days = new Date(now);
     in7days.setDate(in7days.getDate() + 7);
 
-    const [pendingHotels, upcomingBookings, pendingTransport] = await Promise.all([
+    // Arrival = departureDate + 1, so "1 kun qoldi" = departureDate is today
+    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+    const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+
+    const [pendingHotels, upcomingBookings, pendingTransport, arrivingTomorrow] = await Promise.all([
       // Pending hotel Telegram confirmations
       prisma.telegramConfirmation.findMany({
         where: { status: 'PENDING' },
@@ -349,6 +353,16 @@ router.get('/notifications', authenticate, async (req, res) => {
         },
         orderBy: { sentAt: 'desc' },
         take: 20
+      }),
+
+      // Groups arriving tomorrow (departureDate = today)
+      prisma.booking.findMany({
+        where: {
+          departureDate: { gte: todayStart, lte: todayEnd },
+          status: { not: 'CANCELLED' }
+        },
+        select: { id: true, bookingNumber: true, departureDate: true, pax: true },
+        orderBy: { departureDate: 'asc' }
       })
     ]);
 
@@ -376,6 +390,21 @@ router.get('/notifications', authenticate, async (req, res) => {
         id: `departure_${b.id}`,
         type: 'departure',
         message: `${b.bookingNumber} — ${label} jo'naydi`,
+        subtitle: `${dateStr} • ${b.pax} kishi`,
+        url: `/bookings/${b.id}`,
+        time: b.departureDate
+      });
+    }
+
+    // Groups arriving tomorrow
+    for (const b of arrivingTomorrow) {
+      const arrivalDate = new Date(b.departureDate);
+      arrivalDate.setDate(arrivalDate.getDate() + 1);
+      const dateStr = arrivalDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+      items.push({
+        id: `arrival_${b.id}`,
+        type: 'arrival',
+        message: `${b.bookingNumber} — ertaga keladi`,
         subtitle: `${dateStr} • ${b.pax} kishi`,
         url: `/bookings/${b.id}`,
         time: b.departureDate
