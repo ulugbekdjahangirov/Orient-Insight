@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, ausgabenApi, worldInsightApi, openPreviewUrl } from '../services/api';
+import { bookingsApi, tourTypesApi, guidesApi, hotelsApi, touristsApi, routesApi, transportApi, accommodationsApi, flightsApi, railwaysApi, tourServicesApi, invoicesApi, opexApi, telegramApi, ausgabenApi, worldInsightApi, vertragApi, openPreviewUrl } from '../services/api';
 import { format, addDays, parseISO } from 'date-fns';
 import { UZS_PER_USD, UZS_PER_EUR } from '../constants/rates';
 import toast from 'react-hot-toast';
@@ -11237,133 +11237,18 @@ export default function BookingDetail() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-gray-900">Amendment #1 — Service Agreement</h3>
                 <button
-                  onClick={() => {
-                    import('jspdf').then(({ jsPDF }) => {
-                      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-                      const margin = 15;
-                      const pageWidth = 210;
-                      const maxWidth = pageWidth - margin * 2;
-                      let y = 20;
-
-                      const addText = (text, opts = {}) => {
-                        const { bold = false, size = 10, center = false, gap = 5 } = opts;
-                        doc.setFont('helvetica', bold ? 'bold' : 'normal');
-                        doc.setFontSize(size);
-                        const lines = doc.splitTextToSize(text, maxWidth);
-                        lines.forEach(line => {
-                          if (y > 275) { doc.addPage(); y = 20; }
-                          const x = center ? pageWidth / 2 : margin;
-                          doc.text(line, x, y, center ? { align: 'center' } : {});
-                          y += gap;
-                        });
-                        y += 2;
-                      };
-
-                      // ── ENGLISH ──
-                      addText('AMENDMENT # 1', { bold: true, size: 13, center: true });
-                      addText('to service agreement between WORLD INSIGHT LLC & ORIENT INSIGHT LLC', { size: 10, center: true });
-                      y += 3;
-                      addText('DATE.', { bold: true, size: 10 });
-                      addText('This Amendment to Service Agreement #02 dated April 7, 2022 ("Amendment") has been agreed on March 14th 2026, by its Side(s).', { size: 10 });
-                      y += 2;
-                      addText('ORIGINAL AGREEMENT.', { bold: true, size: 10 });
-                      addText('This Amendment hereby resolves, confirms, and amends the service agreement dated April 7, 2022 for the entities known as WORLD INSIGHT LLC and ORIENT INSIGHT LLC ("Agreement").', { size: 10 });
-                      y += 2;
-                      addText('AMENDMENTS.', { bold: true, size: 10 });
-                      addText('The Side(s) hereby amend the Agreement as follows:', { size: 10 });
-                      addText('Schedule # 1:', { bold: true, size: 10 });
-                      addText('1. The phrase "The contract is valid up to a maximum of 300,000 USD" shall be replaced with "The contract is valid up to a maximum of 400,000 USD".', { size: 10 });
-                      addText('2. Contract Term: The term of the Agreement is extended until May 1, 2026, instead of the previously established date December 31, 2025.', { size: 10 });
-                      y += 2;
-                      addText('OTHER SECTIONS.', { bold: true, size: 10 });
-                      addText('All other terms and conditions of the Agreement shall remain in full force and effect. The undersigned have duly executed this Amendment and, upon signature by the Sides, this Amendment shall be made part of the original Agreement.', { size: 10 });
-                      y += 4;
-
-                      // Banking details EN
-                      addText('LEGAL ADDRESSES, COMMUNICATIONS AND BANKING DETAILS OF THE PARTIES', { bold: true, size: 10 });
-                      y += 2;
-                      addText('LLC "ORIENT INSIGHT"', { bold: true, size: 10 });
-                      addText('Polvonariq MFY, Mash\'al Str. 334, Landkreis Payariq, 140 100 Samarkand, Uzbekistan', { size: 9 });
-                      addText('Beneficiary\'s Account: 20208840905364923001 (USD)', { size: 9 });
-                      addText('Beneficiary Bank: PJSCB "ORIENT FINANS" SAMARKAND BRANCH, SAMARKAND, UZBEKISTAN', { size: 9 });
-                      addText('MFO (BANK CODE): 01071   S.W.I.F.T. CODE: ORFBUZ22', { size: 9 });
-                      addText('Beneficiary\'s Bank correspondent: National Bank of Uzbekistan', { size: 9 });
-                      addText('Bank correspondent\'s account: 21002840200001071001   S.W.I.F.T. CODE: NBFAUZ2X', { size: 9 });
-                      y += 3;
-                      addText('WORLD INSIGHT LLC — WORLD INSIGHT Erlebnisreisen GmbH', { bold: true, size: 10 });
-                      addText('Alter Deutzer Postweg 99, 51149 Köln', { size: 9 });
-                      addText('USD-Konto Kontonr: 2238343 00', { size: 9 });
-                      addText('IBAN: DE42370700600223834300   BLZ: 37070060   BIC/Swift: DEUTDEDKXXX', { size: 9 });
-                      addText('Deutsche Bank Privat- und Geschäftskunden AG, Firmenkunden', { size: 9 });
-                      addText('An den Dominikanern 11-27, 50668 Köln', { size: 9 });
-                      y += 6;
-
-                      // Signatures EN
-                      addText('Signature of the Parties', { bold: true, size: 10 });
-                      y += 4;
-                      addText('On behalf of the Customer — WORLD INSIGHT LLC', { size: 10 });
-                      y += 8;
-                      addText('__________________________', { size: 10 });
-                      y += 4;
-                      addText('On behalf of the Contractor — LLC "ORIENT INSIGHT"', { size: 10 });
-                      y += 8;
-                      addText('__________________________  /Director/', { size: 10 });
-
-                      // ── NEW PAGE: RUSSIAN ──
-                      doc.addPage();
-                      y = 20;
-
-                      addText('ДОПОЛНЕНИЕ № 1', { bold: true, size: 13, center: true });
-                      addText('к договору об обслуживании между WORLD INSIGHT LLC и ORIENT INSIGHT LLC', { size: 10, center: true });
-                      y += 3;
-                      addText('ДАТА.', { bold: true, size: 10 });
-                      addText('Настоящее дополнение к Соглашению об оказании услуг № 02 от 7 апреля 2022 г. («Дополнение») была согласована её Сторонами 14 марта 2026 года.', { size: 10 });
-                      y += 2;
-                      addText('ОРИГИНАЛ ДОГОВОРА.', { bold: true, size: 10 });
-                      addText('Настоящее Дополнение настоящим разрешает, подтверждает и вносит поправки в соглашение об обслуживании от 7 апреля 2022 для организаций, известных как WORLD INSIGHT LLC и ORIENT INSIGHT LLC («Соглашение»).', { size: 10 });
-                      y += 2;
-                      addText('ПОПРАВКИ.', { bold: true, size: 10 });
-                      addText('Настоящим Стороны вносят в Соглашение следующие изменения:', { size: 10 });
-                      addText('А) Приложение №1:', { bold: true, size: 10 });
-                      addText('1. Сумма договора: Заменить фразу: «Договор действует макс. до 300 000 (USD) в Доллар» на «Договор действует макс. до 400 000 (USD) в Доллар».', { size: 10 });
-                      addText('2. Срок действия договора: Срок действия Договора продлевается до 01 мая 2026 года вместо ранее установленной даты 31 декабря 2025 года.', { size: 10 });
-                      y += 2;
-                      addText('ДРУГИЕ РАЗДЕЛЫ.', { bold: true, size: 10 });
-                      addText('Все остальные условия Соглашения остаются в полной силе. Нижеподписавшиеся должным образом подписали настоящее Дополнение, и после подписания Сторонами данное Дополнение становится частью первоначального Соглашения.', { size: 10 });
-                      y += 4;
-
-                      // Banking details RU
-                      addText('ПОЧТОВЫЕ АДРЕСА, СРЕДСТВА СВЯЗИ И БАНКОВСКИЕ РЕКВИЗИТЫ СТОРОН', { bold: true, size: 10 });
-                      y += 2;
-                      addText('ООО «ORIENT INSIGHT»', { bold: true, size: 10 });
-                      addText('Полвонарик МФЙ, ул. Машъал 334, Ландкрейс Пайарик, 140 100 Самарканд, Узбекистан', { size: 9 });
-                      addText('Счёт получателя: 20208840905364923001 (USD)', { size: 9 });
-                      addText('Банк получателя: ПАКБ «ORIENT FINANS» САМАРКАНДСКИЙ ФИЛИАЛ, САМАРКАНД, УЗБЕКИСТАН', { size: 9 });
-                      addText('МФО (КОД БАНКА): 01071   S.W.I.F.T.: ORFBUZ22', { size: 9 });
-                      addText('Банк-корреспондент: Национальный банк Узбекистана', { size: 9 });
-                      addText('Счёт корреспондента: 21002840200001071001   S.W.I.F.T.: NBFAUZ2X', { size: 9 });
-                      y += 3;
-                      addText('WORLD INSIGHT LLC — WORLD INSIGHT Erlebnisreisen GmbH', { bold: true, size: 10 });
-                      addText('Alter Deutzer Postweg 99, 51149 Köln', { size: 9 });
-                      addText('USD-Konto Kontonr: 2238343 00', { size: 9 });
-                      addText('IBAN: DE42370700600223834300   BLZ: 37070060   BIC/Swift: DEUTDEDKXXX', { size: 9 });
-                      addText('Deutsche Bank Privat- und Geschäftskunden AG, Firmenkunden', { size: 9 });
-                      addText('An den Dominikanern 11-27, 50668 Köln', { size: 9 });
-                      y += 6;
-
-                      // Signatures RU
-                      addText('Подписан Сторонами', { bold: true, size: 10 });
-                      y += 4;
-                      addText('От имени Заказчика — WORLD INSIGHT LLC', { size: 10 });
-                      y += 8;
-                      addText('__________________________', { size: 10 });
-                      y += 4;
-                      addText('От имени Исполнителя — ООО «ORIENT INSIGHT»', { size: 10 });
-                      y += 8;
-                      addText('__________________________  /Director/', { size: 10 });
-
-                      doc.save('Vertrag-Amendment-1-OrientInsight.pdf');
-                    });
+                  onClick={async () => {
+                    try {
+                      const res = await vertragApi.downloadPdf();
+                      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'Vertrag-Amendment-1-OrientInsight.pdf';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (e) {
+                      toast.error('PDF yuklab olishda xatolik');
+                    }
                   }}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-slate-600 to-zinc-800 text-white text-sm font-bold rounded-xl hover:opacity-90 transition-opacity shadow-md"
                 >
@@ -11391,6 +11276,7 @@ export default function BookingDetail() {
           )}
         </div>
       )}
+
 
       {/* Tour Services Module */}
       {!isNew && activeTab === 'tour-services' && (

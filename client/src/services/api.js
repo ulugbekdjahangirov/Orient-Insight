@@ -336,6 +336,11 @@ export const invoicesApi = {
   assignNumber: (id) => api.post(`/invoices/${id}/assign-number`),
 };
 
+// Vertrag PDF
+export const vertragApi = {
+  downloadPdf: () => api.get('/vertrag/pdf', { responseType: 'blob' }),
+};
+
 // API for price configurations
 export const pricesApi = {
   // Get price config for specific tour/category/pax

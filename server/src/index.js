@@ -25,6 +25,7 @@ const priceRoutes = require('./routes/price.routes');
 const opexRoutes = require('./routes/opex.routes');
 const jahresplanungRoutes = require('./routes/jahresplanung.routes');
 const searchRoutes = require('./routes/search.routes');
+const vertragRoutes = require('./routes/vertrag.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -123,6 +124,7 @@ app.use('/api/prices', priceRoutes);
 app.use('/api/opex', opexRoutes);
 app.use('/api/jahresplanung', jahresplanungRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/vertrag', vertragRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
