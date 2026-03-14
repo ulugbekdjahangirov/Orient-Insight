@@ -5,6 +5,7 @@ import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
 import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send, DollarSign, Train } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -866,175 +867,363 @@ export default function Ausgaben() {
     return `Ausgaben_${tour}_${tab}_${selectedYear}.${ext}`;
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     let headers = [];
     let rows = [];
     let footerRow = null;
+    // Track which column indices are numeric (for number formatting)
+    let numericCols = [];
 
     if (activeExpenseTab === 'general') {
-      const data = bookingsDetailedData.filter(b => {
-        const e = b.expenses || {};
-        return e.hotelsUSD > 0 || e.hotelsUZS > 0;
-      });
+      const data = bookingsDetailedData.filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; });
       headers = ['#', 'Booking', 'Hotels USD', 'Hotels UZS', 'Sevil', 'Xayrulla', 'Nosir', 'Train', 'Flights', 'Guide USD', 'Meals', 'Eintritt', 'Metro', 'Shou', 'Other', 'Total UZS', 'Total USD'];
       rows = data.map((b, i) => {
-        const e = b.expenses || {};
+        const e = b.expenses||{};
         const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
-        const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
-        return [i+1, b.bookingName, e.hotelsUSD||0, e.hotelsUZS||0, e.transportSevil||0, e.transportXayrulla||0, e.transportNosir||0, e.railway||0, e.flights||0, e.guide||0, e.meals||0, e.eintritt||0, e.metro||0, e.shou||0, e.other||0, totalUZS, totalUSD];
+        return [i+1, b.bookingName, e.hotelsUSD||0, e.hotelsUZS||0, e.transportSevil||0, e.transportXayrulla||0, e.transportNosir||0, e.railway||0, e.flights||0, e.guide||0, e.meals||0, e.eintritt||0, e.metro||0, e.shou||0, e.other||0, totalUZS, (e.hotelsUSD||0)+(e.guide||0)];
       });
-      const totals = headers.slice(2).map((_, i) => rows.reduce((s, r) => s + (r[i+2]||0), 0));
+      const totals = headers.slice(2).map((_, i) => rows.reduce((s,r) => s+(r[i+2]||0), 0));
       footerRow = ['', 'TOTAL', ...totals];
+      numericCols = [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16];
     }
-
     else if (activeExpenseTab === 'hotels') {
       const pd = getPivotData();
       headers = ['#', 'Booking', ...pd.hotels, 'Total UZS', 'Total USD'];
       rows = pd.bookingRows.map((br, i) => {
-        const hotelVals = pd.hotels.map(h => {
-          const hc = br.hotelCosts[h];
-          return (hc?.uzs || hc?.usd || 0);
-        });
+        const hotelVals = pd.hotels.map(h => { const hc = br.hotelCosts[h]; return hc?.uzs||hc?.usd||0; });
         return [i+1, br.bookingName, ...hotelVals, br.totalUZS, br.totalUSD];
       });
-      const hotelTotals = pd.hotels.map(h => {
-        const uzs = getHotelGrandTotal(h, 'uzs');
-        const usd = getHotelGrandTotal(h, 'usd');
-        return uzs > 0 ? uzs : usd;
-      });
+      const hotelTotals = pd.hotels.map(h => { const uzs=getHotelGrandTotal(h,'uzs'); const usd=getHotelGrandTotal(h,'usd'); return uzs>0?uzs:usd; });
       footerRow = ['', 'TOTAL', ...hotelTotals, getGrandTotalUZS(), getGrandTotalUSD()];
+      numericCols = headers.slice(2).map((_,i)=>i+2);
     }
-
     else if (activeExpenseTab === 'guides') {
       headers = ['#', 'Booking', 'Main Guide', 'Price USD', 'Second Guide', 'Price USD', 'Bergreiseleiter', 'Price USD', 'Total USD'];
       rows = filteredBookingsWithHotels.map((item, i) => {
-        const e = item.expenses || {};
-        const total = (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0);
-        return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||0, e.guideSecondName||'—', e.guideSecondCost||0, e.guideBergrName||'—', e.guideBergrCost||0, total];
+        const e = item.expenses||{};
+        return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||0, e.guideSecondName||'—', e.guideSecondCost||0, e.guideBergrName||'—', e.guideBergrCost||0, (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0)];
       });
       footerRow = ['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)];
+      numericCols = [3,5,7,8];
     }
-
     else if (activeExpenseTab === 'uberweisung') {
       headers = ['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS'];
-      rows = bookingsDetailedData.map((b, i) => {
-        const e = b.expenses || {};
-        return [i+1, b.bookingName, e.uberweisungEintritt||0, e.uberweisungFolklore||0, e.uberweisungRailway||0, e.uberweisungUZS||0];
-      });
-      const totals = rows.reduce((acc, r) => { for(let i=2;i<=5;i++) acc[i-2]=(acc[i-2]||0)+(r[i]||0); return acc; }, []);
+      rows = bookingsDetailedData.map((b, i) => { const e=b.expenses||{}; return [i+1, b.bookingName, e.uberweisungEintritt||0, e.uberweisungFolklore||0, e.uberweisungRailway||0, e.uberweisungUZS||0]; });
+      const totals = rows.reduce((acc,r) => { for(let i=2;i<=5;i++) acc[i-2]=(acc[i-2]||0)+(r[i]||0); return acc; }, []);
       footerRow = ['', 'TOTAL', ...totals];
+      numericCols = [2,3,4,5];
     }
-
     else if (activeExpenseTab === 'transport') {
       headers = ['#', 'Booking', 'Sevil', 'Xayrulla', 'Total'];
-      rows = filteredBookingsWithHotels.map((item, i) => {
-        const sevil = item.expenses?.transportSevil||0;
-        const xayrulla = item.expenses?.transportXayrulla||0;
-        return [i+1, item.bookingName, sevil, xayrulla, sevil+xayrulla];
-      });
-      footerRow = ['', 'TOTAL',
-        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0),
-        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0),
-        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0)
-      ];
+      rows = filteredBookingsWithHotels.map((item, i) => { const s=item.expenses?.transportSevil||0; const x=item.expenses?.transportXayrulla||0; return [i+1, item.bookingName, s, x, s+x]; });
+      footerRow = ['', 'TOTAL', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0)];
+      numericCols = [2,3,4];
+    }
+    else if (activeExpenseTab === 'railways') {
+      const railwayBookings = bookingsDetailedData.filter(b => (b.railways?.length > 0)||(b.expenses?.railway||0)>0);
+      const allRailwayRows = railwayBookings.flatMap(b => (b.railways||[]).filter(r=>(r.price||0)>0).map(r=>({...r, bookingId:b.bookingId, bookingName:b.bookingName})));
+      headers = ['#', 'Booking', "Yo'nalish", 'Poyezd', 'PAX', 'Bilet narxi', 'Summa (UZS)', "To'landi"];
+      rows = allRailwayRows.map((r, i) => [
+        i+1, r.bookingName,
+        r.departure && r.arrival ? `${r.departure} → ${r.arrival}` : r.route||'—',
+        r.trainName||r.trainNumber||'—',
+        r.pax||0,
+        r.pax>0&&r.price>0 ? Math.round(r.price/r.pax) : 0,
+        r.price||0,
+        r.paid ? "To'landi" : "To'lanmadi"
+      ]);
+      const totalPaxEx = allRailwayRows.reduce((s,r)=>s+(r.pax||0),0);
+      const grandTotalEx = allRailwayRows.reduce((s,r)=>s+(r.price||0),0);
+      const paidTotalEx = allRailwayRows.filter(r=>r.paid).reduce((s,r)=>s+(r.price||0),0);
+      footerRow = ['', 'TOTAL', '', '', totalPaxEx, '', grandTotalEx, `To'landi: ${paidTotalEx}`];
+      numericCols = [4,5,6];
     }
 
-    const titleRow = [getExportTitle()];
-    const wsData = [titleRow, [], headers, ...rows];
-    if (footerRow) wsData.push(footerRow);
+    // ── Build styled workbook with ExcelJS ──
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Orient Insight';
+    const ws = wb.addWorksheet(activeExpenseTab, { views: [{ state: 'frozen', ySplit: 3 }] });
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, activeExpenseTab);
-    XLSX.writeFile(wb, getExportFilename('xlsx'));
+    const colCount = headers.length;
+
+    // Colors
+    const DARK_BLUE = '0F172A';
+    const MID_BLUE  = '1E3A8A';
+    const ACCENT    = '3B82F6';
+    const TOTAL_BG  = '1E40AF';
+    const ROW_ODD   = 'F0F4FF';
+    const ROW_EVEN  = 'FFFFFF';
+
+    const headerFill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF'+MID_BLUE } };
+    const totalFill  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF'+TOTAL_BG } };
+    const titleFill  = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF'+DARK_BLUE } };
+
+    const boldWhite  = { bold:true, color:{ argb:'FFFFFFFF' }, size:11, name:'Calibri' };
+    const boldDark   = { bold:true, color:{ argb:'FF0F172A' }, size:11, name:'Calibri' };
+    const normalFont = { size:10, name:'Calibri', color:{ argb:'FF1E293B' } };
+    const border = {
+      top:    { style:'thin', color:{ argb:'FFBFDBFE' } },
+      left:   { style:'thin', color:{ argb:'FFBFDBFE' } },
+      bottom: { style:'thin', color:{ argb:'FFBFDBFE' } },
+      right:  { style:'thin', color:{ argb:'FFBFDBFE' } },
+    };
+    const thickBorder = {
+      top:    { style:'medium', color:{ argb:'FF1E3A8A' } },
+      left:   { style:'medium', color:{ argb:'FF1E3A8A' } },
+      bottom: { style:'medium', color:{ argb:'FF1E3A8A' } },
+      right:  { style:'medium', color:{ argb:'FF1E3A8A' } },
+    };
+
+    // Row 1: Title (merged)
+    const titleRow2 = ws.addRow([getExportTitle()]);
+    ws.mergeCells(1, 1, 1, colCount);
+    const titleCell = titleRow2.getCell(1);
+    titleCell.font = { ...boldWhite, size:13 };
+    titleCell.fill = titleFill;
+    titleCell.alignment = { vertical:'middle', horizontal:'center' };
+    titleCell.border = thickBorder;
+    titleRow2.height = 28;
+
+    // Row 2: empty spacer
+    ws.addRow([]);
+
+    // Row 3: Headers
+    const headerRow = ws.addRow(headers);
+    headerRow.height = 22;
+    headerRow.eachCell((cell, colNum) => {
+      cell.font = boldWhite;
+      cell.fill = headerFill;
+      cell.alignment = { vertical:'middle', horizontal: colNum<=2 ? 'left' : 'center' };
+      cell.border = border;
+    });
+
+    // Data rows
+    rows.forEach((rowData, idx) => {
+      const dataRow = ws.addRow(rowData);
+      dataRow.height = 18;
+      const bgColor = idx % 2 === 0 ? ROW_ODD : ROW_EVEN;
+      dataRow.eachCell({ includeEmpty:true }, (cell, colNum) => {
+        cell.font = normalFont;
+        cell.fill = { type:'pattern', pattern:'solid', fgColor:{ argb:'FF'+bgColor } };
+        cell.alignment = { vertical:'middle', horizontal: colNum<=2 ? 'left' : 'center' };
+        cell.border = border;
+        if (numericCols.includes(colNum-1)) {
+          cell.numFmt = '#,##0';
+        }
+      });
+      // Booking name: bold blue
+      const bookingCell = dataRow.getCell(2);
+      bookingCell.font = { ...normalFont, bold:true, color:{ argb:'FF2563EB' } };
+    });
+
+    // Footer / TOTAL row
+    if (footerRow) {
+      const totRow = ws.addRow(footerRow);
+      totRow.height = 22;
+      totRow.eachCell({ includeEmpty:true }, (cell, colNum) => {
+        cell.font = { ...boldWhite, size:11 };
+        cell.fill = totalFill;
+        cell.alignment = { vertical:'middle', horizontal: colNum<=2 ? 'left' : 'center' };
+        cell.border = thickBorder;
+        if (numericCols.includes(colNum-1)) {
+          cell.numFmt = '#,##0';
+        }
+      });
+    }
+
+    // Column widths
+    const colWidths = headers.map((h, i) => {
+      if (i === 0) return 5;
+      if (i === 1) return 14;
+      const maxDataLen = rows.reduce((max, r) => Math.max(max, String(r[i]||'').length), h.length);
+      return Math.min(Math.max(maxDataLen + 3, h.length + 2), 30);
+    });
+    ws.columns = colWidths.map(w => ({ width: w }));
+
+    // Save
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = getExportFilename('xlsx'); a.click();
+    URL.revokeObjectURL(url);
     toast.success('Excel fayl yuklab olindi');
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const title = getExportTitle();
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, 14, 15);
+  // ── PDF helpers ───────────────────────────────────────────────────────────
+  const fmtN = v => typeof v === 'number' ? (v === 0 ? '—' : String(v)) : (v || '—');
 
-    let head = [];
-    let body = [];
-    let foot = [];
+  const buildPdfData = () => {
+    let head = [], body = [], foot = [];
 
     if (activeExpenseTab === 'general') {
       const data = bookingsDetailedData.filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; });
       head = [['#', 'Booking', 'Hotels USD', 'Hotels UZS', 'Sevil', 'Xayrulla', 'Nosir', 'Train', 'Flights', 'Guide', 'Meals', 'Eintritt', 'Metro', 'Shou', 'Other', 'Total UZS', 'Total USD']];
       body = data.map((b, i) => {
         const e = b.expenses || {};
-        const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
-        const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
-        return [i+1, b.bookingName, e.hotelsUSD||'—', e.hotelsUZS||'—', e.transportSevil||'—', e.transportXayrulla||'—', e.transportNosir||'—', e.railway||'—', e.flights||'—', e.guide||'—', e.meals||'—', e.eintritt||'—', e.metro||'—', e.shou||'—', e.other||'—', totalUZS||'—', totalUSD||'—'];
+        const tUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
+        return [i+1, b.bookingName, fmtN(e.hotelsUSD), fmtN(e.hotelsUZS), fmtN(e.transportSevil), fmtN(e.transportXayrulla), fmtN(e.transportNosir), fmtN(e.railway), fmtN(e.flights), fmtN(e.guide), fmtN(e.meals), fmtN(e.eintritt), fmtN(e.metro), fmtN(e.shou), fmtN(e.other), fmtN(tUZS), fmtN((e.hotelsUSD||0)+(e.guide||0))];
       });
-      const totals = [2,3,4,5,6,7,8,9,10,11,12,13,14].map(ci => body.reduce((s,r)=>s+(typeof r[ci]==='number'?r[ci]:0),0));
-      const totalUZS = [3,4,5,6,7,8,9,10,11,12,13].reduce((s,i)=>s+(typeof body.reduce((a,r)=>a+(typeof r[i]==='number'?r[i]:0),0)==='number'?body.reduce((a,r)=>a+(typeof r[i]==='number'?r[i]:0),0):0),0);
-      const totalUSD = body.reduce((s,r)=>s+(typeof r[16]==='number'?r[16]:0),0);
-      foot = [['', 'TOTAL', ...totals, totalUZS, totalUSD]];
+      const sf = (f) => data.reduce((s,b)=>s+(b.expenses?.[f]||0),0);
+      const gUZS = data.reduce((s,b)=>{const e=b.expenses||{}; return s+(e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);},0);
+      foot = [['', 'TOTAL', fmtN(sf('hotelsUSD')), fmtN(sf('hotelsUZS')), fmtN(sf('transportSevil')), fmtN(sf('transportXayrulla')), fmtN(sf('transportNosir')), fmtN(sf('railway')), fmtN(sf('flights')), fmtN(sf('guide')), fmtN(sf('meals')), fmtN(sf('eintritt')), fmtN(sf('metro')), fmtN(sf('shou')), fmtN(sf('other')), fmtN(gUZS), fmtN(sf('hotelsUSD')+sf('guide'))]];
     }
-
     else if (activeExpenseTab === 'hotels') {
       const pd = getPivotData();
       head = [['#', 'Booking', ...pd.hotels, 'Total UZS', 'Total USD']];
       body = pd.bookingRows.map((br, i) => {
-        const hotelVals = pd.hotels.map(h => { const hc = br.hotelCosts[h]; return (hc?.uzs || hc?.usd || '—'); });
-        return [i+1, br.bookingName, ...hotelVals, br.totalUZS||'—', br.totalUSD||'—'];
+        const hotelVals = pd.hotels.map(h => { const hc = br.hotelCosts[h]; return fmtN(hc?.uzs||hc?.usd||0); });
+        return [i+1, br.bookingName, ...hotelVals, fmtN(br.totalUZS), fmtN(br.totalUSD)];
       });
-      const hotelTotals = pd.hotels.map(h => { const uzs = getHotelGrandTotal(h,'uzs'); const usd = getHotelGrandTotal(h,'usd'); return uzs>0?uzs:usd; });
-      foot = [['', 'TOTAL', ...hotelTotals, getGrandTotalUZS(), getGrandTotalUSD()]];
+      const hotelTotals = pd.hotels.map(h => { const uzs = getHotelGrandTotal(h,'uzs'); const usd = getHotelGrandTotal(h,'usd'); return fmtN(uzs>0?uzs:usd); });
+      foot = [['', 'TOTAL', ...hotelTotals, fmtN(getGrandTotalUZS()), fmtN(getGrandTotalUSD())]];
     }
-
     else if (activeExpenseTab === 'guides') {
-      head = [['#', 'Booking', 'Main Guide', 'Price', 'Second Guide', 'Price', 'Bergreiseleiter', 'Price', 'Total USD']];
+      head = [['#', 'Booking', 'Main Guide', 'Price USD', 'Second Guide', 'Price USD', 'Bergreiseleiter', 'Price USD', 'Total USD']];
       body = filteredBookingsWithHotels.map((item, i) => {
         const e = item.expenses || {};
-        return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||'—', e.guideSecondName||'—', e.guideSecondCost||'—', e.guideBergrName||'—', e.guideBergrCost||'—', (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0)||'—'];
+        return [i+1, item.bookingName, e.guideMainName||'—', fmtN(e.guideMainCost), e.guideSecondName||'—', fmtN(e.guideSecondCost), e.guideBergrName||'—', fmtN(e.guideBergrCost), fmtN((e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0))];
       });
-      foot = [['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)]];
+      foot = [['', 'TOTAL', '', fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0)), '', fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0)), '', fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0)), fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0))]];
     }
-
     else if (activeExpenseTab === 'uberweisung') {
       head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS']];
       body = bookingsDetailedData.map((b, i) => {
         const e = b.expenses || {};
-        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0)];
+        return [i+1, b.bookingName, fmtN(e.uberweisungEintritt||0), fmtN(e.uberweisungFolklore||0), fmtN(e.uberweisungRailway||0), fmtN(e.uberweisungUZS||0)];
       });
-      const totUZS = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0);
-      foot = [['', 'TOTAL', '', '', '', formatNumber(totUZS)]];
+      foot = [['', 'TOTAL', fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungEintritt||0),0)), fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungFolklore||0),0)), fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungRailway||0),0)), fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0))]];
     }
-
     else if (activeExpenseTab === 'transport') {
       head = [['#', 'Booking', 'Sevil', 'Xayrulla', 'Total']];
       body = filteredBookingsWithHotels.map((item, i) => {
-        const sevil = item.expenses?.transportSevil||0;
-        const xayrulla = item.expenses?.transportXayrulla||0;
-        return [i+1, item.bookingName, sevil||'—', xayrulla||'—', (sevil+xayrulla)||'—'];
+        const s = item.expenses?.transportSevil||0; const x = item.expenses?.transportXayrulla||0;
+        return [i+1, item.bookingName, fmtN(s), fmtN(x), fmtN(s+x)];
       });
-      foot = [['', 'TOTAL',
-        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0),
-        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0),
-        filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0)
-      ]];
+      foot = [['', 'TOTAL', fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0)), fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0)), fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0))]];
+    }
+    else if (activeExpenseTab === 'railways') {
+      const railwayBookings = bookingsDetailedData.filter(b => (b.railways?.length > 0)||(b.expenses?.railway||0)>0);
+      const allRows = railwayBookings.flatMap(b => (b.railways||[]).filter(r=>(r.price||0)>0).map(r=>({...r, bookingName:b.bookingName})));
+      head = [['#', 'Booking', "Yo'nalish", 'Poyezd', 'PAX', 'Bilet narxi', 'Summa (UZS)', "To'landi"]];
+      body = allRows.map((r, i) => [
+        i+1, r.bookingName,
+        r.departure && r.arrival ? `${r.departure} → ${r.arrival}` : r.route||'—',
+        r.trainName||r.trainNumber||'—',
+        r.pax||'—',
+        fmtN(r.pax>0&&r.price>0 ? Math.round(r.price/r.pax) : 0),
+        fmtN(r.price||0),
+        r.paid ? '✓' : '—',
+      ]);
+      const totalPax = allRows.reduce((s,r)=>s+(r.pax||0),0);
+      const grandTotal = allRows.reduce((s,r)=>s+(r.price||0),0);
+      const paidTotal = allRows.filter(r=>r.paid).reduce((s,r)=>s+(r.price||0),0);
+      foot = [['', 'TOTAL', '', '', totalPax, '', fmtN(grandTotal), `${fmtN(paidTotal)}`]];
+    }
+
+    return { head, body, foot };
+  };
+
+  const buildPDFDoc = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const title = getExportTitle();
+    const { head, body, foot } = buildPdfData();
+    const pageW = doc.internal.pageSize.getWidth();
+    const colCount = head[0]?.length || 1;
+
+    const MARGIN = 7;
+
+    // Dark title bar
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pageW, 22, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, MARGIN + 1, 14);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Orient Insight', pageW - MARGIN - 1, 14, { align: 'right' });
+
+    // Column styles — explicit widths to prevent wrapping
+    // Usable width: 297 - 2*MARGIN = 283mm
+    // # = 7, Booking = 16, then distribute rest equally among numeric cols
+    const numericColCount = colCount - 2;
+    const numericColW = Math.floor((pageW - 2 * MARGIN - 7 - 16) / Math.max(numericColCount, 1));
+    const columnStyles = {
+      0: { cellWidth: 7, halign: 'center' },
+      1: { cellWidth: 16, halign: 'left' },
+    };
+    for (let i = 2; i < colCount; i++) columnStyles[i] = { cellWidth: numericColW, halign: 'right' };
+    if (activeExpenseTab === 'guides') {
+      columnStyles[2] = { cellWidth: numericColW, halign: 'left' };
+      columnStyles[4] = { cellWidth: numericColW, halign: 'left' };
+      columnStyles[6] = { cellWidth: numericColW, halign: 'left' };
+    }
+    if (activeExpenseTab === 'railways') {
+      columnStyles[2] = { cellWidth: numericColW * 2, halign: 'left' };
+      columnStyles[3] = { cellWidth: numericColW * 1.5, halign: 'left' };
+      columnStyles[7] = { cellWidth: numericColW, halign: 'center' };
     }
 
     autoTable(doc, {
-      head,
-      body,
-      foot,
-      startY: 22,
-      styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
-      footStyles: { fillColor: [186, 230, 253], textColor: [7, 89, 133], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
+      head, body, foot,
+      startY: 26,
+      margin: { top: 26, right: MARGIN, bottom: 10, left: MARGIN },
+      tableWidth: pageW - 2 * MARGIN,
+      styles: {
+        fontSize: 7.5,
+        cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+        textColor: [30, 41, 59],
+        lineColor: [191, 219, 254],
+        lineWidth: 0.15,
+      },
+      headStyles: {
+        fillColor: [30, 58, 138],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.5,
+        halign: 'center',
+        cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
+      },
+      footStyles: {
+        fillColor: [30, 64, 175],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      alternateRowStyles: { fillColor: [240, 244, 255] },
+      columnStyles,
+      didParseCell: (data) => {
+        if (data.section === 'foot') {
+          data.cell.styles.halign = data.column.index <= 1 ? 'left' : 'right';
+        }
+        // Booking name bold blue
+        if (data.section === 'body' && data.column.index === 1) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.textColor = [37, 99, 235];
+        }
+      },
+      didDrawPage: (data) => {
+        const pageH = doc.internal.pageSize.getHeight();
+        const pageNum = doc.getCurrentPageInfo().pageNumber;
+        const totalPages = doc.getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${pageNum} / ${totalPages}`, pageW - MARGIN - 1, pageH - 4, { align: 'right' });
+        doc.text(`Orient Insight — ${title}`, MARGIN + 1, pageH - 4);
+      },
     });
 
-    const ausgabenBlob = doc.output('blob');
-    const ausgabenUrl = URL.createObjectURL(ausgabenBlob);
-    window.open(ausgabenUrl, '_blank');
-    setTimeout(() => URL.revokeObjectURL(ausgabenUrl), 30000);
+    return doc;
+  };
+
+  const exportToPDF = () => {
+    const doc = buildPDFDoc();
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
     toast.success('PDF fayl yuklab olindi');
   };
 
@@ -1059,71 +1248,7 @@ export default function Ausgaben() {
     }
   };
 
-  // generatePDFBlob — same as exportToPDF but returns blob instead of saving
-  const generatePDFBlob = () => {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const title = getExportTitle();
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, 14, 15);
-
-    let head = [], body = [], foot = [];
-
-    if (activeExpenseTab === 'general') {
-      const data = bookingsDetailedData.filter(b => { const e = b.expenses||{}; return e.hotelsUSD>0||e.hotelsUZS>0; });
-      head = [['#', 'Booking', 'Hotels USD', 'Hotels UZS', 'Sevil', 'Xayrulla', 'Nosir', 'Train', 'Flights', 'Guide', 'Meals', 'Eintritt', 'Metro', 'Shou', 'Other', 'Total UZS', 'Total USD']];
-      body = data.map((b, i) => {
-        const e = b.expenses || {};
-        const totalUZS = (e.hotelsUZS||0)+(e.transportSevil||0)+(e.transportXayrulla||0)+(e.transportNosir||0)+(e.railway||0)+(e.flights||0)+(e.meals||0)+(e.eintritt||0)+(e.metro||0)+(e.shou||0)+(e.other||0);
-        const totalUSD = (e.hotelsUSD||0)+(e.guide||0);
-        return [i+1, b.bookingName, e.hotelsUSD||'—', e.hotelsUZS||'—', e.transportSevil||'—', e.transportXayrulla||'—', e.transportNosir||'—', e.railway||'—', e.flights||'—', e.guide||'—', e.meals||'—', e.eintritt||'—', e.metro||'—', e.shou||'—', e.other||'—', totalUZS||'—', totalUSD||'—'];
-      });
-      foot = [['', 'TOTAL', ...body.reduce((acc, r) => acc.map((v, i) => v + (typeof r[i+2]==='number'?r[i+2]:0)), new Array(15).fill(0))]];
-    } else if (activeExpenseTab === 'hotels') {
-      const pd = getPivotData();
-      head = [['#', 'Booking', ...pd.hotels, 'Total UZS', 'Total USD']];
-      body = pd.bookingRows.map((br, i) => {
-        const hotelVals = pd.hotels.map(h => { const hc = br.hotelCosts[h]; return (hc?.uzs || hc?.usd || '—'); });
-        return [i+1, br.bookingName, ...hotelVals, br.totalUZS||'—', br.totalUSD||'—'];
-      });
-      const hotelTotals = pd.hotels.map(h => { const uzs = getHotelGrandTotal(h,'uzs'); const usd = getHotelGrandTotal(h,'usd'); return uzs>0?uzs:usd; });
-      foot = [['', 'TOTAL', ...hotelTotals, getGrandTotalUZS(), getGrandTotalUSD()]];
-    } else if (activeExpenseTab === 'guides') {
-      head = [['#', 'Booking', 'Main Guide', 'Price', 'Second Guide', 'Price', 'Bergreiseleiter', 'Price', 'Total USD']];
-      body = filteredBookingsWithHotels.map((item, i) => {
-        const e = item.expenses || {};
-        return [i+1, item.bookingName, e.guideMainName||'—', e.guideMainCost||'—', e.guideSecondName||'—', e.guideSecondCost||'—', e.guideBergrName||'—', e.guideBergrCost||'—', (e.guideMainCost||0)+(e.guideSecondCost||0)+(e.guideBergrCost||0)||'—'];
-      });
-      foot = [['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)]];
-    } else if (activeExpenseTab === 'uberweisung') {
-      head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS']];
-      body = bookingsDetailedData.map((b, i) => {
-        const e = b.expenses || {};
-        return [i+1, b.bookingName, formatNumber(e.uberweisungEintritt||0), formatNumber(e.uberweisungFolklore||0), formatNumber(e.uberweisungRailway||0), formatNumber(e.uberweisungUZS||0)];
-      });
-      const totUZS = bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0);
-      foot = [['', 'TOTAL', '', '', '', formatNumber(totUZS)]];
-    } else if (activeExpenseTab === 'transport') {
-      head = [['#', 'Booking', 'Sevil', 'Xayrulla', 'Total']];
-      body = filteredBookingsWithHotels.map((item, i) => {
-        const sevil = item.expenses?.transportSevil||0;
-        const xayrulla = item.expenses?.transportXayrulla||0;
-        return [i+1, item.bookingName, sevil||'—', xayrulla||'—', (sevil+xayrulla)||'—'];
-      });
-      foot = [['', 'TOTAL', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportXayrulla||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.transportSevil||0)+(i.expenses?.transportXayrulla||0),0)]];
-    }
-
-    autoTable(doc, {
-      head, body, foot,
-      startY: 22,
-      styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: 'bold' },
-      footStyles: { fillColor: [186, 230, 253], textColor: [7, 89, 133], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
-
-    return doc.output('blob');
-  };
+  const generatePDFBlob = () => buildPDFDoc().output('blob');
 
   // Filter bookings with Hotels data (for General tab statistics)
   const filteredBookingsWithHotels = useMemo(() => {
