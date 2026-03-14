@@ -2454,7 +2454,7 @@ router.post('/:bookingId/railways', authenticate, async (req, res) => {
 router.put('/:bookingId/railways/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, trainNumber, trainName, groupName, departure, arrival, date, departureTime, arrivalTime, pax, price, notes } = req.body;
+    const { type, trainNumber, trainName, groupName, departure, arrival, date, departureTime, arrivalTime, pax, price, notes, paid } = req.body;
 
     const updateData = {};
 
@@ -2469,6 +2469,7 @@ router.put('/:bookingId/railways/:id', authenticate, async (req, res) => {
     if (departureTime !== undefined) updateData.departureTime = departureTime;
     if (arrivalTime !== undefined) updateData.arrivalTime = arrivalTime;
     if (notes !== undefined) updateData.notes = notes;
+    if (paid !== undefined) updateData.paid = Boolean(paid);
 
     // Handle PAX separately - parse as integer
     if (pax !== undefined && pax !== null && pax !== '') {

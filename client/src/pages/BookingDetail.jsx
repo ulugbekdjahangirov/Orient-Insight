@@ -370,9 +370,11 @@ export default function BookingDetail() {
   // Sequential number for Dalolatnoma (server-side computed)
   const [dalolatnomSequentialNumber, setDalolatnomSequentialNumber] = useState(0);
 
-  // Initialize activeTab from localStorage or default to 'info'
+  // Initialize activeTab from URL param, then localStorage, then default 'info'
   const getInitialTab = () => {
     if (isNew) return 'info';
+    const urlTab = searchParams.get('tab');
+    if (urlTab) return urlTab;
     try {
       const savedTab = localStorage.getItem(`bookingDetail_${id}_activeTab`);
       return savedTab || 'info';
@@ -9550,26 +9552,6 @@ export default function BookingDetail() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2">
-                  {/* To'landi checkbox */}
-                  <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 rounded-xl border-2 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={railwayPaid}
-                      onChange={async (e) => {
-                        const newVal = e.target.checked;
-                        setRailwayPaid(newVal);
-                        try {
-                          const paidRes = await invoicesApi.getAusgabenPaid();
-                          const current = paidRes.data.railway || {};
-                          await invoicesApi.saveAusgabenRailwayPaid({ ...current, [String(id)]: newVal });
-                        } catch (err) {
-                          console.error('Error saving railway paid:', err);
-                        }
-                      }}
-                      className="w-4 h-4 accent-emerald-600 cursor-pointer"
-                    />
-                    <span className="text-sm font-bold text-emerald-700">To'landi</span>
-                  </label>
                   <button
                     onClick={openRailwayModal}
                     className="flex items-center gap-1.5 md:gap-2 px-3 py-2 md:px-6 md:py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl text-xs md:text-sm hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg"
@@ -9664,6 +9646,7 @@ export default function BookingDetail() {
                                     <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
                                     <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
                                     <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">To'landi</th>
                                     <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                   </tr>
                                 </thead>
@@ -9673,7 +9656,7 @@ export default function BookingDetail() {
                                     const totalPrice = railway.price || 0;
                                     const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                     return (
-                                      <tr key={railway.id || idx} className="border-b border-blue-200 hover:bg-blue-50 transition-colors">
+                                      <tr key={railway.id || idx} className={`border-b border-blue-200 hover:bg-blue-50 transition-colors ${railway.paid ? 'bg-emerald-50/40' : ''}`}>
                                         <td className="px-4 py-3 font-bold text-blue-900">{railway.trainName || railway.trainNumber || '-'}</td>
                                         <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
                                         <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
@@ -9682,6 +9665,19 @@ export default function BookingDetail() {
                                         <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
                                         <td className="px-4 py-3 text-right font-medium text-gray-700">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
                                         <td className="px-4 py-3 text-right font-bold text-blue-700">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3 text-center">
+                                          <button
+                                            onClick={async () => {
+                                              const newPaid = !railway.paid;
+                                              setRailways(prev => prev.map(r => r.id === railway.id ? { ...r, paid: newPaid } : r));
+                                              try { await railwaysApi.update(id, railway.id, { paid: newPaid }); }
+                                              catch { setRailways(prev => prev.map(r => r.id === railway.id ? { ...r, paid: !newPaid } : r)); }
+                                            }}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${railway.paid ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'bg-white text-gray-400 border-gray-200 hover:border-emerald-300 hover:text-emerald-600'}`}
+                                          >
+                                            {railway.paid ? "✓ To'landi" : "To'landi"}
+                                          </button>
+                                        </td>
                                         <td className="px-4 py-3">
                                           <div className="flex items-center justify-center gap-2">
                                             <button onClick={() => editRailway(railway)} className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>
@@ -9761,6 +9757,7 @@ export default function BookingDetail() {
                                     <th className="px-4 py-3 text-center text-sm font-bold">PAX</th>
                                     <th className="px-4 py-3 text-right text-sm font-bold">Per Person (UZS)</th>
                                     <th className="px-4 py-3 text-right text-sm font-bold">Total (UZS)</th>
+                                    <th className="px-4 py-3 text-center text-sm font-bold">To'landi</th>
                                     <th className="px-4 py-3 text-center text-sm font-bold">Actions</th>
                                   </tr>
                                 </thead>
@@ -9770,7 +9767,7 @@ export default function BookingDetail() {
                                     const totalPrice = railway.price || 0;
                                     const perPersonPrice = pax > 0 ? totalPrice / pax : 0;
                                     return (
-                                      <tr key={railway.id || idx} className="border-b border-emerald-200 hover:bg-emerald-50 transition-colors">
+                                      <tr key={railway.id || idx} className={`border-b border-emerald-200 hover:bg-emerald-50 transition-colors ${railway.paid ? 'bg-emerald-50/40' : ''}`}>
                                         <td className="px-4 py-3 font-bold text-emerald-900">{railway.trainName || railway.trainNumber || '-'}</td>
                                         <td className="px-4 py-3 font-medium text-gray-700">{railway.departure || '-'} → {railway.arrival || '-'}</td>
                                         <td className="px-4 py-3 text-gray-600">{railway.date ? format(new Date(railway.date), 'dd.MM.yyyy') : '-'}</td>
@@ -9779,6 +9776,19 @@ export default function BookingDetail() {
                                         <td className="px-4 py-3 text-center font-bold text-gray-900">{pax > 0 ? pax : '-'}</td>
                                         <td className="px-4 py-3 text-right font-medium text-gray-700">{perPersonPrice > 0 ? Math.round(perPersonPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
                                         <td className="px-4 py-3 text-right font-bold text-emerald-700">{totalPrice > 0 ? Math.round(totalPrice).toLocaleString('en-US').replace(/,/g, ' ') : '-'}</td>
+                                        <td className="px-4 py-3 text-center">
+                                          <button
+                                            onClick={async () => {
+                                              const newPaid = !railway.paid;
+                                              setRailways(prev => prev.map(r => r.id === railway.id ? { ...r, paid: newPaid } : r));
+                                              try { await railwaysApi.update(id, railway.id, { paid: newPaid }); }
+                                              catch { setRailways(prev => prev.map(r => r.id === railway.id ? { ...r, paid: !newPaid } : r)); }
+                                            }}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${railway.paid ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'bg-white text-gray-400 border-gray-200 hover:border-emerald-300 hover:text-emerald-600'}`}
+                                          >
+                                            {railway.paid ? "✓ To'landi" : "To'landi"}
+                                          </button>
+                                        </td>
                                         <td className="px-4 py-3">
                                           <div className="flex items-center justify-center gap-2">
                                             <button onClick={() => editRailway(railway)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-lg transition-colors" title="Edit"><Edit className="w-4 h-4" /></button>

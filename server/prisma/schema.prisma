@@ -722,6 +722,7 @@ model Railway {
   // Дополнительная информация
   notes           String?
   sortOrder       Int       @default(0)
+  paid            Boolean   @default(false)
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

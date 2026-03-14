@@ -53,14 +53,12 @@ export default function Ausgaben() {
   const toggleMonth = (key) => setOpenMonths(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
   const [paidAccs, setPaidAccs] = useState({});
   const [paidTransport, setPaidTransport] = useState({});
-  const [paidRailways, setPaidRailways] = useState({});
 
   // Load paid status from DB (with one-time localStorage migration)
   useEffect(() => {
     invoicesApi.getAusgabenPaid().then(res => {
       let hotel = res.data.hotel || {};
       let transport = res.data.transport || {};
-      const railway = res.data.railway || {};
       // One-time migration from localStorage
       if (Object.keys(hotel).length === 0) {
         try {
@@ -76,7 +74,6 @@ export default function Ausgaben() {
       }
       setPaidAccs(hotel);
       setPaidTransport(transport);
-      setPaidRailways(railway);
     }).catch(() => {});
   }, []);
 
@@ -104,13 +101,27 @@ export default function Ausgaben() {
     });
   };
 
-  const toggleRailwayPaid = (e, bookingId) => {
+  const handleRailwayPaidToggle = async (e, bookingId, railwayId, currentPaid) => {
     e.stopPropagation();
-    setPaidRailways(prev => {
-      const next = { ...prev, [String(bookingId)]: !prev[String(bookingId)] };
-      invoicesApi.saveAusgabenRailwayPaid(next).catch(() => {});
-      return next;
-    });
+    const newPaid = !currentPaid;
+    // Optimistic update
+    setBookingsDetailedData(prev => prev.map(b =>
+      b.bookingId !== bookingId ? b : {
+        ...b,
+        railways: (b.railways || []).map(r => r.id === railwayId ? { ...r, paid: newPaid } : r)
+      }
+    ));
+    try {
+      await railwaysApi.update(bookingId, railwayId, { paid: newPaid });
+    } catch {
+      // Rollback
+      setBookingsDetailedData(prev => prev.map(b =>
+        b.bookingId !== bookingId ? b : {
+          ...b,
+          railways: (b.railways || []).map(r => r.id === railwayId ? { ...r, paid: currentPaid } : r)
+        }
+      ));
+    }
   };
 
   // Cache: { tourTypeCode: { bookings: [], detailedData: [] } }
@@ -2221,13 +2232,19 @@ export default function Ausgaben() {
 
                 {/* ── RAILWAYS TAB ── */}
                 {activeExpenseTab === 'railways' && (() => {
-                  const railwayBookings = bookingsDetailedData.filter(b => (b.expenses?.railway || 0) > 0 || (b.railways?.length > 0));
-                  const grandTotal = railwayBookings.reduce((s, b) => s + (b.expenses?.railway || 0), 0);
-                  const paidTotal  = railwayBookings.filter(b => paidRailways[String(b.bookingId)]).reduce((s, b) => s + (b.expenses?.railway || 0), 0);
+                  const railwayBookings = bookingsDetailedData.filter(b => (b.railways?.length > 0) || (b.expenses?.railway || 0) > 0);
+                  // Flatten to per-railway rows (skip 0-price entries)
+                  const allRows = railwayBookings.flatMap(b =>
+                    (b.railways || [])
+                      .filter(r => (r.price || 0) > 0)
+                      .map(r => ({ ...r, bookingId: b.bookingId, bookingName: b.bookingName }))
+                  );
+                  const grandTotal = allRows.reduce((s, r) => s + (r.price || 0), 0);
+                  const paidTotal  = allRows.filter(r => r.paid).reduce((s, r) => s + (r.price || 0), 0);
                   const debtTotal  = grandTotal - paidTotal;
                   return (
                     <div className="w-full">
-                      {railwayBookings.length === 0 ? (
+                      {allRows.length === 0 ? (
                         <div className="p-10 text-center text-slate-400">
                           <Train className="w-12 h-12 mx-auto mb-3 opacity-30" />
                           <p>Railway ma'lumoti yo'q</p>
@@ -2241,47 +2258,36 @@ export default function Ausgaben() {
                                 <tr style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a8a)' }}>
                                   <th className="px-3 py-3.5 text-center text-white font-bold w-10">#</th>
                                   <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Booking</th>
-                                  <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Yo'nalishlar</th>
-                                  <th className="px-3 py-3.5 text-right text-white font-bold border-l border-blue-700">Jami (UZS)</th>
+                                  <th className="px-3 py-3.5 text-left text-white font-bold border-l border-blue-700">Yo'nalish</th>
+                                  <th className="px-3 py-3.5 text-right text-white font-bold border-l border-blue-700">Summa (UZS)</th>
                                   <th className="px-3 py-3.5 text-center text-white font-bold border-l border-blue-700 w-24">To'landi</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {railwayBookings.map((item, idx) => {
-                                  const isPaid = !!paidRailways[String(item.bookingId)];
+                                {allRows.map((row, idx) => {
                                   const rowBg = idx % 2 === 0 ? '#f8fafc' : '#ffffff';
-                                  const segments = item.railways || [];
                                   return (
-                                    <tr key={item.bookingId} style={{ background: isPaid ? '#f0fdf4' : rowBg }}
+                                    <tr key={`${row.bookingId}_${row.id}`}
+                                      style={{ background: row.paid ? '#f0fdf4' : rowBg }}
                                       onMouseEnter={ev => ev.currentTarget.style.background = '#eff6ff'}
-                                      onMouseLeave={ev => ev.currentTarget.style.background = isPaid ? '#f0fdf4' : rowBg}>
+                                      onMouseLeave={ev => ev.currentTarget.style.background = row.paid ? '#f0fdf4' : rowBg}>
                                       <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx + 1}</td>
                                       <td className="px-3 py-2.5 border-r border-slate-100">
-                                        <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:underline">{item.bookingName}</Link>
+                                        <Link to={`/bookings/${row.bookingId}?tab=rooming`} className="font-bold text-blue-600 hover:underline">{row.bookingName}</Link>
                                       </td>
-                                      <td className="px-3 py-2.5 border-r border-slate-100">
-                                        {segments.length > 0 ? (
-                                          <div className="flex flex-col gap-0.5">
-                                            {segments.map((seg, si) => (
-                                              <span key={si} className="text-slate-600">
-                                                {seg.departure && seg.arrival ? `${seg.departure} → ${seg.arrival}` : seg.route || seg.name || '—'}
-                                                {seg.price > 0 && <span className="ml-2 text-slate-400">({formatNumber(seg.price)} UZS)</span>}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        ) : <span className="text-slate-300">—</span>}
+                                      <td className="px-3 py-2.5 border-r border-slate-100 text-slate-600">
+                                        {row.departure && row.arrival ? `${row.departure} → ${row.arrival}` : row.route || row.name || '—'}
                                       </td>
                                       <td className="px-3 py-2.5 text-right border-r border-slate-100">
-                                        <span className={`font-bold ${isPaid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(item.expenses?.railway || 0)}</span>
+                                        <span className={`font-bold ${row.paid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(row.price || 0)}</span>
                                       </td>
                                       <td className="px-3 py-2.5 text-center">
                                         <button
-                                          onClick={(e) => toggleRailwayPaid(e, item.bookingId)}
-                                          className="w-6 h-6 rounded border-2 flex items-center justify-center mx-auto transition-all"
-                                          style={{ background: isPaid ? '#16a34a' : 'white', borderColor: isPaid ? '#16a34a' : '#cbd5e1' }}
-                                          title={isPaid ? "To'landi — bekor qilish" : "To'landi deb belgilash"}
+                                          onClick={(e) => handleRailwayPaidToggle(e, row.bookingId, row.id, row.paid)}
+                                          className={`px-3 py-1 rounded-xl text-[10px] font-bold border-2 transition-all ${row.paid ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm' : 'bg-white text-gray-400 border-gray-200 hover:border-emerald-300 hover:text-emerald-600'}`}
+                                          title={row.paid ? "To'landi — bekor qilish" : "To'landi deb belgilash"}
                                         >
-                                          {isPaid && <span className="text-white font-bold" style={{ fontSize: 10 }}>✓</span>}
+                                          {row.paid ? "✓ To'landi" : "To'lanmadi"}
                                         </button>
                                       </td>
                                     </tr>
@@ -2293,35 +2299,28 @@ export default function Ausgaben() {
 
                           {/* Mobile cards */}
                           <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
-                            {railwayBookings.map((item, idx) => {
-                              const isPaid = !!paidRailways[String(item.bookingId)];
-                              const segments = item.railways || [];
-                              return (
-                                <div key={item.bookingId} className="rounded-xl overflow-hidden border bg-white" style={{ borderColor: isPaid ? '#86efac' : '#bfdbfe' }}>
-                                  <div className="h-1" style={{ background: isPaid ? 'linear-gradient(90deg,#16a34a,#22c55e)' : 'linear-gradient(90deg,#1e3a8a,#2563eb)' }} />
-                                  <div className="px-3 py-2.5">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 text-sm">{item.bookingName}</Link>
-                                      <div className="flex items-center gap-2">
-                                        <span className={`font-bold text-sm ${isPaid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(item.expenses?.railway || 0)} UZS</span>
-                                        <button onClick={(e) => toggleRailwayPaid(e, item.bookingId)}
-                                          className="w-6 h-6 rounded border-2 flex items-center justify-center transition-all"
-                                          style={{ background: isPaid ? '#16a34a' : 'white', borderColor: isPaid ? '#16a34a' : '#cbd5e1' }}>
-                                          {isPaid && <span className="text-white font-bold" style={{ fontSize: 10 }}>✓</span>}
-                                        </button>
+                            {allRows.map((row, idx) => (
+                              <div key={`${row.bookingId}_${row.id}`} className="rounded-xl overflow-hidden border bg-white" style={{ borderColor: row.paid ? '#86efac' : '#bfdbfe' }}>
+                                <div className="h-1" style={{ background: row.paid ? 'linear-gradient(90deg,#16a34a,#22c55e)' : 'linear-gradient(90deg,#1e3a8a,#2563eb)' }} />
+                                <div className="px-3 py-2.5">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div>
+                                      <Link to={`/bookings/${row.bookingId}`} className="font-bold text-blue-600 text-sm">{row.bookingName}</Link>
+                                      <div className="text-xs text-slate-500 mt-0.5">
+                                        {row.departure && row.arrival ? `${row.departure} → ${row.arrival}` : row.route || '—'}
                                       </div>
                                     </div>
-                                    {segments.length > 0 && (
-                                      <div className="text-xs text-slate-500 flex flex-col gap-0.5">
-                                        {segments.map((seg, si) => (
-                                          <span key={si}>{seg.departure && seg.arrival ? `${seg.departure} → ${seg.arrival}` : seg.route || '—'}</span>
-                                        ))}
-                                      </div>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                      <span className={`font-bold text-sm ${row.paid ? 'text-green-700' : 'text-blue-800'}`}>{formatNumber(row.price || 0)} UZS</span>
+                                      <button onClick={(e) => handleRailwayPaidToggle(e, row.bookingId, row.id, row.paid)}
+                                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border-2 transition-all ${row.paid ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-gray-400 border-gray-200'}`}>
+                                        {row.paid ? '✓' : '○'}
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </div>
 
                           {/* Total footer */}
