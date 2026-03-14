@@ -210,18 +210,13 @@ const VERTRAG_HTML = `<!DOCTYPE html>
   <!-- RIGHT: Contractor side -->
   <div class="col-right">
     <div class="banking-block">
-      <p><strong>WORLD INSIGHT LLC</strong></p>
-      <p>WORLD INSIGHT Erlebnisreisen GmbH</p>
-      <p>Alter Deutzer Postweg 99 51149 Köln</p>
-      <p>Daten der Bank:</p>
-      <p>USD-Konto <u>Kontonr</u>: 2238343 00</p>
-      <p>IBAN: DE42370700600223834300</p>
-      <p>BLZ: 37070060</p>
-      <p>BIC/Swift: DEUTDEDKXXX</p>
-      <p>Deutsche Bank Privat- und Geschäftskunden AG</p>
-      <p>Firmenkunden</p>
-      <p>An den Dominikanern 11-27</p>
-      <p>&nbsp;50668 Köln</p>
+      <p><strong>LLC &quot; ORIENT INSIGHT &quot;</strong></p>
+      <p>Polvonariq MFY, Mash'al Str. 334,<br>Landkreis Payariq, 140 100 Samarkand, Uzbekistan</p>
+      <p><span class="bold">Beneficiary's Account:</span><br>20208840905364923001 (USD)</p>
+      <p><span class="bold">Beneficiary Bank:</span> PJSCB "ORIENT FINANS" SAMARKAND BRANCH,<br>SAMARKAND, UZBEKISTAN<br>MFO (BANK CODE) 01071</p>
+      <p><span class="bold">S.W.I.F.T. CODE: ORFBUZ22</span></p>
+      <p>Beneficiary's Bank correspondent:<br>National Bank of Uzbekistan</p>
+      <p>Bank correspondent's account: 21002840200001071001<br>S.W.I.F.T. <u>CODE: NBFAUZ2X</u></p>
     </div>
 
     <div class="sig-block">
