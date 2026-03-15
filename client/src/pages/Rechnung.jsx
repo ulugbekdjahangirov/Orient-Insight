@@ -1178,6 +1178,7 @@ export default function Rechnung() {
                     })}
                     {/* Total row */}
                     {shamixonItems.length > 0 && (() => {
+                      let totalPayment = 0;
                       let totalCommission = 0;
                       let totalTransferFee = 0;
                       let totalRemaining = 0;
@@ -1193,6 +1194,7 @@ export default function Rechnung() {
                         const receivedAmt = parseFloat(item.receivedAmount) || 0;
                         const total = receivedAmt - serviceFee;
 
+                        totalPayment += paymentAmount;
                         totalCommission += commission;
                         totalTransferFee += transferFee;
                         totalRemaining += (incomingPayment - receivedAmt);
@@ -1202,8 +1204,11 @@ export default function Rechnung() {
 
                       return (
                         <tr className="bg-gradient-to-r from-purple-100 to-pink-100 font-bold">
-                          <td className="border border-gray-300 px-3 py-4 text-gray-900" colSpan="3">
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900" colSpan="2">
                             TOTAL
+                          </td>
+                          <td className="border border-gray-300 px-3 py-4 text-gray-900 font-bold">
+                            {formatNumber(totalPayment)}
                           </td>
                           <td className="border border-gray-300 px-3 py-4 text-right text-gray-900">
                             {formatNumber(totalCommission)}

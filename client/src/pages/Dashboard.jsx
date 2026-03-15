@@ -264,6 +264,7 @@ export default function Dashboard() {
   const fmtUSD = (n) => '$' + (n || 0).toLocaleString('en-US');
   const fmtUZS = (n) => (n || 0).toLocaleString('ru-RU');
   const inv = financial?.invoice || {};
+  const shx = financial?.shamixon || {};
   const paidPct = inv.total > 0 ? Math.round((inv.paid / inv.total) * 100) : 0;
   const aus = ausgaben || {};
   const uzsToUSD = Math.round((aus.totalUZS || 0) / exchangeRate);
@@ -423,6 +424,24 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Shamixon — same style as byFirma rows */}
+            {(shx.payment || shx.incoming) > 0 && (
+              <div className="mt-1">
+                <div className={`flex justify-between items-center px-2.5 py-1.5 rounded-lg ${shx.remaining > 0 ? 'bg-purple-50' : 'bg-purple-50'}`}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-purple-700 font-medium">Shamixon</span>
+                    {shx.remaining > 0 && (
+                      <span className="text-[10px] text-orange-500 font-semibold">⚠ ${(shx.remaining).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} qoldi</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-black text-purple-900">${(shx.total || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-xs text-gray-400"> / ${(shx.payment || shx.incoming || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

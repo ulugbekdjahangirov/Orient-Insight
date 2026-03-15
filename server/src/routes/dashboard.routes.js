@@ -322,7 +322,7 @@ router.get('/financial', authenticate, async (req, res) => {
       tourType: { code: { in: ['ER', 'CO', 'KAS', 'ZA'] } }
     };
 
-    const [invoices, hotelsUSDResult, hotelsUZSResult, routesResult, railwaysResult, bookingsWithGuides] = await Promise.all([
+    const [invoices, hotelsUSDResult, hotelsUZSResult, routesResult, railwaysResult, bookingsWithGuides, shamixonSetting] = await Promise.all([
       // Invoice totals — only invoices with firma set
       prisma.invoice.findMany({
         where: { booking: bookingWhere, firma: { not: null } },
@@ -356,7 +356,9 @@ router.get('/financial', authenticate, async (req, res) => {
           mainGuideData: true, additionalGuides: true, bergreiseleiter: true,
           guide: { select: { dayRate: true, halfDayRate: true } }
         }
-      })
+      }),
+      // Shamixon items (stored in SystemSetting)
+      prisma.systemSetting.findUnique({ where: { key: 'SHAMIXON_ITEMS' } })
     ]);
 
     // ── Invoice summary ──────────────────────────────────────────────────
@@ -406,12 +408,37 @@ router.get('/financial', authenticate, async (req, res) => {
       } catch {}
     }
 
+    // ── Shamixon summary ─────────────────────────────────────────────────
+    let shamixonPayment = 0, shamixonIncoming = 0, shamixonReceived = 0, shamixonTotal = 0;
+    try {
+      const shamixonItems = shamixonSetting ? JSON.parse(shamixonSetting.value) : [];
+      for (const item of shamixonItems) {
+        const payment = parseFloat(item.gruppe) || 0;
+        const commission = payment * 0.01;
+        const transferFee = 50;
+        const incoming = payment - commission - transferFee;
+        const received = parseFloat(item.receivedAmount) || 0;
+        const serviceFee = parseFloat(item.serviceFee) || 0;
+        shamixonPayment += payment;
+        shamixonIncoming += incoming;
+        shamixonReceived += received;
+        shamixonTotal += received - serviceFee;
+      }
+    } catch {}
+
     res.json({
       invoice: {
         total: Math.round(invoiceTotal),
         paid: Math.round(invoicePaid),
         unpaid: Math.round(invoiceTotal - invoicePaid),
         byFirma
+      },
+      shamixon: {
+        payment: Math.round(shamixonPayment * 100) / 100,
+        incoming: Math.round(shamixonIncoming * 100) / 100,
+        received: Math.round(shamixonReceived * 100) / 100,
+        total: Math.round(shamixonTotal * 100) / 100,
+        remaining: Math.round((shamixonIncoming - shamixonReceived) * 100) / 100
       },
       ausgaben: {
         totalUSD: Math.round((hotelsUSDResult._sum.totalCost || 0) + guideTotalUSD),
