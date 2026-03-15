@@ -9,14 +9,17 @@ datasource db {
 
 // Пользователи системы
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
-  role      String   @default("MANAGER") // ADMIN, MANAGER
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  password          String
+  name              String
+  role              String   @default("MANAGER") // ADMIN, MANAGER
+  isActive          Boolean  @default(true)
+  personalEmail     String?  // Real email for password reset
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   bookings  Booking[] @relation("CreatedBy")
   assigned  Booking[] @relation("AssignedTo")

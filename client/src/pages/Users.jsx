@@ -21,7 +21,8 @@ export default function Users() {
     email: '',
     password: '',
     name: '',
-    role: 'MANAGER'
+    role: 'MANAGER',
+    personalEmail: ''
   });
 
   useEffect(() => {
@@ -46,11 +47,12 @@ export default function Users() {
         email: user.email,
         password: '',
         name: user.name,
-        role: user.role
+        role: user.role,
+        personalEmail: user.personalEmail || ''
       });
     } else {
       setEditingUser(null);
-      setFormData({ email: '', password: '', name: '', role: 'MANAGER' });
+      setFormData({ email: '', password: '', name: '', role: 'MANAGER', personalEmail: '' });
     }
     setShowPassword(false);
     setModalOpen(true);
@@ -59,7 +61,7 @@ export default function Users() {
   const closeModal = () => {
     setModalOpen(false);
     setEditingUser(null);
-    setFormData({ email: '', password: '', name: '', role: 'MANAGER' });
+    setFormData({ email: '', password: '', name: '', role: 'MANAGER', personalEmail: '' });
   };
 
   const handleSave = async () => {
@@ -77,7 +79,8 @@ export default function Users() {
       if (editingUser) {
         const updateData = {
           name: formData.name,
-          role: formData.role
+          role: formData.role,
+          personalEmail: formData.personalEmail || null
         };
         if (formData.password) {
           updateData.password = formData.password;
@@ -333,6 +336,19 @@ export default function Users() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Shaxsiy email (parolni tiklash uchun)
+                </label>
+                <input
+                  type="email"
+                  value={formData.personalEmail}
+                  onChange={(e) => setFormData({ ...formData, personalEmail: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="ulugbek@gmail.com"
+                />
               </div>
 
               <div>
