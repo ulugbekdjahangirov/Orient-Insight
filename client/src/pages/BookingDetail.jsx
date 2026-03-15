@@ -10596,92 +10596,92 @@ export default function BookingDetail() {
             <nav className="hidden sm:flex space-x-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
               <button
                 onClick={() => setDocumentsTab('tourist-list')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'tourist-list'
                     ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <Users className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <Users className="w-4 h-4 flex-shrink-0" />
                 <span>Tourist List</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('marshrutiy')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'marshrutiy'
                     ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <MapPin className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <MapPin className="w-4 h-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Marshrut varaqasi</span>
                 <span className="sm:hidden">Marshrut</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('hotelliste')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'hotelliste'
                     ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <Building2 className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <Building2 className="w-4 h-4 flex-shrink-0" />
                 <span>Hotelliste</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('rechnung')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'rechnung'
                     ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <DollarSign className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <DollarSign className="w-4 h-4 flex-shrink-0" />
                 <span>Rechnung</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('neue-rechnung')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'neue-rechnung'
                     ? 'bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <FileText className="w-4 h-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Neue Rechnung</span>
                 <span className="sm:hidden">Neue</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('gutschrift')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'gutschrift'
                     ? 'bg-gradient-to-r from-emerald-500 via-green-500 to-lime-500 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <FileText className="w-4 h-4 flex-shrink-0" />
                 <span>Gutschrift</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('dalolatnoma')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'dalolatnoma'
                     ? 'bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <FileText className="w-4 h-4 flex-shrink-0" />
                 <span>Dalolatnoma</span>
               </button>
               <button
                 onClick={() => setDocumentsTab('vertrag')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-sm md:shadow-lg ${
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 whitespace-nowrap shadow-sm ${
                   documentsTab === 'vertrag'
                     ? 'bg-gradient-to-r from-slate-600 via-gray-700 to-zinc-800 text-white'
                     : 'bg-white text-gray-700 border border-gray-200'
                 }`}
               >
-                <FileText className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                <FileText className="w-4 h-4 flex-shrink-0" />
                 <span>Vertrag</span>
               </button>
             </nav>
@@ -10750,77 +10750,71 @@ export default function BookingDetail() {
                 }).length;
 
                 return (
-                  <div className="grid grid-cols-3 md:flex md:items-stretch gap-2 md:gap-4 flex-wrap mb-4 md:mb-8">
+                  <div className="grid grid-cols-3 md:flex md:items-stretch gap-2 flex-wrap mb-4 md:mb-6">
                     {/* Total Guests Card */}
-                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
-                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                        <Users className="w-8 h-8 text-primary-600" />
+                    <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 rounded-xl shadow-sm col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl bg-white shadow-sm">
+                        <Users className="w-5 h-5 text-primary-600" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-primary-700 uppercase tracking-wide mb-0.5">Total</div>
-                        <div className="text-2xl md:text-4xl font-black text-gray-900">{tourists.length}</div>
-                        <div className="text-xs md:text-sm text-gray-600 font-medium">guests</div>
+                        <div className="text-[10px] font-bold text-primary-700 uppercase tracking-wide mb-0.5">Total</div>
+                        <div className="text-xl md:text-2xl font-black text-gray-900">{tourists.length}</div>
+                        <div className="text-[10px] text-gray-600 font-medium">guests</div>
                       </div>
                     </div>
 
                     {/* DBL Rooms Card */}
-                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
-                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                        <Bed className="w-8 h-8 text-blue-600" />
+                    <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl shadow-sm col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl bg-white shadow-sm">
+                        <Bed className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5">
-                          DBL
-                        </div>
-                        <div className="text-2xl md:text-4xl font-black text-gray-900">{roomCounts.DBL}</div>
-                        <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
+                        <div className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold uppercase tracking-wider mb-0.5">DBL</div>
+                        <div className="text-xl md:text-2xl font-black text-gray-900">{roomCounts.DBL}</div>
+                        <div className="text-[10px] text-gray-600 font-medium">rooms</div>
                       </div>
                     </div>
 
                     {/* TWN Rooms Card */}
-                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-emerald-50 to-emerald-100 border-2 border-emerald-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
-                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                        <Bed className="w-8 h-8 text-emerald-600" />
+                    <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 rounded-xl shadow-sm col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl bg-white shadow-sm">
+                        <Bed className="w-5 h-5 text-emerald-600" />
                       </div>
                       <div>
-                        <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5">
-                          TWN
-                        </div>
-                        <div className="text-2xl md:text-4xl font-black text-gray-900">{roomCounts.TWN}</div>
-                        <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
+                        <div className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider mb-0.5">TWN</div>
+                        <div className="text-xl md:text-2xl font-black text-gray-900">{roomCounts.TWN}</div>
+                        <div className="text-[10px] text-gray-600 font-medium">rooms</div>
                       </div>
                     </div>
 
                     {/* SNGL Rooms Card */}
-                    <div className="flex items-center gap-2 md:gap-3 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-violet-50 to-violet-100 border-2 border-violet-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-1">
-                      <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md">
-                        <User className="w-8 h-8 text-violet-600" />
+                    <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-gradient-to-br from-violet-50 to-violet-100 border border-violet-200 rounded-xl shadow-sm col-span-1">
+                      <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl bg-white shadow-sm">
+                        <User className="w-5 h-5 text-violet-600" />
                       </div>
                       <div>
-                        <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-violet-500 text-white text-xs font-bold uppercase tracking-wider mb-0.5">
-                          SNGL
-                        </div>
-                        <div className="text-2xl md:text-4xl font-black text-gray-900">{roomCounts.SNGL}</div>
-                        <div className="text-xs md:text-sm text-gray-600 font-medium">rooms</div>
+                        <div className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-violet-500 text-white text-[10px] font-bold uppercase tracking-wider mb-0.5">SNGL</div>
+                        <div className="text-xl md:text-2xl font-black text-gray-900">{roomCounts.SNGL}</div>
+                        <div className="text-[10px] text-gray-600 font-medium">rooms</div>
                       </div>
                     </div>
 
                     {/* Uzbekistan/Turkmenistan Split Card */}
-                    <div className="flex items-center gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl md:rounded-2xl shadow-sm md:shadow-md col-span-2 md:col-span-1">
-                      <div className="flex flex-col gap-2 md:gap-3 w-full">
+                    <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl shadow-sm col-span-2 md:col-span-1">
+                      <div className="flex flex-col gap-1.5 w-full">
                         <div className="flex items-center justify-between md:justify-start md:gap-3">
                           <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-sm" />
-                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">UZB</span>
+                            <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-green-400 to-green-600" />
+                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wide">UZB</span>
                           </div>
-                          <span className="text-xl md:text-2xl font-black text-gray-900">{uzbekistanCount}</span>
+                          <span className="text-lg md:text-xl font-black text-gray-900">{uzbekistanCount}</span>
                         </div>
                         <div className="flex items-center justify-between md:justify-start md:gap-3">
                           <div className="flex items-center gap-1.5">
-                            <div className="w-3 h-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-sm" />
-                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">TKM</span>
+                            <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
+                            <span className="text-[10px] font-bold text-gray-600 uppercase tracking-wide">TKM</span>
                           </div>
-                          <span className="text-xl md:text-2xl font-black text-gray-900">{turkmenistanCount}</span>
+                          <span className="text-lg md:text-xl font-black text-gray-900">{turkmenistanCount}</span>
                         </div>
                       </div>
                     </div>

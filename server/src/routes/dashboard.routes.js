@@ -232,19 +232,20 @@ router.get('/monthly', authenticate, async (req, res) => {
 
     const bookings = await prisma.booking.findMany({
       where: {
-        departureDate: {
+        endDate: {
           gte: startOfYear,
           lte: endOfYear
-        }
+        },
+        status: { not: 'CANCELLED' }
       },
       select: {
-        departureDate: true,
+        endDate: true,
         pax: true,
         tourTypeId: true
       }
     });
 
-    // Группируем по месяцам
+    // Группируем по месяцам (по дате окончания тура)
     const monthlyStats = Array.from({ length: 12 }, (_, i) => ({
       month: i + 1,
       bookings: 0,
@@ -252,7 +253,8 @@ router.get('/monthly', authenticate, async (req, res) => {
     }));
 
     bookings.forEach(booking => {
-      const month = booking.departureDate.getMonth();
+      if (!booking.endDate) return;
+      const month = booking.endDate.getMonth();
       monthlyStats[month].bookings++;
       monthlyStats[month].pax += booking.pax;
     });
