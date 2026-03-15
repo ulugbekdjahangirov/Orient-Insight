@@ -215,7 +215,8 @@ export const dashboardApi = {
   getUpcoming: (limit = 10, year) => api.get('/dashboard/upcoming', { params: year ? { limit, year } : { limit } }),
   getMonthly: (year) => api.get('/dashboard/monthly', { params: { year } }),
   getGuideWorkload: () => api.get('/dashboard/guide-workload'),
-  getNotifications: () => api.get('/dashboard/notifications')
+  getNotifications: () => api.get('/dashboard/notifications'),
+  getFinancial: (year) => api.get('/dashboard/financial', { params: { year } })
 };
 
 // API для пользователей

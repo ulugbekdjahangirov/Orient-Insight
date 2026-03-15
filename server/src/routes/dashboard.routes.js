@@ -311,6 +311,119 @@ router.get('/guide-workload', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/dashboard/financial?year=X
+router.get('/financial', authenticate, async (req, res) => {
+  try {
+    const year = parseInt(req.query.year) || new Date().getFullYear();
+
+    const bookingWhere = {
+      bookingYear: year,
+      status: { not: 'CANCELLED' },
+      tourType: { code: { in: ['ER', 'CO', 'KAS', 'ZA'] } }
+    };
+
+    const [invoices, hotelsUSDResult, hotelsUZSResult, routesResult, railwaysResult, bookingsWithGuides] = await Promise.all([
+      // Invoice totals
+      prisma.invoice.findMany({
+        where: { booking: bookingWhere },
+        select: { totalAmount: true, isPaid: true, firma: true, currency: true }
+      }),
+      // Hotels USD (pricePerNight <= 10000)
+      prisma.accommodationRoom.aggregate({
+        where: { accommodation: { booking: bookingWhere }, pricePerNight: { lte: 10000 } },
+        _sum: { totalCost: true }
+      }),
+      // Hotels UZS (pricePerNight > 10000)
+      prisma.accommodationRoom.aggregate({
+        where: { accommodation: { booking: bookingWhere }, pricePerNight: { gt: 10000 } },
+        _sum: { totalCost: true }
+      }),
+      // Routes (transport) — UZS
+      prisma.route.aggregate({
+        where: { booking: bookingWhere },
+        _sum: { price: true }
+      }),
+      // Railways — UZS
+      prisma.railway.aggregate({
+        where: { booking: bookingWhere },
+        _sum: { price: true }
+      }),
+      // Bookings with guide info for USD guide cost
+      prisma.booking.findMany({
+        where: { ...bookingWhere, guideId: { not: null } },
+        select: {
+          guideFullDays: true, guideHalfDays: true,
+          mainGuideData: true, additionalGuides: true, bergreiseleiter: true,
+          guide: { select: { dayRate: true, halfDayRate: true } }
+        }
+      })
+    ]);
+
+    // ── Invoice summary ──────────────────────────────────────────────────
+    let invoiceTotal = 0, invoicePaid = 0;
+    const byFirma = {};
+    for (const inv of invoices) {
+      if ((inv.currency || 'USD') !== 'USD') continue;
+      const amount = inv.totalAmount || 0;
+      invoiceTotal += amount;
+      if (inv.isPaid) invoicePaid += amount;
+      const firma = inv.firma || 'Other';
+      if (!byFirma[firma]) byFirma[firma] = { total: 0, paid: 0 };
+      byFirma[firma].total += amount;
+      if (inv.isPaid) byFirma[firma].paid += amount;
+    }
+
+    // ── Guide USD ────────────────────────────────────────────────────────
+    let guideTotalUSD = 0;
+    for (const b of bookingsWithGuides) {
+      try {
+        if (b.mainGuideData) {
+          const mg = typeof b.mainGuideData === 'string' ? JSON.parse(b.mainGuideData) : b.mainGuideData;
+          if (mg) {
+            const dr = mg.dayRate || mg.guide?.dayRate || b.guide?.dayRate || 110;
+            const hdr = mg.halfDayRate || mg.guide?.halfDayRate || b.guide?.halfDayRate || 55;
+            guideTotalUSD += (mg.fullDays || b.guideFullDays || 0) * dr + (mg.halfDays || b.guideHalfDays || 0) * hdr;
+          }
+        } else {
+          const dr = b.guide?.dayRate || 110;
+          const hdr = b.guide?.halfDayRate || 55;
+          guideTotalUSD += (b.guideFullDays || 0) * dr + (b.guideHalfDays || 0) * hdr;
+        }
+      } catch {}
+      try {
+        if (b.additionalGuides) {
+          const ag = JSON.parse(b.additionalGuides);
+          for (const g of (Array.isArray(ag) ? ag : [])) {
+            guideTotalUSD += (g.fullDays || 0) * (g.dayRate || g.guide?.dayRate || 110) + (g.halfDays || 0) * (g.halfDayRate || g.guide?.halfDayRate || 55);
+          }
+        }
+      } catch {}
+      try {
+        if (b.bergreiseleiter) {
+          const bg = typeof b.bergreiseleiter === 'string' ? JSON.parse(b.bergreiseleiter) : b.bergreiseleiter;
+          guideTotalUSD += (bg.fullDays || 0) * (bg.dayRate || bg.guide?.dayRate || 50) + (bg.halfDays || 0) * (bg.halfDayRate || 0);
+        }
+      } catch {}
+    }
+
+    res.json({
+      invoice: {
+        total: Math.round(invoiceTotal),
+        paid: Math.round(invoicePaid),
+        unpaid: Math.round(invoiceTotal - invoicePaid),
+        byFirma
+      },
+      ausgaben: {
+        totalUSD: Math.round((hotelsUSDResult._sum.totalCost || 0) + guideTotalUSD),
+        totalUZS: Math.round((hotelsUZSResult._sum.totalCost || 0) + (routesResult._sum.price || 0) + (railwaysResult._sum.price || 0))
+      }
+    });
+  } catch (err) {
+    console.error('Financial stats error:', err);
+    res.status(500).json({ error: 'Failed to load financial stats' });
+  }
+});
+
 // GET /api/dashboard/notifications
 router.get('/notifications', authenticate, async (req, res) => {
   try {

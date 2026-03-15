@@ -13,14 +13,17 @@ import {
   ArrowRight,
   Clock,
   BarChart3,
-  PieChart as PieChartIcon,
   Hotel,
   Wallet,
   DollarSign,
   CheckCircle,
   XCircle,
   Activity,
-  BadgeCheck
+  BadgeCheck,
+  FileText,
+  BarChart2,
+  TrendingDown,
+  RefreshCw
 } from 'lucide-react';
 import {
   BarChart,
@@ -29,10 +32,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 
 const statusLabels = {
@@ -101,31 +101,38 @@ export default function Dashboard() {
   const [monthly, setMonthly] = useState([]);
   const [totalPax, setTotalPax] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [financial, setFinancial] = useState(null);
+  const [exchangeRate, setExchangeRate] = useState(12700);
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    loadData();
-  }, [selectedYear]);
+  useEffect(() => { loadData(); }, [selectedYear]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsRes, upcomingRes, monthlyRes] = await Promise.all([
+      const [statsRes, upcomingRes, monthlyRes, financialRes] = await Promise.all([
         dashboardApi.getStats(selectedYear),
         dashboardApi.getUpcoming(5, selectedYear),
-        dashboardApi.getMonthly(selectedYear)
+        dashboardApi.getMonthly(selectedYear),
+        dashboardApi.getFinancial(selectedYear)
       ]);
-
       setStats(statsRes.data);
       setUpcoming(upcomingRes.data.bookings);
       setMonthly(monthlyRes.data.monthlyStats);
-
       setTotalPax(statsRes.data?.overview?.totalPax || 0);
+      setFinancial(financialRes.data);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
       setLoading(false);
     }
+    // Fetch CBU exchange rate (non-blocking)
+    try {
+      const r = await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/');
+      const d = await r.json();
+      const rate = parseFloat(d[0]?.Rate);
+      if (rate > 0) setExchangeRate(Math.round(rate));
+    } catch {}
   };
 
   if (loading) {
@@ -149,11 +156,13 @@ export default function Dashboard() {
     pax: m.pax
   }));
 
-  const pieData = stats?.bookingsByStatus.map(item => ({
-    name: statusLabels[item.status],
-    value: item._count.status,
-    color: statusColors[item.status]
-  })) || [];
+  const fmtUSD = (n) => '$' + (n || 0).toLocaleString('en-US');
+  const fmtUZS = (n) => (n || 0).toLocaleString('ru-RU');
+  const inv = financial?.invoice || {};
+  const aus = financial?.ausgaben || {};
+  const paidPct = inv.total > 0 ? Math.round((inv.paid / inv.total) * 100) : 0;
+  const uzsToUSD = Math.round((aus.totalUZS || 0) / exchangeRate);
+  const ausgabenTotal = (aus.totalUSD || 0) + uzsToUSD;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 space-y-4 md:space-y-6">
@@ -260,44 +269,91 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Status pie chart */}
-        <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 p-8 hover:shadow-purple-500/20 transition-all duration-300">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
-              <PieChartIcon className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-xl font-black text-gray-900">По статусам</h2>
-          </div>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-3 mt-6">
-            {pieData.map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-transparent rounded-xl hover:from-gray-100 transition-all duration-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full shadow-md" style={{ backgroundColor: item.color }} />
-                  <span className="text-gray-700 font-semibold">{item.name}</span>
+        {/* Financial summary card */}
+        <div className="bg-white rounded-3xl shadow-2xl border-2 border-gray-100 p-6 hover:shadow-emerald-500/20 transition-all duration-300 flex flex-col gap-5">
+
+          {/* ── Invoice section ── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow">
+                  <FileText className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-bold text-gray-900 px-3 py-1 bg-white rounded-lg shadow-sm">{item.value}</span>
+                <span className="font-black text-gray-800 text-sm uppercase tracking-wide">Invoice</span>
               </div>
-            ))}
+              <Link to="/rechnung" className="text-xs text-blue-500 hover:underline font-semibold">Ko'rish →</Link>
+            </div>
+
+            {/* Jami */}
+            <div className="flex justify-between items-baseline mb-2">
+              <span className="text-xs text-gray-500">Jami</span>
+              <span className="font-black text-gray-900 text-base">{fmtUSD(inv.total)}</span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full h-2 bg-gray-100 rounded-full mb-2 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-700"
+                style={{ width: `${paidPct}%` }} />
+            </div>
+
+            {/* To'landi / Qoldi */}
+            <div className="flex justify-between text-xs mb-2">
+              <span className="text-emerald-600 font-semibold">✓ To'landi {fmtUSD(inv.paid)} ({paidPct}%)</span>
+              <span className="text-red-500 font-semibold">⚠ {fmtUSD(inv.unpaid)}</span>
+            </div>
+
+            {/* By firma */}
+            {Object.entries(inv.byFirma || {}).length > 0 && (
+              <div className="space-y-1 mt-2">
+                {Object.entries(inv.byFirma).map(([firma, d]) => (
+                  <div key={firma} className="flex justify-between items-center px-2.5 py-1.5 bg-blue-50 rounded-lg">
+                    <span className="text-xs text-blue-700 font-medium truncate max-w-[130px]">{firma}</span>
+                    <div className="text-right">
+                      <span className="text-xs font-black text-blue-900">{fmtUSD(d.paid)}</span>
+                      <span className="text-xs text-gray-400"> / {fmtUSD(d.total)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-100" />
+
+          {/* ── Ausgaben section ── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center shadow">
+                  <BarChart2 className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-black text-gray-800 text-sm uppercase tracking-wide">Ausgaben</span>
+              </div>
+              <Link to="/ausgaben" className="text-xs text-emerald-600 hover:underline font-semibold">Ko'rish →</Link>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center px-2.5 py-1.5 bg-blue-50 rounded-lg">
+                <span className="text-xs text-gray-600">USD xarajatlar</span>
+                <span className="font-black text-blue-700 text-sm">{fmtUSD(aus.totalUSD)}</span>
+              </div>
+              <div className="flex justify-between items-center px-2.5 py-1.5 bg-amber-50 rounded-lg">
+                <div>
+                  <span className="text-xs text-gray-600 block">UZS xarajatlar</span>
+                  <span className="text-[10px] text-gray-400">≈ {fmtUSD(uzsToUSD)} ({(exchangeRate).toLocaleString()} UZS/$)</span>
+                </div>
+                <span className="font-black text-amber-700 text-sm">{fmtUZS(aus.totalUZS)}</span>
+              </div>
+              <div className="flex justify-between items-center px-2.5 py-2 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg mt-1">
+                <span className="text-xs text-gray-300 font-semibold">Jami ≈</span>
+                <span className="font-black text-white text-base">{fmtUSD(ausgabenTotal)}</span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-gray-400 mt-2 text-right flex items-center justify-end gap-1">
+              <RefreshCw className="w-2.5 h-2.5" />
+              CBU kurs: {(exchangeRate).toLocaleString()} UZS/$
+            </p>
           </div>
         </div>
       </div>
