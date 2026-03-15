@@ -9132,13 +9132,13 @@ export default function BookingDetail() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 md:gap-2.5 px-4 md:px-6 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl flex-shrink-0 ${
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 whitespace-nowrap shadow hover:shadow-md flex-shrink-0 ${
                     activeTab === tab.id
-                      ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white shadow-blue-500/30 scale-105 md:scale-110 -translate-y-0.5'
-                      : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                      ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 text-white shadow-blue-500/30'
+                      : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 border border-gray-200'
                   }`}
                 >
-                  <tab.icon className="w-4 h-4 md:w-5 md:h-5" />
+                  <tab.icon className="w-4 h-4" />
                   {tab.label}
                 </button>
               ))}
@@ -11355,118 +11355,118 @@ export default function BookingDetail() {
               <button onClick={() => setTourServicesTab('other')} className={`flex flex-col items-center gap-1 px-1 py-2.5 text-xs font-bold rounded-xl transition-all ${tourServicesTab === 'other' ? 'bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}><span className="text-sm">📋</span><span>Other</span></button>
             </div>
             {/* Desktop nav */}
-            <nav className="hidden sm:flex space-x-2 md:space-x-3 overflow-x-auto pb-1 md:pb-0">
+            <nav className="hidden sm:flex space-x-1 overflow-x-auto pb-1 md:pb-0 flex-wrap gap-y-1">
               <button
                 onClick={() => setTourServicesTab('hotels')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'hotels'
-                    ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 hover:from-purple-600 hover:via-violet-600 hover:to-indigo-600 text-white shadow-purple-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <Building2 className="w-5 h-5" />
+                <Building2 className="w-3.5 h-3.5" />
                 Hotels
               </button>
               <button
                 onClick={() => setTourServicesTab('transport')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'transport'
-                    ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 hover:from-blue-600 hover:via-cyan-600 hover:to-sky-600 text-white shadow-blue-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-sky-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <Car className="w-5 h-5" />
+                <Car className="w-3.5 h-3.5" />
                 Transport
               </button>
               <button
                 onClick={() => setTourServicesTab('railway')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'railway'
-                    ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600 text-white shadow-orange-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <Train className="w-5 h-5" />
+                <Train className="w-3.5 h-3.5" />
                 Railway
               </button>
               <button
                 onClick={() => setTourServicesTab('flights')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'flights'
-                    ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-green-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <Plane className="w-5 h-5" />
+                <Plane className="w-3.5 h-3.5" />
                 Flights
               </button>
               <button
                 onClick={() => setTourServicesTab('guide')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'guide'
-                    ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:via-pink-600 hover:to-fuchsia-600 text-white shadow-rose-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-rose-500 via-pink-500 to-fuchsia-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <User className="w-5 h-5" />
+                <User className="w-3.5 h-3.5" />
                 Guide
               </button>
               <button
                 onClick={() => setTourServicesTab('meals')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'meals'
-                    ? 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 text-white shadow-red-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <span className="text-lg">🍽️</span>
+                <span className="text-sm">🍽️</span>
                 Meals
               </button>
               <button
                 onClick={() => setTourServicesTab('eintritt')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'eintritt'
-                    ? 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 hover:from-cyan-600 hover:via-sky-600 hover:to-blue-600 text-white shadow-cyan-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <span className="text-lg">🎫</span>
+                <span className="text-sm">🎫</span>
                 Eintritt
               </button>
               {/* Hide Metro tab for ZA tours */}
               {booking?.tourType?.code !== 'ZA' && (
                 <button
                   onClick={() => setTourServicesTab('metro')}
-                  className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                  className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                     tourServicesTab === 'metro'
-                      ? 'bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500 hover:from-lime-600 hover:via-green-600 hover:to-emerald-600 text-white shadow-lime-500/30 scale-110 -translate-y-0.5'
-                      : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                      ? 'bg-gradient-to-r from-lime-500 via-green-500 to-emerald-500 text-white shadow-md'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                   }`}
                 >
-                  <span className="text-lg">🚇</span>
+                  <span className="text-sm">🚇</span>
                   Metro
                 </button>
               )}
               <button
                 onClick={() => setTourServicesTab('shou')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'shou'
-                    ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 hover:from-pink-600 hover:via-rose-600 hover:to-red-600 text-white shadow-pink-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <span className="text-lg">🎭</span>
+                <span className="text-sm">🎭</span>
                 Shou
               </button>
               <button
                 onClick={() => setTourServicesTab('other')}
-                className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-8 py-2.5 md:py-3.5 text-xs md:text-sm font-bold rounded-xl md:rounded-2xl transition-all duration-300 whitespace-nowrap shadow-lg hover:shadow-xl ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-lg transition-all duration-200 whitespace-nowrap ${
                   tourServicesTab === 'other'
-                    ? 'bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500 hover:from-slate-600 hover:via-gray-600 hover:to-zinc-600 text-white shadow-slate-500/30 scale-110 -translate-y-0.5'
-                    : 'bg-white text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:scale-105 border border-gray-200'
+                    ? 'bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
                 }`}
               >
-                <span className="text-lg">📋</span>
+                <span className="text-sm">📋</span>
                 Other
               </button>
             </nav>
