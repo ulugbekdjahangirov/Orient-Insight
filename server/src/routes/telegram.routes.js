@@ -59,6 +59,21 @@ async function setProviderChatId(provider, chatId) {
   });
 }
 
+// Helper: get/set provider phone from SystemSetting
+async function getProviderPhone(provider) {
+  const key = `TRANSPORT_${provider.toUpperCase()}_PHONE`;
+  const s = await prisma.systemSetting.findUnique({ where: { key } });
+  return s?.value || null;
+}
+async function setProviderPhone(provider, phone) {
+  const key = `TRANSPORT_${provider.toUpperCase()}_PHONE`;
+  await prisma.systemSetting.upsert({
+    where: { key },
+    update: { value: phone },
+    create: { key, value: phone }
+  });
+}
+
 const PROVIDER_LABELS = { sevil: 'Sevil aka', xayrulla: 'Xayrulla', nosir: 'Nosir aka', hammasi: 'Siroj' };
 
 // ── Per-bot admin chat ID helpers ─────────────────────────────────────────────
@@ -4143,9 +4158,14 @@ router.post('/webhook-transport', verifyWebhookSecret, async (req, res) => {
         ]);
 
         const guide = bookingFull?.guide;
-        const nosirContact = "Nosir aka (+998 91 151 11 10) Farg\u2019ona";
-        const sevilContact  = "Sevil aka (+998 90 445 10 92) Marshrutda";
-        const xayrullaContact = "Xayrulla (+998 93 133 00 03) Toshkentda";
+        const [nosirPhone, sevilPhone, xayrullaPhone] = await Promise.all([
+          getProviderPhone('nosir'),
+          getProviderPhone('sevil'),
+          getProviderPhone('xayrulla'),
+        ]);
+        const nosirContact = nosirPhone || "Nosir aka (+998 91 151 11 10) Farg\u2019ona";
+        const sevilContact  = sevilPhone  || "Sevil aka (+998 90 445 10 92) Marshrutda";
+        const xayrullaContact = xayrullaPhone || "Xayrulla (+998 93 133 00 03) Toshkentda";
 
         const findAccByCity = (cityName) => accommodations.find(a => {
           const c = (a.hotel?.city?.name || '').toLowerCase();
@@ -6274,13 +6294,19 @@ router.delete('/transport-confirmations/:id', authenticate, async (req, res) => 
 // GET /api/telegram/transport-settings
 router.get('/transport-settings', authenticate, async (req, res) => {
   try {
-    const [sevil, xayrulla, nosir, hammasi] = await Promise.all([
+    const [sevil, xayrulla, nosir, hammasi, sevilPhone, xayrullaPhone, nosirPhone] = await Promise.all([
       getProviderChatId('sevil'),
       getProviderChatId('xayrulla'),
       getProviderChatId('nosir'),
-      getProviderChatId('hammasi')
+      getProviderChatId('hammasi'),
+      getProviderPhone('sevil'),
+      getProviderPhone('xayrulla'),
+      getProviderPhone('nosir'),
     ]);
-    res.json({ sevil: sevil || '', xayrulla: xayrulla || '', nosir: nosir || '', hammasi: hammasi || '' });
+    res.json({
+      sevil: sevil || '', xayrulla: xayrulla || '', nosir: nosir || '', hammasi: hammasi || '',
+      sevilPhone: sevilPhone || '', xayrullaPhone: xayrullaPhone || '', nosirPhone: nosirPhone || ''
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load transport settings' });
   }
@@ -6289,12 +6315,15 @@ router.get('/transport-settings', authenticate, async (req, res) => {
 // PUT /api/telegram/transport-settings
 router.put('/transport-settings', authenticate, async (req, res) => {
   try {
-    const { sevil, xayrulla, nosir, hammasi } = req.body;
+    const { sevil, xayrulla, nosir, hammasi, sevilPhone, xayrullaPhone, nosirPhone } = req.body;
     await Promise.all([
       setProviderChatId('sevil',    String(sevil    || '').trim()),
       setProviderChatId('xayrulla', String(xayrulla || '').trim()),
       setProviderChatId('nosir',    String(nosir    || '').trim()),
-      setProviderChatId('hammasi',  String(hammasi  || '').trim())
+      setProviderChatId('hammasi',  String(hammasi  || '').trim()),
+      setProviderPhone('sevil',    String(sevilPhone    || '').trim()),
+      setProviderPhone('xayrulla', String(xayrullaPhone || '').trim()),
+      setProviderPhone('nosir',    String(nosirPhone    || '').trim()),
     ]);
     res.json({ success: true });
   } catch (err) {

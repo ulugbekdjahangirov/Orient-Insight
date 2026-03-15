@@ -28,6 +28,7 @@ export default function ItineraryPreview({ bookingId, booking }) {
     guideName: '',
     guidePhone: ''
   });
+  const [providerPhones, setProviderPhones] = useState({ nosirPhone: '', sevilPhone: '', xayrullaPhone: '' });
   const printRef = useRef(null);
   const [sendingTelegram, setSendingTelegram] = useState({});
   const [sendingStorno, setSendingStorno] = useState({});
@@ -45,6 +46,24 @@ export default function ItineraryPreview({ bookingId, booking }) {
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
+  }, []);
+
+  useEffect(() => {
+    telegramApi.getTransportSettings().then(res => {
+      const d = res.data || {};
+      setProviderPhones({
+        nosirPhone: d.nosirPhone || '',
+        sevilPhone: d.sevilPhone || '',
+        xayrullaPhone: d.xayrullaPhone || ''
+      });
+      // Only update headerData contacts if the booking doesn't have saved overrides
+      setHeaderData(prev => ({
+        ...prev,
+        nosirContact: prev.nosirContact === 'Nosir aka (+998 91 151 11 10) Farg\'ona' && d.nosirPhone ? d.nosirPhone : prev.nosirContact,
+        sevilContact: prev.sevilContact === 'Sevil aka (+998 90 445 10 92) Marshrutda' && d.sevilPhone ? d.sevilPhone : prev.sevilContact,
+        xayrullaContact: prev.xayrullaContact === 'Xayrulla (+998 93 133 00 03) Toshkentda' && d.xayrullaPhone ? d.xayrullaPhone : prev.xayrullaContact,
+      }));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {

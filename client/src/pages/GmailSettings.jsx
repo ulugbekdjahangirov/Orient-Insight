@@ -8,7 +8,7 @@ export default function GmailSettings() {
   const [newEmail, setNewEmail] = useState('');
   const [polling, setPolling] = useState(false);
   const [message, setMessage] = useState(null);
-  const [transportChatIds, setTransportChatIds] = useState({ sevil: '', xayrulla: '', nosir: '', hammasi: '' });
+  const [transportChatIds, setTransportChatIds] = useState({ sevil: '', xayrulla: '', nosir: '', hammasi: '', sevilPhone: '', xayrullaPhone: '', nosirPhone: '' });
   const [savingTransport, setSavingTransport] = useState(false);
   const [mealChatIds, setMealChatIds] = useState({});
   const [newRestaurant, setNewRestaurant] = useState({ name: '', chatId: '' });
@@ -355,20 +355,37 @@ export default function GmailSettings() {
         </p>
         <div className="space-y-3 mb-4">
           {[
-            { key: 'xayrulla', label: 'Xayrulla',  placeholder: '-123456789' },
-            { key: 'sevil',    label: 'Sevil aka',  placeholder: '-123456789' },
-            { key: 'nosir',    label: 'Nosir aka',  placeholder: '-123456789' },
-            { key: 'hammasi',  label: 'Tekshiruvchi', placeholder: '-123456789' },
-          ].map(({ key, label, placeholder }) => (
-            <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-              <label className="sm:w-28 text-sm font-medium text-gray-700 sm:flex-shrink-0">{label}</label>
-              <input
-                type="text"
-                value={transportChatIds[key] || ''}
-                onChange={e => setTransportChatIds(prev => ({ ...prev, [key]: e.target.value }))}
-                placeholder={placeholder}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            { key: 'xayrulla', label: 'Xayrulla',    phoneKey: 'xayrullaPhone', phonePlaceholder: 'Xayrulla (+998 93 133 00 03) Toshkentda' },
+            { key: 'sevil',    label: 'Sevil aka',    phoneKey: 'sevilPhone',    phonePlaceholder: 'Sevil aka (+998 90 445 10 92) Marshrutda' },
+            { key: 'nosir',    label: 'Nosir aka',    phoneKey: 'nosirPhone',    phonePlaceholder: 'Nosir aka (+998 91 151 11 10) Farg\'ona' },
+            { key: 'hammasi',  label: 'Tekshiruvchi', phoneKey: null,            phonePlaceholder: null },
+          ].map(({ key, label, phoneKey, phonePlaceholder }) => (
+            <div key={key} className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-gray-700">{label}</label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-xs text-gray-400 w-16 flex-shrink-0">Chat ID</span>
+                  <input
+                    type="text"
+                    value={transportChatIds[key] || ''}
+                    onChange={e => setTransportChatIds(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder="-123456789"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {phoneKey && (
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-xs text-gray-400 w-16 flex-shrink-0">Telefon</span>
+                    <input
+                      type="text"
+                      value={transportChatIds[phoneKey] || ''}
+                      onChange={e => setTransportChatIds(prev => ({ ...prev, [phoneKey]: e.target.value }))}
+                      placeholder={phonePlaceholder}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
