@@ -3748,23 +3748,25 @@ export default function BookingDetail() {
         }
       }
 
-      // 6. Process Other (from tourServices.other) - Extra Kosten
-      if (tourServices.other && tourServices.other.length > 0) {
-        tourServices.other.forEach(item => {
-          const name = item.name || 'Other';
-          const pricePerPerson = item.pricePerPerson || 0;
-          const itemPax = item.pax || 0;
-          const total = pricePerPerson * itemPax;
-
+      // 6. Process Other (from tourServices.other + otherOpexData) - Extra Kosten
+      [...(otherOpexData.map(item => ({
+        name: item.name || 'Other',
+        pricePerPerson: parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0,
+        pax: item.fixedPax || 1,
+      }))), ...(tourServices.other || [])].forEach(item => {
+        const pricePerPerson = item.pricePerPerson || 0;
+        const itemPax = item.pax || 0;
+        const total = pricePerPerson * itemPax;
+        if (total > 0) {
           expensesByCity['Extra Kosten'].push({
-            name: name,
-            pricePerPerson: pricePerPerson,
+            name: item.name || 'Other',
+            pricePerPerson,
             pax: itemPax,
             usd: 0,
             uzs: total
           });
-        });
-      }
+        }
+      });
 
       // Calculate totals
       let totalUSD = 0;
@@ -4180,23 +4182,25 @@ export default function BookingDetail() {
         });
       }
 
-      // 10. Other
-      if (tourServices.other && tourServices.other.length > 0) {
-        tourServices.other.forEach(item => {
-          const name = item.name || 'Other';
-          const pricePerPerson = item.pricePerPerson || 0;
-          const itemPax = item.pax || 0;
-          const total = pricePerPerson * itemPax;
-
+      // 10. Other (otherOpexData + tourServices.other)
+      [...(otherOpexData.map(item => ({
+        name: item.name || 'Other',
+        pricePerPerson: parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0,
+        pax: item.fixedPax || 1,
+      }))), ...(tourServices.other || [])].forEach(item => {
+        const pricePerPerson = item.pricePerPerson || 0;
+        const itemPax = item.pax || 0;
+        const total = pricePerPerson * itemPax;
+        if (total > 0) {
           expensesByCity['Extra Kosten'].push({
-            name: name,
-            pricePerPerson: pricePerPerson,
+            name: item.name || 'Other',
+            pricePerPerson,
             pax: itemPax,
             usd: 0,
             uzs: total
           });
-        });
-      }
+        }
+      });
 
       // Calculate totals
       let totalUSD = 0;
@@ -13738,22 +13742,24 @@ License №T-0084-08 from 2021-04-26`;
             }
 
             // 10. Process Other (from tourServices.other)
-            if (tourServices.other && tourServices.other.length > 0) {
-              tourServices.other.forEach(item => {
-                const name = item.name || 'Other';
-                const pricePerPerson = item.pricePerPerson || 0;
-                const pax = item.pax || 0;
-                const total = pricePerPerson * pax;
-
+            [...(otherOpexData.map(item => ({
+              name: item.name || 'Other',
+              pricePerPerson: parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0,
+              pax: item.fixedPax || 1,
+            }))), ...(tourServices.other || [])].forEach(item => {
+              const pricePerPerson = item.pricePerPerson || 0;
+              const itemPax = item.pax || 0;
+              const total = pricePerPerson * itemPax;
+              if (total > 0) {
                 expensesByCity['Extra Kosten'].push({
-                  name: name,
-                  pricePerPerson: pricePerPerson,
-                  pax: pax,
+                  name: item.name || 'Other',
+                  pricePerPerson,
+                  pax: itemPax,
                   usd: 0,
                   uzs: total
                 });
-              });
-            }
+              }
+            });
 
             // Override all costs to 0 for cancelled bookings
             if (booking?.status === 'CANCELLED') {
@@ -14072,22 +14078,24 @@ License №T-0084-08 from 2021-04-26`;
             }
 
             // 6. Process Other (from tourServices.other) - Extra Kosten
-            if (tourServices.other && tourServices.other.length > 0) {
-              tourServices.other.forEach(item => {
-                const name = item.name || 'Other';
-                const pricePerPerson = item.pricePerPerson || 0;
-                const pax = item.pax || 0;
-                const total = pricePerPerson * pax;
-
+            [...(otherOpexData.map(item => ({
+              name: item.name || 'Other',
+              pricePerPerson: parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0,
+              pax: item.fixedPax || 1,
+            }))), ...(tourServices.other || [])].forEach(item => {
+              const pricePerPerson = item.pricePerPerson || 0;
+              const itemPax = item.pax || 0;
+              const total = pricePerPerson * itemPax;
+              if (total > 0) {
                 expensesByCity['Extra Kosten'].push({
-                  name: name,
-                  pricePerPerson: pricePerPerson,
-                  pax: pax,
+                  name: item.name || 'Other',
+                  pricePerPerson,
+                  pax: itemPax,
                   usd: 0,
                   uzs: total
                 });
-              });
-            }
+              }
+            });
 
             // Override all costs to 0 for cancelled bookings
             if (booking?.status === 'CANCELLED') {
@@ -14984,8 +14992,13 @@ License №T-0084-08 from 2021-04-26`;
 
             const eintrittUZS = allEintrittEntries.reduce((sum, s) => sum + (s.price || 0), 0);
 
-            // 10. Other Expenses - ONLY UZS
-            const otherUZS = isCancelledTotal ? 0 : (tourServices.other ? tourServices.other.reduce((sum, item) => sum + ((item.pricePerPerson || 0) * (item.pax || 0)), 0) : 0);
+            // 10. Other Expenses - ONLY UZS (tourServices.other + otherOpexData)
+            const otherOpexUZS = otherOpexData.reduce((sum, item) => {
+              const price = parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0;
+              return sum + price * (item.fixedPax || 1);
+            }, 0);
+            const otherManualUZS = tourServices.other ? tourServices.other.reduce((sum, item) => sum + ((item.pricePerPerson || 0) * (item.pax || 0)), 0) : 0;
+            const otherUZS = isCancelledTotal ? 0 : (otherOpexUZS + otherManualUZS);
 
             // Grand Totals (sum only in their respective currencies)
             const totalUZS = hotelsUZS + railwayUZS + flightsUZS + mealsUZS + metroUZS + showsUZS + eintrittUZS + otherUZS;
