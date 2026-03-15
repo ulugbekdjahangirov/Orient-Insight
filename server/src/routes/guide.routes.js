@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 const { checkPassportExpiry, encrypt, decrypt } = require('../utils/crypto');
 
 const router = express.Router();
@@ -34,7 +34,7 @@ const sensitiveFields = {
 };
 
 // POST /api/guides/copy - Copy all guides from one year to another
-router.post('/copy', authenticate, requireAdmin, async (req, res) => {
+router.post('/copy', authenticate, async (req, res) => {
   try {
     const { fromYear, toYear } = req.body;
     if (!fromYear || !toYear) return res.status(400).json({ error: 'fromYear and toYear required' });
@@ -224,21 +224,11 @@ router.get('/:id', authenticate, async (req, res) => {
       bookings: (guide._count.bookings || 0) + (guide._count.bookingsAsSecondGuide || 0)
     };
 
-    if (!isAdmin) {
-      processedGuide.guidePayments = [];
-      delete processedGuide.passportNumber;
-      delete processedGuide.passportIssueDate;
-      delete processedGuide.passportExpiryDate;
-      delete processedGuide.bankAccountNumber;
-      delete processedGuide.bankCardNumber;
-      delete processedGuide.mfo;
-    } else {
-      // Decrypt sensitive fields for admin
-      if (processedGuide.passportNumber) processedGuide.passportNumber = decrypt(processedGuide.passportNumber);
-      if (processedGuide.passportIssuedBy) processedGuide.passportIssuedBy = decrypt(processedGuide.passportIssuedBy);
-      if (processedGuide.bankAccountNumber) processedGuide.bankAccountNumber = decrypt(processedGuide.bankAccountNumber);
-      if (processedGuide.bankCardNumber) processedGuide.bankCardNumber = decrypt(processedGuide.bankCardNumber);
-    }
+    // Decrypt sensitive fields for all authenticated users
+    if (processedGuide.passportNumber) processedGuide.passportNumber = decrypt(processedGuide.passportNumber);
+    if (processedGuide.passportIssuedBy) processedGuide.passportIssuedBy = decrypt(processedGuide.passportIssuedBy);
+    if (processedGuide.bankAccountNumber) processedGuide.bankAccountNumber = decrypt(processedGuide.bankAccountNumber);
+    if (processedGuide.bankCardNumber) processedGuide.bankCardNumber = decrypt(processedGuide.bankCardNumber);
     processedGuide.passportStatus = checkPassportExpiry(guide.passportExpiryDate);
 
     res.json({ guide: processedGuide });
@@ -249,7 +239,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // POST /api/guides - Создать гида (только админ)
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const {
       name,
@@ -377,17 +367,15 @@ router.put('/:id', authenticate, async (req, res) => {
     if (telegramChatId !== undefined) updateData.telegramChatId = telegramChatId || null;
 
 
-    // Конфиденциальные поля - только для админа (encrypt before saving)
-    if (isAdmin) {
-      if (passportNumber !== undefined) updateData.passportNumber = passportNumber ? encrypt(passportNumber) : null;
-      if (passportIssueDate !== undefined) updateData.passportIssueDate = passportIssueDate ? new Date(passportIssueDate) : null;
-      if (passportExpiryDate !== undefined) updateData.passportExpiryDate = passportExpiryDate ? new Date(passportExpiryDate) : null;
-      if (passportIssuedBy !== undefined) updateData.passportIssuedBy = passportIssuedBy ? encrypt(passportIssuedBy) : null;
-      if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber ? encrypt(bankAccountNumber) : null;
-      if (bankCardNumber !== undefined) updateData.bankCardNumber = bankCardNumber ? encrypt(bankCardNumber) : null;
-      if (bankName !== undefined) updateData.bankName = bankName;
-      if (mfo !== undefined) updateData.mfo = mfo;
-    }
+    // Конфиденциальные поля — доступны всем авторизованным пользователям
+    if (passportNumber !== undefined) updateData.passportNumber = passportNumber ? encrypt(passportNumber) : null;
+    if (passportIssueDate !== undefined) updateData.passportIssueDate = passportIssueDate ? new Date(passportIssueDate) : null;
+    if (passportExpiryDate !== undefined) updateData.passportExpiryDate = passportExpiryDate ? new Date(passportExpiryDate) : null;
+    if (passportIssuedBy !== undefined) updateData.passportIssuedBy = passportIssuedBy ? encrypt(passportIssuedBy) : null;
+    if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber ? encrypt(bankAccountNumber) : null;
+    if (bankCardNumber !== undefined) updateData.bankCardNumber = bankCardNumber ? encrypt(bankCardNumber) : null;
+    if (bankName !== undefined) updateData.bankName = bankName;
+    if (mfo !== undefined) updateData.mfo = mfo;
 
     const guide = await prisma.guide.update({
       where: { id: parseInt(id) },
@@ -411,7 +399,7 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 // DELETE /api/guides/:id - Удалить гида (только админ)
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -438,7 +426,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // POST /api/guides/:id/payments - Добавить выплату гиду (только админ)
-router.post('/:id/payments', authenticate, requireAdmin, async (req, res) => {
+router.post('/:id/payments', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { amount, currency, paymentDate, paymentType, bookingId, notes } = req.body;
@@ -467,7 +455,7 @@ router.post('/:id/payments', authenticate, requireAdmin, async (req, res) => {
 });
 
 // GET /api/guides/:id/payments - Получить выплаты гида (только админ)
-router.get('/:id/payments', authenticate, requireAdmin, async (req, res) => {
+router.get('/:id/payments', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { year, month } = req.query;

@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -155,7 +155,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // POST /api/hotels - Create hotel
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const { name, cityId, address, phone, email, telegramChatId, website, stars, description, totalRooms } = req.body;
 
@@ -216,7 +216,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/hotels/:id - Update hotel
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, cityId, address, phone, email, telegramChatId, website, stars, description, isActive, totalRooms } = req.body;
@@ -263,7 +263,7 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/hotels/:id - Delete hotel
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -317,7 +317,7 @@ router.get('/:hotelId/room-types', authenticate, async (req, res) => {
 });
 
 // POST /api/hotels/:hotelId/room-types - Create room type
-router.post('/:hotelId/room-types', authenticate, requireAdmin, async (req, res) => {
+router.post('/:hotelId/room-types', authenticate, async (req, res) => {
   try {
     const { hotelId } = req.params;
     const { name, displayName, roomCount, pricePerNight, currency, description, amenities, maxGuests, vatIncluded, touristTaxEnabled, brvValue } = req.body;
@@ -382,7 +382,7 @@ router.post('/:hotelId/room-types', authenticate, requireAdmin, async (req, res)
 });
 
 // PUT /api/hotels/:hotelId/room-types/:id - Update room type
-router.put('/:hotelId/room-types/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:hotelId/room-types/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, displayName, roomCount, pricePerNight, currency, description, amenities, maxGuests, isActive, vatIncluded, touristTaxEnabled, brvValue } = req.body;
@@ -426,7 +426,7 @@ router.put('/:hotelId/room-types/:id', authenticate, requireAdmin, async (req, r
 });
 
 // PUT /api/hotels/:hotelId/room-types/:id/yearly-price - Upsert yearly price
-router.put('/:hotelId/room-types/:id/yearly-price', authenticate, requireAdmin, async (req, res) => {
+router.put('/:hotelId/room-types/:id/yearly-price', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { year, pricePerNight, vatIncluded, touristTaxEnabled, brvValue } = req.body;
@@ -461,7 +461,7 @@ router.put('/:hotelId/room-types/:id/yearly-price', authenticate, requireAdmin, 
 });
 
 // DELETE /api/hotels/:hotelId/room-types/:id - Delete room type
-router.delete('/:hotelId/room-types/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:hotelId/room-types/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -515,7 +515,7 @@ router.get('/:id/images', authenticate, async (req, res) => {
 });
 
 // POST /api/hotels/:id/images - Upload hotel image
-router.post('/:id/images', authenticate, requireAdmin, upload.single('image'), async (req, res) => {
+router.post('/:id/images', authenticate, upload.single('image'), async (req, res) => {
   try {
     const { id } = req.params;
     const { caption, isMain } = req.body;
@@ -571,7 +571,7 @@ router.post('/:id/images', authenticate, requireAdmin, upload.single('image'), a
 });
 
 // PUT /api/hotels/:id/images/:imageId - Update image (caption, isMain)
-router.put('/:id/images/:imageId', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id/images/:imageId', authenticate, async (req, res) => {
   try {
     const { id, imageId } = req.params;
     const { caption, isMain } = req.body;
@@ -600,7 +600,7 @@ router.put('/:id/images/:imageId', authenticate, requireAdmin, async (req, res) 
 });
 
 // PUT /api/hotels/:id/images/reorder - Reorder images
-router.put('/:id/images/reorder', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id/images/reorder', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { imageIds } = req.body; // Array of image IDs in new order
@@ -632,7 +632,7 @@ router.put('/:id/images/reorder', authenticate, requireAdmin, async (req, res) =
 });
 
 // DELETE /api/hotels/:id/images/:imageId - Delete hotel image
-router.delete('/:id/images/:imageId', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id/images/:imageId', authenticate, async (req, res) => {
   try {
     const { imageId } = req.params;
 
@@ -687,7 +687,7 @@ router.get('/:hotelId/room-types/:roomTypeId/seasonal-prices', authenticate, asy
 });
 
 // POST /api/hotels/:hotelId/room-types/:roomTypeId/seasonal-prices
-router.post('/:hotelId/room-types/:roomTypeId/seasonal-prices', authenticate, requireAdmin, async (req, res) => {
+router.post('/:hotelId/room-types/:roomTypeId/seasonal-prices', authenticate, async (req, res) => {
   try {
     const { roomTypeId } = req.params;
     const { name, startDate, endDate, pricePerNight } = req.body;
@@ -725,7 +725,7 @@ router.post('/:hotelId/room-types/:roomTypeId/seasonal-prices', authenticate, re
 });
 
 // PUT /api/hotels/:hotelId/room-types/:roomTypeId/seasonal-prices/:id
-router.put('/:hotelId/room-types/:roomTypeId/seasonal-prices/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:hotelId/room-types/:roomTypeId/seasonal-prices/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, startDate, endDate, pricePerNight, isActive } = req.body;
@@ -750,7 +750,7 @@ router.put('/:hotelId/room-types/:roomTypeId/seasonal-prices/:id', authenticate,
 });
 
 // DELETE /api/hotels/:hotelId/room-types/:roomTypeId/seasonal-prices/:id
-router.delete('/:hotelId/room-types/:roomTypeId/seasonal-prices/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:hotelId/room-types/:roomTypeId/seasonal-prices/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
 

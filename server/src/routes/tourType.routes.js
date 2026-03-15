@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -51,7 +51,7 @@ router.get('/:id', authenticate, async (req, res) => {
 });
 
 // POST /api/tour-types - Создать тип тура
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const { code, name, description, color } = req.body;
 
@@ -76,7 +76,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/tour-types/:id - Обновить тип тура
-router.put('/:id', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { code, name, description, color, isActive } = req.body;
@@ -101,7 +101,7 @@ router.put('/:id', authenticate, requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/tour-types/:id - Удалить тип тура
-router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -167,7 +167,7 @@ router.get('/:id/itinerary', authenticate, async (req, res) => {
 });
 
 // POST /api/tour-types/:id/itinerary - Добавить день в программу
-router.post('/:id/itinerary', authenticate, requireAdmin, async (req, res) => {
+router.post('/:id/itinerary', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { dayNumber, title, description, activities, meals, accommodation } = req.body;
@@ -202,7 +202,7 @@ router.post('/:id/itinerary', authenticate, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/tour-types/:id/itinerary/:itemId - Обновить день программы
-router.put('/:id/itinerary/:itemId', authenticate, requireAdmin, async (req, res) => {
+router.put('/:id/itinerary/:itemId', authenticate, async (req, res) => {
   try {
     const { itemId } = req.params;
     const { dayNumber, title, description, activities, meals, accommodation } = req.body;
@@ -228,7 +228,7 @@ router.put('/:id/itinerary/:itemId', authenticate, requireAdmin, async (req, res
 });
 
 // DELETE /api/tour-types/:id/itinerary/:itemId - Удалить день программы
-router.delete('/:id/itinerary/:itemId', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:id/itinerary/:itemId', authenticate, async (req, res) => {
   try {
     const { itemId } = req.params;
 

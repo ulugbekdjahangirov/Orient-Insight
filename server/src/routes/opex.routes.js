@@ -1,12 +1,12 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authenticate, requireAdmin } = require('../middleware/auth.middleware');
+const { authenticate } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // POST /api/opex/copy - Copy all OPEX configs from one year to another
-router.post('/copy', authenticate, requireAdmin, async (req, res) => {
+router.post('/copy', authenticate, async (req, res) => {
   try {
     const { fromYear, toYear } = req.body;
     if (!fromYear || !toYear) return res.status(400).json({ error: 'fromYear and toYear required' });
@@ -86,7 +86,7 @@ router.get('/:tourType', authenticate, async (req, res) => {
 });
 
 // POST /api/opex - Create or update OPEX config
-router.post('/', authenticate, requireAdmin, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   try {
     const { tourType, category, items, year: yearRaw } = req.body;
     const year = parseInt(yearRaw) || new Date().getFullYear();
@@ -131,7 +131,7 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
 });
 
 // POST /api/opex/bulk - Bulk import from localStorage
-router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
+router.post('/bulk', authenticate, async (req, res) => {
   try {
     const { configs } = req.body;
 
@@ -178,7 +178,7 @@ router.post('/bulk', authenticate, requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/opex/:tourType/:category - Delete config
-router.delete('/:tourType/:category', authenticate, requireAdmin, async (req, res) => {
+router.delete('/:tourType/:category', authenticate, async (req, res) => {
   try {
     const { tourType, category } = req.params;
     const year = parseInt(req.query.year) || new Date().getFullYear();
