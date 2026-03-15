@@ -421,6 +421,7 @@ export default function BookingDetail() {
   const [pdfFlightNumberEdits, setPdfFlightNumberEdits] = useState({});
   const [trainVehicles, setTrainVehicles] = useState([]); // Trains from OPEX database
   const [mealsData, setMealsData] = useState([]); // Meals from OPEX database
+  const [otherOpexData, setOtherOpexData] = useState([]); // Other items from OPEX database (e.g. Non Yopish)
   const [mealConfirmations, setMealConfirmations] = useState([]);
   const [mealChatIds, setMealChatIds] = useState({});
   const [sendingMeal, setSendingMeal] = useState(null);
@@ -1245,6 +1246,22 @@ export default function BookingDetail() {
     }
   };
 
+  // Load other OPEX data (Non Yopish etc.)
+  const loadOtherOpexFromApi = async () => {
+    if (!booking?.tourType?.code) return;
+    try {
+      const tourTypeCode = booking.tourType.code.toUpperCase();
+      const response = await opexApi.get(tourTypeCode, 'other');
+      if (response.data && response.data.items && Array.isArray(response.data.items)) {
+        setOtherOpexData(response.data.items);
+      } else {
+        setOtherOpexData([]);
+      }
+    } catch (error) {
+      setOtherOpexData([]);
+    }
+  };
+
   // Refresh vehicle data from API when component mounts or when updated
   useEffect(() => {
     // Load on mount
@@ -1308,6 +1325,16 @@ export default function BookingDetail() {
     return () => {
       window.removeEventListener('opexUpdated', handleShowsUpdated);
     };
+  }, [booking?.tourType?.code]);
+
+  // Refresh other OPEX data when booking is loaded or updated
+  useEffect(() => {
+    if (booking?.tourType?.code) {
+      loadOtherOpexFromApi();
+    }
+    const handleOtherUpdated = () => { loadOtherOpexFromApi(); };
+    window.addEventListener('opexUpdated', handleOtherUpdated);
+    return () => { window.removeEventListener('opexUpdated', handleOtherUpdated); };
   }, [booking?.tourType?.code]);
 
   // Transform OPEX train data to PREDEFINED_RAILWAYS format for Railway modal
@@ -13085,8 +13112,18 @@ License №T-0084-08 from 2021-04-26`;
             // Use database services (manually added by user)
             const services = tourServices.other || [];
 
-            // Calculate total (using individual PAX for each item)
-            const grandTotal = services.reduce((sum, item) => {
+            // OPEX items (e.g. Non Yopish) — fixed template items, PAX=1
+            const opexItems = otherOpexData.map(item => ({
+              ...item,
+              _isOpex: true,
+              pricePerPerson: parseFloat((item.price || '0').toString().replace(/\s/g, '')) || 0,
+              pax: item.fixedPax || 1,
+            }));
+
+            const allItems = [...opexItems, ...services];
+
+            // Calculate total
+            const grandTotal = allItems.reduce((sum, item) => {
               const pricePerPerson = item.pricePerPerson || 0;
               const itemPax = item.pax || 0;
               return sum + (pricePerPerson * itemPax);
@@ -13108,27 +13145,30 @@ License №T-0084-08 from 2021-04-26`;
                   </button>
                 </div>
 
-                {services.length > 0 ? (
+                {allItems.length > 0 ? (
                   <>
                     {/* MOBILE: card view */}
                     <div className="md:hidden space-y-3">
-                      {services.map((item, index) => {
+                      {allItems.map((item, index) => {
                         const pricePerPerson = item.pricePerPerson || 0;
                         const itemPax = item.pax || 0;
                         const total = pricePerPerson * itemPax;
                         return (
-                          <div key={item.id} className="border-2 border-slate-200 rounded-xl overflow-hidden">
-                            <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200">
+                          <div key={item._isOpex ? `opex-${item.id}` : item.id} className={`border-2 rounded-xl overflow-hidden ${item._isOpex ? 'border-amber-200' : 'border-slate-200'}`}>
+                            <div className={`flex items-center justify-between px-3 py-2 border-b ${item._isOpex ? 'bg-amber-50 border-amber-200' : 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200'}`}>
                               <div className="flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-slate-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+                                <span className={`w-6 h-6 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0 ${item._isOpex ? 'bg-amber-500' : 'bg-slate-500'}`}>{index + 1}</span>
                                 <span className="text-xs font-semibold text-slate-700">{item.city || '-'}</span>
+                                {item._isOpex && <span className="text-xs text-amber-600 font-bold">AUTO</span>}
                               </div>
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => moveTourService(item, 'up', 'OTHER')} disabled={index === 0} className={`p-1.5 rounded-lg transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move up"><ChevronUp className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => moveTourService(item, 'down', 'OTHER')} disabled={index === services.length - 1} className={`p-1.5 rounded-lg transition-colors ${index === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move down"><ChevronDown className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => editTourService(item)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
-                                <button onClick={() => deleteTourService(item.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
-                              </div>
+                              {!item._isOpex && (
+                                <div className="flex items-center gap-1">
+                                  <button onClick={() => moveTourService(item, 'up', 'OTHER')} disabled={index === opexItems.length} className={`p-1.5 rounded-lg transition-colors ${index === opexItems.length ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move up"><ChevronUp className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => moveTourService(item, 'down', 'OTHER')} disabled={index === allItems.length - 1} className={`p-1.5 rounded-lg transition-colors ${index === allItems.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move down"><ChevronDown className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => editTourService(item)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg" title="Edit"><Edit className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => deleteTourService(item.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                              )}
                             </div>
                             <div className="px-3 py-2.5 space-y-1.5">
                               <div className="font-semibold text-gray-900 text-sm">📋 {item.name || '-'}</div>
@@ -13160,21 +13200,22 @@ License №T-0084-08 from 2021-04-26`;
                           </tr>
                         </thead>
                         <tbody>
-                          {services.map((item, index) => {
+                          {allItems.map((item, index) => {
                             const pricePerPerson = item.pricePerPerson || 0;
                             const itemPax = item.pax || 0;
                             const total = pricePerPerson * itemPax;
                             return (
-                              <tr key={item.id} className="border-b border-gray-200 hover:bg-slate-50 transition-colors">
+                              <tr key={item._isOpex ? `opex-${item.id}` : item.id} className={`border-b border-gray-200 transition-colors ${item._isOpex ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-slate-50'}`}>
                                 <td className="px-4 py-3 text-center border-r border-gray-200">
-                                  <div className="w-8 h-8 rounded-full bg-slate-500 text-white flex items-center justify-center font-semibold mx-auto">
+                                  <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center font-semibold mx-auto ${item._isOpex ? 'bg-amber-500' : 'bg-slate-500'}`}>
                                     {index + 1}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 border-r border-gray-200">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                                    <div className={`w-2 h-2 rounded-full ${item._isOpex ? 'bg-amber-400' : 'bg-slate-400'}`}></div>
                                     <span className="font-medium text-gray-900">{item.city || '-'}</span>
+                                    {item._isOpex && <span className="text-xs text-amber-600 font-bold bg-amber-100 px-1.5 py-0.5 rounded">AUTO</span>}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-gray-900 border-r border-gray-200">
@@ -13192,12 +13233,14 @@ License №T-0084-08 from 2021-04-26`;
                                   {Math.round(total).toLocaleString('en-US').replace(/,/g, ' ')}
                                 </td>
                                 <td className="px-4 py-3">
-                                  <div className="flex items-center justify-center gap-1">
-                                    <button onClick={() => moveTourService(item, 'up', 'OTHER')} disabled={index === 0} className={`p-1.5 rounded-lg transition-colors ${index === 0 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move up"><ChevronUp className="w-4 h-4" /></button>
-                                    <button onClick={() => moveTourService(item, 'down', 'OTHER')} disabled={index === services.length - 1} className={`p-1.5 rounded-lg transition-colors ${index === services.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move down"><ChevronDown className="w-4 h-4" /></button>
-                                    <button onClick={() => editTourService(item)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg" title="Edit"><Edit className="w-4 h-4" /></button>
-                                    <button onClick={() => deleteTourService(item.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                                  </div>
+                                  {!item._isOpex && (
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button onClick={() => moveTourService(item, 'up', 'OTHER')} disabled={index === opexItems.length} className={`p-1.5 rounded-lg transition-colors ${index === opexItems.length ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move up"><ChevronUp className="w-4 h-4" /></button>
+                                      <button onClick={() => moveTourService(item, 'down', 'OTHER')} disabled={index === allItems.length - 1} className={`p-1.5 rounded-lg transition-colors ${index === allItems.length - 1 ? 'opacity-30 cursor-not-allowed' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`} title="Move down"><ChevronDown className="w-4 h-4" /></button>
+                                      <button onClick={() => editTourService(item)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg" title="Edit"><Edit className="w-4 h-4" /></button>
+                                      <button onClick={() => deleteTourService(item.id, 'OTHER')} className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             );
