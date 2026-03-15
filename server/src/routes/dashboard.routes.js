@@ -462,7 +462,9 @@ router.get('/notifications', authenticate, async (req, res) => {
     const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
     const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999);
 
-    const [pendingHotels, upcomingBookings, pendingTransport, arrivingTomorrow] = await Promise.all([
+    const since48h = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+    const [pendingHotels, upcomingBookings, pendingTransport, arrivingTomorrow, recentEmailImports] = await Promise.all([
       // Pending hotel Telegram confirmations
       prisma.telegramConfirmation.findMany({
         where: { status: 'PENDING' },
@@ -503,6 +505,16 @@ router.get('/notifications', authenticate, async (req, res) => {
         },
         select: { id: true, bookingNumber: true, departureDate: true, pax: true },
         orderBy: { departureDate: 'asc' }
+      }),
+
+      // Recent email imports (last 48h, SUCCESS or MANUAL_REVIEW)
+      prisma.emailImport.findMany({
+        where: {
+          status: { in: ['SUCCESS', 'MANUAL_REVIEW', 'FAILED'] },
+          createdAt: { gte: since48h }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10
       })
     ]);
 
@@ -561,6 +573,23 @@ router.get('/notifications', authenticate, async (req, res) => {
         subtitle: `Marshrut tasdiqlash kutilmoqda${sentDate ? ' • ' + sentDate : ''}`,
         url: '/partners',
         time: c.sentAt
+      });
+    }
+
+    // Email imports
+    for (const ei of recentEmailImports) {
+      const statusLabel = ei.status === 'SUCCESS'
+        ? `✅ ${ei.bookingsCreated > 0 ? ei.bookingsCreated + ' ta yaratildi' : ''}${ei.bookingsUpdated > 0 ? (ei.bookingsCreated > 0 ? ', ' : '') + ei.bookingsUpdated + ' ta yangilandi' : ''}`
+        : ei.status === 'MANUAL_REVIEW'
+        ? '⚠️ Qo\'lda tekshirish kerak'
+        : '❌ Xatolik';
+      items.push({
+        id: `email_import_${ei.id}`,
+        type: 'email_import',
+        message: ei.emailSubject || ei.attachmentName || 'Email import',
+        subtitle: `${statusLabel} • ${ei.emailFrom?.split('<')[0]?.trim() || ei.emailFrom}`,
+        url: '/email-imports',
+        time: ei.createdAt
       });
     }
 

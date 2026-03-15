@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Hotel, CalendarDays, Truck, RefreshCw, X, CheckCheck, PlaneLanding } from 'lucide-react';
+import { Bell, Hotel, CalendarDays, Truck, RefreshCw, X, CheckCheck, PlaneLanding, Mail } from 'lucide-react';
 import { dashboardApi } from '../../services/api';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 const TYPE_CONFIG = {
-  hotel:     { icon: Hotel,         color: 'text-blue-500',   bg: 'bg-blue-50'   },
-  departure: { icon: CalendarDays,  color: 'text-amber-500',  bg: 'bg-amber-50'  },
-  transport: { icon: Truck,         color: 'text-green-500',  bg: 'bg-green-50'  },
-  arrival:   { icon: PlaneLanding,  color: 'text-purple-500', bg: 'bg-purple-50' },
+  hotel:        { icon: Hotel,        color: 'text-blue-500',   bg: 'bg-blue-50'   },
+  departure:    { icon: CalendarDays, color: 'text-amber-500',  bg: 'bg-amber-50'  },
+  transport:    { icon: Truck,        color: 'text-green-500',  bg: 'bg-green-50'  },
+  arrival:      { icon: PlaneLanding, color: 'text-purple-500', bg: 'bg-purple-50' },
+  email_import: { icon: Mail,         color: 'text-indigo-500', bg: 'bg-indigo-50' },
 };
 
 const DISMISSED_KEY = 'dismissed_notifications';
