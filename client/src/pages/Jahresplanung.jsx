@@ -97,22 +97,56 @@ function computeCityHotels(cityName, originalHotels, cityExtraHotels, bookingHot
     else map[b.originalHotelId]?.push(b);
   }
 
-  // Overflow logic: WL/X bookings from original hotels also appear in extra hotels
-  const extraHotelsDisplay = allDisplay.filter(hd => hd.isExtra);
-  if (extraHotelsDisplay.length > 0 && rowStatuses) {
-    for (const origHd of originalHotels) {
-      for (const b of (map[origHd.hotel.id] || [])) {
-        const k = rowKey(origHd.hotel.id, b);
+  // Step 2: Cascade — unassigned bookings fall to the next hotel.
+  // Hotel 1 keeps only explicitly-statused bookings (OK/WL/cancelled).
+  // Manually-placed bookings (bookingHotelAssign) are not cascaded.
+  if (allDisplay.length > 1 && rowStatuses !== undefined) {
+    for (let i = 0; i < allDisplay.length - 1; i++) {
+      const currentHd = allDisplay[i];
+      const nextHd = allDisplay[i + 1];
+
+      const toMove = (map[currentHd.hotel.id] || []).filter(b => {
+        const ck = cityAssignKey(cityName, b);
+        if (bookingHotelAssign[ck] !== undefined) return false;
+        const k = rowKey(currentHd.hotel.id, b);
+        return !rowStatuses[k];
+      });
+
+      map[currentHd.hotel.id] = (map[currentHd.hotel.id] || []).filter(b => {
+        const ck = cityAssignKey(cityName, b);
+        if (bookingHotelAssign[ck] !== undefined) return true;
+        const k = rowKey(currentHd.hotel.id, b);
+        return !!rowStatuses[k];
+      });
+
+      for (const b of toMove) {
+        const bKey = `${b.bookingId}_${b.checkInDate}`;
+        const alreadyIn = (map[nextHd.hotel.id] || []).some(
+          eb => `${eb.bookingId}_${eb.checkInDate}` === bKey
+        );
+        if (!alreadyIn) map[nextHd.hotel.id].push(b);
+      }
+    }
+  }
+
+  // Step 3: WL / cancelled overflow — also appear in all other hotels as reference.
+  if (allDisplay.length > 1 && rowStatuses !== undefined) {
+    const snapshot = {};
+    for (const hd of allDisplay) snapshot[hd.hotel.id] = [...(map[hd.hotel.id] || [])];
+
+    for (const fromHd of allDisplay) {
+      for (const b of snapshot[fromHd.hotel.id] || []) {
+        const k = rowKey(fromHd.hotel.id, b);
         const status = rowStatuses[k];
-        if (status === 'waiting' || status === 'cancelled') {
-          const bKey = `${b.bookingId}_${b.checkInDate}`;
-          for (const extraHd of extraHotelsDisplay) {
-            const alreadyIn = (map[extraHd.hotel.id] || []).some(
-              eb => `${eb.bookingId}_${eb.checkInDate}` === bKey
-            );
-            if (!alreadyIn) {
-              map[extraHd.hotel.id].push({ ...b, isOverflow: true });
-            }
+        if (status !== 'waiting' && status !== 'cancelled') continue;
+        const bKey = `${b.bookingId}_${b.checkInDate}`;
+        for (const otherHd of allDisplay) {
+          if (otherHd.hotel.id === fromHd.hotel.id) continue;
+          const alreadyIn = (map[otherHd.hotel.id] || []).some(
+            eb => `${eb.bookingId}_${eb.checkInDate}` === bKey
+          );
+          if (!alreadyIn) {
+            map[otherHd.hotel.id].push({ ...b, isOverflow: true });
           }
         }
       }
@@ -2613,7 +2647,12 @@ function HotelsTab({ tourType, tourColor }) {
   };
 
   const handleAddHotel = (cityName, hotel, currentCityHotels) => {
-    // 1. Add new hotel to city extras
+    // If this hotel was previously excluded (original hotel), restore it instead of adding as extra
+    if (excludedHotelIds.includes(hotel.id)) {
+      handleRestoreHotel(hotel.id);
+      return;
+    }
+    // Add new hotel to city extras
     const newExtras = { ...cityExtraHotels };
     if (!(newExtras[cityName] || []).includes(hotel.id)) {
       newExtras[cityName] = [...(newExtras[cityName] || []), hotel.id];
@@ -2804,7 +2843,7 @@ function HotelsTab({ tourType, tourColor }) {
           }, 0);
         }, 0);
         const displayHotelIds = new Set(displayHotels.map(h => h.hotel.id));
-        const availableToAdd = allHotels.filter(h => h.city?.name === city && !displayHotelIds.has(h.id) && !excludedHotelIds.includes(h.id));
+        const availableToAdd = allHotels.filter(h => h.city?.name === city && !displayHotelIds.has(h.id));
 
         return (
           <div key={city} className="rounded-2xl overflow-hidden shadow-sm" style={{ border: `1px solid ${color}25` }}>
@@ -2880,18 +2919,6 @@ function HotelsTab({ tourType, tourColor }) {
                       availableHotels={availableToAdd}
                       onAdd={h => handleAddHotel(city, h, displayHotels)}
                     />
-                  </div>
-                )}
-                {excludedInCity.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap px-2 pt-1">
-                    <span className="text-xs text-slate-400">Yashirilgan:</span>
-                    {excludedInCity.map(hd => (
-                      <button key={hd.hotel.id}
-                        onClick={() => handleRestoreHotel(hd.hotel.id)}
-                        className="text-xs px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:text-blue-600 hover:border-blue-400 transition-colors">
-                        + {hd.hotel.name}
-                      </button>
-                    ))}
                   </div>
                 )}
               </div>
