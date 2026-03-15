@@ -11,6 +11,7 @@ const modules = [
   { id: 'orient', name: 'Orient', color: 'blue', icon: Building },
   { id: 'infuturestorm', name: 'INFUTURESTORM', color: 'orange', icon: Globe },
   { id: 'shamixon', name: 'Shamixon', color: 'purple', icon: Building },
+  { id: 'dalolatnoma', name: 'Dalolatnoma', color: 'teal', icon: FileText },
 ];
 
 const colorClasses = {
@@ -44,6 +45,12 @@ const colorClasses = {
     active: 'bg-gradient-to-r from-purple-500 to-pink-500',
     hover: 'hover:from-purple-600 hover:to-pink-600',
   },
+  teal: {
+    bg: 'from-teal-500 to-cyan-500',
+    text: 'from-teal-600 to-cyan-600',
+    active: 'bg-gradient-to-r from-teal-500 to-cyan-500',
+    hover: 'hover:from-teal-600 hover:to-cyan-600',
+  },
 };
 
 export default function Rechnung() {
@@ -64,6 +71,7 @@ export default function Rechnung() {
   const [orientItems, setOrientItems] = useState([]);
   const [infuturestormItems, setInfuturestormItems] = useState([]);
   const [shamixonItems, setShamixonItems] = useState([]);
+  const [dalolatnomItems, setDalolatnomItems] = useState([]);
   const [expandedShamixonIds, setExpandedShamixonIds] = useState(new Set());
   const toggleShamixonCard = (id) => setExpandedShamixonIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const [shamixonTotalExpanded, setShamixonTotalExpanded] = useState(false);
@@ -110,6 +118,27 @@ export default function Rechnung() {
           }
         }
         setShamixonItems(items);
+        setLoading(false);
+        return;
+      }
+
+      // Special handling for Dalolatnoma module
+      if (activeModule === 'dalolatnoma') {
+        const res = await invoicesApi.getAll({ invoiceType: 'Dalolatnoma', year: selectedYear });
+        const invoices = res.data.invoices || [];
+        const items = invoices
+          .filter(invoice => invoice.booking?.status === 'FINAL_CONFIRMED')
+          .map((invoice) => ({
+            id: invoice.id,
+            bookingId: invoice.bookingId,
+            gruppe: invoice.booking?.bookingNumber || '',
+            pax: invoice.booking?.pax || 0,
+            summa: invoice.totalAmount || 0,
+          }))
+          .sort((a, b) => a.gruppe.localeCompare(b.gruppe));
+        // Assign sequential numbers after sort
+        items.forEach((item, idx) => { item.nummer = idx + 1; });
+        setDalolatnomItems(items);
         setLoading(false);
         return;
       }
@@ -1233,6 +1262,99 @@ export default function Rechnung() {
                     })()}
                   </tbody>
                 </table>
+              </div>
+            </>
+          ) : activeModule === 'dalolatnoma' ? (
+            <>
+              {/* Mobile cards — Dalolatnoma */}
+              {loading ? (
+                <div className="sm:hidden flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600"></div>
+                </div>
+              ) : (
+                <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
+                  {dalolatnomItems.map((item) => (
+                    <div key={item.id} className="rounded-xl overflow-hidden border border-teal-100 bg-white" style={{ boxShadow: '0 1px 4px rgba(20,184,166,0.08)' }}>
+                      <div className="h-0.5 bg-gradient-to-r from-teal-400 to-cyan-500" />
+                      <div className="px-3 py-2.5 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-teal-50 text-teal-600 text-[10px] font-bold flex items-center justify-center shrink-0 border border-teal-200">{item.nummer}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-gray-900 text-sm">{item.gruppe}</div>
+                          <div className="text-[10px] text-gray-500">{item.pax} kishi</div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="bg-teal-50 rounded-lg px-2 py-1 border border-teal-100 text-right">
+                            <div className="text-[10px] text-teal-600 font-medium">Summa</div>
+                            <div className="font-bold text-gray-900 text-sm">{formatNumber(item.summa)} $</div>
+                          </div>
+                          <button onClick={() => navigate(`/bookings/${item.bookingId}?tab=documents&docTab=dalolatnoma`)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><ExternalLink className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {dalolatnomItems.length === 0 && <div className="py-8 text-center text-gray-400 text-sm">Ma'lumot topilmadi</div>}
+                  {dalolatnomItems.length > 0 && (
+                    <div className="rounded-xl px-3 py-2.5 flex justify-between font-bold bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100">
+                      <span className="text-gray-600 uppercase text-[10px] tracking-widest self-center">TOTAL</span>
+                      <span className="text-gray-900 text-base">{formatNumber(dalolatnomItems.reduce((s, i) => s + (parseFloat(i.summa) || 0), 0))} $</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                  </div>
+                ) : (
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-teal-100 to-cyan-100">
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">№</th>
+                        <th className="border border-gray-300 px-6 py-4 text-left font-bold text-gray-900">Gruppa</th>
+                        <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Odamlar soni</th>
+                        <th className="border border-gray-300 px-6 py-4 text-right font-bold text-gray-900">Summa (USD)</th>
+                        <th className="border border-gray-300 px-6 py-4 text-center font-bold text-gray-900">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dalolatnomItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">{item.nummer}</td>
+                          <td className="border border-gray-300 px-6 py-4 text-gray-900 font-semibold">{item.gruppe}</td>
+                          <td className="border border-gray-300 px-6 py-4 text-center text-gray-900">{item.pax}</td>
+                          <td className="border border-gray-300 px-6 py-4 text-right text-gray-900 font-bold">{formatNumber(item.summa)}</td>
+                          <td className="border border-gray-300 px-6 py-4 text-center">
+                            <button
+                              onClick={() => navigate(`/bookings/${item.bookingId}?tab=documents&docTab=dalolatnoma`)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="View Booking"
+                            >
+                              <ExternalLink className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {dalolatnomItems.length === 0 && (
+                        <tr>
+                          <td colSpan="5" className="border border-gray-300 px-6 py-8 text-center text-gray-500">
+                            Ma'lumot topilmadi
+                          </td>
+                        </tr>
+                      )}
+                      {dalolatnomItems.length > 0 && (
+                        <tr className="bg-gradient-to-r from-teal-100 to-cyan-100 font-bold">
+                          <td className="border border-gray-300 px-6 py-3 text-gray-900" colSpan="3">TOTAL</td>
+                          <td className="border border-gray-300 px-6 py-3 text-right text-gray-900">
+                            {formatNumber(dalolatnomItems.reduce((s, i) => s + (parseFloat(i.summa) || 0), 0))}
+                          </td>
+                          <td className="border border-gray-300 px-6 py-3"></td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </>
           ) : (

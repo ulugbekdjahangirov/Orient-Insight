@@ -8,6 +8,75 @@ const axios = require('axios');
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Helper: compute Dalolatnoma totalAmount server-side (mirrors client uberweisungTotalUSD logic)
+async function computeDalolatnomAmount(bookingId) {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { tourType: true }
+    });
+    if (!booking) return 0;
+
+    const tourTypeCode = booking.tourType?.code?.toUpperCase();
+    const year = booking.bookingYear || new Date(booking.departureDate || Date.now()).getFullYear();
+    const touristCount = await prisma.tourist.count({ where: { bookingId } });
+    const pax = touristCount || booking.pax || 0;
+
+    // Load OPEX sightseeing + shows for this tourType+year
+    const [sightseeingCfg, showsCfg] = await Promise.all([
+      prisma.opexConfig.findUnique({ where: { tourType_category_year: { tourType: tourTypeCode, category: 'sightseeing', year } } }),
+      prisma.opexConfig.findUnique({ where: { tourType_category_year: { tourType: tourTypeCode, category: 'shows', year } } }),
+    ]);
+    const sightseeingData = sightseeingCfg ? JSON.parse(sightseeingCfg.itemsJson) : [];
+    const showsData = showsCfg ? JSON.parse(showsCfg.itemsJson) : [];
+
+    // Load railways for this booking
+    const railways = await prisma.railway.findMany({ where: { bookingId } });
+
+    let totalUZS = 0;
+    sightseeingData.forEach(sight => {
+      const price = parseFloat((sight.price || sight.pricePerPerson || '0').toString().replace(/\s/g, '')) || 0;
+      const total = price * pax;
+      if (total > 0) totalUZS += total;
+    });
+    showsData.forEach(show => {
+      const name = (show.name || '').toLowerCase();
+      if (!name.includes('folklore show') && !name.includes('nadir divan')) return;
+      const price = parseFloat((show.price || show.pricePerPerson || '0').toString().replace(/\s/g, '')) || 0;
+      const showPax = show.pax || pax;
+      const total = price * showPax;
+      if (total > 0) totalUZS += total;
+    });
+    railways.forEach(railway => {
+      const total = railway.price || 0;
+      if (total > 0) totalUZS += total;
+    });
+
+    if (totalUZS === 0) return 0;
+
+    // Fetch CBU rate (with simple in-process cache)
+    let rate = 0;
+    try {
+      const https = require('https');
+      const data = await new Promise((resolve, reject) => {
+        https.get('https://cbu.uz/oz/arkhiv-kursov-valyut/json/USD/', (r) => {
+          let body = '';
+          r.on('data', c => body += c);
+          r.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
+        }).on('error', reject);
+      });
+      rate = parseFloat(data[0]?.Rate) || 0;
+    } catch (e) { /* ignore, fall back to 0 */ }
+    if (!rate) rate = 12700; // fallback
+
+    const rawUSD = totalUZS / rate;
+    return Math.floor(rawUSD / 100) * 100 + 200;
+  } catch (e) {
+    console.error('computeDalolatnomAmount error:', e.message);
+    return 0;
+  }
+}
+
 // Helper function to calculate room counts from tourists
 // If roomNumber is set, count unique rooms. Otherwise, count by roomPreference.
 function calculateRoomCountsFromTourists(tourists) {
@@ -682,6 +751,26 @@ router.put('/:id', authenticate, async (req, res) => {
           text: notifyText,
           parse_mode: 'HTML'
         }).catch(e => console.error('Guide status notify error:', e.message));
+      }
+    }
+
+    // Auto-create (or update) Dalolatnoma invoice when status becomes FINAL_CONFIRMED
+    if (status === 'FINAL_CONFIRMED' && currentBooking?.status !== 'FINAL_CONFIRMED') {
+      const existing = await prisma.invoice.findFirst({
+        where: { bookingId: booking.id, invoiceType: 'Dalolatnoma' }
+      });
+      const amount = await computeDalolatnomAmount(booking.id);
+      if (!existing) {
+        const lastInv = await prisma.invoice.findFirst({
+          where: { invoiceType: 'Dalolatnoma' },
+          orderBy: { id: 'desc' }
+        });
+        const invoiceNumber = lastInv ? (parseInt(lastInv.invoiceNumber) + 1).toString() : '1';
+        await prisma.invoice.create({
+          data: { bookingId: booking.id, invoiceNumber, invoiceType: 'Dalolatnoma', totalAmount: amount, currency: 'USD' }
+        });
+      } else if (existing.totalAmount === 0 && amount > 0) {
+        await prisma.invoice.update({ where: { id: existing.id }, data: { totalAmount: amount } });
       }
     }
 
