@@ -111,14 +111,19 @@ export default function Dashboard() {
 
   const [ausgabenLoading, setAusgabenLoading] = useState(false);
 
-  const computeTotalsFromDetailedData = (detailedData) => {
+  const computeTotalsFromDetailedData = (detailedData, bookingsList = []) => {
     const withHotels = detailedData.filter(b => { const e = b.expenses || {}; return e.hotelsUSD > 0 || e.hotelsUZS > 0; });
     const totalUSD = withHotels.reduce((s, b) => s + (b.expenses?.hotelsUSD || 0) + (b.expenses?.guide || 0), 0);
     const totalUZS = withHotels.reduce((s, b) => {
       const e = b.expenses || {};
       return s + (e.hotelsUZS || 0) + (e.transportSevil || 0) + (e.transportXayrulla || 0) + (e.transportNosir || 0) + (e.railway || 0) + (e.flights || 0) + (e.meals || 0) + (e.eintritt || 0) + (e.metro || 0) + (e.shou || 0) + (e.other || 0);
     }, 0);
-    return { totalUSD: Math.round(totalUSD), totalUZS: Math.round(totalUZS) };
+    // Bank tab: FINAL_CONFIRMED bookings only, uberweisungUZS
+    const finalIds = new Set(bookingsList.filter(b => b.status === 'FINAL_CONFIRMED').map(b => b.id));
+    const bankUZS = detailedData
+      .filter(b => finalIds.size === 0 ? false : finalIds.has(b.bookingId))
+      .reduce((s, b) => s + (b.expenses?.uberweisungUZS || 0), 0);
+    return { totalUSD: Math.round(totalUSD), totalUZS: Math.round(totalUZS), bankUZS: Math.round(bankUZS) };
   };
 
   const readAusgabenCache = (year) => {
@@ -128,7 +133,7 @@ export default function Dashboard() {
       const parsed = JSON.parse(raw);
       const detailedData = parsed.detailedData || [];
       if (detailedData.length === 0) return null;
-      return computeTotalsFromDetailedData(detailedData);
+      return computeTotalsFromDetailedData(detailedData, parsed.bookings || []);
     } catch { return null; }
   };
 
@@ -191,7 +196,7 @@ export default function Dashboard() {
         detailedData.push(...results.filter(Boolean));
       }
 
-      const totals = computeTotalsFromDetailedData(detailedData);
+      const totals = computeTotalsFromDetailedData(detailedData, allBookings);
       setAusgaben(totals);
 
       // Save to same localStorage key so Ausgaben page can use it too
@@ -270,9 +275,12 @@ export default function Dashboard() {
   const uzsToUSD = Math.round((aus.totalUZS || 0) / exchangeRate);
   const ausgabenTotal = (aus.totalUSD || 0) + uzsToUSD;
   const gewinn = (inv.total || 0) - ausgabenTotal;
-  // Gewinn in bar: biggest firma total (INFUTURESTORM) - Ausgaben
+  // Bank (Final) in USD
+  const bankUSD = aus.bankUZS > 0 ? Math.round(aus.bankUZS / exchangeRate) : 0;
+  const totalInBar = ausgabenTotal - bankUSD;
+  // Gewinn in bar: biggest firma total (INFUTURESTORM) - Total in bar
   const infutureTotal = Object.values(inv.byFirma || {}).reduce((max, d) => d.total > max ? d.total : max, 0);
-  const gewinnInBar = infutureTotal - ausgabenTotal;
+  const gewinnInBar = infutureTotal - totalInBar;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 space-y-4 md:space-y-6">
@@ -482,6 +490,24 @@ export default function Dashboard() {
                   <span className="text-xs text-gray-300 font-semibold">Jami ≈</span>
                   <span className="font-black text-white text-base">{fmtUSD(ausgabenTotal)}</span>
                 </div>
+                {aus.bankUZS > 0 && (
+                  <>
+                    <div className="flex justify-between items-center px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-200 mt-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-emerald-700 font-semibold">Bank (Final)</span>
+                        <span className="text-[10px] text-gray-400">{fmtUZS(aus.bankUZS)} UZS</span>
+                      </div>
+                      <span className="text-xs font-black text-emerald-700">≈ {fmtUSD(bankUSD)}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-2.5 py-2 bg-gradient-to-r from-teal-700 to-teal-800 rounded-lg mt-1">
+                      <div>
+                        <span className="text-xs text-teal-200 font-semibold">Total in bar</span>
+                        <p className="text-[10px] text-teal-300">{fmtUSD(ausgabenTotal)} − {fmtUSD(bankUSD)}</p>
+                      </div>
+                      <span className="font-black text-white text-base">{fmtUSD(totalInBar)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <p className="text-[10px] text-gray-400 mt-1 text-right flex items-center justify-end gap-1">
@@ -510,7 +536,7 @@ export default function Dashboard() {
                 <div className={`flex items-center justify-between px-3 py-2.5 rounded-xl ${gewinnInBar >= 0 ? 'bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200' : 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200'}`}>
                   <div>
                     <span className={`text-xs font-black uppercase tracking-wider ${gewinnInBar >= 0 ? 'text-teal-700' : 'text-red-700'}`}>Gewinn in bar</span>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{fmtUSD(infutureTotal)} − {fmtUSD(ausgabenTotal)}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{fmtUSD(infutureTotal)} − {fmtUSD(totalInBar)}</p>
                   </div>
                   <span className={`font-black text-lg ${gewinnInBar >= 0 ? 'text-teal-700' : 'text-red-600'}`}>
                     {gewinnInBar >= 0 ? '+' : ''}{fmtUSD(gewinnInBar)}

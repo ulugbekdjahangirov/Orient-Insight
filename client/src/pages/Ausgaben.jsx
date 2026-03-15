@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi, telegramApi, invoicesApi } from '../services/api';
 import { useYear } from '../context/YearContext';
 import toast from 'react-hot-toast';
-import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send, DollarSign, Train } from 'lucide-react';
+import { Hotel, BarChart3, Users, Truck, FileSpreadsheet, FileText, Send, DollarSign, Train, Landmark } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
@@ -25,6 +25,7 @@ const expenseTabs = [
   { id: 'transport-analysis', name: 'Transport Analysis', icon: Truck },
   { id: 'guides',             name: 'Guides',             icon: Users },
   { id: 'uberweisung',        name: 'Überweisung',        icon: DollarSign },
+  { id: 'bank',               name: 'Bank',               icon: Landmark },
   { id: 'railways',           name: 'Railways',           icon: Train },
 ];
 
@@ -145,7 +146,7 @@ export default function Ausgaben() {
   const loadBookingsAndExpenses = async () => {
     // Check cache first
     const cacheKey = `${activeTourType}_${selectedYear}`;
-    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis', 'uberweisung', 'railways'].includes(activeExpenseTab);
+    const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis', 'uberweisung', 'bank', 'railways'].includes(activeExpenseTab);
 
     // Try localStorage first (persists across page reloads)
     try {
@@ -843,6 +844,10 @@ export default function Ausgaben() {
     if (activeExpenseTab === 'uberweisung') {
       return bookingsDetailedData.reduce((sum, b) => sum + (b.expenses?.uberweisungUZS || 0), 0);
     }
+    if (activeExpenseTab === 'bank') {
+      const finalIds = new Set(bookings.filter(b => b.status === 'FINAL_CONFIRMED').map(b => b.id));
+      return bookingsDetailedData.filter(b => finalIds.has(b.bookingId)).reduce((sum, b) => sum + (b.expenses?.uberweisungUZS || 0), 0);
+    }
     return 0; // guides is USD only
   };
 
@@ -906,9 +911,11 @@ export default function Ausgaben() {
       footerRow = ['', 'TOTAL', '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0), '', filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0), filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0)];
       numericCols = [3,5,7,8];
     }
-    else if (activeExpenseTab === 'uberweisung') {
+    else if (activeExpenseTab === 'uberweisung' || activeExpenseTab === 'bank') {
+      const bankFinalIds = activeExpenseTab === 'bank' ? new Set(bookings.filter(b => b.status === 'FINAL_CONFIRMED').map(b => b.id)) : null;
+      const uberData = activeExpenseTab === 'bank' ? bookingsDetailedData.filter(b => bankFinalIds.has(b.bookingId)) : bookingsDetailedData;
       headers = ['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS'];
-      rows = bookingsDetailedData.map((b, i) => { const e=b.expenses||{}; return [i+1, b.bookingName, e.uberweisungEintritt||0, e.uberweisungFolklore||0, e.uberweisungRailway||0, e.uberweisungUZS||0]; });
+      rows = uberData.map((b, i) => { const e=b.expenses||{}; return [i+1, b.bookingName, e.uberweisungEintritt||0, e.uberweisungFolklore||0, e.uberweisungRailway||0, e.uberweisungUZS||0]; });
       const totals = rows.reduce((acc,r) => { for(let i=2;i<=5;i++) acc[i-2]=(acc[i-2]||0)+(r[i]||0); return acc; }, []);
       footerRow = ['', 'TOTAL', ...totals];
       numericCols = [2,3,4,5];
@@ -1086,13 +1093,15 @@ export default function Ausgaben() {
       });
       foot = [['', 'TOTAL', '', fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideMainCost||0),0)), '', fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideSecondCost||0),0)), '', fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guideBergrCost||0),0)), fmtN(filteredBookingsWithHotels.reduce((s,i)=>s+(i.expenses?.guide||0),0))]];
     }
-    else if (activeExpenseTab === 'uberweisung') {
+    else if (activeExpenseTab === 'uberweisung' || activeExpenseTab === 'bank') {
+      const pdfFinalIds = activeExpenseTab === 'bank' ? new Set(bookings.filter(b => b.status === 'FINAL_CONFIRMED').map(b => b.id)) : null;
+      const pdfUberData = activeExpenseTab === 'bank' ? bookingsDetailedData.filter(b => pdfFinalIds.has(b.bookingId)) : bookingsDetailedData;
       head = [['#', 'Booking', 'Eintritt (UZS)', 'Folklore (UZS)', 'Railway (UZS)', 'Total UZS']];
-      body = bookingsDetailedData.map((b, i) => {
+      body = pdfUberData.map((b, i) => {
         const e = b.expenses || {};
         return [i+1, b.bookingName, fmtN(e.uberweisungEintritt||0), fmtN(e.uberweisungFolklore||0), fmtN(e.uberweisungRailway||0), fmtN(e.uberweisungUZS||0)];
       });
-      foot = [['', 'TOTAL', fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungEintritt||0),0)), fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungFolklore||0),0)), fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungRailway||0),0)), fmtN(bookingsDetailedData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0))]];
+      foot = [['', 'TOTAL', fmtN(pdfUberData.reduce((s,b)=>s+(b.expenses?.uberweisungEintritt||0),0)), fmtN(pdfUberData.reduce((s,b)=>s+(b.expenses?.uberweisungFolklore||0),0)), fmtN(pdfUberData.reduce((s,b)=>s+(b.expenses?.uberweisungRailway||0),0)), fmtN(pdfUberData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0))]];
     }
     else if (activeExpenseTab === 'transport') {
       head = [['#', 'Booking', 'Sevil', 'Xayrulla', 'Total']];
@@ -2354,6 +2363,74 @@ export default function Ausgaben() {
                     )}
                   </div>
                 )}
+
+                {/* ── BANK TAB ── */}
+                {activeExpenseTab === 'bank' && (() => {
+                  const finalIds = new Set(bookings.filter(b => b.status === 'FINAL_CONFIRMED').map(b => b.id));
+                  const bankData = bookingsDetailedData.filter(b => finalIds.has(b.bookingId));
+                  return (
+                    <div className="w-full">
+                      {bankData.length === 0 ? (
+                        <div className="p-10 text-center text-slate-400">
+                          <Landmark className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p>Final Confirmed gruppalar yo'q</p>
+                        </div>
+                      ) : (
+                        <div className="hidden sm:block overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr>
+                                <th className="px-3 py-3.5 text-center font-bold text-slate-700 border-r border-emerald-200" style={{ background: '#d1fae5' }}>#</th>
+                                <th className="px-3 py-3.5 text-left font-bold text-slate-700 border-r border-emerald-200" style={{ background: '#d1fae5' }}>Booking</th>
+                                <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-emerald-200" style={{ background: '#d1fae5' }}>Eintritt (UZS)</th>
+                                <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-emerald-200" style={{ background: '#d1fae5' }}>Folklore (UZS)</th>
+                                <th className="px-3 py-3.5 text-right font-bold text-slate-700 border-r border-emerald-200" style={{ background: '#d1fae5' }}>Railway (UZS)</th>
+                                <th className="px-3 py-3.5 text-right font-bold text-white" style={{ background: 'linear-gradient(180deg,#059669,#10b981)' }}>Total UZS</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bankData.map((item, idx) => {
+                                const e = item.expenses || {};
+                                const rowBg = idx % 2 === 0 ? '#ffffff' : '#f0fdf4';
+                                return (
+                                  <tr key={item.bookingId} style={{ background: rowBg }}
+                                    onMouseEnter={ev => ev.currentTarget.style.background = '#dcfce7'}
+                                    onMouseLeave={ev => ev.currentTarget.style.background = rowBg}>
+                                    <td className="px-3 py-2.5 text-center text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                                    <td className="px-3 py-2.5 border-r border-slate-100">
+                                      <Link to={`/bookings/${item.bookingId}`} className="font-bold text-blue-600 hover:text-blue-800 hover:underline">{item.bookingName}</Link>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                      {e.uberweisungEintritt > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungEintritt)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                      {e.uberweisungFolklore > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungFolklore)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right border-r border-slate-100">
+                                      {e.uberweisungRailway > 0 ? <span className="font-semibold text-gray-800">{formatNumber(e.uberweisungRailway)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right">
+                                      {e.uberweisungUZS > 0 ? <span className="font-black text-emerald-700">{formatNumber(e.uberweisungUZS)}</span> : <span className="text-slate-200">—</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: 'linear-gradient(90deg,#065f46,#047857)' }}>
+                                <td className="px-3 py-3.5 text-center text-white font-black text-xs" colSpan={2}>TOTAL ({bankData.length} gruppa)</td>
+                                <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-emerald-600">{formatNumber(bankData.reduce((s,b)=>s+(b.expenses?.uberweisungEintritt||0),0))}</td>
+                                <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-emerald-600">{formatNumber(bankData.reduce((s,b)=>s+(b.expenses?.uberweisungFolklore||0),0))}</td>
+                                <td className="px-3 py-3.5 text-right text-white font-bold text-xs border-r border-emerald-600">{formatNumber(bankData.reduce((s,b)=>s+(b.expenses?.uberweisungRailway||0),0))}</td>
+                                <td className="px-3 py-3.5 text-right text-white font-black text-xs">{formatNumber(bankData.reduce((s,b)=>s+(b.expenses?.uberweisungUZS||0),0))}</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* ── RAILWAYS TAB ── */}
                 {activeExpenseTab === 'railways' && (() => {
