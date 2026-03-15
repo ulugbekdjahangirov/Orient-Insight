@@ -170,6 +170,35 @@ router.get('/dalolatnoma-sequence/:bookingId', authenticate, async (req, res) =>
   }
 });
 
+// GET /api/invoices/cbu-rate — fetch USD rate from cbu.uz (cached 1 hour)
+let cbuCache = { rate: null, fetchedAt: 0 };
+router.get('/cbu-rate', authenticate, async (req, res) => {
+  try {
+    const now = Date.now();
+    if (cbuCache.rate && (now - cbuCache.fetchedAt) < 60 * 60 * 1000) {
+      return res.json({ rate: cbuCache.rate, cached: true });
+    }
+    const https = require('https');
+    const data = await new Promise((resolve, reject) => {
+      https.get('https://cbu.uz/oz/arkhiv-kursov-valyut/json/USD/', (r) => {
+        let body = '';
+        r.on('data', chunk => body += chunk);
+        r.on('end', () => {
+          try { resolve(JSON.parse(body)); }
+          catch (e) { reject(e); }
+        });
+      }).on('error', reject);
+    });
+    const rate = parseFloat(data[0]?.Rate);
+    if (!rate) return res.status(502).json({ error: 'CBU dan kurs olinmadi' });
+    cbuCache = { rate, fetchedAt: now };
+    res.json({ rate, cached: false });
+  } catch (err) {
+    console.error('CBU rate fetch error:', err.message);
+    res.status(502).json({ error: 'CBU serveriga ulanishda xatolik' });
+  }
+});
+
 // GET /api/invoices/:id - Get invoice by ID
 router.get('/:id', authenticate, async (req, res) => {
   try {

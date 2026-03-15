@@ -335,6 +335,7 @@ export const invoicesApi = {
   saveAusgabenRailwayPaid: (data) => api.put('/invoices/ausgaben-paid/railway', { data }),
   getDalolatnomSequence: (bookingId) => api.get(`/invoices/dalolatnoma-sequence/${bookingId}`),
   assignNumber: (id) => api.post(`/invoices/${id}/assign-number`),
+  getCbuRate: () => api.get('/invoices/cbu-rate'),
 };
 
 // Vertrag PDF

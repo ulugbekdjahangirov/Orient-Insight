@@ -369,6 +369,8 @@ export default function BookingDetail() {
 
   // Sequential number for Dalolatnoma (server-side computed)
   const [dalolatnomSequentialNumber, setDalolatnomSequentialNumber] = useState(0);
+  // CBU exchange rate (fetched from cbu.uz via backend)
+  const [cbuUsdRate, setCbuUsdRate] = useState(null);
 
   // Initialize activeTab from URL param, then localStorage, then default 'info'
   const getInitialTab = () => {
@@ -1713,6 +1715,14 @@ export default function BookingDetail() {
           }
         } catch (error) {
           console.error('Error loading invoices:', error);
+        }
+
+        // Fetch CBU USD rate for Dalolatnoma calculation
+        try {
+          const cbuRes = await invoicesApi.getCbuRate();
+          if (cbuRes.data?.rate) setCbuUsdRate(cbuRes.data.rate);
+        } catch (e) {
+          console.warn('CBU rate fetch failed, using fallback:', e.message);
         }
 
         // Helper: get current rate from Guide module (overrides saved rate)
@@ -9022,9 +9032,11 @@ export default function BookingDetail() {
         if (total > 0) totalUZS += total;
       });
     }
-    const rawUSD = UZS_PER_USD > 0 ? totalUZS / UZS_PER_USD : 0;
-    return Math.ceil(rawUSD / 100) * 100;
-  }, [sightseeingData, showsData, railways, tourists]);
+    const rate = cbuUsdRate || UZS_PER_USD;
+    const rawUSD = rate > 0 ? totalUZS / rate : 0;
+    // Round to next 100 mark above raw, always adding 100-200
+    return Math.floor(rawUSD / 100) * 100 + 200;
+  }, [sightseeingData, showsData, railways, tourists, cbuUsdRate]);
 
   if (loading) {
     return (
