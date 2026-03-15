@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, bookingsApi, touristsApi, routesApi, railwaysApi, flightsApi, tourServicesApi, transportApi, opexApi } from '../services/api';
+import { calculateGrandTotal, calculateExpenses } from '../utils/ausgabenCalc';
 import { useYear } from '../context/YearContext';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -102,13 +103,115 @@ export default function Dashboard() {
   const [totalPax, setTotalPax] = useState(0);
   const [loading, setLoading] = useState(true);
   const [financial, setFinancial] = useState(null);
+  const [ausgaben, setAusgaben] = useState(null); // from Ausgaben localStorage cache
   const [exchangeRate, setExchangeRate] = useState(12700);
   const isMobile = useIsMobile();
 
   useEffect(() => { loadData(); }, [selectedYear]);
 
+  const [ausgabenLoading, setAusgabenLoading] = useState(false);
+
+  const computeTotalsFromDetailedData = (detailedData) => {
+    const withHotels = detailedData.filter(b => { const e = b.expenses || {}; return e.hotelsUSD > 0 || e.hotelsUZS > 0; });
+    const totalUSD = withHotels.reduce((s, b) => s + (b.expenses?.hotelsUSD || 0) + (b.expenses?.guide || 0), 0);
+    const totalUZS = withHotels.reduce((s, b) => {
+      const e = b.expenses || {};
+      return s + (e.hotelsUZS || 0) + (e.transportSevil || 0) + (e.transportXayrulla || 0) + (e.transportNosir || 0) + (e.railway || 0) + (e.flights || 0) + (e.meals || 0) + (e.eintritt || 0) + (e.metro || 0) + (e.shou || 0) + (e.other || 0);
+    }, 0);
+    return { totalUSD: Math.round(totalUSD), totalUZS: Math.round(totalUZS) };
+  };
+
+  const readAusgabenCache = (year) => {
+    try {
+      const raw = localStorage.getItem(`ausgaben_cache_v6_ALL_${year}`);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const detailedData = parsed.detailedData || [];
+      if (detailedData.length === 0) return null;
+      return computeTotalsFromDetailedData(detailedData);
+    } catch { return null; }
+  };
+
+  const computeAusgabenTotals = async (year) => {
+    setAusgabenLoading(true);
+    try {
+      const resp = await bookingsApi.getAll({ year });
+      const allBookings = (resp.data.bookings || []).filter(b =>
+        b.status !== 'CANCELLED' && ['ER', 'CO', 'KAS', 'ZA'].includes(b.tourType?.code)
+      );
+
+      // Pre-fetch OPEX
+      const tourTypes = [...new Set(allBookings.map(b => (b.tourType?.code || 'ER').toUpperCase()))];
+      const opexCache = {};
+      await Promise.all(tourTypes.map(async (tt) => {
+        const [mealRes, showsRes, sightsRes] = await Promise.all([
+          opexApi.get(tt, 'meal').catch(() => ({ data: { items: [] } })),
+          opexApi.get(tt, 'shows').catch(() => ({ data: { items: [] } })),
+          opexApi.get(tt, 'sightseeing').catch(() => ({ data: { items: [] } })),
+        ]);
+        opexCache[tt] = { meal: mealRes.data?.items || [], shows: showsRes.data?.items || [], sightseeing: sightsRes.data?.items || [] };
+      }));
+
+      let metroVehicles = [];
+      try { metroVehicles = (await transportApi.getAll(year)).data.grouped?.metro || []; } catch {}
+
+      // Process in batches of 5
+      const BATCH = 5;
+      const detailedData = [];
+      for (let i = 0; i < allBookings.length; i += BATCH) {
+        const batch = allBookings.slice(i, i + BATCH);
+        const results = await Promise.all(batch.map(async (booking) => {
+          try {
+            const [accRes, touristRes, routeRes, railRes, flightRes, svcRes] = await Promise.all([
+              bookingsApi.getAccommodations(booking.id).catch(() => ({ data: { accommodations: [] } })),
+              touristsApi.getAll(booking.id).catch(() => ({ data: { tourists: [] } })),
+              routesApi.getAll(booking.id).catch(() => ({ data: { routes: [] } })),
+              railwaysApi.getAll(booking.id).catch(() => ({ data: { railways: [] } })),
+              flightsApi.getAll(booking.id).catch(() => ({ data: { flights: [] } })),
+              tourServicesApi.getAll(booking.id).catch(() => ({ data: { services: [] } })),
+            ]);
+            const accommodations = accRes.data.accommodations || [];
+            const tourists = touristRes.data.tourists || [];
+            const routes = routeRes.data.routes || [];
+            const railways = railRes.data.railways || [];
+            const flights = flightRes.data.flights || [];
+            const tourServices = svcRes.data.services || [];
+
+            const roomingLists = {};
+            await Promise.all(accommodations.map(async (acc) => {
+              try { roomingLists[acc.id] = (await bookingsApi.getAccommodationRoomingList(booking.id, acc.id)).data.roomingList || []; }
+              catch { roomingLists[acc.id] = []; }
+            }));
+
+            const grandTotalData = calculateGrandTotal(accommodations, tourists, roomingLists);
+            const expenses = calculateExpenses(booking, tourists, grandTotalData, routes, railways, flights, tourServices, metroVehicles, opexCache);
+            return { bookingId: booking.id, expenses };
+          } catch { return null; }
+        }));
+        detailedData.push(...results.filter(Boolean));
+      }
+
+      const totals = computeTotalsFromDetailedData(detailedData);
+      setAusgaben(totals);
+
+      // Save to same localStorage key so Ausgaben page can use it too
+      try {
+        localStorage.setItem(`ausgaben_cache_v6_ALL_${year}`, JSON.stringify({
+          detailedData, timestamp: Date.now()
+        }));
+      } catch {}
+    } catch (err) {
+      console.error('Dashboard Ausgaben compute error:', err);
+    } finally {
+      setAusgabenLoading(false);
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
+    // Try localStorage cache first (instant)
+    const cached = readAusgabenCache(selectedYear);
+    if (cached) setAusgaben(cached);
     try {
       const [statsRes, upcomingRes, monthlyRes, financialRes] = await Promise.all([
         dashboardApi.getStats(selectedYear),
@@ -133,6 +236,8 @@ export default function Dashboard() {
       const rate = parseFloat(d[0]?.Rate);
       if (rate > 0) setExchangeRate(Math.round(rate));
     } catch {}
+    // If no cache found, compute Ausgaben totals in background
+    if (!cached) computeAusgabenTotals(selectedYear);
   };
 
   if (loading) {
@@ -159,10 +264,14 @@ export default function Dashboard() {
   const fmtUSD = (n) => '$' + (n || 0).toLocaleString('en-US');
   const fmtUZS = (n) => (n || 0).toLocaleString('ru-RU');
   const inv = financial?.invoice || {};
-  const aus = financial?.ausgaben || {};
   const paidPct = inv.total > 0 ? Math.round((inv.paid / inv.total) * 100) : 0;
+  const aus = ausgaben || {};
   const uzsToUSD = Math.round((aus.totalUZS || 0) / exchangeRate);
   const ausgabenTotal = (aus.totalUSD || 0) + uzsToUSD;
+  const gewinn = (inv.total || 0) - ausgabenTotal;
+  // Gewinn in bar: biggest firma total (INFUTURESTORM) - Ausgaben
+  const infutureTotal = Object.values(inv.byFirma || {}).reduce((max, d) => d.total > max ? d.total : max, 0);
+  const gewinnInBar = infutureTotal - ausgabenTotal;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 space-y-4 md:space-y-6">
@@ -332,28 +441,64 @@ export default function Dashboard() {
               <Link to="/ausgaben" className="text-xs text-emerald-600 hover:underline font-semibold">Ko'rish →</Link>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center px-2.5 py-1.5 bg-blue-50 rounded-lg">
-                <span className="text-xs text-gray-600">USD xarajatlar</span>
-                <span className="font-black text-blue-700 text-sm">{fmtUSD(aus.totalUSD)}</span>
+            {ausgabenLoading && !ausgaben ? (
+              <div className="flex items-center justify-center py-6 text-gray-400 text-xs gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Hisoblanmoqda...
               </div>
-              <div className="flex justify-between items-center px-2.5 py-1.5 bg-amber-50 rounded-lg">
-                <div>
-                  <span className="text-xs text-gray-600 block">UZS xarajatlar</span>
-                  <span className="text-[10px] text-gray-400">≈ {fmtUSD(uzsToUSD)} ({(exchangeRate).toLocaleString()} UZS/$)</span>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center px-2.5 py-1.5 bg-blue-50 rounded-lg">
+                  <span className="text-xs text-gray-600">USD xarajatlar</span>
+                  <span className="font-black text-blue-700 text-sm">{fmtUSD(aus.totalUSD)}</span>
                 </div>
-                <span className="font-black text-amber-700 text-sm">{fmtUZS(aus.totalUZS)}</span>
+                <div className="flex justify-between items-center px-2.5 py-1.5 bg-amber-50 rounded-lg">
+                  <div>
+                    <span className="text-xs text-gray-600 block">UZS xarajatlar</span>
+                    <span className="text-[10px] text-gray-400">≈ {fmtUSD(uzsToUSD)} ({(exchangeRate).toLocaleString()} UZS/$)</span>
+                  </div>
+                  <span className="font-black text-amber-700 text-sm">{fmtUZS(aus.totalUZS)}</span>
+                </div>
+                <div className="flex justify-between items-center px-2.5 py-2 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg mt-1">
+                  <span className="text-xs text-gray-300 font-semibold">Jami ≈</span>
+                  <span className="font-black text-white text-base">{fmtUSD(ausgabenTotal)}</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center px-2.5 py-2 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg mt-1">
-                <span className="text-xs text-gray-300 font-semibold">Jami ≈</span>
-                <span className="font-black text-white text-base">{fmtUSD(ausgabenTotal)}</span>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-gray-400 mt-2 text-right flex items-center justify-end gap-1">
+            )}
+            <p className="text-[10px] text-gray-400 mt-1 text-right flex items-center justify-end gap-1">
               <RefreshCw className="w-2.5 h-2.5" />
               CBU kurs: {(exchangeRate).toLocaleString()} UZS/$
             </p>
+
+            {/* Gewinn */}
+            {inv.total > 0 && ausgabenTotal > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <div className={`flex items-center justify-between px-3 py-2.5 rounded-xl ${gewinn >= 0 ? 'bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200' : 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200'}`}>
+                  <div>
+                    <span className={`text-xs font-black uppercase tracking-wider ${gewinn >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>Gewinn</span>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{fmtUSD(inv.total)} − {fmtUSD(ausgabenTotal)}</p>
+                  </div>
+                  <span className={`font-black text-lg ${gewinn >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {gewinn >= 0 ? '+' : ''}{fmtUSD(gewinn)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Gewinn in bar */}
+            {infutureTotal > 0 && ausgabenTotal > 0 && (
+              <div className="mt-2">
+                <div className={`flex items-center justify-between px-3 py-2.5 rounded-xl ${gewinnInBar >= 0 ? 'bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200' : 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200'}`}>
+                  <div>
+                    <span className={`text-xs font-black uppercase tracking-wider ${gewinnInBar >= 0 ? 'text-teal-700' : 'text-red-700'}`}>Gewinn in bar</span>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{fmtUSD(infutureTotal)} − {fmtUSD(ausgabenTotal)}</p>
+                  </div>
+                  <span className={`font-black text-lg ${gewinnInBar >= 0 ? 'text-teal-700' : 'text-red-600'}`}>
+                    {gewinnInBar >= 0 ? '+' : ''}{fmtUSD(gewinnInBar)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

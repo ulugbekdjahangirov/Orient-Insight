@@ -323,9 +323,9 @@ router.get('/financial', authenticate, async (req, res) => {
     };
 
     const [invoices, hotelsUSDResult, hotelsUZSResult, routesResult, railwaysResult, bookingsWithGuides] = await Promise.all([
-      // Invoice totals
+      // Invoice totals — only invoices with firma set
       prisma.invoice.findMany({
-        where: { booking: bookingWhere },
+        where: { booking: bookingWhere, firma: { not: null } },
         select: { totalAmount: true, isPaid: true, firma: true, currency: true }
       }),
       // Hotels USD (pricePerNight <= 10000)
@@ -367,7 +367,7 @@ router.get('/financial', authenticate, async (req, res) => {
       const amount = inv.totalAmount || 0;
       invoiceTotal += amount;
       if (inv.isPaid) invoicePaid += amount;
-      const firma = inv.firma || 'Other';
+      const firma = inv.firma;
       if (!byFirma[firma]) byFirma[firma] = { total: 0, paid: 0 };
       byFirma[firma].total += amount;
       if (inv.isPaid) byFirma[firma].paid += amount;
