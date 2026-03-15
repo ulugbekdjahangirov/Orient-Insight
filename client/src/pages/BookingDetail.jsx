@@ -12042,11 +12042,52 @@ export default function BookingDetail() {
             // Get meal date based on city using booking routes
             const getMealDate = (meal) => {
               const cityLower = (meal.city || '').toLowerCase();
+              const restaurantLower = (meal.name || meal.restaurant || '').toLowerCase();
+              const isCO = tourTypeCode === 'co';
+
+              // ── CO: use dayOffset from OPEX data + departureDate (most reliable) ──
+              if (isCO && meal.dayOffset != null && booking?.departureDate) {
+                const d = new Date(booking.departureDate);
+                d.setDate(d.getDate() + Number(meal.dayOffset));
+                return d;
+              }
+
               if (cityLower === 'tashkent') {
                 return booking?.arrivalDate ? new Date(booking.arrivalDate) : null;
               }
+
+              // ── CO-specific fallback (when dayOffset not set) ──
+              if (isCO) {
+                if (cityLower === 'samarkand') {
+                  const arrRoute = routes?.find(r => r.city?.toLowerCase() === 'samarkand');
+                  if (!arrRoute?.date) return null;
+                  const d = new Date(arrRoute.date);
+                  if (restaurantLower.includes('dilshod')) d.setDate(d.getDate() + 1);
+                  return d;
+                }
+                if (cityLower === 'bukhara') {
+                  const arrRoute = routes?.find(r => r.city?.toLowerCase() === 'bukhara');
+                  if (!arrRoute?.date) return null;
+                  const d = new Date(arrRoute.date);
+                  if (!restaurantLower.includes('laziz')) d.setDate(d.getDate() + 1);
+                  return d;
+                }
+                if (cityLower === 'qizilqum') {
+                  const route = routes?.find(r =>
+                    r.routeName?.toLowerCase().includes('bukhara') &&
+                    r.routeName?.toLowerCase().includes('khiva')
+                  );
+                  return route?.date ? new Date(route.date) : null;
+                }
+                if (cityLower === 'khiva') {
+                  const route = routes?.find(r => r.city?.toLowerCase() === 'khiva');
+                  return route?.date ? new Date(route.date) : null;
+                }
+                return null;
+              }
+
+              // ── ER-specific logic ──
               if (cityLower === 'nurata') {
-                // Day group leaves Asraf to Bukhara
                 const route = routes?.find(r =>
                   r.routeName?.toLowerCase().includes('asraf') &&
                   r.routeName?.toLowerCase().includes('bukhara')
@@ -12054,7 +12095,6 @@ export default function BookingDetail() {
                 return route?.date ? new Date(route.date) : null;
               }
               if (cityLower === 'khiva') {
-                // Day group arrives from Bukhara to Khiva
                 const route = routes?.find(r =>
                   r.city?.toLowerCase() === 'khiva' &&
                   r.routeName?.toLowerCase().includes('bukhara')
@@ -12069,6 +12109,18 @@ export default function BookingDetail() {
               return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
             };
 
+            // For CO: sort meals by calculated date so Laziz House (arrival day) appears before Dolon (arrival+1)
+            const sortedMeals = tourTypeCode === 'co'
+              ? [...mealsData].sort((a, b) => {
+                  const da = getMealDate(a);
+                  const db = getMealDate(b);
+                  if (!da && !db) return 0;
+                  if (!da) return 1;
+                  if (!db) return -1;
+                  return da - db;
+                })
+              : mealsData;
+
             return (
               <div className="relative overflow-hidden bg-white md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-red-100 p-4 md:p-8">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500"></div>
@@ -12078,7 +12130,7 @@ export default function BookingDetail() {
                   <>
                     {/* MOBILE: card view */}
                     <div className="md:hidden space-y-3">
-                      {mealsData.map((meal, index) => {
+                      {sortedMeals.map((meal, index) => {
                         const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
                         const pricePerPerson = parseFloat(priceStr) || 0;
                         const total = pricePerPerson * pax;
@@ -12136,7 +12188,7 @@ export default function BookingDetail() {
                           </tr>
                         </thead>
                         <tbody>
-                          {mealsData.map((meal, index) => {
+                          {sortedMeals.map((meal, index) => {
                             const priceStr = (meal.price || meal.pricePerPerson || '0').toString().replace(/\s/g, '');
                             const pricePerPerson = parseFloat(priceStr) || 0;
                             const total = pricePerPerson * pax;
