@@ -1705,8 +1705,26 @@ export default function BookingDetail() {
 
           setRechnungInvoice(rechnung || null);
           setNeueRechnungInvoice(neueRechnung || null);
-          setGutschriftInvoice(gutschrift || null);
           setDalolatnomInvoice(dalolatnom || null);
+
+          // Auto-create Gutschrift invoice if Gutschrift tab is already active (e.g. URL direct load) but no record exists
+          const currentDocTab = searchParams.get('docTab') || 'tourist-list';
+          if (!gutschrift && booking?.id && currentDocTab === 'gutschrift') {
+            try {
+              const res = await invoicesApi.create({
+                bookingId: booking.id,
+                invoiceType: 'Gutschrift',
+                totalAmount: 0,
+                currency: 'USD'
+              });
+              const newInv = res.data?.invoice || res.invoice;
+              setGutschriftInvoice(newInv || null);
+            } catch (e) {
+              setGutschriftInvoice(null);
+            }
+          } else {
+            setGutschriftInvoice(gutschrift || null);
+          }
 
           // Fetch ALL invoices globally to calculate sequential numbers (matching Rechnung module display)
           const allInvoicesRes = await invoicesApi.getAll({});
