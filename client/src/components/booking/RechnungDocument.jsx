@@ -718,18 +718,13 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         return;
       }
 
-      // No firma - unlock and auto-calculate (but Gutschrift keeps DB items — manual items, no auto-calc)
+      // No firma - unlock and auto-calculate
       if (!hasFirma) {
 
-        // Clear lock from localStorage
-        localStorage.removeItem(lockKey);
-        lockedInvoiceIdRef.current = null;
-        lockedItemsRef.current = null;
-
-        // Gutschrift: manual items — never auto-recalculate
+        // Gutschrift: manual items — load from DB once, never auto-recalculate
         if (invoiceType === 'Gutschrift') {
-          // Already loaded for this invoice — don't override with stale prop (totalPrices re-run etc.)
-          if (invoiceItemsRef.current.length > 0 && lockedInvoiceIdRef.current === invoiceId) {
+          // Already have items in state — don't override (prevents totalPrices re-run from wiping items)
+          if (invoiceItemsRef.current.length > 0) {
             return;
           }
           // First load: read from DB
@@ -738,14 +733,16 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
               const savedItems = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
               if (Array.isArray(savedItems) && savedItems.length > 0) {
                 setInvoiceItems(savedItems);
-                lockedInvoiceIdRef.current = invoiceId;
-                return;
               }
             } catch (e) {}
           }
-          lockedInvoiceIdRef.current = invoiceId;
           return;
         }
+
+        // Clear lock from localStorage (non-Gutschrift only)
+        localStorage.removeItem(lockKey);
+        lockedInvoiceIdRef.current = null;
+        lockedItemsRef.current = null;
 
         const items = initializeInvoiceItems();
         setInvoiceItems(items);
