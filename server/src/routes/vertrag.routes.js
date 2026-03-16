@@ -122,9 +122,8 @@ const VERTRAG_HTML = `<!DOCTYPE html>
       <p>LLC " ORIENT INSIGHT " Polvonariq MFY,<br>
       Mash'al Str. 334, Landkreis Payariq, 140 100 Samarkand, Uzbekistan</p>
       <p><span class="bold">Beneficiary's Account:</span> 20208840905364923001 (USD)</p>
-      <p><span class="bold">Beneficiary Bank:</span> PJSCB "ORIENT FINANS" SAMARKAND BRANCH,<br>
-      SAMARKAND, UZBEKISTAN &nbsp; MFO (BANK CODE) 01071</p>
-      <p><span class="bold">S.W.I.F.T. CODE: ORFBUZ22</span></p>
+      <p><span class="bold">Beneficiary Bank:</span> PJSCB "ORIENT FINANS" SAMARKAND, UZBEKISTAN</p>
+      <p><span class="bold">S.W.I.F.T. CODE: ORFBUZ22</span> &nbsp; BSC CODE: 11793 &nbsp; MFO: 01071</p>
       <p>Beneficiary's Bank correspondent: National Bank of Uzbekistan</p>
       <p>Bank correspondent's account: 21002840200001071001 &nbsp; S.W.I.F.T. CODE: NBFAUZ2X</p>
     </div>
@@ -167,9 +166,8 @@ const VERTRAG_HTML = `<!DOCTYPE html>
       <p>LLC " ORIENT INSIGHT " Polvonariq MFY,<br>
       Mash'al Str. 334, Landkreis Payariq, 140 100 Samarkand, Uzbekistan</p>
       <p><span class="bold">Beneficiary's Account:</span> 20208840905364923001 (USD)</p>
-      <p><span class="bold">Beneficiary Bank:</span> PJSCB "ORIENT FINANS" SAMARKAND BRANCH,<br>
-      SAMARKAND, UZBEKISTAN &nbsp; MFO (BANK CODE) 01071</p>
-      <p><span class="bold">S.W.I.F.T. CODE: ORFBUZ22</span></p>
+      <p><span class="bold">Beneficiary Bank:</span> PJSCB "ORIENT FINANS" SAMARKAND, UZBEKISTAN</p>
+      <p><span class="bold">S.W.I.F.T. CODE: ORFBUZ22</span> &nbsp; BSC CODE: 11793 &nbsp; MFO: 01071</p>
       <p>Beneficiary's Bank correspondent: National Bank of Uzbekistan</p>
       <p>Bank correspondent's account: 21002840200001071001 &nbsp; S.W.I.F.T. CODE: NBFAUZ2X</p>
     </div>
