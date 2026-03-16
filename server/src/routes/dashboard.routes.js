@@ -602,4 +602,17 @@ router.get('/notifications', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/dashboard/cbu-rate - CBU USD kursini olish
+router.get('/cbu-rate', authenticate, async (req, res) => {
+  try {
+    const response = await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/');
+    const data = await response.json();
+    const rate = parseFloat(data[0]?.Rate);
+    if (!rate || rate <= 0) return res.status(502).json({ error: 'CBU dan kurs olishda xatolik' });
+    res.json({ rate: Math.round(rate), date: data[0]?.Date });
+  } catch (err) {
+    res.status(502).json({ error: 'CBU ga ulanib bo\'lmadi' });
+  }
+});
+
 module.exports = router;

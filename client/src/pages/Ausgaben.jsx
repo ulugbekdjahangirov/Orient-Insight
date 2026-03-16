@@ -140,16 +140,16 @@ export default function Ausgaben() {
     localStorage.removeItem(cacheKey);
     // Clear in-memory cache
     setCache({});
-    loadBookingsAndExpenses();
+    loadBookingsAndExpenses(true);
   };
 
-  const loadBookingsAndExpenses = async () => {
+  const loadBookingsAndExpenses = async (forceRefresh = false) => {
     // Check cache first
     const cacheKey = `${activeTourType}_${selectedYear}`;
     const needsDetailedData = ['general', 'hotels', 'hotel-analysis', 'guides', 'transport', 'transport-analysis', 'uberweisung', 'bank', 'railways'].includes(activeExpenseTab);
 
     // Try localStorage first (persists across page reloads)
-    try {
+    if (!forceRefresh) try {
       const localStorageKey = `ausgaben_cache_v6_${cacheKey}`;
       const cachedData = localStorage.getItem(localStorageKey);
 
@@ -181,7 +181,7 @@ export default function Ausgaben() {
     }
 
     // Check in-memory cache
-    if (cache[cacheKey]?.bookings && (!needsDetailedData || cache[cacheKey]?.detailedData)) {
+    if (!forceRefresh && cache[cacheKey]?.bookings && (!needsDetailedData || cache[cacheKey]?.detailedData)) {
       const nonCancelledBookings = cache[cacheKey].bookings.filter(b => b.status !== 'CANCELLED');
       setBookings(nonCancelledBookings);
       if (cache[cacheKey].detailedData) {

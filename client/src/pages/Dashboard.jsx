@@ -105,9 +105,20 @@ export default function Dashboard() {
   const [financial, setFinancial] = useState(null);
   const [ausgaben, setAusgaben] = useState(null); // from Ausgaben localStorage cache
   const [exchangeRate, setExchangeRate] = useState(12700);
+  const [rateLoading, setRateLoading] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => { loadData(); }, [selectedYear]);
+
+  const fetchCbuRate = async () => {
+    setRateLoading(true);
+    try {
+      const r = await dashboardApi.getCbuRate();
+      if (r.data?.rate > 0) setExchangeRate(r.data.rate);
+    } catch {} finally {
+      setRateLoading(false);
+    }
+  };
 
   const [ausgabenLoading, setAusgabenLoading] = useState(false);
   const [hotelStatusData, setHotelStatusData] = useState({});
@@ -467,13 +478,8 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-    // Fetch CBU exchange rate (non-blocking)
-    try {
-      const r = await fetch('https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/');
-      const d = await r.json();
-      const rate = parseFloat(d[0]?.Rate);
-      if (rate > 0) setExchangeRate(Math.round(rate));
-    } catch {}
+    // Fetch CBU exchange rate via backend proxy (avoids CORS)
+    fetchCbuRate();
     // If no cache found, compute Ausgaben totals in background
     if (!cached) computeAusgabenTotals(selectedYear);
     // Load hotel status from Jahresplanung data
@@ -746,10 +752,10 @@ export default function Dashboard() {
                 )}
               </div>
             )}
-            <p className="text-xs text-gray-400 mt-1.5 text-right flex items-center justify-end gap-1">
-              <RefreshCw className="w-3 h-3" />
+            <button onClick={fetchCbuRate} className="text-xs text-gray-400 mt-1.5 w-full text-right flex items-center justify-end gap-1 hover:text-blue-500 transition-colors">
+              <RefreshCw className={`w-3 h-3 ${rateLoading ? 'animate-spin' : ''}`} />
               CBU kurs: {(exchangeRate).toLocaleString()} UZS/$
-            </p>
+            </button>
 
             {/* Gewinn */}
             {inv.total > 0 && ausgabenTotal > 0 && (

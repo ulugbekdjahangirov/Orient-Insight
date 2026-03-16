@@ -216,7 +216,8 @@ export const dashboardApi = {
   getMonthly: (year) => api.get('/dashboard/monthly', { params: { year } }),
   getGuideWorkload: () => api.get('/dashboard/guide-workload'),
   getNotifications: () => api.get('/dashboard/notifications'),
-  getFinancial: (year) => api.get('/dashboard/financial', { params: { year } })
+  getFinancial: (year) => api.get('/dashboard/financial', { params: { year } }),
+  getCbuRate: () => api.get('/dashboard/cbu-rate')
 };
 
 // API для пользователей
