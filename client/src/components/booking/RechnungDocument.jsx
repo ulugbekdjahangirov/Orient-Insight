@@ -718,13 +718,24 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         return;
       }
 
-      // No firma - unlock and auto-calculate
+      // No firma - unlock and auto-calculate (but Gutschrift keeps DB items — manual items, no auto-calc)
       if (!hasFirma) {
 
         // Clear lock from localStorage
         localStorage.removeItem(lockKey);
         lockedInvoiceIdRef.current = null;
         lockedItemsRef.current = null;
+
+        // Gutschrift: load from DB if items exist (manual items, should not be recalculated)
+        if (invoiceType === 'Gutschrift' && invoice?.items) {
+          try {
+            const savedItems = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
+            if (Array.isArray(savedItems) && savedItems.length > 0) {
+              setInvoiceItems(savedItems);
+              return;
+            }
+          } catch (e) {}
+        }
 
         const items = initializeInvoiceItems();
         setInvoiceItems(items);
