@@ -1924,8 +1924,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 }
 
                 // Check if tourist has custom dates (for backwards compatibility)
-                const hasCustomDates = isFirstHotel && (t.checkInDate || t.checkOutDate);
-                const customCheckIn = isFirstHotel && t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
+                const hasCustomDates = t.checkInDate || (isFirstHotel && t.checkOutDate);
+                const customCheckIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
                 const customCheckOut = isFirstHotel && t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
 
                 // Extract flight date and arrival date from remarks: "Flight: 09.10, Arrival: 10.10"
