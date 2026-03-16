@@ -726,15 +726,25 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
         lockedInvoiceIdRef.current = null;
         lockedItemsRef.current = null;
 
-        // Gutschrift: load from DB if items exist (manual items, should not be recalculated)
-        if (invoiceType === 'Gutschrift' && invoice?.items) {
-          try {
-            const savedItems = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
-            if (Array.isArray(savedItems) && savedItems.length > 0) {
-              setInvoiceItems(savedItems);
-              return;
-            }
-          } catch (e) {}
+        // Gutschrift: manual items — never auto-recalculate
+        if (invoiceType === 'Gutschrift') {
+          // Already loaded for this invoice — don't override with stale prop (totalPrices re-run etc.)
+          if (invoiceItemsRef.current.length > 0 && lockedInvoiceIdRef.current === invoiceId) {
+            return;
+          }
+          // First load: read from DB
+          if (invoice?.items) {
+            try {
+              const savedItems = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
+              if (Array.isArray(savedItems) && savedItems.length > 0) {
+                setInvoiceItems(savedItems);
+                lockedInvoiceIdRef.current = invoiceId;
+                return;
+              }
+            } catch (e) {}
+          }
+          lockedInvoiceIdRef.current = invoiceId;
+          return;
         }
 
         const items = initializeInvoiceItems();
