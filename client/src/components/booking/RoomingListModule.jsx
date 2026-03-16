@@ -2134,6 +2134,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                             ].map(phrase => (
                               <button
                                 key={phrase}
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => {
                                   const current = remarksValue ? remarksValue + '\n' + phrase : phrase;
                                   setRemarksValue(current);
@@ -2145,6 +2146,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                             ))}
                             {/* Button to insert current date */}
                             <button
+                              onMouseDown={(e) => e.preventDefault()}
                               onClick={() => {
                                 const today = new Date();
                                 const dateStr = formatDisplayDate(today.toISOString());
@@ -2164,7 +2166,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                                   const dateStr = formatDisplayDate(e.target.value);
                                   const current = remarksValue ? remarksValue + ' ' + dateStr : dateStr;
                                   setRemarksValue(current);
-                                  e.target.value = ''; // Reset after selection
+                                  e.target.value = '';
                                 }
                               }}
                               className="px-2 py-1 text-xs border border-gray-300 rounded-lg hover:border-blue-400 transition-colors"
