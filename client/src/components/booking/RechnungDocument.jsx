@@ -765,6 +765,16 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
             totalAmount: amountToSave,
             items: JSON.stringify(invoiceItems)
           });
+          // Also update localStorage lock so refresh doesn't restore stale items
+          const lockKey = `invoice_lock_${invoice.id}`;
+          const storedLock = localStorage.getItem(lockKey);
+          if (storedLock) {
+            try {
+              const lockData = JSON.parse(storedLock);
+              lockData.items = invoiceItems;
+              localStorage.setItem(lockKey, JSON.stringify(lockData));
+            } catch (e) {}
+          }
         } catch (error) {
           console.error('Error updating invoice:', error);
         }
