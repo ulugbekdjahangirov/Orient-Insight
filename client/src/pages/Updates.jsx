@@ -820,6 +820,14 @@ export default function Updates() {
 
   const activeModule = tourTypeModules.find(m => m.code === activeTab);
 
+  // Display PAX: tourists count if PDF/EXCEL imported, else booking.pax
+  const getDisplayPax = (booking) => {
+    if ((booking._touristsCount || 0) > 0 && booking.paxSource !== 'BOOKING_OVERVIEW') {
+      return booking._touristsCount;
+    }
+    return booking.pax || 0;
+  };
+
   // Calculate status based on PAX count, departure date, and end date
   const getStatusByPax = (pax, departureDate, endDate) => {
     const paxCount = parseInt(pax) || 0;
@@ -1079,9 +1087,9 @@ export default function Updates() {
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 text-indigo-400" />
-                          <span className="font-bold text-gray-800 text-sm">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
+                          <span className="font-bold text-gray-800 text-sm">{calculatedStatus === 'CANCELLED' ? 0 : getDisplayPax(booking)}</span>
                           <span className="text-gray-500">PAX</span>
-                          {activeTab === 'ER' && booking.pax > 0 && (
+                          {activeTab === 'ER' && getDisplayPax(booking) > 0 && (
                             <span className="text-gray-400 whitespace-nowrap">· UZ: {booking.paxUzbekistan || 0} · TM: {booking.paxTurkmenistan || 0}</span>
                           )}
                         </div>
@@ -1197,7 +1205,7 @@ export default function Updates() {
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-1 text-sm">
                           <Users className="w-3.5 h-3.5 text-primary-500" />
-                          <span className="font-bold text-gray-900">{calculatedStatus === 'CANCELLED' ? 0 : booking.pax}</span>
+                          <span className="font-bold text-gray-900">{calculatedStatus === 'CANCELLED' ? 0 : getDisplayPax(booking)}</span>
                         </div>
                       </td>
                       {(() => {
@@ -1234,7 +1242,7 @@ export default function Updates() {
           {/* Total PAX Summary */}
           {!loading && bookings.length > 0 && (() => {
             const activeBookings = bookings.filter(b => b.status !== 'CANCELLED');
-            const totalPax     = activeBookings.reduce((s, b) => s + (b.pax || 0), 0);
+            const totalPax     = activeBookings.reduce((s, b) => s + getDisplayPax(b), 0);
             const totalUzbek   = activeBookings.reduce((s, b) => s + (b.paxUzbekistan || 0), 0);
             const totalTurkmen = activeBookings.reduce((s, b) => s + (b.paxTurkmenistan || 0), 0);
             return (
