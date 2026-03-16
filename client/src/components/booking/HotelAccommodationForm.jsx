@@ -637,7 +637,39 @@ export default function HotelAccommodationForm({
       });
     }
 
-    return { totalRooms, totalGuests, totalCost, totalTouristTax, isPAX, currency, extraNightsTotal, extraNightsDetails, roomingListDetails };
+    // Early check-in surcharge: tourists with "Ранний заезд" in remarks → +0.5 night per room
+    let earlyCheckInCost = 0;
+    const earlyCheckInDetails = [];
+    if (hasRoomingData) {
+      const earlyByRoomType = {};
+      dataSource.forEach(t => {
+        if (!(t.remarks || '').toLowerCase().includes('ранний заезд')) return;
+        let rt = (t.roomPreference || '').toUpperCase();
+        if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
+        if (rt === 'TWIN') rt = 'TWN';
+        if (rt === 'SINGLE' || rt === 'EZ') rt = 'SNGL';
+        earlyByRoomType[rt] = (earlyByRoomType[rt] || 0) + 1;
+      });
+
+      const consumedEarlyTypes = {};
+      rooms.forEach(room => {
+        let rt = room.roomTypeCode?.toUpperCase();
+        if (rt === 'DOUBLE') rt = 'DBL';
+        if (rt === 'TWIN') rt = 'TWN';
+        if (rt === 'SINGLE') rt = 'SNGL';
+        if (!earlyByRoomType[rt] || consumedEarlyTypes[rt]) return;
+        consumedEarlyTypes[rt] = true;
+        const pricePerNight = parseFloat(room.pricePerNight) || 0;
+        const touristCount = earlyByRoomType[rt];
+        const earlyRooms = (rt === 'DBL' || rt === 'TWN') ? Math.ceil(touristCount / 2) : touristCount;
+        const surcharge = earlyRooms * 0.5 * pricePerNight;
+        earlyCheckInCost += surcharge;
+        earlyCheckInDetails.push({ roomType: rt, rooms: earlyRooms, pricePerNight, surcharge });
+      });
+    }
+    totalCost += earlyCheckInCost;
+
+    return { totalRooms, totalGuests, totalCost, totalTouristTax, isPAX, currency, extraNightsTotal, extraNightsDetails, roomingListDetails, earlyCheckInCost, earlyCheckInDetails };
   }, [rooms, nights, accommodationRoomTypes, selectedHotelRoomTypes, tourists, roomingList, formData.checkInDate, formData.checkOutDate, formData.hotelId, editingAccommodation, hotels, booking, guestDates]);
 
   // Auto-save totals when they are calculated (after auto-fill)

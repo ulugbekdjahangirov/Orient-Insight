@@ -5795,6 +5795,31 @@ export default function BookingDetail() {
             totalCost += roomNights * pricePerNight;
           });
 
+          // Early check-in surcharge: +0.5 night per room with "Ранний заезд"
+          const earlyByRoomType = {};
+          accTourists.forEach(t => {
+            if (!(t.remarks || '').toLowerCase().includes('ранний заезд')) return;
+            let rt = (t.roomPreference || '').toUpperCase();
+            if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
+            if (rt === 'TWIN') rt = 'TWN';
+            if (rt === 'SINGLE' || rt === 'EZ') rt = 'SNGL';
+            earlyByRoomType[rt] = (earlyByRoomType[rt] || 0) + 1;
+          });
+          const consumedEarlyTypes = {};
+          acc.rooms.forEach(room => {
+            let rt = room.roomTypeCode?.toUpperCase();
+            if (rt === 'DOUBLE') rt = 'DBL';
+            if (rt === 'TWIN') rt = 'TWN';
+            if (rt === 'SINGLE') rt = 'SNGL';
+            if (!earlyByRoomType[rt] || consumedEarlyTypes[rt]) return;
+            consumedEarlyTypes[rt] = true;
+            const pricePerNight = parseFloat(room.pricePerNight) || 0;
+            if (!pricePerNight) return;
+            const touristCount = earlyByRoomType[rt];
+            const earlyRooms = (rt === 'DBL' || rt === 'TWN') ? Math.ceil(touristCount / 2) : touristCount;
+            totalCost += earlyRooms * 0.5 * pricePerNight;
+          });
+
           if (totalCost > 0) {
             await bookingsApi.updateAccommodation(booking.id, acc.id, {
               totalCost,
@@ -17253,6 +17278,42 @@ License №T-0084-08 from 2021-04-26`;
                                 // Recalculate totalCost from breakdown if we have breakdown items (uses current prices)
                                 if (calculationBreakdown.length > 0) {
                                   totalCost = calculationBreakdown.reduce((sum, item) => sum + item.totalCost, 0);
+                                }
+
+                                // Early check-in surcharge: +0.5 night per room with "Ранний заезд"
+                                if (accTourists.length > 0 && acc.rooms?.length > 0 && booking?.status !== 'CANCELLED') {
+                                  const earlyByRoomType = {};
+                                  accTourists.forEach(t => {
+                                    if (!(t.remarks || '').toLowerCase().includes('ранний заезд')) return;
+                                    let rt = (t.roomPreference || '').toUpperCase();
+                                    if (rt === 'DOUBLE' || rt === 'DZ') rt = 'DBL';
+                                    if (rt === 'TWIN') rt = 'TWN';
+                                    if (rt === 'SINGLE' || rt === 'EZ') rt = 'SNGL';
+                                    earlyByRoomType[rt] = (earlyByRoomType[rt] || 0) + 1;
+                                  });
+                                  const consumedEarlyTypes = {};
+                                  acc.rooms.forEach(room => {
+                                    let rt = room.roomTypeCode?.toUpperCase();
+                                    if (rt === 'DOUBLE') rt = 'DBL';
+                                    if (rt === 'TWIN') rt = 'TWN';
+                                    if (rt === 'SINGLE') rt = 'SNGL';
+                                    if (!earlyByRoomType[rt] || consumedEarlyTypes[rt]) return;
+                                    consumedEarlyTypes[rt] = true;
+                                    const pricePerNight = parseFloat(room.pricePerNight) || 0;
+                                    if (!pricePerNight) return;
+                                    const touristCount = earlyByRoomType[rt];
+                                    const earlyRooms = (rt === 'DBL' || rt === 'TWN') ? Math.ceil(touristCount / 2) : touristCount;
+                                    const surcharge = earlyRooms * 0.5 * pricePerNight;
+                                    totalCost += surcharge;
+                                    calculationBreakdown.push({
+                                      roomType: `${rt} (Ранний заезд)`,
+                                      roomNights: earlyRooms * 0.5,
+                                      pricePerNight,
+                                      totalCost: surcharge,
+                                      guestNights: earlyRooms * 0.5,
+                                      details: []
+                                    });
+                                  });
                                 }
 
                                 // If still 0, calculate from rooms
