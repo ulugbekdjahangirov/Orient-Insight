@@ -2055,13 +2055,27 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 if (t.fullName?.includes('Baetgen') || t.lastName?.includes('Baetgen')) {
                 }
 
+                // Only show hotel-relevant remarks (Ранний заезд, Extra Night etc.) and only for first hotel
+                const hotelKeywords = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+                const hotelRemarks = isFirstHotel && t.remarks
+                  ? t.remarks.split('\n').map(l => l.trim()).filter(l => {
+                      if (!l) return false;
+                      const kw = hotelKeywords.find(k => l.toLowerCase().includes(k));
+                      return !!kw;
+                    }).map(l => {
+                      const kw = hotelKeywords.find(k => l.toLowerCase().includes(k));
+                      return l.slice(l.toLowerCase().indexOf(kw));
+                    })
+                  : [];
+                const hotelRemarksText = hotelRemarks.join('\n');
+
                 if (isMobile) {
                   // --- MOBILE compact card ---
                   const isTKM = tPlacement.toLowerCase().includes('turkmen') || tPlacement.toLowerCase().includes('туркмен');
                   const isUZB = tPlacement.toLowerCase().includes('uzbek') || tPlacement.toLowerCase().includes('узбек');
                   const placementLabel = isTKM ? 'TM' : isUZB ? 'UZ' : null;
                   const placementColor = isTKM ? 'bg-purple-500' : 'bg-green-500';
-                  const hasRemarks = t.remarks && t.remarks.trim();
+                  const hasRemarks = hotelRemarksText.trim().length > 0;
                   return (
                     <div key={t.id} className={`flex flex-col gap-2.5 p-0 ${rowBgClass ? 'bg-yellow-50' : ''}`}>
                       {/* Row 1: number + name + badges */}
@@ -2090,7 +2104,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       {hasRemarks && (
                         <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
                           <span className="text-amber-500 text-xs mt-0.5">📝</span>
-                          <span className="text-xs text-amber-800 leading-snug">{t.remarks}</span>
+                          <span className="text-xs text-amber-800 leading-snug">{hotelRemarksText}</span>
                         </div>
                       )}
 
@@ -2262,21 +2276,15 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                           title="Нажмите, чтобы редактировать"
                         >
                           {(() => {
-                            const remarks = (t.remarks || '').trim();
-                            if (!remarks || remarks === '-') {
-                              return (
-                                <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                  <span>-</span>
-                                  <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Edit className="w-3 h-3 inline mr-1" />Добавить
-                                  </span>
-                                </div>
-                              );
-                            }
-                            const lines = remarks.split('\n').map(l => l.trim()).filter(Boolean)
-                              .filter(l => !/PAX booked half double|no roommate found/i.test(l));
+                            // Only show hotel-relevant remarks (Ранний заезд/Extra Night) for first hotel
+                            const lines = hotelRemarks;
                             if (lines.length === 0) return (
-                              <div className="flex items-center gap-2 text-gray-400 text-sm"><span>-</span></div>
+                              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                <span>-</span>
+                                <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Edit className="w-3 h-3 inline mr-1" />Добавить
+                                </span>
+                              </div>
                             );
                             const isExpanded = expandedRemarkIds.has(t.id);
                             const PREVIEW_LINES = 2;

@@ -4494,6 +4494,20 @@ router.get('/:bookingId/rooming-list-preview', authenticatePreview, async (req, 
             }
           }
 
+          // Add hotel-relevant tourist remarks only (Ранний заезд, Extra Night etc.)
+          if (t.remarks && t.remarks.trim()) {
+            const hotelKeywords = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+            t.remarks.split('\n').forEach(line => {
+              const l = line.trim();
+              if (l && hotelKeywords.some(kw => l.toLowerCase().includes(kw))) {
+                // Extract only the matching keyword phrase, not the whole line
+                const matchedKw = hotelKeywords.find(kw => l.toLowerCase().includes(kw));
+                const idx = l.toLowerCase().indexOf(matchedKw);
+                remarksLines.push(l.slice(idx));
+              }
+            });
+          }
+
           let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;
           let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
           let customDeparture = false;
@@ -4588,6 +4602,19 @@ router.get('/:bookingId/rooming-list-preview', authenticatePreview, async (req, 
           if (!notes.includes('PAX booked half double room') && !notes.includes('no roommate found')) {
             remarksLines.push(notes);
           }
+        }
+
+        // Add hotel-relevant tourist remarks only (Ранний заезд, Extra Night etc.)
+        if (t.remarks && t.remarks.trim()) {
+          const hotelKeywords = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+          t.remarks.split('\n').forEach(line => {
+            const l = line.trim();
+            if (l && hotelKeywords.some(kw => l.toLowerCase().includes(kw))) {
+              const matchedKw = hotelKeywords.find(kw => l.toLowerCase().includes(kw));
+              const idx = l.toLowerCase().indexOf(matchedKw);
+              remarksLines.push(l.slice(idx));
+            }
+          });
         }
 
         let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;
@@ -5339,6 +5366,20 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePre
             }
           }
 
+          // Add hotel-relevant tourist remarks only (Ранний заезд, Extra Night etc.)
+          if (isFirstAccommodation && t.remarks && t.remarks.trim()) {
+            const hotelKeywords = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+            t.remarks.split('\n').forEach(line => {
+              const l = line.trim();
+              if (l && hotelKeywords.some(kw => l.toLowerCase().includes(kw))) {
+                // Extract only the matching keyword phrase, not the whole line
+                const matchedKw = hotelKeywords.find(kw => l.toLowerCase().includes(kw));
+                const idx = l.toLowerCase().indexOf(matchedKw);
+                remarksLines.push(l.slice(idx));
+              }
+            });
+          }
+
           let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;
           let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
           let customDeparture = false;
@@ -5433,6 +5474,19 @@ router.get('/:bookingId/hotel-request-preview/:accommodationId', authenticatePre
           if (!notes.includes('PAX booked half double room') && !notes.includes('no roommate found')) {
             remarksLines.push(notes);
           }
+        }
+
+        // Add hotel-relevant tourist remarks only (Ранний заезд, Extra Night etc.)
+        if (isFirstAccommodation && t.remarks && t.remarks.trim()) {
+          const hotelKeywords = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+          t.remarks.split('\n').forEach(line => {
+            const l = line.trim();
+            if (l && hotelKeywords.some(kw => l.toLowerCase().includes(kw))) {
+              const matchedKw = hotelKeywords.find(kw => l.toLowerCase().includes(kw));
+              const idx = l.toLowerCase().indexOf(matchedKw);
+              remarksLines.push(l.slice(idx));
+            }
+          });
         }
 
         let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;
@@ -6167,6 +6221,19 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
               }
             }
 
+            // Add hotel-relevant tourist remarks only (Ранний заезд, Extra Night etc.)
+            if (isFirstAccommodation && t.remarks && t.remarks.trim()) {
+              const hotelKeywords = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+              t.remarks.split('\n').forEach(line => {
+                const l = line.trim();
+                if (l && hotelKeywords.some(kw => l.toLowerCase().includes(kw))) {
+                  const matchedKw = hotelKeywords.find(kw => l.toLowerCase().includes(kw));
+                  const idx = l.toLowerCase().indexOf(matchedKw);
+                  remarksLines.push(l.slice(idx));
+                }
+              });
+            }
+
             let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;
             let displayDeparture = touristCheckOutDate ? formatDisplayDate(touristCheckOutDate) : departureDate;
             let customDeparture = false;
@@ -6259,6 +6326,20 @@ router.get('/:bookingId/hotel-request-combined/:hotelId', authenticatePreview, a
             if (!notes.includes('PAX booked half double room') && !notes.includes('no roommate found')) {
               remarksLines.push(notes);
             }
+          }
+
+          // Add hotel-relevant tourist remarks only (Ранний заезд, Extra Night etc.)
+          if (isFirstAccommodation && t.remarks && t.remarks.trim()) {
+            const hotelKeywords = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+            t.remarks.split('\n').forEach(line => {
+              const l = line.trim();
+              if (l && hotelKeywords.some(kw => l.toLowerCase().includes(kw))) {
+                // Extract only the matching keyword phrase, not the whole line
+                const matchedKw = hotelKeywords.find(kw => l.toLowerCase().includes(kw));
+                const idx = l.toLowerCase().indexOf(matchedKw);
+                remarksLines.push(l.slice(idx));
+              }
+            });
           }
 
           let displayArrival = touristCheckInDate ? formatDisplayDate(touristCheckInDate) : arrivalDate;

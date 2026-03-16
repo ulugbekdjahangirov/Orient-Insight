@@ -18288,9 +18288,15 @@ License №T-0084-08 from 2021-04-26`;
                                             {(() => {
                                               const notes = [];
 
-                                              // Show tourist remarks from Final List (Additional Information)
-                                              if (t.remarks && t.remarks.trim() && t.remarks.trim() !== '-') {
-                                                notes.push(t.remarks.trim());
+                                              // Show hotel-relevant remarks (Ранний заезд/Extra Night) only for first hotel
+                                              if (isFirstAccommodation && t.remarks && t.remarks.trim()) {
+                                                const hotelKws = ['ранний заезд', 'extra night', 'поздний выезд', 'late checkout', 'early check'];
+                                                t.remarks.trim().split('\n').forEach(line => {
+                                                  const l = line.trim();
+                                                  if (!l) return;
+                                                  const kw = hotelKws.find(k => l.toLowerCase().includes(k));
+                                                  if (kw) notes.push(l.slice(l.toLowerCase().indexOf(kw)));
+                                                });
                                               }
 
                                               // Check if early arrival (tourist arrives before group)
