@@ -18227,6 +18227,11 @@ License №T-0084-08 from 2021-04-26`;
                                             {(() => {
                                               const notes = [];
 
+                                              // Show tourist remarks from Final List (Additional Information)
+                                              if (t.remarks && t.remarks.trim() && t.remarks.trim() !== '-') {
+                                                notes.push(t.remarks.trim());
+                                              }
+
                                               // Check if early arrival (tourist arrives before group)
                                               if (touristCheckInDate.getTime() < accCheckIn.getTime()) {
                                                 const earlyDate = format(touristCheckInDate, 'dd.MM.yyyy');
