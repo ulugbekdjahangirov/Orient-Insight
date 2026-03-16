@@ -1045,13 +1045,25 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       doc.setFont('helvetica', 'bold');
       doc.text('Beneficiary Bank:', leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('PJSCB "ORIENT FINANS" SAMARKAND BRANCH, SAMARKAND, UZBEKISTAN', rightCol, yPos);
+      doc.text('PJSCB "ORIENT FINANS" SAMARKAND, UZBEKISTAN', rightCol, yPos);
       yPos += 5;
 
       doc.setFont('helvetica', 'bold');
       doc.text('S.W.I.F.T. CODE:', leftCol, yPos);
       doc.setFont('helvetica', 'normal');
       doc.text('ORFBUZ22', rightCol, yPos);
+      yPos += 5;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('BSC CODE:', leftCol, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('11793', rightCol, yPos);
+      yPos += 5;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('MFO:', leftCol, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text('01071', rightCol, yPos);
       yPos += 5;
 
       doc.setFont('helvetica', 'bold');
@@ -1063,7 +1075,7 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       doc.setFont('helvetica', 'bold');
       doc.text("Correspondent's account:", leftCol, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text('21002840200010071001 (USD)  /  21002978100010071001 (EUR)', rightCol, yPos);
+      doc.text('21002840200001071001 (USD)  /  21002978100010071001 (EUR)', rightCol, yPos);
       yPos += 5;
 
       doc.setFont('helvetica', 'bold');

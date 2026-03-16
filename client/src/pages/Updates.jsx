@@ -953,7 +953,7 @@ export default function Updates() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100 overflow-hidden">
+      <div className="bg-gradient-to-br from-white to-gray-50 md:rounded-3xl shadow-md md:shadow-2xl border-y-2 md:border-2 border-gray-100">
         <div className="flex bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 gap-2 md:gap-3 p-3 md:p-4">
           {tourTypeModules.map((module) => {
             const isActive = activeTab === module.code;
