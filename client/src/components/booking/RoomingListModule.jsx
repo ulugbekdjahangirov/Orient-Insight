@@ -42,6 +42,11 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
   // Export dropdown state
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
+  // Bulk remark state
+  const [bulkRemarkOpen, setBulkRemarkOpen] = useState(false);
+  const [bulkRemarkPhrase, setBulkRemarkPhrase] = useState('Ранний заезд');
+  const [bulkRemarkSaving, setBulkRemarkSaving] = useState(false);
+
   // Add Tourist modal state
   const [addTouristModalOpen, setAddTouristModalOpen] = useState(false);
   const [newTouristForm, setNewTouristForm] = useState({
@@ -440,6 +445,29 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     } catch (error) {
       console.error('Error saving tourist:', error);
       toast.error(error.response?.data?.error || 'Error saving changes');
+    }
+  };
+
+  const handleBulkAddRemark = async () => {
+    if (!bulkRemarkPhrase.trim()) return;
+    setBulkRemarkSaving(true);
+    try {
+      await Promise.all(tourists.map(t => {
+        const existing = (t.remarks || '').trim();
+        const phrase = bulkRemarkPhrase.trim();
+        // Don't add if already contains this phrase
+        if (existing.toLowerCase().includes(phrase.toLowerCase())) return Promise.resolve();
+        const newRemarks = existing ? existing + '\n' + phrase : phrase;
+        return touristsApi.update(bookingId, t.id, { remarks: newRemarks });
+      }));
+      toast.success(`"${bulkRemarkPhrase}" barcha turistlarga qo'shildi`);
+      setBulkRemarkOpen(false);
+      loadData();
+      onUpdate?.();
+    } catch (error) {
+      toast.error('Xatolik yuz berdi');
+    } finally {
+      setBulkRemarkSaving(false);
     }
   };
 
@@ -1768,6 +1796,41 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
           </div>
           <div className="flex items-center gap-4">
             <button onClick={openAddTouristModal} className="inline-flex items-center gap-2.5 px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 text-base font-semibold shadow-lg transition-all"><Plus className="w-5 h-5" />Add</button>
+            {tourists.length > 0 && (
+              <div className="relative">
+                <button onClick={() => setBulkRemarkOpen(!bulkRemarkOpen)} className="inline-flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-lg transition-all" title="Barcha turistlarga remark qo'shish">
+                  <Edit className="w-4 h-4" />Bulk
+                </button>
+                {bulkRemarkOpen && (
+                  <><div className="fixed inset-0 z-10" onClick={() => setBulkRemarkOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl z-20 p-4 space-y-3">
+                    <div className="text-sm font-semibold text-gray-700">Barcha turistlarga qo'shish</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Ранний заезд', 'Поздний выезд', 'Vegetarian', 'Birthday', 'Extra nights', 'VIP'].map(p => (
+                        <button key={p} onMouseDown={(e) => e.preventDefault()} onClick={() => setBulkRemarkPhrase(p)}
+                          className={`px-2 py-1 text-xs rounded-lg border transition-colors ${bulkRemarkPhrase === p ? 'bg-amber-500 text-white border-amber-500' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-amber-50'}`}>
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={bulkRemarkPhrase}
+                      onChange={(e) => setBulkRemarkPhrase(e.target.value)}
+                      placeholder="Yoki o'z matnini yozing..."
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+                    />
+                    <button
+                      onClick={handleBulkAddRemark}
+                      disabled={bulkRemarkSaving || !bulkRemarkPhrase.trim()}
+                      className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                    >
+                      {bulkRemarkSaving ? 'Saqlanmoqda...' : `Barcha ${tourists.length} ta turistga qo'shish`}
+                    </button>
+                  </div></>
+                )}
+              </div>
+            )}
             {tourists.length > 0 && (
               <div className="relative">
                 <button onClick={() => setExportMenuOpen(!exportMenuOpen)} className="inline-flex items-center gap-2.5 px-6 py-3 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 text-base font-semibold text-gray-700 shadow-sm transition-all">
