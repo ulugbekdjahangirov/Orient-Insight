@@ -727,15 +727,19 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
           if (invoiceItemsRef.current.length > 0) {
             return;
           }
-          // First load: read from DB
+          // First load: read from DB if items saved
           if (invoice?.items) {
             try {
               const savedItems = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
               if (Array.isArray(savedItems) && savedItems.length > 0) {
                 setInvoiceItems(savedItems);
+                return;
               }
             } catch (e) {}
           }
+          // No saved items yet — auto-calculate initial items (same as Rechnung)
+          const items = initializeInvoiceItems();
+          setInvoiceItems(items);
           return;
         }
 

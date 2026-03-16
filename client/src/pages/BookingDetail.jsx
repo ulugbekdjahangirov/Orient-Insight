@@ -533,6 +533,23 @@ export default function BookingDetail() {
       params.set('docTab', tab);
       navigate(`?${params.toString()}`, { replace: true });
     }
+    // Auto-create Gutschrift invoice if it doesn't exist
+    if (tab === 'gutschrift' && !gutschriftInvoice && booking?.id) {
+      try {
+        const res = await invoicesApi.create({
+          bookingId: booking.id,
+          invoiceType: 'Gutschrift',
+          totalAmount: 0,
+          currency: 'USD'
+        });
+        const newInvoice = res.data?.invoice || res.invoice;
+        if (newInvoice) {
+          setGutschriftInvoice(newInvoice);
+        }
+      } catch (e) {
+        console.error('Gutschrift invoice auto-create error:', e);
+      }
+    }
     // Auto-create Dalolatnoma invoice if it doesn't exist
     if (tab === 'dalolatnoma' && !dalolatnomInvoice && booking?.id) {
       try {
