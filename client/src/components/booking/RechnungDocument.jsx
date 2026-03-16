@@ -1349,6 +1349,8 @@ const RechnungDocument = React.forwardRef(function RechnungDocument({ booking, t
       yPos += 5;
 
       doc.setFont('helvetica', 'normal');
+      doc.text('Singapore – OCBCSGSG', 15, yPos);
+      yPos += 5;
       doc.text('SWIFT BIC code: (for TT in USD) Intermediary Bank JP Morgan Chase Bank,', 15, yPos);
       yPos += 5;
       doc.text('New York, USA – CHASUS33', 15, yPos);
