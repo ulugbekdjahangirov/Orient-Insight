@@ -1077,9 +1077,10 @@ class EmailImportProcessor {
   }
 
   /**
-   * Detect cancelled (strikethrough/red) tourist names in a PDF using pdfjs-dist.
-   * Returns a Set of lowercase name fragments that were rendered in red color.
-   * These correspond to cancelled tourists that should be excluded from import.
+   * Detect cancelled tourist names in a PDF using pdfjs-dist.
+   * Method 1: red-colored text (r>0.5, g<0.3, b<0.3)
+   * Method 2: horizontal strikethrough line drawn over text (any color, incl. black)
+   * Returns a Set of lowercase name fragments for cancelled tourists.
    */
   async _extractCancelledNamesFromPdf(pdfBuffer) {
     try {
@@ -1101,37 +1102,107 @@ class EmailImportProcessor {
           page.getOperatorList(),
         ]);
 
-        // Walk operator list tracking fill color; count text rendering ops
-        let fillR = 0, fillG = 0, fillB = 0;
-        const textOpColors = []; // color at the time of each text rendering op
+        const items = textContent.items.filter(item => 'str' in item);
 
+        // ── Method 1: Red fill color ──────────────────────────────────────
+        let fillR = 0, fillG = 0, fillB = 0;
+        const textOpColors = [];
         for (let i = 0; i < opList.fnArray.length; i++) {
           const fn = opList.fnArray[i];
           const args = opList.argsArray[i];
-
           if (fn === OPS.setFillRGBColor) {
             fillR = args[0]; fillG = args[1]; fillB = args[2];
           } else if (fn === OPS.setFillGray) {
             fillR = fillG = fillB = args[0];
           } else if (
-            fn === OPS.showText ||
-            fn === OPS.showSpacedText ||
-            fn === OPS.nextLineShowText ||
-            fn === OPS.nextLineSetSpacingShowText
+            fn === OPS.showText || fn === OPS.showSpacedText ||
+            fn === OPS.nextLineShowText || fn === OPS.nextLineSetSpacingShowText
           ) {
             textOpColors.push({ r: fillR, g: fillG, b: fillB });
           }
         }
-
-        // Match text items to colors by index (same rendering order)
-        const items = textContent.items.filter(item => 'str' in item);
         for (let i = 0; i < Math.min(items.length, textOpColors.length); i++) {
           const { r, g, b } = textOpColors[i];
           const str = (items[i].str || '').trim();
-          // Red: r dominant (>0.5), g and b low (<0.3)
           if (str.length >= 3 && r > 0.5 && g < 0.3 && b < 0.3) {
             cancelledFragments.add(str.toLowerCase());
-            _debugLog(`📄 Red text detected (p${pageNum}): "${str}" [r=${r.toFixed(2)} g=${g.toFixed(2)} b=${b.toFixed(2)}]`);
+            _debugLog(`📄 Red text (p${pageNum}): "${str}"`);
+          }
+        }
+
+        // ── Method 2: Horizontal strikethrough line over text ─────────────
+        // Collect horizontal line segments from path drawing ops
+        const hLines = []; // { x1, x2, y }
+        let pathMoveX = 0, pathMoveY = 0;
+        let lastMoveX = 0, lastMoveY = 0;
+
+        for (let i = 0; i < opList.fnArray.length; i++) {
+          const fn = opList.fnArray[i];
+          const args = opList.argsArray[i];
+
+          if (fn === OPS.moveTo) {
+            lastMoveX = args[0]; lastMoveY = args[1];
+          } else if (fn === OPS.lineTo) {
+            const x2 = args[0], y2 = args[1];
+            // Horizontal line: y difference < 1 pt
+            if (Math.abs(y2 - lastMoveY) < 1.0) {
+              hLines.push({
+                x1: Math.min(lastMoveX, x2),
+                x2: Math.max(lastMoveX, x2),
+                y: (lastMoveY + y2) / 2,
+              });
+            }
+            lastMoveX = x2; lastMoveY = y2;
+          } else if (fn === OPS.constructPath) {
+            // constructPath: args[0]=cmd array, args[1]=coord array
+            const cmds = args[0];
+            const coords = args[1];
+            let ci = 0, mx = 0, my = 0;
+            for (let c = 0; c < cmds.length; c++) {
+              const cmd = cmds[c];
+              if (cmd === OPS.moveTo) {
+                mx = coords[ci++]; my = coords[ci++];
+              } else if (cmd === OPS.lineTo) {
+                const lx = coords[ci++], ly = coords[ci++];
+                if (Math.abs(ly - my) < 1.0) {
+                  hLines.push({ x1: Math.min(mx, lx), x2: Math.max(mx, lx), y: (my + ly) / 2 });
+                }
+                mx = lx; my = ly;
+              } else if (cmd === OPS.curveTo) {
+                ci += 6;
+              } else if (cmd === OPS.rectangle) {
+                ci += 4;
+              }
+            }
+          }
+        }
+
+        // For each text item, check if any horizontal line passes through its middle
+        for (const item of items) {
+          const str = (item.str || '').trim();
+          if (str.length < 3) continue;
+
+          // item.transform: [a,b,c,d,tx,ty] — tx,ty = baseline position
+          const tx = item.transform[4];
+          const ty = item.transform[5];
+          const w  = item.width;
+          const h  = item.height || 10;
+
+          // Strikethrough is roughly at 30–65% of ascent above baseline
+          const yMin = ty + h * 0.25;
+          const yMax = ty + h * 0.70;
+
+          for (const line of hLines) {
+            if (
+              line.y >= yMin && line.y <= yMax &&         // passes through text vertically
+              line.x1 <= tx + w * 0.6 &&                  // line starts before middle of text
+              line.x2 >= tx + w * 0.4 &&                  // line ends after start of text
+              (line.x2 - line.x1) >= w * 0.3              // line covers at least 30% of text width
+            ) {
+              cancelledFragments.add(str.toLowerCase());
+              _debugLog(`📄 Strikethrough detected (p${pageNum}): "${str}" line y=${line.y.toFixed(1)} textY=${ty.toFixed(1)}-${(ty+h).toFixed(1)}`);
+              break;
+            }
           }
         }
       }

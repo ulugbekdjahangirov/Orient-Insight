@@ -17,9 +17,10 @@ try {
 }
 
 /**
- * Use pdfjs-dist to detect red-colored text in a PDF.
- * Returns a Set of lowercase text fragments that were rendered in red.
- * These correspond to cancelled (strikethrough) tourists.
+ * Use pdfjs-dist to detect cancelled tourist names in a PDF.
+ * Method 1: red-colored text (r>0.5, g<0.3, b<0.3)
+ * Method 2: horizontal strikethrough line drawn over text (any color, incl. black)
+ * Returns a Set of lowercase name fragments for cancelled tourists.
  */
 async function extractCancelledNamesFromPdf(pdfBuffer) {
   try {
@@ -41,9 +42,11 @@ async function extractCancelledNamesFromPdf(pdfBuffer) {
         page.getOperatorList(),
       ]);
 
+      const items = textContent.items.filter(item => 'str' in item);
+
+      // ── Method 1: Red fill color ──────────────────────────────────────
       let fillR = 0, fillG = 0, fillB = 0;
       const textOpColors = [];
-
       for (let i = 0; i < opList.fnArray.length; i++) {
         const fn = opList.fnArray[i];
         const args = opList.argsArray[i];
@@ -52,21 +55,74 @@ async function extractCancelledNamesFromPdf(pdfBuffer) {
         } else if (fn === OPS.setFillGray) {
           fillR = fillG = fillB = args[0];
         } else if (
-          fn === OPS.showText ||
-          fn === OPS.showSpacedText ||
-          fn === OPS.nextLineShowText ||
-          fn === OPS.nextLineSetSpacingShowText
+          fn === OPS.showText || fn === OPS.showSpacedText ||
+          fn === OPS.nextLineShowText || fn === OPS.nextLineSetSpacingShowText
         ) {
           textOpColors.push({ r: fillR, g: fillG, b: fillB });
         }
       }
-
-      const items = textContent.items.filter(item => 'str' in item);
       for (let i = 0; i < Math.min(items.length, textOpColors.length); i++) {
         const { r, g, b } = textOpColors[i];
         const str = (items[i].str || '').trim();
         if (str.length >= 3 && r > 0.5 && g < 0.3 && b < 0.3) {
           cancelledFragments.add(str.toLowerCase());
+        }
+      }
+
+      // ── Method 2: Horizontal strikethrough line over text ─────────────
+      const hLines = []; // { x1, x2, y }
+      let lastMoveX = 0, lastMoveY = 0;
+
+      for (let i = 0; i < opList.fnArray.length; i++) {
+        const fn = opList.fnArray[i];
+        const args = opList.argsArray[i];
+
+        if (fn === OPS.moveTo) {
+          lastMoveX = args[0]; lastMoveY = args[1];
+        } else if (fn === OPS.lineTo) {
+          const x2 = args[0], y2 = args[1];
+          if (Math.abs(y2 - lastMoveY) < 1.0) {
+            hLines.push({ x1: Math.min(lastMoveX, x2), x2: Math.max(lastMoveX, x2), y: (lastMoveY + y2) / 2 });
+          }
+          lastMoveX = x2; lastMoveY = y2;
+        } else if (fn === OPS.constructPath) {
+          const cmds = args[0], coords = args[1];
+          let ci = 0, mx = 0, my = 0;
+          for (let c = 0; c < cmds.length; c++) {
+            const cmd = cmds[c];
+            if (cmd === OPS.moveTo) {
+              mx = coords[ci++]; my = coords[ci++];
+            } else if (cmd === OPS.lineTo) {
+              const lx = coords[ci++], ly = coords[ci++];
+              if (Math.abs(ly - my) < 1.0) {
+                hLines.push({ x1: Math.min(mx, lx), x2: Math.max(mx, lx), y: (my + ly) / 2 });
+              }
+              mx = lx; my = ly;
+            } else if (cmd === OPS.curveTo) {
+              ci += 6;
+            } else if (cmd === OPS.rectangle) {
+              ci += 4;
+            }
+          }
+        }
+      }
+
+      for (const item of items) {
+        const str = (item.str || '').trim();
+        if (str.length < 3) continue;
+        const tx = item.transform[4], ty = item.transform[5];
+        const w = item.width, h = item.height || 10;
+        const yMin = ty + h * 0.25, yMax = ty + h * 0.70;
+        for (const line of hLines) {
+          if (
+            line.y >= yMin && line.y <= yMax &&
+            line.x1 <= tx + w * 0.6 &&
+            line.x2 >= tx + w * 0.4 &&
+            (line.x2 - line.x1) >= w * 0.3
+          ) {
+            cancelledFragments.add(str.toLowerCase());
+            break;
+          }
         }
       }
     }
