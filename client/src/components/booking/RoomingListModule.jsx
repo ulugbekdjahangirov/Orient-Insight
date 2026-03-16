@@ -471,6 +471,33 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
     }
   };
 
+  const handleBulkRemoveRemark = async () => {
+    if (!bulkRemarkPhrase.trim()) return;
+    setBulkRemarkSaving(true);
+    try {
+      await Promise.all(tourists.map(t => {
+        const existing = (t.remarks || '').trim();
+        const phrase = bulkRemarkPhrase.trim();
+        if (!existing.toLowerCase().includes(phrase.toLowerCase())) return Promise.resolve();
+        const newRemarks = existing
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => !l.toLowerCase().includes(phrase.toLowerCase()))
+          .join('\n')
+          .trim();
+        return touristsApi.update(bookingId, t.id, { remarks: newRemarks || null });
+      }));
+      toast.success(`"${bulkRemarkPhrase}" barcha turistlardan olib tashlandi`);
+      setBulkRemarkOpen(false);
+      loadData();
+      onUpdate?.();
+    } catch (error) {
+      toast.error('Xatolik yuz berdi');
+    } finally {
+      setBulkRemarkSaving(false);
+    }
+  };
+
   const startEditRoom = (tourist) => {
     setEditingRoomId(tourist.id);
     setRoomValue(tourist.roomPreference || '');
@@ -1826,6 +1853,13 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
                     >
                       {bulkRemarkSaving ? 'Saqlanmoqda...' : `Barcha ${tourists.length} ta turistga qo'shish`}
+                    </button>
+                    <button
+                      onClick={handleBulkRemoveRemark}
+                      disabled={bulkRemarkSaving || !bulkRemarkPhrase.trim()}
+                      className="w-full py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+                    >
+                      {bulkRemarkSaving ? 'Saqlanmoqda...' : `Barcha ${tourists.length} ta turistdan olib tashlash`}
                     </button>
                   </div></>
                 )}
