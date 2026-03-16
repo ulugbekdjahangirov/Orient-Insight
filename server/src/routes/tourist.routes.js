@@ -44,9 +44,16 @@ async function extractCancelledNamesFromPdf(pdfBuffer) {
 
       const items = textContent.items.filter(item => 'str' in item);
 
-      // ── Method 1: Red fill color ──────────────────────────────────────
+      const isRedColor = (r, g, b) =>
+        r > 1 ? (r > 127 && g < 77 && b < 77) : (r > 0.5 && g < 0.3 && b < 0.3);
+
+      // ── Method 1: Position-based red color detection ──────────────────
+      // Track text matrix Y position to avoid index-alignment mismatch
+      // (some text ops produce empty/whitespace items causing count drift)
       let fillR = 0, fillG = 0, fillB = 0;
-      const textOpColors = [];
+      let tmY = 0;
+      const textOpsWithY = [];
+
       for (let i = 0; i < opList.fnArray.length; i++) {
         const fn = opList.fnArray[i];
         const args = opList.argsArray[i];
@@ -54,18 +61,32 @@ async function extractCancelledNamesFromPdf(pdfBuffer) {
           fillR = args[0]; fillG = args[1]; fillB = args[2];
         } else if (fn === OPS.setFillGray) {
           fillR = fillG = fillB = args[0];
+        } else if (fn === OPS.setTextMatrix) {
+          tmY = args[5];
+        } else if (fn === OPS.moveText || fn === OPS.setLeadingMoveText) {
+          tmY += args[1];
         } else if (
           fn === OPS.showText || fn === OPS.showSpacedText ||
           fn === OPS.nextLineShowText || fn === OPS.nextLineSetSpacingShowText
         ) {
-          textOpColors.push({ r: fillR, g: fillG, b: fillB });
+          textOpsWithY.push({ r: fillR, g: fillG, b: fillB, y: tmY });
         }
       }
-      for (let i = 0; i < Math.min(items.length, textOpColors.length); i++) {
-        const { r, g, b } = textOpColors[i];
-        const str = (items[i].str || '').trim();
-        if (str.length >= 3 && r > 0.5 && g < 0.3 && b < 0.3) {
-          cancelledFragments.add(str.toLowerCase());
+
+      // Build set of Y positions where color is red
+      const redYSet = new Set();
+      for (const op of textOpsWithY) {
+        if (isRedColor(op.r, op.g, op.b)) {
+          redYSet.add(Math.round(op.y * 10));
+        }
+      }
+
+      // Match text items by Y position to detect red text
+      for (const item of items) {
+        const iyKey = Math.round(item.transform[5] * 10);
+        if (redYSet.has(iyKey) || redYSet.has(iyKey + 10) || redYSet.has(iyKey - 10)) {
+          const str = (item.str || '').trim();
+          if (str.length >= 3) cancelledFragments.add(str.toLowerCase());
         }
       }
 
@@ -3164,21 +3185,29 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
       }
     }
 
-    // Filter out cancelled (red/strikethrough) tourists detected via pdfjs-dist color analysis
+    // Filter out cancelled (red/strikethrough) tourists detected via pdfjs-dist
     const cancelledFragments = await extractCancelledNamesFromPdf(req.file.buffer);
     if (cancelledFragments.size > 0) {
       const beforeCount = tourists.length;
       for (let i = tourists.length - 1; i >= 0; i--) {
-        const nameLower = (tourists[i].fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+        const fullLower   = (tourists[i].fullName || '').toLowerCase().trim();
+        const nameLower   = fullLower.replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+        const lastName    = nameLower.split(',')[0].trim();
+        let cancelled = false;
         for (const frag of cancelledFragments) {
-          if (frag.length >= 3 && nameLower.includes(frag)) {
-            tourists.splice(i, 1);
-            break;
-          }
+          if (frag.length < 3) continue;
+          const fragNoTitle = frag.replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+          if (
+            fullLower.includes(frag) ||
+            nameLower.includes(frag) ||
+            (lastName.length >= 3 && frag.includes(lastName)) ||
+            (fragNoTitle.length >= 3 && nameLower.includes(fragNoTitle))
+          ) { cancelled = true; break; }
         }
+        if (cancelled) tourists.splice(i, 1);
       }
       if (tourists.length < beforeCount) {
-        console.log(`[PDF import] Filtered ${beforeCount - tourists.length} cancelled tourist(s) (red text detected)`);
+        console.log(`[PDF import] Filtered ${beforeCount - tourists.length} cancelled tourist(s)`);
       }
     }
 

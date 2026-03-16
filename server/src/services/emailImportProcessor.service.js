@@ -678,9 +678,16 @@ class EmailImportProcessor {
       const cancelledFragments = await this._extractCancelledNamesFromPdf(fileBuffer);
       const pdfTourists = cancelledFragments.size > 0
         ? pdfTouristsRaw.filter(t => {
-            const nameLower = (t.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+            const fullLower   = (t.fullName || '').toLowerCase().trim();
+            const nameLower   = fullLower.replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+            const lastName    = nameLower.split(',')[0].trim();
             for (const frag of cancelledFragments) {
-              if (frag.length >= 3 && nameLower.includes(frag)) return false;
+              if (frag.length < 3) continue;
+              const fragNoTitle = frag.replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+              if (fullLower.includes(frag)) return false;                              // full name match (with title)
+              if (nameLower.includes(frag)) return false;                              // name match (no title)
+              if (lastName.length >= 3 && frag.includes(lastName)) return false;      // fragment contains last name
+              if (fragNoTitle.length >= 3 && nameLower.includes(fragNoTitle)) return false; // name contains fragment (no title)
             }
             return true;
           })
@@ -1085,15 +1092,18 @@ class EmailImportProcessor {
   async _extractCancelledNamesFromPdf(pdfBuffer) {
     try {
       const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+      _debugLog(`🔍 _extractCancelledNames: loading PDF (${pdfBuffer.length} bytes)`);
       const doc = await pdfjsLib.getDocument({
         data: new Uint8Array(pdfBuffer),
         useWorkerFetch: false,
         isEvalSupported: false,
         useSystemFonts: true,
       }).promise;
+      _debugLog(`🔍 _extractCancelledNames: ${doc.numPages} page(s)`);
 
       const cancelledFragments = new Set();
       const OPS = pdfjsLib.OPS;
+      _debugLog(`🔍 OPS.setFillRGBColor=${OPS.setFillRGBColor} setFillGray=${OPS.setFillGray} showText=${OPS.showText}`);
 
       for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
         const page = await doc.getPage(pageNum);
@@ -1103,30 +1113,61 @@ class EmailImportProcessor {
         ]);
 
         const items = textContent.items.filter(item => 'str' in item);
+        _debugLog(`🔍 p${pageNum}: ${items.length} text items, ${opList.fnArray.length} ops`);
 
-        // ── Method 1: Red fill color ──────────────────────────────────────
+        const isRedColor = (r, g, b) =>
+          r > 1 ? (r > 127 && g < 77 && b < 77) : (r > 0.5 && g < 0.3 && b < 0.3);
+
+        // ── Method 1: Position-based color detection ──────────────────────
+        // Track text matrix Y position to reliably match ops→items
+        // (index-based alignment fails when some ops produce empty/whitespace items)
         let fillR = 0, fillG = 0, fillB = 0;
-        const textOpColors = [];
+        let tmY = 0;
+        const textOpsWithY = []; // { r, g, b, y }
+
         for (let i = 0; i < opList.fnArray.length; i++) {
           const fn = opList.fnArray[i];
           const args = opList.argsArray[i];
           if (fn === OPS.setFillRGBColor) {
             fillR = args[0]; fillG = args[1]; fillB = args[2];
+            if (isRedColor(fillR, fillG, fillB)) {
+              _debugLog(`🔍 setFillRGBColor RED: r=${fillR.toFixed(2)} g=${fillG.toFixed(2)} b=${fillB.toFixed(2)}`);
+            }
           } else if (fn === OPS.setFillGray) {
             fillR = fillG = fillB = args[0];
+          } else if (fn === OPS.setTextMatrix) {
+            tmY = args[5]; // f component = y position
+          } else if (fn === OPS.moveText || fn === OPS.setLeadingMoveText) {
+            tmY += args[1]; // ty component
           } else if (
             fn === OPS.showText || fn === OPS.showSpacedText ||
             fn === OPS.nextLineShowText || fn === OPS.nextLineSetSpacingShowText
           ) {
-            textOpColors.push({ r: fillR, g: fillG, b: fillB });
+            textOpsWithY.push({ r: fillR, g: fillG, b: fillB, y: tmY });
           }
         }
-        for (let i = 0; i < Math.min(items.length, textOpColors.length); i++) {
-          const { r, g, b } = textOpColors[i];
-          const str = (items[i].str || '').trim();
-          if (str.length >= 3 && r > 0.5 && g < 0.3 && b < 0.3) {
-            cancelledFragments.add(str.toLowerCase());
-            _debugLog(`📄 Red text (p${pageNum}): "${str}"`);
+        _debugLog(`🔍 p${pageNum}: ${textOpsWithY.length} text ops with positions`);
+
+        // Build a map: Y position → is red (any text op at this Y is red)
+        const redYSet = new Set();
+        for (const op of textOpsWithY) {
+          if (isRedColor(op.r, op.g, op.b)) {
+            redYSet.add(Math.round(op.y * 10)); // round to 0.1 unit precision
+          }
+        }
+
+        // For each text item, check if its Y matches a red text op Y
+        for (const item of items) {
+          const iy = item.transform[5];
+          const iyKey = Math.round(iy * 10);
+          // Check exact match or ±1 unit tolerance
+          const isRed = redYSet.has(iyKey) || redYSet.has(iyKey + 10) || redYSet.has(iyKey - 10);
+          if (isRed) {
+            const str = (item.str || '').trim();
+            if (str.length >= 3) {
+              cancelledFragments.add(str.toLowerCase());
+              _debugLog(`📄 Red text by Y-pos (p${pageNum} y=${iy.toFixed(1)}): "${str}"`);
+            }
           }
         }
 
@@ -1207,9 +1248,10 @@ class EmailImportProcessor {
         }
       }
 
+      _debugLog(`🔍 _extractCancelledNames done: ${cancelledFragments.size} cancelled fragment(s): [${[...cancelledFragments].join(', ')}]`);
       return cancelledFragments;
     } catch (err) {
-      _debugLog('⚠️ _extractCancelledNamesFromPdf error:', err.message);
+      _debugLog('⚠️ _extractCancelledNamesFromPdf error:', err.message, err.stack?.split('\n')[1] || '');
       return new Set();
     }
   }
