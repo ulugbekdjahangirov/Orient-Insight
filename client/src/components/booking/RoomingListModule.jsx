@@ -2109,7 +2109,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                   const isUZB = tPlacement.toLowerCase().includes('uzbek') || tPlacement.toLowerCase().includes('узбек');
                   const placementLabel = isTKM ? 'TM' : isUZB ? 'UZ' : null;
                   const placementColor = isTKM ? 'bg-purple-500' : 'bg-green-500';
-                  const hasRemarks = hotelRemarksText.trim().length > 0;
+                  const hasRemarks = t.remarks && t.remarks.trim().length > 0;
                   return (
                     <div key={t.id} className={`flex flex-col gap-2.5 p-0 ${rowBgClass ? 'bg-yellow-50' : ''}`}>
                       {/* Row 1: number + name + badges */}
@@ -2138,7 +2138,7 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                       {hasRemarks && (
                         <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
                           <span className="text-amber-500 text-xs mt-0.5">📝</span>
-                          <span className="text-xs text-amber-800 leading-snug">{hotelRemarksText}</span>
+                          <span className="text-xs text-amber-800 leading-snug">{t.remarks}</span>
                         </div>
                       )}
 
@@ -2310,8 +2310,8 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                           title="Нажмите, чтобы редактировать"
                         >
                           {(() => {
-                            // Only show hotel-relevant remarks (Ранний заезд/Extra Night) for first hotel
-                            const lines = hotelRemarks;
+                            const lines = (t.remarks || '').split('\n').map(l => l.trim()).filter(Boolean)
+                              .filter(l => !/PAX booked half double|no roommate found/i.test(l));
                             if (lines.length === 0) return (
                               <div className="flex items-center gap-2 text-gray-400 text-sm">
                                 <span>-</span>
