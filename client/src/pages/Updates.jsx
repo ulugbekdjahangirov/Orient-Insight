@@ -1018,7 +1018,7 @@ export default function Updates() {
           ) : isMobile ? (
             <div className="space-y-3">
               {bookings.map((booking, index) => {
-                const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : booking.status === 'CONFIRMED' ? 'CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                 return (
                   <div
@@ -1138,7 +1138,7 @@ export default function Updates() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {bookings.map((booking, index) => {
-                    const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
+                    const calculatedStatus = booking.status === 'CANCELLED' ? 'CANCELLED' : booking.status === 'FINAL_CONFIRMED' ? 'FINAL_CONFIRMED' : booking.status === 'CONFIRMED' ? 'CONFIRMED' : getStatusByPax(booking.pax, booking.departureDate, booking.endDate);
 
                     // Set row background color based on status
                     let rowClass = 'hover:bg-gray-50';
