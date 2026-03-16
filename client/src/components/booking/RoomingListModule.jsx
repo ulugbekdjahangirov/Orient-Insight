@@ -2420,7 +2420,17 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                     <input
                       type="date"
                       value={form.tourStartDate}
-                      onChange={(e) => setForm({ ...form, tourStartDate: e.target.value })}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        let autoArrival = form.checkInDate;
+                        if (newStart) {
+                          const d = new Date(newStart);
+                          const tc = booking?.tourType?.code;
+                          d.setDate(d.getDate() + (tc === 'KAS' ? 14 : tc === 'ZA' ? 4 : 1));
+                          autoArrival = d.toISOString().split('T')[0];
+                        }
+                        setForm({ ...form, tourStartDate: newStart, checkInDate: autoArrival });
+                      }}
                       className="w-full px-3 py-2.5 bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-sm font-medium"
                     />
                   </div>
