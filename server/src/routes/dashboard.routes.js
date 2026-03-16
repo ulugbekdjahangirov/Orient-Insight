@@ -328,7 +328,7 @@ router.get('/financial', authenticate, async (req, res) => {
       // Invoice totals — only invoices with firma set
       prisma.invoice.findMany({
         where: { booking: bookingWhere, firma: { not: null } },
-        select: { totalAmount: true, isPaid: true, firma: true, currency: true }
+        select: { totalAmount: true, isPaid: true, firma: true, currency: true, invoiceType: true }
       }),
       // Hotels USD (pricePerNight <= 10000)
       prisma.accommodationRoom.aggregate({
@@ -369,12 +369,14 @@ router.get('/financial', authenticate, async (req, res) => {
     for (const inv of invoices) {
       if ((inv.currency || 'USD') !== 'USD') continue;
       const amount = inv.totalAmount || 0;
-      invoiceTotal += amount;
-      if (inv.isPaid) invoicePaid += amount;
+      // Gutschrift (credit note) reduces the total
+      const signedAmount = inv.invoiceType === 'Gutschrift' ? -amount : amount;
+      invoiceTotal += signedAmount;
+      if (inv.isPaid) invoicePaid += signedAmount;
       const firma = inv.firma;
       if (!byFirma[firma]) byFirma[firma] = { total: 0, paid: 0 };
-      byFirma[firma].total += amount;
-      if (inv.isPaid) byFirma[firma].paid += amount;
+      byFirma[firma].total += signedAmount;
+      if (inv.isPaid) byFirma[firma].paid += signedAmount;
     }
 
     // ── Guide USD ────────────────────────────────────────────────────────
