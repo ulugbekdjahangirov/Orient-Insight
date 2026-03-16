@@ -16,6 +16,68 @@ try {
   console.warn('pdf-parse not available');
 }
 
+/**
+ * Use pdfjs-dist to detect red-colored text in a PDF.
+ * Returns a Set of lowercase text fragments that were rendered in red.
+ * These correspond to cancelled (strikethrough) tourists.
+ */
+async function extractCancelledNamesFromPdf(pdfBuffer) {
+  try {
+    const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+    const doc = await pdfjsLib.getDocument({
+      data: new Uint8Array(pdfBuffer),
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    }).promise;
+
+    const cancelledFragments = new Set();
+    const OPS = pdfjsLib.OPS;
+
+    for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
+      const page = await doc.getPage(pageNum);
+      const [textContent, opList] = await Promise.all([
+        page.getTextContent(),
+        page.getOperatorList(),
+      ]);
+
+      let fillR = 0, fillG = 0, fillB = 0;
+      const textOpColors = [];
+
+      for (let i = 0; i < opList.fnArray.length; i++) {
+        const fn = opList.fnArray[i];
+        const args = opList.argsArray[i];
+        if (fn === OPS.setFillRGBColor) {
+          fillR = args[0]; fillG = args[1]; fillB = args[2];
+        } else if (fn === OPS.setFillGray) {
+          fillR = fillG = fillB = args[0];
+        } else if (
+          fn === OPS.showText ||
+          fn === OPS.showSpacedText ||
+          fn === OPS.nextLineShowText ||
+          fn === OPS.nextLineSetSpacingShowText
+        ) {
+          textOpColors.push({ r: fillR, g: fillG, b: fillB });
+        }
+      }
+
+      const items = textContent.items.filter(item => 'str' in item);
+      for (let i = 0; i < Math.min(items.length, textOpColors.length); i++) {
+        const { r, g, b } = textOpColors[i];
+        const str = (items[i].str || '').trim();
+        if (str.length >= 3 && r > 0.5 && g < 0.3 && b < 0.3) {
+          cancelledFragments.add(str.toLowerCase());
+        }
+      }
+    }
+
+    return cancelledFragments;
+  } catch (err) {
+    console.warn('extractCancelledNamesFromPdf error:', err.message);
+    return new Set();
+  }
+}
+
 // Try to load pdf2json (optional dependency for PDF parsing)
 let PDFParser;
 try {
@@ -3043,6 +3105,24 @@ router.post('/:bookingId/rooming-list/import-pdf', (req, res, next) => {
             targetArray.push(flightInfo);
           }
         }
+      }
+    }
+
+    // Filter out cancelled (red/strikethrough) tourists detected via pdfjs-dist color analysis
+    const cancelledFragments = await extractCancelledNamesFromPdf(req.file.buffer);
+    if (cancelledFragments.size > 0) {
+      const beforeCount = tourists.length;
+      for (let i = tourists.length - 1; i >= 0; i--) {
+        const nameLower = (tourists[i].fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+        for (const frag of cancelledFragments) {
+          if (frag.length >= 3 && nameLower.includes(frag)) {
+            tourists.splice(i, 1);
+            break;
+          }
+        }
+      }
+      if (tourists.length < beforeCount) {
+        console.log(`[PDF import] Filtered ${beforeCount - tourists.length} cancelled tourist(s) (red text detected)`);
       }
     }
 

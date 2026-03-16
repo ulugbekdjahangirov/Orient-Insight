@@ -668,10 +668,25 @@ class EmailImportProcessor {
       // Parse tourists directly from the already-parsed text (no second pdfParse call)
       // This avoids making an internal HTTP request (axios.post) which would cause
       // a second pdfParse + SQLite write lock contention with manual imports
-      const { tourists: pdfTourists, birthdaysMap, uzSectionStart, uzSectionEnd, groupRemark, touristSpecificRemarks, extraNightTourists } = this._parseTouristsFromText(text, tourTypeCode);
+      const { tourists: pdfTouristsRaw, birthdaysMap, uzSectionStart, uzSectionEnd, groupRemark, touristSpecificRemarks, extraNightTourists } = this._parseTouristsFromText(text, tourTypeCode);
 
-      if (pdfTourists.length === 0) {
+      if (pdfTouristsRaw.length === 0) {
         return null;
+      }
+
+      // Filter out cancelled (strikethrough/red-colored) tourists detected via pdfjs-dist
+      const cancelledFragments = await this._extractCancelledNamesFromPdf(fileBuffer);
+      const pdfTourists = cancelledFragments.size > 0
+        ? pdfTouristsRaw.filter(t => {
+            const nameLower = (t.fullName || '').toLowerCase().replace(/^(mr\.|mrs\.|ms\.)\s*/i, '').trim();
+            for (const frag of cancelledFragments) {
+              if (frag.length >= 3 && nameLower.includes(frag)) return false;
+            }
+            return true;
+          })
+        : pdfTouristsRaw;
+      if (cancelledFragments.size > 0) {
+        _debugLog(`📄 Cancelled fragments detected: [${[...cancelledFragments].join(', ')}] → filtered ${pdfTouristsRaw.length - pdfTourists.length} tourist(s)`);
       }
 
       // UZ date range: prefer PDF section dates; fall back to booking dates
@@ -1058,6 +1073,73 @@ class EmailImportProcessor {
     } catch (err) {
       console.error('❌ importRoomingListPdfForEmail error:', err.message);
       return null;
+    }
+  }
+
+  /**
+   * Detect cancelled (strikethrough/red) tourist names in a PDF using pdfjs-dist.
+   * Returns a Set of lowercase name fragments that were rendered in red color.
+   * These correspond to cancelled tourists that should be excluded from import.
+   */
+  async _extractCancelledNamesFromPdf(pdfBuffer) {
+    try {
+      const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+      const doc = await pdfjsLib.getDocument({
+        data: new Uint8Array(pdfBuffer),
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        useSystemFonts: true,
+      }).promise;
+
+      const cancelledFragments = new Set();
+      const OPS = pdfjsLib.OPS;
+
+      for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
+        const page = await doc.getPage(pageNum);
+        const [textContent, opList] = await Promise.all([
+          page.getTextContent(),
+          page.getOperatorList(),
+        ]);
+
+        // Walk operator list tracking fill color; count text rendering ops
+        let fillR = 0, fillG = 0, fillB = 0;
+        const textOpColors = []; // color at the time of each text rendering op
+
+        for (let i = 0; i < opList.fnArray.length; i++) {
+          const fn = opList.fnArray[i];
+          const args = opList.argsArray[i];
+
+          if (fn === OPS.setFillRGBColor) {
+            fillR = args[0]; fillG = args[1]; fillB = args[2];
+          } else if (fn === OPS.setFillGray) {
+            fillR = fillG = fillB = args[0];
+          } else if (
+            fn === OPS.showText ||
+            fn === OPS.showSpacedText ||
+            fn === OPS.nextLineShowText ||
+            fn === OPS.nextLineSetSpacingShowText
+          ) {
+            textOpColors.push({ r: fillR, g: fillG, b: fillB });
+          }
+        }
+
+        // Match text items to colors by index (same rendering order)
+        const items = textContent.items.filter(item => 'str' in item);
+        for (let i = 0; i < Math.min(items.length, textOpColors.length); i++) {
+          const { r, g, b } = textOpColors[i];
+          const str = (items[i].str || '').trim();
+          // Red: r dominant (>0.5), g and b low (<0.3)
+          if (str.length >= 3 && r > 0.5 && g < 0.3 && b < 0.3) {
+            cancelledFragments.add(str.toLowerCase());
+            _debugLog(`📄 Red text detected (p${pageNum}): "${str}" [r=${r.toFixed(2)} g=${g.toFixed(2)} b=${b.toFixed(2)}]`);
+          }
+        }
+      }
+
+      return cancelledFragments;
+    } catch (err) {
+      _debugLog('⚠️ _extractCancelledNamesFromPdf error:', err.message);
+      return new Set();
     }
   }
 
