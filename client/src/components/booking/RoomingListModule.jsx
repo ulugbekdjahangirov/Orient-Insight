@@ -1910,21 +1910,21 @@ export default function RoomingListModule({ bookingId, onUpdate }) {
                 // Check if this is the first hotel - only show custom dates for first hotel
                 const isFirstHotel = hotelName === firstAccommodationHotel;
 
-                // Check if tourist has DIFFERENT dates from booking (early/late arrival)
-                // CRITICAL: Compare tour start dates, not arrival dates
-                // Tourist arrives 1 day after their tour start date
+                // Check if tourist has DIFFERENT dates from booking standard (early/late arrival)
+                // Standard arrival = booking.departureDate + offset (1 for ER/CO, 14 for KAS, 4 for ZA)
                 let hasEarlyLateArrival = false;
-                if (isFirstHotel && t.checkInDate && booking?.departureDate) {
-                  const touristTourStart = new Date(t.checkInDate);
-                  const bookingTourStart = new Date(booking.departureDate);
-                  // Normalize to UTC midnight to avoid timezone issues
-                  touristTourStart.setUTCHours(0, 0, 0, 0);
-                  bookingTourStart.setUTCHours(0, 0, 0, 0);
-                  hasEarlyLateArrival = touristTourStart.getTime() !== bookingTourStart.getTime();
+                if (t.checkInDate && booking?.departureDate) {
+                  const standardArrival = new Date(booking.departureDate);
+                  const tc = booking?.tourType?.code;
+                  standardArrival.setDate(standardArrival.getDate() + (tc === 'KAS' ? 14 : tc === 'ZA' ? 4 : 1));
+                  standardArrival.setUTCHours(0, 0, 0, 0);
+                  const touristArrival = new Date(t.checkInDate);
+                  touristArrival.setUTCHours(0, 0, 0, 0);
+                  hasEarlyLateArrival = touristArrival.getTime() !== standardArrival.getTime();
                 }
 
-                // Check if tourist has custom dates (for backwards compatibility)
-                const hasCustomDates = t.checkInDate || (isFirstHotel && t.checkOutDate);
+                // Yellow highlight only when dates differ from standard
+                const hasCustomDates = hasEarlyLateArrival || (isFirstHotel && t.checkOutDate && booking?.endDate && new Date(t.checkOutDate).toISOString().split('T')[0] !== new Date(booking.endDate).toISOString().split('T')[0]);
                 const customCheckIn = t.checkInDate ? formatDisplayDate(t.checkInDate) : null;
                 const customCheckOut = isFirstHotel && t.checkOutDate ? formatDisplayDate(t.checkOutDate) : null;
 
