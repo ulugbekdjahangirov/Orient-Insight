@@ -668,9 +668,14 @@ export default function Dashboard() {
                 {Object.entries(inv.byFirma).map(([firma, d]) => (
                   <div key={firma} className="flex justify-between items-center px-3 py-2 bg-blue-50 rounded-lg">
                     <span className="text-sm text-blue-700 font-medium truncate max-w-[150px]">{firma}</span>
-                    <div className="text-right">
-                      <span className="text-sm font-black text-blue-900">{fmtUSD(d.paid)}</span>
-                      <span className="text-sm text-gray-400"> / {fmtUSD(d.total)}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <span className="text-sm font-black text-blue-900">{fmtUSD(d.paid)}</span>
+                        <span className="text-sm text-gray-400"> / {fmtUSD(d.total)}</span>
+                      </div>
+                      {d.gutschrift > 0 && (
+                        <span className="text-xs font-semibold text-red-500 bg-red-50 px-1.5 py-0.5 rounded whitespace-nowrap">[-{fmtUSD(d.gutschrift)}]</span>
+                      )}
                     </div>
                   </div>
                 ))}

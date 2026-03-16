@@ -374,9 +374,10 @@ router.get('/financial', authenticate, async (req, res) => {
       invoiceTotal += signedAmount;
       if (inv.isPaid) invoicePaid += signedAmount;
       const firma = inv.firma;
-      if (!byFirma[firma]) byFirma[firma] = { total: 0, paid: 0 };
+      if (!byFirma[firma]) byFirma[firma] = { total: 0, paid: 0, gutschrift: 0 };
       byFirma[firma].total += signedAmount;
       if (inv.isPaid) byFirma[firma].paid += signedAmount;
+      if (inv.invoiceType === 'Gutschrift') byFirma[firma].gutschrift += amount;
     }
 
     // ── Guide USD ────────────────────────────────────────────────────────
