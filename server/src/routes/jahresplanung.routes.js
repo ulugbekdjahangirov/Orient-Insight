@@ -387,55 +387,67 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
       try {
         const TG_API = TG_BASE;
         const header = `📋 *Заявка ${year} — ${tourLabel}*`;
+        const chatId = hotel.telegramChatId;
 
-        // 1. Generate PDF server-side and send
-        try {
-          const pdfBuf = await generatePdfBuffer(hotel.name, tourType, year, sections);
-          const docForm = new FormData();
-          docForm.append('chat_id', hotel.telegramChatId);
-          docForm.append('document', pdfBuf, {
-            filename: `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`,
-            contentType: 'application/pdf'
-          });
-          docForm.append('caption', `📅 Jahresplanung ${year} — ${tourLabel}\n🏨 ${hotel.name}`);
-          await axios.post(`${TG_BASE}/sendDocument`, docForm, { headers: docForm.getHeaders() });
-        } catch (e) { console.warn('JP PDF send error:', e.message); }
-
-        // 2. Intro message
-        const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
-        await axios.post(`${TG_API}/sendMessage`, { chat_id: hotel.telegramChatId, text: intro, parse_mode: 'Markdown' }).catch(() => {});
-
-        // 3. Individual visit messages — parallel batches of 5, 500ms between batches
-        const allVisits = groups.flatMap(grp => grp.visits.map(v => ({ grp, v })));
-        const BATCH = 5;
-        for (let i = 0; i < allVisits.length; i += BATCH) {
-          const batch = allVisits.slice(i, i + BATCH);
-          await Promise.allSettled(batch.map(async ({ grp, v }) => {
-            const visitTitle = v.sectionLabel
-              ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
-              : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
-            const lines = [visitTitle, `🏨 ${hotel.name}`, '', `📅 Заезд: ${v.checkIn}`, `📅 Выезд: ${v.checkOut}`, `👥 PAX: ${v.pax}`, `🛏 DBL:${v.dbl}  |  TWN:${v.twn}  |  SNGL:${v.sngl}`];
+        // Helper: send with automatic retry on Telegram 429 rate limit
+        const tgSend = async (url, data, isForm = false) => {
+          for (let attempt = 0; attempt < 5; attempt++) {
             try {
-              const msgRes = await axios.post(`${TG_API}/sendMessage`, {
-                chat_id: hotel.telegramChatId,
-                text: lines.join('\n'),
-                parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: [[
-                  { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-                  { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-                  { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
-                ]]}
-              });
-              v.msgId = msgRes.data?.result?.message_id || null;
-            } catch (e) { console.warn(`JP visit send failed (${grp.group}):`, e.message); }
-          }));
-          if (i + BATCH < allVisits.length) await new Promise(r => setTimeout(r, 500));
-        }
+              return isForm
+                ? await axios.post(url, data, { headers: data.getHeaders() })
+                : await axios.post(url, data);
+            } catch (e) {
+              const retryAfter = e.response?.data?.parameters?.retry_after;
+              if (retryAfter && attempt < 4) {
+                await new Promise(r => setTimeout(r, retryAfter * 1000 + 200));
+              } else { throw e; }
+            }
+          }
+        };
 
-        // 4. Bulk message
+        // 1. Intro message first (instant — no PDF wait)
+        const intro = `📅 *Заявка ${year} — ${tourLabel}*\n🏨 *${hotel.name}*\n\nQuyida har bir zaezd uchun tasdiqlash so'rovi yuboriladi:`;
+        await tgSend(`${TG_API}/sendMessage`, { chat_id: chatId, text: intro, parse_mode: 'Markdown' }).catch(() => {});
+
+        // 2. All visit messages in parallel (all at once, retry on 429)
+        const allVisits = groups.flatMap(grp => grp.visits.map(v => ({ grp, v })));
+        await Promise.allSettled(allVisits.map(async ({ grp, v }) => {
+          const visitTitle = v.sectionLabel
+            ? `*${grp.no}. ЗАЯВКА ${grp.group} — ${v.sectionLabel}*`
+            : `*${grp.no}. ЗАЯВКА ${grp.group}*`;
+          const lines = [visitTitle, `🏨 ${hotel.name}`, '', `📅 Заезд: ${v.checkIn}`, `📅 Выезд: ${v.checkOut}`, `👥 PAX: ${v.pax}`, `🛏 DBL:${v.dbl}  |  TWN:${v.twn}  |  SNGL:${v.sngl}`];
+          try {
+            const msgRes = await tgSend(`${TG_API}/sendMessage`, {
+              chat_id: chatId,
+              text: lines.join('\n'),
+              parse_mode: 'Markdown',
+              reply_markup: { inline_keyboard: [[
+                { text: '✅ Tasdiqlash', callback_data: `jp_c:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+                { text: '⏳ WL',        callback_data: `jp_w:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+                { text: '❌ Rad etish', callback_data: `jp_r:${grp.bookingId}:${hotelId}:${v.visitIdx}` },
+              ]]}
+            });
+            v.msgId = msgRes.data?.result?.message_id || null;
+          } catch (e) { console.warn(`JP visit send failed (${grp.group}):`, e.message); }
+        }));
+
+        // 3. Bulk confirm button + PDF generation in parallel (PDF can take 5-15s, don't block bulk)
         const totalVisits = groups.reduce((s, g) => s + g.visits.length, 0);
-        const bulkRes = await axios.post(`${TG_API}/sendMessage`, {
-          chat_id: hotel.telegramChatId,
+        const pdfSendPromise = (async () => {
+          try {
+            const pdfBuf = await generatePdfBuffer(hotel.name, tourType, year, sections);
+            const docForm = new FormData();
+            docForm.append('chat_id', chatId);
+            docForm.append('document', pdfBuf, {
+              filename: `${year}_${tourType}_${hotel.name.replace(/\s+/g, '_')}.pdf`,
+              contentType: 'application/pdf'
+            });
+            docForm.append('caption', `📅 Jahresplanung ${year} — ${tourLabel}\n🏨 ${hotel.name}`);
+            await tgSend(`${TG_BASE}/sendDocument`, docForm, true);
+          } catch (e) { console.warn('JP PDF send error:', e.message); }
+        })();
+        const bulkRes = await tgSend(`${TG_API}/sendMessage`, {
+          chat_id: chatId,
           text: `${header}\n\nBarcha *${totalVisits}* ta zaezd uchun:`,
           parse_mode: 'Markdown',
           reply_markup: { inline_keyboard: [[
@@ -444,6 +456,7 @@ router.post('/send-hotel-telegram/:hotelId', authenticate, async (req, res) => {
             { text: '❌ Barchasini rad', callback_data: `jp_ra:${hotelId}` },
           ]]}
         }).catch(() => null);
+        await pdfSendPromise; // wait for PDF to finish before DB update
         const bulkMsgId = bulkRes?.data?.result?.message_id || null;
 
         // 5. Update DB with msgIds + bulkMsgId
